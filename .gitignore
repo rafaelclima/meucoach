@@ -1,0 +1,52 @@
+# Gradle
+.gradle/
+build/
+**/build/
+.kotlin/
+**/.kotlin/
+
+# Android
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.cxx/
+.externalNativeBuild/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Secrets
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*
+!.env.example
+
+# Health data (never commit real files)
+*.fit
+*.fit.gz
+*.tcx
+*.gpx
+*.csv
+!fixtures/**/*.fit
+!fixtures/**/*.fit.gz
+!fixtures/**/*.tcx
+!fixtures/**/*.gpx
+!fixtures/**/*.csv
+fixtures/private/
+docs/private/
+
+# Generated / reports
+*.hprof
+**/schemas/*.json.bak
+
+# OS
+.DS_Store
+Thumbs.db

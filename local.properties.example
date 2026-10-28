@@ -1,0 +1,3 @@
+# Copie para local.properties e ajuste o caminho do seu Android SDK.
+# Este arquivo NÃO deve ser commitado.
+sdk.dir=/home/SEU_USUARIO/Android/Sdk
