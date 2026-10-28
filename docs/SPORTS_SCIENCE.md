@@ -1,0 +1,430 @@
+# SPORTS_SCIENCE.md — MeuCoach
+
+**Versão:** 1.0 · **Data:** 27/10/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+
+> Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
+
+## 1. Escopo e limites
+
+O MeuCoach prescreve **corrida** para adultos saudáveis, com objetivo de performance geral ou provas de rua. Ele **não** diagnostica, não trata lesões, não prescreve nutrição ou emagrecimento e não substitui avaliação médica.
+
+Toda recomendação é uma **hipótese informada por dados**, não uma ordem. O usuário pode ignorar, mover ou substituir um treino; o app registra a decisão e recalibra.
+
+## 2. Princípios
+
+1. **Individualização.** Nenhuma zona ou plano é copiado de outra pessoa.
+2. **Consistência > intensidade.** Para iniciantes, o maior ganho vem de volume fácil sustentado.
+3. **80/20 é heurística, não dogma.** A distribuição alvo é predominantemente fácil, com estímulos de qualidade doseados.
+4. **Carga é contexto, não culpa.** ACWR e TSB são sinais; nenhum decide sozinho.
+5. **Prontidão subjetiva é dado de primeira classe.** Sono, fadiga, dor e stress importam tanto quanto HRV.
+6. **Quando faltam dados, seja conservador e transparente.** Confiança baixa nunca vira recomendação agressiva.
+7. **Explique.** Toda sessão tem regras e evidências rastreáveis.
+8. **Segurança primeiro.** Sinais de alerta interrompem a prescrição.
+
+## 3. Hierarquia de evidência
+
+| Nível | Tipo | Uso |
+|---|---|---|
+| A | Revisão sistemática / meta-análise / consenso | Base de regras estruturais |
+| B | Ensaio controlado / estudo prospectivo | Ajustes e parâmetros |
+| C | Estudo observacional / série de casos | Hipóteses e heurísticas |
+| D | Prática de treinadores / livro técnico | Defaults, quando não há A/B |
+| E | Inferência do produto | Só com confiança baixa e monitoramento |
+
+Cada regra declara `strength` (`STRONG`, `MODERATE`, `LIMITED`) e as evidências que a sustentam. Regras com evidência LIMITED não podem gerar aumento de carga; só manutenção ou redução.
+
+## 4. Perfil e calibração
+
+### 4.1 Dados de entrada
+
+- Idade, sexo biológico, altura, peso.
+- FC de repouso (medida ou média de 7 dias).
+- FC máxima **observada** (nunca 220 − idade).
+- LTHR e pace de limiar (se conhecidos).
+- Melhor performance recente (5 km, 10 km, meia, maratona) com data.
+- Volume e frequência atuais.
+- Disponibilidade semanal e duração máxima por sessão.
+- Objetivo, prova-alvo, terreno, clima, sono, histórico de lesões.
+
+### 4.2 Tiers de calibração
+
+| Tier | Condição | Método | Confiança |
+|---|---|---|---|
+| **A** | Prova ou TT ≤ 8 semanas | VDOT pela performance; LTHR pela FC média do esforço de 30 min | Alta |
+| **B** | ≥ 3 treinos com FC + pace, sem prova recente | Melhor esforço sustentado + curva pace×FC; LTHR estimada | Média |
+| **C** | Iniciante ou < 3 treinos | 2 semanas de base + teste de 30 min guiado | Baixa → Alta após teste |
+
+**TT de 30 min (protocolo):** 10 min de aquecimento fácil + 30 min em esforço forte e constante (não sprint) + 10 min de desaquecimento. LTHR = FC média do esforço (ou dos últimos 20 min). Pace de limiar = pace médio do esforço (ou dos últimos 20 min). Não fazer se doente, lesionado ou com sono < 6 h.
+
+### 4.3 VDOT e paces
+
+- VDOT é derivado da performance (Daniels) e atualiza as paces E/M/T/I/R.
+- Se não houver performance válida, o motor não inventa VDOT: usa zonas de FC e RPE até o teste.
+- Recalibrar a cada 6–8 semanas, após prova ou mudança relevante de volume.
+
+### 4.4 FC máxima
+
+- Usar **maxHrObserved** de arquivos reais (pico sustentado, não artefato).
+- Se a média de um esforço de 30 min for > 95% da maxHr informada, a maxHr informada é inconsistente: priorizar LTHR e marcar a maxHr como suspeita.
+- Zonas de treino são por **LTHR**, não por maxHR.
+
+## 5. Zonas
+
+### 5.1 FC — 5 zonas por LTHR (Friel)
+
+| Zona | % LTHR | Uso |
+|---|---|---|
+| Z1 | < 81% | Recuperação, aquecimento, caminhada |
+| Z2 | 81–89% | Base aeróbica, fácil/conversável |
+| Z3 | 90–93% | Marathon pace / tempo leve |
+| Z4 | 94–99% | Limiar, tempo forte |
+| Z5 | ≥ 100% | VO2max, intervalados curtos, prova |
+
+### 5.2 Pace — 5 zonas (Daniels)
+
+| Zona | Pace | Uso |
+|---|---|---|
+| E | Easy | 65–78% VO2max; maioria do volume |
+| M | Marathon | ritmo de maratona |
+| T | Threshold | 20–40 min contínuos ou intervalos |
+| I | Interval | 3–5 min por repetição, VO2max |
+| R | Repetition | 200–400 m, velocidade/economia |
+
+### 5.3 Classificação polarizada (3 zonas)
+
+- **Fácil:** Z1–Z2 (FC) / E–M (pace).
+- **Moderado:** Z3 / T.
+- **Forte:** Z4–Z5 / I–R.
+
+O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
+
+### 5.4 Cadência
+
+- Cadência é **individual**; não existe alvo universal de 180 spm.
+- Usar como tendência e indicador de fadiga/terreno, não como correção forçada.
+- Aumento gradual de cadência só se houver overstriding evidente e sem dor.
+
+## 6. Carga de treino
+
+### 6.1 Métricas
+
+| Métrica | Fórmula | Uso |
+|---|---|---|
+| **TRIMP** (Banister) | `dur × ΔHR × 0,64·e^(1,92·x)` (homens) / `0,86·e^(1,67·x)` (mulheres), `x=(HRavg−HRrest)/(HRmax−HRrest)` | Carga fisiológica por FC |
+| **rTSS** | `(seg × NGP / paceLimiar)² × 100 / 3600` | Carga por pace normalizado |
+| **sRPE** | `RPE × minutos` | Carga subjetiva; valida FC duvidosa |
+| **CTL** | EMA de 42 dias | Fitness/carga crônica |
+| **ATL** | EMA de 7 dias | Fadiga/carga aguda |
+| **TSB** | `CTL − ATL` | Balanço/frescor |
+| **ACWR** | `carga 7d / média 28d` | Sinal de risco; **não** é meta |
+| **Monotonia** | `média diária / desvio-padrão` | Semana monótona = risco |
+| **Strain** | `carga semanal × monotonia` | Combinação de volume e monotonia |
+
+**Importante:** TRIMP e rTSS medem coisas diferentes e não são somados. O app mostra os dois e usa TRIMP como principal quando a FC é confiável; rTSS quando o pace é confiável.
+
+### 6.2 Normalização de NGP
+
+- Sem elevação confiável: pace bruto.
+- Com elevação: ajuste por grade (grade-adjusted pace) em versão futura; no MVP, marcar confiança média.
+- Treadmill: pace da esteira + inclinação informada; sem GPS.
+
+### 6.3 ACWR com ressalvas
+
+- Calcular 7/28, mas **não** usar como lei.
+- A literatura recente questiona a validade teórica e estatística do ACWR (Impellizzeri et al., 2020).
+- Uso no app: **flag** para revisar carga, nunca para liberar aumento.
+- Faixa de atenção: < 0,8 ou > 1,3. > 1,5 = alerta; não aumentar volume.
+
+### 6.4 Distribuição semanal
+
+- Alvo: ~80% do **tempo** em fácil (Z1–Z2), ~20% em moderado/forte.
+- Iniciantes: pirâmide (mais fácil, pouco limiar, quase nada de VO2max).
+- Intermediários: polarizado/pirâmide conforme objetivo.
+- Máximo de 2 sessões de qualidade/semana; nunca em dias consecutivos.
+- Longão: 25–30% do volume semanal; iniciantes ≤ 150 min.
+
+## 7. Prontidão
+
+### 7.1 Entradas e pesos
+
+| Entrada | Peso (completo) | Normalização |
+|---|---|---|
+| Check-in subjetivo (Hooper: sono, fadiga, dor, stress) | 35% | soma invertida, 4–20 → 0–100 |
+| Sono (duração + qualidade) | 25% | 7–9 h = 100; 6 h ≈ 40; < 5 h = 0 |
+| HRV (ln rMSSD, média 7d vs baseline 60d) | 25% | z-score −2..+2 → 0..100; SWC = 0,5 × SD |
+| FC de repouso (7d vs 30d) | 15% | −5 bpm = melhor; +7 bpm = pior |
+
+Quando falta uma entrada, os pesos são **renormalizados** e a confiança cai. Nunca preencher ausência com valor neutro silencioso.
+
+### 7.2 Níveis
+
+| Nível | Score | Ação |
+|---|---|---|
+| **Verde** | ≥ 70 | Executar o plano; pode progredir se as outras regras permitirem |
+| **Âmbar** | 40–69 | Reduzir volume/intensidade em 10–20%; trocar qualidade por fácil |
+| **Vermelho** | < 40 | Qualidade suspensa; fácil curto ou descanso; checar sinais |
+
+**Overrides de segurança** (independente do score):
+
+- Doença febril, dor aguda, lesão ou tontura ⇒ vermelho.
+- RHR +7 bpm por 2 dias consecutivos ⇒ no mínimo âmbar.
+- Sono < 6 h na noite anterior ⇒ sem qualidade.
+- ACWR > 1,5 ⇒ não aumentar carga.
+- HRV abaixo do SWC por 3+ dias + RHR elevada ⇒ âmbar/vermelho.
+
+### 7.3 Confiança
+
+| Confiança | Critério |
+|---|---|
+| **Alta** | ≥ 3 entradas objetivas + check-in, cobertura ≥ 80% |
+| **Média** | 2 entradas ou cobertura 40–80% |
+| **Baixa** | 1 entrada ou apenas subjetivo; sem HRV/RHR |
+
+A UI mostra os contribuintes e o que falta. "Sem dados" não é "recuperação ruim".
+
+### 7.4 HRV — regras técnicas
+
+- Usar **ln rMSSD**, não RMSSD bruto.
+- Baseline móvel de 60 dias; comparar média de 7 dias.
+- Só calcular se houver ≥ 4 noites válidas na semana.
+- SWC = 0,5 × desvio-padrão do baseline.
+- Tendência importa mais que valor absoluto.
+- Não comparar HRV entre pessoas.
+
+## 8. Prescrição
+
+### 8.1 Estrutura de ciclo
+
+| Bloco | Duração | Foco |
+|---|---|---|
+| **Base** | 4–8 semanas | Volume fácil, consistência, economia de corrida |
+| **Build** | 4–6 semanas | Limiar, VO2max, pace específico |
+| **Peak** | 2–3 semanas | Qualidade específica, volume estável |
+| **Taper** | 2 semanas (5k–meia) / 3 (maratona) | Reduzir volume 40–60%, manter intensidade |
+| **Recuperação** | 1–2 semanas | Volume baixo, sem qualidade |
+
+Deload a cada 4ª semana (−20 a −30% de volume). Sem progressão após semana de prova.
+
+### 8.2 Semana padrão (iniciante/intermediário)
+
+| Dia | Sessão |
+|---|---|
+| Seg | Descanso ou caminhada leve |
+| Ter | Fácil Z2 + 6×20 s strides |
+| Qua | Força (rotina do usuário) / descanso |
+| Qui | Qualidade (tempo ou intervalos) — se verde |
+| Sex | Fácil Z1–Z2 curto |
+| Sáb | Longão Z2 |
+| Dom | Descanso |
+
+A musculação é rotina do usuário e **não é prescrita** pelo app; o check-in captura fadiga global. Evitar qualidade no dia seguinte a perna pesada.
+
+### 8.3 Progressão
+
+Aumentar volume semanal em **5–8%** somente se:
+
+- Prontidão verde;
+- ACWR entre 0,8 e 1,3;
+- Sono médio ≥ 6,5 h;
+- Sem dor > 2/10;
+- Semana anterior concluída ≥ 80%.
+
+Caso contrário, manter. Nunca aumentar duas semanas seguidas após falha.
+
+### 8.4 Sessões de qualidade
+
+| Tipo | Exemplo | Alvo |
+|---|---|---|
+| **Strides** | 6×20 s rápido controlado, 60 s trote | Neuromuscular, economia |
+| **Tempo** | 20–30 min contínuos em Z3–Z4 | Limiar |
+| **Intervalos VO2max** | 5×3 min Z4–Z5, 2 min trote | VO2max |
+| **Colinas** | 6×45 s subida forte, caminhada desce | Força específica |
+| **Treadmill** | 6×2 min a 5–10% inclinação, Z4 | Controle de calor/impacto |
+
+Aquecimento 10–15 min + mobilidade; desaquecimento 5–10 min. Qualidade nunca em dia de sono < 6 h.
+
+### 8.5 Longão
+
+- 25–30% do volume semanal.
+- Iniciantes: 45–90 min; aumentar 5–10 min/semana.
+- Z2, com opção de acelerar os últimos 10–20 min em Z3 no build.
+- Não fazer longão no dia seguinte a qualidade.
+
+### 8.6 Taper
+
+- Volume −40 a −60%; intensidade mantida em pequenas doses.
+- Última sessão intensa 7–10 dias antes da prova (5k/10k) ou 10–14 dias (meia/maratona).
+- Sem treino novo, sem tênis novo, sem dieta nova na semana da prova.
+
+### 8.7 Calor e umidade
+
+- Natal/RN: calor úmido quase o ano todo.
+- Ajuste de pace conservador (+3 a +8%) quando temperatura > 26 °C ou ponto de orvalho > 20 °C; usar FC e RPE como guia principal.
+- Preferir início da manhã; esteira é válida para qualidade no calor.
+- O ajuste é uma **estimativa**, não uma lei; marcar confiança média/baixa.
+- Hidratação e sinais de calor: orientação geral, não prescrição médica.
+
+### 8.8 Prova
+
+- Pace alvo por VDOT/Riegel, com banda conservadora.
+- Riegel: `t2 = t1 × (d2/d1)^1,06` — usar como referência, não garantia.
+- Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
+- Recuperação: 1 dia fácil por 3 km de prova (heurística), mínimo 3 dias sem qualidade após 5k/10k.
+
+## 9. Segurança e guardrails
+
+### 9.1 Sinais de parada
+
+- Dor no peito, palpitações, desmaio, falta de ar desproporcional.
+- Dor óssea focal, dor que piora ao correr, inchaço, claudicação.
+- Febre, infecção, tontura, náusea persistente.
+- Em qualquer um: interromper, orientar avaliação médica, registrar no app.
+
+### 9.2 Lesão
+
+- Dor 3/10 ou mais, que altera a passada ou piora durante o treino ⇒ reduzir/cancelar.
+- Dor matinal > 30 min ou que piora no dia seguinte ⇒ descanso e avaliação.
+- O app não diagnostica; apenas ajusta carga e recomenda procurar profissional.
+
+### 9.3 Sono
+
+- Adultos: 7–9 h (AASM/SRS).
+- Média < 6,5 h por 3 noites ⇒ não aumentar volume; < 6 h ⇒ sem qualidade.
+- Sono é tratado como **limitador de treino**, não como métrica de culpa.
+
+### 9.4 Peso e impacto
+
+- O app não prescreve emagrecimento nem dieta.
+- Com IMC elevado,progressão de volume conservadora e incentivo a cross-training de baixo impacto (caminhada inclinada, esteira, bicicleta) — sem julgamento.
+- Força é rotina do usuário; o app não interfere.
+
+## 10. Explicabilidade
+
+Toda recomendação contém:
+
+```json
+{
+  "sessionType": "EASY",
+  "reason": "Prontidão âmbar: sono 5h40 e HRV 0,6 SWC abaixo da baseline.",
+  "rules": ["R-READY-03", "R-PLAN-03"],
+  "evidence": ["EV-SAW-2016", "EV-PLEWS-2013"],
+  "confidence": "MEDIUM",
+  "dataUsed": ["sleep", "hrv", "load"],
+  "missing": ["restingHr"]
+}
+```
+
+A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar texto gerado por LLM para números ou decisões; se houver LLM no futuro, ele apenas reescreve o rationale determinístico.
+
+## 11. Validação
+
+1. **Testes unitários** de fórmulas com casos calculados à mão.
+2. **Testes de referência** contra implementações independentes (Python/R) para TRIMP, rTSS, CTL/ATL.
+3. **Property-based tests**: monotonicidade, limites, ausência de NaN/negativos, planos que respeitam restrições.
+4. **Golden scenarios**: perfil + atividades + métricas → saída esperada versionada.
+5. **Regressão com dados reais sanitizados**: 7 atividades do usuário 0; resumo, zonas e carga batem com o esperado.
+6. **Auditoria de regras**: toda recomendação cita regra existente e evidência existente.
+7. **Teste de confiança**: remover entradas e verificar que a confiança cai e a agressividade não aumenta.
+
+## 12. Avaliação inicial do usuário 0 (dados reais)
+
+**Dados:** 38 anos, 97 kg, 174 cm, FC repouso 58, 5 km em 30:59 (24/10/2026), FC média 181 / pico 187 na prova, LTHR estimada 180, VDOT ≈ 31.
+
+**Leitura:**
+
+- Zonas de FC: Z1 < 145; Z2 145–160; Z3 161–168; Z4 169–179; Z5 ≥ 180.
+- As corridas de rua (6:32–6:53/km, FC média 168–171) estão em **Z4**, não em fácil.
+- A prova (6:04/km, FC 181) foi o único esforço realmente forte.
+- As sessões de esteira (9:35–9:54/km, FC 106–122) são Z1 — caminhada/slow jog, úteis como volume de baixo impacto.
+- Pace fácil provisório: **7:40–8:30/km** (VDOT 31; confirmar com RPE e FC).
+- Sono médio de 6 h é um limitador relevante.
+- FC máxima informada (185) é incompatível com 31 min a 181 de média; usar LTHR e tratar maxHR como subestimada.
+
+**Plano inicial (2 semanas de baseline):**
+
+- 4 corridas/semana, 20–24 km, 80% em Z1–Z2.
+- 2× fáceis de 4–5 km + 6×20 s strides.
+- 1 longão de 6–8 km em Z2.
+- 1 sessão opcional de esteira em Z1–Z2 (aproveitando a rotina de academia).
+- **Sem intervalado estruturado** até completar o baseline e ter sono ≥ 6,5 h.
+- Depois: 1 qualidade/semana (ex.: 5×3 min Z4 na esteira, 2 min trote), se verde.
+- Recalibrar com TT de 30 min em 6–8 semanas ou nova prova.
+
+**Por que não seguir o padrão atual?** Porque ele concentra quase todo o estímulo em Z4, sem base fácil, com sono curto e pouco tempo de corrida. O caminho de maior retorno é aumentar a base aeróbica em Z2, manter consistência e dosar qualidade — não correr mais forte todos os dias.
+
+## 13. Registro de evidências
+
+| ID | Referência | Força | Usado em |
+|---|---|---|---|
+| `EV-DANIELS-2014` | Daniels, J. *Daniels' Running Formula* (3rd ed.). Human Kinetics, 2014. | D | VDOT, paces E/M/T/I/R |
+| `EV-FRIEL-2018` | Friel, J. *The Triathlete's Training Bible* (5th ed.). VeloPress, 2018. | D | Zonas por LTHR, teste de 30 min |
+| `EV-SEILER-2010` | Seiler, S. What is best practice for training intensity and duration distribution in endurance athletes? *IJSPP* 5(3):276–291, 2010. doi:10.1123/ijspp.5.3.276 | A/B | Distribuição 80/20 |
+| `EV-BANISTER-1991` | Banister, E. W. Modeling elite athletic performance. In *Physiological Testing of the High-Performance Athlete*, 1991. | D | TRIMP |
+| `EV-MORTON-1990` | Morton, R. H., Fitz-Clarke, J. R., Banister, E. W. Modeling human performance in running. *J Appl Physiol* 69(3):1171–1177, 1990. doi:10.1152/jappl.1990.69.3.1171 | B | CTL/ATL/TSB |
+| `EV-COGGAN-2010` | Coggan, A. R., Allen, H. *Training and Racing with a Power Meter* (2nd ed.). VeloPress, 2010. | D | TSS/rTSS, PMC |
+| `EV-FOSTER-2001` | Foster, C. et al. A new approach to monitoring exercise training. *J Strength Cond Res* 15(1):109–115, 2001. doi:10.1519/00124278-200102000-00019 | B | sRPE, monotonia, strain |
+| `EV-GABBETT-2016` | Gabbett, T. J. The training-injury prevention paradox. *Br J Sports Med* 50(5):273–280, 2016. doi:10.1136/bjsports-2015-095445 | B | ACWR (com ressalvas) |
+| `EV-IMPELLIZZERI-2020` | Impellizzeri, F. M. et al. What role do chronic workloads play in the acute to chronic workload ratio? Time to dismiss ACWR and its underlying theory. *Sports Med* 50:1567–1580, 2020. doi:10.1007/s40279-020-01288-7 | A | Limitações do ACWR |
+| `EV-PLEWS-2013` | Plews, D. J. et al. Training adaptation and heart rate variability in elite endurance athletes. *Sports Med* 43(9):773–781, 2013. doi:10.1007/s40279-013-0071-8 | B | HRV, ln rMSSD, baseline |
+| `EV-BUCHHEIT-2014` | Buchheit, M. Monitoring training status with HR measures: do all roads lead to Rome? *Front Physiol* 5:73, 2014. doi:10.3389/fphys.2014.00073 | A | HRV/RHR, interpretação |
+| `EV-SAW-2016` | Saw, A. E., Main, L. C., Gastin, P. B. Monitoring the athlete training response: subjective self-reported measures trump commonly used objective measures. *Br J Sports Med* 50(5):281–291, 2016. doi:10.1136/bjsports-2015-094758 | A | Check-in subjetivo |
+| `EV-HOOPER-1995` | Hooper, S. L., Mackinnon, L. T. Monitoring overtraining in athletes. *Sports Med* 20(5):321–327, 1995. | D | Hooper index |
+| `EV-BOSQUET-2007` | Bosquet, L. et al. Effects of tapering on performance: a meta-analysis. *Med Sci Sports Exerc* 39(8):1358–1365, 2007. doi:10.1249/mss.0b013e31806010e0 | A | Taper |
+| `EV-MUJIKA-2003` | Mujika, I., Padilla, S. Scientific bases for precompetition tapering strategies. *Med Sci Sports Exerc* 35(7):1182–1187, 2003. | A | Taper |
+| `EV-RIEGEL-1981` | Riegel, P. S. Athletic records and human endurance. *American Scientist* 69(3):285–290, 1981. | C | Predição de prova |
+| `EV-ELY-2007` | Ely, M. R. et al. Impact of weather on marathon-running performance. *Med Sci Sports Exerc* 39(3):487–493, 2007. | B | Ajuste por calor |
+| `EV-HALSON-2014` | Halson, S. L. Sleep in elite athletes and nutritional interventions to enhance sleep. *Sports Med* 44(Suppl 1):S13–S23, 2014. doi:10.1007/s40279-014-0147-0 | A | Sono e recuperação |
+| `EV-WALSH-2021` | Walsh, N. P. et al. Sleep and the athlete: narrative review and 2021 expert consensus recommendations. *Br J Sports Med* 55(7):356–368, 2021. doi:10.1136/bjsports-2020-103708 | A | Sono |
+| `EV-WATSON-2015` | Watson, N. F. et al. Recommended amount of sleep for a healthy adult. *Sleep* 38(6):843–844, 2015. doi:10.5665/sleep.4716 | A | 7–9 h |
+| `EV-SCHUBERT-2014` | Schubert, A. G., Kempf, J., Heiderscheit, B. C. Influence of stride frequency and length on running mechanics. *Sports Health* 6(3):210–217, 2014. doi:10.1177/1941738113508544 | A | Cadência individual |
+| `EV-ISSURIN-2010` | Issurin, V. B. New horizons for the methodology and physiology of training periodization. *Sports Med* 40(3):189–206, 2010. | A | Periodização em blocos |
+| `EV-BEATTIE-2014` | Beattie, K. et al. The effect of strength training on performance in endurance athletes. *Sports Med* 44(6):845–865, 2014. | A | Contexto de força (fora do escopo de prescrição) |
+
+## 14. Catálogo de regras
+
+| ID | Regra | Evidências | Força |
+|---|---|---|---|
+| `R-CAL-01` | Prova/TT ≤ 8 semanas define VDOT e LTHR (Tier A) | DANIELS, FRIEL | STRONG |
+| `R-CAL-02` | Sem prova, ≥ 3 treinos com FC+pace permitem Tier B; senão Tier C | DANIELS, FRIEL | MODERATE |
+| `R-CAL-03` | Nunca estimar FC máxima por 220−idade | FRIEL, BUCHHEIT | STRONG |
+| `R-ZONE-01` | Zonas de FC por LTHR; paces por VDOT | FRIEL, DANIELS | STRONG |
+| `R-ZONE-02` | Distribuição medida em 3 zonas; alvo ~80/20 por tempo | SEILER | MODERATE |
+| `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
+| `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
+| `R-LOAD-03` | ACWR é flag, nunca meta; >1,5 bloqueia aumento | GABBETT, IMPELLIZZERI | LIMITED |
+| `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
+| `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |
+| `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
+| `R-READY-04` | Sono <6 h ⇒ sem qualidade; <6,5 h por 3 dias ⇒ sem aumento de volume | WALSH, WATSON | STRONG |
+| `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
+| `R-PLAN-01` | Volume semanal +5–8% só se verde, ACWR 0,8–1,3 e sono ok | SEILER, GABBETT | MODERATE |
+| `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
+| `R-PLAN-03` | Longão 25–30% do volume; iniciante ≤150 min | PFITZINGER, DANIELS | MODERATE |
+| `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |
+| `R-PLAN-05` | Taper 2 semanas (5k–meia) / 3 (maratona), volume −40–60% | BOSQUET, MUJIKA | STRONG |
+| `R-PLAN-06` | 80% do tempo em Z1–Z2; qualidade doseada | SEILER | MODERATE |
+| `R-PLAN-07` | Ajuste por calor +3–8%, subordinado a FC/RPE | ELY | LIMITED |
+| `R-PLAN-08` | Esteira válida para qualidade no calor; prescrever por velocidade/inclinação | ELY, DANIELS | LIMITED |
+| `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |
+| `R-SAFE-02` | Sem diagnóstico; app não é dispositivo médico | Regulatório | STRONG |
+| `R-SAFE-03` | Sem prescrição de peso/nutrição | Escopo | STRONG |
+| `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
+| `R-DATA-01` | Dado ausente não preenche valor neutro silencioso | Produto | STRONG |
+
+## 15. Limitações conhecidas
+
+- Sem teste de lactato, LTHR é estimada; confiança máxima "média" até um TT válido.
+- Sem running dynamics, economia de corrida é inferida por pace/FC/cadência.
+- Potência de corrida do Zepp é proprietária; usar apenas tendência relativa.
+- Ajuste de calor é empírico e conservador; não é prescrição fisiológica individual.
+- HRV noturno de wearable de pulso tem ruído; usar tendência, não noite isolada.
+- ACWR tem limitações teóricas; nunca é a única justificativa.
+- O modelo de prontidão não substitui sintomas subjetivos ou avaliação médica.
+
+## 16. Próximas calibrações
+
+1. Comparar o motor com o export diário real quando disponível.
+2. Validar TRIMP/rTSS contra implementações Python/R com os 7 arquivos.
+3. Recalibrar paces após o TT de 30 min.
+4. Ajustar o modelo de calor com dados locais de Natal (temperatura, umidade, pace/FC).
+5. Revisar pesos de prontidão após 8 semanas de dados do usuário 0.

@@ -1,0 +1,223 @@
+# TESTING.md — MeuCoach
+
+**Versão:** 1.0 · **Data:** 27/10/2026
+
+## 1. Princípios
+
+1. **Teste no lugar certo.** Fórmula no domínio, parser no parser, comportamento na UI.
+2. **Dado real é o melhor professor.** Usar os arquivos reais do usuário 0 **sanitizados** como fixtures de regressão.
+3. **Teste que não falha não protege.** Todo bug corrigido ganha um teste que falharia antes.
+4. **Determinismo.** Nada de teste dependente de relógio, rede ou ordem de execução.
+5. **Rápido por padrão.** A suíte unitária roda em segundos; instrumentados ficam separados.
+6. **Privacidade.** Nenhum dado de saúde real no git ou no CI.
+7. **Cobertura é meio, não fim.** O alvo é confiança nas regras críticas, não 100% de linhas.
+
+## 2. Pirâmide
+
+| Camada | Ferramenta | O que cobre | Onde roda |
+|---|---|---|---|
+| Unitário | JUnit 4 + AssertJ | Fórmulas, zonas, parser, regras, validações | JVM, cada PR |
+| Property-based | Kotest Property (Fase 1) | Invariantes (monotonicidade, limites) | JVM, cada PR |
+| Golden | JUnit + JSON | Cenários completos de carga/prontidão/plano | JVM, cada PR |
+| Parser de referência | Python `fitdecode` (script) | Validação cruzada do parser FIT | Local/CI opcional |
+| Banco | Room `MigrationTestHelper` | Migrações e queries | JVM/instrumentado |
+| UI | Compose UI Test + Robolectric | Estados, acessibilidade básica | JVM, cada PR |
+| Screenshot | Roborazzi | Regressão visual dark/light | JVM, cada PR (Fase 1) |
+| Instrumentado | Compose UI Test + AndroidX Test | Fluxos reais, Health Connect fake | Emulador, nightly |
+| E2E | Fluxo import → hoje | Aceitação do MVP | Emulador, release |
+
+## 3. Estrutura de testes
+
+```
+core/model/src/test/          # value objects (pace, distância)
+core/domain/src/test/
+  zones/                      # FC, pace, distribuição
+  load/                       # TRIMP, rTSS, CTL/ATL/TSB, ACWR
+  readiness/                  # score, confiança, overrides
+  prescription/               # plano, progressão, taper, guardrails
+  parser/                     # FIT, TCX, GPX, CSV
+  golden/                     # cenários JSON
+app/src/test/                 # ViewModels, formatadores, screenshots
+app/src/androidTest/          # navegação e fluxos com emulador
+fixtures/
+  fit/                        # fixtures sanitizadas/sintéticas
+  tcx/
+  gpx/
+  csv/
+  golden/                     # entradas e saídas esperadas
+  private/                    # IGNORADO — dados reais
+```
+
+## 4. Fixtures e privacidade
+
+- Dados reais ficam em `fixtures/private/` (gitignored) ou fora do repo.
+- Fixtures commitadas são **sanitizadas**:
+  - GPS deslocado em uma grade fixa (não reversível para o local real).
+  - Nomes, notas, e-mails e IDs de dispositivo removidos.
+  - Timestamps podem ser mantidos (não identificam sozinhos) ou deslocados.
+- Fixtures sintéticas devem cobrir casos que os arquivos reais não têm:
+  - FIT com developer fields, big-endian, timestamps comprimidos, CRC inválido.
+  - TCX sem laps, sem GPS, com pausas.
+  - GPX com extensões de FC/cadência e sem elevação.
+  - CSV com colunas faltantes, datas duplicadas, valores vazios.
+- O CI usa apenas fixtures commitadas; nunca acessa `~/Documents`.
+- Script `tools/sanitize_fixtures.py` (Fase 0) documenta a transformação.
+
+## 5. Testes de parser
+
+Para cada formato:
+
+1. **Smoke:** arquivo válido → atividade canônica com campos obrigatórios.
+2. **Resumo:** distância, duração, FC média/máx, cadência, potência, elevação.
+3. **Samples:** contagem, monotonicidade do tempo, limites físicos (FC 30–250, pace > 0).
+4. **Laps:** quantidade, somas, boundary.
+5. **Erros:** arquivo truncado, CRC inválido, XML malformado, encoding, campos ausentes.
+6. **Determinismo:** parse duas vezes → mesmo resultado.
+7. **Referência:** comparar resumo com `fitdecode`/biblioteca independente.
+8. **Dedup:** FIT + TCX + GPX da mesma sessão → uma atividade, FIT vence.
+
+O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 7 arquivos reais sanitizados. Nenhum teste pode depender de rede.
+
+## 6. Testes de domínio
+
+### 6.1 Zonas
+
+- Limites exatos: 80,9% / 81% / 89,9% / 90% / 94% / 100%.
+- LTHR inválida → erro claro.
+- Pace de limiar → 5 zonas sem sobreposição nos alvos.
+- Usuário 0: 170 bpm com LTHR 180 ⇒ Z4; 150 ⇒ Z2; 181 ⇒ Z5.
+
+### 6.2 Carga
+
+- TRIMP calculado à mão para 30 min, FC 150, repouso 58, máx 187.
+- rTSS: 60 min no limiar = 100; 30 min = 50; pace 10% mais lento ⇒ ~82,6.
+- CTL/ATL: série constante → converge; TSB = CTL − ATL.
+- ACWR: crônico 0 → `null`; 7d/28d conhecido.
+- Monotonia: desvio 0 → `null` (não infinito).
+- Nenhum resultado pode ser NaN/Infinity/negativo.
+
+### 6.3 Prontidão
+
+- Todos os inputs bons → verde, confiança alta.
+- Sem HRV/RHR → confiança média, sem penalizar como recuperação ruim.
+- Sono curto → no máximo âmbar + flag `SHORT_SLEEP`.
+- Doença/lesão → vermelho + `ILLNESS_OR_INJURY`.
+- RHR +7 por 2 dias → no máximo âmbar.
+- Nenhum dado → âmbar neutro (50) + `INSUFFICIENT_DATA`, confiança baixa.
+- Pesos renormalizados: remover componente não muda a escala dos demais.
+- Limites 39/40/69/70.
+
+### 6.4 Prescrição
+
+- Semana de base respeita 80/20, 2 qualidades máximo, longão 25–30%.
+- Progressão bloqueada se vermelho, ACWR > 1,5, sono < 6,5 h ou dor.
+- Deload a cada 4ª semana.
+- Taper reduz volume 40–60% e mantém intensidade.
+- Nenhum plano coloca qualidade em dias consecutivos.
+- Calor ajusta pace dentro da banda e nunca abaixo do limite seguro.
+- Toda sessão tem ≥ 1 regra e ≥ 1 evidência.
+
+## 7. Golden scenarios
+
+Arquivos em `fixtures/golden/<cenario>/`:
+
+```
+input.json       # perfil, atividades, métricas, check-ins, data
+expected.json    # saída do motor (com tolerância para doubles)
+README.md        # o que o cenário prova
+```
+
+Cenários iniciais:
+
+| ID | Prova |
+|---|---|
+| `G-001` | Usuário 0, 2 semanas de baseline, sem HRV → plano conservador |
+| `G-002` | Semana verde, sono ok → progressão de 5–8% |
+| `G-003` | HRV baixa + RHR alta → qualidade suspensa |
+| `G-004` | Semana de prova 5k → taper |
+| `G-005` | Dados ausentes totais → não quebra, confiança baixa |
+| `G-006` | Calor 32 °C / dew point 24 → ajuste de pace |
+
+Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra no expected.
+
+## 8. Testes de UI
+
+- **Estados:** loading, empty, error, stale, success.
+- **Acessibilidade:** `contentDescription` de gráficos, labels de botões, ordem de foco.
+- **Formatação:** pace `7:40`, distância `5,11 km`, data pt-BR, unidade.
+- **Interação:** trocar treino, concluir check-in, abrir "por quê".
+- **Temas:** dark e light, fonte 100% e 200%.
+- **Screenshot:** 3 tamanhos (360×800, 393×852, 412×915) × 2 temas, apenas telas-chave.
+
+Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
+
+## 9. Health Connect
+
+- Interface `HealthConnectSource` + fake para testes.
+- Testar: permissões negadas, app ausente, dados vazios, dados parciais, registro duplicado, fuso.
+- Nunca usar dados reais no CI.
+- Teste manual documentado no `RUNBOOK.md` com o dispositivo do usuário.
+
+## 10. CI
+
+```yaml
+- ./gradlew spotlessCheck
+- ./gradlew check
+- ./gradlew koverVerify
+- ./gradlew :app:assembleDebug
+```
+
+- JDK 17, SDK 37, build-tools 37.
+- Cache Gradle.
+- Relatórios de teste e lint como artifacts em falha.
+- Nightly: `connectedDebugAndroidTest` em emulador API 35/36 (quando estável).
+- Branch protection: CI verde obrigatório.
+
+## 11. Cobertura
+
+| Módulo | Meta | Verificação |
+|---|---|---|
+| `core:domain` | ≥ 85% linhas | Kover `koverVerify` |
+| `core:model` | ≥ 90% | Kover |
+| `core:data` | ≥ 75% | Kover (Fase 1) |
+| `app`/features | ≥ 60% | Kover + UI tests (Fase 1) |
+| Parser FIT | ≥ 90% branches | Kover + golden |
+
+Exclusões permitidas: código gerado, `data class` triviais, `MainActivity`, previews. Toda exclusão é justificada no build.
+
+## 12. Definition of Done
+
+Uma tarefa só termina quando:
+
+- [ ] Código compila (`assembleDebug`).
+- [ ] Testes novos cobrem o comportamento e falham sem a correção.
+- [ ] `./gradlew check` verde.
+- [ ] `./gradlew spotlessCheck` verde.
+- [ ] `koverVerify` verde (quando aplicável).
+- [ ] Lint sem erros.
+- [ ] Documentação atualizada (se mudou regra, dado ou UX).
+- [ ] `docs/PROGRESS.md` atualizado.
+- [ ] Nenhum dado real de saúde no diff.
+
+## 13. Comandos
+
+```bash
+./gradlew test
+./gradlew :core:domain:test --tests "*Readiness*"
+./gradlew check
+./gradlew spotlessApply
+./gradlew koverHtmlReport
+./gradlew :app:assembleDebug
+./gradlew :app:connectedDebugAndroidTest   # device/emulador
+```
+
+## 14. Riscos de teste
+
+| Risco | Mitigação |
+|---|---|
+| Fixtures reais vazarem | `.gitignore`, revisão manual, script de sanitização |
+| Parser FIT frágil | Golden + referência + fuzz leve |
+| Fórmulas com erro sutil | Casos à mão + referência independente |
+| Screenshot flaky | Robolectric NATIVE, versão fixa, tolerância |
+| Testes lentos | Separar unit/instrumentado; cache |
+| Cobertura performática | Focar em branches críticos, não em getters |

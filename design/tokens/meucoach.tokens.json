@@ -1,0 +1,69 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "name": "MeuCoach",
+  "version": "1.0.0",
+  "color": {
+    "dark": {
+      "bg": { "base": { "$value": "#08090B", "$type": "color" }, "subtle": { "$value": "#0E1013", "$type": "color" } },
+      "surface": { "default": { "$value": "#121418", "$type": "color" }, "elevated": { "$value": "#191C21", "$type": "color" }, "inset": { "$value": "#0B0D10", "$type": "color" } },
+      "border": { "subtle": { "$value": "#23272D", "$type": "color" }, "strong": { "$value": "#343A42", "$type": "color" } },
+      "text": { "primary": { "$value": "#F4F6F7", "$type": "color" }, "secondary": { "$value": "#A2A9B0", "$type": "color" }, "tertiary": { "$value": "#7F8895", "$type": "color" }, "inverse": { "$value": "#0A0B0D", "$type": "color" } },
+      "accent": { "lime": { "$value": "#D8FF3E", "$type": "color" }, "lime-pressed": { "$value": "#C2E82F", "$type": "color" }, "lime-soft": { "$value": "#2A3310", "$type": "color" } },
+      "data": { "coral": { "$value": "#FF6B5E", "$type": "color" }, "lavender": { "$value": "#B9A6FF", "$type": "color" }, "cyan": { "$value": "#5BD0E0", "$type": "color" }, "amber": { "$value": "#FFB454", "$type": "color" }, "blue": { "$value": "#6C9CFF", "$type": "color" }, "green": { "$value": "#56D68B", "$type": "color" } },
+      "semantic": { "success": { "$value": "#4ADE80", "$type": "color" }, "warning": { "$value": "#FFB454", "$type": "color" }, "danger": { "$value": "#FF5A5F", "$type": "color" }, "info": { "$value": "#6C9CFF", "$type": "color" } },
+      "zone": { "z1": { "$value": "#6C9CFF", "$type": "color" }, "z2": { "$value": "#56D68B", "$type": "color" }, "z3": { "$value": "#FFD166", "$type": "color" }, "z4": { "$value": "#FF9F43", "$type": "color" }, "z5": { "$value": "#FF5A5F", "$type": "color" } }
+    },
+    "light": {
+      "bg": { "base": { "$value": "#F6F7F8", "$type": "color" }, "subtle": { "$value": "#EEF1F3", "$type": "color" } },
+      "surface": { "default": { "$value": "#FFFFFF", "$type": "color" }, "elevated": { "$value": "#FFFFFF", "$type": "color" }, "inset": { "$value": "#F1F3F5", "$type": "color" } },
+      "border": { "subtle": { "$value": "#E3E6E9", "$type": "color" }, "strong": { "$value": "#C9CFD5", "$type": "color" } },
+      "text": { "primary": { "$value": "#0A0B0D", "$type": "color" }, "secondary": { "$value": "#5C646D", "$type": "color" }, "tertiary": { "$value": "#626C5A", "$type": "color" }, "inverse": { "$value": "#0A0B0D", "$type": "color" } },
+      "accent": { "lime": { "$value": "#D8FF3E", "$type": "color" }, "lime-pressed": { "$value": "#C2E82F", "$type": "color" }, "lime-text": { "$value": "#4F6600", "$type": "color" }, "lime-soft": { "$value": "#F1FBCB", "$type": "color" } },
+      "data": { "coral": { "$value": "#B33A32", "$type": "color" }, "lavender": { "$value": "#6E54C8", "$type": "color" }, "cyan": { "$value": "#0E7C8C", "$type": "color" }, "amber": { "$value": "#8A5200", "$type": "color" }, "blue": { "$value": "#2E5BCC", "$type": "color" }, "green": { "$value": "#1F7A4D", "$type": "color" } },
+      "semantic": { "success": { "$value": "#1F7A4D", "$type": "color" }, "warning": { "$value": "#8A5200", "$type": "color" }, "danger": { "$value": "#C62828", "$type": "color" }, "info": { "$value": "#2E5BCC", "$type": "color" } },
+      "zone": { "z1": { "$value": "#2E5BCC", "$type": "color" }, "z2": { "$value": "#1F7A4D", "$type": "color" }, "z3": { "$value": "#8A5A00", "$type": "color" }, "z4": { "$value": "#A35A00", "$type": "color" }, "z5": { "$value": "#C62828", "$type": "color" } }
+    }
+  },
+  "typography": {
+    "family": { "display": { "$value": "Geist", "$type": "fontFamily" }, "text": { "$value": "Inter", "$type": "fontFamily" }, "mono": { "$value": "Geist Mono", "$type": "fontFamily" } },
+    "scale": {
+      "display-xl": { "$value": { "fontSize": "56sp", "lineHeight": "56sp", "fontWeight": 600, "letterSpacing": "-0.03em" }, "$type": "typography" },
+      "display-lg": { "$value": { "fontSize": "44sp", "lineHeight": "48sp", "fontWeight": 600, "letterSpacing": "-0.03em" }, "$type": "typography" },
+      "display-md": { "$value": { "fontSize": "36sp", "lineHeight": "40sp", "fontWeight": 600, "letterSpacing": "-0.02em" }, "$type": "typography" },
+      "headline-lg": { "$value": { "fontSize": "28sp", "lineHeight": "32sp", "fontWeight": 600, "letterSpacing": "-0.01em" }, "$type": "typography" },
+      "headline-md": { "$value": { "fontSize": "22sp", "lineHeight": "28sp", "fontWeight": 600 }, "$type": "typography" },
+      "title-lg": { "$value": { "fontSize": "18sp", "lineHeight": "24sp", "fontWeight": 600 }, "$type": "typography" },
+      "body-lg": { "$value": { "fontSize": "16sp", "lineHeight": "24sp", "fontWeight": 400 }, "$type": "typography" },
+      "body-md": { "$value": { "fontSize": "14sp", "lineHeight": "20sp", "fontWeight": 400 }, "$type": "typography" },
+      "label-lg": { "$value": { "fontSize": "13sp", "lineHeight": "18sp", "fontWeight": 500 }, "$type": "typography" },
+      "label-sm": { "$value": { "fontSize": "11sp", "lineHeight": "14sp", "fontWeight": 500, "letterSpacing": "0.08em" }, "$type": "typography" },
+      "metric-hero": { "$value": { "fontSize": "64sp", "lineHeight": "64sp", "fontWeight": 600, "letterSpacing": "-0.03em" }, "$type": "typography" }
+    }
+  },
+  "spacing": {
+    "0": { "$value": "0dp", "$type": "dimension" },
+    "1": { "$value": "4dp", "$type": "dimension" },
+    "2": { "$value": "8dp", "$type": "dimension" },
+    "3": { "$value": "12dp", "$type": "dimension" },
+    "4": { "$value": "16dp", "$type": "dimension" },
+    "5": { "$value": "20dp", "$type": "dimension" },
+    "6": { "$value": "24dp", "$type": "dimension" },
+    "8": { "$value": "32dp", "$type": "dimension" },
+    "10": { "$value": "40dp", "$type": "dimension" },
+    "12": { "$value": "48dp", "$type": "dimension" },
+    "16": { "$value": "64dp", "$type": "dimension" }
+  },
+  "radius": {
+    "sm": { "$value": "12dp", "$type": "dimension" },
+    "md": { "$value": "20dp", "$type": "dimension" },
+    "lg": { "$value": "28dp", "$type": "dimension" },
+    "xl": { "$value": "36dp", "$type": "dimension" },
+    "pill": { "$value": "999dp", "$type": "dimension" }
+  },
+  "motion": {
+    "fast": { "$value": "160ms", "$type": "duration" },
+    "base": { "$value": "220ms", "$type": "duration" },
+    "slow": { "$value": "320ms", "$type": "duration" },
+    "spring": { "$value": { "damping": 0.85, "stiffness": 380 }, "$type": "cubicBezier" }
+  }
+}
