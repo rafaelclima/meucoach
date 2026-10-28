@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026
+**Versão:** 1.1 · **Data:** 28/10/2026
 
 ## 1. Restrições e forças
 
@@ -90,7 +90,7 @@ sequenceDiagram
     I->>I: copia para storage privado + SHA-256
     I->>A: bytes
     A->>A: parse + validação
-    A-->>I: ParsedActivity + warnings
+    A-->>I: ImportedActivity + warnings
     I->>D: chave de deduplicação
     D-->>I: nova / duplicada / substituir
     I->>R: salva atividade + samples + origem
@@ -109,6 +109,8 @@ sequenceDiagram
 | **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Sincronização incremental por `lastSync` |
 
 O parser FIT é o componente de maior risco. Estratégia: implementar o subconjunto usado pelo Amazfit Balance, validar contra os arquivos reais e contra o `fitdecode` (Python) em testes de referência. Fixtures reais são sanitizadas antes de entrar no repo.
+
+**Status (28/10/2026):** implementado em `core:domain/src/main/kotlin/com/meucoach/core/domain/parser/fit/` (`FitParser`, `FitReader`, `FitCursor`, `FitCrc`). Cobre headers de 12/14 bytes, little/big endian, CRC, compressed timestamps, tipos base, developer fields e os fallbacks de início/duração/distância. A suíte usa 4 FIT reais sanitizados em `fixtures/fit/` e mantém 93,01% de branches no pacote; a task `verifyParserBranchCoverage` bloqueia o build abaixo de 90%. TCX/GPX ficam no P0-06.
 
 ### 5.2 Deduplicação
 

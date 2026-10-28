@@ -63,29 +63,30 @@
 - [x] Zonas de pace por limiar + testes.
 - [x] TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR + testes.
 - [x] Prontidão v1 com pesos renormalizados, confiança e flags + testes.
-- [x] Cobertura `core:domain` ≥ 85% (100% de linhas).
+- [x] Cobertura `core:domain` ≥ 85% de linhas (atual: 99,88%).
 
 **Aceite:** cálculos conferem com casos à mão; nenhuma exceção inesperada; Kover verde.
 
 ### P0-05 · Parser FIT
 
-- [ ] Decodificador do subconjunto FIT (file_id, record, lap, session, event, device_info, developer fields).
-- [ ] CRC, endianness, compressed timestamps.
-- [ ] Normalização de cadência (strides/min → passos/min).
-- [ ] Testes com fixtures sanitizadas dos 7 arquivos reais.
-- [ ] Comparação com `fitdecode`.
-- [ ] Testes de erro (truncado, CRC, definição inválida).
+- [x] Decodificador do subconjunto FIT (file_id, record, lap, session, event, device_info, developer fields).
+- [x] CRC, endianness, compressed timestamps.
+- [x] Normalização de cadência (strides/min → passos/min).
+- [x] Testes com as 4 fixtures FIT sanitizadas dos arquivos reais.
+- [x] Comparação local com `fitdecode`.
+- [x] Testes de erro (truncado, CRC, definição inválida).
+- [x] Gate de cobertura de branches ≥ 90% para o pacote do parser.
 
-**Aceite:** resumo e samples dos 7 arquivos batem com referência; parser não quebra com lixo.
+**Aceite:** resumo e samples dos 4 FIT batem com a referência; parser não quebra com lixo. Os 3 TCX antigos ficam para o P0-06.
 
 ### P0-06 · Parser TCX e GPX
 
-- [ ] TCX com laps, trackpoints, FC, cadência, posição.
+- [ ] TCX com laps, trackpoints, FC, cadência, posição (usar os 3 TCX antigos em `~/Documents/Rafa/`).
 - [ ] GPX com extensões comuns e fallback sem elevação.
 - [ ] Testes de XML malformado, namespaces, encoding.
 - [ ] Dedup entre formatos.
 
-**Aceite:** FIT > TCX > GPX; mesma atividade não duplica.
+**Aceite:** FIT > TCX > GPX; mesma atividade não duplica; os 4 FIT e os 3 TCX reais abrem sem erro.
 
 ### P0-07 · Persistência (Room)
 
@@ -115,11 +116,11 @@
 - [ ] Rota (polyline estática ou MapLibre).
 - [ ] "O que aprendemos" com regras.
 
-**Aceite:** os 7 treinos reais abrem sem erro e os números batem com o FIT.
+**Aceite:** os 7 treinos reais (4 FIT + 3 TCX) abrem sem erro e os números batem com a fonte original.
 
 ### P0-10 · Harness de testes
 
-- [ ] Fixtures sanitizadas + script.
+- [x] Fixtures sanitizadas + script (`tools/sanitize_fit.py`, 4 FIT).
 - [ ] Golden scenarios iniciais.
 - [ ] Robolectric/Roborazzi configurados.
 - [ ] CI com relatórios e artefatos.

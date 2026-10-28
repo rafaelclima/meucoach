@@ -9,7 +9,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 | Item | Estado |
 |---|---|
 | Planejamento de produto, ciência, dados e design | Concluído em 27/10/2026 |
-| Fundação técnica | `check` verde, 53 testes, 100% de linhas no domínio (28/10/2026) |
+| Fundação técnica | `check` verde, 105 testes, parser FIT com 93,01% de branches (28/10/2026) |
 | Fase atual | **Fase 0 — Fundação** |
 | App | Android nativo — Kotlin + Jetpack Compose + Material 3 |
 | Backend | Fase 2 — Kotlin/Ktor + PostgreSQL + Dokploy |
@@ -87,7 +87,7 @@ No Android Studio: abra a raiz do repositório e rode a configuração `app`.
 
 ## Dados privados
 
-Nunca commite arquivos de saúde reais. Exportações do Zepp, FIT/TCX/GPX pessoais e CSV diários devem ficar em `fixtures/private/` (ignorado pelo git) ou fora do repositório. Fixtures de teste são **sanitizadas** (GPS deslocado, nomes removidos) ou sintéticas.
+Nunca commite arquivos de saúde reais. Exportações do Zepp, FIT/TCX/GPX pessoais e CSV diários devem ficar em `fixtures/private/` (ignorado pelo git) ou fora do repositório. Fixtures de teste são **sanitizadas** (posições inválidas, serial/IDs e nomes removidos) ou sintéticas. Nunca commite os originais.
 
 ## Aviso
 

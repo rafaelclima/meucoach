@@ -103,6 +103,7 @@ emulator -avd meucoach_api35
 
 - **Nunca** commite arquivos de saúde reais.
 - Exportações do Zepp: `~/Documents/Rafa/Zepp/` (fora do repo).
+- Os 3 TCX antigos ficam em `~/Documents/Rafa/` (fora do repo) e serão usados no P0-06.
 - Cópia privada para testes locais: `fixtures/private/` (ignorado).
 - Fixtures commitadas: sanitizadas ou sintéticas.
 - Antes de commitar, rode:
@@ -113,7 +114,7 @@ git diff --stat
 # procure por .fit/.tcx/.gpx/.csv e nomes pessoais
 ```
 
-Script de sanitização (Fase 0): `tools/sanitize_fixtures.py` — desloca GPS, remove campos pessoais e valida que o arquivo abre.
+Script de sanitização (Fase 0): `tools/sanitize_fit.py` — invalida posições, limpa serial/IDs e `source`, recalcula CRC e valida que o arquivo abre com `fitdecode`.
 
 ## 6. Health Connect — checklist manual
 

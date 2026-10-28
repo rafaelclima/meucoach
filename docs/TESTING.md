@@ -52,16 +52,18 @@ fixtures/
 
 - Dados reais ficam em `fixtures/private/` (gitignored) ou fora do repo.
 - Fixtures commitadas são **sanitizadas**:
-  - GPS deslocado em uma grade fixa (não reversível para o local real).
-  - Nomes, notas, e-mails e IDs de dispositivo removidos.
+  - Posições FIT substituídas pelo sentinela inválido do protocolo; não há GPS real.
+  - Serial e identificadores de aplicação/dispositivo removidos.
+  - Nomes, notas, e-mails e URLs pessoais removidos.
   - Timestamps podem ser mantidos (não identificam sozinhos) ou deslocados.
+  - CRCs recalculados para que o arquivo continue válido.
 - Fixtures sintéticas devem cobrir casos que os arquivos reais não têm:
   - FIT com developer fields, big-endian, timestamps comprimidos, CRC inválido.
   - TCX sem laps, sem GPS, com pausas.
   - GPX com extensões de FC/cadência e sem elevação.
   - CSV com colunas faltantes, datas duplicadas, valores vazios.
 - O CI usa apenas fixtures commitadas; nunca acessa `~/Documents`.
-- Script `tools/sanitize_fixtures.py` (Fase 0) documenta a transformação.
+- Script `tools/sanitize_fit.py` (Fase 0) documenta a transformação; ele opera no nível de bytes e valida a saída com `fitdecode`.
 
 ## 5. Testes de parser
 
@@ -76,7 +78,14 @@ Para cada formato:
 7. **Referência:** comparar resumo com `fitdecode`/biblioteca independente.
 8. **Dedup:** FIT + TCX + GPX da mesma sessão → uma atividade, FIT vence.
 
-O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 7 arquivos reais sanitizados. Nenhum teste pode depender de rede.
+O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX antigos serão usados no P0-06 e não entram no CI até serem sanitizados. Nenhum teste pode depender de rede.
+
+Evidência atual (28/10/2026):
+
+- 50 testes de parser; 4 fixtures reais sanitizadas.
+- `parser.fit`: 100% de linhas e 93,01% de branches (572/615).
+- Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
+- A task falha o build se o pacote ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 
 ## 6. Testes de domínio
 
@@ -178,10 +187,10 @@ Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), Android
 | Módulo | Meta | Verificação |
 |---|---|---|
 | `core:domain` | ≥ 85% linhas | Kover `koverVerify` |
+| Pacote `parser.fit` | ≥ 90% branches | `verifyParserBranchCoverage` (XML do Kover) |
 | `core:model` | ≥ 90% | Kover |
 | `core:data` | ≥ 75% | Kover (Fase 1) |
 | `app`/features | ≥ 60% | Kover + UI tests (Fase 1) |
-| Parser FIT | ≥ 90% branches | Kover + golden |
 
 Exclusões permitidas: código gerado, `data class` triviais, `MainActivity`, previews. Toda exclusão é justificada no build.
 

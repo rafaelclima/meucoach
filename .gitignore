@@ -43,6 +43,10 @@ keystore.properties
 fixtures/private/
 docs/private/
 
+# Python
+__pycache__/
+*.pyc
+
 # Generated / reports
 *.hprof
 **/schemas/*.json.bak

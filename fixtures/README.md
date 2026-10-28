@@ -6,38 +6,31 @@ Fixtures são arquivos de teste. Elas nunca devem conter dados de saúde reais i
 
 - Dados reais do usuário 0 ficam em `fixtures/private/` (ignorado pelo git) ou fora do repositório.
 - Fixtures commitadas são **sanitizadas** ou **sintéticas**.
-- Sanitização: GPS deslocado em grade fixa, nomes/notas/IDs de dispositivo removidos, timestamps preservados ou deslocados.
 - O CI usa apenas fixtures commitadas.
-- Script de sanitização: `tools/sanitize_fixtures.py` (Fase 0).
+- O script de sanitização atual é `tools/sanitize_fit.py`.
+- Ele opera no nível de bytes do FIT: substitui posições pelo sentinela inválido, limpa serial/IDs de dispositivo, troca o developer field `source` por `example.invalid`, preserva timestamps e recalcula os CRCs.
+- A saída deve abrir com `fitdecode` antes de ser commitada.
+- `__pycache__/` e `*.pyc` são ignorados pelo git.
 
-## Estrutura prevista
+## Estrutura atual
 
 ```
 fixtures/
   fit/
-    outdoor_run.fit
-    treadmill_intervals.fit
-    malformed_crc.fit
-  tcx/
-    outdoor_run.tcx
-    no_laps.tcx
-  gpx/
-    outdoor_run.gpx
-    extensions.gpx
-  csv/
-    daily_metrics.csv
-  golden/
-    G-001-usuario-0-baseline/
-      input.json
-      expected.json
-      README.md
-  private/          # ignorado
+    Zepp20261022195619.fit   # 4 FIT reais sanitizados (~132 KB)
+    Zepp20261024051710.fit
+    Zepp20261026202359.fit
+    Zepp20261027052000.fit
+  private/                   # IGNORADO — dados reais
 ```
+
+TCX/GPX/CSV e golden scenarios serão adicionados nas próximas fases. Os 3 TCX antigos do usuário 0 estão fora do repositório e serão sanitizados no P0-06.
 
 ## Como adicionar uma fixture
 
 1. Verifique se o arquivo é realmente necessário.
-2. Remova dados pessoais e desloque o GPS.
-3. Rode o parser e confirme que o resumo esperado bate.
-4. Documente a origem e a transformação em um `README.md` ao lado.
-5. Confirme que `git status` não mostra `fixtures/private/`.
+2. Para FIT, rode `python3 tools/sanitize_fit.py <origem> --out fixtures/fit`.
+3. Remova dados pessoais de outros formatos e substitua posições por valores inválidos ou coordenadas sintéticas.
+4. Rode o parser e confirme que o resumo esperado bate.
+5. Documente a origem e a transformação em um `README.md` ao lado, sem incluir dados identificáveis.
+6. Confirme que `git status` não mostra `fixtures/private/` nem arquivos originais.

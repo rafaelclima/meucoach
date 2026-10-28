@@ -322,7 +322,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar 
 2. **Testes de referência** contra implementações independentes (Python/R) para TRIMP, rTSS, CTL/ATL.
 3. **Property-based tests**: monotonicidade, limites, ausência de NaN/negativos, planos que respeitam restrições.
 4. **Golden scenarios**: perfil + atividades + métricas → saída esperada versionada.
-5. **Regressão com dados reais sanitizados**: 7 atividades do usuário 0; resumo, zonas e carga batem com o esperado.
+5. **Regressão com dados reais sanitizados**: 4 FIT + 3 TCX do usuário 0; resumo, zonas e carga batem com o esperado.
 6. **Auditoria de regras**: toda recomendação cita regra existente e evidência existente.
 7. **Teste de confiança**: remover entradas e verificar que a confiança cai e a agressividade não aumenta.
 
@@ -424,7 +424,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar 
 ## 16. Próximas calibrações
 
 1. Comparar o motor com o export diário real quando disponível.
-2. Validar TRIMP/rTSS contra implementações Python/R com os 7 arquivos.
+2. Validar TRIMP/rTSS contra implementações Python/R com os 4 FIT + 3 TCX.
 3. Recalibrar paces após o TT de 30 min.
 4. Ajustar o modelo de calor com dados locais de Natal (temperatura, umidade, pace/FC).
 5. Revisar pesos de prontidão após 8 semanas de dados do usuário 0.

@@ -46,7 +46,7 @@ Leia primeiro:
 
 - **Nunca** commitar dados de saúde reais (.fit/.tcx/.gpx/.csv pessoais, prints, exports).
 - Dados reais ficam em `fixtures/private/` (gitignored) ou fora do repo.
-- Fixtures commitadas: sanitizadas (GPS deslocado, nomes removidos) ou sintéticas.
+- Fixtures commitadas: sanitizadas (posições inválidas, serial/IDs e nomes removidos) ou sintéticas.
 - Não colar dados de saúde em issues, PRs, logs ou prompts.
 - Backup Android desativado; export/delete explícitos.
 - Sem analytics/ads no MVP.
