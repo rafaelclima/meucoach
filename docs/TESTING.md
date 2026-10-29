@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026
+**Versão:** 1.1 · **Data:** 29/10/2026
 
 ## 1. Princípios
 
@@ -63,7 +63,10 @@ fixtures/
   - GPX com extensões de FC/cadência e sem elevação.
   - CSV com colunas faltantes, datas duplicadas, valores vazios.
 - O CI usa apenas fixtures commitadas; nunca acessa `~/Documents`.
-- Script `tools/sanitize_fit.py` (Fase 0) documenta a transformação; ele opera no nível de bytes e valida a saída com `fitdecode`.
+- Scripts (Fase 0):
+  - `tools/sanitize_fit.py` opera no nível de bytes, invalida posições, limpa serial/IDs e `source`, recalcula CRC e valida com `fitdecode`.
+  - `tools/sanitize_tcx.py` remove `Position`, `Creator`, `Notes` e `Author`, preserva timestamps/métricas e valida o XML.
+- Estado atual: 4 FIT reais sanitizados em `fixtures/fit/`, 3 TCX reais sanitizados em `fixtures/tcx/` e 2 GPX sintéticos em `fixtures/gpx/`. Nenhum GPX real é commitado porque os originais têm nomes de eventos e coordenadas.
 
 ## 5. Testes de parser
 
@@ -78,14 +81,17 @@ Para cada formato:
 7. **Referência:** comparar resumo com `fitdecode`/biblioteca independente.
 8. **Dedup:** FIT + TCX + GPX da mesma sessão → uma atividade, FIT vence.
 
-O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX antigos serão usados no P0-06 e não entram no CI até serem sanitizados. Nenhum teste pode depender de rede.
+O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX reais sanitizados em `fixtures/tcx/` cobrem laps, trackpoints, FC, cadência e resumo; posição, múltiplos laps e XML inválido são cobertos por fixtures sintéticas. Nenhum teste pode depender de rede.
 
-Evidência atual (28/10/2026):
+Evidência atual (29/10/2026):
 
-- 50 testes de parser; 4 fixtures reais sanitizadas.
+- 134 testes no repositório, 0 falhas; 116 em `core:domain`.
+- 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 100% de linhas e 93,01% de branches (572/615).
+- `core:domain`: 98,91% de linhas, 86,02% de branches e 96,77% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
-- A task falha o build se o pacote ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
+- A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
+- `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
 
 ## 6. Testes de domínio
 

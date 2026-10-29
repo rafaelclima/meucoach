@@ -1,17 +1,78 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 28/10/2026
+**Atualizado:** 29/10/2026
 
 ## Estado geral
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 105 testes, 0 falhas (15 em `core:model`, 90 em `core:domain`)
-- **Cobertura `core:domain`:** 99,88% de linhas (828/829), 93,37% de branches (817/875), 99,04% de instruções (6425/6487)
+- **Testes:** 134 testes, 0 falhas (15 em `core:model`, 116 em `core:domain`, 3 em `:app`)
+- **Cobertura `core:domain`:** 98,91% de linhas (1.177/1.190), 86,02% de branches (1.132/1.316), 96,77% de instruções (9.539/9.857)
 - **Parser FIT:** 100% de linhas e 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 2 avisos intencionais (`targetSdk 36` e atualização do Kover)
-- **Dados reais:** 4 FIT sanitizados em `fixtures/fit/`; 3 TCX antigos permanecem fora do repositório
-- **Próximo marco:** `P0-06` — parser TCX/GPX e deduplicação entre formatos
+- **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
+- **Próximo marco:** `P0-07` — persistência Room
+
+## Sessão 2026-10-29 — P0-06: parsers TCX/GPX e dedup
+
+### Concluído
+
+- Parser TCX em `core/domain/src/main/kotlin/com/meucoach/core/domain/parser/tcx/`:
+  - Activity, laps, trackpoints, FC, cadência, posição, altitude, velocidade e potência por extensão.
+  - Fallback de início (Activity/Id → Lap/StartTime → primeiro Trackpoint), duração por lap ou intervalo dos pontos e distância declarada → GPS → integração de velocidade.
+  - Infere um lap quando o TCX não tem `Lap`; lap e atividade recebem resumo calculado.
+  - Cadência de corrida/esteira é multiplicada por 2 (passadas/min → passos/min); walking mantém o valor.
+  - Dados fora de faixa física viram `null`; o parser não inventa zero.
+- Parser GPX em `core/domain/src/main/kotlin/com/meucoach/core/domain/parser/gpx/`:
+  - GPX 1.0/1.1 por nome local, `trkpt`, `ele`, `time` e extensões `hr`, `cad`, `speed`, `power`.
+  - Distância por haversine, fallback por integração de velocidade; sem elevação permanece `null`.
+  - Sem laps; esporte inferido de `type` e padrão running; `creator` vira `deviceName`.
+  - Cadência de corrida/esteira normalizada como no TCX.
+- `SecureXml` compartilhado em `core/domain/.../parser/xml/`:
+  - `DocumentBuilderFactory` namespace-aware, entidades externas bloqueadas, DOCTYPE desabilitado quando a feature é suportada, `EntityResolver` vazio e XInclude desativado.
+  - Helpers DOM por nome local para TCX/GPX.
+- Deduplicação em `core/domain/.../importer/ActivityDeduplicator.kt`:
+  - Tolerância de ±1 s no início, ±2 s na duração e ±1% (mínimo 1 m) na distância.
+  - Preferência FIT > TCX > GPX > Health Connect > Manual; em empate, mais samples e depois versão do parser.
+- Sanitização e fixtures:
+  - `tools/sanitize_tcx.py` remove `Position`, `Creator`, `Notes` e `Author`; valida o XML de saída.
+  - 3 TCX reais sanitizados em `fixtures/tcx/` (~1,9 MB), com README e métricas esperadas.
+  - 2 GPX sintéticos em `fixtures/gpx/` (extensões e sem elevação), com README.
+- Testes novos:
+  - `TcxParserRealFixturesTest`: 3 TCX reais + determinismo.
+  - `TcxParserSyntheticTest`: laps, posição, cadência, valores inválidos, lap ausente, encoding, XML malformado e XXE.
+  - `GpxParserTest`: extensões, sem elevação, potência, coordenadas inválidas, XML malformado, XXE e determinismo.
+  - `ActivityDeduplicatorTest`: prioridade, tolerância, samples e chave.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — sucesso.
+- `./gradlew :core:domain:verifyParserBranchCoverage` — `93,01% (572/615)` no pacote FIT.
+- `./gradlew :core:domain:koverVerify` — sucesso.
+- 134 testes, 0 falhas; `core:domain` com 98,91% de linhas e 86,02% de branches.
+- Android Lint: 0 erros; 2 avisos intencionais.
+
+### Decisões e observações
+
+- TCX/GPX são adapters de fallback; FIT continua canônico.
+- A remoção de posições dos TCX reais é intencional: GPS e múltiplos laps são cobertos por fixtures sintéticas, sem risco de localização.
+- O dedup usa tolerância conforme `DATA_MODEL.md`; a chave exata (`keyOf`) fica disponível para diagnóstico e jobs de importação.
+- Alternates e confiança de lap inferido serão ligados ao fluxo de importação no `P0-08`.
+- O parser XML é JVM puro (`javax.xml`), sem dependência Android.
+
+### Próximos passos
+
+1. `P0-07`: `core:data` com Room, entidades, DAOs, blob comprimido e migração de teste.
+2. `P0-08`: file picker/share intent, fila persistente, progresso/erro e dedup no fluxo real.
+3. Integrar TCX/GPX ao detalhe da atividade e validar os 7 treinos reais.
+4. Fechar `P0-10`: Robolectric/Roborazzi, golden scenarios e relatórios no CI.
+
+### Riscos/observações
+
+- TCX de outros fabricantes pode exportar cadência já em passos/min; o parser segue o padrão dos arquivos Zepp e a documentação atual. Revisar com uma fixture nova antes de mudar a heurística.
+- GPX não tem esporte nem laps; a importação deve tratar distância calculada por GPS como menor confiança que FIT.
+- O CI precisa manter platform 37 e build-tools 37.
+- Nenhum dado de saúde real pode entrar no git; revisar `git status` antes de cada commit.
 
 ## Sessão 2026-10-28 — P0-05: parser FIT
 
@@ -141,3 +202,4 @@
 | 27/10/2026 | Planejamento concluído; documentação e ADRs; stack validada |
 | 28/10/2026 | Fundação verde: build, testes, Kover, lint e tela Hoje em dark/light |
 | 28/10/2026 | P0-05 concluído: sanitizador, 4 fixtures FIT, parser, 105 testes e gate de branches |
+| 29/10/2026 | P0-06 concluído: parsers TCX/GPX, 3 TCX sanitizados, GPX sintético, dedup e 134 testes |

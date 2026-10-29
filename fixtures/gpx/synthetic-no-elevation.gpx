@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.0" creator="example.invalid" xmlns="http://www.topografix.com/GPX/1/0">
+  <trk>
+    <trkseg>
+      <trkpt lat="0.0" lon="0.0">
+        <time>2026-01-02T10:00:00Z</time>
+      </trkpt>
+      <trkpt lat="0.0001" lon="0.0">
+        <time>2026-01-02T10:01:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

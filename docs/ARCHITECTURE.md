@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 28/10/2026
+**Versão:** 1.2 · **Data:** 29/10/2026
 
 ## 1. Restrições e forças
 
@@ -103,20 +103,23 @@ sequenceDiagram
 | Formato | Implementação | Campos canônicos | Observações |
 |---|---|---|---|
 | **FIT** | Parser próprio, subconjunto do protocolo FIT | file_id, record, lap, session, event, device_info, developer fields | Fonte canônica; valida CRC; lê little/big endian e timestamps comprimidos |
-| **TCX** | XML DOM (`javax.xml`) | Activity, Lap, Trackpoint, HR, cadência, posição | Sem potência/passada |
-| **GPX** | XML DOM | trkpt, ele, time, extensões `hr`, `cad`, `speed` | Sem laps; usar como último recurso |
+| **TCX** | XML DOM (`javax.xml`) | Activity, Lap, Trackpoint, HR, cadência, posição, altitude, velocidade, potência por extensão | Cadência de corrida normalizada; lap inferido quando ausente |
+| **GPX** | XML DOM | trkpt, ele, time, extensões `hr`, `cad`, `speed`, `power` | Sem laps nem esporte explícito; usar como último recurso |
 | **CSV diário** | Parser de cabeçalho validado | sono, RHR, HRV, SpO2 | Template do app; futuro export Zepp |
 | **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Sincronização incremental por `lastSync` |
 
 O parser FIT é o componente de maior risco. Estratégia: implementar o subconjunto usado pelo Amazfit Balance, validar contra os arquivos reais e contra o `fitdecode` (Python) em testes de referência. Fixtures reais são sanitizadas antes de entrar no repo.
 
-**Status (28/10/2026):** implementado em `core:domain/src/main/kotlin/com/meucoach/core/domain/parser/fit/` (`FitParser`, `FitReader`, `FitCursor`, `FitCrc`). Cobre headers de 12/14 bytes, little/big endian, CRC, compressed timestamps, tipos base, developer fields e os fallbacks de início/duração/distância. A suíte usa 4 FIT reais sanitizados em `fixtures/fit/` e mantém 93,01% de branches no pacote; a task `verifyParserBranchCoverage` bloqueia o build abaixo de 90%. TCX/GPX ficam no P0-06.
+**Status (29/10/2026):** FIT implementado em `core:domain/src/main/kotlin/com/meucoach/core/domain/parser/fit/` (`FitParser`, `FitReader`, `FitCursor`, `FitCrc`). Cobre headers de 12/14 bytes, little/big endian, CRC, compressed timestamps, tipos base, developer fields e os fallbacks de início/duração/distância. A suíte usa 4 FIT reais sanitizados em `fixtures/fit/` e mantém 93,01% de branches no pacote; a task `verifyParserBranchCoverage` bloqueia o build abaixo de 90%.
+
+TCX e GPX foram implementados em `core/domain/.../parser/tcx/` e `.../parser/gpx/`, com `SecureXml` compartilhado. TCX cobre laps, trackpoints, FC, cadência, posição, altitude, velocidade e potência por extensão, infere um lap quando ausente e cai para distância por GPS/integração de velocidade. GPX cobre GPX 1.0/1.1, extensões `hr`/`cad`/`speed`/`power` e mantém elevação ausente como `null`. As fixtures reais são 4 FIT + 3 TCX sanitizados; GPX é sintético para não expor nomes/coordenadas.
 
 ### 5.2 Deduplicação
 
 - Chave primária: `sha256(bytes)` para o arquivo.
-- Chave de atividade: `startTimeUtc` (segundos) + `sport` + `durationSec` arredondado + `distanceM` arredondado.
-- Se a mesma atividade vier em FIT + TCX + GPX, manter **FIT** (maior riqueza) e anexar os demais como `alternates`.
+- Chave de atividade: `startTimeUtc` (tolerância de ±1 s) + `sport` + `durationSec` (tolerância de ±2 s) + `distanceM` (tolerância de ±1%, mínimo 1 m).
+- Implementação atual: `ActivityDeduplicator` em `core/domain/.../importer/`; a chave exata `keyOf` fica disponível para diagnóstico.
+- Se a mesma atividade vier em FIT + TCX + GPX, manter **FIT** (maior riqueza) e anexar os demais como `alternates`; a anexação será ligada ao fluxo de importação no P0-08.
 - Se um arquivo já importado for reprocessado com parser mais novo, permitir `reparse` sem perder IDs de referência.
 
 ## 6. Motor de domínio
@@ -221,7 +224,7 @@ data class EngineOutput(
 | Falha | Comportamento |
 |---|---|
 | FIT corrompido | Erro claro, arquivo preservado, opção de reportar |
-| TCX sem laps | Infere 1 lap e marca confiança baixa |
+| TCX sem laps | Infere 1 lap; a importação marca confiança baixa |
 | GPS ausente | Atividade válida para pace/FC; mapa indisponível |
 | Health Connect indisponível | Fallback para check-in/CSV; aviso não bloqueante |
 | Sono não sincroniza | Prontidão com confiança parcial; nunca "ruim" |

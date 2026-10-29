@@ -69,6 +69,8 @@
 
 ### P0-05 · Parser FIT
 
+**Status:** concluído em 28/10/2026
+
 - [x] Decodificador do subconjunto FIT (file_id, record, lap, session, event, device_info, developer fields).
 - [x] CRC, endianness, compressed timestamps.
 - [x] Normalização de cadência (strides/min → passos/min).
@@ -81,12 +83,14 @@
 
 ### P0-06 · Parser TCX e GPX
 
-- [ ] TCX com laps, trackpoints, FC, cadência, posição (usar os 3 TCX antigos em `~/Documents/Rafa/`).
-- [ ] GPX com extensões comuns e fallback sem elevação.
-- [ ] Testes de XML malformado, namespaces, encoding.
-- [ ] Dedup entre formatos.
+**Status:** concluído em 29/10/2026
 
-**Aceite:** FIT > TCX > GPX; mesma atividade não duplica; os 4 FIT e os 3 TCX reais abrem sem erro.
+- [x] TCX com laps, trackpoints, FC, cadência, posição (usar os 3 TCX antigos em `~/Documents/Rafa/`).
+- [x] GPX com extensões comuns e fallback sem elevação.
+- [x] Testes de XML malformado, namespaces, encoding.
+- [x] Dedup entre formatos.
+
+**Aceite:** FIT > TCX > GPX; mesma atividade não duplica; os 4 FIT e os 3 TCX reais abrem sem erro. Os 3 TCX foram sanitizados para `fixtures/tcx/`; GPX real não entrou no repo, e as extensões são cobertas por fixtures sintéticas.
 
 ### P0-07 · Persistência (Room)
 
@@ -120,7 +124,7 @@
 
 ### P0-10 · Harness de testes
 
-- [x] Fixtures sanitizadas + script (`tools/sanitize_fit.py`, 4 FIT).
+- [x] Fixtures sanitizadas + scripts (`tools/sanitize_fit.py`, 4 FIT; `tools/sanitize_tcx.py`, 3 TCX) e GPX sintético.
 - [ ] Golden scenarios iniciais.
 - [ ] Robolectric/Roborazzi configurados.
 - [ ] CI com relatórios e artefatos.

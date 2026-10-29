@@ -9,7 +9,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 | Item | Estado |
 |---|---|
 | Planejamento de produto, ciência, dados e design | Concluído em 27/10/2026 |
-| Fundação técnica | `check` verde, 105 testes, parser FIT com 93,01% de branches (28/10/2026) |
+| Fundação técnica | `check` verde, 134 testes, parsers FIT/TCX/GPX e dedup (29/10/2026) |
 | Fase atual | **Fase 0 — Fundação** |
 | App | Android nativo — Kotlin + Jetpack Compose + Material 3 |
 | Backend | Fase 2 — Kotlin/Ktor + PostgreSQL + Dokploy |
