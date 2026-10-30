@@ -59,7 +59,14 @@ Cada regra declara `strength` (`STRONG`, `MODERATE`, `LIMITED`) e as evidências
 ### 4.3 VDOT e paces
 
 - VDOT é derivado da performance (Daniels) e atualiza as paces E/M/T/I/R.
+- Fórmula usada: `VO2 = -4,60 + 0,182258·v + 0,000104·v²` (v em m/min) e
+  `%VO2max = 0,8 + 0,1894393·e^(−0,012778·t) + 0,2989558·e^(−0,1932605·t)` (t em min).
+  `VDOT = VO2 / %VO2max`.
+- Pace de limiar = velocidade a 88% do VDOT, obtida invertendo a equação do VO2.
+- LTHR = FC média de um esforço de 25–35 min (TT de 30 min ou prova curta); fora
+  dessa janela não há LTHR estimada.
 - Se não houver performance válida, o motor não inventa VDOT: usa zonas de FC e RPE até o teste.
+- Performance é "recente" por 8 semanas (56 dias). Depois disso, voltar para Tier B/C.
 - Recalibrar a cada 6–8 semanas, após prova ou mudança relevante de volume.
 
 ### 4.4 FC máxima
