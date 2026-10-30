@@ -43,12 +43,15 @@ jobs:
       - name: Verify
         run: ./gradlew --no-daemon spotlessCheck check :core:domain:koverVerify :app:assembleDebug
 
-      - name: Upload reports on failure
-        if: failure()
+      - name: Upload verification reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: reports
+          name: verification-reports
           if-no-files-found: ignore
+          retention-days: 7
           path: |
-            **/build/reports/**
+            **/build/reports/tests/**
+            **/build/reports/kover/**
+            **/build/reports/lint-results-*.html
             **/build/test-results/**

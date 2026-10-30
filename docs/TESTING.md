@@ -163,18 +163,22 @@ expected.json    # saída do motor (com tolerância para doubles)
 README.md        # o que o cenário prova
 ```
 
-Cenários iniciais:
+Cenários implementados hoje:
 
 | ID | Prova |
 |---|---|
-| `G-001` | Usuário 0, 2 semanas de baseline, sem HRV → plano conservador |
-| `G-002` | Semana verde, sono ok → progressão de 5–8% |
-| `G-003` | HRV baixa + RHR alta → qualidade suspensa |
-| `G-004` | Semana de prova 5k → taper |
-| `G-005` | Dados ausentes totais → não quebra, confiança baixa |
-| `G-006` | Calor 32 °C / dew point 24 → ajuste de pace |
+| `G-LOAD-01` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
+| `G-READY-01` | Dia verde com dados completos |
+| `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
+| `G-READY-03` | Sinal de doença/lesão suspende qualidade |
+| `G-READY-04` | Sono curto bloqueia qualidade |
 
-Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra no expected.
+Cenários de plano/prescrição (`G-001`…`G-006`) entram quando
+`PrescriptionEngine`/`PlanEngine` existirem: baseline conservador, progressão
+verde, HRV baixa, taper, dados ausentes e calor.
+
+Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra
+no expected quando o motor completo existir.
 
 ## 8. Testes de UI
 
@@ -205,7 +209,7 @@ Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), Android
 
 - JDK 17, SDK 37, build-tools 37.
 - Cache Gradle.
-- Relatórios de teste e lint como artifacts em falha.
+- Relatórios de teste, Kover e lint como artifacts em toda execução (`if: always()`).
 - Nightly: `connectedDebugAndroidTest` em emulador API 35/36 (quando estável).
 - Branch protection: CI verde obrigatório.
 
