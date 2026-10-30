@@ -2,6 +2,7 @@ package com.meucoach.core.data.repository
 
 import androidx.room.withTransaction
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
@@ -9,8 +10,10 @@ import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.samples.SampleBlobCodec
 import com.meucoach.core.data.samples.SampleBlobException
+import com.meucoach.core.domain.importer.ActivityDeduplicator
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
+import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.Distance
 import com.meucoach.core.model.ImportedActivity
@@ -36,6 +39,8 @@ class ActivityRepository(
     private val clock: Clock = Clock.systemUTC(),
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val idGenerator: () -> String = { UuidV7.generate(clock) },
+    private val alternateIdGenerator: () -> String = { UuidV7.generate(clock) },
+    private val deduplicator: ActivityDeduplicator = ActivityDeduplicator(),
 ) {
     fun observeActivitySummaries(): Flow<List<ActivitySummary>> = database
         .activityDao()
@@ -54,23 +59,101 @@ class ActivityRepository(
     ): SaveActivityResult = database.withTransaction {
         val sha = sourceFileSha256?.takeIf { it.isNotBlank() }
         if (sha != null) {
-            database.activityDao().findBySha256(sha)?.let { existing ->
+            database.activityDao().findBySha256IncludingDeleted(sha)?.let { existing ->
+                if (existing.deletedAt != null) {
+                    database.activityDao().restore(existing.id)
+                    return@withTransaction SaveActivityResult.Restored(existing.id)
+                }
                 return@withTransaction SaveActivityResult.Duplicate(existing.id)
+            }
+            database.activityAlternateDao().findBySha256(sha)?.let { alternate ->
+                return@withTransaction SaveActivityResult.Duplicate(alternate.activityId)
             }
         }
 
-        val id = idGenerator()
         val importedAt = clock.instant()
+        val matching = findMatchingActivity(imported)
+        if (matching == null) {
+            val id = idGenerator()
+            insertAggregate(imported, id, importedAt, sha, rawFilePath)
+            return@withTransaction SaveActivityResult.Saved(id)
+        }
+
+        val existing = matching.toImportedActivity(laps = emptyList(), samples = emptyList())
+        val existingSampleCount = database.sampleBlobDao().getSampleCount(matching.id) ?: 0
+        if (deduplicator.isPreferred(imported, existing, existingSampleCount)) {
+            recordAlternate(matching)
+            replaceAggregate(matching.id, imported, importedAt, sha, rawFilePath)
+            SaveActivityResult.Replaced(matching.id, matching.source)
+        } else {
+            recordAlternate(
+                activityId = matching.id,
+                imported = imported,
+                importedAt = importedAt,
+                sourceFileSha256 = sha,
+                rawFilePath = rawFilePath,
+            )
+            SaveActivityResult.Duplicate(matching.id)
+        }
+    }
+
+    private suspend fun findMatchingActivity(imported: ImportedActivity): ActivityEntity? {
+        val startUtc = imported.startTime.toEpochMilli()
+        return database
+            .activityDao()
+            .findCandidates(
+                sport = imported.sport,
+                fromUtc = startUtc - DEDUP_START_TOLERANCE_MS,
+                toUtc = startUtc + DEDUP_START_TOLERANCE_MS,
+            )
+            .firstOrNull { candidate ->
+                deduplicator.matches(
+                    candidate.toImportedActivity(laps = emptyList(), samples = emptyList()),
+                    imported,
+                )
+            }
+    }
+
+    private suspend fun insertAggregate(
+        imported: ImportedActivity,
+        id: String,
+        importedAt: Instant,
+        sourceFileSha256: String?,
+        rawFilePath: String?,
+    ) {
         database.activityDao().insert(
             imported.toEntity(
                 id = id,
                 importedAt = importedAt,
-                sourceFileSha256 = sha,
+                sourceFileSha256 = sourceFileSha256,
                 rawFilePath = rawFilePath,
             ),
         )
+        insertChildren(id, imported)
+    }
 
-        val laps = imported.laps.map { it.toEntity(id) }
+    private suspend fun replaceAggregate(
+        id: String,
+        imported: ImportedActivity,
+        importedAt: Instant,
+        sourceFileSha256: String?,
+        rawFilePath: String?,
+    ) {
+        database.activityDao().update(
+            imported.toEntity(
+                id = id,
+                importedAt = importedAt,
+                sourceFileSha256 = sourceFileSha256,
+                rawFilePath = rawFilePath,
+            ),
+        )
+        database.lapDao().deleteForActivity(id)
+        database.sampleBlobDao().deleteForActivity(id)
+        insertChildren(id, imported)
+    }
+
+    private suspend fun insertChildren(activityId: String, imported: ImportedActivity) {
+        val laps = imported.laps.map { it.toEntity(activityId) }
         if (laps.isNotEmpty()) {
             database.lapDao().insertAll(laps)
         }
@@ -78,7 +161,7 @@ class ActivityRepository(
         if (imported.samples.isNotEmpty()) {
             database.sampleBlobDao().upsert(
                 SampleBlobEntity(
-                    activityId = id,
+                    activityId = activityId,
                     version = SampleBlobCodec.VERSION,
                     encoding = SampleBlobCodec.ENCODING,
                     bytes = codec.encode(imported.samples),
@@ -87,13 +170,81 @@ class ActivityRepository(
                 ),
             )
         }
+    }
 
-        SaveActivityResult.Saved(id)
+    private suspend fun recordAlternate(existing: ActivityEntity) {
+        val blob = database.sampleBlobDao().getForActivity(existing.id)
+        recordAlternate(
+            activityId = existing.id,
+            source = existing.source,
+            sourceId = existing.sourceId,
+            sourceFileSha256 = existing.sourceFileSha256,
+            rawFilePath = existing.rawFilePath,
+            parserVersion = existing.parserVersion,
+            importedAt = Instant.ofEpochMilli(existing.importedAt),
+            sampleCount = blob?.sampleCount ?: 0,
+            durationSec = existing.durationSec,
+            distanceM = existing.distanceM,
+        )
+    }
+
+    private suspend fun recordAlternate(
+        activityId: String,
+        imported: ImportedActivity,
+        importedAt: Instant,
+        sourceFileSha256: String?,
+        rawFilePath: String?,
+    ) {
+        recordAlternate(
+            activityId = activityId,
+            source = imported.source,
+            sourceId = imported.sourceId,
+            sourceFileSha256 = sourceFileSha256,
+            rawFilePath = rawFilePath,
+            parserVersion = imported.parserVersion,
+            importedAt = importedAt,
+            sampleCount = imported.samples.size,
+            durationSec = imported.durationSec,
+            distanceM = imported.distanceM,
+        )
+    }
+
+    private suspend fun recordAlternate(
+        activityId: String,
+        source: ActivitySource,
+        sourceId: String?,
+        sourceFileSha256: String?,
+        rawFilePath: String?,
+        parserVersion: String,
+        importedAt: Instant,
+        sampleCount: Int,
+        durationSec: Int,
+        distanceM: Double,
+    ) {
+        if (sourceFileSha256 != null && database.activityAlternateDao().findBySha256(sourceFileSha256) != null) {
+            return
+        }
+        database.activityAlternateDao().insert(
+            ActivityAlternateEntity(
+                id = alternateIdGenerator(),
+                activityId = activityId,
+                source = source,
+                sourceId = sourceId,
+                sourceFileSha256 = sourceFileSha256,
+                rawFilePath = rawFilePath,
+                parserVersion = parserVersion,
+                importedAt = importedAt.toEpochMilli(),
+                sampleCount = sampleCount,
+                durationSec = durationSec,
+                distanceM = distanceM,
+            ),
+        )
     }
 
     suspend fun openActivity(id: String): StoredActivity? = database.withTransaction {
         val entity = database.activityDao().findById(id) ?: return@withTransaction null
         val laps = database.lapDao().getForActivity(id).map { it.toModel() }
+        val alternates = database.activityAlternateDao().getForActivity(id).map { it.toStoredAlternate() }
         val blob = database.sampleBlobDao().getForActivity(id)
         var samples = emptyList<ActivitySample>()
         var sampleWarning: String? = null
@@ -123,6 +274,7 @@ class ActivityRepository(
             zoneId = entity.zoneId,
             localDate = LocalDate.parse(entity.localDate),
             sampleWarning = sampleWarning,
+            alternates = alternates,
         )
     }
 
@@ -149,7 +301,8 @@ class ActivityRepository(
         activities.forEach { activity ->
             val laps = database.lapDao().getForActivity(activity.id)
             val blob = database.sampleBlobDao().getForActivity(activity.id)
-            activityArray.put(activity.toJson(laps, blob))
+            val alternates = database.activityAlternateDao().getForActivity(activity.id)
+            activityArray.put(activity.toJson(laps, blob, alternates))
         }
 
         val jobArray = JSONArray()
@@ -276,7 +429,11 @@ class ActivityRepository(
         return Pace.fromSecondsPerKm(seconds)
     }
 
-    private fun ActivityEntity.toJson(laps: List<LapEntity>, blob: SampleBlobEntity?): JSONObject = JSONObject().apply {
+    private fun ActivityEntity.toJson(
+        laps: List<LapEntity>,
+        blob: SampleBlobEntity?,
+        alternates: List<ActivityAlternateEntity>,
+    ): JSONObject = JSONObject().apply {
         put("id", id)
         put("source", source.name)
         putNullable("sourceId", sourceId)
@@ -316,7 +473,34 @@ class ActivityRepository(
                 laps.forEach { lap -> put(lap.toJson()) }
             },
         )
+        put(
+            "alternates",
+            JSONArray().apply {
+                alternates.forEach { alternate -> put(alternate.toJson()) }
+            },
+        )
     }
+
+    private fun ActivityAlternateEntity.toJson(): JSONObject = JSONObject().apply {
+        put("source", source.name)
+        putNullable("sourceId", sourceId)
+        putNullable("sourceFileSha256", sourceFileSha256)
+        putNullable("rawFilePath", rawFilePath)
+        put("parserVersion", parserVersion)
+        put("importedAt", Instant.ofEpochMilli(importedAt).toString())
+        put("sampleCount", sampleCount)
+        put("durationSec", durationSec)
+        put("distanceM", distanceM)
+    }
+
+    private fun ActivityAlternateEntity.toStoredAlternate() = StoredAlternate(
+        source = source,
+        sourceFileSha256 = sourceFileSha256,
+        rawFilePath = rawFilePath,
+        parserVersion = parserVersion,
+        importedAt = Instant.ofEpochMilli(importedAt),
+        sampleCount = sampleCount,
+    )
 
     private fun LapEntity.toJson(): JSONObject = JSONObject().apply {
         put("index", lapIndex)
@@ -355,7 +539,20 @@ sealed interface SaveActivityResult {
     data class Saved(val id: String) : SaveActivityResult
 
     data class Duplicate(val id: String) : SaveActivityResult
+
+    data class Replaced(val id: String, val previousSource: ActivitySource) : SaveActivityResult
+
+    data class Restored(val id: String) : SaveActivityResult
 }
+
+data class StoredAlternate(
+    val source: ActivitySource,
+    val sourceFileSha256: String?,
+    val rawFilePath: String?,
+    val parserVersion: String,
+    val importedAt: Instant,
+    val sampleCount: Int,
+)
 
 data class StoredActivity(
     val id: String,
@@ -366,4 +563,7 @@ data class StoredActivity(
     val zoneId: String,
     val localDate: LocalDate,
     val sampleWarning: String? = null,
+    val alternates: List<StoredAlternate> = emptyList(),
 )
+
+private const val DEDUP_START_TOLERANCE_MS = 1_000L

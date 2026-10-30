@@ -55,6 +55,10 @@ class ImportService(
             markDuplicate(initialJob, existing.id)
             return ImportResult.Duplicate(jobId = jobId, activityId = existing.id)
         }
+        database.activityAlternateDao().findBySha256(sha256)?.let { alternate ->
+            markDuplicate(initialJob, alternate.activityId)
+            return ImportResult.Duplicate(jobId = jobId, activityId = alternate.activityId)
+        }
 
         val format = ImportFormat.detect(request)
             ?: return fail(
@@ -84,6 +88,28 @@ class ImportService(
                         activityId = saved.id,
                         source = parsed.activity.source,
                         warnings = parsed.warnings,
+                    )
+                }
+
+                is SaveActivityResult.Replaced -> {
+                    markDone(initialJob, parsed.activity, saved.id)
+                    ImportResult.Imported(
+                        jobId = jobId,
+                        activityId = saved.id,
+                        source = parsed.activity.source,
+                        warnings = parsed.warnings,
+                        replacedSource = saved.previousSource,
+                    )
+                }
+
+                is SaveActivityResult.Restored -> {
+                    markDone(initialJob, parsed.activity, saved.id)
+                    ImportResult.Imported(
+                        jobId = jobId,
+                        activityId = saved.id,
+                        source = parsed.activity.source,
+                        warnings = parsed.warnings,
+                        restored = true,
                     )
                 }
 
@@ -222,6 +248,8 @@ sealed interface ImportResult {
         val activityId: String,
         val source: ActivitySource,
         val warnings: List<String> = emptyList(),
+        val replacedSource: ActivitySource? = null,
+        val restored: Boolean = false,
     ) : ImportResult
 
     data class Duplicate(val jobId: String, val activityId: String) : ImportResult

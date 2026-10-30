@@ -27,15 +27,30 @@ class ActivityDeduplicator {
             }
         }
         return groups
-            .map { candidates ->
-                candidates.maxWith(
-                    compareBy<ImportedActivity> { sourcePriority(it.source) }
-                        .thenBy { it.samples.size }
-                        .thenBy { it.parserVersion },
-                )
-            }
+            .map { candidates -> candidates.maxWith(preference) }
             .sortedBy { it.startTime }
     }
+
+    /**
+     * True when [candidate] should replace [current] as the canonical activity.
+     *
+     * [currentSampleCount] lets persistence pass the stored sample count when
+     * the current activity was loaded without its samples.
+     */
+    fun isPreferred(
+        candidate: ImportedActivity,
+        current: ImportedActivity,
+        currentSampleCount: Int = current.samples.size,
+    ): Boolean {
+        val sourceComparison = sourcePriority(candidate.source).compareTo(sourcePriority(current.source))
+        if (sourceComparison != 0) return sourceComparison > 0
+        val sampleComparison = candidate.samples.size.compareTo(currentSampleCount)
+        if (sampleComparison != 0) return sampleComparison > 0
+        return candidate.parserVersion > current.parserVersion
+    }
+
+    /** True when both adapters describe the same session within the data-model tolerance. */
+    fun matches(first: ImportedActivity, second: ImportedActivity): Boolean = sameActivity(first, second)
 
     fun keyOf(activity: ImportedActivity): ActivityDeduplicationKey = ActivityDeduplicationKey(
         startEpochSecond = activity.startTime.epochSecond,
@@ -59,6 +74,11 @@ class ActivityDeduplicator {
         ActivitySource.HEALTH_CONNECT -> 2
         ActivitySource.MANUAL -> 1
     }
+
+    private val preference: Comparator<ImportedActivity> =
+        compareBy<ImportedActivity> { sourcePriority(it.source) }
+            .thenBy { it.samples.size }
+            .thenBy { it.parserVersion }
 }
 
 data class ActivityDeduplicationKey(

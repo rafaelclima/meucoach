@@ -125,12 +125,51 @@ class ActivityDeduplicatorTest {
         ).isEqualTo(ActivitySource.FIT)
     }
 
+    @Test
+    fun `prefers a richer source even with fewer samples`() {
+        val fit = activity(ActivitySource.FIT, samples = 1)
+        val tcx = activity(ActivitySource.TCX, samples = 100)
+
+        assertThat(deduplicator.isPreferred(fit, tcx)).isTrue()
+        assertThat(deduplicator.isPreferred(tcx, fit)).isFalse()
+    }
+
+    @Test
+    fun `uses stored sample count when comparing the same source`() {
+        val sparse = activity(ActivitySource.FIT, samples = 2)
+        val rich = activity(ActivitySource.FIT, samples = 5)
+
+        assertThat(deduplicator.isPreferred(rich, sparse)).isTrue()
+        assertThat(deduplicator.isPreferred(sparse, rich)).isFalse()
+        assertThat(deduplicator.isPreferred(sparse, sparse, currentSampleCount = 1)).isTrue()
+    }
+
+    @Test
+    fun `uses parser version as the final tie breaker`() {
+        val older = activity(ActivitySource.FIT, samples = 2, parserVersion = "1.0.0")
+        val newer = activity(ActivitySource.FIT, samples = 2, parserVersion = "1.1.0")
+
+        assertThat(deduplicator.isPreferred(newer, older)).isTrue()
+        assertThat(deduplicator.isPreferred(older, newer)).isFalse()
+    }
+
+    @Test
+    fun `matches activities only inside the tolerance`() {
+        val first = activity(ActivitySource.FIT, samples = 1)
+        val near = activity(ActivitySource.TCX, start = start.plusSeconds(1), samples = 1)
+        val far = activity(ActivitySource.TCX, start = start.plusSeconds(2), samples = 1)
+
+        assertThat(deduplicator.matches(first, near)).isTrue()
+        assertThat(deduplicator.matches(first, far)).isFalse()
+    }
+
     private fun activity(
         source: ActivitySource,
         start: Instant = this.start,
         durationSec: Int = 1_800,
         distanceM: Double = 5_000.0,
         samples: Int,
+        parserVersion: String = "1.0.0",
     ): ImportedActivity = ImportedActivity(
         source = source,
         sport = Sport.RUNNING,
@@ -138,5 +177,6 @@ class ActivityDeduplicatorTest {
         durationSec = durationSec,
         distanceM = distanceM,
         samples = List(samples) { ActivitySample(offsetSec = it) },
+        parserVersion = parserVersion,
     )
 }

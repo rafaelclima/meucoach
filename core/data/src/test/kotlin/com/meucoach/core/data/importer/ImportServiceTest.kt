@@ -114,6 +114,61 @@ class ImportServiceTest {
     }
 
     @Test
+    fun `merges fit tcx and gpx of the same run into one activity`() {
+        runBlocking {
+            val start = Instant.parse("2026-10-24T08:17:10Z")
+            val fit = service.import(
+                ImportRequest(fixture("/fit/Zepp20261024051710.fit"), "run.fit"),
+            ) as ImportResult.Imported
+            val gpx = service.import(
+                ImportRequest(gpx(start, durationSec = 1_859, distanceM = 5_106.0), "run.gpx"),
+            )
+            val tcx = service.import(
+                ImportRequest(tcx(start, durationSec = 1_859, distanceM = 5_106.0), "run.tcx"),
+            )
+
+            assertThat(fit.source).isEqualTo(ActivitySource.FIT)
+            assertThat(gpx).isInstanceOf(ImportResult.Duplicate::class.java)
+            assertThat(tcx).isInstanceOf(ImportResult.Duplicate::class.java)
+            assertThat((gpx as ImportResult.Duplicate).activityId).isEqualTo(fit.activityId)
+            assertThat((tcx as ImportResult.Duplicate).activityId).isEqualTo(fit.activityId)
+            assertThat(repository.listActivitySummaries()).hasSize(1)
+            val stored = repository.openActivity(fit.activityId)
+            assertThat(stored?.imported?.source).isEqualTo(ActivitySource.FIT)
+            assertThat(stored?.alternates?.map { it.source })
+                .containsExactlyInAnyOrder(ActivitySource.GPX, ActivitySource.TCX)
+            assertThat(database.importJobDao().getAll().map { it.status })
+                .containsExactlyInAnyOrder(
+                    ImportJobStatus.DONE,
+                    ImportJobStatus.DUPLICATE,
+                    ImportJobStatus.DUPLICATE,
+                )
+        }
+    }
+
+    @Test
+    fun `replaces tcx with fit when the richer format arrives later`() {
+        runBlocking {
+            val start = Instant.parse("2026-10-24T08:17:10Z")
+            val tcx = service.import(
+                ImportRequest(tcx(start, durationSec = 1_859, distanceM = 5_106.0), "run.tcx"),
+            ) as ImportResult.Imported
+            val fit = service.import(
+                ImportRequest(fixture("/fit/Zepp20261024051710.fit"), "run.fit"),
+            ) as ImportResult.Imported
+
+            assertThat(tcx.source).isEqualTo(ActivitySource.TCX)
+            assertThat(fit.source).isEqualTo(ActivitySource.FIT)
+            assertThat(fit.replacedSource).isEqualTo(ActivitySource.TCX)
+            assertThat(fit.activityId).isEqualTo(tcx.activityId)
+            assertThat(repository.listActivitySummaries()).hasSize(1)
+            val stored = repository.openActivity(fit.activityId)
+            assertThat(stored?.imported?.source).isEqualTo(ActivitySource.FIT)
+            assertThat(stored?.alternates?.single()?.source).isEqualTo(ActivitySource.TCX)
+        }
+    }
+
+    @Test
     fun `duplicate file hash returns the existing activity and records a duplicate job`() {
         runBlocking {
             val bytes = fixture("/fit/Zepp20261022195619.fit")
@@ -205,5 +260,48 @@ class ImportServiceTest {
             "Missing test fixture $path"
         }
         return stream.use { it.readBytes() }
+    }
+
+    private fun gpx(start: Instant, durationSec: Int, distanceM: Double): ByteArray {
+        val end = start.plusSeconds(durationSec.toLong())
+        val longitude = distanceM / METERS_PER_DEGREE_LONGITUDE
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <gpx version="1.1" creator="meucoach.test" xmlns="http://www.topografix.com/GPX/1/1">
+              <trk>
+                <type>running</type>
+                <trkseg>
+                  <trkpt lat="0.0" lon="0.0"><time>$start</time></trkpt>
+                  <trkpt lat="0.0" lon="$longitude"><time>$end</time></trkpt>
+                </trkseg>
+              </trk>
+            </gpx>
+        """.trimIndent().toByteArray()
+    }
+
+    private fun tcx(start: Instant, durationSec: Int, distanceM: Double): ByteArray {
+        val end = start.plusSeconds(durationSec.toLong())
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+              <Activities>
+                <Activity Sport="Running">
+                  <Id>$start</Id>
+                  <Lap StartTime="$start">
+                    <TotalTimeSeconds>$durationSec</TotalTimeSeconds>
+                    <DistanceMeters>$distanceM</DistanceMeters>
+                    <Track>
+                      <Trackpoint><Time>$start</Time></Trackpoint>
+                      <Trackpoint><Time>$end</Time></Trackpoint>
+                    </Track>
+                  </Lap>
+                </Activity>
+              </Activities>
+            </TrainingCenterDatabase>
+        """.trimIndent().toByteArray()
+    }
+
+    private companion object {
+        const val METERS_PER_DEGREE_LONGITUDE = 111_194.9
     }
 }

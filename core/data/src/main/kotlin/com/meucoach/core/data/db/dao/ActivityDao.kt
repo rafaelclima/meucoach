@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.meucoach.core.data.db.entity.ActivityEntity
+import com.meucoach.core.model.Sport
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -25,6 +26,15 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE sourceFileSha256 = :sha256 AND deletedAt IS NULL LIMIT 1")
     suspend fun findBySha256(sha256: String): ActivityEntity?
 
+    @Query("SELECT * FROM activities WHERE sourceFileSha256 = :sha256 LIMIT 1")
+    suspend fun findBySha256IncludingDeleted(sha256: String): ActivityEntity?
+
+    @Query(
+        "SELECT * FROM activities WHERE deletedAt IS NULL AND sport = :sport " +
+            "AND startTimeUtc BETWEEN :fromUtc AND :toUtc ORDER BY startTimeUtc",
+    )
+    suspend fun findCandidates(sport: Sport, fromUtc: Long, toUtc: Long): List<ActivityEntity>
+
     @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY startTimeUtc DESC")
     fun observeAll(): Flow<List<ActivityEntity>>
 
@@ -36,6 +46,9 @@ interface ActivityDao {
 
     @Query("UPDATE activities SET deletedAt = :deletedAt WHERE id = :id AND deletedAt IS NULL")
     suspend fun softDelete(id: String, deletedAt: Long): Int
+
+    @Query("UPDATE activities SET deletedAt = NULL WHERE id = :id")
+    suspend fun restore(id: String): Int
 
     @Query("DELETE FROM activities WHERE id = :id")
     suspend fun hardDelete(id: String): Int

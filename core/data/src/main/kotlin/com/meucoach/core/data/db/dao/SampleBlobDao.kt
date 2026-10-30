@@ -14,6 +14,9 @@ interface SampleBlobDao {
     @Query("SELECT * FROM sample_blobs WHERE activityId = :activityId")
     suspend fun getForActivity(activityId: String): SampleBlobEntity?
 
+    @Query("SELECT sampleCount FROM sample_blobs WHERE activityId = :activityId")
+    suspend fun getSampleCount(activityId: String): Int?
+
     @Query("DELETE FROM sample_blobs WHERE activityId = :activityId")
     suspend fun deleteForActivity(activityId: String): Int
 }
