@@ -278,12 +278,118 @@ class WeeklyPlanGeneratorTest {
             .isEqualTo("Intervalos")
     }
 
+    @Test
+    fun `adds a second quality after a fully completed week`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previousWeek(completed = 4, total = 4),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isEqualTo(2)
+        assertThat(plan.rationale).contains("dose de qualidade")
+        val qualityDates = plan.sessions.filter { it.type == WorkoutType.QUALITY }.map { it.date.dayOfWeek }
+        assertThat(qualityDates).doesNotContain(DayOfWeek.SUNDAY)
+        assertThat(qualityDates.zipWithNext().none { (a, b) -> adjacent(a, b) }).isTrue()
+    }
+
+    @Test
+    fun `keeps one quality when completion is below eighty percent`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previousWeek(completed = 2, total = 4),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("Sem progressão")
+    }
+
+    @Test
+    fun `keeps one quality without a previous week or with high ACWR`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val withoutHistory = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+        val highAcwr = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.6),
+                previousWeek = previousWeek(completed = 4, total = 4),
+            ),
+        )
+
+        assertThat(withoutHistory.qualityCount).isEqualTo(1)
+        assertThat(highAcwr.qualityCount).isZero()
+    }
+
+    private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
+        val previousMonday = monday.minusWeeks(1)
+        val sessions = (0 until total).map { index ->
+            PlannedSession(
+                date = previousMonday.plusDays(index.toLong()),
+                type = WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = if (index < completed) SessionStatus.DONE else SessionStatus.SKIPPED,
+            )
+        }
+        return WeeklyPlan(
+            weekStart = previousMonday,
+            sessions = sessions,
+            weeklyMinutes = sessions.sumOf { it.durationMin ?: 0 },
+            longRunMinutes = null,
+            qualityCount = 0,
+            rationale = "Semana anterior.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+        )
+    }
+
+    private fun adjacent(a: DayOfWeek, b: DayOfWeek): Boolean {
+        val diff = kotlin.math.abs(a.value - b.value)
+        return diff == 1 || diff == 6
+    }
+
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
         load: LoadSnapshot? = null,
         weekStart: LocalDate = monday,
-    ) = WeeklyPlanInput(profile, readiness, load, weekStart)
+        previousWeek: WeeklyPlan? = null,
+    ) = WeeklyPlanInput(profile, readiness, load, weekStart, previousWeek)
 
     private fun readiness(level: ReadinessLevel, flags: Set<ReadinessFlag> = emptySet()) = ReadinessResult(
         score = when (level) {

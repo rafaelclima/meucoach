@@ -35,6 +35,7 @@ import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -61,14 +62,81 @@ class TodayViewModel @Inject constructor(
     private val planGenerator = WeeklyPlanGenerator()
     private val currentWeekStart = LocalDate.now()
         .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+    private val previousWeek = MutableStateFlow<WeeklyPlan?>(null)
+
+    init {
+        viewModelScope.launch {
+            previousWeek.value = planRepository.getWeek(currentWeekStart.minusWeeks(1))
+        }
+    }
+
+    private data class TodayContext(
+        val checkIn: DailyCheckIn?,
+        val metrics: List<DailyMetrics>,
+        val profile: AthleteProfile?,
+        val load: LoadSnapshot?,
+        val today: LocalDate,
+        val weeklyLoadKm: Double,
+        val kmByDay: Map<LocalDate, Double>,
+        val recentActivity: RecentActivityUi?,
+    )
 
     val uiState: StateFlow<TodayUiState> = combine(
-        checkInRepository.observe(LocalDate.now()),
-        metricsRepository.observeAll(),
-        profileRepository.observeProfile(),
-        activityRepository.observeActivitySummaries(),
+        combine(
+            checkInRepository.observe(LocalDate.now()),
+            metricsRepository.observeAll(),
+            profileRepository.observeProfile(),
+            activityRepository.observeActivitySummaries(),
+        ) { checkIn, metrics, profile, activities ->
+            buildContext(checkIn, metrics, profile, activities)
+        },
         planRepository.observeWeek(currentWeekStart),
-    ) { checkIn, metrics, profile, activities, storedPlan ->
+        previousWeek,
+    ) { context, storedPlan, previous ->
+        todayState(
+            checkIn = context.checkIn,
+            metrics = context.metrics,
+            profile = context.profile,
+            load = context.load,
+            today = context.today,
+            plan = storedPlan ?: context.profile?.let {
+                planGenerator.generate(
+                    WeeklyPlanInput(
+                        profile = it,
+                        readiness = readinessResult(context.checkIn, context.metrics, context.today),
+                        load = context.load,
+                        weekStart = context.today,
+                        previousWeek = previous,
+                    ),
+                )
+            },
+            kmByDay = context.kmByDay,
+            weeklyLoadKm = context.weeklyLoadKm,
+            recentActivity = context.recentActivity,
+        )
+    }
+        .mapLatest { state ->
+            val generated = state.plan ?: return@mapLatest state
+            val stored = planRepository.getWeek(generated.weekStart)
+            if (stored != null) {
+                state.copy(plan = stored)
+            } else {
+                planRepository.saveWeek(generated)
+                state
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = todayState(null, emptyList()),
+        )
+
+    private fun buildContext(
+        checkIn: DailyCheckIn?,
+        metrics: List<DailyMetrics>,
+        profile: AthleteProfile?,
+        activities: List<ActivitySummary>,
+    ): TodayContext {
         val today = LocalDate.now()
         val load = profile?.let { buildLoad(activities, it, today) }
         val zone = profile?.let { runCatching { java.time.ZoneId.of(it.timezone) }.getOrNull() }
@@ -92,42 +160,17 @@ class TodayViewModel @Inject constructor(
                 zone = "—",
             )
         }
-        todayState(
+        return TodayContext(
             checkIn = checkIn,
             metrics = metrics,
             profile = profile,
             load = load,
             today = today,
-            plan = storedPlan ?: profile?.let {
-                planGenerator.generate(
-                    WeeklyPlanInput(
-                        profile = it,
-                        readiness = readinessResult(checkIn, metrics, today),
-                        load = load,
-                        weekStart = today,
-                    ),
-                )
-            },
-            kmByDay = kmByDay,
             weeklyLoadKm = weekKm,
+            kmByDay = kmByDay,
             recentActivity = recent,
         )
     }
-        .mapLatest { state ->
-            val generated = state.plan ?: return@mapLatest state
-            val stored = planRepository.getWeek(generated.weekStart)
-            if (stored != null) {
-                state.copy(plan = stored)
-            } else {
-                planRepository.saveWeek(generated)
-                state
-            }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = todayState(null, emptyList()),
-        )
 
     fun completeSession(date: LocalDate) {
         viewModelScope.launch {

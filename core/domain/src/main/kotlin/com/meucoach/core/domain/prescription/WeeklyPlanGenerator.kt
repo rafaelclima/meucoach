@@ -58,6 +58,7 @@ data class WeeklyPlanInput(
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
     val weekStart: LocalDate = LocalDate.now(),
+    val previousWeek: WeeklyPlan? = null,
 )
 
 /**
@@ -101,19 +102,23 @@ class WeeklyPlanGenerator {
             input.profile.experience != Experience.BEGINNER &&
             (acwr == null || acwr in ACWR_MIN..ACWR_MAX) &&
             days.size >= 3
-        val qualityDay = if (qualityAllowed) {
-            days.firstOrNull { day ->
-                day != longDay && adjacentDays(day, longDay).not()
-            }
+        val completionRatio = input.previousWeek?.completionRatio() ?: 0.0
+        val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
+        val qualityDays = if (qualityAllowed) {
+            selectQualityDays(
+                days = days,
+                longDay = longDay,
+                maxQualities = if (progressed) 2 else 1,
+            )
         } else {
-            null
+            emptySet()
         }
 
         val sessions = days.map { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             val available = availability.getValue(day)
             when {
-                day == qualityDay -> PlannedSession(
+                day in qualityDays -> PlannedSession(
                     date = date,
                     type = WorkoutType.QUALITY,
                     title = qualityTitle(input.profile.experience),
@@ -195,7 +200,12 @@ class WeeklyPlanGenerator {
                 )
                 append(" ")
             }
-            append("Sem progressão até existir histórico de conclusão.")
+            if (progressed) {
+                append("Progressão por dose de qualidade: semana anterior ≥80% concluída. ")
+                append("O volume segue limitado pela disponibilidade.")
+            } else {
+                append("Sem progressão até existir histórico de conclusão.")
+            }
         }
         return WeeklyPlan(
             weekStart = weekStart,
@@ -221,6 +231,23 @@ class WeeklyPlanGenerator {
                 }
             },
         )
+    }
+
+    private fun WeeklyPlan.completionRatio(): Double {
+        val planned = sessions.filter { it.type != WorkoutType.REST }
+        if (planned.isEmpty()) return 0.0
+        return planned.count { it.status == SessionStatus.DONE }.toDouble() / planned.size
+    }
+
+    private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek, maxQualities: Int): Set<DayOfWeek> {
+        val selected = mutableListOf<DayOfWeek>()
+        days.forEach { day ->
+            if (selected.size >= maxQualities) return@forEach
+            if (day == longDay || adjacentDays(day, longDay)) return@forEach
+            if (selected.any { adjacentDays(it, day) }) return@forEach
+            selected += day
+        }
+        return selected.toSet()
     }
 
     private fun qualityTitle(experience: Experience): String = when (experience) {
@@ -270,6 +297,7 @@ class WeeklyPlanGenerator {
         const val MAX_QUALITY_MIN = 45
         const val MIN_LONG_MIN = 30
         const val LONG_SHARE_RATIO = 3.0 / 7.0
+        const val PROGRESSION_COMPLETION = 0.80
         const val ACWR_MIN = 0.8
         const val ACWR_MAX = 1.3
     }

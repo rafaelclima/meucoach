@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 484 testes no repositório, 0 falhas (27 em `core:model`, 203 em `core:domain`, 73 em `core:data`, 181 em `:app`).
+- 488 testes no repositório, 0 falhas (27 em `core:model`, 206 em `core:domain`, 73 em `core:data`, 182 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -147,7 +147,7 @@ Evidência atual (30/10/2026):
 - `HealthConnectViewModelTest`: status, permissões faltantes, sync, indisponibilidade e erro.
 - `HealthConnectContentTest`: estados do card, autorização e sincronização.
 - `WorkoutRecommenderTest`: guardrails, fácil Z2 calibrado, RPE, ACWR e duração.
-- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única, taper, ACWR e semana vazia.
+- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino e plano.

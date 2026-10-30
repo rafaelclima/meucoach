@@ -93,13 +93,98 @@ class TodayViewModelPersistTest {
         assertThat(stored?.sessions).hasSameSizeAs(state.plan.sessions)
     }
 
-    private fun profile(today: LocalDate) = AthleteProfile(
+    @Test
+    fun `uses completed previous week to add a second quality`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today, experience = com.meucoach.core.model.Experience.INTERMEDIATE))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
+
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan?.qualityCount == 2 }
+        }
+
+        assertThat(state.plan?.qualityCount).isEqualTo(2)
+        assertThat(state.plan?.rationale).contains("dose de qualidade")
+    }
+
+    private fun previousWeek(weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
+        weekStart = weekStart,
+        sessions = listOf(
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = weekStart,
+                type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+            ),
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = weekStart.plusDays(1),
+                type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+            ),
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = weekStart.plusDays(2),
+                type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+            ),
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = weekStart.plusDays(3),
+                type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+            ),
+        ),
+        weeklyMinutes = 120,
+        longRunMinutes = null,
+        qualityCount = 0,
+        rationale = "Semana anterior.",
+        confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+    )
+
+    private fun profile(
+        today: LocalDate,
+        experience: com.meucoach.core.model.Experience = com.meucoach.core.model.Experience.BEGINNER,
+    ) = AthleteProfile(
         id = "athlete-1",
         birthDate = LocalDate.of(1988, 1, 1),
         sex = Sex.MALE,
         restingHeartRate = 58,
         maxHeartRateObserved = 187,
+        experience = experience,
         timezone = "America/Sao_Paulo",
-        weeklyAvailability = WeeklyAvailability(mapOf(today.dayOfWeek to 40)),
+        weeklyAvailability = WeeklyAvailability(
+            mapOf(
+                java.time.DayOfWeek.MONDAY to 40,
+                java.time.DayOfWeek.WEDNESDAY to 40,
+                java.time.DayOfWeek.FRIDAY to 40,
+                java.time.DayOfWeek.SUNDAY to 90,
+            ),
+        ),
     )
 }
