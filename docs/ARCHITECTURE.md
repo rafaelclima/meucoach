@@ -157,6 +157,7 @@ data class EngineOutput(
 | `ReadinessEngine` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
 | `PrescriptionEngine` | perfil, objetivo, carga, prontidão, plano | sessão do dia + rationale + regras |
 | `WorkoutRecommender` | perfil, prontidão, carga | descanso/fácil com alvos, regras e confiança |
+| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga | semana conservadora com longão e no máximo 1 qualidade |
 | `PlanEngine` | objetivo, disponibilidade, histórico | plano semanal/bloco, taper |
 | `ExplanationEngine` | recomendação + evidências | texto pt-BR + regras citadas |
 | `ActivityInsightsCalculator` | laps da atividade | insights com `ruleId`, evidência, confiança e tom |

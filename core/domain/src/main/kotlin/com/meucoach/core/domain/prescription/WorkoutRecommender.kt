@@ -17,6 +17,8 @@ import kotlin.math.roundToInt
 enum class WorkoutType {
     REST,
     EASY,
+    LONG,
+    QUALITY,
 }
 
 data class PaceTarget(val fast: Pace, val slow: Pace) {

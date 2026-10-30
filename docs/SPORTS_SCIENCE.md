@@ -284,6 +284,19 @@ Precedência determinística do `WorkoutRecommender`:
 Sem disponibilidade configurada, usar 30 min como base e reduzir a confiança
 (`R-DATA-01`). Nenhuma recomendação aumenta volume sem os guardrails do P1-05.
 
+### 8.8 Plano semanal conservador
+
+O `WeeklyPlanGenerator` distribui a disponibilidade do perfil em uma semana
+segunda→domingo:
+
+- Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
+- No máximo **1 qualidade** por semana, nunca em dia adjacente ao longão.
+- Qualidade só em dia verde, não iniciante, com ACWR entre 0,8 e 1,3.
+- Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
+- Fácil entre 20–60 min; qualidade entre 25–45 min.
+- Sem histórico de conclusão, **não há progressão** de volume.
+- Confiança do plano é limitada a média até existir histórico.
+
 ### 8.7 Calor e umidade
 
 - Natal/RN: calor úmido quase o ano todo.
@@ -386,6 +399,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar 
 |---|---|---|---|
 | `EV-DANIELS-2014` | Daniels, J. *Daniels' Running Formula* (3rd ed.). Human Kinetics, 2014. | D | VDOT, paces E/M/T/I/R |
 | `EV-ABBISS-2008` | Abbiss, C. R., Laursen, P. B. Describing and understanding pacing strategies during athletic competition. *Sports Med* 38(3):239–252, 2008. doi:10.2165/00007256-200838030-00004 | B | Pacing, negative split, distribuição de esforço |
+| `EV-PFITZINGER-2008` | Pfitzinger, P., Douglas, S. *Advanced Marathoning* (2nd ed.). Human Kinetics, 2008. | D | Longão, volume e progressão |
 | `EV-FRIEL-2018` | Friel, J. *The Triathlete's Training Bible* (5th ed.). VeloPress, 2018. | D | Zonas por LTHR, teste de 30 min |
 | `EV-SEILER-2010` | Seiler, S. What is best practice for training intensity and duration distribution in endurance athletes? *IJSPP* 5(3):276–291, 2010. doi:10.1123/ijspp.5.3.276 | A/B | Distribuição 80/20 |
 | `EV-BANISTER-1991` | Banister, E. W. Modeling elite athletic performance. In *Physiological Testing of the High-Performance Athlete*, 1991. | D | TRIMP |

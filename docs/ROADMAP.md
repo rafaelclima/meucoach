@@ -196,7 +196,8 @@
 - [x] Guardrails: doença/vermelho, sono curto/âmbar, ACWR > 1,5.
 - [x] Fácil Z2 com pace E e FC Z2 quando calibrado; RPE sem calibração.
 - [x] Recomendação na tela Hoje com regra/evidência/confiança.
-- [ ] Plano semanal/bloco, progressão 5–8%, deload e taper.
+- [x] Plano semanal conservador por disponibilidade, no máximo 1 qualidade.
+- [ ] Blocos/periodização, progressão 5–8%, deload e taper.
 - [ ] Qualidade estruturada, calor e esteira.
 - [ ] Histórico de conclusão e limite de 2 qualidades/semana.
 

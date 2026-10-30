@@ -6,8 +6,8 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 437 testes, 0 falhas (27 em `core:model`, 186 em `core:domain`, 66 em `core:data`, 158 em `:app`)
-- **Cobertura `core:domain`:** 98,25% de linhas (1.801/1.833), 83,32% de branches (1.494/1.793), 96,83% de instruções (13.611/14.056)
+- **Testes:** 445 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 158 em `:app`)
+- **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -25,6 +25,7 @@
 - **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões e sincronização de 30 dias pelo perfil.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não.
+- **Plano semanal:** distribuição por disponibilidade, máximo 1 qualidade, longão 25–30% e sem progressão sem histórico.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 
 ## Sessão 2026-10-30 — P1-05: recomendação diária (parcial)
@@ -40,22 +41,28 @@
   - Sem calibração ⇒ fácil por RPE, confiança baixa.
   - Disponibilidade ausente ⇒ 30 min e confiança reduzida.
   - Toda recomendação cita regras, evidências e confiança.
+- `WeeklyPlanGenerator`:
+  - Semana segunda→domingo a partir da disponibilidade.
+  - No máximo 1 qualidade, nunca adjacente ao longão.
+  - Longão 25–30% do volume e ≤150 min para iniciante.
+  - Sem progressão até existir histórico de conclusão.
+  - Sem disponibilidade ⇒ plano vazio explícito (`R-DATA-01`).
 - Tela Hoje passa a usar a recomendação real no card de treino.
 - CTL/ATL/TSB da tela Hoje vêm do motor de carga quando há atividades.
 - Testes dos guardrails, alvos calibrados, RPE e limites de duração.
 
 ### Pendente
 
-- Plano semanal/bloco, progressão de 5–8%, deload e taper.
+- Blocos/periodização, progressão de 5–8%, deload e taper.
 - Qualidade estruturada (tempo/intervalos), calor e esteira.
 - Histórico de conclusão de treinos e regra de 2 qualidades/semana.
-- Tela Hoje ainda usa disponibilidade, atividade recente e dias de carga de demonstração.
+- Tela Hoje ainda usa atividade recente e dias de carga de demonstração.
 
 ### Evidências
 
 - `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
-- 437 testes, 0 falhas (27 `core:model`, 186 `core:domain`, 66 `core:data`, 158 `:app`).
-- `core:domain`: 98,25% linhas, 83,32% branches, 96,83% instruções.
+- 445 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 66 `core:data`, 158 `:app`).
+- `core:domain`: 98,23% linhas, 82,84% branches, 96,85% instruções.
 
 ### Próximos passos
 
