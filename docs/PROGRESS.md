@@ -6,8 +6,8 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 309 testes, 0 falhas (22 em `core:model`, 131 em `core:domain`, 57 em `core:data`, 99 em `:app`)
-- **Cobertura `core:domain`:** 98,82% de linhas (1.261/1.276), 85,90% de branches (1.170/1.362), 96,88% de instruções (9.986/10.308)
+- **Testes:** 343 testes, 0 falhas (22 em `core:model`, 146 em `core:domain`, 57 em `core:data`, 118 em `:app`)
+- **Cobertura `core:domain`:** 98,58% de linhas (1.392/1.412), 84,70% de branches (1.262/1.490), 96,70% de instruções (10.840/11.210)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -17,8 +17,49 @@
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
 - **Detalhe da atividade:** hero, métricas, gráfico pace × FC (Canvas), splits, rota offline e insights com `ruleId`/`evidenceId`/confiança.
 - **Perfil e onboarding:** formulário em 3 passos (dados, objetivo/disponibilidade, rotina), validação, persistência e edição.
-- **Zonas:** pendentes até existir LTHR calibrada (P1-02); não são estimadas por maxHR.
+- **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
+- **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P1-02: calibração e zonas
+
+### Concluído
+
+- `CalibrationCalculator` em `core:domain/.../calibration/`:
+  - VDOT pelas equações de Daniels (VO2 e %VO2max).
+  - Pace de limiar pela velocidade a 88% do VDOT (equação inversa).
+  - LTHR = FC média de esforço entre 25 e 35 min; fora da janela fica `null`.
+  - Tiers A/B/C: performance ≤ 56 dias, ≥ 3 treinos com FC+pace, ou base inicial.
+  - Avisos: maxHR inconsistente (> 95% da FC média), performance antiga/ inválida, sem FC.
+  - Toda saída cita `R-CAL-01`/`R-CAL-02` e `EV-DANIELS-2014`/`EV-FRIEL-2018`.
+- Tela de calibração no app:
+  - Entrada de distância, tempo, data e FC média.
+  - Resultado com VDOT, LTHR, pace de limiar, tier, confiança e avisos.
+  - Salvamento no perfil sem apagar FC máxima nem outros dados.
+- Resumo de calibração no perfil, com CTA para calibrar/recalibrar.
+- `HrZoneDistributionCalculator` e card de zonas no detalhe:
+  - Tempo por Z1–Z5 por LTHR, intervalos sem FC ficam fora do total.
+  - Barra empilhada + legenda com tempo e percentual.
+- Testes de motor, formulário, ViewModel, tela e distribuição de zonas.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
+- 343 testes, 0 falhas (22 `core:model`, 146 `core:domain`, 57 `core:data`, 118 `:app`).
+- `core:domain`: 98,58% linhas, 84,70% branches, 96,70% instruções.
+
+### Decisões e observações
+
+- A confiança da calibração é alta, mas o LTHR continua sendo estimativa; não há teste de lactato.
+- Performance fora de 25–35 min não gera LTHR; o app não extrapola.
+- Zonas de pace por VDOT existem no domínio, mas a UI do detalhe mostra apenas FC nesta fase.
+- A calibração é manual; importar uma prova não a aplica automaticamente.
+
+### Próximos passos
+
+1. `P1-03`: motor de carga integrado às atividades e PMC.
+2. Exibir zonas de pace no detalhe e na prescrição.
+3. `P1-04`: prontidão com Health Connect e check-in.
 
 ## Sessão 2026-10-30 — P1-01: onboarding e perfil
 

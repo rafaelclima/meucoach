@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 309 testes no repositório, 0 falhas (22 em `core:model`, 131 em `core:domain`, 57 em `core:data`, 99 em `:app`).
+- 343 testes no repositório, 0 falhas (22 em `core:model`, 146 em `core:domain`, 57 em `core:data`, 118 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -124,6 +124,14 @@ Evidência atual (30/10/2026):
 - `OnboardingViewModelTest`: bloqueio de passo inválido, salvamento, edição preservando LTHR/VDOT e disponibilidade.
 - `OnboardingScreenTest` e `ProfileScreenTest` (Compose UI): estados, erros, loading, tema claro e ação de edição.
 - `ProfileLabelsTest`: idade, meta, tempo alvo, disponibilidade e labels de enums.
+
+## 5.4 Testes de calibração e zonas
+
+- `CalibrationCalculatorTest`: VDOT, pace de limiar, tier A/B/C, LTHR, performance antiga/inválida, aviso de maxHR.
+- `CalibrationFormTest`: distância, tempos `mm:ss`/`h:mm:ss`, data estrita, FC e contagem de esforços recentes.
+- `CalibrationViewModelTest`: carregamento, cálculo, invalidação ao editar e salvamento no perfil.
+- `CalibrationScreenTest`: formulário, resultado, ausência de métricas, erros e ação de salvar.
+- `HrZoneDistributionCalculatorTest`: alocação por zona, ordenação, intervalos sem FC e LTHR inválido.
 
 ## 6. Testes de domínio
 
@@ -210,6 +218,8 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 - `app/src/test/screenshots/onboarding-light.png`
 - `app/src/test/screenshots/profile-dark.png`
 - `app/src/test/screenshots/profile-light.png`
+- `app/src/test/screenshots/calibration-dark.png`
+- `app/src/test/screenshots/calibration-light.png`
 
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).

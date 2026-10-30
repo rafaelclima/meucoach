@@ -116,14 +116,14 @@
 
 **Aceite:** arrastar/selecionar 3 formatos da mesma corrida → 1 atividade, mensagem clara.
 
-### P0-09 · Detalhe da atividade — CONCLUÍDO exceto zonas
+### P0-09 · Detalhe da atividade — CONCLUÍDO
 
 - [x] Hero (distância, tempo, pace).
 - [x] Gráfico pace × FC × tempo.
 - [x] Splits, cadência, potência, elevação.
 - [x] Rota (polyline estática offline).
 - [x] "O que aprendemos" com `R-ACT-01`/`R-ACT-02`, evidência e confiança.
-- [ ] Zonas — bloqueado até a calibração de LTHR (P1-01/P1-02); não estimar por maxHR.
+- [x] Zonas de FC por LTHR (dependem da calibração do P1-02).
 
 **Aceite verificado:** `RealFixturesDetailTest` importa e abre os 7 treinos reais sanitizados sem erro; TCX confere distância, duração e cadência com o README; suíte verde.
 
@@ -155,7 +155,16 @@
 **Aceite:** perfil completo é salvo e reaberto; ausência de dados não bloqueia o app depois do onboarding.
 
 ### P1-02 · Calibração
-Tier A/B/C, TT de 30 min, VDOT, LTHR, paces. Tela de resultado e confiança. Recalibração.
+
+**Status:** concluído em 30/10/2026
+
+- [x] Tier A/B/C por performance recente e treinos com FC+pace.
+- [x] VDOT, pace de limiar e LTHR com fórmulas documentadas.
+- [x] Tela de entrada/resultado, confiança e avisos.
+- [x] Salvamento no perfil e resumo de calibração.
+- [x] Zonas de FC no detalhe da atividade após calibrar.
+
+**Aceite:** performance recente gera VDOT/LTHR/pace; ausência de dados não inventa valores; perfil mantém a calibração.
 
 ### P1-03 · Motor de carga
 Integração com atividades, TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia. PMC. Golden scenarios.
