@@ -6,11 +6,15 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.insights.ActivityInsightRules
 import com.meucoach.core.model.ActivityLap
+import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,6 +43,7 @@ class ActivityDetailViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: ActivityRepository
+    private lateinit var profiles: ProfileRepository
 
     @Before
     fun setUp() {
@@ -56,6 +61,10 @@ class ActivityDetailViewModelTest {
                 zoneId = ZoneId.of("America/Sao_Paulo"),
                 idGenerator = { "activity-1" },
             )
+        profiles = ProfileRepository(
+            database = database,
+            clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
+        )
     }
 
     @After
@@ -90,8 +99,42 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `computes heart-rate zones when the profile has an LTHR`() {
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = java.time.LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    lactateThresholdHeartRate = 180,
+                    timezone = "America/Sao_Paulo",
+                ),
+            )
+            repository.saveImportedActivity(importedActivity(), "sha")
+
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.hrZones).isNotNull
+            assertThat(state.hrZones?.totalSec).isEqualTo(1_800)
+            assertThat(state.lthr).isEqualTo(180)
+        }
+    }
+
+    @Test
+    fun `omits zones without an LTHR`() {
+        runBlocking {
+            repository.saveImportedActivity(importedActivity(), "sha")
+
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.hrZones).isNull()
+            assertThat(state.lthr).isNull()
+        }
+    }
+
+    @Test
     fun `requires an activity id`() {
-        assertThatThrownBy { ActivityDetailViewModel(SavedStateHandle(), repository) }
+        assertThatThrownBy { ActivityDetailViewModel(SavedStateHandle(), repository, profiles) }
             .isInstanceOf(IllegalStateException::class.java)
     }
 
@@ -100,6 +143,7 @@ class ActivityDetailViewModelTest {
             mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
         ),
         repository = repository,
+        profileRepository = profiles,
     )
 
     private fun importedActivity() = ImportedActivity(
@@ -129,6 +173,11 @@ class ActivityDetailViewModelTest {
                 distanceM = 2_500.0,
                 averageHeartRate = 155,
             ),
+        ),
+        samples = listOf(
+            ActivitySample(offsetSec = 0, heartRate = 140, speedMps = 2.7),
+            ActivitySample(offsetSec = 900, heartRate = 150, speedMps = 2.8),
+            ActivitySample(offsetSec = 1_800, heartRate = 160, speedMps = 2.9),
         ),
     )
 }

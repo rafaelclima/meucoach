@@ -2,6 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -18,6 +19,8 @@ internal object ActivityDetailTestData {
             isLoading = false,
             activity = activity,
             insights = ActivityInsightsCalculator().calculate(activity.imported.laps),
+            hrZones = HrZoneDistributionCalculator.calculate(activity.imported.samples, LTHR),
+            lthr = LTHR,
         )
     }
 
@@ -62,4 +65,6 @@ internal object ActivityDetailTestData {
             localDate = LocalDate.parse("2026-10-24"),
         )
     }
+
+    private const val LTHR = 180
 }

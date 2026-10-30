@@ -62,6 +62,10 @@ class ActivityDetailScreenTest {
         compose.onNodeWithContentDescription("Gráfico de pace e frequência cardíaca ao longo do tempo")
             .assertIsDisplayed()
 
+        list.performScrollToNode(hasText("Tempo por zona · LTHR 180 bpm"))
+        compose.onNodeWithText("Zonas de FC").assertIsDisplayed()
+        compose.onNodeWithText("Tempo por zona · LTHR 180 bpm").assertIsDisplayed()
+
         list.performScrollToNode(hasText("Splits"))
         compose.onNodeWithText("Splits").assertIsDisplayed()
 
