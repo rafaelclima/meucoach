@@ -6,12 +6,12 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 360 testes, 0 falhas (22 em `core:model`, 154 em `core:domain`, 57 em `core:data`, 127 em `:app`)
-- **Cobertura `core:domain`:** 98,47% de linhas (1.478/1.501), 84,57% de branches (1.299/1.536), 96,73% de instruções (11.368/11.752)
+- **Testes:** 382 testes, 0 falhas (24 em `core:model`, 157 em `core:domain`, 62 em `core:data`, 139 em `:app`)
+- **Cobertura `core:domain`:** 98,48% de linhas (1.491/1.514), 84,57% de branches (1.299/1.536), 96,74% de instruções (11.396/11.780)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v4 (`athlete_profile`), migrações 1→2 (`deletedAt`), 2→3 (alternates) e 3→4 (perfil) testadas.
+- **Persistência:** Room 2.8.5, schema v5 (`daily_check_ins`), migrações 1→2, 2→3, 3→4 e 4→5 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -20,7 +20,48 @@
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
+- **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinal de doença/lesão, persistido por data e usado na prontidão da tela Hoje.
+- **Health Connect/CSV:** pendentes no P1-04.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P1-04: check-in diário (parcial)
+
+### Concluído
+
+- `DailyCheckIn` em `core:model` com validação 1–5 e Hooper sum.
+- Room v5:
+  - `DailyCheckInEntity`/`DailyCheckInDao` com chave por data.
+  - `CheckInRepository` com observação por data, upsert transacional e `createdAt` preservado.
+  - `MIGRATION_4_5` e testes 1→5, 2→5, 3→5 e 4→5.
+- Prontidão a partir do check-in:
+  - `toSubjectiveCheckIn`, `toReadinessSignals`, `toReadinessResult`.
+  - Sinal de doença/lesão força vermelho e `NO_QUALITY`.
+- Tela de check-in:
+  - Quatro escalas 1–5, switch de doença/lesão, edição e salvamento.
+  - Rota própria, sem barra inferior.
+- Tela Hoje:
+  - Passa a ler o check-in real para score/nível/confiança.
+  - Sem check-in: 50/âmbar/baixa confiança e sinal "Pendente".
+  - Card muda para "Check-in feito hoje" e "Revisar".
+- Screenshots dark/light do check-in.
+
+### Pendente
+
+- Health Connect (sono, RHR, HRV, SpO2) e CSV.
+- Tela de diagnóstico de dados.
+- Hoje ainda usa treino e atividade de demonstração; a prescrição real vem no P1-05.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
+- 382 testes, 0 falhas (24 `core:model`, 157 `core:domain`, 62 `core:data`, 139 `:app`).
+- `core:domain`: 98,48% linhas, 84,57% branches, 96,74% instruções.
+
+### Próximos passos
+
+1. Conectar Health Connect e CSV ao `ReadinessCalculator`.
+2. Tela de diagnóstico e histórico de prontidão.
+3. `P1-05`: prescrição com guardrails e explicação.
 
 ## Sessão 2026-10-30 — P1-03: motor de carga e PMC
 

@@ -31,10 +31,11 @@ import androidx.navigation.compose.rememberNavController
 import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
+import com.meucoach.app.ui.checkin.CheckInScreen
 import com.meucoach.app.ui.onboarding.OnboardingScreen
 import com.meucoach.app.ui.profile.ProfileGateViewModel
 import com.meucoach.app.ui.profile.ProfileScreen
-import com.meucoach.app.ui.today.TodayScreen
+import com.meucoach.app.ui.today.TodayRoute
 import com.meucoach.app.ui.trends.TrendsScreen
 import com.meucoach.core.designsystem.component.McBottomBar
 import com.meucoach.core.designsystem.component.McBottomBarItem
@@ -61,6 +62,7 @@ private val destinations = listOf(
 private const val ACTIVITY_DETAIL_ROUTE = "activity/{activityId}"
 private const val PROFILE_EDIT_ROUTE = "profile/edit"
 private const val CALIBRATION_ROUTE = "profile/calibration"
+private const val CHECK_IN_ROUTE = "check-in"
 
 private fun activityDetailRoute(activityId: String): String = "activity/${Uri.encode(activityId)}"
 
@@ -91,7 +93,8 @@ private fun MainApp() {
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
     val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE &&
         currentRoute != PROFILE_EDIT_ROUTE &&
-        currentRoute != CALIBRATION_ROUTE
+        currentRoute != CALIBRATION_ROUTE &&
+        currentRoute != CHECK_IN_ROUTE
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -133,7 +136,16 @@ private fun MainApp() {
                 .padding(innerPadding),
         ) {
             composable(AppDestination.Today.route) {
-                TodayScreen(onDemoAction = showDemoMessage)
+                TodayRoute(
+                    onDemoAction = showDemoMessage,
+                    onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
+                )
+            }
+            composable(CHECK_IN_ROUTE) {
+                CheckInScreen(
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                )
             }
             composable(AppDestination.Activities.route) {
                 ActivitiesScreen(

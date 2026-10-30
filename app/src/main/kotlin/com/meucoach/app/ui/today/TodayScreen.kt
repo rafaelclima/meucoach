@@ -59,6 +59,8 @@ fun TodayScreen(
     onDemoAction: (String) -> Unit,
     modifier: Modifier = Modifier,
     state: TodayUiState = demoTodayUiState(),
+    checkInDone: Boolean = false,
+    onCheckInClick: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier
@@ -82,7 +84,7 @@ fun TodayScreen(
                 onTrendsClick = { onDemoAction("Tendências chegam na Fase 1.") },
             )
         }
-        item { CheckInCard(onCheckInClick = { onDemoAction("Check-in chega na Fase 1.") }) }
+        item { CheckInCard(done = checkInDone, onCheckInClick = onCheckInClick) }
         item {
             RecentActivityCard(
                 activity = state.recentActivity,
@@ -455,7 +457,7 @@ private fun WeeklyLoadBars(days: List<DayLoadUi>) {
 }
 
 @Composable
-private fun CheckInCard(onCheckInClick: () -> Unit) {
+private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.ACCENT) {
         Row(
@@ -465,20 +467,24 @@ private fun CheckInCard(onCheckInClick: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Check-in de hoje",
+                    text = if (done) "Check-in feito hoje" else "Check-in de hoje",
                     style = MaterialTheme.typography.titleLarge,
                     color = colors.textPrimary,
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    text = "15 s para calibrar sono, dor e energia.",
+                    text = if (done) {
+                        "Sono, dor e energia registrados. Você pode revisar."
+                    } else {
+                        "15 s para calibrar sono, dor e energia."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
             McTextButton(
-                text = "Fazer",
+                text = if (done) "Revisar" else "Fazer",
                 onClick = onCheckInClick,
                 modifier = Modifier.widthIn(min = 72.dp),
             )

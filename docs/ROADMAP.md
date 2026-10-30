@@ -179,7 +179,14 @@
 **Aceite:** série de carga bate com o golden; ausência de dados não gera ACWR falso; a UI não trata ACWR como meta.
 
 ### P1-04 · Prontidão
-Health Connect (sono, RHR, HRV, SpO2) + check-in + CSV. Diagnóstico de dados. Histórico e confiança.
+
+**Status:** em andamento — check-in concluído em 30/10/2026
+
+- [x] Check-in diário de 15 s (sono, fadiga, dor, estresse + doença/lesão).
+- [x] Persistência por data e prontidão real na tela Hoje.
+- [ ] Health Connect (sono, RHR, HRV, SpO2).
+- [ ] CSV diário.
+- [ ] Diagnóstico de dados, histórico e confiança por componente.
 
 ### P1-05 · Prescrição
 Plan engine, periodização, guardrails, calor, esteira, taper. Explicações com regras/evidências.
