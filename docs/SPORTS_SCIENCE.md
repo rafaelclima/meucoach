@@ -270,6 +270,20 @@ Aquecimento 10–15 min + mobilidade; desaquecimento 5–10 min. Qualidade nunca
 - Última sessão intensa 7–10 dias antes da prova (5k/10k) ou 10–14 dias (meia/maratona).
 - Sem treino novo, sem tênis novo, sem dieta nova na semana da prova.
 
+### 8.7 Recomendação diária conservadora
+
+Precedência determinística do `WorkoutRecommender`:
+
+1. Doença/lesão ou prontidão vermelha ⇒ **descanso** (`R-SAFE-01`, `R-READY-03`).
+2. Dia sem disponibilidade explícita ⇒ **descanso** (`R-PLAN-01`).
+3. Sono < 6 h, prontidão âmbar ou `NO_QUALITY` ⇒ **fácil**, sem qualidade (`R-READY-03`, `R-READY-04`).
+4. ACWR > 1,5 ⇒ **fácil**, sem aumento de carga (`R-LOAD-03`).
+5. Dia verde ⇒ **fácil em Z2**, com pace E e FC Z2 quando houver calibração (`R-ZONE-01`).
+6. Sem LTHR/pace de limiar ⇒ fácil por RPE, confiança baixa (`R-CAL-02`).
+
+Sem disponibilidade configurada, usar 30 min como base e reduzir a confiança
+(`R-DATA-01`). Nenhuma recomendação aumenta volume sem os guardrails do P1-05.
+
 ### 8.7 Calor e umidade
 
 - Natal/RN: calor úmido quase o ano todo.

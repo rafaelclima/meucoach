@@ -1,0 +1,236 @@
+package com.meucoach.core.domain.prescription
+
+import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.readiness.ReadinessComponent
+import com.meucoach.core.domain.readiness.ReadinessFlag
+import com.meucoach.core.domain.readiness.ReadinessResult
+import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Pace
+import com.meucoach.core.model.ReadinessLevel
+import com.meucoach.core.model.Sex
+import com.meucoach.core.model.WeeklyAvailability
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.Test
+import java.time.DayOfWeek
+import java.time.LocalDate
+
+class WorkoutRecommenderTest {
+    private val recommender = WorkoutRecommender()
+    private val monday = LocalDate.of(2026, 11, 2)
+
+    @Test
+    fun `illness or injury recommends rest`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(
+                    level = ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.ILLNESS_OR_INJURY, ReadinessFlag.NO_QUALITY),
+                ),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.REST)
+        assertThat(recommendation.ruleIds).contains("R-SAFE-01", "R-READY-03")
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.HIGH)
+    }
+
+    @Test
+    fun `red readiness recommends rest`() {
+        val recommendation = recommender.recommend(
+            input(readiness = readiness(level = ReadinessLevel.RED, score = 20)),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.REST)
+        assertThat(recommendation.ruleIds).contains("R-READY-03")
+    }
+
+    @Test
+    fun `amber readiness keeps the day easy`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(
+                    level = ReadinessLevel.AMBER,
+                    flags = setOf(ReadinessFlag.NO_QUALITY),
+                    score = 55,
+                ),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
+        assertThat(recommendation.ruleIds).contains("R-READY-03")
+        assertThat(recommendation.rationale).contains("sem qualidade")
+    }
+
+    @Test
+    fun `short sleep blocks quality`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(
+                    level = ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SHORT_SLEEP),
+                ),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.ruleIds).contains("R-READY-04")
+        assertThat(recommendation.rationale).contains("Sono abaixo de 6 h")
+    }
+
+    @Test
+    fun `high ACWR blocks load increases`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN),
+                load = load(acwr = 1.6),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.ruleIds).contains("R-LOAD-03")
+        assertThat(recommendation.rationale).contains("ACWR alto")
+    }
+
+    @Test
+    fun `calibrated green day gets pace and heart-rate targets`() {
+        val recommendation = recommender.recommend(
+            input(readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH)),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.title).isEqualTo("Fácil em Z2")
+        assertThat(recommendation.pace).isEqualTo(
+            PaceTarget(
+                fast = Pace.fromSecondsPerKm(450),
+                slow = Pace.fromSecondsPerKm(504),
+            ),
+        )
+        assertThat(recommendation.heartRate).isEqualTo(HeartRateTarget(minBpm = 146, maxBpm = 161))
+        assertThat(recommendation.durationMin).isEqualTo(45)
+        assertThat(recommendation.distanceKm).isEqualTo(5.7)
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.HIGH)
+    }
+
+    @Test
+    fun `uncalibrated profile gets an RPE recommendation`() {
+        val recommendation = recommender.recommend(
+            input(
+                profile = profile(threshold = null, lthr = null),
+                readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.pace).isNull()
+        assertThat(recommendation.heartRate).isNull()
+        assertThat(recommendation.ruleIds).contains("R-CAL-02")
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.LOW)
+        assertThat(recommendation.rationale).contains("RPE")
+    }
+
+    @Test
+    fun `an explicit day without availability recommends rest`() {
+        val recommendation = recommender.recommend(
+            input(
+                profile = profile(
+                    availability = WeeklyAvailability(mapOf(DayOfWeek.TUESDAY to 40)),
+                ),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.REST)
+        assertThat(recommendation.rationale).contains("disponibilidade")
+    }
+
+    @Test
+    fun `empty availability falls back to thirty minutes`() {
+        val recommendation = recommender.recommend(
+            input(
+                profile = profile(availability = WeeklyAvailability()),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.durationMin).isEqualTo(30)
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `duration is clamped to a safe easy range`() {
+        val short = recommender.recommend(
+            input(
+                profile = profile(availability = WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 10))),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+            ),
+        )
+        val long = recommender.recommend(
+            input(
+                profile = profile(availability = WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 120))),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(short.durationMin).isEqualTo(20)
+        assertThat(long.durationMin).isEqualTo(60)
+    }
+
+    private fun input(profile: AthleteProfile = profile(), readiness: ReadinessResult, load: LoadSnapshot? = null) =
+        PrescriptionInput(
+            profile = profile,
+            readiness = readiness,
+            load = load,
+            today = monday,
+        )
+
+    private fun readiness(
+        level: ReadinessLevel,
+        confidence: DataConfidence = DataConfidence.MEDIUM,
+        flags: Set<ReadinessFlag> = emptySet(),
+        score: Int = when (level) {
+            ReadinessLevel.GREEN -> 80
+            ReadinessLevel.AMBER -> 55
+            ReadinessLevel.RED -> 20
+        },
+    ) = ReadinessResult(
+        score = score,
+        level = level,
+        confidence = confidence,
+        components = mapOf(ReadinessComponent.SUBJECTIVE to score),
+        missing = emptySet(),
+        flags = flags,
+    )
+
+    private fun profile(
+        threshold: Pace? = Pace.fromSecondsPerKm(360),
+        lthr: Int? = 180,
+        availability: WeeklyAvailability = WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 45)),
+    ) = AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = Sex.MALE,
+        restingHeartRate = 58,
+        maxHeartRateObserved = 187,
+        lactateThresholdHeartRate = lthr,
+        thresholdPace = threshold,
+        timezone = "America/Sao_Paulo",
+        weeklyAvailability = availability,
+    )
+
+    private fun load(acwr: Double) = LoadSnapshot(
+        daily = emptyList(),
+        ctlSeries = emptyList(),
+        atlSeries = emptyList(),
+        ctl = 0.0,
+        atl = 0.0,
+        tsb = 0.0,
+        acuteAverage7d = 0.0,
+        chronicAverage28d = 0.0,
+        acwr = acwr,
+        monotony = null,
+        missingDays = 0,
+    )
+}

@@ -156,6 +156,7 @@ data class EngineOutput(
 | `LoadEngine` | atividades + RPE | TRIMP, rTSS, CTL, ATL, TSB, ACWR, monotonia |
 | `ReadinessEngine` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
 | `PrescriptionEngine` | perfil, objetivo, carga, prontidão, plano | sessão do dia + rationale + regras |
+| `WorkoutRecommender` | perfil, prontidão, carga | descanso/fácil com alvos, regras e confiança |
 | `PlanEngine` | objetivo, disponibilidade, histórico | plano semanal/bloco, taper |
 | `ExplanationEngine` | recomendação + evidências | texto pt-BR + regras citadas |
 | `ActivityInsightsCalculator` | laps da atividade | insights com `ruleId`, evidência, confiança e tom |

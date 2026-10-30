@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 425 testes no repositório, 0 falhas (27 em `core:model`, 176 em `core:domain`, 66 em `core:data`, 156 em `:app`).
+- 437 testes no repositório, 0 falhas (27 em `core:model`, 186 em `core:domain`, 66 em `core:data`, 158 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -146,6 +146,8 @@ Evidência atual (30/10/2026):
 - `HealthMetricsAggregatorTest`: sono por data local, sobreposição, médias diárias e fuso.
 - `HealthConnectViewModelTest`: status, permissões faltantes, sync, indisponibilidade e erro.
 - `HealthConnectContentTest`: estados do card, autorização e sincronização.
+- `WorkoutRecommenderTest`: guardrails, fácil Z2 calibrado, RPE, ACWR e duração.
+- `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 
 ## 6. Testes de domínio
 

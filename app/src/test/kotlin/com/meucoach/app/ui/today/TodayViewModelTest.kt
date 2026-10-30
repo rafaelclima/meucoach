@@ -55,7 +55,7 @@ class TodayViewModelTest {
             )
         }
 
-        val state = todayState(checkIn(), metrics, today)
+        val state = todayState(checkIn(), metrics = metrics, today = today)
 
         assertThat(state.readinessConfidence).isEqualTo(DataConfidence.HIGH)
         assertThat(state.readinessSignals.map { it.label })
@@ -71,10 +71,50 @@ class TodayViewModelTest {
             source = DailyMetricsSource.CSV,
         )
 
-        val state = todayState(checkIn(), listOf(future), today)
+        val state = todayState(checkIn(), metrics = listOf(future), today = today)
 
         assertThat(state.readinessSignals.map { it.label }).doesNotContain("Sono")
     }
+
+    @Test
+    fun `uses the recommendation for the workout card`() {
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile(),
+            today = today,
+        )
+
+        assertThat(state.workout.title).isEqualTo("Fácil em Z2")
+        assertThat(state.workout.duration).isEqualTo("45")
+        assertThat(state.workout.pace).isEqualTo("7:30–8:24")
+        assertThat(state.workout.heartRate).isEqualTo("146–161")
+    }
+
+    @Test
+    fun `illness turns the workout into rest`() {
+        val state = todayState(
+            checkIn = checkIn(illnessOrInjury = true),
+            profile = profile(),
+            today = today,
+        )
+
+        assertThat(state.workout.title).isEqualTo("Descanso")
+        assertThat(state.workout.duration).isEqualTo("—")
+    }
+
+    private fun profile() = com.meucoach.core.model.AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = com.meucoach.core.model.Sex.MALE,
+        restingHeartRate = 58,
+        maxHeartRateObserved = 187,
+        lactateThresholdHeartRate = 180,
+        thresholdPace = com.meucoach.core.model.Pace.fromSecondsPerKm(360),
+        timezone = "America/Sao_Paulo",
+        weeklyAvailability = com.meucoach.core.model.WeeklyAvailability(
+            mapOf(today.dayOfWeek to 45),
+        ),
+    )
 
     private fun checkIn(illnessOrInjury: Boolean = false) = DailyCheckIn(
         date = today,

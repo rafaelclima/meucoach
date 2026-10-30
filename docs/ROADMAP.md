@@ -190,7 +190,17 @@
 - [ ] Histórico de prontidão e validação instrumentada do Health Connect.
 
 ### P1-05 · Prescrição
-Plan engine, periodização, guardrails, calor, esteira, taper. Explicações com regras/evidências.
+
+**Status:** em andamento — recomendação diária concluída em 30/10/2026
+
+- [x] Guardrails: doença/vermelho, sono curto/âmbar, ACWR > 1,5.
+- [x] Fácil Z2 com pace E e FC Z2 quando calibrado; RPE sem calibração.
+- [x] Recomendação na tela Hoje com regra/evidência/confiança.
+- [ ] Plano semanal/bloco, progressão 5–8%, deload e taper.
+- [ ] Qualidade estruturada, calor e esteira.
+- [ ] Histórico de conclusão e limite de 2 qualidades/semana.
+
+**Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.
 
 ### P1-06 · Tela Hoje
 Prontidão, treino, carga, check-in, última atividade. Ações: iniciar, trocar, concluir, pular com motivo.

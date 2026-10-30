@@ -7,11 +7,20 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.domain.load.LoadActivity
+import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.load.TrainingLoadEngine
+import com.meucoach.core.domain.prescription.PrescriptionInput
+import com.meucoach.core.domain.prescription.WorkoutRecommender
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessCalculator
 import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
+import com.meucoach.core.model.ActivitySummary
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,21 +32,55 @@ import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.ln
+import kotlin.math.roundToInt
 
 @HiltViewModel
 class TodayViewModel @Inject constructor(
     checkInRepository: CheckInRepository,
     metricsRepository: DailyMetricsRepository,
+    profileRepository: ProfileRepository,
+    activityRepository: ActivityRepository,
 ) : ViewModel() {
+    private val engine = TrainingLoadEngine()
+    private val recommender = WorkoutRecommender()
+
     val uiState: StateFlow<TodayUiState> = combine(
         checkInRepository.observe(LocalDate.now()),
         metricsRepository.observeAll(),
-    ) { checkIn, metrics -> todayState(checkIn, metrics) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = todayState(null, emptyList()),
+        profileRepository.observeProfile(),
+        activityRepository.observeActivitySummaries(),
+    ) { checkIn, metrics, profile, activities ->
+        val today = LocalDate.now()
+        val load = profile?.let { buildLoad(activities, it, today) }
+        todayState(
+            checkIn = checkIn,
+            metrics = metrics,
+            profile = profile,
+            load = load,
+            today = today,
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+        initialValue = todayState(null, emptyList()),
+    )
+
+    private fun buildLoad(activities: List<ActivitySummary>, profile: AthleteProfile, today: LocalDate): LoadSnapshot {
+        val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
+            ?: java.time.ZoneId.systemDefault()
+        return engine.calculate(
+            activities = activities.map { summary ->
+                LoadActivity(
+                    date = summary.startTime.atZone(zone).toLocalDate(),
+                    durationSec = summary.durationSec,
+                    averageHeartRate = summary.averageHeartRate,
+                    averagePace = summary.averagePace,
+                )
+            },
+            profile = profile,
+            today = today,
+        )
+    }
 
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
@@ -64,6 +107,9 @@ fun TodayRoute(
 internal fun todayState(
     checkIn: DailyCheckIn?,
     metrics: List<DailyMetrics> = emptyList(),
+    profile: AthleteProfile? = null,
+    activities: List<ActivitySummary> = emptyList(),
+    load: LoadSnapshot? = null,
     today: LocalDate = LocalDate.now(),
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
@@ -78,7 +124,18 @@ internal fun todayState(
         signals = signals,
     )
     val warning = result.level != com.meucoach.core.model.ReadinessLevel.GREEN
-    return demoTodayUiState(today).copy(
+    val base = demoTodayUiState(today)
+    val recommendation = profile?.let {
+        WorkoutRecommender().recommend(
+            PrescriptionInput(
+                profile = it,
+                readiness = result,
+                load = load,
+                today = today,
+            ),
+        )
+    }
+    return base.copy(
         readinessScore = result.score,
         readinessLevel = result.level,
         readinessConfidence = result.confidence,
@@ -88,9 +145,25 @@ internal fun todayState(
             warning = warning,
             illness = signals.illnessOrInjury,
         ),
+        workout = recommendation?.toWorkoutUi() ?: base.workout,
+        ctl = load?.ctl?.roundToInt() ?: base.ctl,
+        atl = load?.atl?.roundToInt() ?: base.atl,
+        tsb = load?.tsb?.roundToInt() ?: base.tsb,
         hasCheckedIn = checkIn != null,
     )
 }
+
+private fun com.meucoach.core.domain.prescription.WorkoutRecommendation.toWorkoutUi() = WorkoutUi(
+    title = title,
+    zone = if (type == com.meucoach.core.domain.prescription.WorkoutType.EASY) "Z2" else "—",
+    duration = durationMin?.toString() ?: "—",
+    distance = distanceKm?.let { String.format(PT_BR, "%.1f", it) } ?: "—",
+    pace = pace?.let { "${it.fast.format()}–${it.slow.format()}" } ?: "—",
+    heartRate = heartRate?.let { target ->
+        target.maxBpm?.let { max -> "${target.minBpm}–$max" } ?: "${target.minBpm}+"
+    } ?: "—",
+    rationale = rationale,
+)
 
 private fun buildSignals(
     checkIn: DailyCheckIn?,
