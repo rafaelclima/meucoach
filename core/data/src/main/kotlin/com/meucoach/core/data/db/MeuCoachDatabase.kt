@@ -9,12 +9,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.AthleteProfileDao
+import com.meucoach.core.data.db.dao.DailyCheckInDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
+import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
@@ -27,6 +29,7 @@ import com.meucoach.core.data.db.entity.SampleBlobEntity
         ImportJobEntity::class,
         ActivityAlternateEntity::class,
         AthleteProfileEntity::class,
+        DailyCheckInEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -44,8 +47,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun profileDao(): AthleteProfileDao
 
+    abstract fun dailyCheckInDao(): DailyCheckInDao
+
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
         const val NAME = "meucoach.db"
 
         /**
@@ -133,9 +138,32 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 5 stores the daily subjective check-in by local date.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `daily_check_ins` (
+                        `date` TEXT NOT NULL,
+                        `sleepQuality` INTEGER NOT NULL,
+                        `fatigue` INTEGER NOT NULL,
+                        `soreness` INTEGER NOT NULL,
+                        `stress` INTEGER NOT NULL,
+                        `illnessOrInjury` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`date`)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 }
