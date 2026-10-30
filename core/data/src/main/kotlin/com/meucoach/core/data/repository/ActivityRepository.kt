@@ -91,8 +91,8 @@ class ActivityRepository(
         SaveActivityResult.Saved(id)
     }
 
-    suspend fun openActivity(id: String): StoredActivity? {
-        val entity = database.activityDao().findById(id) ?: return null
+    suspend fun openActivity(id: String): StoredActivity? = database.withTransaction {
+        val entity = database.activityDao().findById(id) ?: return@withTransaction null
         val laps = database.lapDao().getForActivity(id).map { it.toModel() }
         val blob = database.sampleBlobDao().getForActivity(id)
         var samples = emptyList<ActivitySample>()
@@ -114,7 +114,7 @@ class ActivityRepository(
             }
         }
 
-        return StoredActivity(
+        StoredActivity(
             id = entity.id,
             imported = entity.toImportedActivity(laps, samples),
             importedAt = Instant.ofEpochMilli(entity.importedAt),
@@ -141,7 +141,7 @@ class ActivityRepository(
      * Basic JSON export for the settings screen and manual backup. Samples are
      * represented by their count; the compressed blob stays in the database.
      */
-    suspend fun exportJson(): String {
+    suspend fun exportJson(): String = database.withTransaction {
         val activities = database.activityDao().getAllIncludingDeleted()
         val jobs = database.importJobDao().getAll()
 
@@ -155,7 +155,7 @@ class ActivityRepository(
         val jobArray = JSONArray()
         jobs.forEach { jobArray.put(it.toJson()) }
 
-        return JSONObject()
+        JSONObject()
             .put("schemaVersion", MeuCoachDatabase.VERSION)
             .put("exportedAt", clock.instant().toString())
             .put("activities", activityArray)
