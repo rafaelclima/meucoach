@@ -1,0 +1,18 @@
+{
+  "scenarioId": "G-LOAD-02",
+  "description": "28-day load engine with one TRIMP day and two rTSS days.",
+  "today": "2026-10-30",
+  "days": 28,
+  "profile": {
+    "dateOfBirth": "1988-01-01",
+    "sex": "MALE",
+    "restingHeartRate": 58,
+    "maxHeartRateObserved": 187,
+    "thresholdPaceSecPerKm": 360
+  },
+  "activities": [
+    { "date": "2026-10-29", "durationSec": 3600, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-27", "durationSec": 1800, "averageHeartRate": 150 },
+    { "date": "2026-10-20", "durationSec": 2400, "averagePaceSecPerKm": 400 }
+  ]
+}

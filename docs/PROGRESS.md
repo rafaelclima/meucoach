@@ -6,8 +6,8 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 343 testes, 0 falhas (22 em `core:model`, 146 em `core:domain`, 57 em `core:data`, 118 em `:app`)
-- **Cobertura `core:domain`:** 98,58% de linhas (1.392/1.412), 84,70% de branches (1.262/1.490), 96,70% de instruções (10.840/11.210)
+- **Testes:** 360 testes, 0 falhas (22 em `core:model`, 154 em `core:domain`, 57 em `core:data`, 127 em `:app`)
+- **Cobertura `core:domain`:** 98,47% de linhas (1.478/1.501), 84,57% de branches (1.299/1.536), 96,73% de instruções (11.368/11.752)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -19,7 +19,43 @@
 - **Perfil e onboarding:** formulário em 3 passos (dados, objetivo/disponibilidade, rotina), validação, persistência e edição.
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
+- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P1-03: motor de carga e PMC
+
+### Concluído
+
+- `TrainingLoadEngine` em `core/domain/.../load/`:
+  - Série diária de 42 dias com carga por dia.
+  - TRIMP quando FC + repouso + máxima estão disponíveis; rTSS quando só há pace + limiar; nunca soma os dois no mesmo dia (`R-LOAD-01`).
+  - CTL/ATL por EWMA, TSB, médias 7/28, ACWR e monotonia.
+  - Dias sem métrica ficam com carga 0 e `missingDays` conta a lacuna.
+- Tela Tendências:
+  - Cards de CTL, ATL, TSB, carga 7d, ACWR e monotonia.
+  - Flag de ACWR (>1,5 alerta; >1,3 atenção; <0,8 cautela) com texto explícito de que não é meta.
+  - Gráfico PMC com CTL e ATL em Canvas e descrição de acessibilidade.
+  - Estados loading, sem perfil e sem carga.
+- Golden `G-LOAD-02` cobre motor de 28 dias com TRIMP + rTSS e valores de PMC.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
+- 360 testes, 0 falhas (22 `core:model`, 154 `core:domain`, 57 `core:data`, 127 `:app`).
+- `core:domain`: 98,47% linhas, 84,57% branches, 96,73% instruções.
+
+### Decisões e observações
+
+- O motor usa um métrico por dia; não há mistura de TRIMP e rTSS.
+- ACWR aparece como flag; a UI não sugere aumentar carga por estar em faixa.
+- `Days without load` é explícito para não confundir ausência com recuperação.
+- A tela ainda não tem filtros de período nem 80/20; ficam para a evolução de Tendências.
+
+### Próximos passos
+
+1. `P1-04`: prontidão com Health Connect, check-in e CSV.
+2. Adicionar zonas de pace e distribuição 80/20 em Tendências.
+3. `P1-05`: prescrição com guardrails.
 
 ## Sessão 2026-10-30 — P1-02: calibração e zonas
 

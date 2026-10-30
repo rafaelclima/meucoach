@@ -9,7 +9,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 | Item | Estado |
 |---|---|
 | Planejamento de produto, ciência, dados e design | Concluído em 27/10/2026 |
-| Fundação técnica | `check` verde, 343 testes, parsers FIT/TCX/GPX, dedup, Room v4 + perfil, importação real, detalhe com zonas, onboarding, calibração, goldens e screenshots (30/10/2026) |
+| Fundação técnica | `check` verde, 360 testes, parsers FIT/TCX/GPX, dedup, Room v4 + perfil, importação real, detalhe com zonas, onboarding, calibração, carga/PMC, goldens e screenshots (30/10/2026) |
 | Fase atual | **Fase 0 — Fundação** |
 | App | Android nativo — Kotlin + Jetpack Compose + Material 3 |
 | Backend | Fase 2 — Kotlin/Ktor + PostgreSQL + Dokploy |

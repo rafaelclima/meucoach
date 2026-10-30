@@ -1,0 +1,85 @@
+package com.meucoach.app.ui.trends
+
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.load.DailyLoad
+import com.meucoach.core.domain.load.LoadMetric
+import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.Sex
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class TrendsScreenshotTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Test
+    fun trendsDark() {
+        capture(darkTheme = true, file = "src/test/screenshots/trends-dark.png")
+    }
+
+    @Test
+    fun trendsLight() {
+        capture(darkTheme = false, file = "src/test/screenshots/trends-light.png")
+    }
+
+    private fun capture(darkTheme: Boolean, file: String) {
+        compose.setContent {
+            McTheme(darkTheme = darkTheme) {
+                TrendsContent(
+                    state = TrendsUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        snapshot = snapshot(),
+                    ),
+                )
+            }
+        }
+
+        compose.onRoot().captureRoboImage(file)
+    }
+
+    private fun profile() = AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = Sex.MALE,
+        timezone = "America/Sao_Paulo",
+    )
+
+    private fun snapshot(): LoadSnapshot {
+        val start = LocalDate.of(2026, 9, 19)
+        val daily = List(42) { index ->
+            DailyLoad(
+                date = start.plusDays(index.toLong()),
+                load = if (index in 28..41) (index - 27) * 3.0 else 0.0,
+                metric = if (index in 28..41) LoadMetric.RTSS else null,
+            )
+        }
+        val ctl = daily.mapIndexed { index, day -> day.load * (index + 1) / 100.0 }
+        val atl = daily.map { it.load / 2.0 }
+        return LoadSnapshot(
+            daily = daily,
+            ctlSeries = ctl,
+            atlSeries = atl,
+            ctl = ctl.last(),
+            atl = atl.last(),
+            tsb = ctl.last() - atl.last(),
+            acuteAverage7d = daily.takeLast(7).map { it.load }.average(),
+            chronicAverage28d = daily.takeLast(28).map { it.load }.average(),
+            acwr = 1.2,
+            monotony = 0.8,
+            missingDays = 28,
+        )
+    }
+}

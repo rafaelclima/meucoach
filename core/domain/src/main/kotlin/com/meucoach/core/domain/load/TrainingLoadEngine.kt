@@ -24,6 +24,8 @@ data class DailyLoad(val date: LocalDate, val load: Double, val metric: LoadMetr
 
 data class LoadSnapshot(
     val daily: List<DailyLoad>,
+    val ctlSeries: List<Double>,
+    val atlSeries: List<Double>,
     val ctl: Double,
     val atl: Double,
     val tsb: Double,
@@ -71,6 +73,8 @@ class TrainingLoadEngine {
 
         return LoadSnapshot(
             daily = daily,
+            ctlSeries = ctlSeries,
+            atlSeries = atlSeries,
             ctl = ctlSeries.last(),
             atl = atlSeries.last(),
             tsb = TrainingLoadCalculator.tsb(ctlSeries.last(), atlSeries.last()),

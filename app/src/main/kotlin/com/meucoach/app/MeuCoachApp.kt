@@ -32,10 +32,10 @@ import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
 import com.meucoach.app.ui.onboarding.OnboardingScreen
-import com.meucoach.app.ui.placeholder.PlaceholderScreen
 import com.meucoach.app.ui.profile.ProfileGateViewModel
 import com.meucoach.app.ui.profile.ProfileScreen
 import com.meucoach.app.ui.today.TodayScreen
+import com.meucoach.app.ui.trends.TrendsScreen
 import com.meucoach.core.designsystem.component.McBottomBar
 import com.meucoach.core.designsystem.component.McBottomBarItem
 import com.meucoach.core.designsystem.theme.McTheme
@@ -146,13 +146,7 @@ private fun MainApp() {
                 ActivityDetailScreen(onBack = { navController.popBackStack() })
             }
             composable(AppDestination.Trends.route) {
-                PlaceholderScreen(
-                    eyebrow = "EVOLUÇÃO",
-                    title = "Tendências",
-                    description = "Carga, sono, HRV e pace@FC vão aparecer aqui quando houver dados suficientes.",
-                    icon = Icons.AutoMirrored.Outlined.ShowChart,
-                    emptyTitle = "Sem dados suficientes",
-                )
+                TrendsScreen()
             }
             composable(AppDestination.Profile.route) {
                 ProfileScreen(

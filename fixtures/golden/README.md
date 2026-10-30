@@ -7,6 +7,7 @@ Estado atual (30/10/2026):
 | ID | Motor | Prova |
 |---|---|---|
 | `G-LOAD-01` | `TrainingLoadCalculator` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
+| `G-LOAD-02` | `TrainingLoadEngine` | Série diária de 28 dias e PMC |
 | `G-READY-01` | `ReadinessCalculator` | Dia verde com dados completos |
 | `G-READY-02` | `ReadinessCalculator` | Ausência total de dados |
 | `G-READY-03` | `ReadinessCalculator` | Sinal de doença/lesão |

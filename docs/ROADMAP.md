@@ -167,7 +167,16 @@
 **Aceite:** performance recente gera VDOT/LTHR/pace; ausência de dados não inventa valores; perfil mantém a calibração.
 
 ### P1-03 · Motor de carga
-Integração com atividades, TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia. PMC. Golden scenarios.
+
+**Status:** concluído em 30/10/2026
+
+- [x] Integração com atividades importadas e perfil calibrado.
+- [x] TRIMP/rTSS sem soma no mesmo dia; CTL/ATL/TSB.
+- [x] ACWR e monotonia como flags, com dias sem carga explícitos.
+- [x] Tela Tendências com PMC em Canvas.
+- [x] Golden `G-LOAD-02` do motor de 28 dias.
+
+**Aceite:** série de carga bate com o golden; ausência de dados não gera ACWR falso; a UI não trata ACWR como meta.
 
 ### P1-04 · Prontidão
 Health Connect (sono, RHR, HRV, SpO2) + check-in + CSV. Diagnóstico de dados. Histórico e confiança.
