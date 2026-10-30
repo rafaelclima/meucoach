@@ -5,6 +5,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
+import com.meucoach.core.data.db.entity.ImportJobStatus
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.id.UuidV7
@@ -49,6 +50,16 @@ class ActivityRepository(
 
     suspend fun listActivitySummaries(): List<ActivitySummary> = database
         .activityDao()
+        .getAll()
+        .map { it.toSummary() }
+
+    fun observeImportJobs(): Flow<List<ImportJobSummary>> = database
+        .importJobDao()
+        .observeAll()
+        .map { jobs -> jobs.map { it.toSummary() } }
+
+    suspend fun listImportJobs(): List<ImportJobSummary> = database
+        .importJobDao()
         .getAll()
         .map { it.toSummary() }
 
@@ -515,6 +526,17 @@ class ActivityRepository(
         putNullable("elevationGainM", elevationGainM)
     }
 
+    private fun ImportJobEntity.toSummary() = ImportJobSummary(
+        id = id,
+        fileName = fileName,
+        status = status,
+        activityId = activityId,
+        errorCode = errorCode,
+        errorMessage = errorMessage,
+        createdAt = Instant.ofEpochMilli(createdAt),
+        finishedAt = finishedAt?.let(Instant::ofEpochMilli),
+    )
+
     private fun ImportJobEntity.toJson(): JSONObject = JSONObject().apply {
         put("id", id)
         put("fileName", fileName)
@@ -544,6 +566,17 @@ sealed interface SaveActivityResult {
 
     data class Restored(val id: String) : SaveActivityResult
 }
+
+data class ImportJobSummary(
+    val id: String,
+    val fileName: String,
+    val status: ImportJobStatus,
+    val activityId: String?,
+    val errorCode: String?,
+    val errorMessage: String?,
+    val createdAt: Instant,
+    val finishedAt: Instant?,
+)
 
 data class StoredAlternate(
     val source: ActivitySource,

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.db.entity.ImportJobStatus
 import com.meucoach.core.data.db.testJob
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
@@ -274,6 +275,20 @@ class ActivityRepositoryTest {
             assertThat(repository.deleteAllData()).isEqualTo(1)
             assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
             assertThat(database.importJobDao().getAll()).isEmpty()
+        }
+    }
+
+    @Test
+    fun `observes import jobs as summaries`() {
+        runBlocking {
+            database.importJobDao().insert(testJob(activityId = null))
+
+            val job = repository.observeImportJobs().first().single()
+
+            assertThat(job.fileName).isEqualTo("activity.fit")
+            assertThat(job.status).isEqualTo(ImportJobStatus.DONE)
+            assertThat(job.activityId).isNull()
+            assertThat(repository.listImportJobs()).hasSize(1)
         }
     }
 

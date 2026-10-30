@@ -2,6 +2,7 @@ package com.meucoach.app.di
 
 import android.content.Context
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
 import dagger.Module
 import dagger.Provides
@@ -20,4 +21,9 @@ object DataModule {
     @Provides
     @Singleton
     fun provideActivityRepository(database: MeuCoachDatabase): ActivityRepository = ActivityRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideImportService(database: MeuCoachDatabase, repository: ActivityRepository): ImportService =
+        ImportService(database, repository)
 }
