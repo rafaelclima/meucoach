@@ -134,7 +134,7 @@ O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
 | **Monotonia** | `média diária / desvio-padrão` | Semana monótona = risco |
 | **Strain** | `carga semanal × monotonia` | Combinação de volume e monotonia |
 
-**Importante:** TRIMP e rTSS medem coisas diferentes e não são somados. O app mostra os dois e usa TRIMP como principal quando a FC é confiável; rTSS quando o pace é confiável.
+**Importante:** TRIMP e rTSS medem coisas diferentes e não são somados. O app mostra os dois e usa TRIMP como principal quando a FC é confiável; rTSS quando só o pace é confiável. Na série diária do PMC, cada dia recebe um único métrico: TRIMP se houver FC válida; caso contrário, rTSS; sem nenhum dos dois, o dia fica sem carga (não vira zero silencioso).
 
 ### 6.2 Normalização de NGP
 
