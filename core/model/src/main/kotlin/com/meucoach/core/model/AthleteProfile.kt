@@ -1,6 +1,8 @@
 package com.meucoach.core.model
 
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.ZoneId
 
 enum class Sex {
     FEMALE,
@@ -15,6 +17,50 @@ enum class Experience {
     ADVANCED,
 }
 
+enum class Units {
+    METRIC,
+}
+
+enum class GoalType {
+    GENERAL_FITNESS,
+    FIVE_K,
+    TEN_K,
+    HALF_MARATHON,
+    MARATHON,
+    CUSTOM,
+}
+
+/** Planned running minutes per weekday. Missing days mean "not available". */
+data class WeeklyAvailability(val minutesByDay: Map<DayOfWeek, Int> = emptyMap()) {
+    init {
+        require(minutesByDay.values.all { it in 1..MAX_MINUTES_PER_DAY }) {
+            "Availability must be between 1 and $MAX_MINUTES_PER_DAY minutes per day"
+        }
+    }
+
+    val totalMinutes: Int get() = minutesByDay.values.sum()
+
+    fun minutesOn(day: DayOfWeek): Int = minutesByDay[day] ?: 0
+
+    private companion object {
+        const val MAX_MINUTES_PER_DAY = 1_440
+    }
+}
+
+data class TrainingGoal(
+    val type: GoalType = GoalType.GENERAL_FITNESS,
+    val targetDate: LocalDate? = null,
+    val targetDistanceM: Double? = null,
+    val targetTimeSec: Int? = null,
+) {
+    init {
+        require(targetDistanceM == null || (targetDistanceM.isFinite() && targetDistanceM > 0.0)) {
+            "Goal distance must be finite and positive"
+        }
+        require(targetTimeSec == null || targetTimeSec > 0) { "Goal time must be positive" }
+    }
+}
+
 data class AthleteProfile(
     val id: String,
     val birthDate: LocalDate,
@@ -27,6 +73,13 @@ data class AthleteProfile(
     val thresholdPace: Pace? = null,
     val vdot: Double? = null,
     val experience: Experience = Experience.BEGINNER,
+    val timezone: String = "UTC",
+    val weeklyAvailability: WeeklyAvailability = WeeklyAvailability(),
+    val goal: TrainingGoal? = null,
+    val city: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val units: Units = Units.METRIC,
 ) {
     init {
         require(id.isNotBlank()) { "Athlete id must not be blank" }
@@ -42,5 +95,11 @@ data class AthleteProfile(
             "Lactate threshold heart rate out of range"
         }
         require(vdot == null || vdot > 0.0) { "VDOT must be positive" }
+        require(runCatching { ZoneId.of(timezone) }.isSuccess) {
+            "Timezone must be a valid IANA zone"
+        }
+        require(city == null || city.isNotBlank()) { "City must not be blank" }
+        require(latitude == null || latitude in -90.0..90.0) { "Latitude out of range" }
+        require(longitude == null || longitude in -180.0..180.0) { "Longitude out of range" }
     }
 }
