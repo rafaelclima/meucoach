@@ -4,10 +4,10 @@
 
 ## Estado geral
 
-- **Fase:** 0 — Fundação
+- **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
 - **Testes:** 494 testes, 0 falhas (27 em `core:model`, 211 em `core:domain`, 73 em `core:data`, 183 em `:app`)
-- **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
+- **Cobertura `core:domain`:** 98,35% de linhas (2.090/2.125), 83,25% de branches (1.670/2.006), 96,99% de instruções (15.610/16.094)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -26,7 +26,7 @@
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não.
-- **Plano semanal:** distribuição por disponibilidade, máximo 1 qualidade, longão 25–30% e sem progressão sem histórico.
+- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30% e taper por prova.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
@@ -56,6 +56,13 @@
 - Distribuição 80/20 por tempo (exige decodificar samples).
 - Pace@FC como gráfico de eficiência e recordes.
 - Heatmap de consistência e filtros de período.
+- Calor/esteira e deload por blocos no `P1-05`.
+
+### Próximo passo
+
+1. Fechar 80/20 e recordes em Tendências.
+2. Calor/esteira na prescrição.
+3. Tela de histórico de conclusão e streak de check-in.
 
 ## Sessão 2026-10-30 — P1-06: Hoje e notificações (parcial)
 
