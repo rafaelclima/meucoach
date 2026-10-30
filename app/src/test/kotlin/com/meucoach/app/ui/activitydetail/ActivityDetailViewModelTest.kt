@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.domain.insights.ActivityInsightRules
+import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
@@ -73,6 +75,7 @@ class ActivityDetailViewModelTest {
             assertThat(state.notFound).isFalse()
             assertThat(state.activity?.id).isEqualTo("activity-1")
             assertThat(state.activity?.imported?.distanceM).isEqualTo(5_000.0)
+            assertThat(state.insights.map { it.ruleId }).containsExactly(ActivityInsightRules.PACING)
         }
     }
 
@@ -113,5 +116,19 @@ class ActivityDetailViewModelTest {
         elevationGainM = 40.0,
         movingTimeSec = 1_750,
         parserVersion = "1.0.0",
+        laps = listOf(
+            ActivityLap(
+                index = 0,
+                durationSec = 1_000,
+                distanceM = 2_500.0,
+                averageHeartRate = 150,
+            ),
+            ActivityLap(
+                index = 1,
+                durationSec = 800,
+                distanceM = 2_500.0,
+                averageHeartRate = 155,
+            ),
+        ),
     )
 }

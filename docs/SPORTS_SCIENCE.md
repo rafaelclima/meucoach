@@ -104,6 +104,13 @@ O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
 - Usar como tendência e indicador de fadiga/terreno, não como correção forçada.
 - Aumento gradual de cadência só se houver overstriding evidente e sem dor.
 
+### 5.5 Pacing e deriva cardíaca
+
+- Comparar a primeira e a segunda metade da corrida por distância/tempo, não por sensação.
+- Ritmo constante ou **negative split** é sinal positivo de controle; queda > 3% na segunda metade sugere fadiga, calor ou largada forte.
+- **Deriva cardíaca:** FC sobe ≥ 5% com pace estável (±3%). Pode refletir calor, desidratação ou fadiga. É observação, não diagnóstico.
+- Sem laps válidos, não há insight: dado ausente não vira elogio nem alerta.
+
 ## 6. Carga de treino
 
 ### 6.1 Métricas
@@ -357,6 +364,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar 
 | ID | Referência | Força | Usado em |
 |---|---|---|---|
 | `EV-DANIELS-2014` | Daniels, J. *Daniels' Running Formula* (3rd ed.). Human Kinetics, 2014. | D | VDOT, paces E/M/T/I/R |
+| `EV-ABBISS-2008` | Abbiss, C. R., Laursen, P. B. Describing and understanding pacing strategies during athletic competition. *Sports Med* 38(3):239–252, 2008. doi:10.2165/00007256-200838030-00004 | B | Pacing, negative split, distribuição de esforço |
 | `EV-FRIEL-2018` | Friel, J. *The Triathlete's Training Bible* (5th ed.). VeloPress, 2018. | D | Zonas por LTHR, teste de 30 min |
 | `EV-SEILER-2010` | Seiler, S. What is best practice for training intensity and duration distribution in endurance athletes? *IJSPP* 5(3):276–291, 2010. doi:10.1123/ijspp.5.3.276 | A/B | Distribuição 80/20 |
 | `EV-BANISTER-1991` | Banister, E. W. Modeling elite athletic performance. In *Physiological Testing of the High-Performance Athlete*, 1991. | D | TRIMP |
@@ -389,6 +397,8 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar 
 | `R-CAL-03` | Nunca estimar FC máxima por 220−idade | FRIEL, BUCHHEIT | STRONG |
 | `R-ZONE-01` | Zonas de FC por LTHR; paces por VDOT | FRIEL, DANIELS | STRONG |
 | `R-ZONE-02` | Distribuição medida em 3 zonas; alvo ~80/20 por tempo | SEILER | MODERATE |
+| `R-ACT-01` | Comparar metades: ritmo constante/negative split é positivo; queda > 3% é sinal de fadiga | ABBISS, DANIELS | MODERATE |
+| `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
 | `R-LOAD-03` | ACWR é flag, nunca meta; >1,5 bloqueia aumento | GABBETT, IMPELLIZZERI | LIMITED |

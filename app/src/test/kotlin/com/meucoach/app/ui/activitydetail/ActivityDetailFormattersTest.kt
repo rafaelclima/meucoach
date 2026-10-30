@@ -4,6 +4,7 @@ import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.data.repository.StoredAlternate
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sport
@@ -94,6 +95,13 @@ class ActivityDetailFormattersTest {
     fun `labels chart ranges with units`() {
         assertThat(paceRangeLabel(300..360)).isEqualTo("5:00–6:00/km")
         assertThat(heartRateRangeLabel(140..170)).isEqualTo("140–170 bpm")
+    }
+
+    @Test
+    fun `labels confidence levels`() {
+        assertThat(confidenceLabel(DataConfidence.HIGH)).isEqualTo("confiança alta")
+        assertThat(confidenceLabel(DataConfidence.MEDIUM)).isEqualTo("confiança média")
+        assertThat(confidenceLabel(DataConfidence.LOW)).isEqualTo("confiança baixa")
     }
 
     private fun lap(durationSec: Int, distanceM: Double) = ActivityLap(

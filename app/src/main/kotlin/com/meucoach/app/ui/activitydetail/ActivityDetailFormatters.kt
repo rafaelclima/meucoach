@@ -7,6 +7,7 @@ import com.meucoach.app.ui.activities.paceLabel
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Distance
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
@@ -56,3 +57,9 @@ fun paceRangeLabel(range: IntRange): String =
     "${paceLabel(Pace.fromSecondsPerKm(range.first))}–${paceLabel(Pace.fromSecondsPerKm(range.last))}/km"
 
 fun heartRateRangeLabel(range: IntRange): String = "${range.first}–${range.last} bpm"
+
+fun confidenceLabel(confidence: DataConfidence): String = when (confidence) {
+    DataConfidence.HIGH -> "confiança alta"
+    DataConfidence.MEDIUM -> "confiança média"
+    DataConfidence.LOW -> "confiança baixa"
+}

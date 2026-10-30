@@ -102,6 +102,9 @@ internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> U
                     if (state.activity.imported.samples.any { it.latitude != null && it.longitude != null }) {
                         item { ActivityRouteCard(samples = state.activity.imported.samples) }
                     }
+                    if (state.insights.isNotEmpty()) {
+                        item { ActivityInsightsCard(insights = state.insights) }
+                    }
                     state.activity.sampleWarning?.let { warning ->
                         item { SampleWarningCard(warning) }
                     }

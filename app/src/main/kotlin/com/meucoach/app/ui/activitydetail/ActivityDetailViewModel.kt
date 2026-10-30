@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.domain.insights.ActivityInsightsCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ class ActivityDetailViewModel @Inject constructor(savedStateHandle: SavedStateHa
     }
     private val _uiState = MutableStateFlow(ActivityDetailUiState())
     val uiState: StateFlow<ActivityDetailUiState> = _uiState.asStateFlow()
+    private val insightsCalculator = ActivityInsightsCalculator()
 
     init {
         viewModelScope.launch {
@@ -27,6 +29,9 @@ class ActivityDetailViewModel @Inject constructor(savedStateHandle: SavedStateHa
                 isLoading = false,
                 activity = activity,
                 notFound = activity == null,
+                insights = activity
+                    ?.let { insightsCalculator.calculate(it.imported.laps) }
+                    .orEmpty(),
             )
         }
     }
