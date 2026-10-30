@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.meucoach.core.data.id.UuidV7
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -20,15 +21,19 @@ import javax.inject.Inject
  * cannot rely on it later. Files are stored under `files/imports` with a
  * generated name; the original display name is kept only in the import job.
  */
-class ImportStaging internal constructor(context: Context, private val maxBytes: Long) {
+class ImportStaging internal constructor(
+    context: Context,
+    private val maxBytes: Long,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+) {
     @Inject
-    constructor(@ApplicationContext context: Context) : this(context, MAX_IMPORT_BYTES)
+    constructor(@ApplicationContext context: Context) : this(context, MAX_IMPORT_BYTES, Dispatchers.IO)
 
     private val appContext = context.applicationContext
     private val resolver = appContext.contentResolver
     private val importsDir = File(appContext.filesDir, RELATIVE_DIR)
 
-    suspend fun stage(uri: Uri): StagedImport = withContext(Dispatchers.IO) {
+    suspend fun stage(uri: Uri): StagedImport = withContext(dispatcher) {
         val displayName = displayName(uri)
         val mime = runCatching { resolver.getType(uri) }.getOrNull()
         val extension = displayName
@@ -66,11 +71,11 @@ class ImportStaging internal constructor(context: Context, private val maxBytes:
         }
     }
 
-    suspend fun read(relativePath: String): ByteArray = withContext(Dispatchers.IO) {
+    suspend fun read(relativePath: String): ByteArray = withContext(dispatcher) {
         resolve(relativePath).readBytes()
     }
 
-    suspend fun delete(relativePath: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun delete(relativePath: String): Boolean = withContext(dispatcher) {
         resolve(relativePath).delete()
     }
 

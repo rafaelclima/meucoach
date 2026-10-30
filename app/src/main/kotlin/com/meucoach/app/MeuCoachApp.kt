@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.placeholder.PlaceholderScreen
 import com.meucoach.app.ui.today.TodayScreen
 import com.meucoach.core.designsystem.component.McBottomBar
@@ -91,16 +92,7 @@ fun MeuCoachApp() {
                 TodayScreen(onDemoAction = showDemoMessage)
             }
             composable(AppDestination.Activities.route) {
-                PlaceholderScreen(
-                    eyebrow = "ATIVIDADES",
-                    title = "Suas corridas",
-                    description = "Importe FIT, TCX ou GPX para começar. O detalhe da atividade com splits, " +
-                        "zonas e mapa chega na Fase 0.",
-                    icon = Icons.AutoMirrored.Outlined.DirectionsRun,
-                    emptyTitle = "Nenhuma corrida importada",
-                    actionLabel = "Importar arquivo",
-                    onAction = { showDemoMessage("Importação chega na Fase 0.") },
-                )
+                ActivitiesScreen()
             }
             composable(AppDestination.Trends.route) {
                 PlaceholderScreen(
