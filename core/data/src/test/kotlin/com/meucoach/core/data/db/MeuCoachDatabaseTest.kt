@@ -46,6 +46,7 @@ class MeuCoachDatabaseTest {
             database.activityDao().insert(activity)
             database.lapDao().insertAll(listOf(lap))
             database.sampleBlobDao().upsert(blob)
+            database.activityAlternateDao().insert(testAlternate())
             database.importJobDao().insert(job)
 
             assertThat(database.activityDao().findById(activity.id)).isEqualTo(activity)
@@ -53,6 +54,7 @@ class MeuCoachDatabaseTest {
             assertThat(database.activityDao().observeAll().first()).containsExactly(activity)
             assertThat(database.lapDao().getForActivity(activity.id)).containsExactly(lap)
             assertThat(database.sampleBlobDao().getForActivity(activity.id)).isEqualTo(blob)
+            assertThat(database.activityAlternateDao().getForActivity(activity.id)).hasSize(1)
             assertThat(database.importJobDao().findById(job.id)).isEqualTo(job)
         }
     }
@@ -76,19 +78,21 @@ class MeuCoachDatabaseTest {
     }
 
     @Test
-    fun `hard delete cascades laps and samples and detaches import jobs`() {
+    fun `hard delete cascades laps samples and alternates and detaches import jobs`() {
         runBlocking {
             val activity = testActivity()
             val job = testJob()
             database.activityDao().insert(activity)
             database.lapDao().insertAll(listOf(testLap()))
             database.sampleBlobDao().upsert(testBlob())
+            database.activityAlternateDao().insert(testAlternate())
             database.importJobDao().insert(job)
 
             assertThat(database.activityDao().hardDelete(activity.id)).isEqualTo(1)
             assertThat(database.activityDao().findByIdIncludingDeleted(activity.id)).isNull()
             assertThat(database.lapDao().getForActivity(activity.id)).isEmpty()
             assertThat(database.sampleBlobDao().getForActivity(activity.id)).isNull()
+            assertThat(database.activityAlternateDao().getForActivity(activity.id)).isEmpty()
             assertThat(database.importJobDao().findById(job.id)?.activityId).isNull()
         }
     }

@@ -6,10 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
+import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
@@ -21,12 +23,15 @@ import com.meucoach.core.data.db.entity.SampleBlobEntity
         LapEntity::class,
         SampleBlobEntity::class,
         ImportJobEntity::class,
+        ActivityAlternateEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
 )
 abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun activityDao(): ActivityDao
+
+    abstract fun activityAlternateDao(): ActivityAlternateDao
 
     abstract fun lapDao(): LapDao
 
@@ -35,7 +40,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun importJobDao(): ImportJobDao
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         const val NAME = "meucoach.db"
 
         /**
@@ -49,9 +54,47 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 3 records files that describe an already stored activity.
+         * Keeping them separate lets the canonical row be replaced by a richer
+         * format without losing provenance.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `activity_alternates` (
+                        `id` TEXT NOT NULL,
+                        `activityId` TEXT NOT NULL,
+                        `source` TEXT NOT NULL,
+                        `sourceId` TEXT,
+                        `sourceFileSha256` TEXT,
+                        `rawFilePath` TEXT,
+                        `parserVersion` TEXT NOT NULL,
+                        `importedAt` INTEGER NOT NULL,
+                        `sampleCount` INTEGER NOT NULL,
+                        `durationSec` INTEGER NOT NULL,
+                        `distanceM` REAL NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`activityId`) REFERENCES `activities`(`id`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_activity_alternates_activityId` " +
+                        "ON `activity_alternates` (`activityId`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_activity_alternates_sourceFileSha256` " +
+                        "ON `activity_alternates` (`sourceFileSha256`)",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 }

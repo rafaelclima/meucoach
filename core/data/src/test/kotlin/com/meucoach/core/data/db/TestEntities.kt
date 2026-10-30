@@ -1,5 +1,6 @@
 package com.meucoach.core.data.db
 
+import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.ImportJobStatus
@@ -43,6 +44,20 @@ internal fun testActivity(id: String = "activity-1", sourceFileSha256: String? =
         importedAt = 1_700_000_100_000,
         deletedAt = deletedAt,
     )
+
+internal fun testAlternate(activityId: String = "activity-1") = ActivityAlternateEntity(
+    id = "alternate-1",
+    activityId = activityId,
+    source = ActivitySource.TCX,
+    sourceId = "tcx-source",
+    sourceFileSha256 = "alternate-sha",
+    rawFilePath = "imports/activity.tcx",
+    parserVersion = "1.0.0",
+    importedAt = 1_700_000_200_000,
+    sampleCount = 100,
+    durationSec = 1_800,
+    distanceM = 5_000.0,
+)
 
 internal fun testLap(activityId: String = "activity-1") = LapEntity(
     activityId = activityId,
