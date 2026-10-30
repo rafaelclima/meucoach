@@ -15,6 +15,9 @@ import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.PrescriptionInput
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
+import com.meucoach.core.domain.prescription.WeeklyPlanInput
 import com.meucoach.core.domain.prescription.WorkoutRecommender
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessCalculator
@@ -43,6 +46,7 @@ class TodayViewModel @Inject constructor(
 ) : ViewModel() {
     private val engine = TrainingLoadEngine()
     private val recommender = WorkoutRecommender()
+    private val planGenerator = WeeklyPlanGenerator()
 
     val uiState: StateFlow<TodayUiState> = combine(
         checkInRepository.observe(LocalDate.now()),
@@ -58,6 +62,16 @@ class TodayViewModel @Inject constructor(
             profile = profile,
             load = load,
             today = today,
+            plan = profile?.let {
+                planGenerator.generate(
+                    WeeklyPlanInput(
+                        profile = it,
+                        readiness = readinessResult(checkIn, metrics, today),
+                        load = load,
+                        weekStart = today,
+                    ),
+                )
+            },
         )
     }.stateIn(
         scope = viewModelScope,
@@ -87,6 +101,24 @@ class TodayViewModel @Inject constructor(
     }
 }
 
+internal fun readinessResult(
+    checkIn: DailyCheckIn?,
+    metrics: List<DailyMetrics>,
+    today: LocalDate,
+): com.meucoach.core.domain.readiness.ReadinessResult {
+    val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
+    val signals = inputs.signals.copy(
+        illnessOrInjury = inputs.signals.illnessOrInjury || checkIn?.illnessOrInjury == true,
+    )
+    return ReadinessCalculator.calculate(
+        checkIn = checkIn?.toSubjectiveCheckIn(),
+        sleep = inputs.sleep,
+        hrv = inputs.hrv,
+        restingHeartRate = inputs.restingHeartRate,
+        signals = signals,
+    )
+}
+
 @Composable
 fun TodayRoute(
     onDemoAction: (String) -> Unit,
@@ -111,6 +143,7 @@ internal fun todayState(
     activities: List<ActivitySummary> = emptyList(),
     load: LoadSnapshot? = null,
     today: LocalDate = LocalDate.now(),
+    plan: WeeklyPlan? = null,
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
     val signals = inputs.signals.copy(
@@ -150,6 +183,7 @@ internal fun todayState(
         atl = load?.atl?.roundToInt() ?: base.atl,
         tsb = load?.tsb?.roundToInt() ?: base.tsb,
         hasCheckedIn = checkIn != null,
+        plan = plan,
     )
 }
 

@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 445 testes no repositório, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 158 em `:app`).
+- 447 testes no repositório, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 160 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -149,6 +149,7 @@ Evidência atual (30/10/2026):
 - `WorkoutRecommenderTest`: guardrails, fácil Z2 calibrado, RPE, ACWR e duração.
 - `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única, ACWR e semana vazia.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
+- `TodayPlanTest`: card do plano semanal na tela Hoje.
 
 ## 6. Testes de domínio
 

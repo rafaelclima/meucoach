@@ -6,7 +6,7 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 445 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 158 em `:app`)
+- **Testes:** 447 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 160 em `:app`)
 - **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -47,6 +47,7 @@
   - Longão 25–30% do volume e ≤150 min para iniciante.
   - Sem progressão até existir histórico de conclusão.
   - Sem disponibilidade ⇒ plano vazio explícito (`R-DATA-01`).
+- Card "Plano da semana" na tela Hoje com dias, tipo, duração, confiança e rationale.
 - Tela Hoje passa a usar a recomendação real no card de treino.
 - CTL/ATL/TSB da tela Hoje vêm do motor de carga quando há atividades.
 - Testes dos guardrails, alvos calibrados, RPE e limites de duração.
@@ -61,7 +62,7 @@
 ### Evidências
 
 - `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
-- 445 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 66 `core:data`, 158 `:app`).
+- 447 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 66 `core:data`, 160 `:app`).
 - `core:domain`: 98,23% linhas, 82,84% branches, 96,85% instruções.
 
 ### Próximos passos

@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -64,7 +65,8 @@ fun TodayScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            .testTag("today-list"),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -76,6 +78,9 @@ fun TodayScreen(
                 onSwapClick = { onDemoAction("Troca de treino chega na Fase 1.") },
                 onStartClick = { onDemoAction("Execução do treino chega na Fase 1.") },
             )
+        }
+        state.plan?.let { plan ->
+            item { PlanWeekCard(plan) }
         }
         item {
             WeeklyLoadCard(
@@ -492,6 +497,81 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
 }
 
 @Composable
+private fun PlanWeekCard(plan: com.meucoach.core.domain.prescription.WeeklyPlan) {
+    val colors = McTheme.colors
+    McCard(variant = McCardVariant.INSET) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "PLANO DA SEMANA",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+            )
+            McConfidenceBadge(confidence = plan.confidence)
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        if (plan.sessions.isEmpty()) {
+            Text(
+                text = plan.rationale,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            return@McCard
+        }
+        plan.sessions.forEachIndexed { index, session ->
+            if (index > 0) {
+                McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = formatPlanDay(session.date),
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.width(48.dp),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = session.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = session.durationMin?.let { "$it min" } ?: "—",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                    )
+                }
+                McPill(text = planTypeLabel(session.type))
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = plan.rationale,
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+    }
+}
+
+private fun formatPlanDay(date: LocalDate): String {
+    val label = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, PLAN_LOCALE)
+    return label.replaceFirstChar { it.uppercaseChar() }.trimEnd('.')
+}
+
+private fun planTypeLabel(type: com.meucoach.core.domain.prescription.WorkoutType): String = when (type) {
+    com.meucoach.core.domain.prescription.WorkoutType.REST -> "Descanso"
+    com.meucoach.core.domain.prescription.WorkoutType.EASY -> "Fácil"
+    com.meucoach.core.domain.prescription.WorkoutType.LONG -> "Longão"
+    com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Qualidade"
+}
+
+@Composable
 private fun RecentActivityCard(activity: RecentActivityUi, onClick: () -> Unit) {
     val colors = McTheme.colors
     McCard(onClick = onClick) {
@@ -602,3 +682,5 @@ private fun TodayScreenLightPreview() {
         )
     }
 }
+
+private val PLAN_LOCALE = Locale.forLanguageTag("pt-BR")

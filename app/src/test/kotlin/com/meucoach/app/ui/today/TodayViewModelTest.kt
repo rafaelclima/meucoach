@@ -102,6 +102,30 @@ class TodayViewModelTest {
         assertThat(state.workout.duration).isEqualTo("—")
     }
 
+    @Test
+    fun `carries the weekly plan into the state`() {
+        val profile = profile()
+        val readiness = readinessResult(checkIn(), emptyList(), today)
+        val plan = com.meucoach.core.domain.prescription.WeeklyPlanGenerator().generate(
+            com.meucoach.core.domain.prescription.WeeklyPlanInput(
+                profile = profile,
+                readiness = readiness,
+                weekStart = today,
+            ),
+        )
+
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile,
+            today = today,
+            plan = plan,
+        )
+
+        assertThat(state.plan).isNotNull
+        assertThat(state.plan?.sessions).isNotEmpty()
+        assertThat(state.plan?.qualityCount).isZero()
+    }
+
     private fun profile() = com.meucoach.core.model.AthleteProfile(
         id = "athlete-1",
         birthDate = LocalDate.of(1988, 1, 1),
