@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 29/10/2026
+**Versão:** 1.2 · **Data:** 30/10/2026
 
 ## 1. Princípios
 
@@ -85,10 +85,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 160 testes no repositório, 0 falhas (15 em `core:model`, 116 em `core:domain`, 26 em `core:data`, 3 em `:app`).
+- 214 testes no repositório, 0 falhas (15 em `core:model`, 120 em `core:domain`, 44 em `core:data`, 35 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
-- `parser.fit`: 100% de linhas e 93,01% de branches (572/615).
-- `core:domain`: 98,91% de linhas, 86,02% de branches e 96,77% de instruções.
+- `parser.fit`: 93,01% de branches (572/615).
+- `core:domain`: 98,91% de linhas, 86,12% de branches, 96,79% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.

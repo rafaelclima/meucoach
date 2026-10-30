@@ -6,13 +6,16 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 160 testes, 0 falhas (15 em `core:model`, 116 em `core:domain`, 26 em `core:data`, 3 em `:app`)
-- **Cobertura `core:domain`:** 98,91% de linhas (1.177/1.190), 86,02% de branches (1.132/1.316), 96,77% de instruções (9.539/9.857)
-- **Parser FIT:** 100% de linhas e 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
+- **Testes:** 214 testes, 0 falhas (15 em `core:model`, 120 em `core:domain`, 44 em `core:data`, 35 em `:app`)
+- **Cobertura `core:domain`:** 98,91% de linhas (1.182/1.195), 86,12% de branches (1.143/1.327), 96,79% de instruções (9.589/9.907)
+- **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v2, migração 1→2 testada, blob `gzip-columnar-v1`
-- **Próximo marco:** `P0-08` — importação
+- **Persistência:** Room 2.8.5, schema v3 (`activity_alternates`), migrações 1→2 (`deletedAt`) e 2→3 (alternates) testadas.
+- **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
+- **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
+- **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
+- **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 
 ## Sessão 2026-10-30 — P0-07: persistência Room
 

@@ -104,13 +104,15 @@
 
 **Aceite:** importar, listar, abrir e apagar atividade sem perder consistência. Entregue com Room v2, migração testada, `SampleBlobCodec` (`gzip-columnar-v1`), `ActivityRepository`, export JSON básico e 26 testes em `core:data`.
 
-### P0-08 · Importação
+### P0-08 · Importação — CONCLUÍDO
 
-- [ ] File picker (SAF) + share intent.
-- [ ] Fila persistente (WorkManager).
-- [ ] Progresso, erro, dedup, substituição FIT > GPX.
-- [ ] Tela de import com histórico.
-- [ ] Testes de ViewModel e parser.
+- [x] File picker (SAF) + share intent.
+- [x] Fila persistente (`WorkManager` 2.12.0, `HiltWorkerFactory`).
+- [x] Progresso, erro, dedup, substituição `FIT > TCX > GPX`, alternates, restauração.
+- [x] Tela `ActivitiesScreen`, `sourcesLabel` (`FIT · TCX · GPX`), histórico de import.
+- [x] Testes de `ViewModel`, `Staging`, `Coordinator`, `ShareIntentReader`.
+
+**Aceite verificado:** `./gradlew check :app:assembleDebug spotlessCheck` — 214 testes, 0 falhas; `core:domain` 98,91% / 86,12% branches; `core:data` 44 testes; share + picker funcionando.
 
 **Aceite:** arrastar/selecionar 3 formatos da mesma corrida → 1 atividade, mensagem clara.
 
