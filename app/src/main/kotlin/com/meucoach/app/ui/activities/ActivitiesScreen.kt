@@ -49,7 +49,11 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.ActivitySummary
 
 @Composable
-fun ActivitiesScreen(modifier: Modifier = Modifier, viewModel: ActivitiesViewModel = hiltViewModel()) {
+fun ActivitiesScreen(
+    onActivityClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ActivitiesViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
@@ -60,6 +64,7 @@ fun ActivitiesScreen(modifier: Modifier = Modifier, viewModel: ActivitiesViewMod
         state = state,
         onImportClick = { launcher.launch(IMPORT_MIME_TYPES) },
         onMessageShown = viewModel::consumeMessage,
+        onActivityClick = onActivityClick,
         modifier = modifier,
     )
 }
@@ -69,6 +74,7 @@ internal fun ActivitiesContent(
     state: ActivitiesUiState,
     onImportClick: () -> Unit,
     onMessageShown: () -> Unit,
+    onActivityClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -97,7 +103,7 @@ internal fun ActivitiesContent(
                 else -> {
                     item { McSectionHeader(title = "Corridas") }
                     items(state.activities, key = { it.id }) { activity ->
-                        ActivityCard(activity)
+                        ActivityCard(activity = activity, onClick = { onActivityClick(activity.id) })
                     }
                 }
             }
@@ -171,9 +177,9 @@ private fun EmptyActivities() {
 }
 
 @Composable
-private fun ActivityCard(activity: ActivitySummary) {
+private fun ActivityCard(activity: ActivitySummary, onClick: () -> Unit) {
     val colors = McTheme.colors
-    McCard {
+    McCard(onClick = onClick) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

@@ -1,0 +1,230 @@
+package com.meucoach.app.ui.activitydetail
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.activities.formatDateTime
+import com.meucoach.app.ui.activities.formatDuration
+import com.meucoach.app.ui.activities.paceLabel
+import com.meucoach.app.ui.activities.sourcesLabel
+import com.meucoach.app.ui.activities.sportLabel
+import com.meucoach.core.data.repository.StoredActivity
+import com.meucoach.core.designsystem.component.McCard
+import com.meucoach.core.designsystem.component.McCardVariant
+import com.meucoach.core.designsystem.component.McEmptyState
+import com.meucoach.core.designsystem.component.McPill
+import com.meucoach.core.designsystem.component.McStat
+import com.meucoach.core.designsystem.theme.McTextStyles
+import com.meucoach.core.designsystem.theme.McTheme
+import java.time.ZoneId
+
+@Composable
+fun ActivityDetailScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ActivityDetailViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    ActivityDetailContent(
+        state = state,
+        onBack = onBack,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                DetailHeader(onBack = onBack)
+            }
+            when {
+                state.isLoading -> item { LoadingRow() }
+
+                state.notFound -> item {
+                    McEmptyState(
+                        icon = Icons.AutoMirrored.Outlined.DirectionsRun,
+                        title = "Atividade não encontrada",
+                        description = "Ela pode ter sido apagada. Volte para a lista de corridas.",
+                        actionLabel = "Voltar",
+                        onAction = onBack,
+                    )
+                }
+
+                state.activity != null -> {
+                    item { HeroCard(state.activity) }
+                    item { MetricsCard(state.activity) }
+                    state.activity.sampleWarning?.let { warning ->
+                        item { SampleWarningCard(warning) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailHeader(onBack: () -> Unit) {
+    val colors = McTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onBack) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Voltar",
+                tint = colors.textPrimary,
+            )
+        }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text = "ATIVIDADE", style = McTextStyles.overline, color = colors.textTertiary)
+    }
+}
+
+@Composable
+private fun LoadingRow() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(24.dp),
+            color = McTheme.colors.accent,
+            strokeWidth = 2.dp,
+        )
+    }
+}
+
+@Composable
+private fun HeroCard(activity: StoredActivity) {
+    val colors = McTheme.colors
+    val imported = activity.imported
+    McCard(variant = McCardVariant.ELEVATED) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                text = sportLabel(imported.sport),
+                style = MaterialTheme.typography.headlineLarge,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            McPill(text = sourcesLabel(activitySources(activity)))
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = formatDateTime(imported.startTime, ZoneId.of(activity.zoneId)),
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = formatDistanceMeters(imported.distanceM),
+                style = McTextStyles.metricHero,
+                color = colors.textPrimary,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "km",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            McStat(
+                label = "Tempo",
+                value = formatDuration(imported.durationSec),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Pace médio",
+                value = paceLabel(imported.averagePace),
+                unit = if (imported.averagePace != null) "/km" else null,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetricsCard(activity: StoredActivity) {
+    val metrics = detailMetrics(activity.imported)
+    if (metrics.isEmpty()) return
+    McCard {
+        metrics.chunked(2).forEachIndexed { index, row ->
+            if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                row.forEach { metric ->
+                    McStat(
+                        label = metric.label,
+                        value = metric.value,
+                        unit = metric.unit,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SampleWarningCard(warning: String) {
+    val colors = McTheme.colors
+    McCard(variant = McCardVariant.INSET) {
+        Text(
+            text = "Séries temporais indisponíveis",
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.warning,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = warning,
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+    }
+}

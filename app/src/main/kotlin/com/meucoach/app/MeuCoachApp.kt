@@ -1,5 +1,6 @@
 package com.meucoach.app
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meucoach.app.ui.activities.ActivitiesScreen
+import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.placeholder.PlaceholderScreen
 import com.meucoach.app.ui.today.TodayScreen
 import com.meucoach.core.designsystem.component.McBottomBar
@@ -45,11 +47,16 @@ private val destinations = listOf(
     AppDestination.Profile,
 )
 
+private const val ACTIVITY_DETAIL_ROUTE = "activity/{activityId}"
+
+private fun activityDetailRoute(activityId: String): String = "activity/${Uri.encode(activityId)}"
+
 @Composable
 fun MeuCoachApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
+    val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -60,25 +67,27 @@ fun MeuCoachApp() {
         containerColor = McTheme.colors.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            McBottomBar(
-                items = destinations.map { destination ->
-                    McBottomBarItem(
-                        route = destination.route,
-                        label = destination.label,
-                        icon = destination.icon,
-                    )
-                },
-                selectedRoute = currentRoute,
-                onSelect = { route ->
-                    navController.navigate(route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+            if (showBottomBar) {
+                McBottomBar(
+                    items = destinations.map { destination ->
+                        McBottomBarItem(
+                            route = destination.route,
+                            label = destination.label,
+                            icon = destination.icon,
+                        )
+                    },
+                    selectedRoute = currentRoute,
+                    onSelect = { route ->
+                        navController.navigate(route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-            )
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         NavHost(
@@ -92,7 +101,14 @@ fun MeuCoachApp() {
                 TodayScreen(onDemoAction = showDemoMessage)
             }
             composable(AppDestination.Activities.route) {
-                ActivitiesScreen()
+                ActivitiesScreen(
+                    onActivityClick = { activityId ->
+                        navController.navigate(activityDetailRoute(activityId))
+                    },
+                )
+            }
+            composable(ACTIVITY_DETAIL_ROUTE) {
+                ActivityDetailScreen(onBack = { navController.popBackStack() })
             }
             composable(AppDestination.Trends.route) {
                 PlaceholderScreen(
