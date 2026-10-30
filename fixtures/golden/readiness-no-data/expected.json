@@ -1,0 +1,9 @@
+{
+  "scenarioId": "G-READY-02",
+  "score": 50,
+  "level": "AMBER",
+  "confidence": "LOW",
+  "components": {},
+  "missing": ["HRV", "RESTING_HEART_RATE", "SLEEP", "SUBJECTIVE"],
+  "flags": ["INSUFFICIENT_DATA"]
+}

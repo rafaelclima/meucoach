@@ -1,0 +1,25 @@
+{
+  "scenarioId": "G-LOAD-01",
+  "description": "Baseline week with two hard days and rest days; checks TRIMP, rTSS, sRPE, EWMA and ACWR.",
+  "trimp": {
+    "durationSec": 1800,
+    "averageHeartRateBpm": 150,
+    "restingHeartRateBpm": 58,
+    "maxHeartRateBpm": 187,
+    "sex": "MALE"
+  },
+  "rTss": {
+    "durationSec": 3600,
+    "normalizedPaceSecPerKm": 364,
+    "thresholdPaceSecPerKm": 364
+  },
+  "srpe": {
+    "rpe": 6,
+    "durationMin": 30
+  },
+  "dailyLoads": [40.0, 0.0, 60.0, 0.0, 0.0, 80.0, 0.0],
+  "acwr": {
+    "acuteAverage7d": 50.0,
+    "chronicAverage28d": 40.0
+  }
+}

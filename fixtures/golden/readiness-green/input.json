@@ -1,0 +1,9 @@
+{
+  "scenarioId": "G-READY-01",
+  "description": "Green day with subjective, sleep, HRV and resting HR data; high confidence.",
+  "checkIn": { "sleepQuality": 4, "fatigue": 2, "soreness": 1, "stress": 2 },
+  "sleep": { "durationMin": 450 },
+  "hrv": { "rmssd7dMs": 60.0, "baseline60dMs": 55.0, "sdLnMs": 0.4, "validNights": 7 },
+  "restingHeartRate": { "average7dBpm": 56.0, "baseline30dBpm": 58.0 },
+  "signals": { "illnessOrInjury": false, "restingHeartRateElevatedTwoDays": false }
+}

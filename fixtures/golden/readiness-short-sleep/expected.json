@@ -1,0 +1,14 @@
+{
+  "scenarioId": "G-READY-04",
+  "score": 58,
+  "level": "AMBER",
+  "confidence": "HIGH",
+  "components": {
+    "SUBJECTIVE": 81,
+    "SLEEP": 20,
+    "HRV": 55,
+    "RESTING_HEART_RATE": 70
+  },
+  "missing": [],
+  "flags": ["NO_QUALITY", "SHORT_SLEEP"]
+}

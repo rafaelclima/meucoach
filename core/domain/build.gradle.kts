@@ -18,6 +18,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.assertj)
+    testImplementation(libs.json)
 }
 
 kover {
