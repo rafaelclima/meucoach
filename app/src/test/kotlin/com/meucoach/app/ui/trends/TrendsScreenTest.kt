@@ -10,7 +10,10 @@ import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import org.junit.Rule
 import org.junit.Test
@@ -75,6 +78,37 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("Como a carga acumulou"))
         compose.onNodeWithContentDescription("Gráfico de CTL e ATL dos últimos 42 dias")
             .assertExists()
+    }
+
+    @Test
+    fun `shows readiness history`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TrendsContent(
+                    state = TrendsUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        snapshot = snapshot(hasData = true),
+                    ),
+                    readinessHistory = listOf(
+                        ReadinessHistoryDay(
+                            date = LocalDate.of(2026, 10, 29),
+                            score = 48,
+                            level = ReadinessLevel.AMBER,
+                            confidence = DataConfidence.LOW,
+                            hasCheckIn = true,
+                        ),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Prontidão · 14 dias"))
+        compose.onNodeWithText("Prontidão · 14 dias").assertIsDisplayed()
+        list.performScrollToNode(hasText("48"))
+        compose.onNodeWithText("48").assertIsDisplayed()
+        compose.onNodeWithText("Âmbar").assertIsDisplayed()
     }
 
     private fun setContent(state: TrendsUiState) {

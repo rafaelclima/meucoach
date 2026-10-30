@@ -6,7 +6,7 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 460 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 73 em `core:data`, 166 em `:app`)
+- **Testes:** 468 testes, 0 falhas (27 em `core:model`, 199 em `core:domain`, 73 em `core:data`, 169 em `:app`)
 - **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -24,6 +24,7 @@
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões e sincronização de 30 dias pelo perfil.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
+- **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não.
 - **Plano semanal:** distribuição por disponibilidade, máximo 1 qualidade, longão 25–30% e sem progressão sem histórico.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
@@ -52,7 +53,7 @@
 ### Evidências
 
 - `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
-- 460 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 73 `core:data`, 166 `:app`).
+- 468 testes, 0 falhas (27 `core:model`, 199 `core:domain`, 73 `core:data`, 169 `:app`).
 
 ## Sessão 2026-10-30 — P1-05: recomendação diária (parcial)
 
@@ -136,11 +137,13 @@
   - Permissões de sono/RHR/HRV/SpO2 no manifest e rationale.
   - Card de status, autorização e sincronização no perfil.
   - `HealthConnectViewModel` com fake source nos testes.
+- Histórico de prontidão:
+  - `ReadinessHistoryCalculator` recompõe cada dia com dados até aquela data.
+  - Card "Prontidão · 14 dias" em Tendências.
 - Screenshots dark/light do check-in.
 
 ### Pendente
 
-- Histórico de prontidão e detalhamento por componente.
 - Validação do Health Connect em aparelho real (a leitura Android compila e a agregação tem testes, mas não há instrumentado no CI).
 - Hoje ainda usa treino e atividade de demonstração; a prescrição real vem no P1-05.
 

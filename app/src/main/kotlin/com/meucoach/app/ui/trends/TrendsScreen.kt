@@ -41,22 +41,39 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.core.designsystem.component.McCard
+import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McEmptyState
+import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.readiness.ReadinessHistoryDay
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun TrendsScreen(modifier: Modifier = Modifier, viewModel: TrendsViewModel = hiltViewModel()) {
+fun TrendsScreen(
+    modifier: Modifier = Modifier,
+    viewModel: TrendsViewModel = hiltViewModel(),
+    historyViewModel: ReadinessHistoryViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TrendsContent(state = state, modifier = modifier)
+    val history by historyViewModel.uiState.collectAsStateWithLifecycle()
+    TrendsContent(
+        state = state,
+        modifier = modifier,
+        readinessHistory = history.days,
+    )
 }
 
 @Composable
-internal fun TrendsContent(state: TrendsUiState, modifier: Modifier = Modifier) {
+internal fun TrendsContent(
+    state: TrendsUiState,
+    modifier: Modifier = Modifier,
+    readinessHistory: List<ReadinessHistoryDay> = emptyList(),
+) {
     val colors = McTheme.colors
     Box(
         modifier = modifier
@@ -87,13 +104,13 @@ internal fun TrendsContent(state: TrendsUiState, modifier: Modifier = Modifier) 
                 modifier = Modifier.align(Alignment.Center),
             )
 
-            else -> LoadDetails(snapshot = state.snapshot)
+            else -> LoadDetails(snapshot = state.snapshot, readinessHistory = readinessHistory)
         }
     }
 }
 
 @Composable
-private fun LoadDetails(snapshot: LoadSnapshot) {
+private fun LoadDetails(snapshot: LoadSnapshot, readinessHistory: List<ReadinessHistoryDay>) {
     val colors = McTheme.colors
     LazyColumn(
         modifier = Modifier
@@ -176,8 +193,58 @@ private fun LoadDetails(snapshot: LoadSnapshot) {
                 )
             }
         }
+        if (readinessHistory.isNotEmpty()) {
+            item { McSectionHeader(title = "Prontidão · 14 dias") }
+            item { ReadinessHistoryCard(readinessHistory) }
+        }
         item { McSectionHeader(title = "PMC · 42 dias") }
         item { PmcCard(snapshot) }
+    }
+}
+
+@Composable
+private fun ReadinessHistoryCard(days: List<ReadinessHistoryDay>) {
+    val colors = McTheme.colors
+    McCard {
+        days.forEachIndexed { index, day ->
+            if (index > 0) {
+                McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = day.date.format(DAY_FORMAT),
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.width(52.dp),
+                )
+                Text(
+                    text = day.score.toString(),
+                    style = McTextStyles.metricSmall,
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                McPill(
+                    text = when (day.level) {
+                        com.meucoach.core.model.ReadinessLevel.GREEN -> "Verde"
+                        com.meucoach.core.model.ReadinessLevel.AMBER -> "Âmbar"
+                        com.meucoach.core.model.ReadinessLevel.RED -> "Vermelho"
+                    },
+                    containerColor = when (day.level) {
+                        com.meucoach.core.model.ReadinessLevel.GREEN -> colors.success.copy(alpha = 0.12f)
+                        com.meucoach.core.model.ReadinessLevel.AMBER -> colors.warning.copy(alpha = 0.12f)
+                        com.meucoach.core.model.ReadinessLevel.RED -> colors.danger.copy(alpha = 0.12f)
+                    },
+                    contentColor = when (day.level) {
+                        com.meucoach.core.model.ReadinessLevel.GREEN -> colors.success
+                        com.meucoach.core.model.ReadinessLevel.AMBER -> colors.warning
+                        com.meucoach.core.model.ReadinessLevel.RED -> colors.danger
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -286,3 +353,4 @@ private fun formatOneDecimal(value: Double): String = String.format(PT_BR, "%.1f
 private fun formatTwoDecimals(value: Double): String = String.format(PT_BR, "%.2f", value)
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")
+private val DAY_FORMAT = DateTimeFormatter.ofPattern("dd/MM")
