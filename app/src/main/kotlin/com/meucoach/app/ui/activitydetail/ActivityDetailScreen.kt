@@ -99,6 +99,9 @@ internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> U
                         item { McSectionHeader(title = "Splits") }
                         item { SplitsCard(state.activity) }
                     }
+                    if (state.activity.imported.samples.any { it.latitude != null && it.longitude != null }) {
+                        item { ActivityRouteCard(samples = state.activity.imported.samples) }
+                    }
                     state.activity.sampleWarning?.let { warning ->
                         item { SampleWarningCard(warning) }
                     }
