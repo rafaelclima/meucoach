@@ -8,11 +8,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
+import com.meucoach.core.data.db.dao.AthleteProfileDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
+import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
@@ -24,6 +26,7 @@ import com.meucoach.core.data.db.entity.SampleBlobEntity
         SampleBlobEntity::class,
         ImportJobEntity::class,
         ActivityAlternateEntity::class,
+        AthleteProfileEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -39,8 +42,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun importJobDao(): ImportJobDao
 
+    abstract fun profileDao(): AthleteProfileDao
+
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
         const val NAME = "meucoach.db"
 
         /**
@@ -92,9 +97,45 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 4 adds the single local athlete profile. It has no foreign
+         * keys so it can be created safely on any existing install.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `athlete_profile` (
+                        `id` TEXT NOT NULL,
+                        `birthDate` TEXT NOT NULL,
+                        `sex` TEXT NOT NULL,
+                        `heightCm` REAL,
+                        `weightKg` REAL,
+                        `restingHeartRate` INTEGER,
+                        `maxHeartRateObserved` INTEGER,
+                        `lactateThresholdHeartRate` INTEGER,
+                        `thresholdPaceSecPerKm` INTEGER,
+                        `vdot` REAL,
+                        `experience` TEXT NOT NULL,
+                        `timezone` TEXT NOT NULL,
+                        `availabilityJson` TEXT NOT NULL,
+                        `goalJson` TEXT,
+                        `city` TEXT,
+                        `latitude` REAL,
+                        `longitude` REAL,
+                        `units` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 }

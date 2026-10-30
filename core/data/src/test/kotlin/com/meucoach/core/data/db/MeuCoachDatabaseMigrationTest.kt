@@ -7,7 +7,11 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
+import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.Experience
+import com.meucoach.core.model.Sex
+import com.meucoach.core.model.Units
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
@@ -31,7 +35,7 @@ class MeuCoachDatabaseMigrationTest {
         )
 
     @Test
-    fun `migration from 1 to 3 adds soft delete and alternates without losing data`() {
+    fun `migration from 1 to 4 adds soft delete, alternates and profile without losing data`() {
         runBlocking {
             helper
                 .createDatabase(databaseName, 1)
@@ -44,7 +48,11 @@ class MeuCoachDatabaseMigrationTest {
             val migrated =
                 Room
                     .databaseBuilder(context, MeuCoachDatabase::class.java, databaseName)
-                    .addMigrations(MeuCoachDatabase.MIGRATION_1_2, MeuCoachDatabase.MIGRATION_2_3)
+                    .addMigrations(
+                        MeuCoachDatabase.MIGRATION_1_2,
+                        MeuCoachDatabase.MIGRATION_2_3,
+                        MeuCoachDatabase.MIGRATION_3_4,
+                    )
                     .allowMainThreadQueries()
                     .build()
 
@@ -53,7 +61,8 @@ class MeuCoachDatabaseMigrationTest {
                 assertThat(activity).isNotNull()
                 assertThat(activity?.deletedAt).isNull()
                 assertThat(activity?.distanceM).isEqualTo(5_000.0)
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(3)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(4)
+                assertThat(migrated.profileDao().get()).isNull()
 
                 assertThat(migrated.activityDao().softDelete("legacy", 99L)).isEqualTo(1)
                 assertThat(migrated.activityDao().findByIdIncludingDeleted("legacy")?.deletedAt).isEqualTo(99L)
@@ -68,7 +77,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 2 to 3 creates alternates without losing data`() {
+    fun `migration from 2 to 4 creates alternates and profile without losing data`() {
         runBlocking {
             helper
                 .createDatabase(databaseName, 2)
@@ -81,7 +90,7 @@ class MeuCoachDatabaseMigrationTest {
             val migrated =
                 Room
                     .databaseBuilder(context, MeuCoachDatabase::class.java, databaseName)
-                    .addMigrations(MeuCoachDatabase.MIGRATION_2_3)
+                    .addMigrations(MeuCoachDatabase.MIGRATION_2_3, MeuCoachDatabase.MIGRATION_3_4)
                     .allowMainThreadQueries()
                     .build()
 
@@ -89,12 +98,37 @@ class MeuCoachDatabaseMigrationTest {
                 val activity = migrated.activityDao().findById("legacy")
                 assertThat(activity).isNotNull()
                 assertThat(activity?.deletedAt).isNull()
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(3)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(4)
                 assertThat(migrated.activityAlternateDao().getForActivity("legacy")).isEmpty()
 
                 migrated.activityAlternateDao().insert(alternate())
                 assertThat(migrated.activityAlternateDao().findBySha256("alternate-sha")?.source)
                     .isEqualTo(ActivitySource.TCX)
+            } finally {
+                migrated.close()
+                context.deleteDatabase(databaseName)
+            }
+        }
+    }
+
+    @Test
+    fun `migration from 3 to 4 creates the profile table`() {
+        runBlocking {
+            helper.createDatabase(databaseName, 3).close()
+
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val migrated =
+                Room
+                    .databaseBuilder(context, MeuCoachDatabase::class.java, databaseName)
+                    .addMigrations(MeuCoachDatabase.MIGRATION_3_4)
+                    .allowMainThreadQueries()
+                    .build()
+
+            try {
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(4)
+                assertThat(migrated.profileDao().get()).isNull()
+                migrated.profileDao().upsert(profile())
+                assertThat(migrated.profileDao().get()?.id).isEqualTo("athlete-1")
             } finally {
                 migrated.close()
                 context.deleteDatabase(databaseName)
@@ -127,6 +161,29 @@ class MeuCoachDatabaseMigrationTest {
             """.trimIndent(),
         )
     }
+
+    private fun profile() = AthleteProfileEntity(
+        id = "athlete-1",
+        birthDate = "1988-01-01",
+        sex = Sex.MALE,
+        heightCm = 174.0,
+        weightKg = 97.0,
+        restingHeartRate = 58,
+        maxHeartRateObserved = 187,
+        lactateThresholdHeartRate = null,
+        thresholdPaceSecPerKm = null,
+        vdot = null,
+        experience = Experience.BEGINNER,
+        timezone = "America/Sao_Paulo",
+        availabilityJson = "{}",
+        goalJson = null,
+        city = "Natal",
+        latitude = -5.79,
+        longitude = -35.21,
+        units = Units.METRIC,
+        createdAt = 1L,
+        updatedAt = 2L,
+    )
 
     private fun alternate() = ActivityAlternateEntity(
         id = "alternate-1",

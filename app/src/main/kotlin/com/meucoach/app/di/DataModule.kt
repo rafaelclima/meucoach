@@ -4,6 +4,7 @@ import android.content.Context
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.ProfileRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,6 +22,10 @@ object DataModule {
     @Provides
     @Singleton
     fun provideActivityRepository(database: MeuCoachDatabase): ActivityRepository = ActivityRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideProfileRepository(database: MeuCoachDatabase): ProfileRepository = ProfileRepository(database)
 
     @Provides
     @Singleton
