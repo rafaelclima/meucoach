@@ -293,7 +293,8 @@ segunda→domingo:
 - No máximo **1 qualidade** por semana, nunca em dia adjacente ao longão.
 - Qualidade só em dia verde, não iniciante, com ACWR entre 0,8 e 1,3.
 - Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
-- Fácil entre 20–60 min; qualidade entre 25–45 min.
+- Fácil entre 20–60 min; qualidade entre 25–45 min, como "Tempo" (intermediário) ou "Intervalos" (avançado).
+- Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Sem histórico de conclusão, **não há progressão** de volume.
 - Confiança do plano é limitada a média até existir histórico.
 

@@ -116,9 +116,9 @@ class WeeklyPlanGenerator {
                 day == qualityDay -> PlannedSession(
                     date = date,
                     type = WorkoutType.QUALITY,
-                    title = "Qualidade",
+                    title = qualityTitle(input.profile.experience),
                     durationMin = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN),
-                    rationale = "Uma sessão de qualidade na semana, em dia separado do longão.",
+                    rationale = qualityRationale(input.profile.experience),
                     ruleIds = listOf("R-PLAN-02", "R-PLAN-06"),
                     evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
                 )
@@ -156,12 +156,32 @@ class WeeklyPlanGenerator {
                 session
             }
         }
-        val weeklyMinutes = limitedLong.sumOf { it.durationMin ?: 0 }
-        val longMinutes = limitedLong.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
-        val qualityCount = limitedLong.count { it.type == WorkoutType.QUALITY }
+        val taper = taperFor(input.profile.goal, weekStart)
+        val adjusted = if (taper == null) {
+            limitedLong
+        } else {
+            limitedLong.map { session ->
+                if (session.type == WorkoutType.QUALITY || session.durationMin == null) {
+                    session
+                } else {
+                    session.copy(
+                        durationMin = maxOf(
+                            MIN_EASY_MIN,
+                            (session.durationMin * taper.factor).roundToInt(),
+                        ),
+                    )
+                }
+            }
+        }
+        val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
+        val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
+        val qualityCount = adjusted.count { it.type == WorkoutType.QUALITY }
         val confidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
         val rationale = buildString {
-            append("${limitedLong.size} dias, $weeklyMinutes min no total. ")
+            if (taper != null) {
+                append("Taper para a prova em ${taper.daysToRace} dias: volume reduzido. ")
+            }
+            append("${adjusted.size} dias, $weeklyMinutes min no total. ")
             if (qualityCount == 0) {
                 append("Sem qualidade: ")
                 append(
@@ -179,15 +199,49 @@ class WeeklyPlanGenerator {
         }
         return WeeklyPlan(
             weekStart = weekStart,
-            sessions = limitedLong,
+            sessions = adjusted,
             weeklyMinutes = weeklyMinutes,
             longRunMinutes = longMinutes,
             qualityCount = qualityCount,
             rationale = rationale,
             confidence = confidence,
-            ruleIds = listOf("R-PLAN-02", "R-PLAN-03", "R-PLAN-06"),
-            evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014", "EV-PFITZINGER-2008"),
+            ruleIds = buildList {
+                add("R-PLAN-02")
+                add("R-PLAN-03")
+                add("R-PLAN-06")
+                if (taper != null) add("R-PLAN-05")
+            },
+            evidenceIds = buildList {
+                add("EV-SEILER-2010")
+                add("EV-DANIELS-2014")
+                add("EV-PFITZINGER-2008")
+                if (taper != null) {
+                    add("EV-BOSQUET-2007")
+                    add("EV-MUJIKA-2003")
+                }
+            },
         )
+    }
+
+    private fun qualityTitle(experience: Experience): String = when (experience) {
+        Experience.ADVANCED -> "Intervalos"
+        else -> "Tempo"
+    }
+
+    private fun qualityRationale(experience: Experience): String = when (experience) {
+        Experience.ADVANCED -> "5×3 min em Z4–Z5 com 2 min de trote entre eles, em dia separado do longão."
+        else -> "20 min contínuos em Z3–Z4, com aquecimento e desaquecimento, em dia separado do longão."
+    }
+
+    private data class Taper(val factor: Double, val daysToRace: Long)
+
+    private fun taperFor(goal: com.meucoach.core.model.TrainingGoal?, weekStart: LocalDate): Taper? {
+        val target = goal?.targetDate ?: return null
+        val window = if (goal.type == com.meucoach.core.model.GoalType.MARATHON) 21 else 14
+        val days = java.time.temporal.ChronoUnit.DAYS.between(weekStart, target)
+        if (days !in 0..window.toLong()) return null
+        val factor = if (days <= 7) 0.45 else 0.55
+        return Taper(factor = factor, daysToRace = days)
     }
 
     private fun adjacentDays(a: DayOfWeek, b: DayOfWeek): Boolean {

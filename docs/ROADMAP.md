@@ -198,8 +198,9 @@
 - [x] Recomendação na tela Hoje com regra/evidência/confiança.
 - [x] Plano semanal conservador por disponibilidade, no máximo 1 qualidade.
 - [x] Plano persistido por semana (Room v7), sem reescrever com check-ins.
-- [ ] Blocos/periodização, progressão 5–8%, deload e taper.
-- [ ] Qualidade estruturada, calor e esteira.
+- [x] Taper por prova-alvo e qualidade nomeada por experiência.
+- [ ] Blocos/periodização, progressão 5–8% e deload.
+- [ ] Calor e esteira.
 - [ ] Histórico de conclusão e limite de 2 qualidades/semana.
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.

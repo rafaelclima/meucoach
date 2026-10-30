@@ -175,6 +175,109 @@ class WeeklyPlanGeneratorTest {
         assertThat(share).isBetween(0.25, 0.31)
     }
 
+    @Test
+    fun `reduces volume during taper`() {
+        val baseProfile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+        )
+        val baseline = generator.generate(input(profile = baseProfile, readiness = readiness(ReadinessLevel.GREEN)))
+        val taper = generator.generate(
+            input(
+                profile = baseProfile.copy(
+                    goal = com.meucoach.core.model.TrainingGoal(
+                        type = com.meucoach.core.model.GoalType.FIVE_K,
+                        targetDate = monday.plusDays(10),
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(taper.weeklyMinutes).isLessThan(baseline.weeklyMinutes)
+        assertThat(taper.rationale).contains("Taper")
+        assertThat(taper.ruleIds).contains("R-PLAN-05")
+        assertThat(taper.evidenceIds).contains("EV-BOSQUET-2007", "EV-MUJIKA-2003")
+    }
+
+    @Test
+    fun `applies a deeper cut on race week`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+        )
+        val tenDays = generator.generate(
+            input(
+                profile = profile.copy(
+                    goal = com.meucoach.core.model.TrainingGoal(
+                        type = com.meucoach.core.model.GoalType.FIVE_K,
+                        targetDate = monday.plusDays(10),
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+            ),
+        )
+        val raceWeek = generator.generate(
+            input(
+                profile = profile.copy(
+                    goal = com.meucoach.core.model.TrainingGoal(
+                        type = com.meucoach.core.model.GoalType.FIVE_K,
+                        targetDate = monday.plusDays(3),
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(raceWeek.weeklyMinutes).isLessThan(tenDays.weeklyMinutes)
+    }
+
+    @Test
+    fun `does not taper a distant race`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40),
+        ).copy(
+            goal = com.meucoach.core.model.TrainingGoal(
+                type = com.meucoach.core.model.GoalType.TEN_K,
+                targetDate = monday.plusDays(40),
+            ),
+        )
+
+        val plan = generator.generate(input(profile, readiness(ReadinessLevel.GREEN)))
+
+        assertThat(plan.rationale).doesNotContain("Taper")
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
+    }
+
+    @Test
+    fun `names quality sessions by experience`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val intermediate = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+        val advanced = generator.generate(
+            input(
+                profile = profile(Experience.ADVANCED, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        assertThat(intermediate.sessions.first { it.type == WorkoutType.QUALITY }.title)
+            .isEqualTo("Tempo")
+        assertThat(advanced.sessions.first { it.type == WorkoutType.QUALITY }.title)
+            .isEqualTo("Intervalos")
+    }
+
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
