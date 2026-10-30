@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 472 testes no repositório, 0 falhas (27 em `core:model`, 203 em `core:domain`, 73 em `core:data`, 169 em `:app`).
+- 484 testes no repositório, 0 falhas (27 em `core:model`, 203 em `core:domain`, 73 em `core:data`, 181 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -155,6 +155,10 @@ Evidência atual (30/10/2026):
 - `MeuCoachDatabaseMigrationTest`: 7→8 adiciona status da sessão sem perder o plano.
 - `ReadinessHistoryCalculatorTest`: replay por data, doença, confiança e lacunas.
 - `ReadinessHistoryViewModelTest` e `TrendsScreenTest`: histórico real e card de 14 dias.
+- `ReminderContentTest`: check-in, treino, status e delay diário.
+- `NotificationNavigationTest`: deep links e fila de navegação.
+- `ReminderNotifierTest`: canal e notificação postada.
+- `ReminderSchedulerTest`: dois trabalhos periódicos únicos com tag.
 
 ## 6. Testes de domínio
 
@@ -286,6 +290,18 @@ falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. 
 | `app`/features | ≥ 60% | Kover + UI tests (Fase 1) |
 
 Exclusões permitidas: código gerado, `data class` triviais, `MainActivity`, previews. Toda exclusão é justificada no build.
+
+## 11.1 Teste manual de notificações
+
+Em aparelho/emulador API 33+:
+
+1. Instalar o APK e aceitar a permissão de notificações.
+2. Abrir o app e confirmar o canal "Lembretes de treino" em Configurações → Apps → MeuCoach → Notificações.
+3. Com check-in pendente e um treino `PLANNED` para hoje, disparar os workers:
+   `adb shell cmd jobscheduler run -f com.meucoach.app <job-id>` ou aguardar 7h/18h.
+4. Tocar na notificação de treino: deve abrir Hoje.
+5. Tocar na notificação de check-in: deve abrir o check-in.
+6. Fazer o check-in e confirmar que o lembrete seguinte não aparece.
 
 ## 12. Definition of Done
 

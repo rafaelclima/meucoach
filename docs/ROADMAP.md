@@ -212,8 +212,9 @@
 - [x] Prontidão, treino recomendado e plano semanal reais.
 - [x] Carga (CTL/ATL/TSB), km por dia e última atividade do banco.
 - [x] Ações de concluir/pular sessão com motivo persistido.
+- [x] Notificações locais de check-in e treino com deep link.
 - [ ] Iniciar/trocar treino e histórico de conclusão para progressão.
-- [ ] Check-in com streak e notificações locais.
+- [ ] Check-in com streak.
 
 ### P1-07 · Tendências
 PMC, volume, 80/20, pace@FC, consistência, recordes. Filtros por período.

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.meucoach.app.reminder.NotificationNavigation
 import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
@@ -101,6 +103,12 @@ private fun MainApp() {
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+    val requestedRoute by NotificationNavigation.route.collectAsStateWithLifecycle()
+    LaunchedEffect(requestedRoute) {
+        val route = requestedRoute ?: return@LaunchedEffect
+        navController.navigate(route) { launchSingleTop = true }
+        NotificationNavigation.consume()
     }
 
     Scaffold(

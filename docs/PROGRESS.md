@@ -6,7 +6,7 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 472 testes, 0 falhas (27 em `core:model`, 203 em `core:domain`, 73 em `core:data`, 169 em `:app`)
+- **Testes:** 484 testes, 0 falhas (27 em `core:model`, 203 em `core:domain`, 73 em `core:data`, 181 em `:app`)
 - **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -30,31 +30,33 @@
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
+- **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 
-## Sessão 2026-10-30 — P1-06: Hoje com dados reais (parcial)
+## Sessão 2026-10-30 — P1-06: Hoje e notificações (parcial)
 
 ### Concluído
 
-- Tela Hoje lê do banco:
-  - prontidão (check-in + métricas), treino recomendado e plano semanal;
-  - CTL/ATL/TSB do motor de carga;
-  - km por dia, carga semanal e última atividade importada.
-- Sem nome inventado: saudação sem nome quando o perfil não tem `displayName`.
-- Sem clima falso: mostra apenas a cidade do perfil quando existir.
-- Screenshots dark/light da Hoje com plano e treino reais.
+- Notificações locais via WorkManager:
+  - Check-in diário às 18h, apenas se ainda não feito.
+  - Treino do dia às 7h, apenas se a sessão estiver `PLANNED` e não for descanso.
+  - Canal "Lembretes de treino" e permissão `POST_NOTIFICATIONS` no Android 13+.
+  - Toque abre Hoje ou check-in via `meucoach://today` e `meucoach://check-in`.
+  - Agendamento idempotente (`enqueueUniquePeriodicWork` com `UPDATE`).
+- Testes de conteúdo, delay, navegação, canal/notificação e agendamento.
+- Tela Hoje com dados reais e ações de concluir/pular.
 
 ### Pendente
 
 - Histórico de conclusão e progressão de 5–8% baseada nele.
-- Check-in com streak e notificações.
-- Blocos/periodização e qualidade estruturada (`P1-05`).
+- Check-in com streak.
+- Ações Iniciar/Trocar treino.
 
 ### Evidências
 
 - `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
-- 472 testes, 0 falhas (27 `core:model`, 203 `core:domain`, 73 `core:data`, 169 `:app`).
+- 484 testes, 0 falhas (27 `core:model`, 203 `core:domain`, 73 `core:data`, 181 `:app`).
 
 ## Sessão 2026-10-30 — P1-05: recomendação diária (parcial)
 
