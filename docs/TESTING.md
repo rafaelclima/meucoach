@@ -191,6 +191,14 @@ no expected quando o motor completo existir.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
+Screenshots atuais (Roborazzi + Robolectric Native Graphics):
+
+- `app/src/test/screenshots/activity-detail-dark.png`
+- `app/src/test/screenshots/activity-detail-light.png`
+
+`./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
+falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
+
 ## 9. Health Connect
 
 - Interface `HealthConnectSource` + fake para testes.

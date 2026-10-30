@@ -130,9 +130,9 @@
 ### P0-10 · Harness de testes
 
 - [x] Fixtures sanitizadas + scripts (`tools/sanitize_fit.py`, 4 FIT; `tools/sanitize_tcx.py`, 3 TCX) e GPX sintético.
-- [ ] Golden scenarios iniciais.
-- [ ] Robolectric/Roborazzi configurados.
-- [ ] CI com relatórios e artefatos.
+- [x] Golden scenarios iniciais (`G-LOAD-01`, `G-READY-01`…`04`).
+- [x] Robolectric + Compose UI e Roborazzi (dark/light do detalhe).
+- [x] CI com relatórios e artefatos.
 - [ ] `docs/PROGRESS.md` atualizado.
 
 **Aceite:** suíte roda em < 2 min local; CI bloqueia regressão.
