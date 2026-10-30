@@ -10,6 +10,7 @@ import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.AthleteProfileDao
 import com.meucoach.core.data.db.dao.DailyCheckInDao
+import com.meucoach.core.data.db.dao.DailyMetricsDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
@@ -17,6 +18,7 @@ import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
+import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
@@ -30,6 +32,7 @@ import com.meucoach.core.data.db.entity.SampleBlobEntity
         ActivityAlternateEntity::class,
         AthleteProfileEntity::class,
         DailyCheckInEntity::class,
+        DailyMetricsEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -49,8 +52,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun dailyCheckInDao(): DailyCheckInDao
 
+    abstract fun dailyMetricsDao(): DailyMetricsDao
+
     companion object {
-        const val VERSION = 5
+        const val VERSION = 6
         const val NAME = "meucoach.db"
 
         /**
@@ -161,9 +166,32 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 6 stores daily sleep, RHR, HRV and SpO2 from CSV/Health Connect.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `daily_metrics` (
+                        `date` TEXT NOT NULL,
+                        `sleepDurationMin` INTEGER,
+                        `restingHeartRate` REAL,
+                        `hrvRmssdMs` REAL,
+                        `spo2Avg` REAL,
+                        `source` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`date`)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
 }

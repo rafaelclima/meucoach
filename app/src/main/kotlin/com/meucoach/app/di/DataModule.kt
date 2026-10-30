@@ -5,6 +5,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import dagger.Module
 import dagger.Provides
@@ -31,6 +32,11 @@ object DataModule {
     @Provides
     @Singleton
     fun provideCheckInRepository(database: MeuCoachDatabase): CheckInRepository = CheckInRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideDailyMetricsRepository(database: MeuCoachDatabase): DailyMetricsRepository =
+        DailyMetricsRepository(database)
 
     @Provides
     @Singleton
