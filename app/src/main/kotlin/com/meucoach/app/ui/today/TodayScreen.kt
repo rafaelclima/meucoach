@@ -65,6 +65,7 @@ fun TodayScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
+            .background(McTheme.colors.background)
             .statusBarsPadding()
             .testTag("today-list"),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 28.dp),
@@ -109,21 +110,31 @@ private fun Greeting(state: TodayUiState) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${state.greeting}, ${state.athleteName}",
+                text = if (state.athleteName.isBlank()) {
+                    state.greeting
+                } else {
+                    "${state.greeting}, ${state.athleteName}"
+                },
                 style = MaterialTheme.typography.headlineLarge,
                 color = colors.textPrimary,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.WbSunny,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = colors.warning,
-                )
-                Spacer(modifier = Modifier.width(5.dp))
+                if (state.weather.isNotBlank()) {
+                    Icon(
+                        imageVector = Icons.Outlined.WbSunny,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = colors.warning,
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                }
                 Text(
-                    text = "${state.dateLine} · ${state.weather}",
+                    text = if (state.weather.isBlank()) {
+                        state.dateLine
+                    } else {
+                        "${state.dateLine} · ${state.weather}"
+                    },
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
@@ -138,7 +149,7 @@ private fun Greeting(state: TodayUiState) {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = state.athleteName.take(1).uppercase(Locale.forLanguageTag("pt-BR")),
+                text = state.athleteName.take(1).ifBlank { "M" }.uppercase(Locale.forLanguageTag("pt-BR")),
                 style = MaterialTheme.typography.titleLarge,
                 color = colors.accentText,
             )

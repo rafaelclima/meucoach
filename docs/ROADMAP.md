@@ -204,7 +204,14 @@
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.
 
 ### P1-06 · Tela Hoje
-Prontidão, treino, carga, check-in, última atividade. Ações: iniciar, trocar, concluir, pular com motivo.
+
+**Status:** em andamento — dados reais concluídos em 30/10/2026
+
+- [x] Prontidão, treino recomendado e plano semanal reais.
+- [x] Carga (CTL/ATL/TSB), km por dia e última atividade do banco.
+- [ ] Ações: iniciar, trocar, concluir, pular com motivo.
+- [ ] Histórico de conclusão e check-in com streak.
+- [ ] Notificações locais de treino e check-in.
 
 ### P1-07 · Tendências
 PMC, volume, 80/20, pace@FC, consistência, recordes. Filtros por período.

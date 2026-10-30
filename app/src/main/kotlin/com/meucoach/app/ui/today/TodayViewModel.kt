@@ -7,6 +7,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.ui.activities.formatDateTime
+import com.meucoach.app.ui.activities.formatDistance
+import com.meucoach.app.ui.activities.formatDuration
+import com.meucoach.app.ui.activities.paceLabel
+import com.meucoach.app.ui.activities.sportLabel
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
@@ -56,6 +61,27 @@ class TodayViewModel @Inject constructor(
     ) { checkIn, metrics, profile, activities ->
         val today = LocalDate.now()
         val load = profile?.let { buildLoad(activities, it, today) }
+        val zone = profile?.let { runCatching { java.time.ZoneId.of(it.timezone) }.getOrNull() }
+            ?: java.time.ZoneId.systemDefault()
+        val weekStart = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        val weekKm = activities
+            .filter {
+                val date = it.startTime.atZone(zone).toLocalDate()
+                !date.isBefore(weekStart) && !date.isAfter(weekStart.plusDays(6))
+            }
+            .sumOf { it.distance.kilometers }
+        val kmByDay = activities.groupBy { it.startTime.atZone(zone).toLocalDate() }
+            .mapValues { (_, rows) -> rows.sumOf { it.distance.kilometers } }
+        val recent = activities.maxByOrNull { it.startTime }?.let { summary ->
+            RecentActivityUi(
+                title = sportLabel(summary.sport),
+                subtitle = formatDateTime(summary.startTime, zone),
+                distance = "${formatDistance(summary.distance)} km",
+                duration = formatDuration(summary.durationSec),
+                pace = summary.averagePace?.let { "${paceLabel(it)} /km" } ?: "—",
+                zone = "—",
+            )
+        }
         todayState(
             checkIn = checkIn,
             metrics = metrics,
@@ -72,6 +98,9 @@ class TodayViewModel @Inject constructor(
                     ),
                 )
             },
+            kmByDay = kmByDay,
+            weeklyLoadKm = weekKm,
+            recentActivity = recent,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -144,6 +173,9 @@ internal fun todayState(
     load: LoadSnapshot? = null,
     today: LocalDate = LocalDate.now(),
     plan: WeeklyPlan? = null,
+    kmByDay: Map<LocalDate, Double> = emptyMap(),
+    weeklyLoadKm: Double? = null,
+    recentActivity: RecentActivityUi? = null,
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
     val signals = inputs.signals.copy(
@@ -158,6 +190,16 @@ internal fun todayState(
     )
     val warning = result.level != com.meucoach.core.model.ReadinessLevel.GREEN
     val base = demoTodayUiState(today)
+    val weekStart = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+    val dayLabels = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
+    val days = (0..6).map { offset ->
+        val date = weekStart.plusDays(offset.toLong())
+        DayLoadUi(
+            label = dayLabels[offset],
+            loadKm = kmByDay[date] ?: 0.0,
+            isToday = date == today,
+        )
+    }
     val recommendation = profile?.let {
         WorkoutRecommender().recommend(
             PrescriptionInput(
@@ -184,6 +226,11 @@ internal fun todayState(
         tsb = load?.tsb?.roundToInt() ?: base.tsb,
         hasCheckedIn = checkIn != null,
         plan = plan,
+        days = if (kmByDay.isEmpty() && weeklyLoadKm == null) base.days else days,
+        weeklyLoadKm = weeklyLoadKm ?: base.weeklyLoadKm,
+        recentActivity = recentActivity ?: base.recentActivity,
+        athleteName = if (profile == null) base.athleteName else "",
+        weather = profile?.city ?: "",
     )
 }
 
@@ -209,7 +256,7 @@ private fun buildSignals(
         add(
             ReadinessSignalUi(
                 label = "Sono",
-                value = formatDuration(sleep.durationMin),
+                value = formatSleepDuration(sleep.durationMin),
                 hint = if (sleep.durationMin < 360) "abaixo de 6 h" else "ok",
                 tone = if (sleep.durationMin < 360) SignalTone.WARNING else SignalTone.NEUTRAL,
             ),
@@ -271,7 +318,7 @@ private fun buildSignals(
     }
 }
 
-private fun formatDuration(minutes: Int): String {
+private fun formatSleepDuration(minutes: Int): String {
     val hours = minutes / 60
     val rest = minutes % 60
     return if (hours > 0) "${hours}h${rest.toString().padStart(2, '0')}" else "${rest}min"

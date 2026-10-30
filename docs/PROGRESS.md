@@ -6,7 +6,7 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 447 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 160 em `:app`)
+- **Testes:** 450 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 163 em `:app`)
 - **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -26,7 +26,32 @@
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não.
 - **Plano semanal:** distribuição por disponibilidade, máximo 1 qualidade, longão 25–30% e sem progressão sem histórico.
+- **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P1-06: Hoje com dados reais (parcial)
+
+### Concluído
+
+- Tela Hoje lê do banco:
+  - prontidão (check-in + métricas), treino recomendado e plano semanal;
+  - CTL/ATL/TSB do motor de carga;
+  - km por dia, carga semanal e última atividade importada.
+- Sem nome inventado: saudação sem nome quando o perfil não tem `displayName`.
+- Sem clima falso: mostra apenas a cidade do perfil quando existir.
+- Screenshots dark/light da Hoje com plano e treino reais.
+
+### Pendente
+
+- Ações Iniciar/Trocar/Concluir/Pular com motivo.
+- Histórico de conclusão e progressão de plano.
+- Check-in pendente com streak e notificações.
+- Blocos/periodização e qualidade estruturada (`P1-05`).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
+- 450 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 66 `core:data`, 163 `:app`).
 
 ## Sessão 2026-10-30 — P1-05: recomendação diária (parcial)
 

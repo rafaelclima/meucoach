@@ -103,6 +103,32 @@ class TodayViewModelTest {
     }
 
     @Test
+    fun `carries real activity stats into the state`() {
+        val recent = RecentActivityUi(
+            title = "Corrida",
+            subtitle = "sexta, 30 out",
+            distance = "5,00 km",
+            duration = "30:00",
+            pace = "6:00 /km",
+            zone = "—",
+        )
+
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile(),
+            today = today,
+            kmByDay = mapOf(today to 5.0),
+            weeklyLoadKm = 5.0,
+            recentActivity = recent,
+        )
+
+        assertThat(state.weeklyLoadKm).isEqualTo(5.0)
+        assertThat(state.days.first { it.isToday }.loadKm).isEqualTo(5.0)
+        assertThat(state.recentActivity.title).isEqualTo("Corrida")
+        assertThat(state.athleteName).isEmpty()
+    }
+
+    @Test
     fun `carries the weekly plan into the state`() {
         val profile = profile()
         val readiness = readinessResult(checkIn(), emptyList(), today)
