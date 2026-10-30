@@ -6,12 +6,15 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -80,4 +83,72 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("Sem progressão até existir histórico."))
         compose.onNodeWithText("Sem progressão até existir histórico.").assertIsDisplayed()
     }
+
+    @Test
+    fun `completes today's session`() {
+        val today = LocalDate.now()
+        var completed: LocalDate? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = planWith(today)),
+                    onCompleteSession = { completed = it },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Concluir"))
+        compose.onNodeWithText("Concluir").performClick()
+
+        assertThat(completed).isEqualTo(today)
+    }
+
+    @Test
+    fun `shows a completed session`() {
+        val today = LocalDate.now()
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today).let { plan ->
+                            plan.copy(
+                                sessions = plan.sessions.map {
+                                    it.copy(status = SessionStatus.DONE)
+                                },
+                            )
+                        },
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Feito"))
+        compose.onNodeWithText("Feito").assertIsDisplayed()
+    }
+
+    private fun planWith(date: LocalDate) = WeeklyPlan(
+        weekStart = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)),
+        sessions = listOf(
+            PlannedSession(
+                date = date,
+                type = WorkoutType.EASY,
+                title = "Fácil em Z2",
+                durationMin = 40,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        ),
+        weeklyMinutes = 40,
+        longRunMinutes = null,
+        qualityCount = 0,
+        rationale = "Sem progressão.",
+        confidence = DataConfidence.MEDIUM,
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+    )
 }

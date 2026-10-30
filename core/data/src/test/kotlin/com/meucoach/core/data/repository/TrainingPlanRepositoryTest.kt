@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
@@ -65,6 +66,26 @@ class TrainingPlanRepositoryTest {
         assertThat(stored?.sessions).hasSize(1)
         assertThat(stored?.sessions?.single()?.durationMin).isEqualTo(30)
         assertThat(stored?.weeklyMinutes).isEqualTo(30)
+    }
+
+    @Test
+    fun `updates session status and skip reason`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+
+        assertThat(repository.updateStatus(monday, monday, SessionStatus.DONE)).isTrue()
+        assertThat(repository.getWeek(monday)?.sessions?.first()?.status).isEqualTo(SessionStatus.DONE)
+
+        assertThat(
+            repository.updateStatus(
+                monday,
+                monday.plusDays(5),
+                SessionStatus.SKIPPED,
+                skipReason = "dor no joelho",
+            ),
+        ).isTrue()
+        val skipped = repository.getWeek(monday)?.sessions?.last()
+        assertThat(skipped?.status).isEqualTo(SessionStatus.SKIPPED)
+        assertThat(skipped?.skipReason).isEqualTo("dor no joelho")
     }
 
     @Test

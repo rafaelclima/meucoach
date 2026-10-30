@@ -21,6 +21,7 @@ import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.PrescriptionInput
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
@@ -57,13 +59,16 @@ class TodayViewModel @Inject constructor(
     private val engine = TrainingLoadEngine()
     private val recommender = WorkoutRecommender()
     private val planGenerator = WeeklyPlanGenerator()
+    private val currentWeekStart = LocalDate.now()
+        .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
 
     val uiState: StateFlow<TodayUiState> = combine(
         checkInRepository.observe(LocalDate.now()),
         metricsRepository.observeAll(),
         profileRepository.observeProfile(),
         activityRepository.observeActivitySummaries(),
-    ) { checkIn, metrics, profile, activities ->
+        planRepository.observeWeek(currentWeekStart),
+    ) { checkIn, metrics, profile, activities, storedPlan ->
         val today = LocalDate.now()
         val load = profile?.let { buildLoad(activities, it, today) }
         val zone = profile?.let { runCatching { java.time.ZoneId.of(it.timezone) }.getOrNull() }
@@ -93,7 +98,7 @@ class TodayViewModel @Inject constructor(
             profile = profile,
             load = load,
             today = today,
-            plan = profile?.let {
+            plan = storedPlan ?: profile?.let {
                 planGenerator.generate(
                     WeeklyPlanInput(
                         profile = it,
@@ -123,6 +128,23 @@ class TodayViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             initialValue = todayState(null, emptyList()),
         )
+
+    fun completeSession(date: LocalDate) {
+        viewModelScope.launch {
+            planRepository.updateStatus(currentWeekStart, date, SessionStatus.DONE)
+        }
+    }
+
+    fun skipSession(date: LocalDate, reason: String) {
+        viewModelScope.launch {
+            planRepository.updateStatus(
+                weekStart = currentWeekStart,
+                date = date,
+                status = SessionStatus.SKIPPED,
+                skipReason = reason.trim().ifBlank { null },
+            )
+        }
+    }
 
     private fun buildLoad(activities: List<ActivitySummary>, profile: AthleteProfile, today: LocalDate): LoadSnapshot {
         val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
@@ -177,6 +199,8 @@ fun TodayRoute(
         modifier = modifier,
         state = state,
         onCheckInClick = onCheckInClick,
+        onCompleteSession = viewModel::completeSession,
+        onSkipSession = viewModel::skipSession,
     )
 }
 

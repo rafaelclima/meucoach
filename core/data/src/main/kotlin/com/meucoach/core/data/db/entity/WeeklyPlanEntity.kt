@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import java.time.LocalDate
@@ -43,6 +44,9 @@ data class PlannedSessionEntity(
     val rationale: String,
     val ruleIdsJson: String,
     val evidenceIdsJson: String,
+    val status: SessionStatus,
+    val skipReason: String?,
+    val completedAt: Long?,
 )
 
 fun plannedSessionId(weekStart: LocalDate, date: LocalDate): String = "$weekStart-$date"

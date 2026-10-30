@@ -34,4 +34,10 @@ interface TrainingPlanDao {
 
     @Query("DELETE FROM weekly_plans WHERE weekStart = :weekStart")
     suspend fun deletePlan(weekStart: String): Int
+
+    @Query(
+        "UPDATE planned_sessions SET status = :status, skipReason = :skipReason, " +
+            "completedAt = :completedAt WHERE id = :id",
+    )
+    suspend fun updateStatus(id: String, status: String, skipReason: String?, completedAt: Long?): Int
 }

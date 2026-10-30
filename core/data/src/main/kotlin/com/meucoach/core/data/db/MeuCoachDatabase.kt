@@ -62,7 +62,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun trainingPlanDao(): TrainingPlanDao
 
     companion object {
-        const val VERSION = 7
+        const val VERSION = 8
         const val NAME = "meucoach.db"
 
         /**
@@ -246,6 +246,19 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 8 records the completion state of each planned session.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `planned_sessions` ADD COLUMN `status` TEXT NOT NULL DEFAULT 'PLANNED'",
+                )
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `skipReason` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `completedAt` INTEGER")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -255,6 +268,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_4_5,
                 MIGRATION_5_6,
                 MIGRATION_6_7,
+                MIGRATION_7_8,
             )
             .build()
     }

@@ -12,6 +12,12 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import kotlin.math.roundToInt
 
+enum class SessionStatus {
+    PLANNED,
+    DONE,
+    SKIPPED,
+}
+
 data class PlannedSession(
     val date: LocalDate,
     val type: WorkoutType,
@@ -20,6 +26,8 @@ data class PlannedSession(
     val rationale: String,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    val status: SessionStatus = SessionStatus.PLANNED,
+    val skipReason: String? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Session title must not be blank" }

@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 456 testes no repositório, 0 falhas (27 em `core:model`, 194 em `core:domain`, 71 em `core:data`, 164 em `:app`).
+- 460 testes no repositório, 0 falhas (27 em `core:model`, 194 em `core:domain`, 73 em `core:data`, 166 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -151,7 +151,8 @@ Evidência atual (30/10/2026):
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino e plano.
-- `TrainingPlanRepositoryTest`: round-trip da semana, substituição de sessões, exclusão e semana vazia.
+- `TrainingPlanRepositoryTest`: round-trip da semana, substituição de sessões, status/motivo, exclusão e semana vazia.
+- `MeuCoachDatabaseMigrationTest`: 7→8 adiciona status da sessão sem perder o plano.
 
 ## 6. Testes de domínio
 

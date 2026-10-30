@@ -6,6 +6,7 @@ import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -54,10 +55,25 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                     rationale = session.rationale,
                     ruleIdsJson = session.ruleIds.toJson(),
                     evidenceIdsJson = session.evidenceIds.toJson(),
+                    status = session.status,
+                    skipReason = session.skipReason,
+                    completedAt = if (session.status == SessionStatus.DONE) clock.millis() else null,
                 )
             },
         )
     }
+
+    suspend fun updateStatus(
+        weekStart: LocalDate,
+        date: LocalDate,
+        status: SessionStatus,
+        skipReason: String? = null,
+    ): Boolean = dao.updateStatus(
+        id = plannedSessionId(weekStart, date),
+        status = status.name,
+        skipReason = skipReason,
+        completedAt = if (status == SessionStatus.DONE) clock.millis() else null,
+    ) > 0
 
     suspend fun deleteWeek(weekStart: LocalDate): Int = database.withTransaction {
         dao.deleteSessions(weekStart.toString())
@@ -84,6 +100,8 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         rationale = rationale,
         ruleIds = ruleIdsJson.toList(),
         evidenceIds = evidenceIdsJson.toList(),
+        status = status,
+        skipReason = skipReason,
     )
 
     private fun List<String>.toJson(): String = JSONArray(this).toString()

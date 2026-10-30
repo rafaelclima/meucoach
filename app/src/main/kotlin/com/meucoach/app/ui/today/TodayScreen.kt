@@ -29,6 +29,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +65,8 @@ fun TodayScreen(
     modifier: Modifier = Modifier,
     state: TodayUiState = demoTodayUiState(),
     onCheckInClick: () -> Unit = {},
+    onCompleteSession: (LocalDate) -> Unit = {},
+    onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
 ) {
     LazyColumn(
         modifier = modifier
@@ -81,7 +87,13 @@ fun TodayScreen(
             )
         }
         state.plan?.let { plan ->
-            item { PlanWeekCard(plan) }
+            item {
+                PlanWeekCard(
+                    plan = plan,
+                    onComplete = onCompleteSession,
+                    onSkip = onSkipSession,
+                )
+            }
         }
         item {
             WeeklyLoadCard(
@@ -508,8 +520,14 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
 }
 
 @Composable
-private fun PlanWeekCard(plan: com.meucoach.core.domain.prescription.WeeklyPlan) {
+private fun PlanWeekCard(
+    plan: com.meucoach.core.domain.prescription.WeeklyPlan,
+    onComplete: (LocalDate) -> Unit,
+    onSkip: (LocalDate, String) -> Unit,
+) {
     val colors = McTheme.colors
+    var skipTarget by remember { mutableStateOf<LocalDate?>(null) }
+    var skipReason by remember { mutableStateOf("") }
     McCard(variant = McCardVariant.INSET) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -557,8 +575,51 @@ private fun PlanWeekCard(plan: com.meucoach.core.domain.prescription.WeeklyPlan)
                         style = McTextStyles.caption,
                         color = colors.textSecondary,
                     )
+                    session.skipReason?.let { reason ->
+                        Text(
+                            text = "Motivo: $reason",
+                            style = McTextStyles.caption,
+                            color = colors.warning,
+                        )
+                    }
                 }
-                McPill(text = planTypeLabel(session.type))
+                val statusLabel = when (session.status) {
+                    com.meucoach.core.domain.prescription.SessionStatus.DONE -> "Feito"
+                    com.meucoach.core.domain.prescription.SessionStatus.SKIPPED -> "Pulado"
+                    com.meucoach.core.domain.prescription.SessionStatus.PLANNED -> planTypeLabel(session.type)
+                }
+                val statusColor = when (session.status) {
+                    com.meucoach.core.domain.prescription.SessionStatus.DONE -> colors.success
+                    com.meucoach.core.domain.prescription.SessionStatus.SKIPPED -> colors.warning
+                    com.meucoach.core.domain.prescription.SessionStatus.PLANNED -> colors.textSecondary
+                }
+                McPill(
+                    text = statusLabel,
+                    containerColor = statusColor.copy(alpha = 0.12f),
+                    contentColor = statusColor,
+                )
+            }
+            if (session.date == LocalDate.now() &&
+                session.status == com.meucoach.core.domain.prescription.SessionStatus.PLANNED
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    McTextButton(
+                        text = "Pular",
+                        onClick = {
+                            skipTarget = session.date
+                            skipReason = ""
+                        },
+                        trailingArrow = false,
+                    )
+                    McTextButton(
+                        text = "Concluir",
+                        onClick = { onComplete(session.date) },
+                        trailingArrow = false,
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -566,6 +627,42 @@ private fun PlanWeekCard(plan: com.meucoach.core.domain.prescription.WeeklyPlan)
             text = plan.rationale,
             style = McTextStyles.caption,
             color = colors.textTertiary,
+        )
+    }
+
+    skipTarget?.let { date ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { skipTarget = null },
+            title = { Text(text = "Pular treino") },
+            text = {
+                Column {
+                    Text(text = "Conte rapidamente o motivo. Isso ajuda o coach a ajustar a semana.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.OutlinedTextField(
+                        value = skipReason,
+                        onValueChange = { skipReason = it },
+                        label = { Text(text = "Motivo (opcional)") },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                McTextButton(
+                    text = "Pular",
+                    onClick = {
+                        onSkip(date, skipReason)
+                        skipTarget = null
+                    },
+                    trailingArrow = false,
+                )
+            },
+            dismissButton = {
+                McTextButton(
+                    text = "Cancelar",
+                    onClick = { skipTarget = null },
+                    trailingArrow = false,
+                )
+            },
         )
     }
 }
