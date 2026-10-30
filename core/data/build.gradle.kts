@@ -19,6 +19,10 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+
+    sourceSets {
+        getByName("test").assets.directories.add("$projectDir/schemas")
+    }
 }
 
 ksp {
