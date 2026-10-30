@@ -2,6 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.data.repository.StoredAlternate
+import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
@@ -61,6 +62,39 @@ class ActivityDetailFormattersTest {
     fun `formats distance with brazilian separator`() {
         assertThat(formatDistanceMeters(5_106.0)).isEqualTo("5,11")
     }
+
+    @Test
+    fun `uses the lap pace from the file when present`() {
+        val lap = lap(durationSec = 300, distanceM = 1_000.0)
+            .copy(averagePace = Pace.fromSecondsPerKm(310))
+
+        assertThat(lapPace(lap)).isEqualTo(Pace.fromSecondsPerKm(310))
+    }
+
+    @Test
+    fun `derives lap pace from lap time and distance`() {
+        val lap = lap(durationSec = 330, distanceM = 1_000.0)
+
+        assertThat(lapPace(lap)).isEqualTo(Pace.fromSecondsPerKm(330))
+    }
+
+    @Test
+    fun `returns null lap pace without valid distance or duration`() {
+        assertThat(lapPace(lap(durationSec = 0, distanceM = 1_000.0))).isNull()
+        assertThat(lapPace(lap(durationSec = 300, distanceM = 0.0))).isNull()
+    }
+
+    @Test
+    fun `labels lap distance`() {
+        assertThat(lapDistanceLabel(lap(durationSec = 300, distanceM = 1_000.0))).isEqualTo("1,00 km")
+        assertThat(lapDistanceLabel(lap(durationSec = 300, distanceM = 600.0))).isEqualTo("0,60 km")
+    }
+
+    private fun lap(durationSec: Int, distanceM: Double) = ActivityLap(
+        index = 0,
+        durationSec = durationSec,
+        distanceM = distanceM,
+    )
 
     private fun storedActivity(source: ActivitySource, alternates: List<ActivitySource>) = StoredActivity(
         id = "activity-1",

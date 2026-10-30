@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -38,8 +39,10 @@ import com.meucoach.app.ui.activities.sportLabel
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
+import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McEmptyState
 import com.meucoach.core.designsystem.component.McPill
+import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
@@ -89,6 +92,10 @@ internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> U
                 state.activity != null -> {
                     item { HeroCard(state.activity) }
                     item { MetricsCard(state.activity) }
+                    if (state.activity.imported.laps.isNotEmpty()) {
+                        item { McSectionHeader(title = "Splits") }
+                        item { SplitsCard(state.activity) }
+                    }
                     state.activity.sampleWarning?.let { warning ->
                         item { SampleWarningCard(warning) }
                     }
@@ -206,6 +213,87 @@ private fun MetricsCard(activity: StoredActivity) {
                     )
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SplitsCard(activity: StoredActivity) {
+    val colors = McTheme.colors
+    val laps = activity.imported.laps
+    McCard {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "SPLIT",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+                modifier = Modifier.weight(1.4f),
+            )
+            Text(
+                text = "PACE",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "TEMPO",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "FC",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(0.8f),
+            )
+        }
+        laps.forEachIndexed { index, lap ->
+            if (index > 0) {
+                Spacer(modifier = Modifier.height(10.dp))
+                McDivider()
+                Spacer(modifier = Modifier.height(10.dp))
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1.4f)) {
+                    Text(
+                        text = "#${lap.index + 1}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = lapDistanceLabel(lap),
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                }
+                Text(
+                    text = paceLabel(lapPace(lap)),
+                    style = McTextStyles.metricSmall,
+                    color = colors.textPrimary,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = formatDuration(lap.durationSec),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = lap.averageHeartRate?.toString() ?: "—",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(0.8f),
+                )
             }
         }
     }
