@@ -119,8 +119,8 @@ TCX e GPX foram implementados em `core/domain/.../parser/tcx/` e `.../parser/gpx
 - Chave primária: `sha256(bytes)` para o arquivo.
 - Chave de atividade: `startTimeUtc` (tolerância de ±1 s) + `sport` + `durationSec` (tolerância de ±2 s) + `distanceM` (tolerância de ±1%, mínimo 1 m).
 - Implementação atual: `ActivityDeduplicator` em `core/domain/.../importer/`; a chave exata `keyOf` fica disponível para diagnóstico.
-- `ActivityRepository` já aplica dedup exata por SHA-256 no salvamento e retorna `Duplicate` sem inserir.
-- A dedup por chave de atividade e a anexação de `alternates` serão ligadas ao fluxo de importação no P0-08.
+- `ActivityRepository` aplica dedup exata por SHA-256 e dedup por chave de atividade no fluxo real de importação.
+- A dedup por chave de atividade anexa `alternates`; `ActivitySummary.sources` expõe todos os formatos que contribuíram.
 - Se a mesma atividade vier em FIT + TCX + GPX, manter **FIT** (maior riqueza) e anexar os demais como `alternates`.
 - Se um arquivo já importado for reprocessado com parser mais novo, permitir `reparse` sem perder IDs de referência.
 
@@ -158,6 +158,7 @@ data class EngineOutput(
 | `PrescriptionEngine` | perfil, objetivo, carga, prontidão, plano | sessão do dia + rationale + regras |
 | `PlanEngine` | objetivo, disponibilidade, histórico | plano semanal/bloco, taper |
 | `ExplanationEngine` | recomendação + evidências | texto pt-BR + regras citadas |
+| `ActivityInsightsCalculator` | laps da atividade | insights com `ruleId`, evidência, confiança e tom |
 
 ### 6.2 Versionamento do motor
 
@@ -169,15 +170,16 @@ data class EngineOutput(
 
 - **Room/SQLite** como fonte de verdade local.
 - `:core:data` implementa:
-  - `MeuCoachDatabase` v2 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity` e `ImportJobEntity`.
+  - `MeuCoachDatabase` v3 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity` e `ActivityAlternateEntity`.
   - DAOs separados e `ActivityRepository` como fronteira para o restante do app.
   - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda.
   - UUID v7 gerado no cliente para IDs ordenáveis.
+  - Importação por `ImportService` + fila `WorkManager`; arquivos são copiados para storage privado antes do processamento.
 - Atividade, laps e blob são gravados na mesma transação; a lista usa `ActivitySummary` e o detalhe abre `StoredActivity`.
 - Exclusão padrão é lógica (`deletedAt`); exclusão permanente usa cascata e remove laps/blob. O export JSON básico inclui a lixeira.
 - Arquivos originais em storage privado do app, referenciados por hash.
 - `DataStore` apenas para preferências (tema, unidades, onboarding).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`.
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt` e `MIGRATION_2_3` cria `activity_alternates`.
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect

@@ -85,10 +85,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 214 testes no repositório, 0 falhas (15 em `core:model`, 120 em `core:domain`, 44 em `core:data`, 35 em `:app`).
+- 256 testes no repositório, 0 falhas (17 em `core:model`, 129 em `core:domain`, 46 em `core:data`, 64 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 98,91% de linhas, 86,12% de branches, 96,79% de instruções.
+- `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -102,6 +102,17 @@ Evidência atual (30/10/2026):
 - `UuidV7Test`: versão 7, variante RFC e determinismo com clock/random fixos.
 - Schemas exportados em `core/data/schemas/` são assets dos testes; sem `fallbackToDestructiveMigration`.
 - Comando: `./gradlew :core:data:testDebugUnitTest`.
+
+## 5.2 Testes de importação e detalhe
+
+- `ImportServiceTest`: FIT/TCX/GPX, hash exato, substituição e alternates.
+- `RealFixturesDetailTest`: importa e abre os 4 FIT + 3 TCX reais sanitizados; valida resumo, laps, samples e ausência de `sampleWarning` (TCX confere distância, duração e cadência).
+- `ActivityInsightsCalculatorTest`: `R-ACT-01` (negative split, ritmo constante, queda), `R-ACT-02` (drift e limites) e ausência de dados.
+- `ActivityDetailViewModelTest`: carregamento, atividade ausente e id obrigatório.
+- `ActivityChartDataTest`: pace derivado de velocidade, downsampling, faixas de FC e entradas inválidas.
+- `RouteDataTest`: projeção normalizada, norte para cima, downsampling e ausência de GPS.
+- `ActivityDetailScreenTest` (Robolectric + Compose UI): loading, não encontrado, seções com scroll e tema claro; valida descrição de acessibilidade do gráfico.
+- `ActivityDetailFormattersTest`: distância, metas de lap, faixas do gráfico, confiança e fontes.
 
 ## 6. Testes de domínio
 

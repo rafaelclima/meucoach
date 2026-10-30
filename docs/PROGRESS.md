@@ -6,8 +6,8 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 214 testes, 0 falhas (15 em `core:model`, 120 em `core:domain`, 44 em `core:data`, 35 em `:app`)
-- **Cobertura `core:domain`:** 98,91% de linhas (1.182/1.195), 86,12% de branches (1.143/1.327), 96,79% de instruções (9.589/9.907)
+- **Testes:** 256 testes, 0 falhas (17 em `core:model`, 129 em `core:domain`, 46 em `core:data`, 64 em `:app`)
+- **Cobertura `core:domain`:** 98,82% de linhas (1.261/1.276), 85,90% de branches (1.170/1.362), 96,88% de instruções (9.986/10.308)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -15,7 +15,47 @@
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
+- **Detalhe da atividade:** hero, métricas, gráfico pace × FC (Canvas), splits, rota offline e insights com `ruleId`/`evidenceId`/confiança.
+- **Zonas:** pendentes até existir LTHR calibrada (P1-01/P1-02); não são estimadas por maxHR.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P0-09: detalhe da atividade
+
+### Concluído
+
+- Navegação lista → detalhe (`activity/{activityId}`) com barra inferior oculta e `SavedStateHandle`.
+- `ActivityDetailViewModel` abre o agregado no repositório e expõe loading, não encontrado e dados.
+- Hero: distância, tempo, pace, FC, cadência, potência, elevação, calorias e tempo em movimento.
+- Card de fontes: `FIT · TCX · GPX` a partir do canônico + alternates.
+- Gráfico `Pace × FC × tempo` em Canvas, com downsampling, legenda de faixas e descrição de acessibilidade.
+- Splits por lap com pace do arquivo ou derivado de tempo/distância e FC.
+- Rota offline em Canvas (equiretangular), sem tiles, rede ou nova dependência.
+- Insights determinísticos:
+  - `R-ACT-01`: ritmo constante/negative split vs queda > 3% na segunda metade.
+  - `R-ACT-02`: deriva cardíaca ≥ 5% com pace estável.
+  - Cada insight cita evidência (`EV-ABBISS-2008`, `EV-DANIELS-2014`, `EV-FRIEL-2018`) e confiança.
+- Testes: ViewModel, formatadores, gráfico, rota, insights e Compose UI (loading, não encontrado, conteúdo e tema claro).
+- `RealFixturesDetailTest`: importa e abre os 7 treinos reais sanitizados; TCX confere distância/duração/cadência do README.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck` — sucesso.
+- 256 testes, 0 falhas (17 `core:model`, 129 `core:domain`, 46 `core:data`, 64 `:app`).
+- `core:domain`: 98,82% linhas, 85,90% branches, 96,88% instruções.
+- `./gradlew :core:domain:verifyParserBranchCoverage` — 93,01% (572/615).
+
+### Decisões e observações
+
+- Zonas ficam para depois da calibração: LTHR ainda não existe no app, e estimar por maxHR violaria `R-ZONE-01`.
+- A rota é um traçado local, não um mapa; mapas com tiles entram quando houver decisão de dependência/offline.
+- O gráfico usa duas escalas independentes e declara as faixas na legenda para não sugerir uma unidade única.
+- Insights são observações, não prescrição; não alteram carga nem plano.
+
+### Próximos passos
+
+1. `P0-10`: harness restante (golden scenarios, relatórios no CI) e polimento de importação.
+2. `P1-01`/`P1-02`: onboarding e calibração para liberar zonas e prescrição.
+3. Export ZIP com arquivos originais e séries completas (Fase 1).
 
 ## Sessão 2026-10-30 — P0-07: persistência Room
 

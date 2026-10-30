@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026
+**Versão:** 1.1 · **Data:** 30/10/2026
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -116,15 +116,16 @@
 
 **Aceite:** arrastar/selecionar 3 formatos da mesma corrida → 1 atividade, mensagem clara.
 
-### P0-09 · Detalhe da atividade
+### P0-09 · Detalhe da atividade — CONCLUÍDO exceto zonas
 
-- [ ] Hero (distância, tempo, pace).
-- [ ] Gráfico pace × FC × tempo.
-- [ ] Zonas, splits, cadência, potência, elevação.
-- [ ] Rota (polyline estática ou MapLibre).
-- [ ] "O que aprendemos" com regras.
+- [x] Hero (distância, tempo, pace).
+- [x] Gráfico pace × FC × tempo.
+- [x] Splits, cadência, potência, elevação.
+- [x] Rota (polyline estática offline).
+- [x] "O que aprendemos" com `R-ACT-01`/`R-ACT-02`, evidência e confiança.
+- [ ] Zonas — bloqueado até a calibração de LTHR (P1-01/P1-02); não estimar por maxHR.
 
-**Aceite:** os 7 treinos reais (4 FIT + 3 TCX) abrem sem erro e os números batem com a fonte original.
+**Aceite verificado:** `RealFixturesDetailTest` importa e abre os 7 treinos reais sanitizados sem erro; TCX confere distância, duração e cadência com o README; 256 testes verdes.
 
 ### P0-10 · Harness de testes
 
