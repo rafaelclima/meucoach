@@ -22,6 +22,7 @@ android {
 
     sourceSets {
         getByName("test").assets.directories.add("$projectDir/schemas")
+        getByName("test").resources.directories.add(rootProject.file("fixtures").absolutePath)
     }
 }
 
