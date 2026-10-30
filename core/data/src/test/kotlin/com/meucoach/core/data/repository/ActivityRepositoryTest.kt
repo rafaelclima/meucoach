@@ -1,0 +1,251 @@
+package com.meucoach.core.data.repository
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.db.testJob
+import com.meucoach.core.model.ActivityLap
+import com.meucoach.core.model.ActivitySample
+import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.ImportedActivity
+import com.meucoach.core.model.Pace
+import com.meucoach.core.model.Sport
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.Assertions.assertThat
+import org.json.JSONObject
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class ActivityRepositoryTest {
+    private lateinit var context: Context
+    private lateinit var database: MeuCoachDatabase
+    private lateinit var repository: ActivityRepository
+    private val fixedClock = Clock.fixed(Instant.parse("2023-11-14T13:00:00Z"), ZoneOffset.UTC)
+    private var nextId = 0
+
+    @Before
+    fun setUp() {
+        context = ApplicationProvider.getApplicationContext()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+        repository =
+            ActivityRepository(
+                database = database,
+                clock = fixedClock,
+                zoneId = ZoneId.of("America/Sao_Paulo"),
+                idGenerator = { "activity-${++nextId}" },
+            )
+    }
+
+    @After
+    fun tearDown() {
+        database.close()
+    }
+
+    @Test
+    fun `saves lists and opens an imported activity`() {
+        runBlocking {
+            val imported = importedActivity()
+
+            val saved = repository.saveImportedActivity(imported, "sha", "imports/activity.fit")
+
+            assertThat(saved).isEqualTo(SaveActivityResult.Saved("activity-1"))
+            val summaries = repository.listActivitySummaries()
+            assertThat(summaries).hasSize(1)
+            val summary = summaries.single()
+            assertThat(summary.id).isEqualTo("activity-1")
+            assertThat(summary.distance.meters).isEqualTo(5_000.0)
+            assertThat(summary.averagePace).isEqualTo(Pace.fromSecondsPerKm(360))
+            assertThat(repository.observeActivitySummaries().first()).hasSize(1)
+
+            val stored = repository.openActivity("activity-1")
+            assertThat(stored).isNotNull()
+            assertThat(stored?.imported).isEqualTo(imported)
+            assertThat(stored?.importedAt).isEqualTo(fixedClock.instant())
+            assertThat(stored?.zoneId).isEqualTo("America/Sao_Paulo")
+            assertThat(stored?.localDate).isEqualTo(LocalDate.of(2023, 11, 14))
+            assertThat(stored?.rawFilePath).isEqualTo("imports/activity.fit")
+            assertThat(stored?.sourceFileSha256).isEqualTo("sha")
+            assertThat(stored?.sampleWarning).isNull()
+        }
+    }
+
+    @Test
+    fun `duplicate file hash returns the existing activity`() {
+        runBlocking {
+            val imported = importedActivity()
+
+            val first = repository.saveImportedActivity(imported, "same-hash")
+            val second = repository.saveImportedActivity(imported, "same-hash")
+
+            assertThat(first).isEqualTo(SaveActivityResult.Saved("activity-1"))
+            assertThat(second).isEqualTo(SaveActivityResult.Duplicate("activity-1"))
+            assertThat(repository.listActivitySummaries()).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `corrupt sample blob keeps the activity and returns a warning`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
+            val blob = database.sampleBlobDao().getForActivity(saved.id)
+            assertThat(blob).isNotNull()
+            database.sampleBlobDao().upsert(blob!!.copy(bytes = byteArrayOf(1, 2, 3)))
+
+            val stored = repository.openActivity(saved.id)
+
+            assertThat(stored).isNotNull()
+            assertThat(stored?.imported?.samples).isEmpty()
+            assertThat(stored?.sampleWarning).contains("Samples unavailable")
+            assertThat(repository.listActivitySummaries()).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `unsupported sample blob encoding is ignored with a warning`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
+            val blob = database.sampleBlobDao().getForActivity(saved.id)!!
+            database.sampleBlobDao().upsert(blob.copy(version = 2, encoding = "future-codec"))
+
+            val stored = repository.openActivity(saved.id)
+
+            assertThat(stored?.imported?.samples).isEmpty()
+            assertThat(stored?.sampleWarning).contains("Unsupported")
+        }
+    }
+
+    @Test
+    fun `soft delete hides the activity and permanent delete removes children`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
+
+            assertThat(repository.deleteActivity(saved.id)).isTrue()
+            assertThat(repository.deleteActivity(saved.id)).isFalse()
+            assertThat(repository.listActivitySummaries()).isEmpty()
+            assertThat(repository.openActivity(saved.id)).isNull()
+            assertThat(database.lapDao().getForActivity(saved.id)).hasSize(1)
+            assertThat(database.sampleBlobDao().getForActivity(saved.id)).isNotNull()
+
+            assertThat(repository.permanentlyDeleteActivity(saved.id)).isTrue()
+            assertThat(database.lapDao().getForActivity(saved.id)).isEmpty()
+            assertThat(database.sampleBlobDao().getForActivity(saved.id)).isNull()
+        }
+    }
+
+    @Test
+    fun `delete all data removes activities and import jobs`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
+            database.importJobDao().insert(testJob(saved.id))
+
+            assertThat(repository.deleteAllData()).isEqualTo(1)
+            assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
+            assertThat(database.importJobDao().getAll()).isEmpty()
+        }
+    }
+
+    @Test
+    fun `exports activities laps and import jobs as json`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity(), "sha") as SaveActivityResult.Saved
+            database.importJobDao().insert(testJob(saved.id))
+
+            val export = JSONObject(repository.exportJson())
+
+            assertThat(export.getInt("schemaVersion")).isEqualTo(MeuCoachDatabase.VERSION)
+            assertThat(export.getString("exportedAt")).isEqualTo(fixedClock.instant().toString())
+            val activities = export.getJSONArray("activities")
+            assertThat(activities.length()).isEqualTo(1)
+            val activity = activities.getJSONObject(0)
+            assertThat(activity.getString("id")).isEqualTo(saved.id)
+            assertThat(activity.getDouble("distanceM")).isEqualTo(5_000.0)
+            assertThat(activity.getInt("sampleCount")).isEqualTo(2)
+            assertThat(activity.getJSONArray("laps").length()).isEqualTo(1)
+            val jobs = export.getJSONArray("importJobs")
+            assertThat(jobs.length()).isEqualTo(1)
+            assertThat(jobs.getJSONObject(0).getString("status")).isEqualTo("DONE")
+        }
+    }
+
+    private fun importedActivity(): ImportedActivity {
+        val start = Instant.parse("2023-11-14T10:00:00Z")
+        return ImportedActivity(
+            source = ActivitySource.FIT,
+            sport = Sport.RUNNING,
+            startTime = start,
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+            sourceId = "fit-source",
+            subSport = "street",
+            movingTimeSec = 1_750,
+            averageHeartRate = 150,
+            maxHeartRate = 170,
+            averagePace = Pace.fromSecondsPerKm(360),
+            averageCadenceSpm = 170,
+            maxCadenceSpm = 180,
+            averagePowerW = 250,
+            maxPowerW = 300,
+            averageStepLengthM = 1.1,
+            elevationGainM = 40.0,
+            elevationLossM = 35.0,
+            calories = 320,
+            laps =
+            listOf(
+                ActivityLap(
+                    index = 0,
+                    durationSec = 900,
+                    distanceM = 2_500.0,
+                    startTime = start,
+                    averageHeartRate = 148,
+                    maxHeartRate = 160,
+                    averagePace = Pace.fromSecondsPerKm(360),
+                    averageCadenceSpm = 168,
+                    averagePowerW = 240,
+                    elevationGainM = 20.0,
+                ),
+            ),
+            samples =
+            listOf(
+                ActivitySample(
+                    offsetSec = 0,
+                    timestamp = start,
+                    latitude = -5.79,
+                    longitude = -35.21,
+                    altitudeM = 30.0,
+                    speedMps = 2.8,
+                    heartRate = 140,
+                    cadenceSpm = 160,
+                    powerW = 220,
+                    stepLengthM = 1.1,
+                    developerFields = mapOf("temperature" to 27.5),
+                ),
+                ActivitySample(
+                    offsetSec = 1,
+                    timestamp = start.plusSeconds(1),
+                    speedMps = 2.9,
+                    heartRate = 141,
+                    cadenceSpm = 161,
+                ),
+            ),
+            deviceName = "Amazfit Balance",
+            parserVersion = "1.0.0",
+        )
+    }
+}

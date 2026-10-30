@@ -31,6 +31,9 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY startTimeUtc DESC")
     suspend fun getAll(): List<ActivityEntity>
 
+    @Query("SELECT * FROM activities ORDER BY startTimeUtc DESC")
+    suspend fun getAllIncludingDeleted(): List<ActivityEntity>
+
     @Query("UPDATE activities SET deletedAt = :deletedAt WHERE id = :id AND deletedAt IS NULL")
     suspend fun softDelete(id: String, deletedAt: Long): Int
 
