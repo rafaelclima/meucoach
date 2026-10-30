@@ -42,6 +42,7 @@ class ProfileScreenshotTest {
                     state = ProfileUiState(isLoading = false, profile = profile()),
                     onEdit = {},
                     onCalibrate = {},
+                    onImportMetrics = {},
                 )
             }
         }

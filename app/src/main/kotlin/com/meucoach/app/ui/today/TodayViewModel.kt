@@ -8,26 +8,35 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.CheckInRepository
-import com.meucoach.core.domain.readiness.ReadinessFlag
-import com.meucoach.core.domain.readiness.toReadinessResult
+import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
+import com.meucoach.core.domain.readiness.ReadinessCalculator
+import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
 import com.meucoach.core.model.DailyCheckIn
-import com.meucoach.core.model.DataConfidence
-import com.meucoach.core.model.ReadinessLevel
+import com.meucoach.core.model.DailyMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import java.util.Locale
 import javax.inject.Inject
+import kotlin.math.ln
 
 @HiltViewModel
-class TodayViewModel @Inject constructor(repository: CheckInRepository) : ViewModel() {
-    val checkIn: StateFlow<DailyCheckIn?> = repository
-        .observe(LocalDate.now())
+class TodayViewModel @Inject constructor(
+    checkInRepository: CheckInRepository,
+    metricsRepository: DailyMetricsRepository,
+) : ViewModel() {
+    val uiState: StateFlow<TodayUiState> = combine(
+        checkInRepository.observe(LocalDate.now()),
+        metricsRepository.observeAll(),
+    ) { checkIn, metrics -> todayState(checkIn, metrics) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = null,
+            initialValue = todayState(null, emptyList()),
         )
 
     private companion object {
@@ -42,53 +51,123 @@ fun TodayRoute(
     modifier: Modifier = Modifier,
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
-    val checkIn by viewModel.checkIn.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     TodayScreen(
         onDemoAction = onDemoAction,
         modifier = modifier,
-        state = todayState(checkIn),
-        checkInDone = checkIn != null,
+        state = state,
         onCheckInClick = onCheckInClick,
     )
 }
 
-/** Overlays today's real check-in on the demo shell until prescription exists. */
-internal fun todayState(checkIn: DailyCheckIn?): TodayUiState {
-    val base = demoTodayUiState()
-    if (checkIn == null) {
-        return base.copy(
-            readinessScore = 50,
-            readinessLevel = ReadinessLevel.AMBER,
-            readinessConfidence = DataConfidence.LOW,
-            readinessSignals = listOf(
-                ReadinessSignalUi(
-                    label = "Check-in",
-                    value = "Pendente",
-                    hint = "15 s para medir o dia",
-                    tone = SignalTone.NEUTRAL,
-                ),
-            ),
-        )
-    }
-
-    val result = checkIn.toReadinessResult()
-    val warning = ReadinessFlag.ILLNESS_OR_INJURY in result.flags ||
-        ReadinessFlag.NO_QUALITY in result.flags
-    return base.copy(
+/** Overlays real readiness on the demo shell until prescription exists. */
+internal fun todayState(
+    checkIn: DailyCheckIn?,
+    metrics: List<DailyMetrics> = emptyList(),
+    today: LocalDate = LocalDate.now(),
+): TodayUiState {
+    val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
+    val signals = inputs.signals.copy(
+        illnessOrInjury = inputs.signals.illnessOrInjury || checkIn?.illnessOrInjury == true,
+    )
+    val result = ReadinessCalculator.calculate(
+        checkIn = checkIn?.toSubjectiveCheckIn(),
+        sleep = inputs.sleep,
+        hrv = inputs.hrv,
+        restingHeartRate = inputs.restingHeartRate,
+        signals = signals,
+    )
+    val warning = result.level != com.meucoach.core.model.ReadinessLevel.GREEN
+    return demoTodayUiState(today).copy(
         readinessScore = result.score,
         readinessLevel = result.level,
         readinessConfidence = result.confidence,
-        readinessSignals = listOf(
-            ReadinessSignalUi(
-                label = "Check-in",
-                value = "${checkIn.hooperSum}/20",
-                hint = if (ReadinessFlag.ILLNESS_OR_INJURY in result.flags) {
-                    "sinal de alerta"
-                } else {
-                    "Hooper · menor é melhor"
-                },
-                tone = if (warning) SignalTone.WARNING else SignalTone.POSITIVE,
-            ),
+        readinessSignals = buildSignals(
+            checkIn = checkIn,
+            inputs = inputs,
+            warning = warning,
+            illness = signals.illnessOrInjury,
         ),
+        hasCheckedIn = checkIn != null,
     )
 }
+
+private fun buildSignals(
+    checkIn: DailyCheckIn?,
+    inputs: com.meucoach.core.domain.readiness.ReadinessInputs,
+    warning: Boolean,
+    illness: Boolean,
+): List<ReadinessSignalUi> = buildList {
+    inputs.sleep?.let { sleep ->
+        add(
+            ReadinessSignalUi(
+                label = "Sono",
+                value = formatDuration(sleep.durationMin),
+                hint = if (sleep.durationMin < 360) "abaixo de 6 h" else "ok",
+                tone = if (sleep.durationMin < 360) SignalTone.WARNING else SignalTone.NEUTRAL,
+            ),
+        )
+    }
+    inputs.hrv?.let { hrv ->
+        val z = ln(hrv.rmssd7dMs / hrv.baseline60dMs) / hrv.sdLnMs
+        add(
+            ReadinessSignalUi(
+                label = "HRV",
+                value = String.format(PT_BR, "%+.1f SWC", z),
+                hint = "${hrv.validNights} noites válidas",
+                tone = when {
+                    z < -1.0 -> SignalTone.WARNING
+                    z > 0.0 -> SignalTone.POSITIVE
+                    else -> SignalTone.NEUTRAL
+                },
+            ),
+        )
+    }
+    inputs.restingHeartRate?.let { rhr ->
+        val delta = rhr.average7dBpm - rhr.baseline30dBpm
+        add(
+            ReadinessSignalUi(
+                label = "FC repouso",
+                value = String.format(PT_BR, "%+.0f bpm", delta),
+                hint = "vs baseline 30d",
+                tone = when {
+                    delta >= 7.0 -> SignalTone.WARNING
+                    delta <= -3.0 -> SignalTone.POSITIVE
+                    else -> SignalTone.NEUTRAL
+                },
+            ),
+        )
+    }
+    if (isEmpty()) {
+        add(
+            ReadinessSignalUi(
+                label = "Check-in",
+                value = checkIn?.let { "${it.hooperSum}/20" } ?: "Pendente",
+                hint = when {
+                    checkIn == null -> "15 s para medir o dia"
+                    illness -> "sinal de alerta"
+                    warning -> "revisar o dia"
+                    else -> "Hooper · menor é melhor"
+                },
+                tone = if (warning) SignalTone.WARNING else SignalTone.NEUTRAL,
+            ),
+        )
+    } else if (checkIn != null && illness) {
+        add(
+            ReadinessSignalUi(
+                label = "Alerta",
+                value = "Doença/lesão",
+                hint = "sem qualidade",
+                tone = SignalTone.WARNING,
+            ),
+        )
+    }
+}
+
+private fun formatDuration(minutes: Int): String {
+    val hours = minutes / 60
+    val rest = minutes % 60
+    return if (hours > 0) "${hours}h${rest.toString().padStart(2, '0')}" else "${rest}min"
+}
+
+private val PT_BR = Locale.forLanguageTag("pt-BR")

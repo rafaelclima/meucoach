@@ -42,12 +42,19 @@ import java.util.Locale
 fun ProfileScreen(
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
+    onImportMetrics: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    ProfileContent(state = state, onEdit = onEdit, onCalibrate = onCalibrate, modifier = modifier)
+    ProfileContent(
+        state = state,
+        onEdit = onEdit,
+        onCalibrate = onCalibrate,
+        onImportMetrics = onImportMetrics,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -55,6 +62,7 @@ internal fun ProfileContent(
     state: ProfileUiState,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
+    onImportMetrics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
@@ -86,13 +94,19 @@ internal fun ProfileContent(
                 profile = state.profile,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
+                onImportMetrics = onImportMetrics,
             )
         }
     }
 }
 
 @Composable
-private fun ProfileDetails(profile: AthleteProfile, onEdit: () -> Unit, onCalibrate: () -> Unit) {
+private fun ProfileDetails(
+    profile: AthleteProfile,
+    onEdit: () -> Unit,
+    onCalibrate: () -> Unit,
+    onImportMetrics: () -> Unit,
+) {
     val colors = McTheme.colors
     LazyColumn(
         modifier = Modifier
@@ -174,6 +188,30 @@ private fun ProfileDetails(profile: AthleteProfile, onEdit: () -> Unit, onCalibr
                 profile.maxHeartRateObserved?.let { SummaryRow("FC máxima vista", "$it bpm") }
                 SummaryRow("Fuso horário", profile.timezone)
                 profile.city?.let { SummaryRow("Cidade", it) }
+            }
+        }
+        item { McSectionHeader(title = "Dados") }
+        item {
+            McCard(variant = McCardVariant.INSET) {
+                Text(
+                    text = "Sono, FC de repouso, HRV e SpO2",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Importe um CSV diário. Sem conexão e sem enviar dados para fora.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                McSecondaryButton(
+                    text = "Importar CSV",
+                    onClick = onImportMetrics,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile-import-metrics"),
+                )
             }
         }
         item {

@@ -52,6 +52,7 @@ data class TodayUiState(
     val atl: Int,
     val tsb: Int,
     val recentActivity: RecentActivityUi,
+    val hasCheckedIn: Boolean = false,
 )
 
 fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalTime.now()): TodayUiState {
@@ -116,6 +117,7 @@ fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalT
             pace = "6:04 /km",
             zone = "Z5",
         ),
+        hasCheckedIn = true,
     )
 }
 

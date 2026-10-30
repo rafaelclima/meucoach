@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 382 testes no repositório, 0 falhas (24 em `core:model`, 157 em `core:domain`, 62 em `core:data`, 139 em `:app`).
+- 410 testes no repositório, 0 falhas (27 em `core:model`, 170 em `core:domain`, 66 em `core:data`, 147 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -139,6 +139,10 @@ Evidência atual (30/10/2026):
 - `CheckInRepositoryTest`: round-trip por data, upsert, exclusão e `createdAt`.
 - `CheckInReadinessTest`: mapeamento e prontidão só com check-in.
 - `CheckInViewModelTest` e `CheckInScreenTest`: prefill, salvamento, escalas e loading.
+- `DailyMetricsCsvParserTest`: template, datas ISO/BR, aliases, erros por linha e duplicatas.
+- `DailyMetricsRepositoryTest`: lote, atualização por data, `createdAt` e exclusão.
+- `DailyMetricsReadinessBuilderTest`: janelas 7/30/60, HRV mínimo, sono recente e RHR elevada 2 dias.
+- `MetricsImportViewModelTest` e `MetricsImportScreenTest`: importação, erros, duplicatas e template.
 
 ## 6. Testes de domínio
 
@@ -232,7 +236,6 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 - `app/src/test/screenshots/trends-light.png`
 - `app/src/test/screenshots/checkin-dark.png`
 - `app/src/test/screenshots/checkin-light.png`
-
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 

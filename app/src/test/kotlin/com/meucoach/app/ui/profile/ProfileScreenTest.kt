@@ -64,6 +64,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(isLoading = false, profile = profile()),
                     onEdit = {},
                     onCalibrate = {},
+                    onImportMetrics = {},
                 )
             }
         }
@@ -74,7 +75,12 @@ class ProfileScreenTest {
     private fun setContent(state: ProfileUiState, onEdit: () -> Unit) {
         compose.setContent {
             McTheme(darkTheme = true) {
-                ProfileContent(state = state, onEdit = onEdit, onCalibrate = {})
+                ProfileContent(
+                    state = state,
+                    onEdit = onEdit,
+                    onCalibrate = {},
+                    onImportMetrics = {},
+                )
             }
         }
     }

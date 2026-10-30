@@ -180,12 +180,12 @@
 
 ### P1-04 · Prontidão
 
-**Status:** em andamento — check-in concluído em 30/10/2026
+**Status:** em andamento — check-in e CSV concluídos em 30/10/2026
 
 - [x] Check-in diário de 15 s (sono, fadiga, dor, estresse + doença/lesão).
 - [x] Persistência por data e prontidão real na tela Hoje.
+- [x] CSV diário (sono, RHR, HRV, SpO2) com importação no perfil.
 - [ ] Health Connect (sono, RHR, HRV, SpO2).
-- [ ] CSV diário.
 - [ ] Diagnóstico de dados, histórico e confiança por componente.
 
 ### P1-05 · Prescrição

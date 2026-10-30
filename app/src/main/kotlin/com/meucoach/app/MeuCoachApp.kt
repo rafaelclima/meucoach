@@ -32,6 +32,7 @@ import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
 import com.meucoach.app.ui.checkin.CheckInScreen
+import com.meucoach.app.ui.metrics.MetricsImportScreen
 import com.meucoach.app.ui.onboarding.OnboardingScreen
 import com.meucoach.app.ui.profile.ProfileGateViewModel
 import com.meucoach.app.ui.profile.ProfileScreen
@@ -62,6 +63,7 @@ private val destinations = listOf(
 private const val ACTIVITY_DETAIL_ROUTE = "activity/{activityId}"
 private const val PROFILE_EDIT_ROUTE = "profile/edit"
 private const val CALIBRATION_ROUTE = "profile/calibration"
+private const val METRICS_IMPORT_ROUTE = "profile/metrics-import"
 private const val CHECK_IN_ROUTE = "check-in"
 
 private fun activityDetailRoute(activityId: String): String = "activity/${Uri.encode(activityId)}"
@@ -94,6 +96,7 @@ private fun MainApp() {
     val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE &&
         currentRoute != PROFILE_EDIT_ROUTE &&
         currentRoute != CALIBRATION_ROUTE &&
+        currentRoute != METRICS_IMPORT_ROUTE &&
         currentRoute != CHECK_IN_ROUTE
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
@@ -164,7 +167,11 @@ private fun MainApp() {
                 ProfileScreen(
                     onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
                     onCalibrate = { navController.navigate(CALIBRATION_ROUTE) },
+                    onImportMetrics = { navController.navigate(METRICS_IMPORT_ROUTE) },
                 )
+            }
+            composable(METRICS_IMPORT_ROUTE) {
+                MetricsImportScreen(onBack = { navController.popBackStack() })
             }
             composable(PROFILE_EDIT_ROUTE) {
                 OnboardingScreen(

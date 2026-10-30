@@ -105,7 +105,7 @@ sequenceDiagram
 | **FIT** | Parser próprio, subconjunto do protocolo FIT | file_id, record, lap, session, event, device_info, developer fields | Fonte canônica; valida CRC; lê little/big endian e timestamps comprimidos |
 | **TCX** | XML DOM (`javax.xml`) | Activity, Lap, Trackpoint, HR, cadência, posição, altitude, velocidade, potência por extensão | Cadência de corrida normalizada; lap inferido quando ausente |
 | **GPX** | XML DOM | trkpt, ele, time, extensões `hr`, `cad`, `speed`, `power` | Sem laps nem esporte explícito; usar como último recurso |
-| **CSV diário** | Parser de cabeçalho validado | sono, RHR, HRV, SpO2 | Template do app; futuro export Zepp |
+| **CSV diário** | Parser de cabeçalho validado | sono, RHR, HRV, SpO2 | Implementado em `DailyMetricsCsvParser`; template do app |
 | **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Sincronização incremental por `lastSync` |
 
 O parser FIT é o componente de maior risco. Estratégia: implementar o subconjunto usado pelo Amazfit Balance, validar contra os arquivos reais e contra o `fitdecode` (Python) em testes de referência. Fixtures reais são sanitizadas antes de entrar no repo.
@@ -170,8 +170,8 @@ data class EngineOutput(
 
 - **Room/SQLite** como fonte de verdade local.
 - `:core:data` implementa:
-  - `MeuCoachDatabase` v5 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity` e `DailyCheckInEntity`.
-  - DAOs separados, `ActivityRepository`, `ProfileRepository` e `CheckInRepository` como fronteiras para o restante do app.
+  - `MeuCoachDatabase` v6 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity` e `DailyMetricsEntity`.
+  - DAOs separados, `ActivityRepository`, `ProfileRepository`, `CheckInRepository` e `DailyMetricsRepository` como fronteiras para o restante do app.
   - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda.
   - UUID v7 gerado no cliente para IDs ordenáveis.
   - Importação por `ImportService` + fila `WorkManager`; arquivos são copiados para storage privado antes do processamento.
@@ -179,7 +179,7 @@ data class EngineOutput(
 - Exclusão padrão é lógica (`deletedAt`); exclusão permanente usa cascata e remove laps/blob. O export JSON básico inclui a lixeira.
 - Arquivos originais em storage privado do app, referenciados por hash.
 - `DataStore` apenas para preferências (tema, unidades, onboarding).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`, `MIGRATION_2_3` cria `activity_alternates`, `MIGRATION_3_4` cria `athlete_profile` e `MIGRATION_4_5` cria `daily_check_ins`.
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`, `MIGRATION_2_3` cria `activity_alternates`, `MIGRATION_3_4` cria `athlete_profile`, `MIGRATION_4_5` cria `daily_check_ins` e `MIGRATION_5_6` cria `daily_metrics`.
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect

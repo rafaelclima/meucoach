@@ -59,7 +59,6 @@ fun TodayScreen(
     onDemoAction: (String) -> Unit,
     modifier: Modifier = Modifier,
     state: TodayUiState = demoTodayUiState(),
-    checkInDone: Boolean = false,
     onCheckInClick: () -> Unit = {},
 ) {
     LazyColumn(
@@ -84,7 +83,7 @@ fun TodayScreen(
                 onTrendsClick = { onDemoAction("Tendências chegam na Fase 1.") },
             )
         }
-        item { CheckInCard(done = checkInDone, onCheckInClick = onCheckInClick) }
+        item { CheckInCard(done = state.hasCheckedIn, onCheckInClick = onCheckInClick) }
         item {
             RecentActivityCard(
                 activity = state.recentActivity,
