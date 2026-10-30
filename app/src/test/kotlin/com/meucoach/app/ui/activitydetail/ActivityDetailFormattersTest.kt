@@ -90,6 +90,12 @@ class ActivityDetailFormattersTest {
         assertThat(lapDistanceLabel(lap(durationSec = 300, distanceM = 600.0))).isEqualTo("0,60 km")
     }
 
+    @Test
+    fun `labels chart ranges with units`() {
+        assertThat(paceRangeLabel(300..360)).isEqualTo("5:00–6:00/km")
+        assertThat(heartRateRangeLabel(140..170)).isEqualTo("140–170 bpm")
+    }
+
     private fun lap(durationSec: Int, distanceM: Double) = ActivityLap(
         index = 0,
         durationSec = durationSec,

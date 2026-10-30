@@ -92,6 +92,9 @@ internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> U
                 state.activity != null -> {
                     item { HeroCard(state.activity) }
                     item { MetricsCard(state.activity) }
+                    if (state.activity.imported.samples.size >= 2) {
+                        item { ActivityChartCard(samples = state.activity.imported.samples) }
+                    }
                     if (state.activity.imported.laps.isNotEmpty()) {
                         item { McSectionHeader(title = "Splits") }
                         item { SplitsCard(state.activity) }

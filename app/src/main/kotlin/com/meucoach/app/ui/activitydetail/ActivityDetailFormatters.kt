@@ -3,6 +3,7 @@ package com.meucoach.app.ui.activitydetail
 import com.meucoach.app.ui.activities.formatDistance
 import com.meucoach.app.ui.activities.formatDuration
 import com.meucoach.app.ui.activities.heartRateLabel
+import com.meucoach.app.ui.activities.paceLabel
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySource
@@ -50,3 +51,8 @@ fun lapPace(lap: ActivityLap): Pace? = lap.averagePace ?: run {
 }
 
 fun lapDistanceLabel(lap: ActivityLap): String = "${formatDistanceMeters(lap.distanceM)} km"
+
+fun paceRangeLabel(range: IntRange): String =
+    "${paceLabel(Pace.fromSecondsPerKm(range.first))}–${paceLabel(Pace.fromSecondsPerKm(range.last))}/km"
+
+fun heartRateRangeLabel(range: IntRange): String = "${range.first}–${range.last} bpm"
