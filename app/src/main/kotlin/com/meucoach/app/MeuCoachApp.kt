@@ -30,6 +30,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
+import com.meucoach.app.ui.calibration.CalibrationScreen
 import com.meucoach.app.ui.onboarding.OnboardingScreen
 import com.meucoach.app.ui.placeholder.PlaceholderScreen
 import com.meucoach.app.ui.profile.ProfileGateViewModel
@@ -59,6 +60,7 @@ private val destinations = listOf(
 
 private const val ACTIVITY_DETAIL_ROUTE = "activity/{activityId}"
 private const val PROFILE_EDIT_ROUTE = "profile/edit"
+private const val CALIBRATION_ROUTE = "profile/calibration"
 
 private fun activityDetailRoute(activityId: String): String = "activity/${Uri.encode(activityId)}"
 
@@ -87,7 +89,9 @@ private fun MainApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
-    val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE && currentRoute != PROFILE_EDIT_ROUTE
+    val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE &&
+        currentRoute != PROFILE_EDIT_ROUTE &&
+        currentRoute != CALIBRATION_ROUTE
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -151,12 +155,21 @@ private fun MainApp() {
                 )
             }
             composable(AppDestination.Profile.route) {
-                ProfileScreen(onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) })
+                ProfileScreen(
+                    onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
+                    onCalibrate = { navController.navigate(CALIBRATION_ROUTE) },
+                )
             }
             composable(PROFILE_EDIT_ROUTE) {
                 OnboardingScreen(
                     onDone = { navController.popBackStack() },
                     onCancel = { navController.popBackStack() },
+                )
+            }
+            composable(CALIBRATION_ROUTE) {
+                CalibrationScreen(
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
                 )
             }
         }

@@ -31,6 +31,7 @@ import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McEmptyState
 import com.meucoach.core.designsystem.component.McPrimaryButton
+import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
@@ -38,14 +39,24 @@ import com.meucoach.core.model.AthleteProfile
 import java.util.Locale
 
 @Composable
-fun ProfileScreen(onEdit: () -> Unit, modifier: Modifier = Modifier, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(
+    onEdit: () -> Unit,
+    onCalibrate: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ProfileViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    ProfileContent(state = state, onEdit = onEdit, modifier = modifier)
+    ProfileContent(state = state, onEdit = onEdit, onCalibrate = onCalibrate, modifier = modifier)
 }
 
 @Composable
-internal fun ProfileContent(state: ProfileUiState, onEdit: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ProfileContent(
+    state: ProfileUiState,
+    onEdit: () -> Unit,
+    onCalibrate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = McTheme.colors
     Box(
         modifier = modifier
@@ -71,13 +82,17 @@ internal fun ProfileContent(state: ProfileUiState, onEdit: () -> Unit, modifier:
                 modifier = Modifier.align(Alignment.Center),
             )
 
-            else -> ProfileDetails(profile = state.profile, onEdit = onEdit)
+            else -> ProfileDetails(
+                profile = state.profile,
+                onEdit = onEdit,
+                onCalibrate = onCalibrate,
+            )
         }
     }
 }
 
 @Composable
-private fun ProfileDetails(profile: AthleteProfile, onEdit: () -> Unit) {
+private fun ProfileDetails(profile: AthleteProfile, onEdit: () -> Unit, onCalibrate: () -> Unit) {
     val colors = McTheme.colors
     LazyColumn(
         modifier = Modifier
@@ -122,6 +137,34 @@ private fun ProfileDetails(profile: AthleteProfile, onEdit: () -> Unit) {
                     SummaryRow("Tempo alvo", targetTimeLabel(profile.goal?.targetTimeSec))
                 }
                 SummaryRow("Disponibilidade", availabilityLabel(profile))
+            }
+        }
+        item { McSectionHeader(title = "Calibração") }
+        item {
+            val hasCalibration =
+                profile.vdot != null ||
+                    profile.lactateThresholdHeartRate != null ||
+                    profile.thresholdPace != null
+            McCard(variant = McCardVariant.INSET) {
+                if (hasCalibration) {
+                    profile.vdot?.let { SummaryRow("VDOT", String.format(Locale.forLanguageTag("pt-BR"), "%.1f", it)) }
+                    profile.lactateThresholdHeartRate?.let { SummaryRow("LTHR", "$it bpm") }
+                    profile.thresholdPace?.let { SummaryRow("Pace de limiar", "${it.format()} /km") }
+                } else {
+                    Text(
+                        text = "Ainda não calibrado. Use uma prova recente ou um TT de 30 min.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                McSecondaryButton(
+                    text = if (hasCalibration) "Recalibrar" else "Calibrar agora",
+                    onClick = onCalibrate,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile-calibrate-button"),
+                )
             }
         }
         item { McSectionHeader(title = "Rotina") }

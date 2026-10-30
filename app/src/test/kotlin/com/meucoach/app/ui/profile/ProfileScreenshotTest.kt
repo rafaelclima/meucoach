@@ -41,6 +41,7 @@ class ProfileScreenshotTest {
                 ProfileContent(
                     state = ProfileUiState(isLoading = false, profile = profile()),
                     onEdit = {},
+                    onCalibrate = {},
                 )
             }
         }
