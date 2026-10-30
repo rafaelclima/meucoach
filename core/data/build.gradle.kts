@@ -33,7 +33,8 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:domain"))
 
-    implementation(libs.androidx.room.runtime)
+    // RoomDatabase is part of MeuCoachDatabase's public type, so consumers need it at compile time.
+    api(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 

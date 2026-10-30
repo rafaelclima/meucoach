@@ -55,6 +55,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:domain"))
+    implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
 
     implementation(libs.androidx.core.ktx)
@@ -78,4 +79,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.assertj)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }
