@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026
+**Versão:** 1.1 · **Data:** 30/10/2026
 
 ## 1. Convenções
 
@@ -111,11 +111,14 @@ Chave: `(activityId, index)`.
 
 Séries de 1 Hz podem gerar milhões de pontos. Estratégia:
 
-- **Blob comprimido** por atividade (gzip + formato colunar binário próprio, versionado).
-- Colunas: `tOffsetSec`, `lat`, `lon`, `altitudeM`, `speedMps`, `hr`, `cadenceSpm`, `powerW`, `stepLengthM`.
+- **Blob comprimido** por atividade (`gzip-columnar-v1`), com cabeçalho de versão, contagem e máscara de colunas.
+- Colunas: `tOffsetSec`, `lat`, `lon`, `altitudeM`, `speedMps`, `hr`, `cadenceSpm`, `powerW`, `stepLengthM` e `developerFields`.
+- Cada coluna opcional tem flags de presença por amostra; ausência continua `null`, nunca vira `0`.
 - `SampleBlob(activityId, version, encoding, bytes, sampleCount, startTimeUtc)`.
-- **Série downsampled** (10 s) persistida em `SampleSeries` para gráficos rápidos; a série completa só é decodificada para splits/análise.
-- Teste de round-trip obrigatório; corrupção ⇒ atividade permanece, samples são descartados com aviso.
+- Timestamps não são duplicados no blob: `startTimeUtc + tOffsetSec` reconstrói o instante de cada sample.
+- Limites de segurança do codec: 5 milhões de samples e 128 MB de payload descomprimido.
+- **Série downsampled** (10 s) para gráficos rápidos ainda não está implementada; o detalhe do P0-09 decodifica a série sob demanda até existir uma `SampleSeries`.
+- Teste de round-trip obrigatório; corrupção, versão desconhecida ou encoding inválido ⇒ atividade permanece, samples são descartados e a abertura retorna `sampleWarning`.
 
 ### 3.5 `DailyMetrics`
 
@@ -217,7 +220,8 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`; r
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Migrações explícitas testadas com `MigrationTestHelper`.
+- Estado atual: banco v2; `MIGRATION_1_2` adiciona `activities.deletedAt`.
+- Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; schemas 1 e 2 são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.
 
@@ -239,5 +243,7 @@ O usuário pode exportar:
 - Arquivos originais (FIT/TCX/GPX).
 - CSV de métricas diárias.
 - ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
+
+Estado atual (P0-07): `ActivityRepository.exportJson()` exporta atividades (inclusive lixeira), laps, contagem de samples e jobs de importação. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
 
 Excluir tudo remove banco, arquivos e blobs, mantendo apenas um recibo anônimo de exclusão por 30 dias.

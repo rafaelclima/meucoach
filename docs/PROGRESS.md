@@ -1,17 +1,88 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 29/10/2026
+**Atualizado:** 30/10/2026
 
 ## Estado geral
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 134 testes, 0 falhas (15 em `core:model`, 116 em `core:domain`, 3 em `:app`)
+- **Testes:** 160 testes, 0 falhas (15 em `core:model`, 116 em `core:domain`, 26 em `core:data`, 3 em `:app`)
 - **Cobertura `core:domain`:** 98,91% de linhas (1.177/1.190), 86,02% de branches (1.132/1.316), 96,77% de instruções (9.539/9.857)
 - **Parser FIT:** 100% de linhas e 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 2 avisos intencionais (`targetSdk 36` e atualização do Kover)
+- **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Próximo marco:** `P0-07` — persistência Room
+- **Persistência:** Room 2.8.5, schema v2, migração 1→2 testada, blob `gzip-columnar-v1`
+- **Próximo marco:** `P0-08` — importação
+
+## Sessão 2026-10-30 — P0-07: persistência Room
+
+### Concluído
+
+- Módulo `:core:data` como Android library, com Room 2.8.5, KSP e schemas exportados em `core/data/schemas/`.
+- Entidades e DAOs:
+  - `ActivityEntity`: proveniência, esporte, tempo, distância, FC, cadência, potência, elevação, parser, `deletedAt` e índice único de `sourceFileSha256` quando presente.
+  - `LapEntity`: chave composta `(activityId, lapIndex)` e FK com `CASCADE`.
+  - `SampleBlobEntity`: blob comprimido, versão, encoding, contagem e início.
+  - `ImportJobEntity`: status, hash, erro, timestamps e FK `SET NULL` para a atividade.
+  - `ActivityDao`, `LapDao`, `SampleBlobDao` e `ImportJobDao`; consultas de lista observável e lixeira.
+- `MeuCoachDatabase` v2:
+  - `MIGRATION_1_2` adiciona `deletedAt` sem recriar a tabela.
+  - Schemas 1 e 2 exportados; teste de migração com `MigrationTestHelper` em Robolectric.
+  - Sem `fallbackToDestructiveMigration`.
+- `SampleBlobCodec` (`gzip-columnar-v1`):
+  - Colunas de offset, posição, altitude, velocidade, FC, cadência, potência e passada.
+  - Developer fields preservados em coluna binária própria.
+  - Timestamps reconstruídos a partir do início da atividade + offset.
+  - Limites de tamanho/contagem, validação de presença, gzip inválido, versão desconhecida e truncamento.
+- `ActivityRepository`:
+  - Importação transacional de atividade + laps + blob.
+  - Dedup por SHA-256 do arquivo; retorna `Duplicate` sem inserir.
+  - Listagem/observação como `ActivitySummary`.
+  - Abertura como `StoredActivity`, decodificando samples sob demanda.
+  - Blob corrompido ou de versão desconhecida mantém a atividade, descarta samples e retorna `sampleWarning`.
+  - Soft delete por padrão; exclusão permanente com cascata; `deleteAllData`.
+  - Export JSON básico com atividades (incluindo lixeira), laps, contagem de samples e jobs.
+  - UUID v7 local e ordenável por tempo.
+- Backup Android permanece desativado no manifest (`allowBackup=false`, `fullBackupContent=false`).
+- Testes novos em `core:data`:
+  - `MeuCoachDatabaseTest`: CRUD, soft delete, cascata, `SET NULL` e unicidade de SHA.
+  - `MeuCoachDatabaseMigrationTest`: migração 1→2 preserva dados.
+  - `SampleBlobCodecTest`: round-trip, compressão, corrupção, versão, contagem absurda e ordem.
+  - `ActivityRepositoryTest`: salvar, listar, abrir, duplicata, blob corrompido, delete, export.
+  - `UuidV7Test`: versão, variante e determinismo.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — sucesso.
+- `./gradlew :core:data:testDebugUnitTest` — 26 testes, 0 falhas.
+- `./gradlew :core:domain:verifyParserBranchCoverage` — `93,01% (572/615)`.
+- 160 testes, 0 falhas; `core:domain` com 98,91% de linhas e 86,02% de branches.
+- Android Lint: 0 erros; 4 avisos de versão/target. `core:data` sem issues.
+- APK debug gerado em `app/build/outputs/apk/debug/app-debug.apk`.
+
+### Decisões e observações
+
+- A dedup do repositório cobre apenas hash exato do arquivo. A dedup por chave de atividade (início ±1 s, duração ±2 s, distância ±1%) e os `alternates` ficam para o fluxo de importação do P0-08.
+- Samples não guardam timestamp absoluto por ponto; o início da atividade + offset é a fonte canônica. Isso reduz o blob e evita duplicar informação.
+- Developer fields são preservados, mas não entram no JSON de export básico; o blob completo continua no banco.
+- A lixeira é lógica: filhos permanecem até a exclusão permanente. O export inclui atividades com `deletedAt`.
+- `zoneId` é capturado na criação do repositório e `localDate` é derivada do início da atividade. Mudança de fuso do perfil será tratada no onboarding/perfil.
+- `:core:data` ainda não está ligado ao app nem a um módulo Hilt; isso entra junto com a importação real no P0-08.
+
+### Próximos passos
+
+1. `P0-08`: file picker (SAF) + share intent, fila persistente com WorkManager e tela de importação.
+2. Ligar `:core:data` ao app, com Hilt e `ActivityRepository`.
+3. Dedup por chave de atividade, alternates e substituição FIT > TCX > GPX no fluxo real.
+4. `P0-09`: detalhe da atividade com gráficos, splits e rota.
+5. Fechar `P0-10`: Robolectric/Roborazzi, golden scenarios e relatórios no CI.
+
+### Riscos/observações
+
+- O codec limita o payload descomprimido a 128 MB e a 5 milhões de samples; arquivos muito maiores falham com erro claro.
+- O export básico não inclui séries completas nem arquivos originais; export ZIP/arquivos fica para a Fase 1.
+- A migração 1→2 é pequena por design; mudanças futuras de schema exigem novo teste e schema exportado.
+- Nenhum dado de saúde real pode entrar no git; revisar `git status` antes de cada commit.
 
 ## Sessão 2026-10-29 — P0-06: parsers TCX/GPX e dedup
 
@@ -203,3 +274,4 @@
 | 28/10/2026 | Fundação verde: build, testes, Kover, lint e tela Hoje em dark/light |
 | 28/10/2026 | P0-05 concluído: sanitizador, 4 fixtures FIT, parser, 105 testes e gate de branches |
 | 29/10/2026 | P0-06 concluído: parsers TCX/GPX, 3 TCX sanitizados, GPX sintético, dedup e 134 testes |
+| 30/10/2026 | P0-07 concluído: Room v2, migração testada, blob comprimido, repositório, export/delete e 160 testes |

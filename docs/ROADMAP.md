@@ -94,13 +94,15 @@
 
 ### P0-07 · Persistência (Room)
 
-- [ ] `core:data` com entidades `Activity`, `Lap`, `SampleBlob`, `ImportJob`.
-- [ ] DAOs + repositório.
-- [ ] Migração 1→2 de teste.
-- [ ] Blob comprimido com round-trip.
-- [ ] Backup desativado; export/delete básico.
+**Status:** concluído em 30/10/2026
 
-**Aceite:** importar, listar, abrir e apagar atividade sem perder consistência.
+- [x] `core:data` com entidades `Activity`, `Lap`, `SampleBlob`, `ImportJob`.
+- [x] DAOs + repositório.
+- [x] Migração 1→2 de teste.
+- [x] Blob comprimido com round-trip.
+- [x] Backup desativado; export/delete básico.
+
+**Aceite:** importar, listar, abrir e apagar atividade sem perder consistência. Entregue com Room v2, migração testada, `SampleBlobCodec` (`gzip-columnar-v1`), `ActivityRepository`, export JSON básico e 26 testes em `core:data`.
 
 ### P0-08 · Importação
 

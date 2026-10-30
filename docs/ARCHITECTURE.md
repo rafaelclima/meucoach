@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.2 · **Data:** 29/10/2026
+**Versão:** 1.3 · **Data:** 30/10/2026
 
 ## 1. Restrições e forças
 
@@ -119,7 +119,9 @@ TCX e GPX foram implementados em `core/domain/.../parser/tcx/` e `.../parser/gpx
 - Chave primária: `sha256(bytes)` para o arquivo.
 - Chave de atividade: `startTimeUtc` (tolerância de ±1 s) + `sport` + `durationSec` (tolerância de ±2 s) + `distanceM` (tolerância de ±1%, mínimo 1 m).
 - Implementação atual: `ActivityDeduplicator` em `core/domain/.../importer/`; a chave exata `keyOf` fica disponível para diagnóstico.
-- Se a mesma atividade vier em FIT + TCX + GPX, manter **FIT** (maior riqueza) e anexar os demais como `alternates`; a anexação será ligada ao fluxo de importação no P0-08.
+- `ActivityRepository` já aplica dedup exata por SHA-256 no salvamento e retorna `Duplicate` sem inserir.
+- A dedup por chave de atividade e a anexação de `alternates` serão ligadas ao fluxo de importação no P0-08.
+- Se a mesma atividade vier em FIT + TCX + GPX, manter **FIT** (maior riqueza) e anexar os demais como `alternates`.
 - Se um arquivo já importado for reprocessado com parser mais novo, permitir `reparse` sem perder IDs de referência.
 
 ## 6. Motor de domínio
@@ -166,10 +168,16 @@ data class EngineOutput(
 ## 7. Persistência
 
 - **Room/SQLite** como fonte de verdade local.
-- Entidades agregadas + **samples** em blob comprimido por atividade (ver `DATA_MODEL.md`).
+- `:core:data` implementa:
+  - `MeuCoachDatabase` v2 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity` e `ImportJobEntity`.
+  - DAOs separados e `ActivityRepository` como fronteira para o restante do app.
+  - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda.
+  - UUID v7 gerado no cliente para IDs ordenáveis.
+- Atividade, laps e blob são gravados na mesma transação; a lista usa `ActivitySummary` e o detalhe abre `StoredActivity`.
+- Exclusão padrão é lógica (`deletedAt`); exclusão permanente usa cascata e remove laps/blob. O export JSON básico inclui a lixeira.
 - Arquivos originais em storage privado do app, referenciados por hash.
 - `DataStore` apenas para preferências (tema, unidades, onboarding).
-- Migrações exportadas em `schemas/` e testadas com `MigrationTestHelper`.
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`.
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect
@@ -229,6 +237,7 @@ data class EngineOutput(
 | Health Connect indisponível | Fallback para check-in/CSV; aviso não bloqueante |
 | Sono não sincroniza | Prontidão com confiança parcial; nunca "ruim" |
 | Sem dados de HRV | Peso 0 no modelo; confiança menor |
+| Blob de samples corrompido | Atividade permanece; samples descartados com aviso |
 | App morto durante import | Job persistente; retoma ou marca como falho |
 
 ## 14. Decisões relacionadas
