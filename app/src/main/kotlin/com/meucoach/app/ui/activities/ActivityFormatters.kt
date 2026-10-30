@@ -70,3 +70,6 @@ fun importJobDetail(job: ImportJobSummary): String = when (job.status) {
 }
 
 fun paceLabel(pace: Pace?): String = pace?.format() ?: "—"
+
+fun sourcesLabel(sources: List<com.meucoach.core.model.ActivitySource>): String =
+    sources.map { sourceLabel(it) }.joinToString(" · ")

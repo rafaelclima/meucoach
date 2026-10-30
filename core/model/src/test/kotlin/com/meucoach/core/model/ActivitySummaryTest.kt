@@ -48,6 +48,31 @@ class ActivitySummaryTest {
     }
 
     @Test
+    fun `defaults sources to the canonical source`() {
+        assertThat(activity().sources).containsExactly(ActivitySource.FIT)
+    }
+
+    @Test
+    fun `keeps canonical source first and rejects invalid source lists`() {
+        val summary = activity().copy(
+            sources = listOf(ActivitySource.FIT, ActivitySource.TCX, ActivitySource.GPX),
+        )
+
+        assertThat(summary.sources).containsExactly(
+            ActivitySource.FIT,
+            ActivitySource.TCX,
+            ActivitySource.GPX,
+        )
+        assertThatThrownBy { activity().copy(sources = emptyList()) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { activity().copy(sources = listOf(ActivitySource.TCX)) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy {
+            activity().copy(sources = listOf(ActivitySource.FIT, ActivitySource.FIT))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
     fun `validates athlete profile ranges`() {
         val profile =
             AthleteProfile(

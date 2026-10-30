@@ -192,7 +192,7 @@ private fun ActivityCard(activity: ActivitySummary) {
                     color = colors.textTertiary,
                 )
             }
-            McPill(text = sourceLabel(activity.source))
+            McPill(text = sourcesLabel(activity.sources))
         }
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

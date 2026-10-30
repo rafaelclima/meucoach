@@ -115,6 +115,10 @@ class ActivityRepositoryTest {
                 .isEqualTo(SaveActivityResult.Replaced("activity-1", ActivitySource.TCX))
 
             assertThat(repository.listActivitySummaries()).hasSize(1)
+            assertThat(repository.listActivitySummaries().single().sources)
+                .containsExactly(ActivitySource.FIT, ActivitySource.TCX)
+            assertThat(repository.observeActivitySummaries().first().single().sources)
+                .containsExactly(ActivitySource.FIT, ActivitySource.TCX)
             val stored = repository.openActivity("activity-1")
             assertThat(stored?.imported?.source).isEqualTo(ActivitySource.FIT)
             assertThat(stored?.imported?.samples).hasSize(10)
@@ -150,6 +154,8 @@ class ActivityRepositoryTest {
             assertThat(stored?.imported?.samples).hasSize(10)
             assertThat(stored?.alternates).hasSize(1)
             assertThat(stored!!.alternates.single().source).isEqualTo(ActivitySource.TCX)
+            assertThat(repository.listActivitySummaries().single().sources)
+                .containsExactly(ActivitySource.FIT, ActivitySource.TCX)
         }
     }
 
@@ -184,6 +190,8 @@ class ActivityRepositoryTest {
             assertThat(stored?.imported?.samples).hasSize(5)
             assertThat(stored?.sourceFileSha256).isEqualTo("rich-sha")
             assertThat(stored?.alternates?.single()?.sampleCount).isEqualTo(2)
+            assertThat(repository.listActivitySummaries().single().sources)
+                .containsExactly(ActivitySource.FIT)
         }
     }
 

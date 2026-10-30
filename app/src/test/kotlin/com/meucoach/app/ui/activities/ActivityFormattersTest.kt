@@ -84,4 +84,14 @@ class ActivityFormattersTest {
         createdAt = Instant.parse("2026-10-30T12:00:00Z"),
         finishedAt = null,
     )
+
+    @Test
+    fun `labels combined sources`() {
+        assertThat(sourcesLabel(listOf(ActivitySource.FIT))).isEqualTo("FIT")
+        assertThat(
+            sourcesLabel(
+                listOf(ActivitySource.FIT, ActivitySource.TCX, ActivitySource.GPX),
+            ),
+        ).isEqualTo("FIT · TCX · GPX")
+    }
 }

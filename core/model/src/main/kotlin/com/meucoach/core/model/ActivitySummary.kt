@@ -58,6 +58,7 @@ data class ActivitySummary(
     val averagePace: Pace? = null,
     val averageCadenceSpm: Int? = null,
     val trainingLoad: Double? = null,
+    val sources: List<ActivitySource> = listOf(source),
 ) {
     init {
         require(id.isNotBlank()) { "Activity id must not be blank" }
@@ -74,6 +75,9 @@ data class ActivitySummary(
         require(trainingLoad == null || trainingLoad >= 0.0) {
             "Training load must not be negative"
         }
+        require(sources.isNotEmpty()) { "At least the canonical source is required" }
+        require(source in sources) { "Canonical source must be part of sources" }
+        require(sources.size == sources.distinct().size) { "Sources must not repeat" }
     }
 
     val calculatedPace: Pace?

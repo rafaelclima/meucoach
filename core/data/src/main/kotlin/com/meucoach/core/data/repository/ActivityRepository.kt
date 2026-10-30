@@ -20,6 +20,7 @@ import com.meucoach.core.model.Distance
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,15 +44,24 @@ class ActivityRepository(
     private val alternateIdGenerator: () -> String = { UuidV7.generate(clock) },
     private val deduplicator: ActivityDeduplicator = ActivityDeduplicator(),
 ) {
-    fun observeActivitySummaries(): Flow<List<ActivitySummary>> = database
-        .activityDao()
-        .observeAll()
-        .map { activities -> activities.map { it.toSummary() } }
+    fun observeActivitySummaries(): Flow<List<ActivitySummary>> = combine(
+        database.activityDao().observeAll(),
+        database.activityAlternateDao().observeSources(),
+    ) { activities, sourceRows ->
+        val sourcesByActivity = sourceRows.groupBy({ it.activityId }, { it.source })
+        activities.map { it.toSummary(sourcesByActivity[it.id].orEmpty()) }
+    }
 
-    suspend fun listActivitySummaries(): List<ActivitySummary> = database
-        .activityDao()
-        .getAll()
-        .map { it.toSummary() }
+    suspend fun listActivitySummaries(): List<ActivitySummary> = database.withTransaction {
+        val sourcesByActivity = database
+            .activityAlternateDao()
+            .getAllSources()
+            .groupBy({ it.activityId }, { it.source })
+        database
+            .activityDao()
+            .getAll()
+            .map { it.toSummary(sourcesByActivity[it.id].orEmpty()) }
+    }
 
     fun observeImportJobs(): Flow<List<ImportJobSummary>> = database
         .importJobDao()
@@ -381,7 +391,7 @@ class ActivityRepository(
         elevationGainM = elevationGainM,
     )
 
-    private fun ActivityEntity.toSummary() = ActivitySummary(
+    private fun ActivityEntity.toSummary(alternateSources: List<ActivitySource> = emptyList()) = ActivitySummary(
         id = id,
         source = source,
         sport = sport,
@@ -393,6 +403,8 @@ class ActivityRepository(
         averagePace = averagePaceSecPerKm.toPace(),
         averageCadenceSpm = averageCadenceSpm?.takeIf { it > 0 },
         trainingLoad = null,
+        // Canonical source first; alternates keep their import order.
+        sources = (listOf(source) + alternateSources).distinct(),
     )
 
     private fun ActivityEntity.toImportedActivity(laps: List<ActivityLap>, samples: List<ActivitySample>) =
