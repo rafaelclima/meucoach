@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 260 testes no repositório, 0 falhas (17 em `core:model`, 131 em `core:domain`, 46 em `core:data`, 66 em `:app`).
+- 309 testes no repositório, 0 falhas (22 em `core:model`, 131 em `core:domain`, 57 em `core:data`, 99 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -113,6 +113,17 @@ Evidência atual (30/10/2026):
 - `RouteDataTest`: projeção normalizada, norte para cima, downsampling e ausência de GPS.
 - `ActivityDetailScreenTest` (Robolectric + Compose UI): loading, não encontrado, seções com scroll e tema claro; valida descrição de acessibilidade do gráfico.
 - `ActivityDetailFormattersTest`: distância, metas de lap, faixas do gráfico, confiança e fontes.
+
+## 5.3 Testes de perfil e onboarding
+
+- `AthleteProfileTest`: disponibilidade, objetivo, fuso, coordenadas e limites.
+- `ProfileJsonTest`: round-trip de disponibilidade/objetivo, dias desconhecidos, JSON corrompido e metas ausentes.
+- `ProfileRepositoryTest`: singleton, round-trip completo, preservação de `createdAt`, edição e exclusão.
+- `MeuCoachDatabaseMigrationTest`: migrações 1→4, 2→4 e 3→4 criam `athlete_profile` sem perder atividades.
+- `OnboardingValidatorTest`: validação por passo, datas estritas, tempos `mm:ss`/`h:mm:ss`, FC, fuso e arredondamentos.
+- `OnboardingViewModelTest`: bloqueio de passo inválido, salvamento, edição preservando LTHR/VDOT e disponibilidade.
+- `OnboardingScreenTest` e `ProfileScreenTest` (Compose UI): estados, erros, loading, tema claro e ação de edição.
+- `ProfileLabelsTest`: idade, meta, tempo alvo, disponibilidade e labels de enums.
 
 ## 6. Testes de domínio
 
@@ -195,6 +206,10 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 
 - `app/src/test/screenshots/activity-detail-dark.png`
 - `app/src/test/screenshots/activity-detail-light.png`
+- `app/src/test/screenshots/onboarding-dark.png`
+- `app/src/test/screenshots/onboarding-light.png`
+- `app/src/test/screenshots/profile-dark.png`
+- `app/src/test/screenshots/profile-light.png`
 
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).

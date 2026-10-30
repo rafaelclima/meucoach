@@ -6,18 +6,57 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 260 testes, 0 falhas (17 em `core:model`, 131 em `core:domain`, 46 em `core:data`, 66 em `:app`)
+- **Testes:** 309 testes, 0 falhas (22 em `core:model`, 131 em `core:domain`, 57 em `core:data`, 99 em `:app`)
 - **Cobertura `core:domain`:** 98,82% de linhas (1.261/1.276), 85,90% de branches (1.170/1.362), 96,88% de instruções (9.986/10.308)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v3 (`activity_alternates`), migrações 1→2 (`deletedAt`) e 2→3 (alternates) testadas.
+- **Persistência:** Room 2.8.5, schema v4 (`athlete_profile`), migrações 1→2 (`deletedAt`), 2→3 (alternates) e 3→4 (perfil) testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
 - **Detalhe da atividade:** hero, métricas, gráfico pace × FC (Canvas), splits, rota offline e insights com `ruleId`/`evidenceId`/confiança.
-- **Zonas:** pendentes até existir LTHR calibrada (P1-01/P1-02); não são estimadas por maxHR.
+- **Perfil e onboarding:** formulário em 3 passos (dados, objetivo/disponibilidade, rotina), validação, persistência e edição.
+- **Zonas:** pendentes até existir LTHR calibrada (P1-02); não são estimadas por maxHR.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P1-01: onboarding e perfil
+
+### Concluído
+
+- `AthleteProfile` estendido com `timezone`, `weeklyAvailability`, `goal`, `city`, `latitude`, `longitude` e `units`, com validação de IANA, faixas e minutos por dia.
+- Persistência Room v4:
+  - `AthleteProfileEntity` + `AthleteProfileDao` (singleton).
+  - `ProfileRepository` com fluxo observável, upsert transacional e preservação de `createdAt`.
+  - JSON para disponibilidade e objetivo (`ProfileJson`), com tolerância a dados corrompidos.
+  - `MIGRATION_3_4` e migrações 1→4/2→4/3→4 testadas.
+- Onboarding em 3 passos:
+  - Dados pessoais, sexo, altura, peso e experiência.
+  - Objetivo, data/tempo alvo e disponibilidade semanal.
+  - FC de repouso/máxima, fuso e cidade.
+  - Validação por passo, erros em pt-BR, edição preservando calibração existente.
+- Gate de primeiro uso: sem perfil, o app mostra o onboarding; com perfil, o shell normal.
+- Tela de perfil com resumo, disponibilidade, objetivo e edição.
+- Testes: validador, ViewModel, labels, telas e screenshots dark/light.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
+- 309 testes, 0 falhas (22 `core:model`, 131 `core:domain`, 57 `core:data`, 99 `:app`).
+- `core:domain`: 98,82% linhas, 85,90% branches, 96,88% instruções.
+
+### Decisões e observações
+
+- O perfil é singleton local; multi-perfil continua fora do MVP.
+- `units` só tem `METRIC` por enquanto; a UI não oferece milhas.
+- Zonas continuam bloqueadas: o perfil coleta FC máxima observada, mas zonas exigem LTHR de calibração (P1-02).
+- O onboarding não pede nome para não criar dado que o motor ainda não usa.
+
+### Próximos passos
+
+1. `P1-02`: calibração por prova/TT, VDOT/LTHR e tela de resultado.
+2. Ligar zonas de FC e pace ao detalhe da atividade após a calibração.
+3. `P1-03`: motor de carga integrado às atividades.
 
 ## Sessão 2026-10-30 — P0-10: harness, golden e CI
 

@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.activitydetail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,7 +67,11 @@ fun ActivityDetailScreen(
 
 @Composable
 internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(McTheme.colors.background),
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()

@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.profile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +47,11 @@ fun ProfileScreen(onEdit: () -> Unit, modifier: Modifier = Modifier, viewModel: 
 @Composable
 internal fun ProfileContent(state: ProfileUiState, onEdit: () -> Unit, modifier: Modifier = Modifier) {
     val colors = McTheme.colors
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background),
+    ) {
         when {
             state.isLoading -> CircularProgressIndicator(
                 modifier = Modifier

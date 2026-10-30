@@ -95,7 +95,11 @@ internal fun OnboardingContent(
     onCancel: (() -> Unit)? = null,
 ) {
     val colors = McTheme.colors
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background),
+    ) {
         if (state.isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier

@@ -9,7 +9,7 @@
 | Fase | Objetivo | Status |
 |---|---|---|
 | **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Concluída em 30/10/2026** |
-| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | Planejada |
+| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento** |
 | **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada |
 | **3 — Experimental** | Social, conector Zepp, explicações com LLM | Planejada |
 
@@ -125,7 +125,7 @@
 - [x] "O que aprendemos" com `R-ACT-01`/`R-ACT-02`, evidência e confiança.
 - [ ] Zonas — bloqueado até a calibração de LTHR (P1-01/P1-02); não estimar por maxHR.
 
-**Aceite verificado:** `RealFixturesDetailTest` importa e abre os 7 treinos reais sanitizados sem erro; TCX confere distância, duração e cadência com o README; 256 testes verdes.
+**Aceite verificado:** `RealFixturesDetailTest` importa e abre os 7 treinos reais sanitizados sem erro; TCX confere distância, duração e cadência com o README; suíte verde.
 
 ### P0-10 · Harness de testes
 
@@ -144,7 +144,15 @@
 ## Fase 1 — Coach
 
 ### P1-01 · Onboarding e perfil
-Formulário em etapas, disponibilidade, objetivo, unidades, timezone. Persistência e edição. Testes de validação.
+
+**Status:** concluído em 30/10/2026
+
+- [x] Formulário em 3 passos: dados pessoais, objetivo/disponibilidade e rotina.
+- [x] Persistência local em Room v4 e edição preservando calibração.
+- [x] Gate de primeiro uso e tela de resumo do perfil.
+- [x] Validação por passo, mensagens em pt-BR e testes de ViewModel/UI.
+
+**Aceite:** perfil completo é salvo e reaberto; ausência de dados não bloqueia o app depois do onboarding.
 
 ### P1-02 · Calibração
 Tier A/B/C, TT de 30 min, VDOT, LTHR, paces. Tela de resultado e confiança. Recalibração.
