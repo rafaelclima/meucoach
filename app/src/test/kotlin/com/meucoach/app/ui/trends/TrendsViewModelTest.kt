@@ -78,6 +78,7 @@ class TrendsViewModelTest {
         assertThat(state.snapshot?.hasData).isTrue()
         assertThat(state.snapshot?.ctl).isGreaterThan(0.0)
         assertThat(state.snapshot?.daily).hasSize(42)
+        assertThat(state.activityTrends?.totalKilometers).isEqualTo(5.0)
     }
 
     @Test

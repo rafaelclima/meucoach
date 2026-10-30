@@ -1,0 +1,87 @@
+package com.meucoach.core.domain.trends
+
+import com.meucoach.core.model.ActivitySummary
+import com.meucoach.core.model.Pace
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
+import kotlin.math.roundToInt
+
+data class WeeklyVolume(val weekStart: LocalDate, val kilometers: Double, val runs: Int)
+
+data class ConsistencySummary(val windowDays: Int, val activeDays: Int, val runs: Int, val daysSinceLastRun: Long?)
+
+data class PaceHeartRatePoint(val date: LocalDate, val pace: Pace, val heartRate: Int)
+
+data class ActivityTrends(
+    val weeks: List<WeeklyVolume>,
+    val consistency: ConsistencySummary,
+    val paceHeartRate: List<PaceHeartRatePoint>,
+    val totalKilometers: Double,
+    val averagePace: Pace?,
+    val averageHeartRate: Int?,
+)
+
+class ActivityTrendsCalculator {
+    fun calculate(
+        activities: List<ActivitySummary>,
+        today: LocalDate,
+        zoneId: ZoneId,
+        weeks: Int = 6,
+        consistencyDays: Int = 28,
+    ): ActivityTrends {
+        require(weeks in 1..26) { "Week window must be between 1 and 26" }
+        require(consistencyDays in 7..90) { "Consistency window must be between 7 and 90 days" }
+        val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val weekStarts = (weeks - 1 downTo 0).map { currentWeekStart.minusWeeks(it.toLong()) }
+        val byLocalDate = activities.groupBy { it.startTime.atZone(zoneId).toLocalDate() }
+        val weekly = weekStarts.map { weekStart ->
+            val days = (0..6).map { weekStart.plusDays(it.toLong()) }
+            val runs = days.sumOf { day -> byLocalDate[day]?.size ?: 0 }
+            val km = days.sumOf { day -> byLocalDate[day]?.sumOf { it.distance.kilometers } ?: 0.0 }
+            WeeklyVolume(weekStart, km, runs)
+        }
+        val consistencyStart = today.minusDays(consistencyDays - 1L)
+        val consistencyActivities = activities.filter {
+            val date = it.startTime.atZone(zoneId).toLocalDate()
+            !date.isBefore(consistencyStart) && !date.isAfter(today)
+        }
+        val activeDays = consistencyActivities
+            .map { it.startTime.atZone(zoneId).toLocalDate() }
+            .distinct()
+            .size
+        val lastRun = consistencyActivities.maxByOrNull { it.startTime }
+            ?.startTime
+            ?.atZone(zoneId)
+            ?.toLocalDate()
+        val consistency = ConsistencySummary(
+            windowDays = consistencyDays,
+            activeDays = activeDays,
+            runs = consistencyActivities.size,
+            daysSinceLastRun = lastRun?.let { ChronoUnit.DAYS.between(it, today) },
+        )
+        val pacePoints = consistencyActivities
+            .filter { it.averagePace != null && it.averageHeartRate != null }
+            .sortedBy { it.startTime }
+            .map {
+                PaceHeartRatePoint(
+                    date = it.startTime.atZone(zoneId).toLocalDate(),
+                    pace = it.averagePace!!,
+                    heartRate = it.averageHeartRate!!,
+                )
+            }
+        val totalKm = consistencyActivities.sumOf { it.distance.kilometers }
+        val paceValues = consistencyActivities.mapNotNull { it.averagePace?.secondsPerKm }
+        val heartRates = consistencyActivities.mapNotNull { it.averageHeartRate }
+        return ActivityTrends(
+            weeks = weekly,
+            consistency = consistency,
+            paceHeartRate = pacePoints,
+            totalKilometers = totalKm,
+            averagePace = paceValues.takeIf { it.isNotEmpty() }?.average()?.roundToInt()?.let(Pace::fromSecondsPerKm),
+            averageHeartRate = heartRates.takeIf { it.isNotEmpty() }?.average()?.roundToInt(),
+        )
+    }
+}

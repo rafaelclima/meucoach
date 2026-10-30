@@ -218,7 +218,15 @@
 - [ ] Check-in com streak.
 
 ### P1-07 · Tendências
-PMC, volume, 80/20, pace@FC, consistência, recordes. Filtros por período.
+
+**Status:** em andamento — volume/consistência/pace×FC em 30/10/2026
+
+- [x] Volume semanal.
+- [x] Consistência de 28 dias.
+- [x] Relação pace×FC (lista).
+- [ ] Distribuição 80/20 por tempo.
+- [ ] Gráfico de eficiência pace@FC, recordes e filtros.
+- [ ] Heatmap de consistência.
 
 ### P1-08 · Check-in
 15 s, Hooper, sono percebido, dor, stress. Histórico e impacto na prontidão.

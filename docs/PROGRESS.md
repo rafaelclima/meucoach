@@ -6,7 +6,7 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 488 testes, 0 falhas (27 em `core:model`, 206 em `core:domain`, 73 em `core:data`, 182 em `:app`)
+- **Testes:** 494 testes, 0 falhas (27 em `core:model`, 211 em `core:domain`, 73 em `core:data`, 183 em `:app`)
 - **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -30,10 +30,32 @@
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
+- **Tendências de atividades:** volume semanal, consistência de 28 dias e relação pace×FC no `ActivityTrendsCalculator`.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P1-07: Tendências de atividades (parcial)
+
+### Concluído
+
+- `ActivityTrendsCalculator`:
+  - Volume por semana (6 semanas) em km e corridas.
+  - Consistência de 28 dias: dias ativos, corridas e dias desde a última.
+  - Pontos pace×FC para corridas com ambos.
+  - Médias de pace e FC no período.
+- Tela Tendências:
+  - Barras de volume semanal em Canvas.
+  - Card de consistência com km e pace médio.
+  - Lista “Pace @ FC” com data, pace e bpm.
+- Testes de domínio, ViewModel e UI.
+
+### Pendente
+
+- Distribuição 80/20 por tempo (exige decodificar samples).
+- Pace@FC como gráfico de eficiência e recordes.
+- Heatmap de consistência e filtros de período.
 
 ## Sessão 2026-10-30 — P1-06: Hoje e notificações (parcial)
 

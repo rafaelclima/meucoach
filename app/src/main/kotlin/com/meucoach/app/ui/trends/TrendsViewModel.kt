@@ -7,6 +7,8 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
+import com.meucoach.core.domain.trends.ActivityTrends
+import com.meucoach.core.domain.trends.ActivityTrendsCalculator
 import com.meucoach.core.model.AthleteProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,7 @@ data class TrendsUiState(
     val isLoading: Boolean = true,
     val profile: AthleteProfile? = null,
     val snapshot: LoadSnapshot? = null,
+    val activityTrends: ActivityTrends? = null,
 )
 
 @HiltViewModel
@@ -55,6 +58,11 @@ class TrendsViewModel @Inject constructor(
                     activities = activities,
                     profile = profile,
                     today = LocalDate.now(),
+                ),
+                activityTrends = ActivityTrendsCalculator().calculate(
+                    activities = activityRepository.listActivitySummaries(),
+                    today = LocalDate.now(),
+                    zoneId = zone,
                 ),
             )
         }

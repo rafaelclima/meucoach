@@ -11,8 +11,13 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
+import com.meucoach.core.domain.trends.ActivityTrends
+import com.meucoach.core.domain.trends.ConsistencySummary
+import com.meucoach.core.domain.trends.PaceHeartRatePoint
+import com.meucoach.core.domain.trends.WeeklyVolume
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Pace
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import org.junit.Rule
@@ -109,6 +114,54 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("48"))
         compose.onNodeWithText("48").assertIsDisplayed()
         compose.onNodeWithText("Âmbar").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows volume, consistency and pace heart rate`() {
+        val trends = ActivityTrends(
+            weeks = listOf(
+                WeeklyVolume(LocalDate.of(2026, 10, 19), 10.0, 2),
+                WeeklyVolume(LocalDate.of(2026, 10, 26), 13.0, 3),
+            ),
+            consistency = ConsistencySummary(
+                windowDays = 28,
+                activeDays = 4,
+                runs = 5,
+                daysSinceLastRun = 1,
+            ),
+            paceHeartRate = listOf(
+                PaceHeartRatePoint(
+                    date = LocalDate.of(2026, 10, 29),
+                    pace = Pace.fromSecondsPerKm(360),
+                    heartRate = 150,
+                ),
+            ),
+            totalKilometers = 23.0,
+            averagePace = Pace.fromSecondsPerKm(360),
+            averageHeartRate = 150,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TrendsContent(
+                    state = TrendsUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        snapshot = snapshot(hasData = true),
+                        activityTrends = trends,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Volume · 2 semanas"))
+        compose.onNodeWithText("Volume · 2 semanas").assertIsDisplayed()
+        list.performScrollToNode(hasText("Consistência · 28 dias"))
+        list.performScrollToNode(hasText("DIAS ATIVOS"))
+        compose.onNodeWithText("DIAS ATIVOS").assertIsDisplayed()
+        list.performScrollToNode(hasText("Pace @ FC"))
+        list.performScrollToNode(hasText("6:00 /km"))
+        compose.onNodeWithText("6:00 /km").assertIsDisplayed()
     }
 
     private fun setContent(state: TrendsUiState) {

@@ -50,6 +50,7 @@ import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
+import com.meucoach.core.domain.trends.ActivityTrends
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -104,13 +105,21 @@ internal fun TrendsContent(
                 modifier = Modifier.align(Alignment.Center),
             )
 
-            else -> LoadDetails(snapshot = state.snapshot, readinessHistory = readinessHistory)
+            else -> LoadDetails(
+                snapshot = state.snapshot,
+                readinessHistory = readinessHistory,
+                activityTrends = state.activityTrends,
+            )
         }
     }
 }
 
 @Composable
-private fun LoadDetails(snapshot: LoadSnapshot, readinessHistory: List<ReadinessHistoryDay>) {
+private fun LoadDetails(
+    snapshot: LoadSnapshot,
+    readinessHistory: List<ReadinessHistoryDay>,
+    activityTrends: ActivityTrends?,
+) {
     val colors = McTheme.colors
     LazyColumn(
         modifier = Modifier
@@ -193,12 +202,125 @@ private fun LoadDetails(snapshot: LoadSnapshot, readinessHistory: List<Readiness
                 )
             }
         }
+        if (activityTrends != null) {
+            item { McSectionHeader(title = "Volume · ${activityTrends.weeks.size} semanas") }
+            item { WeeklyVolumeCard(activityTrends.weeks) }
+            item { McSectionHeader(title = "Consistência · ${activityTrends.consistency.windowDays} dias") }
+            item { ConsistencyCard(activityTrends) }
+            if (activityTrends.paceHeartRate.isNotEmpty()) {
+                item { McSectionHeader(title = "Pace @ FC") }
+                item { PaceHeartRateCard(activityTrends.paceHeartRate) }
+            }
+        }
         if (readinessHistory.isNotEmpty()) {
             item { McSectionHeader(title = "Prontidão · 14 dias") }
             item { ReadinessHistoryCard(readinessHistory) }
         }
         item { McSectionHeader(title = "PMC · 42 dias") }
         item { PmcCard(snapshot) }
+    }
+}
+
+@Composable
+private fun WeeklyVolumeCard(weeks: List<com.meucoach.core.domain.trends.WeeklyVolume>) {
+    val colors = McTheme.colors
+    val max = weeks.maxOf { it.kilometers }.coerceAtLeast(1.0)
+    val total = weeks.sumOf { it.kilometers }
+    McCard {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .semantics { contentDescription = "Volume semanal em quilômetros" },
+        ) {
+            val slot = size.width / weeks.size
+            val barWidth = slot * 0.55f
+            weeks.forEachIndexed { index, week ->
+                val height = (week.kilometers / max * size.height).toFloat()
+                val left = index * slot + (slot - barWidth) / 2
+                drawRoundRect(
+                    color = colors.accent,
+                    topLeft = Offset(left, size.height - height),
+                    size = androidx.compose.ui.geometry.Size(barWidth, height),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = String.format(PT_BR, "%.1f km no total · média %.1f km/semana", total, total / weeks.size),
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun ConsistencyCard(trends: com.meucoach.core.domain.trends.ActivityTrends) {
+    val consistency = trends.consistency
+    McCard(variant = com.meucoach.core.designsystem.component.McCardVariant.INSET) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            McStat(
+                label = "Dias ativos",
+                value = consistency.activeDays.toString(),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Corridas",
+                value = consistency.runs.toString(),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Última",
+                value = consistency.daysSinceLastRun?.let { "há $it d" } ?: "—",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = String.format(
+                PT_BR,
+                "%.1f km no período · pace médio %s",
+                trends.totalKilometers,
+                trends.averagePace?.format() ?: "—",
+            ),
+            style = McTextStyles.caption,
+            color = McTheme.colors.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun PaceHeartRateCard(points: List<com.meucoach.core.domain.trends.PaceHeartRatePoint>) {
+    val colors = McTheme.colors
+    McCard {
+        points.takeLast(8).reversed().forEachIndexed { index, point ->
+            if (index > 0) {
+                McDivider(modifier = Modifier.padding(vertical = 6.dp))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = point.date.format(DAY_FORMAT),
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.width(52.dp),
+                )
+                Text(
+                    text = "${point.pace.format()} /km",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "${point.heartRate} bpm",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        }
     }
 }
 

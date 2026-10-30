@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 488 testes no repositório, 0 falhas (27 em `core:model`, 206 em `core:domain`, 73 em `core:data`, 182 em `:app`).
+- 494 testes no repositório, 0 falhas (27 em `core:model`, 211 em `core:domain`, 73 em `core:data`, 183 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
@@ -159,6 +159,8 @@ Evidência atual (30/10/2026):
 - `NotificationNavigationTest`: deep links e fila de navegação.
 - `ReminderNotifierTest`: canal e notificação postada.
 - `ReminderSchedulerTest`: dois trabalhos periódicos únicos com tag.
+- `ActivityTrendsCalculatorTest`: volume semanal, consistência, pace×FC e janelas inválidas.
+- `TrendsScreenTest`: cards de volume, consistência e pace×FC.
 
 ## 6. Testes de domínio
 
