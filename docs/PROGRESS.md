@@ -6,12 +6,12 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 450 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 66 em `core:data`, 163 em `:app`)
+- **Testes:** 456 testes, 0 falhas (27 em `core:model`, 194 em `core:domain`, 71 em `core:data`, 164 em `:app`)
 - **Cobertura `core:domain`:** 98,23% de linhas (1.938/1.973), 82,84% de branches (1.559/1.882), 96,85% de instruções (14.459/14.929)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v6 (`daily_metrics`), migrações 1→2 até 5→6 testadas.
+- **Persistência:** Room 2.8.5, schema v7 (`weekly_plans`/`planned_sessions`), migrações 1→2 até 6→7 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -26,6 +26,7 @@
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não.
 - **Plano semanal:** distribuição por disponibilidade, máximo 1 qualidade, longão 25–30% e sem progressão sem histórico.
+- **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 
@@ -51,7 +52,7 @@
 ### Evidências
 
 - `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
-- 450 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 66 `core:data`, 163 `:app`).
+- 456 testes, 0 falhas (27 `core:model`, 194 `core:domain`, 71 `core:data`, 164 `:app`).
 
 ## Sessão 2026-10-30 — P1-05: recomendação diária (parcial)
 
@@ -72,6 +73,10 @@
   - Longão 25–30% do volume e ≤150 min para iniciante.
   - Sem progressão até existir histórico de conclusão.
   - Sem disponibilidade ⇒ plano vazio explícito (`R-DATA-01`).
+- Plano persistido em Room v7 (`weekly_plans`/`planned_sessions`):
+  - Gerado uma vez por semana e reutilizado; check-ins não reescrevem o plano.
+  - `TrainingPlanRepository` com leitura observável, substituição de sessões e exclusão.
+  - Migração 6→7 e testes 1→7 até 6→7.
 - Card "Plano da semana" na tela Hoje com dias, tipo, duração, confiança e rationale.
 - Tela Hoje passa a usar a recomendação real no card de treino.
 - CTL/ATL/TSB da tela Hoje vêm do motor de carga quando há atividades.

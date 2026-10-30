@@ -9,6 +9,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,6 +45,11 @@ object DataModule {
     @Singleton
     fun provideHealthDailySource(@ApplicationContext context: Context): HealthDailySource =
         HealthConnectDailySource(context)
+
+    @Provides
+    @Singleton
+    fun provideTrainingPlanRepository(database: MeuCoachDatabase): TrainingPlanRepository =
+        TrainingPlanRepository(database)
 
     @Provides
     @Singleton

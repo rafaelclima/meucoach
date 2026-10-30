@@ -197,6 +197,7 @@
 - [x] Fácil Z2 com pace E e FC Z2 quando calibrado; RPE sem calibração.
 - [x] Recomendação na tela Hoje com regra/evidência/confiança.
 - [x] Plano semanal conservador por disponibilidade, no máximo 1 qualidade.
+- [x] Plano persistido por semana (Room v7), sem reescrever com check-ins.
 - [ ] Blocos/periodização, progressão 5–8%, deload e taper.
 - [ ] Qualidade estruturada, calor e esteira.
 - [ ] Histórico de conclusão e limite de 2 qualidades/semana.

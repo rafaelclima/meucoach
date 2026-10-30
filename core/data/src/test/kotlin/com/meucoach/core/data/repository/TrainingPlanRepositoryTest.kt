@@ -1,0 +1,115 @@
+package com.meucoach.core.data.repository
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.model.DataConfidence
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.time.LocalDate
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class TrainingPlanRepositoryTest {
+    private lateinit var database: MeuCoachDatabase
+    private lateinit var repository: TrainingPlanRepository
+    private val monday = LocalDate.of(2026, 11, 2)
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        database =
+            Room
+                .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+        repository = TrainingPlanRepository(database)
+    }
+
+    @After
+    fun tearDown() {
+        database.close()
+    }
+
+    @Test
+    fun `saves and reads a week`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+
+        assertThat(repository.getWeek(monday)).isEqualTo(plan())
+        assertThat(repository.observeWeek(monday).first()).isEqualTo(plan())
+    }
+
+    @Test
+    fun `replaces sessions when the week is saved again`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+        val updated = plan().copy(
+            sessions = plan().sessions.take(1).map { it.copy(durationMin = 30) },
+            weeklyMinutes = 30,
+            longRunMinutes = null,
+        )
+
+        repository.saveWeek(updated)
+
+        val stored = repository.getWeek(monday)
+        assertThat(stored?.sessions).hasSize(1)
+        assertThat(stored?.sessions?.single()?.durationMin).isEqualTo(30)
+        assertThat(stored?.weeklyMinutes).isEqualTo(30)
+    }
+
+    @Test
+    fun `deletes the week and its sessions`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+
+        assertThat(repository.deleteWeek(monday)).isEqualTo(1)
+        assertThat(repository.getWeek(monday)).isNull()
+        assertThat(database.trainingPlanDao().getSessions(monday.toString())).isEmpty()
+    }
+
+    @Test
+    fun `starts empty`(): Unit = runBlocking {
+        assertThat(repository.getWeek(monday)).isNull()
+        assertThat(repository.observeWeek(monday).first()).isNull()
+    }
+
+    private fun plan() = WeeklyPlan(
+        weekStart = monday,
+        sessions = listOf(
+            PlannedSession(
+                date = monday,
+                type = WorkoutType.EASY,
+                title = "Fácil em Z2",
+                durationMin = 40,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+            PlannedSession(
+                date = monday.plusDays(5),
+                type = WorkoutType.LONG,
+                title = "Longão",
+                durationMin = 60,
+                rationale = "Longo.",
+                ruleIds = listOf("R-PLAN-03"),
+                evidenceIds = listOf("EV-PFITZINGER-2008"),
+            ),
+        ),
+        weeklyMinutes = 100,
+        longRunMinutes = 60,
+        qualityCount = 0,
+        rationale = "Sem progressão até existir histórico.",
+        confidence = DataConfidence.MEDIUM,
+        ruleIds = listOf("R-PLAN-03"),
+        evidenceIds = listOf("EV-PFITZINGER-2008"),
+    )
+}

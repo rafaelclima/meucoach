@@ -16,6 +16,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
@@ -32,9 +33,11 @@ import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.util.Locale
@@ -42,12 +45,14 @@ import javax.inject.Inject
 import kotlin.math.ln
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TodayViewModel @Inject constructor(
     checkInRepository: CheckInRepository,
     metricsRepository: DailyMetricsRepository,
     profileRepository: ProfileRepository,
     activityRepository: ActivityRepository,
+    private val planRepository: TrainingPlanRepository,
 ) : ViewModel() {
     private val engine = TrainingLoadEngine()
     private val recommender = WorkoutRecommender()
@@ -102,11 +107,22 @@ class TodayViewModel @Inject constructor(
             weeklyLoadKm = weekKm,
             recentActivity = recent,
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-        initialValue = todayState(null, emptyList()),
-    )
+    }
+        .mapLatest { state ->
+            val generated = state.plan ?: return@mapLatest state
+            val stored = planRepository.getWeek(generated.weekStart)
+            if (stored != null) {
+                state.copy(plan = stored)
+            } else {
+                planRepository.saveWeek(generated)
+                state
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = todayState(null, emptyList()),
+        )
 
     private fun buildLoad(activities: List<ActivitySummary>, profile: AthleteProfile, today: LocalDate): LoadSnapshot {
         val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()

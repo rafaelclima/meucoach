@@ -14,6 +14,7 @@ import com.meucoach.core.data.db.dao.DailyMetricsDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
+import com.meucoach.core.data.db.dao.TrainingPlanDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
@@ -21,7 +22,9 @@ import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
+import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
+import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 
 @Database(
     entities = [
@@ -33,6 +36,8 @@ import com.meucoach.core.data.db.entity.SampleBlobEntity
         AthleteProfileEntity::class,
         DailyCheckInEntity::class,
         DailyMetricsEntity::class,
+        WeeklyPlanEntity::class,
+        PlannedSessionEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -54,8 +59,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun dailyMetricsDao(): DailyMetricsDao
 
+    abstract fun trainingPlanDao(): TrainingPlanDao
+
     companion object {
-        const val VERSION = 6
+        const val VERSION = 7
         const val NAME = "meucoach.db"
 
         /**
@@ -189,9 +196,66 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 7 persists the generated weekly plan and its sessions.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `weekly_plans` (
+                        `weekStart` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `confidence` TEXT NOT NULL,
+                        `rationale` TEXT NOT NULL,
+                        `weeklyMinutes` INTEGER NOT NULL,
+                        `longRunMinutes` INTEGER,
+                        `qualityCount` INTEGER NOT NULL,
+                        `ruleIdsJson` TEXT NOT NULL,
+                        `evidenceIdsJson` TEXT NOT NULL,
+                        PRIMARY KEY(`weekStart`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `planned_sessions` (
+                        `id` TEXT NOT NULL,
+                        `weekStart` TEXT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `durationMin` INTEGER,
+                        `rationale` TEXT NOT NULL,
+                        `ruleIdsJson` TEXT NOT NULL,
+                        `evidenceIdsJson` TEXT NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`weekStart`) REFERENCES `weekly_plans`(`weekStart`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_planned_sessions_weekStart` " +
+                        "ON `planned_sessions` (`weekStart`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_planned_sessions_date` " +
+                        "ON `planned_sessions` (`date`)",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+            )
             .build()
     }
 }
