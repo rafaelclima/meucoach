@@ -30,7 +30,9 @@ class MetricsImportScreenTest {
         setContent(MetricsImportUiState(), onPick = { picked = true })
 
         compose.onNodeWithText("Métricas diárias").assertIsDisplayed()
+        compose.onNodeWithTag("metrics-import-list").performScrollToNode(hasText("Formato esperado"))
         compose.onNodeWithText("Formato esperado").assertIsDisplayed()
+        compose.onNodeWithTag("metrics-import-list").performScrollToNode(hasText("Escolher CSV"))
         compose.onNodeWithText("Escolher CSV").performClick()
 
         assertThat(picked).isTrue()
@@ -47,10 +49,14 @@ class MetricsImportScreenTest {
             ),
         )
 
+        compose.onNodeWithTag("metrics-import-list")
+            .performScrollToNode(hasText("2 dias importados."))
         compose.onNodeWithText("2 dias importados.").assertIsDisplayed()
         compose.onNodeWithTag("metrics-import-list")
             .performScrollToNode(hasText("Linhas ignoradas"))
         compose.onNodeWithText("Linhas ignoradas").assertIsDisplayed()
+        compose.onNodeWithTag("metrics-import-list")
+            .performScrollToNode(hasText("Linha 3: Data inválida."))
         compose.onNodeWithText("Linha 3: Data inválida.").assertIsDisplayed()
     }
 

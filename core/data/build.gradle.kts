@@ -37,7 +37,7 @@ dependencies {
     // RoomDatabase is part of MeuCoachDatabase's public type, so consumers need it at compile time.
     api(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.health.connect.client)
+    api(libs.androidx.health.connect.client)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)

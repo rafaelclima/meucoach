@@ -106,7 +106,7 @@ sequenceDiagram
 | **TCX** | XML DOM (`javax.xml`) | Activity, Lap, Trackpoint, HR, cadência, posição, altitude, velocidade, potência por extensão | Cadência de corrida normalizada; lap inferido quando ausente |
 | **GPX** | XML DOM | trkpt, ele, time, extensões `hr`, `cad`, `speed`, `power` | Sem laps nem esporte explícito; usar como último recurso |
 | **CSV diário** | Parser de cabeçalho validado | sono, RHR, HRV, SpO2 | Implementado em `DailyMetricsCsvParser`; template do app |
-| **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Sincronização incremental por `lastSync` |
+| **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Implementado read-only com `HealthDailySource`; sync de 30 dias e agregação em `HealthMetricsAggregator` |
 
 O parser FIT é o componente de maior risco. Estratégia: implementar o subconjunto usado pelo Amazfit Balance, validar contra os arquivos reais e contra o `fitdecode` (Python) em testes de referência. Fixtures reais são sanitizadas antes de entrar no repo.
 
@@ -184,12 +184,13 @@ data class EngineOutput(
 
 ## 8. Health Connect
 
-- `HealthConnectClient` com permissões mínimas: sono, RHR, HRV, SpO2, exercício, passos.
-- Leitura incremental por `lastSyncTime` + paginação.
+- `HealthConnectClient` com permissões mínimas: sono, RHR, HRV, SpO2.
+- Leitura read-only dos últimos 30 dias com paginação; agregação por data local.
 - **Nunca** tratar ausência como recuperação ruim.
-- Tela de diagnóstico: tipo de dado, último registro, fonte, status.
+- Card de diagnóstico com status, autorização, sincronização e base local.
 - Se o Zepp não gravar um tipo, o app mostra "sem dados" e usa fallback (check-in/CSV).
 - Em Android < 14, Health Connect pode exigir o app oficial instalado; o app detecta disponibilidade.
+- Permissões declaradas no manifest; app usa `ACTION_SHOW_PERMISSIONS_RATIONALE` para a política.
 
 ## 9. Backend (Fase 2)
 

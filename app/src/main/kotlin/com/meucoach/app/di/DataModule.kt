@@ -2,6 +2,8 @@ package com.meucoach.app.di
 
 import android.content.Context
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.health.HealthConnectDailySource
+import com.meucoach.core.data.health.HealthDailySource
 import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
@@ -37,6 +39,11 @@ object DataModule {
     @Singleton
     fun provideDailyMetricsRepository(database: MeuCoachDatabase): DailyMetricsRepository =
         DailyMetricsRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideHealthDailySource(@ApplicationContext context: Context): HealthDailySource =
+        HealthConnectDailySource(context)
 
     @Provides
     @Singleton

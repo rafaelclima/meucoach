@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -24,6 +25,8 @@ data class MetricsImportUiState(
     val duplicateDates: Int = 0,
     val errors: List<CsvRowError> = emptyList(),
     val message: String? = null,
+    val storedDays: Int = 0,
+    val latestMetricDate: java.time.LocalDate? = null,
 )
 
 @HiltViewModel
@@ -35,35 +38,51 @@ class MetricsImportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MetricsImportUiState())
     val uiState: StateFlow<MetricsImportUiState> = _uiState.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            repository.observeAll().collect { rows ->
+                _uiState.value = _uiState.value.copy(
+                    storedDays = rows.size,
+                    latestMetricDate = rows.lastOrNull()?.date,
+                )
+            }
+        }
+    }
+
     fun import(uri: Uri) {
         if (_uiState.value.isImporting) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isImporting = true, message = null, errors = emptyList())
-            val result = runCatching {
+            _uiState.value = _uiState.value.copy(
+                isImporting = true,
+                message = null,
+                errors = emptyList(),
+            )
+            val parsed = runCatching {
                 val text = withContext(Dispatchers.IO) { read(uri) }
                 parser.parse(text)
             }
-            val state = result.fold(
-                onSuccess = { parsed ->
-                    repository.saveAll(parsed.metrics)
-                    MetricsImportUiState(
-                        importedDays = parsed.metrics.size,
-                        duplicateDates = parsed.duplicateDates,
-                        errors = parsed.errors,
-                        message = if (parsed.metrics.isEmpty()) {
+            parsed.fold(
+                onSuccess = { result ->
+                    repository.saveAll(result.metrics)
+                    _uiState.value = _uiState.value.copy(
+                        isImporting = false,
+                        importedDays = result.metrics.size,
+                        duplicateDates = result.duplicateDates,
+                        errors = result.errors,
+                        message = if (result.metrics.isEmpty()) {
                             "Nenhuma linha válida encontrada."
                         } else {
-                            "${parsed.metrics.size} dias importados."
+                            "${result.metrics.size} dias importados."
                         },
                     )
                 },
                 onFailure = { error ->
-                    MetricsImportUiState(
+                    _uiState.value = _uiState.value.copy(
+                        isImporting = false,
                         message = error.message ?: "Não foi possível ler o CSV.",
                     )
                 },
             )
-            _uiState.value = state
         }
     }
 

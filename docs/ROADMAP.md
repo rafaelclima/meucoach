@@ -180,13 +180,14 @@
 
 ### P1-04 · Prontidão
 
-**Status:** em andamento — check-in e CSV concluídos em 30/10/2026
+**Status:** concluído exceto histórico em 30/10/2026
 
 - [x] Check-in diário de 15 s (sono, fadiga, dor, estresse + doença/lesão).
 - [x] Persistência por data e prontidão real na tela Hoje.
 - [x] CSV diário (sono, RHR, HRV, SpO2) com importação no perfil.
-- [ ] Health Connect (sono, RHR, HRV, SpO2).
-- [ ] Diagnóstico de dados, histórico e confiança por componente.
+- [x] Health Connect read-only (sono, RHR, HRV, SpO2) com permissões e sync de 30 dias.
+- [x] Diagnóstico básico de fontes, base local e confiança na tela Hoje.
+- [ ] Histórico de prontidão e validação instrumentada do Health Connect.
 
 ### P1-05 · Prescrição
 Plan engine, periodização, guardrails, calor, esteira, taper. Explicações com regras/evidências.

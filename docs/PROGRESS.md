@@ -6,8 +6,8 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 410 testes, 0 falhas (27 em `core:model`, 170 em `core:domain`, 66 em `core:data`, 147 em `:app`)
-- **Cobertura `core:domain`:** 98,10% de linhas (1.604/1.635), 84,10% de branches (1.381/1.642), 96,78% de instruções (12.447/12.861)
+- **Testes:** 425 testes, 0 falhas (27 em `core:model`, 176 em `core:domain`, 66 em `core:data`, 156 em `:app`)
+- **Cobertura `core:domain`:** 98,17% de linhas (1.667/1.698), 83,69% de branches (1.401/1.674), 96,82% de instruções (12.831/13.252)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -22,7 +22,8 @@
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinal de doença/lesão, persistido por data e usado na prontidão da tela Hoje.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
-- **Health Connect:** pendente no P1-04.
+- **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões e sincronização de 30 dias pelo perfil.
+- **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 
 ## Sessão 2026-10-30 — P1-04: check-in, CSV e prontidão
@@ -50,19 +51,25 @@
   - `DailyMetricsReadinessBuilder`: sono recente, HRV 7d/60d (≥4 noites), RHR 7d/30d e sinal de RHR elevada por 2 dias.
   - Tela de importação no perfil, com contagem de dias, duplicatas e linhas ignoradas.
   - Fixture `fixtures/csv/daily-metrics.csv`.
+- Health Connect:
+  - `HealthDailySource` + `HealthConnectDailySource` (read-only, 30 dias, paginação).
+  - `HealthMetricsAggregator` puro: sono por data de término, sessões sobrepostas mescladas, médias diárias.
+  - Permissões de sono/RHR/HRV/SpO2 no manifest e rationale.
+  - Card de status, autorização e sincronização no perfil.
+  - `HealthConnectViewModel` com fake source nos testes.
 - Screenshots dark/light do check-in.
 
 ### Pendente
 
-- Health Connect (sono, RHR, HRV, SpO2).
-- Tela de diagnóstico de dados e histórico de prontidão.
+- Histórico de prontidão e detalhamento por componente.
+- Validação do Health Connect em aparelho real (a leitura Android compila e a agregação tem testes, mas não há instrumentado no CI).
 - Hoje ainda usa treino e atividade de demonstração; a prescrição real vem no P1-05.
 
 ### Evidências
 
 - `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
-- 410 testes, 0 falhas (27 `core:model`, 170 `core:domain`, 66 `core:data`, 147 `:app`).
-- `core:domain`: 98,10% linhas, 84,10% branches, 96,78% instruções.
+- 425 testes, 0 falhas (27 `core:model`, 176 `core:domain`, 66 `core:data`, 156 `:app`).
+- `core:domain`: 98,17% linhas, 83,69% branches, 96,82% instruções.
 ### Próximos passos
 
 1. Conectar Health Connect e CSV ao `ReadinessCalculator`.
