@@ -85,7 +85,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (30/10/2026):
 
-- 256 testes no repositório, 0 falhas (17 em `core:model`, 129 em `core:domain`, 46 em `core:data`, 64 em `:app`).
+- 260 testes no repositório, 0 falhas (17 em `core:model`, 131 em `core:domain`, 46 em `core:data`, 66 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.

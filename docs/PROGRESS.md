@@ -6,7 +6,7 @@
 
 - **Fase:** 0 — Fundação
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 256 testes, 0 falhas (17 em `core:model`, 129 em `core:domain`, 46 em `core:data`, 64 em `:app`)
+- **Testes:** 260 testes, 0 falhas (17 em `core:model`, 131 em `core:domain`, 46 em `core:data`, 66 em `:app`)
 - **Cobertura `core:domain`:** 98,82% de linhas (1.261/1.276), 85,90% de branches (1.170/1.362), 96,88% de instruções (9.986/10.308)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -18,6 +18,39 @@
 - **Detalhe da atividade:** hero, métricas, gráfico pace × FC (Canvas), splits, rota offline e insights com `ruleId`/`evidenceId`/confiança.
 - **Zonas:** pendentes até existir LTHR calibrada (P1-01/P1-02); não são estimadas por maxHR.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-30 — P0-10: harness, golden e CI
+
+### Concluído
+
+- Golden scenarios em `fixtures/golden/` com `input.json`, `expected.json` e README:
+  - `G-LOAD-01`: TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia.
+  - `G-READY-01`…`04`: dia verde, ausência total, doença/lesão e sono curto.
+  - Doubles com tolerância `1e-6`; enums e inteiros exatos.
+- Harness `LoadGoldenTest`/`ReadinessGoldenTest` lê os JSON via test resources; `org.json` é dependência **de teste** do `core:domain`.
+- Roborazzi 1.77.0 com Robolectric Native Graphics:
+  - `ActivityDetailScreenshotTest` grava dark/light em `app/src/test/screenshots/`.
+  - `recordRoborazziDebug` atualiza; `verifyRoborazziDebug` bloqueia regressão.
+- CI publica testes, Kover, lint e diff de screenshots em toda execução (`if: always()`), além de rodar `verifyRoborazziDebug`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug spotlessCheck :app:verifyRoborazziDebug` — sucesso.
+- 260 testes, 0 falhas (17 `core:model`, 131 `core:domain`, 46 `core:data`, 66 `:app`).
+- `core:domain`: 98,82% linhas, 85,90% branches, 96,88% instruções.
+- `verifyParserBranchCoverage`: 93,01% (572/615).
+
+### Decisões e observações
+
+- Cenários `G-001`…`G-006` (plano, taper, calor) ficam para quando `PlanEngine`/`PrescriptionEngine` existirem; não faz sentido golden de motor inexistente.
+- Goldens de screenshot usam fixture sintética; nenhuma imagem contém dado real.
+- O harness roda no JVM; instrumentado continua reservado para fluxos que dependem de dispositivo.
+
+### Próximos passos
+
+1. `P1-01`: onboarding/perfil com persistência local.
+2. `P1-02`: calibração (VDOT/LTHR) para liberar zonas e prescrição.
+3. Manter goldens e screenshots atualizados a cada mudança visual/regra.
 
 ## Sessão 2026-10-30 — P0-09: detalhe da atividade
 
@@ -53,7 +86,7 @@
 
 ### Próximos passos
 
-1. `P0-10`: harness restante (golden scenarios, relatórios no CI) e polimento de importação.
+1. `P0-10`: harness restante (goldens e relatórios) — concluído na sessão seguinte.
 2. `P1-01`/`P1-02`: onboarding e calibração para liberar zonas e prescrição.
 3. Export ZIP com arquivos originais e séries completas (Fase 1).
 

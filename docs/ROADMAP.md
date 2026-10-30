@@ -8,7 +8,7 @@
 
 | Fase | Objetivo | Status |
 |---|---|---|
-| **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Em andamento** |
+| **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Concluída em 30/10/2026** |
 | **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | Planejada |
 | **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada |
 | **3 — Experimental** | Social, conector Zepp, explicações com LLM | Planejada |
@@ -129,11 +129,13 @@
 
 ### P0-10 · Harness de testes
 
+**Status:** concluído em 30/10/2026
+
 - [x] Fixtures sanitizadas + scripts (`tools/sanitize_fit.py`, 4 FIT; `tools/sanitize_tcx.py`, 3 TCX) e GPX sintético.
 - [x] Golden scenarios iniciais (`G-LOAD-01`, `G-READY-01`…`04`).
 - [x] Robolectric + Compose UI e Roborazzi (dark/light do detalhe).
 - [x] CI com relatórios e artefatos.
-- [ ] `docs/PROGRESS.md` atualizado.
+- [x] `docs/PROGRESS.md` atualizado.
 
 **Aceite:** suíte roda em < 2 min local; CI bloqueia regressão.
 
