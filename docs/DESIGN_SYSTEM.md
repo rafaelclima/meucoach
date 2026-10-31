@@ -227,6 +227,7 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 |---|---|---|
 | Hoje | Gauge de prontidão | "Como estou hoje?" |
 | Hoje | Iniciar/Trocar treino | "O que faço agora?" |
+| Hoje | Explicação do treino | "Por que este treino?" |
 | Check-in | Histórico Hooper | "Como estive?" |
 | Hoje | Mini PMC (7d) | "Estou acumulando carga?" |
 | Atividade | Pace × FC × tempo | "Como foi o esforço?" |

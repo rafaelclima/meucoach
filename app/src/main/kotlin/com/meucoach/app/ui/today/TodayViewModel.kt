@@ -318,6 +318,18 @@ internal fun todayState(
             ),
         )
     }
+    val explanation = if (profile != null && recommendation != null) {
+        buildExplanation(
+            profile = profile,
+            checkIn = checkIn,
+            inputs = inputs,
+            result = result,
+            recommendation = recommendation,
+            load = load,
+        )
+    } else {
+        null
+    }
     return base.copy(
         readinessScore = result.score,
         readinessLevel = result.level,
@@ -329,6 +341,7 @@ internal fun todayState(
             illness = signals.illnessOrInjury,
         ),
         workout = recommendation?.toWorkoutUi() ?: base.workout,
+        explanation = explanation,
         ctl = load?.ctl?.roundToInt() ?: base.ctl,
         atl = load?.atl?.roundToInt() ?: base.atl,
         tsb = load?.tsb?.roundToInt() ?: base.tsb,

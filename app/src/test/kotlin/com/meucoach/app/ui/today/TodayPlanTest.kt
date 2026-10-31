@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.prescription.PlannedSession
@@ -103,6 +104,46 @@ class TodayPlanTest {
         compose.onNodeWithText("Concluir").performClick()
 
         assertThat(completed).isEqualTo(today)
+    }
+
+    @Test
+    fun `opens the workout explanation`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val explanation = TodayExplanationUi(
+            rationale = "Base aeróbica em Z2, conversável do início ao fim.",
+            confidence = DataConfidence.MEDIUM,
+            usedData = listOf("Check-in de hoje", "Pace de limiar calibrado"),
+            missingData = listOf("Sono", "HRV"),
+            rules = listOf(ExplanationRuleUi("R-ZONE-01", "Zonas por limiar")),
+            evidence = listOf(
+                ExplanationEvidenceUi(
+                    id = "EV-SEILER-2010",
+                    title = "Distribuição de intensidade",
+                    source = "Seiler, IJSPP 2010",
+                ),
+            ),
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(explanation = explanation),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver explicação"))
+        compose.onNodeWithText("Ver explicação").performClick()
+
+        compose.onNodeWithText("Por que este treino?").assertIsDisplayed()
+        compose.onNodeWithText("DADOS USADOS").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("REGRAS").performScrollTo()
+        compose
+            .onNodeWithText("R-ZONE-01 · Zonas por limiar", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     @Test

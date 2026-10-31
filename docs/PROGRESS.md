@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 551 testes, 0 falhas (27 em `core:model`, 243 em `core:domain`, 79 em `core:data`, 202 em `:app`)
-- **Cobertura `core:domain`:** 98,33% de linhas (2.357/2.397), 83,53% de branches (1.891/2.264), 97,08% de instruções (17.873/18.411)
+- **Testes:** 556 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 79 em `core:data`, 204 em `:app`)
+- **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -35,9 +35,48 @@
 - **Tendências de atividades:** volume semanal, consistência com heatmap, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
+- **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-10: explicabilidade do treino
+
+### Concluído
+
+- Domínio:
+  - `ExplanationCatalog` com rótulos curtos para as regras e evidências citadas pelo motor.
+  - O ID bruto é preservado; IDs não catalogados caem no fallback auditável.
+- App:
+  - `TodayExplanationUi` com rationale, confiança, regras, evidências, dados usados e ausentes.
+  - `buildExplanation` deriva os dados usados/ausentes da prontidão, carga, calibração, calor e esteira.
+  - Bottom sheet “Por que este treino?” aberto pela prontidão e pelo card do treino.
+  - Botão “Ver explicação” no card do próximo treino; texto determinístico, sem LLM.
+- Testes:
+  - Catálogo: regras/evidências usadas pelo recomendador e fallback.
+  - ViewModel: regras, evidências, confiança e lacunas de dados.
+  - UI: abertura do sheet, dados usados, regras e ID auditável.
+- Screenshots de Hoje regravados (novo botão “Ver explicação”).
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 556 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 79 `core:data`, 204 `:app`).
+- Cobertura `core:domain`: 98,37% linhas / 83,55% branches.
+- `today-dark.png` e `today-light.png` atualizados e verificados.
+
+### Decisões e observações
+
+- O sheet mostra o ID bruto junto do rótulo; a explicação continua auditável mesmo se o catálogo evoluir.
+- Dados ausentes são listados, não preenchidos com zero; isso mantém a confiança honesta.
+- O mesmo sheet serve prontidão e treino porque a recomendação depende dos dois.
+- Nenhum texto é gerado por LLM; o rationale é o mesmo do motor determinístico.
+
+### Próximo passo
+
+1. `P1-09`: sync periódico/incremental do Health Connect via WorkManager.
+2. Revisar o planejamento do P3-05 com o usuário 0.
+3. `P1-11`/`P1-12` conforme prioridade.
 
 ## Sessão 2026-10-31 — P1-08: histórico de check-ins
 
@@ -1009,3 +1048,4 @@
 | 31/10/2026 | P1-07 parcial: heatmap de consistência alinhado por semana e por volume; 539 testes |
 | 31/10/2026 | P1-06 parcial: sessão guiada com cronômetro e troca de dia com guardrails; 548 testes |
 | 31/10/2026 | P1-08 parcial: histórico dos últimos 7 check-ins com Hooper e sinais; 551 testes |
+| 31/10/2026 | P1-10 concluído: bottom sheet de explicação com regras, evidências, confiança e lacunas; 556 testes |

@@ -103,6 +103,24 @@ class TodayViewModelTest {
     }
 
     @Test
+    fun `builds an explanation with rules and data gaps`() {
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile(),
+            today = today,
+        )
+
+        val explanation = state.explanation
+        assertThat(explanation).isNotNull
+        assertThat(explanation!!.rules.map { it.id }).contains("R-ZONE-01")
+        assertThat(explanation.evidence.map { it.id })
+            .contains("EV-SEILER-2010", "EV-DANIELS-2014")
+        assertThat(explanation.usedData)
+            .contains("Check-in de hoje", "Pace de limiar calibrado", "LTHR calibrado")
+        assertThat(explanation.missingData).contains("Sono", "HRV", "FC de repouso")
+    }
+
+    @Test
     fun `carries real activity stats into the state`() {
         val recent = RecentActivityUi(
             title = "Corrida",

@@ -245,7 +245,13 @@
 Permissões, sync incremental, WorkManager, diagnóstico e fallback.
 
 ### P1-10 · Explicabilidade
-Bottom sheet "Por que este treino?", regras, evidências, confiança, dados usados/faltantes.
+
+**Status:** concluído em 31/10/2026
+
+- [x] Bottom sheet “Por que este treino?” com rationale, regras, evidências e confiança.
+- [x] Dados usados e dados ausentes explícitos, sem preencher lacunas com zero.
+- [x] Catálogo de rótulos para `ruleId`/`evidenceId`, mantendo o ID bruto.
+- [x] Mesmo sheet acessível pela prontidão e pelo treino, sem texto gerado por LLM.
 
 ### P1-11 · Notificações
 Treino do dia, check-in, import concluído. Sem culpa/streak.

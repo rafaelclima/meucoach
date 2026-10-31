@@ -19,17 +19,22 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,6 +87,14 @@ fun TodayScreen(
 ) {
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
+    var explanationOpen by remember { mutableStateOf(false) }
+    val openExplanation = {
+        if (state.explanation != null) {
+            explanationOpen = true
+        } else {
+            onDemoAction("Explicação disponível quando houver dados reais.")
+        }
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -92,12 +105,13 @@ fun TodayScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { Greeting(state = state) }
-        item { ReadinessCard(state = state, onWhyClick = { onDemoAction("Explicação detalhada chega na Fase 1.") }) }
+        item { ReadinessCard(state = state, onWhyClick = openExplanation) }
         item {
             NextWorkoutCard(
                 workout = state.workout,
                 onSwapClick = { swapOpen = true },
                 onStartClick = { startOpen = true },
+                onWhyClick = openExplanation,
             )
         }
         state.plan?.let { plan ->
@@ -150,6 +164,14 @@ fun TodayScreen(
                 startOpen = false
             },
         )
+    }
+    if (explanationOpen) {
+        state.explanation?.let { explanation ->
+            ExplanationSheet(
+                explanation = explanation,
+                onDismiss = { explanationOpen = false },
+            )
+        }
     }
 }
 
@@ -295,7 +317,12 @@ private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
 }
 
 @Composable
-private fun NextWorkoutCard(workout: WorkoutUi, onSwapClick: () -> Unit, onStartClick: () -> Unit) {
+private fun NextWorkoutCard(
+    workout: WorkoutUi,
+    onSwapClick: () -> Unit,
+    onStartClick: () -> Unit,
+    onWhyClick: () -> Unit,
+) {
     val colors = McTheme.colors
     McCard {
         Row(
@@ -366,7 +393,13 @@ private fun NextWorkoutCard(workout: WorkoutUi, onSwapClick: () -> Unit, onStart
                 )
             }
         }
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+        McTextButton(
+            text = "Ver explicação",
+            onClick = onWhyClick,
+            trailingArrow = false,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             McSecondaryButton(
                 text = "Trocar",
@@ -706,6 +739,103 @@ private fun PlanWeekCard(
                 )
             },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExplanationSheet(explanation: TodayExplanationUi, onDismiss: () -> Unit) {
+    val colors = McTheme.colors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colors.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 28.dp)
+                .testTag("explanation-content"),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(
+                    text = "Por que este treino?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                McConfidenceBadge(confidence = explanation.confidence)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = explanation.rationale,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+            ExplanationList(
+                title = "Dados usados",
+                items = explanation.usedData,
+                emptyText = "Nenhum dado de prontidão disponível.",
+            )
+            ExplanationList(
+                title = "Dados ausentes",
+                items = explanation.missingData,
+                emptyText = "Nenhum dado essencial ausente.",
+            )
+            ExplanationList(
+                title = "Regras",
+                items = explanation.rules.map { "${it.id} · ${it.title}" },
+                emptyText = "Nenhuma regra catalogada.",
+            )
+            ExplanationList(
+                title = "Evidências",
+                items = explanation.evidence.map { item ->
+                    if (item.source.isBlank()) {
+                        "${item.id} · ${item.title}"
+                    } else {
+                        "${item.id} · ${item.title} — ${item.source}"
+                    }
+                },
+                emptyText = "Nenhuma evidência catalogada.",
+            )
+            Text(
+                text = "Motor determinístico, sem LLM. Dados ficam no aparelho.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExplanationList(title: String, items: List<String>, emptyText: String) {
+    val colors = McTheme.colors
+    Column {
+        Text(
+            text = title.uppercase(Locale.ROOT),
+            style = McTextStyles.overline,
+            color = colors.textTertiary,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        if (items.isEmpty()) {
+            Text(
+                text = emptyText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+        } else {
+            items.forEach { item ->
+                Text(
+                    text = "• $item",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
     }
 }
 

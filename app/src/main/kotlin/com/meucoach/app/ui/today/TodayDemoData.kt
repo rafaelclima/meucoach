@@ -54,6 +54,7 @@ data class TodayUiState(
     val recentActivity: RecentActivityUi,
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
+    val explanation: TodayExplanationUi? = null,
 )
 
 fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalTime.now()): TodayUiState {

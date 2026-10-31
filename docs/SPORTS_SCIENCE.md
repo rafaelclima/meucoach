@@ -365,7 +365,7 @@ Toda recomendação contém:
 }
 ```
 
-A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar texto gerado por LLM para números ou decisões; se houver LLM no futuro, ele apenas reescreve o rationale determinístico.
+A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sheet lista o rationale, as regras e evidências catalogadas (mantendo o ID bruto), a confiança e os dados usados/ausentes. Nunca usar texto gerado por LLM para números ou decisões; se houver LLM no futuro, ele apenas reescreve o rationale determinístico.
 
 ## 11. Validação
 
