@@ -302,6 +302,7 @@ segunda→domingo:
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
+- Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão (ADR 0013, `R-PLAN-02`, `R-PLAN-03`).
 - Confiança do plano é limitada a média até existir histórico.
 
 ### 8.9 Calor e umidade

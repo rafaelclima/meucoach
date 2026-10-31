@@ -106,6 +106,69 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `finishes the guided session`() {
+        val today = LocalDate.of(2026, 11, 2)
+        var completed: LocalDate? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(plan = planWith(today)),
+                    onCompleteSession = { completed = it },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Iniciar"))
+        compose.onNodeWithText("Iniciar").performClick()
+        compose.onNodeWithText("Sessão guiada").assertIsDisplayed()
+        compose.onNodeWithText("Concluir treino").performClick()
+
+        assertThat(completed).isEqualTo(today)
+    }
+
+    @Test
+    fun `swaps today's session with another planned day`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val tomorrow = today.plusDays(1)
+        var swapped: Pair<LocalDate, LocalDate>? = null
+        val plan = planWith(today).let { current ->
+            current.copy(
+                sessions = current.sessions + PlannedSession(
+                    date = tomorrow,
+                    type = WorkoutType.QUALITY,
+                    title = "Tempo",
+                    durationMin = 30,
+                    rationale = "Qualidade.",
+                    ruleIds = listOf("R-PLAN-02"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                qualityCount = 1,
+            )
+        }
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(plan = plan),
+                    onSwapSession = { first, second -> swapped = first to second },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Trocar"))
+        compose.onNodeWithText("Trocar").performClick()
+        compose.onNodeWithText("Trocar treino").assertIsDisplayed()
+        compose.onNodeWithTag("swap-candidate-$tomorrow").performClick()
+
+        assertThat(swapped).isEqualTo(today to tomorrow)
+    }
+
+    @Test
     fun `shows a completed session`() {
         val today = LocalDate.now()
         compose.setContent {

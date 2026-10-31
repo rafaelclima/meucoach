@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 539 testes, 0 falhas (27 em `core:model`, 238 em `core:domain`, 78 em `core:data`, 196 em `:app`)
-- **Cobertura `core:domain`:** 98,37% de linhas (2.295/2.333), 83,60% de branches (1.851/2.214), 97,08% de instruções (17.455/17.979)
+- **Testes:** 548 testes, 0 falhas (27 em `core:model`, 243 em `core:domain`, 79 em `core:data`, 199 em `:app`)
+- **Cobertura `core:domain`:** 98,33% de linhas (2.357/2.397), 83,53% de branches (1.891/2.264), 97,08% de instruções (17.873/18.411)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -34,10 +34,52 @@
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
 - **Tendências de atividades:** volume semanal, consistência com heatmap, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
-- **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
+- **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-06: iniciar e trocar treino
+
+### Concluído
+
+- Domínio (`SessionSwapper`):
+  - Troca o conteúdo de duas sessões planejadas da mesma semana.
+  - Só aceita datas de hoje em diante; recusa concluídas, puladas, passadas e descanso.
+  - Revalida a semana: máx. 2 qualidades, sem qualidades consecutivas e qualidade longe do longão.
+  - Recalcula `weeklyMinutes`, `longRunMinutes` e `qualityCount`.
+- Dados:
+  - `TrainingPlanDao.updateSessionContent` e `TrainingPlanRepository.updateSessions`.
+  - Atualiza somente conteúdo, preservando `status`, `skipReason` e `completedAt`.
+- UI:
+  - “Iniciar” abre a sessão guiada com alvos, rationale, cronômetro e “Concluir treino”.
+  - “Trocar” lista os dias candidatos; trocas inválidas aparecem desabilitadas com o motivo.
+  - A ação de concluir a sessão guiada marca a sessão do dia como feita.
+  - `TodayScreen` recebe `today` injetável para testes determinísticos.
+- Testes:
+  - Domínio: troca válida, datas passadas, status, descanso, qualidade perto do longão e qualidades consecutivas.
+  - Dados: atualização de conteúdo sem perder status.
+  - App: sessão guiada conclui o dia; troca chama o callback com as datas corretas; ViewModel persiste a troca.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 548 testes, 0 falhas (27 `core:model`, 243 `core:domain`, 79 `core:data`, 199 `:app`).
+- Cobertura `core:domain`: 98,33% linhas / 83,53% branches.
+- Screenshots de Hoje inalterados (fluxo em diálogo, sem mudança de layout).
+
+### Decisões e observações
+
+- A troca preserva o histórico: data e status ficam no dia, só o conteúdo muda (ADR 0013).
+- A sessão guiada é local e sem GPS; concluir não inventa distância, pace ou carga.
+- Se não há sessão planejada hoje, a sessão guiada informa e não marca conclusão.
+- A validação no domínio é a fonte de verdade; a UI pré-valida para explicar recusas.
+
+### Próximo passo
+
+1. Revisar o planejamento do P3-05 com o usuário 0.
+2. Expandir o histórico de conclusão para uma tela própria.
+3. Próximos itens do `P1-08`/`P1-09` conforme prioridade.
 
 ## Sessão 2026-10-31 — P1-07: heatmap de consistência
 
@@ -928,3 +970,4 @@
 | 31/10/2026 | P1-06 parcial: conclusão do plano em 8 semanas em Tendências, sem streak; 533 testes |
 | 31/10/2026 | P1-07 parcial: eficiência pace@FC (m/batimento) e filtros de 6/12/26 semanas; 537 testes |
 | 31/10/2026 | P1-07 parcial: heatmap de consistência alinhado por semana e por volume; 539 testes |
+| 31/10/2026 | P1-06 parcial: sessão guiada com cronômetro e troca de dia com guardrails; 548 testes |

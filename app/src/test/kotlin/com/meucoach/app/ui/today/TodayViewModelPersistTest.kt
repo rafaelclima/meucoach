@@ -15,6 +15,7 @@ import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -136,6 +137,61 @@ class TodayViewModelPersistTest {
         assertThat(state.plan?.ruleIds).contains("R-PLAN-04")
         assertThat(state.plan?.evidenceIds).contains("EV-ISSURIN-2010")
         assertThat(state.plan?.rationale).contains("semana 4 do bloco")
+    }
+
+    @Test
+    fun `persists a session swap`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(
+            previousWeek(weekStart).copy(
+                sessions = listOf(
+                    com.meucoach.core.domain.prescription.PlannedSession(
+                        date = weekStart,
+                        type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                        title = "Fácil",
+                        durationMin = 30,
+                        rationale = "Base.",
+                        ruleIds = listOf("R-ZONE-01"),
+                        evidenceIds = listOf("EV-SEILER-2010"),
+                    ),
+                    com.meucoach.core.domain.prescription.PlannedSession(
+                        date = weekStart.plusDays(1),
+                        type = com.meucoach.core.domain.prescription.WorkoutType.QUALITY,
+                        title = "Tempo",
+                        durationMin = 30,
+                        rationale = "Qualidade.",
+                        ruleIds = listOf("R-PLAN-02"),
+                        evidenceIds = listOf("EV-SEILER-2010"),
+                    ),
+                ),
+                weeklyMinutes = 60,
+                qualityCount = 1,
+            ),
+        )
+
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        viewModel.swapSession(weekStart, weekStart.plusDays(1), today = weekStart)
+        withTimeout(5_000) {
+            while (
+                plans.getWeek(weekStart)?.sessions?.first { it.date == weekStart }?.type !=
+                com.meucoach.core.domain.prescription.WorkoutType.QUALITY
+            ) {
+                delay(20)
+            }
+        }
+
+        val stored = plans.getWeek(weekStart)!!
+        assertThat(stored.sessions.first { it.date == weekStart }.type)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.QUALITY)
+        assertThat(stored.sessions.first { it.date == weekStart.plusDays(1) }.type)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
     }
 
     private fun previousWeek(weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(

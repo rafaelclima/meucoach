@@ -98,6 +98,34 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `updates session content without touching status`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+        repository.updateStatus(monday, monday, SessionStatus.DONE)
+        val updated = repository.getWeek(monday)!!.sessions.map { session ->
+            if (session.date == monday) {
+                session.copy(
+                    type = WorkoutType.QUALITY,
+                    title = "Tempo",
+                    durationMin = 30,
+                    rationale = "Qualidade.",
+                    ruleIds = listOf("R-PLAN-02"),
+                )
+            } else {
+                session
+            }
+        }
+
+        assertThat(repository.updateSessions(monday, updated)).isTrue()
+
+        val stored = repository.getWeek(monday)!!
+        val first = stored.sessions.first { it.date == monday }
+        assertThat(first.type).isEqualTo(WorkoutType.QUALITY)
+        assertThat(first.title).isEqualTo("Tempo")
+        assertThat(first.durationMin).isEqualTo(30)
+        assertThat(first.status).isEqualTo(SessionStatus.DONE)
+    }
+
+    @Test
     fun `counts only consecutive weeks before the target week`(): Unit = runBlocking {
         repository.saveWeek(plan(monday.minusWeeks(1)))
         repository.saveWeek(plan(monday.minusWeeks(2)))

@@ -29,6 +29,23 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
 
     suspend fun getWeeks(weekStarts: List<LocalDate>): List<WeeklyPlan> = weekStarts.mapNotNull { getWeek(it) }
 
+    /** Updates only session content, preserving status, skip reason and completedAt. */
+    suspend fun updateSessions(weekStart: LocalDate, sessions: List<PlannedSession>): Boolean =
+        database.withTransaction {
+            sessions
+                .map { session ->
+                    dao.updateSessionContent(
+                        id = plannedSessionId(weekStart, session.date),
+                        type = session.type,
+                        title = session.title,
+                        durationMin = session.durationMin,
+                        rationale = session.rationale,
+                        ruleIdsJson = session.ruleIds.toJson(),
+                        evidenceIdsJson = session.evidenceIds.toJson(),
+                    )
+                }.all { it > 0 }
+        }
+
     /**
      * Counts consecutive stored weeks immediately before [weekStart].
      * Used to anchor the 4-week deload block without another schema column.

@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
+import com.meucoach.core.domain.prescription.WorkoutType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -31,6 +32,21 @@ interface TrainingPlanDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSessions(sessions: List<PlannedSessionEntity>)
+
+    @Query(
+        "UPDATE planned_sessions SET type = :type, title = :title, durationMin = :durationMin, " +
+            "rationale = :rationale, ruleIdsJson = :ruleIdsJson, evidenceIdsJson = :evidenceIdsJson " +
+            "WHERE id = :id",
+    )
+    suspend fun updateSessionContent(
+        id: String,
+        type: WorkoutType,
+        title: String,
+        durationMin: Int?,
+        rationale: String,
+        ruleIdsJson: String,
+        evidenceIdsJson: String,
+    ): Int
 
     @Query("DELETE FROM planned_sessions WHERE weekStart = :weekStart")
     suspend fun deleteSessions(weekStart: String): Int

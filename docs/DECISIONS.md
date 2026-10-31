@@ -17,6 +17,8 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0009](adr/0009-strength-out-of-scope.md) | Musculação fora do escopo | Aceito | 27/10/2026 |
 | [0010](adr/0010-availability-hard-cap-progression.md) | Disponibilidade como teto e progressão por qualidade | Aceito | 30/10/2026 |
 | [0011](adr/0011-deload-block-anchor.md) | Deload ancorado em semanas consecutivas de plano | Aceito | 31/10/2026 |
+| [0012](adr/0012-story-video.md) | Story de treino ao ar livre (vídeo com animação do percurso) — planejamento com Canvas+MediaCodec | Aceito para planejamento | 31/10/2026 |
+| [0013](adr/0013-manual-session-swap.md) | Troca manual de sessões subordinada aos guardrails | Aceito | 31/10/2026 |
 
 ## Decisões menores (registro rápido)
 

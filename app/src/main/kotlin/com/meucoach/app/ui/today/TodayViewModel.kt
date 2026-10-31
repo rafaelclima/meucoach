@@ -22,6 +22,8 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.PrescriptionInput
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.SessionSwapper
+import com.meucoach.core.domain.prescription.SwapResult
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
@@ -200,6 +202,16 @@ class TodayViewModel @Inject constructor(
         }
     }
 
+    fun swapSession(firstDate: LocalDate, secondDate: LocalDate, today: LocalDate = LocalDate.now()) {
+        viewModelScope.launch {
+            val plan = planRepository.getWeek(currentWeekStart) ?: return@launch
+            val result = SessionSwapper.swap(plan, firstDate, secondDate, today)
+            if (result is SwapResult.Applied) {
+                planRepository.updateSessions(result.plan.weekStart, result.plan.sessions)
+            }
+        }
+    }
+
     private fun buildLoad(activities: List<ActivitySummary>, profile: AthleteProfile, today: LocalDate): LoadSnapshot {
         val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
             ?: java.time.ZoneId.systemDefault()
@@ -255,6 +267,7 @@ fun TodayRoute(
         onCheckInClick = onCheckInClick,
         onCompleteSession = viewModel::completeSession,
         onSkipSession = viewModel::skipSession,
+        onSwapSession = viewModel::swapSession,
     )
 }
 

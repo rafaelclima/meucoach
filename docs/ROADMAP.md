@@ -215,7 +215,7 @@
 - [x] Carga (CTL/ATL/TSB), km por dia e última atividade do banco.
 - [x] Ações de concluir/pular sessão com motivo persistido.
 - [x] Notificações locais de check-in e treino com deep link.
-- [ ] Iniciar/trocar treino.
+- [x] Iniciar/trocar treino (sessão guiada e troca de dia com guardrails).
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
 - [ ] Check-in com streak.
 

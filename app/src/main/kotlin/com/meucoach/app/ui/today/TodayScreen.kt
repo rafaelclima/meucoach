@@ -2,6 +2,7 @@ package com.meucoach.app.ui.today
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,14 @@ import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,7 +58,13 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.SessionSwapper
+import com.meucoach.core.domain.prescription.SwapResult
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ReadinessLevel
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
@@ -64,10 +74,14 @@ fun TodayScreen(
     onDemoAction: (String) -> Unit,
     modifier: Modifier = Modifier,
     state: TodayUiState = demoTodayUiState(),
+    today: LocalDate = LocalDate.now(),
     onCheckInClick: () -> Unit = {},
     onCompleteSession: (LocalDate) -> Unit = {},
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
+    onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
 ) {
+    var swapOpen by remember { mutableStateOf(false) }
+    var startOpen by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -82,14 +96,15 @@ fun TodayScreen(
         item {
             NextWorkoutCard(
                 workout = state.workout,
-                onSwapClick = { onDemoAction("Troca de treino chega na Fase 1.") },
-                onStartClick = { onDemoAction("Execução do treino chega na Fase 1.") },
+                onSwapClick = { swapOpen = true },
+                onStartClick = { startOpen = true },
             )
         }
         state.plan?.let { plan ->
             item {
                 PlanWeekCard(
                     plan = plan,
+                    today = today,
                     onComplete = onCompleteSession,
                     onSkip = onSkipSession,
                 )
@@ -109,6 +124,32 @@ fun TodayScreen(
             )
         }
         item { DemoFooter() }
+    }
+
+    if (swapOpen) {
+        SwapSessionDialog(
+            plan = state.plan,
+            today = today,
+            onDismiss = { swapOpen = false },
+            onSwap = { first, second ->
+                onSwapSession(first, second)
+                swapOpen = false
+            },
+        )
+    }
+    if (startOpen) {
+        val hasPlannedSession = state.plan?.sessions?.any {
+            it.date == today && it.status == SessionStatus.PLANNED
+        } == true
+        WorkoutSessionDialog(
+            workout = state.workout,
+            hasPlannedSession = hasPlannedSession,
+            onDismiss = { startOpen = false },
+            onFinish = {
+                onCompleteSession(today)
+                startOpen = false
+            },
+        )
     }
 }
 
@@ -522,6 +563,7 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
 @Composable
 private fun PlanWeekCard(
     plan: com.meucoach.core.domain.prescription.WeeklyPlan,
+    today: LocalDate,
     onComplete: (LocalDate) -> Unit,
     onSkip: (LocalDate, String) -> Unit,
 ) {
@@ -599,7 +641,7 @@ private fun PlanWeekCard(
                     contentColor = statusColor,
                 )
             }
-            if (session.date == LocalDate.now() &&
+            if (session.date == today &&
                 session.status == com.meucoach.core.domain.prescription.SessionStatus.PLANNED
             ) {
                 Row(
@@ -664,6 +706,199 @@ private fun PlanWeekCard(
                 )
             },
         )
+    }
+}
+
+@Composable
+private fun SwapSessionDialog(
+    plan: WeeklyPlan?,
+    today: LocalDate,
+    onDismiss: () -> Unit,
+    onSwap: (LocalDate, LocalDate) -> Unit,
+) {
+    val colors = McTheme.colors
+    val week = plan
+    val todaySession = week?.sessions?.firstOrNull {
+        it.date == today && it.status == SessionStatus.PLANNED
+    }
+    val candidates = week?.sessions.orEmpty().filter {
+        it.date.isAfter(today) && it.status == SessionStatus.PLANNED && it.type != WorkoutType.REST
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Trocar treino") },
+        text = {
+            Column {
+                if (week == null || todaySession == null) {
+                    Text(text = "Hoje não há uma sessão planejada para trocar.")
+                } else if (candidates.isEmpty()) {
+                    Text(text = "Não há outra sessão planejada nesta semana.")
+                } else {
+                    Text(
+                        text = "Escolha o dia que receberá a sessão de hoje. " +
+                            "A sessão do outro dia vem para hoje.",
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    candidates.forEach { candidate ->
+                        val result = remember(week, today, candidate.date) {
+                            SessionSwapper.swap(week, today, candidate.date, today)
+                        }
+                        val enabled = result is SwapResult.Applied
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = enabled) { onSwap(today, candidate.date) }
+                                .testTag("swap-candidate-${candidate.date}")
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = formatPlanDay(candidate.date),
+                                    style = McTextStyles.caption,
+                                    color = colors.textTertiary,
+                                )
+                                Text(
+                                    text = candidate.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = colors.textPrimary,
+                                )
+                                Text(
+                                    text = candidate.durationMin?.let { "$it min" } ?: "—",
+                                    style = McTextStyles.caption,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                            Text(
+                                text = if (enabled) "Trocar" else "Indisponível",
+                                style = McTextStyles.caption,
+                                color = if (enabled) colors.accentText else colors.textTertiary,
+                            )
+                        }
+                        if (result is SwapResult.Rejected) {
+                            Text(
+                                text = result.reason,
+                                style = McTextStyles.caption,
+                                color = colors.warning,
+                            )
+                        }
+                        McDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            McTextButton(
+                text = "Fechar",
+                onClick = onDismiss,
+                trailingArrow = false,
+            )
+        },
+    )
+}
+
+@Composable
+private fun WorkoutSessionDialog(
+    workout: WorkoutUi,
+    hasPlannedSession: Boolean,
+    onDismiss: () -> Unit,
+    onFinish: () -> Unit,
+) {
+    val colors = McTheme.colors
+    var running by remember { mutableStateOf(false) }
+    var elapsedSec by remember { mutableIntStateOf(0) }
+    LaunchedEffect(running) {
+        while (running) {
+            delay(1_000)
+            elapsedSec += 1
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = workout.title) },
+        text = {
+            Column {
+                Text(
+                    text = if (hasPlannedSession) "Sessão guiada" else "Sem sessão planejada hoje",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = workout.rationale,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "${workout.duration} min · ${workout.pace} /km · ${workout.heartRate} bpm",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                )
+                if (hasPlannedSession) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = formatElapsed(elapsedSec),
+                        style = McTextStyles.metric,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = "Tempo decorrido",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    McSecondaryButton(
+                        text = if (running) "Pausar" else "Começar",
+                        onClick = { running = !running },
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Ajuste a disponibilidade no perfil ou faça o treino livre.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (hasPlannedSession) {
+                McTextButton(
+                    text = "Concluir treino",
+                    onClick = onFinish,
+                    trailingArrow = false,
+                )
+            } else {
+                McTextButton(
+                    text = "Fechar",
+                    onClick = onDismiss,
+                    trailingArrow = false,
+                )
+            }
+        },
+        dismissButton = if (hasPlannedSession) {
+            {
+                McTextButton(
+                    text = "Fechar",
+                    onClick = onDismiss,
+                    trailingArrow = false,
+                )
+            }
+        } else {
+            null
+        },
+    )
+}
+
+private fun formatElapsed(seconds: Int): String {
+    val hours = seconds / 3_600
+    val minutes = (seconds % 3_600) / 60
+    val remaining = seconds % 60
+    return if (hours > 0) {
+        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, remaining)
+    } else {
+        String.format(Locale.US, "%02d:%02d", minutes, remaining)
     }
 }
 
