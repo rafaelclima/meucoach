@@ -6,8 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sex
@@ -97,6 +99,46 @@ class TrendsViewModelTest {
 
         assertThat(state.snapshot?.hasData).isFalse()
         assertThat(state.snapshot?.acwr).isNull()
+        assertThat(state.intensity).isNull()
+    }
+
+    @Test
+    fun `measures the intensity split from stored samples`(): Unit = runBlocking {
+        profiles.saveProfile(profile().copy(lactateThresholdHeartRate = 160))
+        activities.saveImportedActivity(
+            activity().copy(
+                samples = listOf(
+                    ActivitySample(offsetSec = 0, heartRate = 140),
+                    ActivitySample(offsetSec = 600, heartRate = 140),
+                ),
+            ),
+            "sha",
+        )
+
+        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+
+        assertThat(state.intensity).isNotNull
+        assertThat(state.intensity?.easySec).isEqualTo(600)
+        assertThat(state.intensity?.sessions).isEqualTo(1)
+        assertThat(state.intensity?.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `leaves intensity empty without a calibrated threshold`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        activities.saveImportedActivity(
+            activity().copy(
+                samples = listOf(
+                    ActivitySample(offsetSec = 0, heartRate = 140),
+                    ActivitySample(offsetSec = 600, heartRate = 140),
+                ),
+            ),
+            "sha",
+        )
+
+        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+
+        assertThat(state.intensity).isNull()
     }
 
     private fun profile() = AthleteProfile(

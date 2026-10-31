@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 30/10/2026
+**Atualizado:** 31/10/2026
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 494 testes, 0 falhas (27 em `core:model`, 211 em `core:domain`, 73 em `core:data`, 183 em `:app`)
-- **Cobertura `core:domain`:** 98,35% de linhas (2.090/2.125), 83,25% de branches (1.670/2.006), 96,99% de instruções (15.610/16.094)
+- **Testes:** 507 testes, 0 falhas (27 em `core:model`, 219 em `core:domain`, 73 em `core:data`, 188 em `:app`)
+- **Cobertura `core:domain`:** 98,37% de linhas (2.169/2.205), 83,38% de branches (1.731/2.076), 97,08% de instruções (16.330/16.822)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -31,10 +31,57 @@
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
 - **Tendências de atividades:** volume semanal, consistência de 28 dias e relação pace×FC no `ActivityTrendsCalculator`.
+- **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-07: Distribuição 80/20 por tempo
+
+### Concluído
+
+- `IntensityDistributionCalculator` em `core/domain/.../trends/`:
+  - Mede tempo em Z1–Z2 (fácil), Z3 (moderado) e Z4–Z5 (forte), conforme `R-ZONE-02`.
+  - Reaproveita `HrZoneDistributionCalculator`: intervalo sem FC fica fora do total.
+  - Janela de 28 dias, quebra por semana (segunda-domingo) e semanas vazias omitidas.
+  - Confiança por cobertura: < 3 sessões baixa, 3–5 média, 6+ alta.
+  - `meetsEasyTarget` apenas reporta a heurística de ~80% (`R-PLAN-06`); não altera o plano.
+- `TrendsViewModel`:
+  - Abre os samples das corridas (`Sport.RUNNING`/`TREADMILL`) dentro da janela, somente quando há LTHR calibrado.
+  - Expõe `intensity` no `TrendsUiState`.
+- Tela Tendências:
+  - Seção “Distribuição · 80/20” depois de Pace @ FC.
+  - Barra empilhada por tempo, legenda com duração e percentual, e linhas por semana.
+  - `McConfidenceBadge`, descrição de acessibilidade da barra e citação `R-ZONE-02 · EV-SEILER-2010`.
+  - Estados explícitos: sem limiar calibrado e sem corrida com FC no período.
+- Testes:
+  - Domínio: buckets, janela, lacunas de FC, agregação semanal, confiança e validações.
+  - ViewModel: distribuição a partir do blob, ausência de LTHR e ausência de carga.
+  - UI: card completo, percentuais, linha semanal, confiança e estados vazios.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — sucesso.
+- 507 testes, 0 falhas (27 `core:model`, 219 `core:domain`, 73 `core:data`, 188 `:app`).
+- `core:domain`: 98,37% de linhas, 83,38% de branches, 97,08% de instruções.
+- `IntensityDistributionCalculator`: 100% de linhas e branches.
+- `verifyParserBranchCoverage`: 93,01% (572/615).
+- Screenshots de Tendências inalterados (estado sem atividades no golden).
+
+### Decisões e observações
+
+- A distribuição é medida, não prescrita: o card mostra tempo por bucket e cita a heurística, sem reprovar a semana.
+- A confiança descreve cobertura de dados, não qualidade do treino; é derivada do número de sessões com FC.
+- Corridas e esteira entram no cálculo; outros esportes ficam fora para não misturar modalidades.
+- Sem LTHR não se estima zona por FC máxima (`R-ZONE-01`); a tela pede calibração.
+- Abrir blobs de 28 dias é aceitável nesta fase; se a base crescer, o próximo passo é agregar zonas na importação.
+
+### Próximo passo
+
+1. Calor/esteira na prescrição (`R-PLAN-07`/`R-PLAN-08`).
+2. Tela de histórico de conclusão e streak de check-in.
+3. Gráfico de eficiência pace@FC, recordes e filtros de período em Tendências.
 
 ## Sessão 2026-10-30 — P1-07: Tendências de atividades (parcial)
 
@@ -53,14 +100,14 @@
 
 ### Pendente
 
-- Distribuição 80/20 por tempo (exige decodificar samples).
+- Distribuição 80/20 por tempo — concluída em 31/10/2026.
 - Pace@FC como gráfico de eficiência e recordes.
 - Heatmap de consistência e filtros de período.
 - Calor/esteira e deload por blocos no `P1-05`.
 
 ### Próximo passo
 
-1. Fechar 80/20 e recordes em Tendências.
+1. Recordes e gráfico de eficiência em Tendências.
 2. Calor/esteira na prescrição.
 3. Tela de histórico de conclusão e streak de check-in.
 
@@ -635,3 +682,4 @@
 | 28/10/2026 | P0-05 concluído: sanitizador, 4 fixtures FIT, parser, 105 testes e gate de branches |
 | 29/10/2026 | P0-06 concluído: parsers TCX/GPX, 3 TCX sanitizados, GPX sintético, dedup e 134 testes |
 | 30/10/2026 | P0-07 concluído: Room v2, migração testada, blob comprimido, repositório, export/delete e 160 testes |
+| 31/10/2026 | P1-07 80/20 por tempo concluído: calculadora de zonas, card em Tendências e 507 testes |

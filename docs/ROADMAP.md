@@ -219,12 +219,12 @@
 
 ### P1-07 · Tendências
 
-**Status:** em andamento — volume/consistência/pace×FC em 30/10/2026
+**Status:** em andamento — volume/consistência/pace×FC/80/20 em 31/10/2026
 
 - [x] Volume semanal.
 - [x] Consistência de 28 dias.
 - [x] Relação pace×FC (lista).
-- [ ] Distribuição 80/20 por tempo.
+- [x] Distribuição 80/20 por tempo a partir dos samples, com quebra semanal e confiança.
 - [ ] Gráfico de eficiência pace@FC, recordes e filtros.
 - [ ] Heatmap de consistência.
 

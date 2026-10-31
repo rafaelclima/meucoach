@@ -13,7 +13,9 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ConsistencySummary
+import com.meucoach.core.domain.trends.IntensityDistribution
 import com.meucoach.core.domain.trends.PaceHeartRatePoint
+import com.meucoach.core.domain.trends.WeeklyIntensity
 import com.meucoach.core.domain.trends.WeeklyVolume
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
@@ -118,28 +120,6 @@ class TrendsScreenTest {
 
     @Test
     fun `shows volume, consistency and pace heart rate`() {
-        val trends = ActivityTrends(
-            weeks = listOf(
-                WeeklyVolume(LocalDate.of(2026, 10, 19), 10.0, 2),
-                WeeklyVolume(LocalDate.of(2026, 10, 26), 13.0, 3),
-            ),
-            consistency = ConsistencySummary(
-                windowDays = 28,
-                activeDays = 4,
-                runs = 5,
-                daysSinceLastRun = 1,
-            ),
-            paceHeartRate = listOf(
-                PaceHeartRatePoint(
-                    date = LocalDate.of(2026, 10, 29),
-                    pace = Pace.fromSecondsPerKm(360),
-                    heartRate = 150,
-                ),
-            ),
-            totalKilometers = 23.0,
-            averagePace = Pace.fromSecondsPerKm(360),
-            averageHeartRate = 150,
-        )
         compose.setContent {
             McTheme(darkTheme = true) {
                 TrendsContent(
@@ -147,7 +127,7 @@ class TrendsScreenTest {
                         isLoading = false,
                         profile = profile(),
                         snapshot = snapshot(hasData = true),
-                        activityTrends = trends,
+                        activityTrends = trends(),
                     ),
                 )
             }
@@ -163,6 +143,102 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("6:00 /km"))
         compose.onNodeWithText("6:00 /km").assertIsDisplayed()
     }
+
+    @Test
+    fun `shows the intensity split with weekly rows`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TrendsContent(
+                    state = TrendsUiState(
+                        isLoading = false,
+                        profile = profile().copy(lactateThresholdHeartRate = 160),
+                        snapshot = snapshot(hasData = true),
+                        activityTrends = trends(),
+                        intensity = IntensityDistribution(
+                            windowDays = 28,
+                            easySec = 1_800,
+                            moderateSec = 300,
+                            hardSec = 300,
+                            sessions = 4,
+                            weeks = listOf(
+                                WeeklyIntensity(LocalDate.of(2026, 10, 19), 1_200, 300, 0),
+                                WeeklyIntensity(LocalDate.of(2026, 10, 26), 600, 0, 300),
+                            ),
+                            confidence = DataConfidence.MEDIUM,
+                        ),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Distribuição · 80/20"))
+        compose
+            .onNodeWithContentDescription("Distribuição por tempo: 75% fácil, 13% moderado e 13% forte")
+            .assertExists()
+        list.performScrollToNode(hasText("Fácil · Z1–Z2"))
+        compose.onNodeWithText("Fácil · Z1–Z2").assertIsDisplayed()
+        compose.onNodeWithText("Confiança média").assertIsDisplayed()
+        list.performScrollToNode(hasText("67% fácil"))
+        compose.onNodeWithText("67% fácil").assertIsDisplayed()
+    }
+
+    @Test
+    fun `explains the intensity split without a calibrated threshold`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                activityTrends = trends(),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Distribuição · 80/20"))
+        compose.onNodeWithText("Sem limiar calibrado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `explains missing heart rate in the intensity split`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile().copy(lactateThresholdHeartRate = 160),
+                snapshot = snapshot(hasData = true),
+                activityTrends = trends(),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Nenhuma corrida com FC suficiente nos últimos 28 dias."))
+        compose
+            .onNodeWithText("Nenhuma corrida com FC suficiente nos últimos 28 dias.")
+            .assertIsDisplayed()
+    }
+
+    private fun trends() = ActivityTrends(
+        weeks = listOf(
+            WeeklyVolume(LocalDate.of(2026, 10, 19), 10.0, 2),
+            WeeklyVolume(LocalDate.of(2026, 10, 26), 13.0, 3),
+        ),
+        consistency = ConsistencySummary(
+            windowDays = 28,
+            activeDays = 4,
+            runs = 5,
+            daysSinceLastRun = 1,
+        ),
+        paceHeartRate = listOf(
+            PaceHeartRatePoint(
+                date = LocalDate.of(2026, 10, 29),
+                pace = Pace.fromSecondsPerKm(360),
+                heartRate = 150,
+            ),
+        ),
+        totalKilometers = 23.0,
+        averagePace = Pace.fromSecondsPerKm(360),
+        averageHeartRate = 150,
+    )
 
     private fun setContent(state: TrendsUiState) {
         compose.setContent {

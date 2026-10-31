@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,10 +39,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.activities.formatDuration
 import com.meucoach.core.designsystem.component.McCard
+import com.meucoach.core.designsystem.component.McConfidenceBadge
 import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McEmptyState
 import com.meucoach.core.designsystem.component.McPill
@@ -51,6 +56,8 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
+import com.meucoach.core.domain.trends.IntensityDistribution
+import com.meucoach.core.domain.trends.WeeklyIntensity
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -109,6 +116,8 @@ internal fun TrendsContent(
                 snapshot = state.snapshot,
                 readinessHistory = readinessHistory,
                 activityTrends = state.activityTrends,
+                intensity = state.intensity,
+                lthr = state.profile.lactateThresholdHeartRate,
             )
         }
     }
@@ -119,6 +128,8 @@ private fun LoadDetails(
     snapshot: LoadSnapshot,
     readinessHistory: List<ReadinessHistoryDay>,
     activityTrends: ActivityTrends?,
+    intensity: IntensityDistribution?,
+    lthr: Int?,
 ) {
     val colors = McTheme.colors
     LazyColumn(
@@ -211,6 +222,8 @@ private fun LoadDetails(
                 item { McSectionHeader(title = "Pace @ FC") }
                 item { PaceHeartRateCard(activityTrends.paceHeartRate) }
             }
+            item { McSectionHeader(title = "Distribuição · 80/20") }
+            item { IntensityCard(distribution = intensity, lthr = lthr) }
         }
         if (readinessHistory.isNotEmpty()) {
             item { McSectionHeader(title = "Prontidão · 14 dias") }
@@ -320,6 +333,210 @@ private fun PaceHeartRateCard(points: List<com.meucoach.core.domain.trends.PaceH
                     color = colors.textSecondary,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun IntensityCard(distribution: IntensityDistribution?, lthr: Int?) {
+    val colors = McTheme.colors
+    McCard {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Tempo em zonas",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = lthr?.let { "LTHR $it bpm · últimos ${distribution?.windowDays ?: 28} dias" }
+                        ?: "Sem limiar calibrado",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+            distribution?.let { McConfidenceBadge(confidence = it.confidence) }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        when {
+            distribution != null -> IntensityDetails(distribution)
+
+            lthr == null -> Text(
+                text = "A distribuição 80/20 é medida por tempo em zona de FC. " +
+                    "Calibre o limiar no perfil para liberá-la.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+
+            else -> Text(
+                text = "Nenhuma corrida com FC suficiente nos últimos 28 dias.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun IntensityDetails(distribution: IntensityDistribution) {
+    val colors = McTheme.colors
+    IntensityBar(
+        easySec = distribution.easySec,
+        moderateSec = distribution.moderateSec,
+        hardSec = distribution.hardSec,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(12.dp)
+            .semantics {
+                contentDescription = String.format(
+                    PT_BR,
+                    "Distribuição por tempo: %.0f%% fácil, %.0f%% moderado e %.0f%% forte",
+                    distribution.easyPercent(),
+                    distribution.moderatePercent(),
+                    distribution.hardPercent(),
+                )
+            },
+    )
+    Spacer(modifier = Modifier.height(12.dp))
+    IntensityLegendRow(
+        color = colors.zone2,
+        label = "Fácil · Z1–Z2",
+        seconds = distribution.easySec,
+        percent = distribution.easyPercent(),
+    )
+    IntensityLegendRow(
+        color = colors.zone3,
+        label = "Moderado · Z3",
+        seconds = distribution.moderateSec,
+        percent = distribution.moderatePercent(),
+    )
+    IntensityLegendRow(
+        color = colors.zone4,
+        label = "Forte · Z4–Z5",
+        seconds = distribution.hardSec,
+        percent = distribution.hardPercent(),
+    )
+    Spacer(modifier = Modifier.height(12.dp))
+    Text(
+        text = if (distribution.meetsEasyTarget) {
+            "80% ou mais do tempo em Z1–Z2."
+        } else {
+            "Menos de 80% do tempo em Z1–Z2."
+        } + " Heurística R-ZONE-02 · EV-SEILER-2010.",
+        style = McTextStyles.caption,
+        color = colors.textTertiary,
+    )
+    if (distribution.weeks.size > 1) {
+        McDivider(modifier = Modifier.padding(vertical = 10.dp))
+        Text(
+            text = "Por semana",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        distribution.weeks.forEach { week ->
+            WeeklyIntensityRow(week)
+        }
+    }
+}
+
+@Composable
+private fun WeeklyIntensityRow(week: WeeklyIntensity) {
+    val colors = McTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = week.weekStart.format(DAY_FORMAT),
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+            modifier = Modifier.width(52.dp),
+        )
+        IntensityBar(
+            easySec = week.easySec,
+            moderateSec = week.moderateSec,
+            hardSec = week.hardSec,
+            modifier = Modifier
+                .weight(1f)
+                .height(8.dp),
+        )
+        Text(
+            text = String.format(PT_BR, "%.0f%% fácil", week.easyPercent()),
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(76.dp),
+        )
+    }
+}
+
+@Composable
+private fun IntensityLegendRow(color: Color, label: String, seconds: Int, percent: Double) {
+    val colors = McTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = formatDuration(seconds),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        Text(
+            text = String.format(PT_BR, "%.0f%%", percent),
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(48.dp),
+        )
+    }
+}
+
+@Composable
+private fun IntensityBar(easySec: Int, moderateSec: Int, hardSec: Int, modifier: Modifier = Modifier) {
+    val colors = McTheme.colors
+    Row(modifier = modifier.clip(RoundedCornerShape(6.dp))) {
+        if (easySec > 0) {
+            Box(
+                modifier = Modifier
+                    .weight(easySec.toFloat())
+                    .fillMaxHeight()
+                    .background(colors.zone2),
+            )
+        }
+        if (moderateSec > 0) {
+            Box(
+                modifier = Modifier
+                    .weight(moderateSec.toFloat())
+                    .fillMaxHeight()
+                    .background(colors.zone3),
+            )
+        }
+        if (hardSec > 0) {
+            Box(
+                modifier = Modifier
+                    .weight(hardSec.toFloat())
+                    .fillMaxHeight()
+                    .background(colors.zone4),
+            )
         }
     }
 }
