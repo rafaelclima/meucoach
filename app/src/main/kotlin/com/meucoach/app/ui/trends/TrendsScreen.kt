@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,6 +60,7 @@ import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.IntensityDistribution
+import com.meucoach.core.domain.trends.PaceHeartRatePoint
 import com.meucoach.core.domain.trends.PersonalRecords
 import com.meucoach.core.domain.trends.WeeklyIntensity
 import java.time.format.DateTimeFormatter
@@ -75,6 +78,7 @@ fun TrendsScreen(
         state = state,
         modifier = modifier,
         readinessHistory = history.days,
+        onPeriodSelected = viewModel::selectPeriod,
     )
 }
 
@@ -83,6 +87,7 @@ internal fun TrendsContent(
     state: TrendsUiState,
     modifier: Modifier = Modifier,
     readinessHistory: List<ReadinessHistoryDay> = emptyList(),
+    onPeriodSelected: (TrendsPeriod) -> Unit = {},
 ) {
     val colors = McTheme.colors
     Box(
@@ -120,6 +125,8 @@ internal fun TrendsContent(
                 activityTrends = state.activityTrends,
                 intensity = state.intensity,
                 planCompletion = state.planCompletion,
+                period = state.period,
+                onPeriodSelected = onPeriodSelected,
                 lthr = state.profile.lactateThresholdHeartRate,
             )
         }
@@ -133,6 +140,8 @@ private fun LoadDetails(
     activityTrends: ActivityTrends?,
     intensity: IntensityDistribution?,
     planCompletion: PlanCompletion?,
+    period: TrendsPeriod,
+    onPeriodSelected: (TrendsPeriod) -> Unit,
     lthr: Int?,
 ) {
     val colors = McTheme.colors
@@ -218,6 +227,7 @@ private fun LoadDetails(
             }
         }
         if (activityTrends != null) {
+            item { PeriodFilter(period = period, onSelect = onPeriodSelected) }
             item { McSectionHeader(title = "Volume · ${activityTrends.weeks.size} semanas") }
             item { WeeklyVolumeCard(activityTrends.weeks) }
             if (planCompletion != null && planCompletion.planned > 0) {
@@ -243,6 +253,47 @@ private fun LoadDetails(
         }
         item { McSectionHeader(title = "PMC · 42 dias") }
         item { PmcCard(snapshot) }
+    }
+}
+
+@Composable
+private fun PeriodFilter(period: TrendsPeriod, onSelect: (TrendsPeriod) -> Unit) {
+    val colors = McTheme.colors
+    Column {
+        Text(
+            text = "Período das atividades",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TrendsPeriod.entries.forEach { option ->
+                FilterChip(
+                    selected = option == period,
+                    onClick = { onSelect(option) },
+                    label = { Text(text = option.label) },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = colors.surfaceInset,
+                        labelColor = colors.textSecondary,
+                        selectedContainerColor = colors.accentSoft,
+                        selectedLabelColor = colors.accentText,
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = option == period,
+                        borderColor = colors.borderSubtle,
+                        selectedBorderColor = colors.accent.copy(alpha = 0.5f),
+                    ),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Afeta volume, consistência e eficiência. Carga e 80/20 têm janelas próprias.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
     }
 }
 
@@ -404,7 +455,7 @@ private fun PersonalRecordsCard(records: PersonalRecords) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Das corridas importadas. Recorde descritivo, não prescrição.",
+            text = "Das corridas importadas, em todo o histórico. Recorde descritivo, não prescrição.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -475,9 +526,40 @@ private fun RecordRow(label: String, value: String, hint: String?) {
 }
 
 @Composable
-private fun PaceHeartRateCard(points: List<com.meucoach.core.domain.trends.PaceHeartRatePoint>) {
+private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
     val colors = McTheme.colors
+    val averageEfficiency = points.map { it.efficiencyMetersPerBeat }.average()
     McCard {
+        Text(
+            text = "Eficiência",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Metros por batimento: proxy de economia. Compare sob condições semelhantes.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        EfficiencyChart(points)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = String.format(
+                PT_BR,
+                "Média %.2f m/batimento em %d corridas",
+                averageEfficiency,
+                points.size,
+            ),
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        McDivider(modifier = Modifier.padding(vertical = 10.dp))
+        Text(
+            text = "Últimas corridas",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
         points.takeLast(8).reversed().forEachIndexed { index, point ->
             if (index > 0) {
                 McDivider(modifier = Modifier.padding(vertical = 6.dp))
@@ -503,6 +585,55 @@ private fun PaceHeartRateCard(points: List<com.meucoach.core.domain.trends.PaceH
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EfficiencyChart(points: List<PaceHeartRatePoint>) {
+    val colors = McTheme.colors
+    val values = points.map { it.efficiencyMetersPerBeat }
+    val min = values.minOrNull() ?: return
+    val max = values.maxOrNull() ?: return
+    val range = max - min
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(110.dp)
+            .semantics {
+                contentDescription = "Evolução da eficiência pace por FC em ${points.size} corridas"
+            },
+    ) {
+        drawPmcGrid(colors.borderSubtle)
+        if (points.size == 1) {
+            drawCircle(
+                color = colors.accent,
+                radius = 4.dp.toPx(),
+                center = Offset(size.width / 2f, size.height / 2f),
+            )
+        } else {
+            val path = Path()
+            val positions = points.mapIndexed { index, point ->
+                val x = index.toFloat() / (points.size - 1) * size.width
+                val normalized = if (range < 0.0001) 0.5 else (point.efficiencyMetersPerBeat - min) / range
+                val y = size.height - normalized.toFloat() * size.height
+                Offset(x, y)
+            }
+            positions.forEachIndexed { index, position ->
+                if (index == 0) path.moveTo(position.x, position.y) else path.lineTo(position.x, position.y)
+            }
+            drawPath(
+                path = path,
+                color = colors.accent,
+                style = Stroke(
+                    width = 2.5.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round,
+                ),
+            )
+            positions.forEach { position ->
+                drawCircle(color = colors.accent, radius = 3.dp.toPx(), center = position)
             }
         }
     }

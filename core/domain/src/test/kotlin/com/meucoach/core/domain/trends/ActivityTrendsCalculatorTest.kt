@@ -7,6 +7,7 @@ import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sport
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.within
 import org.junit.Test
 import java.time.LocalDate
 import java.time.ZoneId
@@ -97,10 +98,36 @@ class ActivityTrendsCalculatorTest {
     }
 
     @Test
+    fun `computes efficiency in meters per heartbeat`() {
+        val point = PaceHeartRatePoint(
+            date = today,
+            pace = Pace.fromSecondsPerKm(360),
+            heartRate = 150,
+        )
+
+        assertThat(point.efficiencyMetersPerBeat).isCloseTo(1.111, within(0.001))
+    }
+
+    @Test
+    fun `accepts a six month activity window`() {
+        val trends = calculator.calculate(
+            emptyList(),
+            today,
+            zone,
+            weeks = 26,
+            consistencyDays = 182,
+        )
+
+        assertThat(trends.weeks).hasSize(26)
+    }
+
+    @Test
     fun `rejects invalid windows`() {
         assertThatThrownBy { calculator.calculate(emptyList(), today, zone, weeks = 0) }
             .isInstanceOf(IllegalArgumentException::class.java)
         assertThatThrownBy { calculator.calculate(emptyList(), today, zone, consistencyDays = 6) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { calculator.calculate(emptyList(), today, zone, consistencyDays = 366) }
             .isInstanceOf(IllegalArgumentException::class.java)
     }
 

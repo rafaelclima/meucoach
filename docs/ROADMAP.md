@@ -221,14 +221,14 @@
 
 ### P1-07 · Tendências
 
-**Status:** em andamento — volume/consistência/pace×FC/80/20 em 31/10/2026
+**Status:** em andamento — volume/consistência/pace×FC/eficiência/filtros/80/20/recordes em 31/10/2026
 
 - [x] Volume semanal.
-- [x] Consistência de 28 dias.
-- [x] Relação pace×FC (lista).
+- [x] Consistência em 28/84/182 dias, conforme o filtro de período.
+- [x] Relação pace×FC com gráfico de eficiência em m/batimento.
 - [x] Distribuição 80/20 por tempo a partir dos samples, com quebra semanal e confiança.
 - [x] Recordes pessoais: maior distância, melhor pace em corridas ≥ 3 km e maior tempo.
-- [ ] Gráfico de eficiência pace@FC e filtros de período.
+- [x] Filtros de período das atividades (6/12/26 semanas).
 - [ ] Heatmap de consistência.
 
 ### P1-08 · Check-in

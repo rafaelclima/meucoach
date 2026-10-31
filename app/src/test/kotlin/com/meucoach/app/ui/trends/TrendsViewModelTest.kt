@@ -180,6 +180,24 @@ class TrendsViewModelTest {
         assertThat(state.planCompletion?.completionRatio).isEqualTo(0.5)
     }
 
+    @Test
+    fun `reloads activity trends with the selected period`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val viewModel = TrendsViewModel(profiles, activities, plans)
+        val initial = viewModel.uiState.first { !it.isLoading }
+
+        assertThat(initial.period).isEqualTo(TrendsPeriod.WEEKS_6)
+        assertThat(initial.activityTrends?.weeks).hasSize(6)
+
+        viewModel.selectPeriod(TrendsPeriod.WEEKS_26)
+        val updated = viewModel.uiState.first {
+            it.period == TrendsPeriod.WEEKS_26 && it.activityTrends?.weeks?.size == 26
+        }
+
+        assertThat(updated.activityTrends?.weeks).hasSize(26)
+        assertThat(updated.activityTrends?.consistency?.windowDays).isEqualTo(182)
+    }
+
     private fun session(date: LocalDate, status: SessionStatus) = PlannedSession(
         date = date,
         type = WorkoutType.EASY,

@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 533 testes, 0 falhas (27 em `core:model`, 235 em `core:domain`, 78 em `core:data`, 193 em `:app`)
-- **Cobertura `core:domain`:** 98,36% de linhas (2.275/2.313), 83,53% de branches (1.846/2.210), 97,05% de instruções (17.319/17.845)
+- **Testes:** 537 testes, 0 falhas (27 em `core:model`, 237 em `core:domain`, 78 em `core:data`, 195 em `:app`)
+- **Cobertura `core:domain`:** 98,36% de linhas (2.276/2.314), 83,57% de branches (1.847/2.210), 97,06% de instruções (17.330/17.854)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -32,12 +32,50 @@
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
 - **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
-- **Tendências de atividades:** volume semanal, consistência de 28 dias, relação pace×FC e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
+- **Tendências de atividades:** volume semanal, consistência, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-07: eficiência pace@FC e filtros de período
+
+### Concluído
+
+- Domínio:
+  - `PaceHeartRatePoint.efficiencyMetersPerBeat` calcula metros por batimento (velocidade média ÷ FC).
+  - `ActivityTrendsCalculator` aceita janelas de consistência de 7 a 365 dias.
+- App:
+  - Filtro de período das atividades: **6, 12 ou 26 semanas** (`TrendsPeriod`).
+  - O filtro recalcula volume, consistência e pace@FC; carga e 80/20 mantêm janelas próprias, explicadas na UI.
+  - Gráfico de eficiência no card “Pace @ FC”, com média em m/batimento e eixo temporal implícito.
+  - Lista das últimas corridas preservada abaixo do gráfico.
+  - `TrendsViewModel.selectPeriod` cancela a carga anterior e recarrega de forma determinística.
+- Testes:
+  - Domínio: cálculo de eficiência, janela de 6 meses e limites de validação.
+  - ViewModel: troca de período recarrega 26 semanas e consistência de 182 dias.
+  - UI: chips de período, gráfico e textos de eficiência; ajustes de rolagem nos testes existentes.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 537 testes, 0 falhas (27 `core:model`, 237 `core:domain`, 78 `core:data`, 195 `:app`).
+- Cobertura `core:domain`: 98,36% linhas / 83,57% branches.
+- Screenshots existentes inalterados (golden de Tendências não inclui atividades).
+
+### Decisões e observações
+
+- Eficiência é um **proxy descritivo** (m/batimento), não diagnóstico de economia; calor e fadiga confundem a leitura.
+- O filtro é escopado às atividades; PMC (42 dias) e 80/20 (28 dias) continuam com janelas próprias e rotuladas.
+- Recordes continuam considerando todo o histórico, independentemente do filtro.
+- Períodos longos (26 semanas) exigem mais dados, mas não mudam nenhuma regra de prescrição.
+
+### Próximo passo
+
+1. Heatmap de consistência.
+2. Iniciar/trocar treino a partir do plano.
+3. Revisar o planejamento do P3-05 (story de treino) com o usuário 0.
 
 ## Sessão 2026-10-31 — P1-06: conclusão do plano em Tendências
 
@@ -849,3 +887,4 @@
 | 31/10/2026 | P1-05 parcial: deload de −25% a cada 4ª semana consecutiva, ancorado no histórico de planos; 524 testes |
 | 31/10/2026 | P1-07 parcial: recordes pessoais em Tendências (distância, pace ≥ 3 km e tempo); 526 testes |
 | 31/10/2026 | P1-06 parcial: conclusão do plano em 8 semanas em Tendências, sem streak; 533 testes |
+| 31/10/2026 | P1-07 parcial: eficiência pace@FC (m/batimento) e filtros de 6/12/26 semanas; 537 testes |

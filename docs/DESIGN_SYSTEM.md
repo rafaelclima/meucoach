@@ -234,7 +234,7 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 | Tendências | Volume semanal | "Minha consistência?" |
 | Tendências | Conclusão do plano | "Estou seguindo o plano?" |
 | Tendências | Distribuição 80/20 | "Estou no equilíbrio?" |
-| Tendências | Pace @ FC | "Fiquei mais eficiente?" |
+| Tendências | Pace @ FC (eficiência) | "Fiquei mais eficiente?" |
 | Tendências | Recordes | "Qual foi meu melhor esforço?" |
 | Tendências | Heatmap de consistência | "Mantive o hábito?" |
 
@@ -307,6 +307,7 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 
 ```
 [ PMC: CTL, ATL, TSB ]
+[ Filtro: 6 / 12 / 26 semanas ]
 [ Volume semanal ]
 [ Conclusão do plano ]
 [ Distribuição 80/20 ]

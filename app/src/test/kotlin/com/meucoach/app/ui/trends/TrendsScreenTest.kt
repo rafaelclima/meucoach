@@ -1,11 +1,13 @@
 package com.meucoach.app.ui.trends
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
@@ -25,6 +27,7 @@ import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -143,8 +146,30 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("DIAS ATIVOS"))
         compose.onNodeWithText("DIAS ATIVOS").assertIsDisplayed()
         list.performScrollToNode(hasText("Pace @ FC"))
+        list.performScrollToNode(hasText("Eficiência"))
+        compose.onNodeWithText("Eficiência").assertIsDisplayed()
         list.performScrollToNode(hasText("6:00 /km"))
         compose.onNodeWithText("6:00 /km").assertIsDisplayed()
+    }
+
+    @Test
+    fun `selects a different activity period`() {
+        var selected: TrendsPeriod? = null
+        setContent(
+            state = TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                activityTrends = trends(),
+            ),
+            onPeriodSelected = { selected = it },
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("12 sem"))
+        compose.onNodeWithText("12 sem").performClick()
+
+        assertThat(selected).isEqualTo(TrendsPeriod.WEEKS_12)
     }
 
     @Test
@@ -175,7 +200,9 @@ class TrendsScreenTest {
         }
 
         val list = compose.onNodeWithTag("trends-list")
-        list.performScrollToNode(hasText("Distribuição · 80/20"))
+        list.performScrollToNode(
+            hasContentDescription("Distribuição por tempo: 75% fácil, 13% moderado e 13% forte"),
+        )
         compose
             .onNodeWithContentDescription("Distribuição por tempo: 75% fácil, 13% moderado e 13% forte")
             .assertExists()
@@ -198,7 +225,7 @@ class TrendsScreenTest {
         )
 
         val list = compose.onNodeWithTag("trends-list")
-        list.performScrollToNode(hasText("Distribuição · 80/20"))
+        list.performScrollToNode(hasText("Sem limiar calibrado"))
         compose.onNodeWithText("Sem limiar calibrado").assertIsDisplayed()
     }
 
@@ -231,7 +258,7 @@ class TrendsScreenTest {
         )
 
         val list = compose.onNodeWithTag("trends-list")
-        list.performScrollToNode(hasText("Adesão ao plano"))
+        list.performScrollToNode(hasText("3 de 5 sessões concluídas · 1 pulada"))
         compose.onNodeWithText("Adesão ao plano").assertIsDisplayed()
         compose.onNodeWithText("3 de 5 sessões concluídas · 1 pulada").assertIsDisplayed()
     }
@@ -306,10 +333,10 @@ class TrendsScreenTest {
         averageHeartRate = 150,
     )
 
-    private fun setContent(state: TrendsUiState) {
+    private fun setContent(state: TrendsUiState, onPeriodSelected: (TrendsPeriod) -> Unit = {}) {
         compose.setContent {
             McTheme(darkTheme = true) {
-                TrendsContent(state = state)
+                TrendsContent(state = state, onPeriodSelected = onPeriodSelected)
             }
         }
     }

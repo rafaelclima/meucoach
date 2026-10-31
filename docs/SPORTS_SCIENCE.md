@@ -468,7 +468,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". Nunca usar 
 ## 15. Limitações conhecidas
 
 - Sem teste de lactato, LTHR é estimada; confiança máxima "média" até um TT válido.
-- Sem running dynamics, economia de corrida é inferida por pace/FC/cadência.
+- Sem running dynamics, economia de corrida é inferida por pace/FC/cadência; o gráfico de m/batimento é um proxy e só deve ser comparado sob condições semelhantes.
 - Potência de corrida do Zepp é proprietária; usar apenas tendência relativa.
 - Ajuste de calor é empírico e conservador; não é prescrição fisiológica individual.
 - HRV noturno de wearable de pulso tem ruído; usar tendência, não noite isolada.

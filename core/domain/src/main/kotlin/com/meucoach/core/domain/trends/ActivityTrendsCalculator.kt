@@ -14,7 +14,15 @@ data class WeeklyVolume(val weekStart: LocalDate, val kilometers: Double, val ru
 
 data class ConsistencySummary(val windowDays: Int, val activeDays: Int, val runs: Int, val daysSinceLastRun: Long?)
 
-data class PaceHeartRatePoint(val date: LocalDate, val pace: Pace, val heartRate: Int)
+data class PaceHeartRatePoint(val date: LocalDate, val pace: Pace, val heartRate: Int) {
+    /**
+     * Descriptive running-economy proxy: speed in meters per minute divided by
+     * heart rate (meters per heartbeat). Heat/fatigue confound it, so compare
+     * under similar conditions rather than treating it as a verdict.
+     */
+    val efficiencyMetersPerBeat: Double
+        get() = (60_000.0 / pace.secondsPerKm) / heartRate
+}
 
 /**
  * Descriptive best efforts from imported runs. The best-pace record ignores
@@ -52,7 +60,7 @@ class ActivityTrendsCalculator {
         consistencyDays: Int = 28,
     ): ActivityTrends {
         require(weeks in 1..26) { "Week window must be between 1 and 26" }
-        require(consistencyDays in 7..90) { "Consistency window must be between 7 and 90 days" }
+        require(consistencyDays in 7..365) { "Consistency window must be between 7 and 365 days" }
         val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val weekStarts = (weeks - 1 downTo 0).map { currentWeekStart.minusWeeks(it.toLong()) }
         val byLocalDate = activities.groupBy { it.startTime.atZone(zoneId).toLocalDate() }

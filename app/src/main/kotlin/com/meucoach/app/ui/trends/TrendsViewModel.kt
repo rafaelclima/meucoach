@@ -19,6 +19,7 @@ import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.Sport
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +28,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
+enum class TrendsPeriod(val weeks: Int, val consistencyDays: Int, val label: String) {
+    WEEKS_6(weeks = 6, consistencyDays = 28, label = "6 sem"),
+    WEEKS_12(weeks = 12, consistencyDays = 84, label = "12 sem"),
+    WEEKS_26(weeks = 26, consistencyDays = 182, label = "26 sem"),
+}
+
 data class TrendsUiState(
     val isLoading: Boolean = true,
     val profile: AthleteProfile? = null,
@@ -34,6 +41,7 @@ data class TrendsUiState(
     val activityTrends: ActivityTrends? = null,
     val intensity: IntensityDistribution? = null,
     val planCompletion: PlanCompletion? = null,
+    val period: TrendsPeriod = TrendsPeriod.WEEKS_6,
 )
 
 @HiltViewModel
@@ -48,12 +56,24 @@ class TrendsViewModel @Inject constructor(
     private val planCompletionCalculator = PlanCompletionCalculator()
     private val _uiState = MutableStateFlow(TrendsUiState())
     val uiState: StateFlow<TrendsUiState> = _uiState.asStateFlow()
+    private var loadJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        load(TrendsPeriod.WEEKS_6)
+    }
+
+    fun selectPeriod(period: TrendsPeriod) {
+        if (period == _uiState.value.period) return
+        _uiState.value = _uiState.value.copy(period = period)
+        load(period)
+    }
+
+    private fun load(period: TrendsPeriod) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val profile = profileRepository.getProfile()
             if (profile == null) {
-                _uiState.value = TrendsUiState(isLoading = false)
+                _uiState.value = TrendsUiState(isLoading = false, period = period)
                 return@launch
             }
             val zone = runCatching { ZoneId.of(profile.timezone) }.getOrNull() ?: ZoneId.systemDefault()
@@ -79,11 +99,14 @@ class TrendsViewModel @Inject constructor(
                     activities = summaries,
                     today = today,
                     zoneId = zone,
+                    weeks = period.weeks,
+                    consistencyDays = period.consistencyDays,
                 ),
                 intensity = profile.lactateThresholdHeartRate?.let { lthr ->
                     distribution(summaries, today, zone, lthr)
                 },
                 planCompletion = completion(today),
+                period = period,
             )
         }
     }
