@@ -2,6 +2,7 @@ package com.meucoach.core.domain.trends
 
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.Sport
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -15,6 +16,23 @@ data class ConsistencySummary(val windowDays: Int, val activeDays: Int, val runs
 
 data class PaceHeartRatePoint(val date: LocalDate, val pace: Pace, val heartRate: Int)
 
+/**
+ * Descriptive best efforts from imported runs. The best-pace record ignores
+ * efforts shorter than [MIN_RECORD_DISTANCE_KM] to avoid strides and partial
+ * imports; it is a summary record, not a race prediction.
+ */
+data class PersonalRecords(
+    val longestDistanceKm: Double? = null,
+    val longestDistanceDate: LocalDate? = null,
+    val bestPace: Pace? = null,
+    val bestPaceDate: LocalDate? = null,
+    val bestPaceDistanceKm: Double? = null,
+    val longestDurationSec: Int? = null,
+    val longestDurationDate: LocalDate? = null,
+) {
+    val hasData: Boolean get() = longestDistanceKm != null || longestDurationSec != null
+}
+
 data class ActivityTrends(
     val weeks: List<WeeklyVolume>,
     val consistency: ConsistencySummary,
@@ -22,6 +40,7 @@ data class ActivityTrends(
     val totalKilometers: Double,
     val averagePace: Pace?,
     val averageHeartRate: Int?,
+    val records: PersonalRecords = PersonalRecords(),
 )
 
 class ActivityTrendsCalculator {
@@ -72,6 +91,7 @@ class ActivityTrendsCalculator {
                     heartRate = it.averageHeartRate!!,
                 )
             }
+        val records = records(activities = activities, zoneId = zoneId)
         val totalKm = consistencyActivities.sumOf { it.distance.kilometers }
         val paceValues = consistencyActivities.mapNotNull { it.averagePace?.secondsPerKm }
         val heartRates = consistencyActivities.mapNotNull { it.averageHeartRate }
@@ -82,6 +102,33 @@ class ActivityTrendsCalculator {
             totalKilometers = totalKm,
             averagePace = paceValues.takeIf { it.isNotEmpty() }?.average()?.roundToInt()?.let(Pace::fromSecondsPerKm),
             averageHeartRate = heartRates.takeIf { it.isNotEmpty() }?.average()?.roundToInt(),
+            records = records,
         )
+    }
+
+    private fun records(activities: List<ActivitySummary>, zoneId: ZoneId): PersonalRecords {
+        val runs = activities.filter { it.sport == Sport.RUNNING || it.sport == Sport.TREADMILL }
+        val distanceRuns = runs.filter { it.distance.meters > 0.0 }
+        val longest = distanceRuns.maxByOrNull { it.distance.meters }
+        val longestTime = runs.maxByOrNull { it.durationSec }
+        val bestPace = distanceRuns
+            .filter { it.distance.kilometers >= MIN_RECORD_DISTANCE_KM }
+            .mapNotNull { activity ->
+                (activity.averagePace ?: activity.calculatedPace)?.let { pace -> activity to pace }
+            }
+            .minByOrNull { (_, pace) -> pace.secondsPerKm }
+        return PersonalRecords(
+            longestDistanceKm = longest?.distance?.kilometers,
+            longestDistanceDate = longest?.startTime?.atZone(zoneId)?.toLocalDate(),
+            bestPace = bestPace?.second,
+            bestPaceDate = bestPace?.first?.startTime?.atZone(zoneId)?.toLocalDate(),
+            bestPaceDistanceKm = bestPace?.first?.distance?.kilometers,
+            longestDurationSec = longestTime?.durationSec,
+            longestDurationDate = longestTime?.startTime?.atZone(zoneId)?.toLocalDate(),
+        )
+    }
+
+    private companion object {
+        const val MIN_RECORD_DISTANCE_KM = 3.0
     }
 }

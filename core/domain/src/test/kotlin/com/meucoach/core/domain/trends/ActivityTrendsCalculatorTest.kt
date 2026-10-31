@@ -66,6 +66,25 @@ class ActivityTrendsCalculatorTest {
     }
 
     @Test
+    fun `finds records from runs and ignores short efforts and walking`() {
+        val activities = listOf(
+            activity(today.minusDays(1), km = 10.0, pace = 300, hr = 100).copy(sport = Sport.WALKING),
+            activity(today.minusDays(2), km = 2.0, pace = 300, hr = 150),
+            activity(today.minusDays(3), km = 8.0, pace = 380, hr = 145),
+            activity(today.minusDays(4), km = 5.0, pace = 360, hr = 150),
+        )
+
+        val records = calculator.calculate(activities, today, zone).records
+
+        assertThat(records.longestDistanceKm).isEqualTo(8.0)
+        assertThat(records.longestDistanceDate).isEqualTo(today.minusDays(3))
+        assertThat(records.bestPace).isEqualTo(Pace.fromSecondsPerKm(360))
+        assertThat(records.bestPaceDistanceKm).isEqualTo(5.0)
+        assertThat(records.bestPaceDate).isEqualTo(today.minusDays(4))
+        assertThat(records.longestDurationSec).isEqualTo(3_040)
+    }
+
+    @Test
     fun `handles an empty history`() {
         val trends = calculator.calculate(emptyList(), today, zone)
 
@@ -74,6 +93,7 @@ class ActivityTrendsCalculatorTest {
         assertThat(trends.consistency.daysSinceLastRun).isNull()
         assertThat(trends.averagePace).isNull()
         assertThat(trends.averageHeartRate).isNull()
+        assertThat(trends.records.hasData).isFalse()
     }
 
     @Test

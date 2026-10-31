@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 524 testes, 0 falhas (27 em `core:model`, 230 em `core:domain`, 77 em `core:data`, 190 em `:app`)
-- **Cobertura `core:domain`:** 98,36% de linhas (2.222/2.259), 83,63% de branches (1.788/2.138), 97,10% de instruções (16.726/17.225)
+- **Testes:** 526 testes, 0 falhas (27 em `core:model`, 231 em `core:domain`, 77 em `core:data`, 191 em `:app`)
+- **Cobertura `core:domain`:** 98,38% de linhas (2.251/2.288), 83,33% de branches (1.820/2.184), 97,06% de instruções (17.032/17.547)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -31,12 +31,49 @@
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
 - **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
-- **Tendências de atividades:** volume semanal, consistência de 28 dias e relação pace×FC no `ActivityTrendsCalculator`.
+- **Tendências de atividades:** volume semanal, consistência de 28 dias, relação pace×FC e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-07: recordes pessoais em Tendências
+
+### Concluído
+
+- Domínio (`ActivityTrendsCalculator`):
+  - `PersonalRecords` com maior distância, melhor pace e maior tempo.
+  - Considera apenas corridas/esteira; caminhada e outros esportes ficam fora.
+  - Melhor pace exige ≥ 3 km para não transformar strides ou imports parciais em recorde.
+  - Usa `averagePace` e, quando ausente, `calculatedPace`; datas no fuso do perfil.
+  - Recordes usam todo o histórico importado, não só a janela de consistência.
+- UI (`TrendsScreen`):
+  - Seção “Recordes” depois de Consistência, com rótulo, valor e data/distância.
+  - Texto explícito: recorde descritivo, não prescrição, e regra dos 3 km.
+  - Sem chama, streak ou gamificação.
+- Testes:
+  - Domínio: maior distância, melhor pace, maior tempo, exclusão de caminhada e esforço < 3 km, histórico vazio.
+  - UI: card visível com valores formatados em pt-BR.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 526 testes, 0 falhas (27 `core:model`, 231 `core:domain`, 77 `core:data`, 191 `:app`).
+- Cobertura `core:domain`: 98,38% linhas / 83,33% branches.
+- Screenshots de Tendências inalterados (o golden não inclui atividades).
+
+### Decisões e observações
+
+- Recordes são descritivos: não geram recomendação, meta ou comparação com outros usuários.
+- O limite de 3 km evita que um stride ou uma atividade truncada vire “melhor pace”.
+- Não há recorde de 5k/10k ainda: isso exigirá melhores esforços a partir dos samples, não da média da atividade.
+
+### Próximo passo
+
+1. Gráfico de eficiência pace@FC e filtros de período.
+2. Heatmap de consistência.
+3. Histórico de conclusão de treinos (`P1-06`).
 
 ## Sessão 2026-10-31 — P1-05: deload a cada 4ª semana
 
@@ -770,3 +807,4 @@
 | 31/10/2026 | P1-07 80/20 por tempo concluído: calculadora de zonas, card em Tendências e 507 testes |
 | 31/10/2026 | P1-05 parcial: calor autorreportado (+3%) e alternativa de esteira na qualidade; Room v9 e 519 testes |
 | 31/10/2026 | P1-05 parcial: deload de −25% a cada 4ª semana consecutiva, ancorado no histórico de planos; 524 testes |
+| 31/10/2026 | P1-07 parcial: recordes pessoais em Tendências (distância, pace ≥ 3 km e tempo); 526 testes |

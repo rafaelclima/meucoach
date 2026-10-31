@@ -234,6 +234,7 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 | Tendências | Volume semanal | "Minha consistência?" |
 | Tendências | Distribuição 80/20 | "Estou no equilíbrio?" |
 | Tendências | Pace @ FC | "Fiquei mais eficiente?" |
+| Tendências | Recordes | "Qual foi meu melhor esforço?" |
 | Tendências | Heatmap de consistência | "Mantive o hábito?" |
 
 ### 8.3 Paleta de séries

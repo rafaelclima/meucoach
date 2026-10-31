@@ -226,7 +226,8 @@
 - [x] Consistência de 28 dias.
 - [x] Relação pace×FC (lista).
 - [x] Distribuição 80/20 por tempo a partir dos samples, com quebra semanal e confiança.
-- [ ] Gráfico de eficiência pace@FC, recordes e filtros.
+- [x] Recordes pessoais: maior distância, melhor pace em corridas ≥ 3 km e maior tempo.
+- [ ] Gráfico de eficiência pace@FC e filtros de período.
 - [ ] Heatmap de consistência.
 
 ### P1-08 · Check-in

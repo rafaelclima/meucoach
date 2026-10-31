@@ -15,6 +15,7 @@ import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ConsistencySummary
 import com.meucoach.core.domain.trends.IntensityDistribution
 import com.meucoach.core.domain.trends.PaceHeartRatePoint
+import com.meucoach.core.domain.trends.PersonalRecords
 import com.meucoach.core.domain.trends.WeeklyIntensity
 import com.meucoach.core.domain.trends.WeeklyVolume
 import com.meucoach.core.model.AthleteProfile
@@ -197,6 +198,35 @@ class TrendsScreenTest {
         val list = compose.onNodeWithTag("trends-list")
         list.performScrollToNode(hasText("Distribuição · 80/20"))
         compose.onNodeWithText("Sem limiar calibrado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows personal records from imported runs`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                activityTrends = trends().copy(
+                    records = PersonalRecords(
+                        longestDistanceKm = 8.4,
+                        longestDistanceDate = LocalDate.of(2026, 10, 12),
+                        bestPace = Pace.fromSecondsPerKm(348),
+                        bestPaceDate = LocalDate.of(2026, 10, 8),
+                        bestPaceDistanceKm = 5.0,
+                        longestDurationSec = 3_640,
+                        longestDurationDate = LocalDate.of(2026, 10, 12),
+                    ),
+                ),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Maior distância"))
+        compose.onNodeWithText("Maior distância").assertIsDisplayed()
+        compose.onNodeWithText("8,4 km").assertIsDisplayed()
+        compose.onNodeWithText("Melhor pace").assertIsDisplayed()
+        compose.onNodeWithText("5:48 /km").assertIsDisplayed()
     }
 
     @Test

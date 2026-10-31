@@ -57,6 +57,7 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.IntensityDistribution
+import com.meucoach.core.domain.trends.PersonalRecords
 import com.meucoach.core.domain.trends.WeeklyIntensity
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -218,6 +219,10 @@ private fun LoadDetails(
             item { WeeklyVolumeCard(activityTrends.weeks) }
             item { McSectionHeader(title = "Consistência · ${activityTrends.consistency.windowDays} dias") }
             item { ConsistencyCard(activityTrends) }
+            if (activityTrends.records.hasData) {
+                item { McSectionHeader(title = "Recordes") }
+                item { PersonalRecordsCard(activityTrends.records) }
+            }
             if (activityTrends.paceHeartRate.isNotEmpty()) {
                 item { McSectionHeader(title = "Pace @ FC") }
                 item { PaceHeartRateCard(activityTrends.paceHeartRate) }
@@ -300,6 +305,87 @@ private fun ConsistencyCard(trends: com.meucoach.core.domain.trends.ActivityTren
             style = McTextStyles.caption,
             color = McTheme.colors.textSecondary,
         )
+    }
+}
+
+@Composable
+private fun PersonalRecordsCard(records: PersonalRecords) {
+    val colors = McTheme.colors
+    McCard {
+        Text(
+            text = "Melhores esforços",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Das corridas importadas. Recorde descritivo, não prescrição.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        records.longestDistanceKm?.let { km ->
+            RecordRow(
+                label = "Maior distância",
+                value = String.format(PT_BR, "%.1f km", km),
+                hint = records.longestDistanceDate?.format(DAY_FORMAT),
+            )
+        }
+        records.bestPace?.let { pace ->
+            McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            RecordRow(
+                label = "Melhor pace",
+                value = "${pace.format()} /km",
+                hint = records.bestPaceDistanceKm?.let { km ->
+                    val date = records.bestPaceDate?.format(DAY_FORMAT)
+                    listOfNotNull(String.format(PT_BR, "%.1f km", km), date).joinToString(" · ")
+                },
+            )
+        }
+        records.longestDurationSec?.let { seconds ->
+            McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            RecordRow(
+                label = "Mais tempo",
+                value = formatDuration(seconds),
+                hint = records.longestDurationDate?.format(DAY_FORMAT),
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "O melhor pace considera corridas com pelo menos 3 km.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+    }
+}
+
+@Composable
+private fun RecordRow(label: String, value: String, hint: String?) {
+    val colors = McTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
+            if (hint != null) {
+                Text(
+                    text = hint,
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+            }
+        }
     }
 }
 
