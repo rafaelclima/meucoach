@@ -80,6 +80,8 @@ data class AthleteProfile(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val units: Units = Units.METRIC,
+    /** Athlete has access to a treadmill, which is a valid modality in heat (`R-PLAN-08`). */
+    val treadmillAccess: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "Athlete id must not be blank" }

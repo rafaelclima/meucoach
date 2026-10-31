@@ -6,6 +6,7 @@ import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
@@ -178,13 +179,92 @@ class WorkoutRecommenderTest {
         assertThat(long.durationMin).isEqualTo(60)
     }
 
-    private fun input(profile: AthleteProfile = profile(), readiness: ReadinessResult, load: LoadSnapshot? = null) =
-        PrescriptionInput(
-            profile = profile,
-            readiness = readiness,
-            load = load,
-            today = monday,
+    @Test
+    fun `self reported heat slows the easy pace by three percent`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH),
+                heatLevel = HeatLevel.HOT,
+            ),
         )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.pace).isEqualTo(
+            PaceTarget(
+                fast = Pace.fromSecondsPerKm(464),
+                slow = Pace.fromSecondsPerKm(519),
+            ),
+        )
+        assertThat(recommendation.heartRate).isEqualTo(HeartRateTarget(minBpm = 146, maxBpm = 161))
+        assertThat(recommendation.ruleIds).contains("R-PLAN-07")
+        assertThat(recommendation.evidenceIds).contains("EV-ELY-2007")
+        assertThat(recommendation.rationale).contains("Calor informado", "3% mais lento")
+    }
+
+    @Test
+    fun `heat lowers confidence by one level`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH),
+                heatLevel = HeatLevel.HOT,
+            ),
+        )
+
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.MEDIUM)
+    }
+
+    @Test
+    fun `heat without calibration guides by effort instead of a slower pace`() {
+        val recommendation = recommender.recommend(
+            input(
+                profile = profile(threshold = null, lthr = null),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+                heatLevel = HeatLevel.HOT,
+            ),
+        )
+
+        assertThat(recommendation.pace).isNull()
+        assertThat(recommendation.rationale).contains("reduza o ritmo pelo esforço")
+        assertThat(recommendation.rationale).doesNotContain("3% mais lento")
+    }
+
+    @Test
+    fun `heat with treadmill access cites the alternate modality`() {
+        val recommendation = recommender.recommend(
+            input(
+                profile = profile(treadmillAccess = true),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+                heatLevel = HeatLevel.HOT,
+            ),
+        )
+
+        assertThat(recommendation.ruleIds).contains("R-PLAN-07", "R-PLAN-08")
+        assertThat(recommendation.rationale).contains("A esteira também é válida hoje")
+    }
+
+    @Test
+    fun `no heat keeps the baseline pace and confidence`() {
+        val recommendation = recommender.recommend(
+            input(readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH)),
+        )
+
+        assertThat(recommendation.pace?.fast).isEqualTo(Pace.fromSecondsPerKm(450))
+        assertThat(recommendation.ruleIds).doesNotContain("R-PLAN-07")
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.HIGH)
+    }
+
+    private fun input(
+        profile: AthleteProfile = profile(),
+        readiness: ReadinessResult,
+        load: LoadSnapshot? = null,
+        heatLevel: HeatLevel = HeatLevel.NONE,
+    ) = PrescriptionInput(
+        profile = profile,
+        readiness = readiness,
+        load = load,
+        today = monday,
+        heatLevel = heatLevel,
+    )
 
     private fun readiness(
         level: ReadinessLevel,
@@ -208,6 +288,7 @@ class WorkoutRecommenderTest {
         threshold: Pace? = Pace.fromSecondsPerKm(360),
         lthr: Int? = 180,
         availability: WeeklyAvailability = WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 45)),
+        treadmillAccess: Boolean = false,
     ) = AthleteProfile(
         id = "athlete-1",
         birthDate = LocalDate.of(1988, 1, 1),
@@ -218,6 +299,7 @@ class WorkoutRecommenderTest {
         thresholdPace = threshold,
         timezone = "America/Sao_Paulo",
         weeklyAvailability = availability,
+        treadmillAccess = treadmillAccess,
     )
 
     private fun load(acwr: Double) = LoadSnapshot(

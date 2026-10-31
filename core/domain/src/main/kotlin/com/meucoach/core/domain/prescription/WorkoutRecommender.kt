@@ -8,6 +8,7 @@ import com.meucoach.core.domain.zones.PaceZoneCalculator
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.HeartRateZone
+import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.PaceZone
 import com.meucoach.core.model.ReadinessLevel
@@ -59,6 +60,7 @@ data class PrescriptionInput(
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
     val today: LocalDate,
+    val heatLevel: HeatLevel = HeatLevel.NONE,
 )
 
 /**
@@ -99,7 +101,10 @@ class WorkoutRecommender {
 
         val duration = minutes.takeIf { it > 0 }?.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN) ?: DEFAULT_EASY_MIN
         val availabilityMissing = available.minutesByDay.isEmpty()
-        val paceTarget = easyPace(input.profile)
+        val heat = input.heatLevel == HeatLevel.HOT
+        val paceTarget = easyPace(input.profile)?.let { target ->
+            if (heat) target.slowerBy(HEAT_PACE_FACTOR) else target
+        }
         val heartRateTarget = easyHeartRate(input.profile)
         val calibrationConfidence = when {
             paceTarget != null && heartRateTarget != null -> DataConfidence.HIGH
@@ -108,6 +113,7 @@ class WorkoutRecommender {
         }
         val confidence = combine(readiness.confidence, calibrationConfidence)
             .let { base -> if (availabilityMissing) downgrade(base) else base }
+            .let { base -> if (heat) downgrade(base) else base }
 
         val rules = buildList {
             add("R-ZONE-01")
@@ -115,6 +121,8 @@ class WorkoutRecommender {
             if (readiness.level == ReadinessLevel.AMBER || noQuality) add("R-READY-03")
             if (shortSleep) add("R-READY-04")
             if (acwrHigh) add("R-LOAD-03")
+            if (heat) add("R-PLAN-07")
+            if (heat && input.profile.treadmillAccess) add("R-PLAN-08")
             if (paceTarget == null && heartRateTarget == null) add("R-CAL-02")
         }
         val evidence = buildList {
@@ -122,6 +130,7 @@ class WorkoutRecommender {
             add("EV-DANIELS-2014")
             if (shortSleep || readiness.level == ReadinessLevel.AMBER) add("EV-SAW-2016")
             if (acwrHigh) add("EV-GABBETT-2016")
+            if (heat) add("EV-ELY-2007")
             if (paceTarget == null && heartRateTarget == null) add("EV-FRIEL-2018")
         }
         val rationale = when {
@@ -135,7 +144,7 @@ class WorkoutRecommender {
                 "Prontidão âmbar: hoje é fácil, sem qualidade. " + easyHint(paceTarget, heartRateTarget)
 
             else -> "Base aeróbica em Z2, conversável do início ao fim. " + easyHint(paceTarget, heartRateTarget)
-        }
+        } + heatHint(heat, input.profile.treadmillAccess, paceTarget != null)
         val distance = paceTarget?.let { target ->
             val secondsPerKm = (target.fast.secondsPerKm + target.slow.secondsPerKm) / 2.0
             (duration * 60.0 / secondsPerKm).roundToOneDecimal()
@@ -198,6 +207,28 @@ class WorkoutRecommender {
         else -> "Use RPE: esforço conversável; calibre o limiar para receber pace e FC."
     }
 
+    /**
+     * Self-reported heat maps to the conservative end of the 3–8% range
+     * (`R-PLAN-07`). FC and RPE remain the main guide.
+     */
+    private fun heatHint(heat: Boolean, treadmillAccess: Boolean, hasPaceTarget: Boolean): String {
+        if (!heat) return ""
+        val treadmill = if (treadmillAccess) " A esteira também é válida hoje." else ""
+        val percent = ((HEAT_PACE_FACTOR - 1.0) * 100).roundToInt()
+        val pace = if (hasPaceTarget) {
+            "pace alvo $percent% mais lento, sem mudar a FC; "
+        } else {
+            "reduza o ritmo pelo esforço, sem mudar a FC; "
+        }
+        return " Calor informado: $pace" +
+            "use FC e RPE como guia e prefira o início da manhã.$treadmill"
+    }
+
+    private fun PaceTarget.slowerBy(factor: Double): PaceTarget = PaceTarget(
+        fast = Pace.fromSecondsPerKm((fast.secondsPerKm * factor).roundToInt()),
+        slow = Pace.fromSecondsPerKm((slow.secondsPerKm * factor).roundToInt()),
+    )
+
     private fun combine(readiness: DataConfidence, calibration: DataConfidence): DataConfidence {
         val rank = mapOf(DataConfidence.LOW to 0, DataConfidence.MEDIUM to 1, DataConfidence.HIGH to 2)
         val minimum = minOf(rank.getValue(readiness), rank.getValue(calibration))
@@ -216,5 +247,6 @@ class WorkoutRecommender {
         const val MIN_EASY_MIN = 20
         const val MAX_EASY_MIN = 60
         const val DEFAULT_EASY_MIN = 30
+        const val HEAT_PACE_FACTOR = 1.03
     }
 }

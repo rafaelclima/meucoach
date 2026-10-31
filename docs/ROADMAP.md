@@ -201,7 +201,7 @@
 - [x] Taper por prova-alvo e qualidade nomeada por experiência.
 - [x] Progressão por dose de qualidade, com disponibilidade como teto (ADR 0010).
 - [ ] Blocos/periodização e deload.
-- [ ] Calor e esteira.
+- [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
 - [ ] Histórico de conclusão e limite de 2 qualidades/semana (regra implementada; falta tela).
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.

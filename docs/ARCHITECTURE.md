@@ -172,7 +172,7 @@ data class EngineOutput(
 
 - **Room/SQLite** como fonte de verdade local.
 - `:core:data` implementa:
-  - `MeuCoachDatabase` v8 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity` e `PlannedSessionEntity`.
+  - `MeuCoachDatabase` v9 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity` e `PlannedSessionEntity`.
   - DAOs separados, `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository` e `TrainingPlanRepository` como fronteiras para o restante do app.
   - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda.
   - UUID v7 gerado no cliente para IDs ordenáveis.
@@ -181,7 +181,7 @@ data class EngineOutput(
 - Exclusão padrão é lógica (`deletedAt`); exclusão permanente usa cascata e remove laps/blob. O export JSON básico inclui a lixeira.
 - Arquivos originais em storage privado do app, referenciados por hash.
 - `DataStore` apenas para preferências (tema, unidades, onboarding).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`, `MIGRATION_2_3` cria `activity_alternates`, `MIGRATION_3_4` cria `athlete_profile`, `MIGRATION_4_5` cria `daily_check_ins`, `MIGRATION_5_6` cria `daily_metrics`, `MIGRATION_6_7` cria `weekly_plans`/`planned_sessions` e `MIGRATION_7_8` adiciona status/motivo da sessão.
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`, `MIGRATION_2_3` cria `activity_alternates`, `MIGRATION_3_4` cria `athlete_profile`, `MIGRATION_4_5` cria `daily_check_ins`, `MIGRATION_5_6` cria `daily_metrics`, `MIGRATION_6_7` cria `weekly_plans`/`planned_sessions`, `MIGRATION_7_8` adiciona status/motivo da sessão e `MIGRATION_8_9` adiciona calor no check-in e acesso a esteira no perfil.
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect

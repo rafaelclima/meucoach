@@ -298,15 +298,17 @@ segunda→domingo:
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Confiança do plano é limitada a média até existir histórico.
 
-### 8.7 Calor e umidade
+### 8.9 Calor e umidade
 
 - Natal/RN: calor úmido quase o ano todo.
+- Entrada do MVP é **autorreportada** no check-in ("está muito calor?"), não uma temperatura medida; clima automático fica para a Fase 2 (P2-07).
 - Ajuste de pace conservador (+3 a +8%) quando temperatura > 26 °C ou ponto de orvalho > 20 °C; usar FC e RPE como guia principal.
-- Preferir início da manhã; esteira é válida para qualidade no calor.
-- O ajuste é uma **estimativa**, não uma lei; marcar confiança média/baixa.
+- O autorreporte usa o extremo conservador da faixa (**+3%**) e reduz a confiança em um nível. É uma **estimativa**, não uma lei (`R-PLAN-07`, `EV-ELY-2007`).
+- Preferir início da manhã; esteira é válida para qualidade no calor (`R-PLAN-08`).
+- Com acesso a esteira, a qualidade prescreve velocidade pela zona T quando há pace de limiar calibrado; a inclinação fica em RPE 8/10 para não inventar intensidade (`R-PLAN-08`, `EV-DANIELS-2014`).
 - Hidratação e sinais de calor: orientação geral, não prescrição médica.
 
-### 8.8 Prova
+### 8.10 Prova
 
 - Pace alvo por VDOT/Riegel, com banda conservadora.
 - Riegel: `t2 = t1 × (d2/d1)^1,06` — usar como referência, não garantia.

@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.model.DailyCheckIn
+import com.meucoach.core.model.HeatLevel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -75,6 +76,14 @@ class CheckInRepositoryTest {
         assertThat(repository.delete(date)).isTrue()
         assertThat(repository.get(date)).isNull()
         assertThat(repository.delete(date)).isFalse()
+    }
+
+    @Test
+    fun `round-trips the self reported heat level`(): Unit = runBlocking {
+        repository.save(checkIn().copy(heatLevel = HeatLevel.HOT))
+
+        assertThat(repository.get(date)?.heatLevel).isEqualTo(HeatLevel.HOT)
+        assertThat(database.dailyCheckInDao().get(date.toString())?.heatLevel).isEqualTo(HeatLevel.HOT)
     }
 
     @Test

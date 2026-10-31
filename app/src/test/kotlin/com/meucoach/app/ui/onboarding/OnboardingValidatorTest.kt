@@ -75,6 +75,18 @@ class OnboardingValidatorTest {
     }
 
     @Test
+    fun `round-trips treadmill access through the form`() {
+        val profile = OnboardingValidator.toProfile(
+            form = form().copy(treadmillAccess = true),
+            id = "athlete-1",
+            today = today,
+        )
+
+        assertThat(profile.treadmillAccess).isTrue()
+        assertThat(OnboardingValidator.fromProfile(profile).treadmillAccess).isTrue()
+    }
+
+    @Test
     fun `rejects invalid personal data`() {
         assertInvalid(0, form().copy(birthDate = "30/10/2026"), OnboardingField.BIRTH_DATE)
         assertInvalid(0, form().copy(birthDate = "31/02/1990"), OnboardingField.BIRTH_DATE)

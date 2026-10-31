@@ -99,6 +99,14 @@ class ProfileRepositoryTest {
     }
 
     @Test
+    fun `round-trips treadmill access`(): Unit = runBlocking {
+        repository.saveProfile(profile().copy(treadmillAccess = true))
+
+        assertThat(repository.getProfile()?.treadmillAccess).isTrue()
+        assertThat(database.profileDao().get()?.treadmillAccess).isTrue()
+    }
+
+    @Test
     fun `starts empty`(): Unit = runBlocking {
         assertThat(repository.getProfile()).isNull()
         assertThat(repository.observeProfile().first()).isNull()

@@ -42,6 +42,7 @@ import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.model.HeatLevel
 
 @Composable
 fun CheckInScreen(
@@ -199,6 +200,42 @@ internal fun CheckInContent(
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = colors.onAccent,
                                     checkedTrackColor = colors.danger,
+                                    uncheckedThumbColor = colors.textTertiary,
+                                    uncheckedTrackColor = colors.surfaceInset,
+                                ),
+                            )
+                        }
+                    }
+                }
+                item {
+                    McCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Está muito calor?",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = colors.textPrimary,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Ajusta o pace alvo, sem mudar a FC.",
+                                    style = McTextStyles.caption,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                            Switch(
+                                checked = state.form.heatLevel == HeatLevel.HOT,
+                                onCheckedChange = { value ->
+                                    onUpdate {
+                                        it.copy(heatLevel = if (value) HeatLevel.HOT else HeatLevel.NONE)
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = colors.onAccent,
+                                    checkedTrackColor = colors.warning,
                                     uncheckedThumbColor = colors.textTertiary,
                                     uncheckedTrackColor = colors.surfaceInset,
                                 ),

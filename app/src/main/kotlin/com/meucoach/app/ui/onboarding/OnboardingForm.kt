@@ -46,6 +46,7 @@ data class OnboardingForm(
     val maxHeartRateObserved: String = "",
     val timezone: String = ZoneId.systemDefault().id,
     val city: String = "",
+    val treadmillAccess: Boolean = false,
 ) {
     val isRaceGoal: Boolean
         get() = goalType in RACE_GOAL_TYPES
@@ -103,6 +104,7 @@ object OnboardingValidator {
             latitude = existing?.latitude,
             longitude = existing?.longitude,
             units = Units.METRIC,
+            treadmillAccess = form.treadmillAccess,
         )
     }
 
@@ -122,6 +124,7 @@ object OnboardingValidator {
             maxHeartRateObserved = profile.maxHeartRateObserved?.toString() ?: "",
             timezone = profile.timezone,
             city = profile.city ?: "",
+            treadmillAccess = profile.treadmillAccess,
         )
     }
 

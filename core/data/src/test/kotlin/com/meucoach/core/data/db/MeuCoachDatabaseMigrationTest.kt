@@ -38,7 +38,7 @@ class MeuCoachDatabaseMigrationTest {
         )
 
     @Test
-    fun `migration from 1 to 8 adds soft delete, alternates, profile and check-ins without losing data`() {
+    fun `migration from 1 to 9 adds soft delete, alternates, profile and check-ins without losing data`() {
         runBlocking {
             helper
                 .createDatabase(databaseName, 1)
@@ -59,6 +59,7 @@ class MeuCoachDatabaseMigrationTest {
                         MeuCoachDatabase.MIGRATION_5_6,
                         MeuCoachDatabase.MIGRATION_6_7,
                         MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
                     )
                     .allowMainThreadQueries()
                     .build()
@@ -68,7 +69,7 @@ class MeuCoachDatabaseMigrationTest {
                 assertThat(activity).isNotNull()
                 assertThat(activity?.deletedAt).isNull()
                 assertThat(activity?.distanceM).isEqualTo(5_000.0)
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.profileDao().get()).isNull()
 
                 assertThat(migrated.activityDao().softDelete("legacy", 99L)).isEqualTo(1)
@@ -84,7 +85,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 2 to 8 creates alternates, profile and check-ins without losing data`() {
+    fun `migration from 2 to 9 creates alternates, profile and check-ins without losing data`() {
         runBlocking {
             helper
                 .createDatabase(databaseName, 2)
@@ -104,6 +105,7 @@ class MeuCoachDatabaseMigrationTest {
                         MeuCoachDatabase.MIGRATION_5_6,
                         MeuCoachDatabase.MIGRATION_6_7,
                         MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
                     )
                     .allowMainThreadQueries()
                     .build()
@@ -112,7 +114,7 @@ class MeuCoachDatabaseMigrationTest {
                 val activity = migrated.activityDao().findById("legacy")
                 assertThat(activity).isNotNull()
                 assertThat(activity?.deletedAt).isNull()
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.activityAlternateDao().getForActivity("legacy")).isEmpty()
 
                 migrated.activityAlternateDao().insert(alternate())
@@ -126,7 +128,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 3 to 8 creates the profile and check-in tables`() {
+    fun `migration from 3 to 9 creates the profile and check-in tables`() {
         runBlocking {
             helper.createDatabase(databaseName, 3).close()
 
@@ -140,12 +142,13 @@ class MeuCoachDatabaseMigrationTest {
                         MeuCoachDatabase.MIGRATION_5_6,
                         MeuCoachDatabase.MIGRATION_6_7,
                         MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
                     )
                     .allowMainThreadQueries()
                     .build()
 
             try {
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.profileDao().get()).isNull()
                 assertThat(migrated.dailyCheckInDao().get("2026-10-30")).isNull()
                 migrated.profileDao().upsert(profile())
@@ -158,7 +161,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 4 to 8 creates the check-in and metrics tables`() {
+    fun `migration from 4 to 9 creates the check-in and metrics tables`() {
         runBlocking {
             helper.createDatabase(databaseName, 4).close()
 
@@ -171,12 +174,13 @@ class MeuCoachDatabaseMigrationTest {
                         MeuCoachDatabase.MIGRATION_5_6,
                         MeuCoachDatabase.MIGRATION_6_7,
                         MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
                     )
                     .allowMainThreadQueries()
                     .build()
 
             try {
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.dailyCheckInDao().get("2026-10-30")).isNull()
                 assertThat(migrated.dailyMetricsDao().get("2026-10-30")).isNull()
                 migrated.dailyCheckInDao().upsert(checkIn())
@@ -191,7 +195,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 5 to 8 creates the metrics and plan tables`() {
+    fun `migration from 5 to 9 creates the metrics and plan tables`() {
         runBlocking {
             helper.createDatabase(databaseName, 5).close()
 
@@ -203,12 +207,13 @@ class MeuCoachDatabaseMigrationTest {
                         MeuCoachDatabase.MIGRATION_5_6,
                         MeuCoachDatabase.MIGRATION_6_7,
                         MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
                     )
                     .allowMainThreadQueries()
                     .build()
 
             try {
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.dailyMetricsDao().get("2026-10-30")).isNull()
                 migrated.dailyMetricsDao().upsert(metrics())
                 assertThat(migrated.dailyMetricsDao().get("2026-10-30")?.restingHeartRate).isEqualTo(58.0)
@@ -220,7 +225,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 6 to 8 creates the plan and status tables`() {
+    fun `migration from 6 to 9 creates the plan and status tables`() {
         runBlocking {
             helper.createDatabase(databaseName, 6).close()
 
@@ -228,12 +233,16 @@ class MeuCoachDatabaseMigrationTest {
             val migrated =
                 Room
                     .databaseBuilder(context, MeuCoachDatabase::class.java, databaseName)
-                    .addMigrations(MeuCoachDatabase.MIGRATION_6_7, MeuCoachDatabase.MIGRATION_7_8)
+                    .addMigrations(
+                        MeuCoachDatabase.MIGRATION_6_7,
+                        MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
+                    )
                     .allowMainThreadQueries()
                     .build()
 
             try {
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.trainingPlanDao().getPlan("2026-11-02")).isNull()
                 assertThat(migrated.trainingPlanDao().getSessions("2026-11-02")).isEmpty()
             } finally {
@@ -244,7 +253,7 @@ class MeuCoachDatabaseMigrationTest {
     }
 
     @Test
-    fun `migration from 7 to 8 adds session status columns`() {
+    fun `migration from 7 to 9 adds session status and heat columns`() {
         runBlocking {
             helper.createDatabase(databaseName, 7).close()
 
@@ -252,12 +261,15 @@ class MeuCoachDatabaseMigrationTest {
             val migrated =
                 Room
                     .databaseBuilder(context, MeuCoachDatabase::class.java, databaseName)
-                    .addMigrations(MeuCoachDatabase.MIGRATION_7_8)
+                    .addMigrations(
+                        MeuCoachDatabase.MIGRATION_7_8,
+                        MeuCoachDatabase.MIGRATION_8_9,
+                    )
                     .allowMainThreadQueries()
                     .build()
 
             try {
-                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(8)
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
                 assertThat(migrated.trainingPlanDao().getSessions("2026-11-02")).isEmpty()
                 migrated.openHelper.writableDatabase.execSQL(
                     "INSERT INTO weekly_plans (weekStart, createdAt, confidence, rationale, " +
@@ -272,6 +284,49 @@ class MeuCoachDatabaseMigrationTest {
                 )
                 assertThat(migrated.trainingPlanDao().getSessions("2026-11-02").single().status.name)
                     .isEqualTo("PLANNED")
+            } finally {
+                migrated.close()
+                context.deleteDatabase(databaseName)
+            }
+        }
+    }
+
+    @Test
+    fun `migration from 8 to 9 adds heat and treadmill columns with safe defaults`() {
+        runBlocking {
+            helper
+                .createDatabase(databaseName, 8)
+                .apply {
+                    execSQL(
+                        "INSERT INTO daily_check_ins (date, sleepQuality, fatigue, soreness, stress, " +
+                            "illnessOrInjury, createdAt, updatedAt) " +
+                            "VALUES ('2026-10-30', 4, 2, 1, 2, 0, 1, 1)",
+                    )
+                    execSQL(
+                        "INSERT INTO athlete_profile (id, birthDate, sex, heightCm, weightKg, " +
+                            "restingHeartRate, maxHeartRateObserved, lactateThresholdHeartRate, " +
+                            "thresholdPaceSecPerKm, vdot, experience, timezone, availabilityJson, " +
+                            "goalJson, city, latitude, longitude, units, createdAt, updatedAt) " +
+                            "VALUES ('athlete-1', '1988-01-01', 'MALE', NULL, NULL, 58, 187, NULL, " +
+                            "NULL, NULL, 'BEGINNER', 'UTC', '[]', NULL, NULL, NULL, NULL, " +
+                            "'METRIC', 1, 1)",
+                    )
+                    close()
+                }
+
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val migrated =
+                Room
+                    .databaseBuilder(context, MeuCoachDatabase::class.java, databaseName)
+                    .addMigrations(MeuCoachDatabase.MIGRATION_8_9)
+                    .allowMainThreadQueries()
+                    .build()
+
+            try {
+                assertThat(migrated.openHelper.writableDatabase.version).isEqualTo(9)
+                assertThat(migrated.dailyCheckInDao().get("2026-10-30")?.heatLevel)
+                    .isEqualTo(com.meucoach.core.model.HeatLevel.NONE)
+                assertThat(migrated.profileDao().get()?.treadmillAccess).isFalse()
             } finally {
                 migrated.close()
                 context.deleteDatabase(databaseName)
@@ -323,6 +378,7 @@ class MeuCoachDatabaseMigrationTest {
         soreness = 1,
         stress = 2,
         illnessOrInjury = false,
+        heatLevel = com.meucoach.core.model.HeatLevel.NONE,
         createdAt = 1L,
         updatedAt = 1L,
     )
@@ -346,6 +402,7 @@ class MeuCoachDatabaseMigrationTest {
         latitude = -5.79,
         longitude = -35.21,
         units = Units.METRIC,
+        treadmillAccess = false,
         createdAt = 1L,
         updatedAt = 2L,
     )

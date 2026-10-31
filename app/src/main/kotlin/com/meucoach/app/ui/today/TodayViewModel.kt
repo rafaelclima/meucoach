@@ -33,6 +33,7 @@ import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
+import com.meucoach.core.model.HeatLevel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -290,6 +291,7 @@ internal fun todayState(
                 readiness = result,
                 load = load,
                 today = today,
+                heatLevel = checkIn?.heatLevel ?: HeatLevel.NONE,
             ),
         )
     }

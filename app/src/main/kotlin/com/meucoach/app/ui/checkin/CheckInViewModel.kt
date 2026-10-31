@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.model.DailyCheckIn
+import com.meucoach.core.model.HeatLevel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,7 @@ data class CheckInForm(
     val soreness: Int = 3,
     val stress: Int = 3,
     val illnessOrInjury: Boolean = false,
+    val heatLevel: HeatLevel = HeatLevel.NONE,
 ) {
     fun toCheckIn(date: LocalDate) = DailyCheckIn(
         date = date,
@@ -26,6 +28,7 @@ data class CheckInForm(
         soreness = soreness,
         stress = stress,
         illnessOrInjury = illnessOrInjury,
+        heatLevel = heatLevel,
     )
 
     companion object {
@@ -35,6 +38,7 @@ data class CheckInForm(
             soreness = checkIn.soreness,
             stress = checkIn.stress,
             illnessOrInjury = checkIn.illnessOrInjury,
+            heatLevel = checkIn.heatLevel,
         )
     }
 }

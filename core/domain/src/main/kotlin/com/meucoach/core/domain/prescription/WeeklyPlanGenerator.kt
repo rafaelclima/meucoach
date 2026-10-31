@@ -3,13 +3,17 @@ package com.meucoach.core.domain.prescription
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
+import com.meucoach.core.domain.zones.PaceZoneCalculator
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
+import com.meucoach.core.model.Pace
+import com.meucoach.core.model.PaceZone
 import com.meucoach.core.model.ReadinessLevel
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
+import java.util.Locale
 import kotlin.math.roundToInt
 
 enum class SessionStatus {
@@ -123,9 +127,17 @@ class WeeklyPlanGenerator {
                     type = WorkoutType.QUALITY,
                     title = qualityTitle(input.profile.experience),
                     durationMin = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN),
-                    rationale = qualityRationale(input.profile.experience),
-                    ruleIds = listOf("R-PLAN-02", "R-PLAN-06"),
-                    evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                    rationale = qualityRationale(input.profile),
+                    ruleIds = buildList {
+                        add("R-PLAN-02")
+                        add("R-PLAN-06")
+                        if (input.profile.treadmillAccess) add("R-PLAN-08")
+                    },
+                    evidenceIds = buildList {
+                        add("EV-SEILER-2010")
+                        add("EV-DANIELS-2014")
+                        if (input.profile.treadmillAccess) add("EV-ELY-2007")
+                    },
                 )
 
                 day == longDay -> PlannedSession(
@@ -255,9 +267,27 @@ class WeeklyPlanGenerator {
         else -> "Tempo"
     }
 
-    private fun qualityRationale(experience: Experience): String = when (experience) {
-        Experience.ADVANCED -> "5×3 min em Z4–Z5 com 2 min de trote entre eles, em dia separado do longão."
-        else -> "20 min contínuos em Z3–Z4, com aquecimento e desaquecimento, em dia separado do longão."
+    private fun qualityRationale(profile: AthleteProfile): String {
+        val base = when (profile.experience) {
+            Experience.ADVANCED -> "5×3 min em Z4–Z5 com 2 min de trote entre eles, em dia separado do longão."
+            else -> "20 min contínuos em Z3–Z4, com aquecimento e desaquecimento, em dia separado do longão."
+        }
+        if (!profile.treadmillAccess) return base
+        return base + " Na esteira (opção para calor): 5–10% de inclinação em RPE 8/10" +
+            treadmillSpeedHint(profile.thresholdPace) + "."
+    }
+
+    /**
+     * Prescribes the treadmill by speed when threshold pace is calibrated
+     * (`R-PLAN-08`); incline stays subjective to avoid inventing intensity.
+     */
+    private fun treadmillSpeedHint(thresholdPace: Pace?): String {
+        val pace = thresholdPace ?: return ""
+        if (pace.secondsPerKm !in 150..900) return ""
+        val threshold = PaceZoneCalculator.ranges(pace).first { it.zone == PaceZone.T }
+        val slowKmh = 3_600.0 / threshold.maxSecPerKm
+        val fastKmh = 3_600.0 / threshold.minSecPerKm
+        return String.format(PT_BR, " ou %.1f–%.1f km/h a 1%%", slowKmh, fastKmh)
     }
 
     private data class Taper(val factor: Double, val daysToRace: Long)
@@ -300,5 +330,6 @@ class WeeklyPlanGenerator {
         const val PROGRESSION_COMPLETION = 0.80
         const val ACWR_MIN = 0.8
         const val ACWR_MAX = 1.3
+        val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
     }
 }

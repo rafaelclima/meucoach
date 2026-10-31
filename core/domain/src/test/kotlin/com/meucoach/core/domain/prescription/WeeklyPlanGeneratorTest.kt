@@ -351,6 +351,68 @@ class WeeklyPlanGeneratorTest {
         assertThat(highAcwr.qualityCount).isZero()
     }
 
+    @Test
+    fun `treadmill access adds a heat-proof quality option with speed`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability, treadmillAccess = true),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.rationale).contains("esteira", "5–10% de inclinação", "9,7–10,0 km/h a 1%")
+        assertThat(quality.ruleIds).contains("R-PLAN-08")
+        assertThat(quality.evidenceIds).contains("EV-ELY-2007")
+    }
+
+    @Test
+    fun `treadmill protocol works without a calibrated threshold pace`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability, treadmillAccess = true)
+                    .copy(thresholdPace = null),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.rationale).contains("RPE 8/10")
+        assertThat(quality.rationale).doesNotContain("km/h")
+    }
+
+    @Test
+    fun `without treadmill access the quality session stays outdoor only`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.rationale).doesNotContain("esteira")
+        assertThat(quality.ruleIds).doesNotContain("R-PLAN-08")
+    }
+
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
@@ -407,6 +469,7 @@ class WeeklyPlanGeneratorTest {
     private fun profile(
         experience: Experience = Experience.BEGINNER,
         availability: Map<DayOfWeek, Int> = mapOf(DayOfWeek.MONDAY to 40),
+        treadmillAccess: Boolean = false,
     ) = AthleteProfile(
         id = "athlete-1",
         birthDate = LocalDate.of(1988, 1, 1),
@@ -418,6 +481,7 @@ class WeeklyPlanGeneratorTest {
         experience = experience,
         timezone = "America/Sao_Paulo",
         weeklyAvailability = WeeklyAvailability(availability),
+        treadmillAccess = treadmillAccess,
     )
 
     private fun load(acwr: Double) = LoadSnapshot(

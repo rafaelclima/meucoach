@@ -6,12 +6,12 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 507 testes, 0 falhas (27 em `core:model`, 219 em `core:domain`, 73 em `core:data`, 188 em `:app`)
-- **Cobertura `core:domain`:** 98,37% de linhas (2.169/2.205), 83,38% de branches (1.731/2.076), 97,08% de instruções (16.330/16.822)
+- **Testes:** 519 testes, 0 falhas (27 em `core:model`, 227 em `core:domain`, 76 em `core:data`, 189 em `:app`)
+- **Cobertura `core:domain`:** 98,39% de linhas (2.207/2.243), 83,65% de branches (1.770/2.116), 97,11% de instruções (16.615/17.110)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v8 (`session status`), migrações 1→2 até 7→8 testadas.
+- **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -20,13 +20,13 @@
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
-- **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinal de doença/lesão, persistido por data e usado na prontidão da tela Hoje.
+- **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data e usados na prontidão e na prescrição da tela Hoje.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões e sincronização de 30 dias pelo perfil.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
-- **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não.
-- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30% e taper por prova.
+- **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não; calor informado desacelera o pace em 3% e reduz a confiança.
+- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30% e taper por prova; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
@@ -36,6 +36,49 @@
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-05: calor e esteira na prescrição
+
+### Concluído
+
+- Modelo:
+  - `HeatLevel` (`NONE`/`HOT`) no `DailyCheckIn` como sinal autorreportado, não temperatura medida.
+  - `AthleteProfile.treadmillAccess` como preferência durável de rotina.
+- Persistência (Room v9, `MIGRATION_8_9`):
+  - `daily_check_ins.heatLevel` com default `NONE`.
+  - `athlete_profile.treadmillAccess` com default `0`.
+  - Teste de migração 8→9 e round-trip nos repositórios.
+- Prescrição diária (`WorkoutRecommender`):
+  - Calor usa o extremo conservador da faixa (+3%), subordinado a FC/RPE (`R-PLAN-07`, `EV-ELY-2007`).
+  - Confiança cai um nível quando há calor informado.
+  - Com esteira, a justificativa lembra que a modalidade é válida no calor (`R-PLAN-08`).
+- Plano semanal (`WeeklyPlanGenerator`):
+  - Qualidade com acesso a esteira cita inclinação de 5–10% em RPE 8/10 (`R-PLAN-08`, `EV-DANIELS-2014`).
+  - Quando há pace de limiar, prescreve também velocidade pela zona T (ex.: 9,7–10,0 km/h).
+- UI:
+  - Switch “Está muito calor?” no check-in, mapeado para `heatLevel`.
+  - Switch “Tenho acesso a esteira” no passo de rotina do onboarding/perfil.
+  - `TodayViewModel` passa o calor do check-in para a prescrição.
+
+### Evidências
+
+- `./gradlew check` — sucesso (testes, spotless, lint e Kover).
+- `./gradlew :app:verifyRoborazziDebug` — sucesso; screenshots existentes seguem válidos.
+- 519 testes, 0 falhas (27 `core:model`, 227 `core:domain`, 76 `core:data`, 189 `:app`).
+- Testes novos cobrem +3% no pace, downgrade de confiança, regras/evidências, esteira com e sem pace de limiar, migração 8→9 e round-trip de persistência.
+
+### Decisões e observações
+
+- Calor é autorreportado no MVP; clima automático continua na Fase 2 (P2-07).
+- O ajuste não reescreve o plano semanal persistido: calor muda a recomendação do dia; a qualidade guardada sempre oferece a alternativa de esteira quando há acesso.
+- Inclinação fica em RPE para não inventar intensidade sem dados; velocidade só aparece com limiar calibrado.
+- Dados ausentes continuam `null`; calor ausente não vira recuperação ruim.
+
+### Próximo passo
+
+1. Deload por blocos (`P1-05`).
+2. Tela de histórico de conclusão e streak de check-in.
+3. Gráfico de eficiência pace@FC e recordes em Tendências.
 
 ## Sessão 2026-10-31 — P1-07: Distribuição 80/20 por tempo
 
@@ -683,3 +726,4 @@
 | 29/10/2026 | P0-06 concluído: parsers TCX/GPX, 3 TCX sanitizados, GPX sintético, dedup e 134 testes |
 | 30/10/2026 | P0-07 concluído: Room v2, migração testada, blob comprimido, repositório, export/delete e 160 testes |
 | 31/10/2026 | P1-07 80/20 por tempo concluído: calculadora de zonas, card em Tendências e 507 testes |
+| 31/10/2026 | P1-05 parcial: calor autorreportado (+3%) e alternativa de esteira na qualidade; Room v9 e 519 testes |

@@ -368,6 +368,30 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
         placeholder = "Natal",
         error = state.errors[OnboardingField.CITY],
     )
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Tenho acesso a esteira",
+                style = MaterialTheme.typography.titleSmall,
+                color = McTheme.colors.textPrimary,
+            )
+            Text(
+                text = "Vale como opção de qualidade no calor.",
+                style = McTextStyles.caption,
+                color = McTheme.colors.textTertiary,
+            )
+        }
+        Switch(
+            checked = form.treadmillAccess,
+            onCheckedChange = { value -> onUpdate { it.copy(treadmillAccess = value) } },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = McTheme.colors.onAccent,
+                checkedTrackColor = McTheme.colors.accent,
+                uncheckedThumbColor = McTheme.colors.textTertiary,
+                uncheckedTrackColor = McTheme.colors.surfaceInset,
+            ),
+        )
+    }
     Text(
         text = "As zonas de treino serão calibradas depois, com um teste ou prova.",
         style = McTextStyles.caption,

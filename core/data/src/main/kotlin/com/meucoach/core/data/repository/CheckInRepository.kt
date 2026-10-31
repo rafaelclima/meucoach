@@ -34,6 +34,7 @@ class CheckInRepository(private val database: MeuCoachDatabase, private val cloc
         soreness = soreness,
         stress = stress,
         illnessOrInjury = illnessOrInjury,
+        heatLevel = heatLevel,
     )
 
     private fun DailyCheckIn.toEntity(createdAt: Long, updatedAt: Long) = DailyCheckInEntity(
@@ -43,6 +44,7 @@ class CheckInRepository(private val database: MeuCoachDatabase, private val cloc
         soreness = soreness,
         stress = stress,
         illnessOrInjury = illnessOrInjury,
+        heatLevel = heatLevel,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

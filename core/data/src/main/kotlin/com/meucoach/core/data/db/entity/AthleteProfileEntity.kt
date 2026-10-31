@@ -26,6 +26,7 @@ data class AthleteProfileEntity(
     val latitude: Double?,
     val longitude: Double?,
     val units: Units,
+    val treadmillAccess: Boolean,
     val createdAt: Long,
     val updatedAt: Long,
 )
