@@ -221,7 +221,7 @@
 
 ### P1-07 · Tendências
 
-**Status:** em andamento — volume/consistência/pace×FC/eficiência/filtros/80/20/recordes em 31/10/2026
+**Status:** em andamento — volume/consistência/pace×FC/eficiência/filtros/80/20/recordes/heatmap em 31/10/2026
 
 - [x] Volume semanal.
 - [x] Consistência em 28/84/182 dias, conforme o filtro de período.
@@ -229,7 +229,7 @@
 - [x] Distribuição 80/20 por tempo a partir dos samples, com quebra semanal e confiança.
 - [x] Recordes pessoais: maior distância, melhor pace em corridas ≥ 3 km e maior tempo.
 - [x] Filtros de período das atividades (6/12/26 semanas).
-- [ ] Heatmap de consistência.
+- [x] Heatmap de consistência por dia, alinhado por semana e colorido por volume.
 
 ### P1-08 · Check-in
 15 s, Hooper, sono percebido, dor, stress. Histórico e impacto na prontidão.

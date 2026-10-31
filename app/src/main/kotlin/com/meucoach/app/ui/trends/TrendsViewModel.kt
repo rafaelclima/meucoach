@@ -29,7 +29,7 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 enum class TrendsPeriod(val weeks: Int, val consistencyDays: Int, val label: String) {
-    WEEKS_6(weeks = 6, consistencyDays = 28, label = "6 sem"),
+    WEEKS_6(weeks = 6, consistencyDays = 42, label = "6 sem"),
     WEEKS_12(weeks = 12, consistencyDays = 84, label = "12 sem"),
     WEEKS_26(weeks = 26, consistencyDays = 182, label = "26 sem"),
 }

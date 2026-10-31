@@ -188,6 +188,8 @@ class TrendsViewModelTest {
 
         assertThat(initial.period).isEqualTo(TrendsPeriod.WEEKS_6)
         assertThat(initial.activityTrends?.weeks).hasSize(6)
+        assertThat(initial.activityTrends?.heatmap).isNotEmpty()
+        assertThat(initial.activityTrends?.consistency?.windowDays).isEqualTo(42)
 
         viewModel.selectPeriod(TrendsPeriod.WEEKS_26)
         val updated = viewModel.uiState.first {

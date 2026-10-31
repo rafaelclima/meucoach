@@ -16,6 +16,7 @@ import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionWeek
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
+import com.meucoach.core.domain.trends.ConsistencyDay
 import com.meucoach.core.domain.trends.ConsistencySummary
 import com.meucoach.core.domain.trends.IntensityDistribution
 import com.meucoach.core.domain.trends.PaceHeartRatePoint
@@ -227,6 +228,36 @@ class TrendsScreenTest {
         val list = compose.onNodeWithTag("trends-list")
         list.performScrollToNode(hasText("Sem limiar calibrado"))
         compose.onNodeWithText("Sem limiar calibrado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the consistency heatmap`() {
+        val start = LocalDate.of(2026, 10, 5)
+        val heatmap = (0 until 26).map { offset ->
+            val date = start.plusDays(offset.toLong())
+            val active = date.dayOfWeek == java.time.DayOfWeek.MONDAY
+            ConsistencyDay(
+                date = date,
+                kilometers = if (active) 5.0 else 0.0,
+                runs = if (active) 1 else 0,
+            )
+        }
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                activityTrends = trends().copy(heatmap = heatmap),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Mapa de consistência"))
+        compose.onNodeWithText("Mapa de consistência").assertIsDisplayed()
+        compose
+            .onNodeWithContentDescription("Mapa de consistência de 26 dias: 4 dias ativos")
+            .assertExists()
+        compose.onNodeWithText("4 dias ativos").assertIsDisplayed()
     }
 
     @Test

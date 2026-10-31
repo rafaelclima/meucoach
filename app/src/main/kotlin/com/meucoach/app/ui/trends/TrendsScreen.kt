@@ -59,6 +59,7 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
+import com.meucoach.core.domain.trends.ConsistencyDay
 import com.meucoach.core.domain.trends.IntensityDistribution
 import com.meucoach.core.domain.trends.PaceHeartRatePoint
 import com.meucoach.core.domain.trends.PersonalRecords
@@ -441,6 +442,89 @@ private fun ConsistencyCard(trends: com.meucoach.core.domain.trends.ActivityTren
             style = McTextStyles.caption,
             color = McTheme.colors.textSecondary,
         )
+        if (trends.heatmap.isNotEmpty()) {
+            McDivider(modifier = Modifier.padding(vertical = 10.dp))
+            ConsistencyHeatmap(trends.heatmap)
+        }
+    }
+}
+
+@Composable
+private fun ConsistencyHeatmap(days: List<ConsistencyDay>) {
+    val colors = McTheme.colors
+    val start = days.first().date
+    val columns = ((days.last().date.toEpochDay() - start.toEpochDay()) / 7).toInt() + 1
+    val maxKm = days.maxOf { it.kilometers }.coerceAtLeast(1.0)
+    val activeDays = days.count { it.runs > 0 }
+    Column {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Mapa de consistência",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "$activeDays dias ativos",
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(104.dp)
+                .semantics {
+                    contentDescription = "Mapa de consistência de ${days.size} dias: " +
+                        "$activeDays dias ativos"
+                },
+        ) {
+            val gap = 3.dp.toPx()
+            val cell = minOf(
+                (size.width - gap * (columns - 1)) / columns,
+                (size.height - gap * 6) / 7f,
+            )
+            val gridWidth = columns * cell + gap * (columns - 1)
+            val gridHeight = 7 * cell + gap * 6
+            val originX = (size.width - gridWidth) / 2f
+            val originY = (size.height - gridHeight) / 2f
+            days.forEach { day ->
+                val column = ((day.date.toEpochDay() - start.toEpochDay()) / 7).toInt()
+                val row = day.date.dayOfWeek.value - 1
+                val fraction = (day.kilometers / maxKm).coerceIn(0.0, 1.0)
+                val color = if (day.runs == 0) {
+                    colors.surfaceInset
+                } else {
+                    colors.accent.copy(alpha = (0.25 + 0.65 * fraction).toFloat())
+                }
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(
+                        originX + column * (cell + gap),
+                        originY + row * (cell + gap),
+                    ),
+                    size = androidx.compose.ui.geometry.Size(cell, cell),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cell * 0.2f),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Menos", style = McTextStyles.caption, color = colors.textTertiary)
+            Spacer(modifier = Modifier.width(6.dp))
+            listOf(0.25f, 0.55f, 0.9f).forEach { alpha ->
+                Box(
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(colors.accent.copy(alpha = alpha)),
+                )
+            }
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(text = "Mais", style = McTextStyles.caption, color = colors.textTertiary)
+        }
     }
 }
 

@@ -14,6 +14,8 @@ data class WeeklyVolume(val weekStart: LocalDate, val kilometers: Double, val ru
 
 data class ConsistencySummary(val windowDays: Int, val activeDays: Int, val runs: Int, val daysSinceLastRun: Long?)
 
+data class ConsistencyDay(val date: LocalDate, val kilometers: Double, val runs: Int)
+
 data class PaceHeartRatePoint(val date: LocalDate, val pace: Pace, val heartRate: Int) {
     /**
      * Descriptive running-economy proxy: speed in meters per minute divided by
@@ -49,6 +51,7 @@ data class ActivityTrends(
     val averagePace: Pace?,
     val averageHeartRate: Int?,
     val records: PersonalRecords = PersonalRecords(),
+    val heatmap: List<ConsistencyDay> = emptyList(),
 )
 
 class ActivityTrendsCalculator {
@@ -89,6 +92,12 @@ class ActivityTrendsCalculator {
             runs = consistencyActivities.size,
             daysSinceLastRun = lastRun?.let { ChronoUnit.DAYS.between(it, today) },
         )
+        val heatmap = heatmap(
+            byLocalDate = byLocalDate,
+            currentWeekStart = currentWeekStart,
+            today = today,
+            consistencyDays = consistencyDays,
+        )
         val pacePoints = consistencyActivities
             .filter { it.averagePace != null && it.averageHeartRate != null }
             .sortedBy { it.startTime }
@@ -111,7 +120,30 @@ class ActivityTrendsCalculator {
             averagePace = paceValues.takeIf { it.isNotEmpty() }?.average()?.roundToInt()?.let(Pace::fromSecondsPerKm),
             averageHeartRate = heartRates.takeIf { it.isNotEmpty() }?.average()?.roundToInt(),
             records = records,
+            heatmap = heatmap,
         )
+    }
+
+    /** Full Monday-aligned weeks, ending today, so the grid rows are weekdays. */
+    private fun heatmap(
+        byLocalDate: Map<LocalDate, List<ActivitySummary>>,
+        currentWeekStart: LocalDate,
+        today: LocalDate,
+        consistencyDays: Int,
+    ): List<ConsistencyDay> {
+        val weeks = (consistencyDays / 7).coerceAtLeast(1)
+        val start = currentWeekStart.minusWeeks((weeks - 1).toLong())
+        return generateSequence(start) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(today) }
+            .map { date ->
+                val day = byLocalDate[date].orEmpty()
+                ConsistencyDay(
+                    date = date,
+                    kilometers = day.sumOf { it.distance.kilometers },
+                    runs = day.size,
+                )
+            }
+            .toList()
     }
 
     private fun records(activities: List<ActivitySummary>, zoneId: ZoneId): PersonalRecords {

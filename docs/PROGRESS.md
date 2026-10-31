@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 537 testes, 0 falhas (27 em `core:model`, 237 em `core:domain`, 78 em `core:data`, 195 em `:app`)
-- **Cobertura `core:domain`:** 98,36% de linhas (2.276/2.314), 83,57% de branches (1.847/2.210), 97,06% de instruções (17.330/17.854)
+- **Testes:** 539 testes, 0 falhas (27 em `core:model`, 238 em `core:domain`, 78 em `core:data`, 196 em `:app`)
+- **Cobertura `core:domain`:** 98,37% de linhas (2.295/2.333), 83,60% de branches (1.851/2.214), 97,08% de instruções (17.455/17.979)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -32,12 +32,51 @@
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
 - **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
-- **Tendências de atividades:** volume semanal, consistência, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
+- **Tendências de atividades:** volume semanal, consistência com heatmap, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-07: heatmap de consistência
+
+### Concluído
+
+- Domínio:
+  - `ConsistencyDay` (data, km e corridas) e `ActivityTrends.heatmap`.
+  - Heatmap alinhado à segunda-feira e terminando hoje, com uma coluna por semana.
+  - Usa a mesma janela do filtro: 6/12/26 semanas (42/84/182 dias).
+- App:
+  - Mapa de consistência dentro do card de Consistência.
+  - Intensidade da célula proporcional ao volume do dia; dia sem corrida fica no fundo neutro.
+  - Legenda “Menos/Mais” e contagem de dias ativos.
+  - Descrição de acessibilidade com janela e dias ativos.
+  - Filtro de período passou a alinhar consistência e heatmap (42/84/182 dias).
+- Testes:
+  - Domínio: alinhamento semanal, fim em hoje, soma de km por dia e dias vazios.
+  - ViewModel: heatmap não vazio e janela de 42 dias no período padrão.
+  - UI: mapa, legenda, contagem e descrição de acessibilidade.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 539 testes, 0 falhas (27 `core:model`, 238 `core:domain`, 78 `core:data`, 196 `:app`).
+- Cobertura `core:domain`: 98,37% linhas / 83,60% branches.
+- Screenshots existentes inalterados (golden de Tendências não inclui atividades).
+
+### Decisões e observações
+
+- O heatmap é descritivo: mostra hábito, não pontua, não pune e não cria streak.
+- A janela de consistência padrão passou de 28 para 42 dias para casar com o filtro de 6 semanas.
+- Células usam volume relativo ao maior dia da janela; dias sem corrida permanecem neutros.
+- O heatmap não altera carga, prontidão ou prescrição.
+
+### Próximo passo
+
+1. Iniciar/trocar treino a partir do plano.
+2. Revisar o planejamento do P3-05 com o usuário 0.
+3. Ampliar o histórico de conclusão para uma tela própria, se necessário.
 
 ## Sessão 2026-10-31 — P1-07: eficiência pace@FC e filtros de período
 
@@ -888,3 +927,4 @@
 | 31/10/2026 | P1-07 parcial: recordes pessoais em Tendências (distância, pace ≥ 3 km e tempo); 526 testes |
 | 31/10/2026 | P1-06 parcial: conclusão do plano em 8 semanas em Tendências, sem streak; 533 testes |
 | 31/10/2026 | P1-07 parcial: eficiência pace@FC (m/batimento) e filtros de 6/12/26 semanas; 537 testes |
+| 31/10/2026 | P1-07 parcial: heatmap de consistência alinhado por semana e por volume; 539 testes |

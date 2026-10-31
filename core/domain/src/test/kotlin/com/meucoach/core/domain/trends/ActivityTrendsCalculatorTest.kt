@@ -9,6 +9,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.Assertions.within
 import org.junit.Test
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -95,6 +96,27 @@ class ActivityTrendsCalculatorTest {
         assertThat(trends.averagePace).isNull()
         assertThat(trends.averageHeartRate).isNull()
         assertThat(trends.records.hasData).isFalse()
+    }
+
+    @Test
+    fun `builds a monday-aligned consistency heatmap`() {
+        val activities = listOf(
+            activity(today.minusDays(1), km = 5.0, pace = 360, hr = 150),
+            activity(today.minusDays(2), km = 3.0, pace = 360, hr = 150),
+            activity(today.minusDays(2), km = 2.0, pace = 380, hr = 150),
+        )
+
+        val heatmap = calculator
+            .calculate(activities, today, zone, weeks = 4, consistencyDays = 28)
+            .heatmap
+
+        assertThat(heatmap.first().date.dayOfWeek).isEqualTo(DayOfWeek.MONDAY)
+        assertThat(heatmap.last().date).isEqualTo(today)
+        assertThat(heatmap).hasSize(26)
+        val doubled = heatmap.first { it.date == today.minusDays(2) }
+        assertThat(doubled.kilometers).isEqualTo(5.0)
+        assertThat(doubled.runs).isEqualTo(2)
+        assertThat(heatmap.first { it.date == today }.runs).isZero()
     }
 
     @Test
