@@ -9,6 +9,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -50,6 +52,7 @@ data class CheckInUiState(
     val existing: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
+    val history: List<DailyCheckIn> = emptyList(),
 )
 
 @HiltViewModel
@@ -59,6 +62,13 @@ class CheckInViewModel @Inject constructor(private val repository: CheckInReposi
     val uiState: StateFlow<CheckInUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            repository.observeAll().collect { all ->
+                _uiState.update { state ->
+                    state.copy(history = all.sortedByDescending { it.date }.take(HISTORY_LIMIT))
+                }
+            }
+        }
         viewModelScope.launch {
             val existing = repository.get(today)
             _uiState.value = _uiState.value.copy(
@@ -85,5 +95,9 @@ class CheckInViewModel @Inject constructor(private val repository: CheckInReposi
 
     fun consumeSaved() {
         _uiState.value = _uiState.value.copy(isSaved = false)
+    }
+
+    private companion object {
+        const val HISTORY_LIMIT = 7
     }
 }

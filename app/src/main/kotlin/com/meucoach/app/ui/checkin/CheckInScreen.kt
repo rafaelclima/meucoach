@@ -38,11 +38,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.core.designsystem.component.McCard
+import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
+import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.HeatLevel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun CheckInScreen(
@@ -243,6 +248,23 @@ internal fun CheckInContent(
                         }
                     }
                 }
+                if (state.history.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "ÚLTIMOS CHECK-INS",
+                                style = McTextStyles.overline,
+                                color = colors.textTertiary,
+                            )
+                            Text(
+                                text = "Hooper menor é melhor; ele alimenta a prontidão de cada dia.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                    item { CheckInHistoryCard(state.history) }
+                }
             }
 
             McPrimaryButton(
@@ -258,6 +280,67 @@ internal fun CheckInContent(
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
                     .testTag("checkin-save"),
             )
+        }
+    }
+}
+
+@Composable
+private fun CheckInHistoryCard(history: List<DailyCheckIn>) {
+    val colors = McTheme.colors
+    McCard(variant = McCardVariant.INSET) {
+        history.forEachIndexed { index, entry ->
+            if (index > 0) {
+                McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = formatCheckInDate(entry.date),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = "Sono ${entry.sleepQuality} · Fadiga ${entry.fatigue} · " +
+                            "Dor ${entry.soreness} · Estresse ${entry.stress}",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                    )
+                    if (entry.illnessOrInjury || entry.heatLevel == HeatLevel.HOT) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (entry.illnessOrInjury) {
+                                McPill(
+                                    text = "Doente/lesão",
+                                    containerColor = colors.danger.copy(alpha = 0.12f),
+                                    contentColor = colors.danger,
+                                )
+                            }
+                            if (entry.heatLevel == HeatLevel.HOT) {
+                                McPill(
+                                    text = "Calor",
+                                    containerColor = colors.warning.copy(alpha = 0.12f),
+                                    contentColor = colors.warning,
+                                )
+                            }
+                        }
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${entry.hooperSum}/20",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                    )
+                    Text(
+                        text = "Hooper",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                }
+            }
         }
     }
 }
@@ -312,3 +395,8 @@ private fun QuestionDivider() {
     McDivider()
     Spacer(modifier = Modifier.height(16.dp))
 }
+
+private fun formatCheckInDate(date: LocalDate): String =
+    if (date == LocalDate.now()) "Hoje" else date.format(HISTORY_DATE)
+
+private val HISTORY_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")

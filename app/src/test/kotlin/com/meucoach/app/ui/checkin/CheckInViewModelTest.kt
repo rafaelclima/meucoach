@@ -79,6 +79,34 @@ class CheckInViewModelTest {
     }
 
     @Test
+    fun `loads the recent check-in history`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        repository.save(DailyCheckIn(today.minusDays(1), sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2))
+        repository.save(DailyCheckIn(today.minusDays(2), sleepQuality = 3, fatigue = 3, soreness = 2, stress = 3))
+        repository.save(DailyCheckIn(today, sleepQuality = 5, fatigue = 1, soreness = 1, stress = 1))
+
+        val state = CheckInViewModel(repository).uiState.first { it.history.size == 3 }
+
+        assertThat(state.history.map { it.date })
+            .containsExactly(today, today.minusDays(1), today.minusDays(2))
+        assertThat(state.history.first().hooperSum).isEqualTo(4)
+    }
+
+    @Test
+    fun `history refreshes after saving`(): Unit = runBlocking {
+        val viewModel = CheckInViewModel(repository)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.update { it.copy(fatigue = 5) }
+
+        viewModel.save()
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.isSaved && it.history.any { entry -> entry.date == LocalDate.now() } }
+        }
+
+        assertThat(state.history.first().fatigue).isEqualTo(5)
+    }
+
+    @Test
     fun `saves the check-in`(): Unit = runBlocking {
         val viewModel = CheckInViewModel(repository)
         viewModel.uiState.first { !it.isLoading }

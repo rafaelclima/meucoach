@@ -232,7 +232,14 @@
 - [x] Heatmap de consistência por dia, alinhado por semana e colorido por volume.
 
 ### P1-08 · Check-in
-15 s, Hooper, sono percebido, dor, stress. Histórico e impacto na prontidão.
+
+**Status:** em andamento — histórico dos últimos 7 check-ins em 31/10/2026
+
+- [x] Check-in de 15 s com Hooper (sono, fadiga, dor, estresse).
+- [x] Calor autorreportado e sinal de doença/lesão.
+- [x] Impacto na prontidão e na prescrição do dia.
+- [x] Histórico dos últimos 7 check-ins com Hooper e sinais, na tela de check-in.
+- [ ] Lembrete de check-in com histórico no widget/notificação (ver P1-11).
 
 ### P1-09 · Health Connect
 Permissões, sync incremental, WorkManager, diagnóstico e fallback.

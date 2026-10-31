@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 548 testes, 0 falhas (27 em `core:model`, 243 em `core:domain`, 79 em `core:data`, 199 em `:app`)
+- **Testes:** 551 testes, 0 falhas (27 em `core:model`, 243 em `core:domain`, 79 em `core:data`, 202 em `:app`)
 - **Cobertura `core:domain`:** 98,33% de linhas (2.357/2.397), 83,53% de branches (1.891/2.264), 97,08% de instruções (17.873/18.411)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -20,7 +20,7 @@
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
-- **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data e usados na prontidão e na prescrição da tela Hoje.
+- **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões e sincronização de 30 dias pelo perfil.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
@@ -38,6 +38,43 @@
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-08: histórico de check-ins
+
+### Concluído
+
+- ViewModel:
+  - `CheckInUiState.history` com os últimos 7 check-ins, ordenados do mais recente.
+  - `observeAll()` mantém o histórico atualizado após salvar ou editar.
+  - O formulário de hoje continua carregado separadamente, sem duplicar a entrada.
+- UI:
+  - Seção “Últimos check-ins” abaixo do formulário.
+  - Cada linha mostra data, as quatro notas, Hooper `/20` e pills de doença/lesão ou calor.
+  - Texto explica que Hooper menor é melhor e alimenta a prontidão do dia.
+  - A seção só aparece quando há histórico, preservando o estado vazio/screenshot.
+- Testes:
+  - ViewModel: ordem do histórico e atualização após salvar.
+  - UI: histórico, Hooper, sinais de doença e calor.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 551 testes, 0 falhas (27 `core:model`, 243 `core:domain`, 79 `core:data`, 202 `:app`).
+- Cobertura `core:domain`: 98,33% linhas / 83,53% branches.
+- Screenshot de check-in inalterado (histórico vazio no golden).
+
+### Decisões e observações
+
+- Histórico é read-only: editar continua sendo o formulário de hoje, para não reescrever dias passados.
+- O check-in de hoje aparece no histórico assim que é salvo; ao editar, a mesma linha é atualizada.
+- O histórico não calcula prontidão retroativa; isso continua em Tendências/Hoje com os dados disponíveis.
+- Sem streak ou julgamento: é um registro, não uma cobrança.
+
+### Próximo passo
+
+1. Revisar o planejamento do P3-05 com o usuário 0.
+2. Avaliar `P1-09` (Health Connect) e `P1-10` (explicabilidade).
+3. Expandir o histórico para uma tela dedicada se o volume crescer.
 
 ## Sessão 2026-10-31 — P1-06: iniciar e trocar treino
 
@@ -971,3 +1008,4 @@
 | 31/10/2026 | P1-07 parcial: eficiência pace@FC (m/batimento) e filtros de 6/12/26 semanas; 537 testes |
 | 31/10/2026 | P1-07 parcial: heatmap de consistência alinhado por semana e por volume; 539 testes |
 | 31/10/2026 | P1-06 parcial: sessão guiada com cronômetro e troca de dia com guardrails; 548 testes |
+| 31/10/2026 | P1-08 parcial: histórico dos últimos 7 check-ins com Hooper e sinais; 551 testes |

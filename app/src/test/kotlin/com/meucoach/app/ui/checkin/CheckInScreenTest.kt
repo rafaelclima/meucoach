@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.checkin
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -9,6 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.model.DailyCheckIn
+import com.meucoach.core.model.HeatLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -16,6 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -67,6 +71,42 @@ class CheckInScreenTest {
         compose.onAllNodesWithText("4")[0].performClick()
 
         assertThat(sleep).isEqualTo(4)
+    }
+
+    @Test
+    fun `shows recent check-ins`() {
+        val today = LocalDate.now()
+        setContent(
+            loadedState().copy(
+                history = listOf(
+                    DailyCheckIn(
+                        date = today.minusDays(1),
+                        sleepQuality = 4,
+                        fatigue = 2,
+                        soreness = 1,
+                        stress = 2,
+                        illnessOrInjury = true,
+                    ),
+                    DailyCheckIn(
+                        date = today.minusDays(2),
+                        sleepQuality = 3,
+                        fatigue = 3,
+                        soreness = 2,
+                        stress = 3,
+                        heatLevel = HeatLevel.HOT,
+                    ),
+                ),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("checkin-list")
+        list.performScrollToNode(hasText("ÚLTIMOS CHECK-INS"))
+        compose.onNodeWithText("ÚLTIMOS CHECK-INS").assertIsDisplayed()
+        list.performScrollToNode(hasText("Doente/lesão"))
+        compose.onNodeWithText("Doente/lesão").assertIsDisplayed()
+        list.performScrollToNode(hasText("Calor"))
+        compose.onNodeWithText("Calor").assertIsDisplayed()
+        compose.onAllNodesWithText("Hooper").assertCountEquals(2)
     }
 
     @Test
