@@ -15,6 +15,8 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0007](adr/0007-compose-design-tokens.md) | Compose + Material 3 + tokens de marca | Aceito | 27/10/2026 |
 | [0008](adr/0008-backend-dokploy.md) | Ktor + PostgreSQL + Dokploy na Fase 2 | Aceito | 27/10/2026 |
 | [0009](adr/0009-strength-out-of-scope.md) | Musculação fora do escopo | Aceito | 27/10/2026 |
+| [0010](adr/0010-availability-hard-cap-progression.md) | Disponibilidade como teto e progressão por qualidade | Aceito | 30/10/2026 |
+| [0011](adr/0011-deload-block-anchor.md) | Deload ancorado em semanas consecutivas de plano | Aceito | 31/10/2026 |
 
 ## Decisões menores (registro rápido)
 

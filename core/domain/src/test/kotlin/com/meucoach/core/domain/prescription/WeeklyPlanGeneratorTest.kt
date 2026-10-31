@@ -413,6 +413,86 @@ class WeeklyPlanGeneratorTest {
         assertThat(quality.ruleIds).doesNotContain("R-PLAN-08")
     }
 
+    @Test
+    fun `deloads volume every fourth week in the block`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val baseline = generator.generate(
+            input(
+                profile = profile(Experience.BEGINNER, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                weekNumberInBlock = 3,
+            ),
+        )
+        val deload = generator.generate(
+            input(
+                profile = profile(Experience.BEGINNER, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                weekNumberInBlock = 4,
+            ),
+        )
+
+        assertThat(baseline.weeklyMinutes).isEqualTo(114)
+        assertThat(deload.weeklyMinutes).isEqualTo(86)
+        assertThat(deload.rationale).contains("Deload (semana 4 do bloco)", "−25%")
+        assertThat(deload.ruleIds).contains("R-PLAN-04")
+        assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
+        assertThat(baseline.ruleIds).doesNotContain("R-PLAN-04")
+    }
+
+    @Test
+    fun `deload keeps the quality type and reduces its dose`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                weekNumberInBlock = 4,
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(quality.durationMin).isEqualTo(30)
+        assertThat(quality.title).isEqualTo("Tempo")
+        assertThat(plan.ruleIds).contains("R-PLAN-04")
+    }
+
+    @Test
+    fun `taper takes precedence over deload`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.BEGINNER, availability).copy(
+                    goal = com.meucoach.core.model.TrainingGoal(
+                        type = com.meucoach.core.model.GoalType.FIVE_K,
+                        targetDate = monday.plusDays(10),
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                weekNumberInBlock = 4,
+            ),
+        )
+
+        assertThat(plan.rationale).contains("Taper")
+        assertThat(plan.rationale).doesNotContain("Deload")
+        assertThat(plan.ruleIds).contains("R-PLAN-05")
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-04")
+    }
+
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
@@ -451,7 +531,15 @@ class WeeklyPlanGeneratorTest {
         load: LoadSnapshot? = null,
         weekStart: LocalDate = monday,
         previousWeek: WeeklyPlan? = null,
-    ) = WeeklyPlanInput(profile, readiness, load, weekStart, previousWeek)
+        weekNumberInBlock: Int = 1,
+    ) = WeeklyPlanInput(
+        profile = profile,
+        readiness = readiness,
+        load = load,
+        weekStart = weekStart,
+        previousWeek = previousWeek,
+        weekNumberInBlock = weekNumberInBlock,
+    )
 
     private fun readiness(level: ReadinessLevel, flags: Set<ReadinessFlag> = emptySet()) = ReadinessResult(
         score = when (level) {

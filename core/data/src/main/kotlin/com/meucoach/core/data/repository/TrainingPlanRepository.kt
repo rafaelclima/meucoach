@@ -27,6 +27,21 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         return plan.toModel(dao.getSessions(weekStart.toString()))
     }
 
+    /**
+     * Counts consecutive stored weeks immediately before [weekStart].
+     * Used to anchor the 4-week deload block without another schema column.
+     */
+    suspend fun consecutiveWeeksBefore(weekStart: LocalDate): Int {
+        val stored = dao.getPlanWeeksBefore(weekStart.toString()).map(LocalDate::parse).toSet()
+        var expected = weekStart.minusWeeks(1)
+        var count = 0
+        while (expected in stored) {
+            count += 1
+            expected = expected.minusWeeks(1)
+        }
+        return count
+    }
+
     suspend fun saveWeek(plan: WeeklyPlan) = database.withTransaction {
         val weekStart = plan.weekStart.toString()
         dao.upsertPlan(

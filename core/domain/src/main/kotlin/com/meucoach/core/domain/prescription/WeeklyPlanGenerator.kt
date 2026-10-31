@@ -63,14 +63,21 @@ data class WeeklyPlanInput(
     val load: LoadSnapshot? = null,
     val weekStart: LocalDate = LocalDate.now(),
     val previousWeek: WeeklyPlan? = null,
-)
+    /** 1-based position in the current block; every 4th week is a deload. */
+    val weekNumberInBlock: Int = 1,
+) {
+    init {
+        require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
+    }
+}
 
 /**
  * Builds a conservative week from the profile availability.
  *
  * The plan never increases volume without completion history. It allows at most
- * one quality session, only on a green day with calibration-adjacent guardrails,
- * and keeps it away from the long run.
+ * two quality sessions, only on a green day with calibration-adjacent guardrails,
+ * and keeps them away from the long run. Every fourth consecutive week is a
+ * deload. A taper always takes precedence over the deload.
  */
 class WeeklyPlanGenerator {
     fun generate(input: WeeklyPlanInput): WeeklyPlan {
@@ -108,6 +115,7 @@ class WeeklyPlanGenerator {
             days.size >= 3
         val completionRatio = input.previousWeek?.completionRatio() ?: 0.0
         val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
+        val deload = input.weekNumberInBlock % DELOAD_EVERY_WEEKS == 0
         val qualityDays = if (qualityAllowed) {
             selectQualityDays(
                 days = days,
@@ -174,21 +182,24 @@ class WeeklyPlanGenerator {
             }
         }
         val taper = taperFor(input.profile.goal, weekStart)
-        val adjusted = if (taper == null) {
-            limitedLong
-        } else {
-            limitedLong.map { session ->
+        val adjusted = when {
+            taper != null -> limitedLong.map { session ->
                 if (session.type == WorkoutType.QUALITY || session.durationMin == null) {
                     session
                 } else {
-                    session.copy(
-                        durationMin = maxOf(
-                            MIN_EASY_MIN,
-                            (session.durationMin * taper.factor).roundToInt(),
-                        ),
-                    )
+                    session.copy(durationMin = scaledMinutes(session, taper.factor))
                 }
             }
+
+            deload -> limitedLong.map { session ->
+                if (session.durationMin == null) {
+                    session
+                } else {
+                    session.copy(durationMin = scaledMinutes(session, DELOAD_FACTOR))
+                }
+            }
+
+            else -> limitedLong
         }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
@@ -197,6 +208,11 @@ class WeeklyPlanGenerator {
         val rationale = buildString {
             if (taper != null) {
                 append("Taper para a prova em ${taper.daysToRace} dias: volume reduzido. ")
+            } else if (deload) {
+                append(
+                    "Deload (semana ${input.weekNumberInBlock} do bloco): volume −" +
+                        "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
+                )
             }
             append("${adjusted.size} dias, $weeklyMinutes min no total. ")
             if (qualityCount == 0) {
@@ -232,6 +248,7 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-03")
                 add("R-PLAN-06")
                 if (taper != null) add("R-PLAN-05")
+                if (deload && taper == null) add("R-PLAN-04")
             },
             evidenceIds = buildList {
                 add("EV-SEILER-2010")
@@ -241,6 +258,7 @@ class WeeklyPlanGenerator {
                     add("EV-BOSQUET-2007")
                     add("EV-MUJIKA-2003")
                 }
+                if (deload && taper == null) add("EV-ISSURIN-2010")
             },
         )
     }
@@ -315,6 +333,13 @@ class WeeklyPlanGenerator {
         return available.coerceIn(MIN_LONG_MIN, cap)
     }
 
+    /** Volume-only reduction; intensity is preserved by keeping the session type. */
+    private fun scaledMinutes(session: PlannedSession, factor: Double): Int {
+        val current = requireNotNull(session.durationMin) { "Scaled session must have a duration" }
+        val floor = if (session.type == WorkoutType.QUALITY) MIN_QUALITY_MIN else MIN_EASY_MIN
+        return maxOf(floor, (current * factor).roundToInt())
+    }
+
     private fun cappedConfidence(confidence: DataConfidence, cap: DataConfidence): DataConfidence {
         val rank = mapOf(DataConfidence.LOW to 0, DataConfidence.MEDIUM to 1, DataConfidence.HIGH to 2)
         return if (rank.getValue(confidence) <= rank.getValue(cap)) confidence else cap
@@ -330,6 +355,8 @@ class WeeklyPlanGenerator {
         const val PROGRESSION_COMPLETION = 0.80
         const val ACWR_MIN = 0.8
         const val ACWR_MAX = 1.3
+        const val DELOAD_EVERY_WEEKS = 4
+        const val DELOAD_FACTOR = 0.75
         val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
     }
 }

@@ -98,16 +98,26 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `counts only consecutive weeks before the target week`(): Unit = runBlocking {
+        repository.saveWeek(plan(monday.minusWeeks(1)))
+        repository.saveWeek(plan(monday.minusWeeks(2)))
+        repository.saveWeek(plan(monday.minusWeeks(4)))
+
+        assertThat(repository.consecutiveWeeksBefore(monday)).isEqualTo(2)
+    }
+
+    @Test
     fun `starts empty`(): Unit = runBlocking {
         assertThat(repository.getWeek(monday)).isNull()
         assertThat(repository.observeWeek(monday).first()).isNull()
+        assertThat(repository.consecutiveWeeksBefore(monday)).isZero()
     }
 
-    private fun plan() = WeeklyPlan(
-        weekStart = monday,
+    private fun plan(weekStart: LocalDate = monday) = WeeklyPlan(
+        weekStart = weekStart,
         sessions = listOf(
             PlannedSession(
-                date = monday,
+                date = weekStart,
                 type = WorkoutType.EASY,
                 title = "Fácil em Z2",
                 durationMin = 40,
@@ -116,7 +126,7 @@ class TrainingPlanRepositoryTest {
                 evidenceIds = listOf("EV-SEILER-2010"),
             ),
             PlannedSession(
-                date = monday.plusDays(5),
+                date = weekStart.plusDays(5),
                 type = WorkoutType.LONG,
                 title = "Longão",
                 durationMin = 60,

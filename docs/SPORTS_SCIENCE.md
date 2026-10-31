@@ -245,6 +245,11 @@ Aumentar volume semanal em **5–8%** somente se:
 
 Caso contrário, manter. Nunca aumentar duas semanas seguidas após falha.
 
+**Deload:** a cada 4ª semana consecutiva de plano, reduzir o volume em **20–30%**
+(o motor usa −25%) mantendo o tipo/intensidade das sessões (`R-PLAN-04`,
+`EV-ISSURIN-2010`). Taper tem precedência sobre o deload. Uma lacuna no histórico
+de planos reinicia o bloco (ADR 0011).
+
 ### 8.4 Sessões de qualidade
 
 | Tipo | Exemplo | Alvo |
@@ -296,6 +301,7 @@ segunda→domingo:
 - Fácil entre 20–60 min; qualidade entre 25–45 min, como "Tempo" (intermediário) ou "Intervalos" (avançado).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
+- Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
 - Confiança do plano é limitada a média até existir histórico.
 
 ### 8.9 Calor e umidade

@@ -23,6 +23,9 @@ interface TrainingPlanDao {
     @Query("SELECT * FROM planned_sessions WHERE weekStart = :weekStart ORDER BY date")
     fun observeSessions(weekStart: String): Flow<List<PlannedSessionEntity>>
 
+    @Query("SELECT weekStart FROM weekly_plans WHERE weekStart < :weekStart ORDER BY weekStart DESC")
+    suspend fun getPlanWeeksBefore(weekStart: String): List<String>
+
     @Upsert
     suspend fun upsertPlan(plan: WeeklyPlanEntity)
 

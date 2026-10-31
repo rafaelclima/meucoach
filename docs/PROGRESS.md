@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 519 testes, 0 falhas (27 em `core:model`, 227 em `core:domain`, 76 em `core:data`, 189 em `:app`)
-- **Cobertura `core:domain`:** 98,39% de linhas (2.207/2.243), 83,65% de branches (1.770/2.116), 97,11% de instruções (16.615/17.110)
+- **Testes:** 524 testes, 0 falhas (27 em `core:model`, 230 em `core:domain`, 77 em `core:data`, 190 em `:app`)
+- **Cobertura `core:domain`:** 98,36% de linhas (2.222/2.259), 83,63% de branches (1.788/2.138), 97,10% de instruções (16.726/17.225)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -26,16 +26,58 @@
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não; calor informado desacelera o pace em 3% e reduz a confiança.
-- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30% e taper por prova; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
+- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30%, taper por prova e deload a cada 4ª semana; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
+- **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
 - **Tendências de atividades:** volume semanal, consistência de 28 dias e relação pace×FC no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-05: deload a cada 4ª semana
+
+### Concluído
+
+- Domínio (`WeeklyPlanGenerator`):
+  - `WeeklyPlanInput.weekNumberInBlock` (1-based) define a posição no bloco.
+  - A 4ª semana consecutiva aplica `DELOAD_FACTOR = 0.75` (−25%) em todas as sessões.
+  - O tipo/intensidade é preservado: qualidade continua qualidade, com duração menor.
+  - Taper tem precedência e o deload não acumula com ele.
+  - Rationale cita a semana do bloco; regra `R-PLAN-04` e evidência `EV-ISSURIN-2010`.
+- Dados:
+  - `TrainingPlanDao.getPlanWeeksBefore` e `TrainingPlanRepository.consecutiveWeeksBefore`.
+  - O bloco é ancorado em semanas consecutivas persistidas; lacuna reinicia a contagem.
+  - Sem mudança de schema (continua v9); nenhuma migração nova.
+- App:
+  - `TodayViewModel` carrega a anterior + a posição no bloco e só gera o plano quando o histórico está pronto, evitando persistir uma semana com posição errada.
+- Testes:
+  - Domínio: deload na 4ª semana, volume −25%, qualidade preservada e precedência do taper.
+  - Dados: contagem de semanas consecutivas com lacuna.
+  - App: plano real de deload após 3 semanas persistidas.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 524 testes, 0 falhas (27 `core:model`, 230 `core:domain`, 77 `core:data`, 190 `:app`).
+- Cobertura `core:domain`: 98,36% linhas / 83,63% branches.
+- Screenshots existentes seguem válidos (mudança é de domínio/plano, não de layout).
+
+### Decisões e observações
+
+- O bloco usa o histórico de planos como fonte de verdade, em vez de uma coluna nova no Room (ADR 0011).
+- Um intervalo sem plano reinicia o bloco; é conservador e determinístico.
+- Deload reduz volume, não troca a sessão de qualidade por fácil.
+- A geração agora espera o histórico carregar; isso também remove a corrida que podia salvar a semana antes de ler a anterior.
+
+### Próximo passo
+
+1. Histórico de conclusão e streak de check-in (`P1-06`).
+2. Gráfico de eficiência pace@FC e recordes em Tendências.
+3. Blocos/periodização explícitos, se necessários.
 
 ## Sessão 2026-10-31 — P1-05: calor e esteira na prescrição
 
@@ -727,3 +769,4 @@
 | 30/10/2026 | P0-07 concluído: Room v2, migração testada, blob comprimido, repositório, export/delete e 160 testes |
 | 31/10/2026 | P1-07 80/20 por tempo concluído: calculadora de zonas, card em Tendências e 507 testes |
 | 31/10/2026 | P1-05 parcial: calor autorreportado (+3%) e alternativa de esteira na qualidade; Room v9 e 519 testes |
+| 31/10/2026 | P1-05 parcial: deload de −25% a cada 4ª semana consecutiva, ancorado no histórico de planos; 524 testes |

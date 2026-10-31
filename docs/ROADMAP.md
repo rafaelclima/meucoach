@@ -200,7 +200,8 @@
 - [x] Plano persistido por semana (Room v7), sem reescrever com check-ins.
 - [x] Taper por prova-alvo e qualidade nomeada por experiência.
 - [x] Progressão por dose de qualidade, com disponibilidade como teto (ADR 0010).
-- [ ] Blocos/periodização e deload.
+- [ ] Blocos/periodização.
+- [x] Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida).
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
 - [ ] Histórico de conclusão e limite de 2 qualidades/semana (regra implementada; falta tela).
 

@@ -63,11 +63,16 @@ class TodayViewModel @Inject constructor(
     private val planGenerator = WeeklyPlanGenerator()
     private val currentWeekStart = LocalDate.now()
         .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-    private val previousWeek = MutableStateFlow<WeeklyPlan?>(null)
+    private data class PlanHistory(val previousWeek: WeeklyPlan?, val weekNumberInBlock: Int, val isReady: Boolean)
+    private val planHistory = MutableStateFlow(PlanHistory(null, 1, isReady = false))
 
     init {
         viewModelScope.launch {
-            previousWeek.value = planRepository.getWeek(currentWeekStart.minusWeeks(1))
+            planHistory.value = PlanHistory(
+                previousWeek = planRepository.getWeek(currentWeekStart.minusWeeks(1)),
+                weekNumberInBlock = planRepository.consecutiveWeeksBefore(currentWeekStart) + 1,
+                isReady = true,
+            )
         }
     }
 
@@ -92,24 +97,29 @@ class TodayViewModel @Inject constructor(
             buildContext(checkIn, metrics, profile, activities)
         },
         planRepository.observeWeek(currentWeekStart),
-        previousWeek,
-    ) { context, storedPlan, previous ->
+        planHistory,
+    ) { context, storedPlan, history ->
         todayState(
             checkIn = context.checkIn,
             metrics = context.metrics,
             profile = context.profile,
             load = context.load,
             today = context.today,
-            plan = storedPlan ?: context.profile?.let {
-                planGenerator.generate(
-                    WeeklyPlanInput(
-                        profile = it,
-                        readiness = readinessResult(context.checkIn, context.metrics, context.today),
-                        load = context.load,
-                        weekStart = context.today,
-                        previousWeek = previous,
-                    ),
-                )
+            plan = storedPlan ?: if (history.isReady) {
+                context.profile?.let {
+                    planGenerator.generate(
+                        WeeklyPlanInput(
+                            profile = it,
+                            readiness = readinessResult(context.checkIn, context.metrics, context.today),
+                            load = context.load,
+                            weekStart = context.today,
+                            previousWeek = history.previousWeek,
+                            weekNumberInBlock = history.weekNumberInBlock,
+                        ),
+                    )
+                }
+            } else {
+                null
             },
             kmByDay = context.kmByDay,
             weeklyLoadKm = context.weeklyLoadKm,

@@ -114,6 +114,30 @@ class TodayViewModelPersistTest {
         assertThat(state.plan?.rationale).contains("dose de qualidade")
     }
 
+    @Test
+    fun `deloads after three consecutive planned weeks`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        (1L..3L).forEach { weeksAgo ->
+            plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
+        }
+
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan?.rationale?.contains("Deload") == true }
+        }
+
+        assertThat(state.plan?.ruleIds).contains("R-PLAN-04")
+        assertThat(state.plan?.evidenceIds).contains("EV-ISSURIN-2010")
+        assertThat(state.plan?.rationale).contains("semana 4 do bloco")
+    }
+
     private fun previousWeek(weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
