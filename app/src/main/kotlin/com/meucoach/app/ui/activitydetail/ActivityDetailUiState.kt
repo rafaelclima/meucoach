@@ -1,12 +1,14 @@
 package com.meucoach.app.ui.activitydetail
 
 import android.net.Uri
+import com.meucoach.app.story.StoryPlan
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.insights.ActivityInsight
 import com.meucoach.core.domain.zones.HrZoneDistribution
 
 sealed interface StoryExportUiState {
     data object Idle : StoryExportUiState
+    data class Preview(val plan: StoryPlan) : StoryExportUiState
     data class Generating(val progress: Float) : StoryExportUiState
     data class Done(val uri: Uri, val savedToGallery: Boolean) : StoryExportUiState
     data class Error(val message: String) : StoryExportUiState

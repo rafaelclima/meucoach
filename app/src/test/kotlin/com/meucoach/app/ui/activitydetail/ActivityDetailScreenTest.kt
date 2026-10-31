@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.app.story.StoryPlanCalculator
 import com.meucoach.core.designsystem.theme.McTheme
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
@@ -73,6 +74,30 @@ class ActivityDetailScreenTest {
         list.performScrollToNode(hasText("O que aprendemos"))
         compose.onNodeWithText("O que aprendemos").assertIsDisplayed()
         compose.onNodeWithText("R-ACT-01", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `previews a story before exporting`() {
+        val activity = ActivityDetailTestData.state().activity!!.imported
+        val plan = StoryPlanCalculator.calculate(activity)!!
+        var exported = false
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    storyExport = StoryExportUiState.Preview(plan),
+                ),
+                onBack = {},
+                onExportStory = { exported = true },
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Prévia do story"))
+        compose.onNodeWithContentDescription("Prévia do story").assertIsDisplayed()
+        list.performScrollToNode(hasText("Gerar vídeo"))
+        compose.onNodeWithText("Gerar vídeo").performClick()
+
+        assertThat(exported).isTrue()
     }
 
     @Test

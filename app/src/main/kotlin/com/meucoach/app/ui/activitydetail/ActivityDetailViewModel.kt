@@ -59,7 +59,7 @@ class ActivityDetailViewModel @Inject constructor(
         const val ARG_ACTIVITY_ID = "activityId"
     }
 
-    fun createStory(palette: StoryPalette) {
+    fun createStory() {
         val activity = _uiState.value.activity ?: return
         if (_uiState.value.storyExport is StoryExportUiState.Generating) return
         _uiState.update { it.copy(storyExport = StoryExportUiState.Generating(0f)) }
@@ -75,8 +75,16 @@ class ActivityDetailViewModel @Inject constructor(
                         ),
                     )
                 }
-                return@launch
+            } else {
+                _uiState.update { it.copy(storyExport = StoryExportUiState.Preview(plan)) }
             }
+        }
+    }
+
+    fun exportStory(palette: StoryPalette) {
+        val plan = (_uiState.value.storyExport as? StoryExportUiState.Preview)?.plan ?: return
+        _uiState.update { it.copy(storyExport = StoryExportUiState.Generating(0f)) }
+        viewModelScope.launch {
             runCatching {
                 storyExporter.export(plan, palette) { progress ->
                     _uiState.update { state ->
@@ -107,5 +115,9 @@ class ActivityDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun cancelStory() {
+        _uiState.update { it.copy(storyExport = StoryExportUiState.Idle) }
     }
 }

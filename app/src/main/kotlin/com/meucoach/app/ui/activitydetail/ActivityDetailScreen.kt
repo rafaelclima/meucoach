@@ -2,7 +2,9 @@ package com.meucoach.app.ui.activitydetail
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
@@ -28,15 +32,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.res.ResourcesCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.story.StoryFrameRenderer
+import com.meucoach.app.story.StoryPlan
+import com.meucoach.app.story.StorySegmentType
 import com.meucoach.app.story.toStoryPalette
 import com.meucoach.app.ui.activities.formatDateTime
 import com.meucoach.app.ui.activities.formatDuration
@@ -44,6 +56,7 @@ import com.meucoach.app.ui.activities.paceLabel
 import com.meucoach.app.ui.activities.sourcesLabel
 import com.meucoach.app.ui.activities.sportLabel
 import com.meucoach.core.data.repository.StoredActivity
+import com.meucoach.core.designsystem.R
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
@@ -71,7 +84,9 @@ fun ActivityDetailScreen(
     ActivityDetailContent(
         state = state,
         onBack = onBack,
-        onCreateStory = { viewModel.createStory(palette) },
+        onCreateStory = { viewModel.createStory() },
+        onExportStory = { viewModel.exportStory(palette) },
+        onCancelStory = viewModel::cancelStory,
         onShareStory = { uri -> shareStory(context, uri) },
         modifier = modifier,
     )
@@ -83,6 +98,8 @@ internal fun ActivityDetailContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onCreateStory: () -> Unit = {},
+    onExportStory: () -> Unit = {},
+    onCancelStory: () -> Unit = {},
     onShareStory: (Uri) -> Unit = {},
 ) {
     Box(
@@ -135,6 +152,8 @@ internal fun ActivityDetailContent(
                             StoryCard(
                                 state = state,
                                 onCreateStory = onCreateStory,
+                                onExportStory = onExportStory,
+                                onCancelStory = onCancelStory,
                                 onShareStory = onShareStory,
                             )
                         }
@@ -348,7 +367,13 @@ private fun SplitsCard(activity: StoredActivity) {
 }
 
 @Composable
-private fun StoryCard(state: ActivityDetailUiState, onCreateStory: () -> Unit, onShareStory: (Uri) -> Unit) {
+private fun StoryCard(
+    state: ActivityDetailUiState,
+    onCreateStory: () -> Unit,
+    onExportStory: () -> Unit,
+    onCancelStory: () -> Unit,
+    onShareStory: (Uri) -> Unit,
+) {
     val colors = McTheme.colors
     McCard {
         Text(
@@ -369,6 +394,23 @@ private fun StoryCard(state: ActivityDetailUiState, onCreateStory: () -> Unit, o
                 text = "Criar story",
                 onClick = onCreateStory,
             )
+
+            is StoryExportUiState.Preview -> {
+                StoryPreview(plan = story.plan)
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    McPrimaryButton(
+                        text = "Gerar vídeo",
+                        onClick = onExportStory,
+                        modifier = Modifier.weight(1f),
+                    )
+                    McSecondaryButton(
+                        text = "Cancelar",
+                        onClick = onCancelStory,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
 
             is StoryExportUiState.Generating -> Text(
                 text = "Gerando vídeo… ${(story.progress * 100).roundToInt()}%",
@@ -414,6 +456,38 @@ private fun StoryCard(state: ActivityDetailUiState, onCreateStory: () -> Unit, o
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StoryPreview(plan: StoryPlan) {
+    val context = LocalContext.current
+    val colors = McTheme.colors
+    val bitmap = remember(plan, colors) {
+        val typeface = ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
+        val previewTime = plan.segments
+            .firstOrNull { it.type == StorySegmentType.CARD }
+            ?.let { it.startSec + 1f }
+            ?: (plan.durationSec / 2f)
+        StoryFrameRenderer(colors.toStoryPalette(), typeface)
+            .render(plan, timeSec = previewTime, width = 360, height = 640)
+    }
+    Text(
+        text = "Prévia do story",
+        style = McTextStyles.caption,
+        color = colors.textTertiary,
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "Prévia do story",
+            modifier = Modifier
+                .height(260.dp)
+                .aspectRatio(9f / 16f)
+                .clip(RoundedCornerShape(12.dp)),
+            contentScale = ContentScale.Fit,
+        )
     }
 }
 

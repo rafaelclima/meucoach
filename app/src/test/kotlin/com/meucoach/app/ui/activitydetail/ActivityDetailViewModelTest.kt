@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
@@ -163,15 +162,47 @@ class ActivityDetailViewModelTest {
             val viewModel = viewModel("activity-1")
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory(
-                StoryPalette(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-            )
+            viewModel.createStory()
             val state = viewModel.uiState.first { it.storyExport is StoryExportUiState.Error }
 
             assertThat((state.storyExport as StoryExportUiState.Error).message)
                 .contains("rota GPS")
         }
     }
+
+    @Test
+    fun `prepares a story preview before exporting`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            val preview = viewModel.uiState.first {
+                it.storyExport is StoryExportUiState.Preview
+            }.storyExport as StoryExportUiState.Preview
+
+            assertThat(preview.plan.splits).isNotEmpty()
+            assertThat(preview.plan.distanceKm).isGreaterThan(0.0)
+
+            viewModel.cancelStory()
+            assertThat(viewModel.uiState.value.storyExport).isEqualTo(StoryExportUiState.Idle)
+        }
+    }
+
+    private fun gpsActivity() = ImportedActivity(
+        source = ActivitySource.GPX,
+        sport = Sport.RUNNING,
+        startTime = Instant.parse("2026-10-24T08:17:10Z"),
+        durationSec = 720,
+        distanceM = 2_000.0,
+        calories = 140,
+        samples = listOf(
+            ActivitySample(offsetSec = 0, latitude = -5.790, longitude = -35.210, heartRate = 145),
+            ActivitySample(offsetSec = 360, latitude = -5.781, longitude = -35.210, heartRate = 150),
+            ActivitySample(offsetSec = 720, latitude = -5.772, longitude = -35.210, heartRate = 155),
+        ),
+    )
 
     private fun importedActivity() = ImportedActivity(
         source = ActivitySource.FIT,

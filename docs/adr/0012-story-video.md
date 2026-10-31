@@ -55,4 +55,5 @@ As respostas do planejamento (questionário realizado em 31/10/2026) foram:
 - `StoryVideoExporter` usa `MediaCodec` com `COLOR_FormatYUV420Flexible` + `MediaMuxer`, sem EGL e sem dependência nova.
 - Android 10+ salva em `Movies/MeuCoach` via MediaStore; versões anteriores compartilham o arquivo de cache via FileProvider.
 - A ação fica no detalhe da atividade, apenas quando há amostras com latitude/longitude.
-- Pendente: validar qualidade/desempenho em aparelho real, preview antes de exportar e, se necessário, 1080×1920.
+- O fluxo tem prévia do frame antes do export; “Gerar vídeo” só então inicia o MediaCodec.
+- Pendente: validar qualidade/desempenho em aparelho real e, se necessário, 1080×1920.

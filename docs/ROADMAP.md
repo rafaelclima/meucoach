@@ -290,14 +290,14 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P3-05 · Story de treino ao ar livre (protótipo)
 
-**Status:** protótipo em 31/10/2026 — MP4 gerado no aparelho com Canvas + MediaCodec; validação visual em dispositivo pendente.
+**Status:** protótipo em 31/10/2026 — prévia + MP4 gerado no aparelho com Canvas + MediaCodec; validação visual em dispositivo pendente.
 
 - [x] Planejador de rota, splits por km e timeline de 30 s.
 - [x] Renderer 9:16 com rota, progresso e card por km (pace, FC, kcal).
 - [x] Exportação MP4 720×1280/24 fps via MediaCodec, sem EGL nem dependência nova.
 - [x] Galeria no Android 10+ e compartilhamento via `ACTION_SEND`/FileProvider.
 - [ ] Validar qualidade e desempenho em aparelho real.
-- [ ] Preview do vídeo antes de exportar.
+- [x] Preview do vídeo antes de exportar.
 - [ ] Exportar em 1080×1920 se o desempenho permitir.
 
 **Descrição da feature (proposta inicial):**

@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 568 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 211 em `:app`)
+- **Testes:** 570 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 213 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -40,6 +40,41 @@
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P3-05: prévia do story antes do export
+
+### Concluído
+
+- `StoryExportUiState.Preview(plan)` separa preparação de exportação.
+- `ActivityDetailViewModel`:
+  - `createStory()` calcula o plano e mostra a prévia.
+  - `exportStory(palette)` inicia o MediaCodec somente após confirmação.
+  - `cancelStory()` volta ao estado inicial.
+- UI:
+  - Card mostra um frame 9:16 da prévia, com “Gerar vídeo” e “Cancelar”.
+  - O frame é renderizado com as cores/fonte do app, no ponto do primeiro card.
+- Testes:
+  - ViewModel: atividade com GPS prepara prévia e cancelamento volta a Idle.
+  - UI: prévia visível e “Gerar vídeo” aciona o callback.
+- Screenshot do frame segue válido.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 570 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 84 `core:data`, 213 `:app`).
+- Cobertura `core:domain`: 98,37% linhas / 83,55% branches.
+
+### Decisões e observações
+
+- O usuário vê um frame representativo antes de esperar a codificação.
+- A prévia usa 360×640 para ser leve; o vídeo final continua 720×1280.
+- O export ainda exige validação em aparelho real; o preview não depende do MediaCodec.
+
+### Próximo passo
+
+1. Testar o protótipo em aparelho real (tempo, tamanho, qualidade).
+2. Avaliar 1080×1920.
+3. Seguir para `P1-11`/`P1-12`.
 
 ## Sessão 2026-10-31 — P3-05: protótipo de story de treino
 
@@ -1137,3 +1172,4 @@
 | 31/10/2026 | P1-10 concluído: bottom sheet de explicação com regras, evidências, confiança e lacunas; 556 testes |
 | 31/10/2026 | P1-09 concluído: sync incremental do Health Connect + worker diário via WorkManager; 562 testes |
 | 31/10/2026 | P3-05 protótipo: planner, renderer Canvas 9:16 e export MP4 via MediaCodec; 568 testes |
+| 31/10/2026 | P3-05: prévia antes do export + confirmação/cancelamento; 570 testes |
