@@ -242,7 +242,15 @@
 - [ ] Lembrete de check-in com histórico no widget/notificação (ver P1-11).
 
 ### P1-09 · Health Connect
-Permissões, sync incremental, WorkManager, diagnóstico e fallback.
+
+**Status:** concluído em 31/10/2026
+
+- [x] Permissões read-only de sono, FC de repouso, HRV e SpO2.
+- [x] Leitura com paginação e agregação por dia local.
+- [x] Diagnóstico de status, autorização, base local e fallback para check-in/CSV.
+- [x] Sync incremental: primeira execução lê 30 dias; depois parte do último sucesso menos 1 dia.
+- [x] Sync periódico diário via WorkManager, com retry exponencial em erro de leitura.
+- [x] O mesmo `HealthSyncService` atende a tela de perfil e o worker.
 
 ### P1-10 · Explicabilidade
 

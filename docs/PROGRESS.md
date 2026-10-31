@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 556 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 79 em `core:data`, 204 em `:app`)
+- **Testes:** 562 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 205 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -22,7 +22,7 @@
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
-- **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões e sincronização de 30 dias pelo perfil.
+- **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões, sincronização incremental (primeira execução 30 dias, depois desde o último sucesso) e sync periódico diário via WorkManager.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não; calor informado desacelera o pace em 3% e reduz a confiança.
@@ -39,6 +39,46 @@
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-09: sync incremental do Health Connect
+
+### Concluído
+
+- `HealthSyncService` compartilhado:
+  - Primeira execução lê 30 dias; depois parte do último sucesso menos 1 dia.
+  - Sucesso salva a data; falta de permissão, erro e indisponibilidade não avançam.
+- `HealthSyncStore` em `SharedPreferences` guarda apenas a última data de sync.
+- `HealthConnectViewModel` passou a usar o serviço, com mensagem de importação
+  inicial vs. atualização incremental.
+- `HealthSyncWorker` (`@HiltWorker`) roda diariamente via WorkManager, com
+  atraso inicial de 30 min, backoff exponencial e tag própria.
+- `MeuCoachApplication` agenda o worker de forma best-effort.
+- Testes:
+  - Serviço: janela inicial, incremental, permissões, erro e indisponibilidade.
+  - ViewModel: sync manual via serviço.
+  - Scheduler: work único, tag e estado enqueued.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 562 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 84 `core:data`, 205 `:app`).
+- Cobertura `core:domain`: 98,37% linhas / 83,55% branches.
+- Screenshots inalterados (mudança é de background/sync).
+
+### Decisões e observações
+
+- A data de sync é metadado local, não dado de saúde; fica em SharedPreferences.
+- Ler 1 dia antes do último sucesso captura registros atrasados do wearable.
+- Sem permissão ou Health Connect indisponível, o worker não insiste; o ciclo
+  diário e o botão manual continuam disponíveis.
+- Dias com CSV e Health Connect ainda podem ser sobrescritos pelo sync; mesclar
+  por fonte fica para uma evolução futura (ADR 0014).
+
+### Próximo passo
+
+1. Revisar o planejamento do P3-05 com o usuário 0.
+2. `P1-11` (notificações) ou `P1-12` (E2E) conforme prioridade.
+3. Mescla por fonte para dias com CSV + Health Connect, se necessário.
 
 ## Sessão 2026-10-31 — P1-10: explicabilidade do treino
 
@@ -1049,3 +1089,4 @@
 | 31/10/2026 | P1-06 parcial: sessão guiada com cronômetro e troca de dia com guardrails; 548 testes |
 | 31/10/2026 | P1-08 parcial: histórico dos últimos 7 check-ins com Hooper e sinais; 551 testes |
 | 31/10/2026 | P1-10 concluído: bottom sheet de explicação com regras, evidências, confiança e lacunas; 556 testes |
+| 31/10/2026 | P1-09 concluído: sync incremental do Health Connect + worker diário via WorkManager; 562 testes |

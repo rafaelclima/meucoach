@@ -4,6 +4,8 @@ import android.content.Context
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectDailySource
 import com.meucoach.core.data.health.HealthDailySource
+import com.meucoach.core.data.health.HealthSyncService
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
@@ -45,6 +47,24 @@ object DataModule {
     @Singleton
     fun provideHealthDailySource(@ApplicationContext context: Context): HealthDailySource =
         HealthConnectDailySource(context)
+
+    @Provides
+    @Singleton
+    fun provideHealthSyncStore(@ApplicationContext context: Context): HealthSyncStore = HealthSyncStore(context)
+
+    @Provides
+    @Singleton
+    fun provideHealthSyncService(
+        source: HealthDailySource,
+        metricsRepository: DailyMetricsRepository,
+        profileRepository: ProfileRepository,
+        syncStore: HealthSyncStore,
+    ): HealthSyncService = HealthSyncService(
+        source = source,
+        metricsRepository = metricsRepository,
+        profileRepository = profileRepository,
+        syncStore = syncStore,
+    )
 
     @Provides
     @Singleton

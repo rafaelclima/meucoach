@@ -3,6 +3,7 @@ package com.meucoach.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.meucoach.app.health.HealthSyncScheduler
 import com.meucoach.app.reminder.ReminderScheduler
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -17,6 +18,9 @@ class MeuCoachApplication :
     @Inject
     lateinit var reminderScheduler: ReminderScheduler
 
+    @Inject
+    lateinit var healthSyncScheduler: HealthSyncScheduler
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -24,7 +28,8 @@ class MeuCoachApplication :
 
     override fun onCreate() {
         super.onCreate()
-        // Reminders are best-effort; a WorkManager init failure must not block the app.
+        // Background work is best-effort; a WorkManager init failure must not block the app.
         runCatching { reminderScheduler.schedule() }
+        runCatching { healthSyncScheduler.schedule() }
     }
 }

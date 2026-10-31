@@ -7,6 +7,8 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
+import com.meucoach.core.data.health.HealthSyncService
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.model.DailyMetrics
@@ -40,6 +42,7 @@ class HealthConnectViewModelTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var metrics: DailyMetricsRepository
     private lateinit var profiles: ProfileRepository
+    private lateinit var syncStore: HealthSyncStore
 
     @Before
     fun setUp() {
@@ -53,6 +56,7 @@ class HealthConnectViewModelTest {
         val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
         metrics = DailyMetricsRepository(database, clock)
         profiles = ProfileRepository(database, clock)
+        syncStore = HealthSyncStore(context, prefsName = "health-view-model-${System.nanoTime()}")
     }
 
     @After
@@ -64,7 +68,7 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports missing permissions after refresh`(): Unit = runBlocking {
         val source = FakeSource(granted = emptySet())
-        val state = HealthConnectViewModel(source, metrics, profiles).uiState.first { !it.isLoading }
+        val state = HealthConnectViewModel(source, service(source)).uiState.first { !it.isLoading }
 
         assertThat(state.status).isEqualTo(HealthConnectStatus.AVAILABLE)
         assertThat(state.hasPermissions).isFalse()
@@ -82,7 +86,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = emptySet(),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, metrics, profiles)
+        val viewModel = HealthConnectViewModel(source, service(source))
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -102,7 +106,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = setOf("sleep", "hr"),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, metrics, profiles)
+        val viewModel = HealthConnectViewModel(source, service(source))
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -115,7 +119,7 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports an unavailable client`(): Unit = runBlocking {
         val source = FakeSource(status = HealthConnectStatus.UNAVAILABLE)
-        val viewModel = HealthConnectViewModel(source, metrics, profiles)
+        val viewModel = HealthConnectViewModel(source, service(source))
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -133,7 +137,7 @@ class HealthConnectViewModelTest {
                 error = "Falha de leitura.",
             ),
         )
-        val viewModel = HealthConnectViewModel(source, metrics, profiles)
+        val viewModel = HealthConnectViewModel(source, service(source))
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -141,6 +145,13 @@ class HealthConnectViewModelTest {
 
         assertThat(viewModel.uiState.value.message).isEqualTo("Falha de leitura.")
     }
+
+    private fun service(source: HealthDailySource) = HealthSyncService(
+        source = source,
+        metricsRepository = metrics,
+        profileRepository = profiles,
+        syncStore = syncStore,
+    )
 
     private fun metrics(date: LocalDate) = DailyMetrics(
         date = date,

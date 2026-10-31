@@ -61,7 +61,7 @@ flowchart LR
 | `:app` | Android app | Entry point, navegação, DI, tema raiz | todos |
 | `:core:model` | Kotlin JVM | Tipos e unidades (pace, distância, FC, atividade, zona) | nada |
 | `:core:domain` | Kotlin JVM | Parsers, zonas, carga, prontidão, prescrição, regras, evidências | `:core:model` |
-| `:core:data` | Android library | Room, repositórios, import, Health Connect, DataStore, WorkManager | `:core:model`, `:core:domain` |
+| `:core:data` | Android library | Room, repositórios, import, Health Connect, WorkManager | `:core:model`, `:core:domain` |
 | `:core:designsystem` | Android library | Tokens, tema, componentes, gráficos | Compose |
 | `:core:testing` | Android library | Fixtures, fakes, test rules | `:core:model`, `:core:domain` |
 | `:feature:today` | Android library | Tela Hoje | design system, data, domain |
@@ -106,7 +106,7 @@ sequenceDiagram
 | **TCX** | XML DOM (`javax.xml`) | Activity, Lap, Trackpoint, HR, cadência, posição, altitude, velocidade, potência por extensão | Cadência de corrida normalizada; lap inferido quando ausente |
 | **GPX** | XML DOM | trkpt, ele, time, extensões `hr`, `cad`, `speed`, `power` | Sem laps nem esporte explícito; usar como último recurso |
 | **CSV diário** | Parser de cabeçalho validado | sono, RHR, HRV, SpO2 | Implementado em `DailyMetricsCsvParser`; template do app |
-| **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Implementado read-only com `HealthDailySource`; sync de 30 dias e agregação em `HealthMetricsAggregator` |
+| **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Implementado read-only com `HealthDailySource`; sync incremental via `HealthSyncService`, agregação em `HealthMetricsAggregator` |
 
 O parser FIT é o componente de maior risco. Estratégia: implementar o subconjunto usado pelo Amazfit Balance, validar contra os arquivos reais e contra o `fitdecode` (Python) em testes de referência. Fixtures reais são sanitizadas antes de entrar no repo.
 
@@ -187,7 +187,9 @@ data class EngineOutput(
 ## 8. Health Connect
 
 - `HealthConnectClient` com permissões mínimas: sono, RHR, HRV, SpO2.
-- Leitura read-only dos últimos 30 dias com paginação; agregação por data local.
+- Leitura read-only com paginação; a primeira sincronização cobre 30 dias e as seguintes partem do último sucesso menos 1 dia.
+- `HealthSyncService` compartilha a mesma lógica entre a tela de perfil e o `HealthSyncWorker`; o worker roda diariamente via WorkManager.
+- O último sync bem-sucedido fica em `SharedPreferences` (não é dado de saúde); falhas de permissão/leitura não avançam a data.
 - **Nunca** tratar ausência como recuperação ruim.
 - Card de diagnóstico com status, autorização, sincronização e base local.
 - Se o Zepp não gravar um tipo, o app mostra "sem dados" e usa fallback (check-in/CSV).
