@@ -27,6 +27,8 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         return plan.toModel(dao.getSessions(weekStart.toString()))
     }
 
+    suspend fun getWeeks(weekStarts: List<LocalDate>): List<WeeklyPlan> = weekStarts.mapNotNull { getWeek(it) }
+
     /**
      * Counts consecutive stored weeks immediately before [weekStart].
      * Used to anchor the 4-week deload block without another schema column.

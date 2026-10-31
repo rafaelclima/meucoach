@@ -54,6 +54,7 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.IntensityDistribution
@@ -118,6 +119,7 @@ internal fun TrendsContent(
                 readinessHistory = readinessHistory,
                 activityTrends = state.activityTrends,
                 intensity = state.intensity,
+                planCompletion = state.planCompletion,
                 lthr = state.profile.lactateThresholdHeartRate,
             )
         }
@@ -130,6 +132,7 @@ private fun LoadDetails(
     readinessHistory: List<ReadinessHistoryDay>,
     activityTrends: ActivityTrends?,
     intensity: IntensityDistribution?,
+    planCompletion: PlanCompletion?,
     lthr: Int?,
 ) {
     val colors = McTheme.colors
@@ -217,6 +220,10 @@ private fun LoadDetails(
         if (activityTrends != null) {
             item { McSectionHeader(title = "Volume · ${activityTrends.weeks.size} semanas") }
             item { WeeklyVolumeCard(activityTrends.weeks) }
+            if (planCompletion != null && planCompletion.planned > 0) {
+                item { McSectionHeader(title = "Conclusão · ${planCompletion.windowWeeks} semanas") }
+                item { PlanCompletionCard(planCompletion) }
+            }
             item { McSectionHeader(title = "Consistência · ${activityTrends.consistency.windowDays} dias") }
             item { ConsistencyCard(activityTrends) }
             if (activityTrends.records.hasData) {
@@ -269,6 +276,84 @@ private fun WeeklyVolumeCard(weeks: List<com.meucoach.core.domain.trends.WeeklyV
             text = String.format(PT_BR, "%.1f km no total · média %.1f km/semana", total, total / weeks.size),
             style = McTextStyles.caption,
             color = colors.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun PlanCompletionCard(completion: PlanCompletion) {
+    val colors = McTheme.colors
+    McCard {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Adesão ao plano",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Sessões passadas marcadas como concluídas.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+            completion.completionRatio?.let { ratio ->
+                Text(
+                    text = String.format(PT_BR, "%.0f%%", ratio * 100),
+                    style = McTextStyles.metricSmall,
+                    color = colors.textPrimary,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp)
+                .semantics {
+                    contentDescription = "Conclusão do plano nas últimas " +
+                        "${completion.windowWeeks} semanas: ${completion.done} de " +
+                        "${completion.planned} sessões concluídas e ${completion.skipped} puladas"
+                },
+        ) {
+            val slot = size.width / completion.weeks.size
+            val barWidth = slot * 0.55f
+            val radius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
+            completion.weeks.forEachIndexed { index, week ->
+                val left = index * slot + (slot - barWidth) / 2
+                drawRoundRect(
+                    color = colors.surfaceInset,
+                    topLeft = Offset(left, 0f),
+                    size = androidx.compose.ui.geometry.Size(barWidth, size.height),
+                    cornerRadius = radius,
+                )
+                week.completionRatio?.takeIf { it > 0.0 }?.let { ratio ->
+                    val height = (ratio * size.height).toFloat()
+                    drawRoundRect(
+                        color = colors.accent,
+                        topLeft = Offset(left, size.height - height),
+                        size = androidx.compose.ui.geometry.Size(barWidth, height),
+                        cornerRadius = radius,
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        val skipped = when (completion.skipped) {
+            0 -> ""
+            1 -> " · 1 pulada"
+            else -> " · ${completion.skipped} puladas"
+        }
+        Text(
+            text = "${completion.done} de ${completion.planned} sessões concluídas$skipped",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Text(
+            text = "Semanas sem plano ficam vazias; a semana atual conta só até hoje.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
         )
     }
 }

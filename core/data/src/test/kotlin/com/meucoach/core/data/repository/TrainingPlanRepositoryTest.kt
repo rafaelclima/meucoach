@@ -107,6 +107,19 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `loads multiple weeks and skips missing ones`(): Unit = runBlocking {
+        repository.saveWeek(plan(monday.minusWeeks(1)))
+        repository.saveWeek(plan(monday))
+
+        val weeks = repository.getWeeks(
+            listOf(monday.minusWeeks(2), monday.minusWeeks(1), monday),
+        )
+
+        assertThat(weeks.map { it.weekStart })
+            .containsExactly(monday.minusWeeks(1), monday)
+    }
+
+    @Test
     fun `starts empty`(): Unit = runBlocking {
         assertThat(repository.getWeek(monday)).isNull()
         assertThat(repository.observeWeek(monday).first()).isNull()

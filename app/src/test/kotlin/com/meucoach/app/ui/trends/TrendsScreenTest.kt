@@ -10,6 +10,8 @@ import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.PlanCompletion
+import com.meucoach.core.domain.prescription.PlanCompletionWeek
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ConsistencySummary
@@ -198,6 +200,40 @@ class TrendsScreenTest {
         val list = compose.onNodeWithTag("trends-list")
         list.performScrollToNode(hasText("Distribuição · 80/20"))
         compose.onNodeWithText("Sem limiar calibrado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows plan completion`() {
+        val weeks = (0 until 8).map { index ->
+            PlanCompletionWeek(
+                weekStart = LocalDate.of(2026, 9, 7).plusWeeks(index.toLong()),
+                planned = when (index) {
+                    0 -> 2
+                    1 -> 3
+                    else -> 0
+                },
+                done = when (index) {
+                    0 -> 1
+                    1 -> 2
+                    else -> 0
+                },
+                skipped = if (index == 0) 1 else 0,
+            )
+        }
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                activityTrends = trends(),
+                planCompletion = PlanCompletion(weeks = weeks, windowWeeks = 8),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Adesão ao plano"))
+        compose.onNodeWithText("Adesão ao plano").assertIsDisplayed()
+        compose.onNodeWithText("3 de 5 sessões concluídas · 1 pulada").assertIsDisplayed()
     }
 
     @Test

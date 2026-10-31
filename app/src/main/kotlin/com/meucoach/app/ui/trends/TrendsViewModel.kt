@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
+import com.meucoach.core.domain.prescription.PlanCompletion
+import com.meucoach.core.domain.prescription.PlanCompletionCalculator
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ActivityTrendsCalculator
 import com.meucoach.core.domain.trends.IntensityDistribution
@@ -30,16 +33,19 @@ data class TrendsUiState(
     val snapshot: LoadSnapshot? = null,
     val activityTrends: ActivityTrends? = null,
     val intensity: IntensityDistribution? = null,
+    val planCompletion: PlanCompletion? = null,
 )
 
 @HiltViewModel
 class TrendsViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val activityRepository: ActivityRepository,
+    private val planRepository: TrainingPlanRepository,
 ) : ViewModel() {
     private val engine = TrainingLoadEngine()
     private val trendsCalculator = ActivityTrendsCalculator()
     private val intensityCalculator = IntensityDistributionCalculator()
+    private val planCompletionCalculator = PlanCompletionCalculator()
     private val _uiState = MutableStateFlow(TrendsUiState())
     val uiState: StateFlow<TrendsUiState> = _uiState.asStateFlow()
 
@@ -77,8 +83,22 @@ class TrendsViewModel @Inject constructor(
                 intensity = profile.lactateThresholdHeartRate?.let { lthr ->
                     distribution(summaries, today, zone, lthr)
                 },
+                planCompletion = completion(today),
             )
         }
+    }
+
+    private suspend fun completion(today: LocalDate): PlanCompletion {
+        val currentMonday = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        val weekStarts = (PLAN_COMPLETION_WEEKS - 1 downTo 0)
+            .map { currentMonday.minusWeeks(it.toLong()) }
+        return planCompletionCalculator.calculate(
+            plans = planRepository.getWeeks(weekStarts),
+            today = today,
+            weeks = PLAN_COMPLETION_WEEKS,
+        )
     }
 
     private suspend fun distribution(
@@ -106,5 +126,6 @@ class TrendsViewModel @Inject constructor(
 
     private companion object {
         const val INTENSITY_WINDOW_DAYS = 28
+        const val PLAN_COMPLETION_WEEKS = 8
     }
 }

@@ -6,6 +6,11 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
@@ -42,6 +47,7 @@ class TrendsViewModelTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var profiles: ProfileRepository
     private lateinit var activities: ActivityRepository
+    private lateinit var plans: TrainingPlanRepository
 
     @Before
     fun setUp() {
@@ -54,6 +60,7 @@ class TrendsViewModelTest {
                 .build()
         val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
         profiles = ProfileRepository(database, clock)
+        plans = TrainingPlanRepository(database, clock)
         activities =
             ActivityRepository(
                 database = database,
@@ -74,7 +81,7 @@ class TrendsViewModelTest {
         profiles.saveProfile(profile())
         activities.saveImportedActivity(activity(), "sha")
 
-        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
 
         assertThat(state.snapshot).isNotNull
         assertThat(state.snapshot?.hasData).isTrue()
@@ -85,7 +92,7 @@ class TrendsViewModelTest {
 
     @Test
     fun `returns no snapshot without a profile`(): Unit = runBlocking {
-        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
 
         assertThat(state.profile).isNull()
         assertThat(state.snapshot).isNull()
@@ -95,7 +102,7 @@ class TrendsViewModelTest {
     fun `reports missing load without activities`(): Unit = runBlocking {
         profiles.saveProfile(profile())
 
-        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
 
         assertThat(state.snapshot?.hasData).isFalse()
         assertThat(state.snapshot?.acwr).isNull()
@@ -115,7 +122,7 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
 
         assertThat(state.intensity).isNotNull
         assertThat(state.intensity?.easySec).isEqualTo(600)
@@ -136,10 +143,53 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
 
         assertThat(state.intensity).isNull()
     }
+
+    @Test
+    fun `summarizes plan completion from stored sessions`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.now()
+        val monday = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = monday,
+                sessions = listOf(
+                    session(monday, SessionStatus.DONE),
+                    session(today, SessionStatus.SKIPPED),
+                ),
+                weeklyMinutes = 60,
+                longRunMinutes = null,
+                qualityCount = 0,
+                rationale = "Plano.",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        )
+
+        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+
+        assertThat(state.planCompletion?.planned).isEqualTo(2)
+        assertThat(state.planCompletion?.done).isEqualTo(1)
+        assertThat(state.planCompletion?.skipped).isEqualTo(1)
+        assertThat(state.planCompletion?.completionRatio).isEqualTo(0.5)
+    }
+
+    private fun session(date: LocalDate, status: SessionStatus) = PlannedSession(
+        date = date,
+        type = WorkoutType.EASY,
+        title = "Fácil",
+        durationMin = 30,
+        rationale = "Base.",
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        status = status,
+    )
 
     private fun profile() = AthleteProfile(
         id = "athlete-1",

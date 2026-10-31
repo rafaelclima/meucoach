@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 526 testes, 0 falhas (27 em `core:model`, 231 em `core:domain`, 77 em `core:data`, 191 em `:app`)
-- **Cobertura `core:domain`:** 98,38% de linhas (2.251/2.288), 83,33% de branches (1.820/2.184), 97,06% de instruções (17.032/17.547)
+- **Testes:** 533 testes, 0 falhas (27 em `core:model`, 235 em `core:domain`, 78 em `core:data`, 193 em `:app`)
+- **Cobertura `core:domain`:** 98,36% de linhas (2.275/2.313), 83,53% de branches (1.846/2.210), 97,05% de instruções (17.319/17.845)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -31,12 +31,52 @@
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
 - **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
+- **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
 - **Tendências de atividades:** volume semanal, consistência de 28 dias, relação pace×FC e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8).
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P1-06: conclusão do plano em Tendências
+
+### Concluído
+
+- Domínio (`PlanCompletionCalculator`):
+  - Janela de 8 semanas (segunda-domingo), com `planned`, `done`, `skipped` por semana.
+  - Conta apenas sessões até hoje; sessões futuras não reduzem a semana atual.
+  - Ignora descanso; semana sem plano fica com razão `null`, não 0%.
+- Dados:
+  - `TrainingPlanRepository.getWeeks(weekStarts)` carrega as semanas existentes em lote.
+- App:
+  - `TrendsViewModel` injeta o repositório de planos e expõe `planCompletion`.
+  - Card “Adesão ao plano” em Tendências, com barras por semana, total concluído e puladas.
+  - Texto explica que semanas sem plano ficam vazias e a semana atual conta só até hoje.
+  - Sem streak, chama ou vermelho de culpa.
+- Testes:
+  - Domínio: janela, sessões futuras, descanso, semanas sem plano, totais e validação.
+  - Dados: carregamento de múltiplas semanas e lacunas.
+  - ViewModel e UI: conclusão a partir do banco e card renderizado.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 533 testes, 0 falhas (27 `core:model`, 235 `core:domain`, 78 `core:data`, 193 `:app`).
+- Cobertura `core:domain`: 98,36% linhas / 83,53% branches.
+- Screenshots de Tendências inalterados (o golden não inclui plano).
+
+### Decisões e observações
+
+- A adesão é descritiva e serve para transparência da progressão (`R-PLAN-02`), não para punir.
+- Sessões passadas ainda `PLANNED` contam como não concluídas; é o que a regra de progressão já faz.
+- Sem plano na semana, a razão é `null`; a barra fica vazia em vez de sugerir 0% de adesão.
+
+### Próximo passo
+
+1. Gráfico de eficiência pace@FC e filtros de período.
+2. Heatmap de consistência.
+3. Iniciar/trocar treino a partir do plano.
 
 ## Sessão 2026-10-31 — P1-07: recordes pessoais em Tendências
 
@@ -808,3 +848,4 @@
 | 31/10/2026 | P1-05 parcial: calor autorreportado (+3%) e alternativa de esteira na qualidade; Room v9 e 519 testes |
 | 31/10/2026 | P1-05 parcial: deload de −25% a cada 4ª semana consecutiva, ancorado no histórico de planos; 524 testes |
 | 31/10/2026 | P1-07 parcial: recordes pessoais em Tendências (distância, pace ≥ 3 km e tempo); 526 testes |
+| 31/10/2026 | P1-06 parcial: conclusão do plano em 8 semanas em Tendências, sem streak; 533 testes |
