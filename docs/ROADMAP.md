@@ -272,6 +272,57 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - P3-02 Social (opt-in, privacidade).
 - P3-03 LLM apenas para reescrever explicações determinísticas, com validação.
 - P3-04 Wear OS / companion.
+- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **em planejamento**.
+
+### P3-05 · Story de treino ao ar livre (planejamento maior pendente)
+
+**Status:** proposta — **planejamento maior com o usuário 0 (Rafael) ainda não realizado**.
+
+**Descrição da feature (proposta inicial):**
+
+Em cada treino ao ar livre realizado (com dados de GPS — GPX, TCX, FIT com posição), o usuário poderá importar o arquivo GPS e o app criará um vídeo curto, no formato de stories do Instagram (vertical, 9:16, curto), com uma animação mostrando o percurso feito pelo usuário no mapa. A cada km percorrido, a animação pausará automaticamente por aproximadamente 2 segundos e mostrará detalhes por km (pace, FC média, elevação, etc.), depois segue até o próximo km.
+
+**O que ainda precisa ser definido com o usuário (planejamento maior):**
+
+Antes de implementar qualquer linha de código ou decidir arquitetura, faremos uma sessão de planejamento com o Rafael para responder perguntas como:
+
+1. **Formato e destino do vídeo:** o vídeo será exportado para a galeria do dispositivo, compartilhado diretamente no Instagram (via `ACTION_SEND`), salvo como rascunho no app, ou todos? Qual a duração máxima ideal (15s, 30s, 60s)?
+2. **Fonte dos dados GPS:** a feature usará apenas arquivos importados (GPX, TCX, FIT), ou também poderá usar os dados já salvos no banco (Room) das atividades importadas anteriormente? Se usar do banco, como lidar com dados sem posição (corridas de esteira)?
+3. **Design do vídeo:** quais detalhes devem aparecer no card de pausa por km? Pace, FC, elevação, cadência, calorias, ou apenas alguns? Há preferência por cores, fonte, posição do mapa no frame, legenda, ou overlay de texto?
+4. **Renderização:** a animação será feita com Canvas Android (como os gráficos atuais), com uma biblioteca de vídeo (MediaCodec, FFmpeg, ou uma dependência externa), ou com um componente Compose que exporta frames? Há restrição de tamanho da dependência (AGENTS.md regra 8)?
+5. **Performance e privacidade:** o vídeo nunca deve conter dados de localização real (regras de privacidade do projeto). A sanitização das posições já existe nos parsers, mas como tratar a rota no vídeo — mostrar o traçado real (mesmo sanitizado) ou uma versão estilizada/abstrata? O usuário quer que o vídeo seja totalmente offline?
+6. **Quando acionar:** a tela de criação do vídeo apareceria automaticamente após importar uma atividade com GPS, como uma ação manual no detalhe da atividade (`P0-09`), ou em uma aba separada (ex.: "Stories" no shell)?
+7. **Integração com o motor determinístico:** a feature não altera carga, prontidão ou prescrição; é apenas visualização/exportação. Confirmamos que nunca usará LLM para decidir o percurso, apenas para reescrever textos do overlay, se aplicável?
+
+**Status atual:** proposta aceita para planejamento — **respostas consolidadas em 31/10/2026** (ADR 0012); **nenhuma dependência nova adicionada**; implementação condicionada a build verde e validação visual (`Roborazzi`).
+
+**Decisões consolidadas (baseado nas respostas do usuário 0):**
+
+- **Fonte de dados:** importação direta de arquivo GPS (`GPX`, `TCX`, `FIT`) no momento; futuro: treino iniciado pelo app com localização salva no banco.
+- **Acionamento:** manual, no detalhe da atividade (`P0-09`), apenas quando há posição.
+- **Design do vídeo:** card de pausa por km com `pace` + `FC média` + `kcal`; cores do design system (`lima` para destaque, `coral` para fisiologia); fonte grande; overlay elegante.
+- **Duração:** padrão 30 segundos (compatível com stories); exportação para galeria + `ACTION_SEND` direto.
+- **Renderização:** `Canvas` + `MediaCodec` (nativo Android SDK, sem dependência externa grande). Se a qualidade não atender ao objetivo de "postar com vontade", ADR futuro avaliará biblioteca leve com análise de peso/licença.
+- **Rota:** traçado real sanitizado (forma do percurso, sem pontos exatos de residência), totalmente offline, sem chamadas de rede para mapas.
+- **Integridade:** apenas visual/exportação; motor determinístico (`core:domain`) não afetado; LLM não decide percurso.
+- **Privacidade:** posições nunca enviadas para servidores; vídeo 100% offline; sanitização já existente nos parsers (`P0-05`/`P0-06`) aplicada.
+
+**Perguntas respondidas pelo usuário:**
+
+1. Formato/destino: galeria + share direto (Instagram, etc.).
+2. Fonte GPS: importação direta (futuro: treino pelo app).
+3. Design: pace + FC + kcal.
+4. Renderização: precisa de qualidade alta para motivar a postar → `Canvas` + `MediaCodec` escolhido.
+5. Privacidade/rota: traçado real sanitizado, offline, design premium para chamar atenção.
+6. Quando acionar: manual no detalhe (`P0-09`).
+7. Integração: confirma apenas visual/export.
+
+**Próximos passos antes de implementar:**
+1. Validar se `Canvas` + `MediaCodec` atende à qualidade desejada com um protótipo simples (sem impacto no `core:domain`).
+2. Se o protótipo não atender, criar ADR `0013` para avaliar dependência externa.
+3. Definir testes de UI (`Roborazzi`) para o card de pausa e animação.
+4. Adicionar ao `docs/PRODUCT.md` se for confirmado para a Fase 3.
+
 
 ---
 
