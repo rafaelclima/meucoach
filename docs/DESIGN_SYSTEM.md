@@ -231,6 +231,7 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 | Check-in | Histórico Hooper | "Como estive?" |
 | Hoje | Mini PMC (7d) | "Estou acumulando carga?" |
 | Atividade | Pace × FC × tempo | "Como foi o esforço?" |
+| Atividade | Story do treino | "Quero compartilhar?" |
 | Atividade | Zonas empilhadas | "Onde passei o tempo?" |
 | Atividade | Splits | "Onde quebrou?" |
 | Tendências | PMC (CTL/ATL/TSB) | "Estou evoluindo sem estourar?" |

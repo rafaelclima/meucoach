@@ -286,11 +286,19 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - P3-02 Social (opt-in, privacidade).
 - P3-03 LLM apenas para reescrever explicações determinísticas, com validação.
 - P3-04 Wear OS / companion.
-- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **em planejamento**.
+- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **protótipo implementado; validação em aparelho pendente**.
 
-### P3-05 · Story de treino ao ar livre (planejamento maior pendente)
+### P3-05 · Story de treino ao ar livre (protótipo)
 
-**Status:** proposta — **planejamento maior com o usuário 0 (Rafael) ainda não realizado**.
+**Status:** protótipo em 31/10/2026 — MP4 gerado no aparelho com Canvas + MediaCodec; validação visual em dispositivo pendente.
+
+- [x] Planejador de rota, splits por km e timeline de 30 s.
+- [x] Renderer 9:16 com rota, progresso e card por km (pace, FC, kcal).
+- [x] Exportação MP4 720×1280/24 fps via MediaCodec, sem EGL nem dependência nova.
+- [x] Galeria no Android 10+ e compartilhamento via `ACTION_SEND`/FileProvider.
+- [ ] Validar qualidade e desempenho em aparelho real.
+- [ ] Preview do vídeo antes de exportar.
+- [ ] Exportar em 1080×1920 se o desempenho permitir.
 
 **Descrição da feature (proposta inicial):**
 

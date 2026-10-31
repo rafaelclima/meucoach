@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 562 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 205 em `:app`)
+- **Testes:** 568 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 211 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -36,9 +36,55 @@
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
+- **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 e export MP4 via MediaCodec, com galeria e compartilhamento; validação em aparelho real pendente.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-10-31 — P3-05: protótipo de story de treino
+
+### Concluído
+
+- `StoryPlanCalculator` (app):
+  - Projeta a rota com `routeData` e calcula distância acumulada por Haversine.
+  - Deriva splits por km com pace, FC média e kcal proporcional.
+  - Monta timeline de 30 s: movimento proporcional + pausa de 2 s por card, no máximo 8 cards.
+- `StoryFrameRenderer`:
+  - Frame 720×1280 com cabeçalho, rota base, trecho percorrido, marcador e card do km.
+  - Usa as cores do design system via `McColors.toStoryPalette()`.
+- `StoryVideoExporter`:
+  - MediaCodec H.264 (`COLOR_FormatYUV420Flexible`) + MediaMuxer, 24 fps.
+  - Converte ARGB para YUV420 por frame, sem EGL nem dependência nova.
+  - Android 10+ salva em `Movies/MeuCoach` via MediaStore; anteriores compartilham via FileProvider.
+- UI:
+  - Card “Story do treino” no detalhe, só quando existem amostras com GPS.
+  - Estados ocioso/gerando/concluído/erro, com compartilhar e tentar novamente.
+  - Provider de arquivos e intent `ACTION_SEND` com `video/mp4`.
+- Testes:
+  - Planner: splits, timeline, caso sem GPS e caso sem km completo.
+  - ViewModel: erro claro sem rota.
+  - UI: card e compartilhamento.
+  - Screenshot do frame do story em dark.
+
+### Evidências
+
+- `./gradlew check :app:verifyRoborazziDebug` — sucesso.
+- 568 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 84 `core:data`, 211 `:app`).
+- Cobertura `core:domain`: 98,37% linhas / 83,55% branches.
+- `story-frame-dark.png` gerado e verificado no repositório.
+
+### Decisões e observações
+
+- É um **protótipo**: a codificação compila e a lógica está testada, mas a qualidade/desempenho do MediaCodec precisa ser validada em aparelho real.
+- Sem dependência nova; se o encoder não expõe YUV flexível, a UI mostra erro em vez de quebrar.
+- A rota usa apenas amostras sanitizadas; o vídeo é gerado e compartilhado localmente.
+- Próximo incremento: preview antes de exportar e, se necessário, 1080×1920.
+
+### Próximo passo
+
+1. Validar o protótipo em aparelho real e ajustar bitrate/tamanho.
+2. Adicionar preview do story antes do export.
+3. Seguir para `P1-11`/`P1-12`.
 
 ## Sessão 2026-10-31 — P1-09: sync incremental do Health Connect
 
@@ -1090,3 +1136,4 @@
 | 31/10/2026 | P1-08 parcial: histórico dos últimos 7 check-ins com Hooper e sinais; 551 testes |
 | 31/10/2026 | P1-10 concluído: bottom sheet de explicação com regras, evidências, confiança e lacunas; 556 testes |
 | 31/10/2026 | P1-09 concluído: sync incremental do Health Connect + worker diário via WorkManager; 562 testes |
+| 31/10/2026 | P3-05 protótipo: planner, renderer Canvas 9:16 e export MP4 via MediaCodec; 568 testes |

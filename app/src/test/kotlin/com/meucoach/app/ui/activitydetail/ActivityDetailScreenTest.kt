@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.activitydetail
 
+import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -72,6 +73,30 @@ class ActivityDetailScreenTest {
         list.performScrollToNode(hasText("O que aprendemos"))
         compose.onNodeWithText("O que aprendemos").assertIsDisplayed()
         compose.onNodeWithText("R-ACT-01", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `shares a finished story`() {
+        val uri = Uri.parse("content://media/external/video/media/42")
+        var shared: Uri? = null
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    storyExport = StoryExportUiState.Done(uri = uri, savedToGallery = true),
+                ),
+                onBack = {},
+                onShareStory = { shared = it },
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Story do treino"))
+        compose.onNodeWithText("Story do treino").assertIsDisplayed()
+        compose.onNodeWithText("Vídeo salvo na galeria.").assertIsDisplayed()
+        list.performScrollToNode(hasText("Compartilhar"))
+        compose.onNodeWithText("Compartilhar").performClick()
+
+        assertThat(shared).isEqualTo(uri)
     }
 
     @Test

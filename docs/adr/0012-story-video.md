@@ -47,3 +47,12 @@ As respostas do planejamento (questionário realizado em 31/10/2026) foram:
 - O design premium (cores, animação, overlay) deve ser validado com screenshots dark/light (`Roborazzi`) antes de ser considerado aceito.
 - Se a qualidade visual do Canvas + MediaCodec não atender ao objetivo de "postar com vontade", abriremos um ADR futuro (`0013`?) para avaliar uma biblioteca externa com análise de peso/licença.
 - Nenhum dado real de GPS é exposto no repositório (`gitignore` já protege `fixtures/private/`); o vídeo exportado pelo usuário é responsabilidade dele, não do app.
+
+## Nota de implementação — protótipo em 31/10/2026
+
+- `StoryPlanCalculator` (app) projeta a rota, deriva splits por km e monta uma timeline de 30 s com pausas de 2 s por card.
+- `StoryFrameRenderer` desenha 720×1280 com rota, progresso, distância/tempo e card de pace/FC/kcal.
+- `StoryVideoExporter` usa `MediaCodec` com `COLOR_FormatYUV420Flexible` + `MediaMuxer`, sem EGL e sem dependência nova.
+- Android 10+ salva em `Movies/MeuCoach` via MediaStore; versões anteriores compartilham o arquivo de cache via FileProvider.
+- A ação fica no detalhe da atividade, apenas quando há amostras com latitude/longitude.
+- Pendente: validar qualidade/desempenho em aparelho real, preview antes de exportar e, se necessário, 1080×1920.

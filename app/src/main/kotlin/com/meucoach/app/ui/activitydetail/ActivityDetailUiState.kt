@@ -1,8 +1,16 @@
 package com.meucoach.app.ui.activitydetail
 
+import android.net.Uri
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.insights.ActivityInsight
 import com.meucoach.core.domain.zones.HrZoneDistribution
+
+sealed interface StoryExportUiState {
+    data object Idle : StoryExportUiState
+    data class Generating(val progress: Float) : StoryExportUiState
+    data class Done(val uri: Uri, val savedToGallery: Boolean) : StoryExportUiState
+    data class Error(val message: String) : StoryExportUiState
+}
 
 data class ActivityDetailUiState(
     val isLoading: Boolean = true,
@@ -11,4 +19,5 @@ data class ActivityDetailUiState(
     val insights: List<ActivityInsight> = emptyList(),
     val hrZones: HrZoneDistribution? = null,
     val lthr: Int? = null,
+    val storyExport: StoryExportUiState = StoryExportUiState.Idle,
 )

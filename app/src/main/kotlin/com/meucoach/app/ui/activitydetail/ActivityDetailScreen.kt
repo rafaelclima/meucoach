@@ -1,5 +1,8 @@
 package com.meucoach.app.ui.activitydetail
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,12 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.story.toStoryPalette
 import com.meucoach.app.ui.activities.formatDateTime
 import com.meucoach.app.ui.activities.formatDuration
 import com.meucoach.app.ui.activities.paceLabel
@@ -44,11 +49,14 @@ import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McEmptyState
 import com.meucoach.core.designsystem.component.McPill
+import com.meucoach.core.designsystem.component.McPrimaryButton
+import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 @Composable
 fun ActivityDetailScreen(
@@ -57,16 +65,26 @@ fun ActivityDetailScreen(
     viewModel: ActivityDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val palette = McTheme.colors.toStoryPalette()
 
     ActivityDetailContent(
         state = state,
         onBack = onBack,
+        onCreateStory = { viewModel.createStory(palette) },
+        onShareStory = { uri -> shareStory(context, uri) },
         modifier = modifier,
     )
 }
 
 @Composable
-internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> Unit, modifier: Modifier = Modifier) {
+internal fun ActivityDetailContent(
+    state: ActivityDetailUiState,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onCreateStory: () -> Unit = {},
+    onShareStory: (Uri) -> Unit = {},
+) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -113,6 +131,13 @@ internal fun ActivityDetailContent(state: ActivityDetailUiState, onBack: () -> U
                     }
                     if (state.activity.imported.samples.any { it.latitude != null && it.longitude != null }) {
                         item { ActivityRouteCard(samples = state.activity.imported.samples) }
+                        item {
+                            StoryCard(
+                                state = state,
+                                onCreateStory = onCreateStory,
+                                onShareStory = onShareStory,
+                            )
+                        }
                     }
                     if (state.insights.isNotEmpty()) {
                         item { ActivityInsightsCard(insights = state.insights) }
@@ -323,6 +348,76 @@ private fun SplitsCard(activity: StoredActivity) {
 }
 
 @Composable
+private fun StoryCard(state: ActivityDetailUiState, onCreateStory: () -> Unit, onShareStory: (Uri) -> Unit) {
+    val colors = McTheme.colors
+    McCard {
+        Text(
+            text = "Story do treino",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Vídeo de 30 s com a rota animada e um card por km. " +
+                "Gerado no aparelho, sem enviar localização para servidores.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        when (val story = state.storyExport) {
+            StoryExportUiState.Idle -> McPrimaryButton(
+                text = "Criar story",
+                onClick = onCreateStory,
+            )
+
+            is StoryExportUiState.Generating -> Text(
+                text = "Gerando vídeo… ${(story.progress * 100).roundToInt()}%",
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
+
+            is StoryExportUiState.Done -> {
+                Text(
+                    text = if (story.savedToGallery) {
+                        "Vídeo salvo na galeria."
+                    } else {
+                        "Vídeo pronto para compartilhar."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.success,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    McPrimaryButton(
+                        text = "Compartilhar",
+                        onClick = { onShareStory(story.uri) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    McSecondaryButton(
+                        text = "Gerar outro",
+                        onClick = onCreateStory,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            is StoryExportUiState.Error -> {
+                Text(
+                    text = story.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.warning,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                McSecondaryButton(
+                    text = "Tentar novamente",
+                    onClick = onCreateStory,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SampleWarningCard(warning: String) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.INSET) {
@@ -338,4 +433,14 @@ private fun SampleWarningCard(warning: String) {
             color = colors.textSecondary,
         )
     }
+}
+
+private fun shareStory(context: Context, uri: Uri) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "video/mp4"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        clipData = android.content.ClipData.newRawUri("story", uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "Compartilhar story"))
 }

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.story.StoryPalette
+import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -134,7 +136,14 @@ class ActivityDetailViewModelTest {
 
     @Test
     fun `requires an activity id`() {
-        assertThatThrownBy { ActivityDetailViewModel(SavedStateHandle(), repository, profiles) }
+        assertThatThrownBy {
+            ActivityDetailViewModel(
+                SavedStateHandle(),
+                repository,
+                profiles,
+                StoryVideoExporter(ApplicationProvider.getApplicationContext()),
+            )
+        }
             .isInstanceOf(IllegalStateException::class.java)
     }
 
@@ -144,7 +153,25 @@ class ActivityDetailViewModelTest {
         ),
         repository = repository,
         profileRepository = profiles,
+        storyExporter = StoryVideoExporter(ApplicationProvider.getApplicationContext()),
     )
+
+    @Test
+    fun `reports missing gps when creating a story`() {
+        runBlocking {
+            repository.saveImportedActivity(importedActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory(
+                StoryPalette(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            )
+            val state = viewModel.uiState.first { it.storyExport is StoryExportUiState.Error }
+
+            assertThat((state.storyExport as StoryExportUiState.Error).message)
+                .contains("rota GPS")
+        }
+    }
 
     private fun importedActivity() = ImportedActivity(
         source = ActivitySource.FIT,
