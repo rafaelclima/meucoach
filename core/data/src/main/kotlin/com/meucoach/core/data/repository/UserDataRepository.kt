@@ -12,6 +12,7 @@ import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
+import com.meucoach.core.data.health.HealthSyncStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Clock
@@ -35,7 +36,11 @@ data class UserDataDeletion(
  * erase them together. Sample blobs are represented by their count, exactly as
  * in the activity export; the compressed blob never leaves the device.
  */
-class UserDataRepository(private val database: MeuCoachDatabase, private val clock: Clock = Clock.systemUTC()) {
+class UserDataRepository(
+    private val database: MeuCoachDatabase,
+    private val healthSyncStore: HealthSyncStore,
+    private val clock: Clock = Clock.systemUTC(),
+) {
     suspend fun exportJson(): String = database.withTransaction {
         JSONObject()
             .put("schemaVersion", MeuCoachDatabase.VERSION)
@@ -49,22 +54,27 @@ class UserDataRepository(private val database: MeuCoachDatabase, private val clo
             .toString(2)
     }
 
-    suspend fun deleteAllData(): UserDataDeletion = database.withTransaction {
-        val activities = database.activityDao().deleteAll()
-        database.importJobDao().deleteAll()
-        val checkIns = database.dailyCheckInDao().deleteAll()
-        val metrics = database.dailyMetricsDao().deleteAll()
-        // Sessions are deleted explicitly instead of relying on the cascade.
-        database.trainingPlanDao().deleteAllSessions()
-        val plans = database.trainingPlanDao().deleteAllPlans()
-        val profileDeleted = database.profileDao().deleteAll() > 0
-        UserDataDeletion(
-            activities = activities,
-            checkIns = checkIns,
-            metrics = metrics,
-            plans = plans,
-            profileDeleted = profileDeleted,
-        )
+    suspend fun deleteAllData(): UserDataDeletion {
+        val deletion = database.withTransaction {
+            val activities = database.activityDao().deleteAll()
+            database.importJobDao().deleteAll()
+            val checkIns = database.dailyCheckInDao().deleteAll()
+            val metrics = database.dailyMetricsDao().deleteAll()
+            // Sessions are deleted explicitly instead of relying on the cascade.
+            database.trainingPlanDao().deleteAllSessions()
+            val plans = database.trainingPlanDao().deleteAllPlans()
+            val profileDeleted = database.profileDao().deleteAll() > 0
+            UserDataDeletion(
+                activities = activities,
+                checkIns = checkIns,
+                metrics = metrics,
+                plans = plans,
+                profileDeleted = profileDeleted,
+            )
+        }
+        // A fresh profile must read the full initial Health Connect window again.
+        healthSyncStore.reset()
+        return deletion
     }
 
     private suspend fun exportActivities(): JSONArray {

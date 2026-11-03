@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -39,6 +40,7 @@ import java.time.ZoneOffset
 class UserDataRepositoryTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var userData: UserDataRepository
+    private lateinit var healthStore: HealthSyncStore
     private lateinit var activities: ActivityRepository
     private lateinit var profiles: ProfileRepository
     private lateinit var checkIns: CheckInRepository
@@ -55,7 +57,8 @@ class UserDataRepositoryTest {
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        userData = UserDataRepository(database, clock)
+        healthStore = HealthSyncStore(context, prefsName = "health-sync-${System.nanoTime()}")
+        userData = UserDataRepository(database, healthStore, clock)
         activities = ActivityRepository(
             database = database,
             clock = clock,
@@ -118,6 +121,16 @@ class UserDataRepositoryTest {
         assertThat(database.dailyMetricsDao().getAll()).isEmpty()
         assertThat(database.trainingPlanDao().getAllPlans()).isEmpty()
         assertThat(database.trainingPlanDao().getAllSessions()).isEmpty()
+    }
+
+    @Test
+    fun `resets the health connect watermark when deleting everything`(): Unit = runBlocking {
+        healthStore.markSynced(LocalDate.of(2026, 11, 2))
+        seedEverything()
+
+        userData.deleteAllData()
+
+        assertThat(healthStore.lastSyncedDate()).isNull()
     }
 
     @Test

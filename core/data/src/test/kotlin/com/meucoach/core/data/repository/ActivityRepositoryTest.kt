@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ImportJobStatus
 import com.meucoach.core.data.db.testJob
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -55,7 +56,11 @@ class ActivityRepositoryTest {
                 idGenerator = { "activity-${++nextId}" },
                 alternateIdGenerator = { "alternate-${++nextAlternateId}" },
             )
-        userData = UserDataRepository(database, fixedClock)
+        userData = UserDataRepository(
+            database,
+            HealthSyncStore(context, prefsName = "activity-test-${System.nanoTime()}"),
+            fixedClock,
+        )
     }
 
     @After

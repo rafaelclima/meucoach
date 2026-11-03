@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.UserDataRepository
@@ -56,7 +57,11 @@ class DataManagementViewModelTest {
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        userData = UserDataRepository(database, clock)
+        userData = UserDataRepository(
+            database,
+            HealthSyncStore(context, prefsName = "data-management-${System.nanoTime()}"),
+            clock,
+        )
         viewModel = DataManagementViewModel(userData, context)
     }
 

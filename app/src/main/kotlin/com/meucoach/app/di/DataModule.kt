@@ -74,7 +74,8 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideUserDataRepository(database: MeuCoachDatabase): UserDataRepository = UserDataRepository(database)
+    fun provideUserDataRepository(database: MeuCoachDatabase, healthSyncStore: HealthSyncStore): UserDataRepository =
+        UserDataRepository(database, healthSyncStore)
 
     @Provides
     @Singleton

@@ -18,6 +18,11 @@ class HealthSyncStore(context: Context, prefsName: String = PREFS_NAME) {
         prefs.edit().putString(KEY_LAST_SYNC, date.toString()).apply()
     }
 
+    /** Forgets the watermark so the next sync reads the full initial window again. */
+    fun reset() {
+        prefs.edit().remove(KEY_LAST_SYNC).apply()
+    }
+
     companion object {
         const val PREFS_NAME = "meucoach_health_sync"
         private const val KEY_LAST_SYNC = "lastSyncDate"
