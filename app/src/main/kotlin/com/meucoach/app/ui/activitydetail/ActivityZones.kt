@@ -41,7 +41,7 @@ internal fun HrZonesCard(distribution: HrZoneDistribution, lthr: Int) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Tempo por zona · LTHR $lthr bpm",
+            text = "Tempo em cada intensidade · Baseado no seu limiar de esforço (LTHR: $lthr bpm)",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )

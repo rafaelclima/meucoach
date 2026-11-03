@@ -82,15 +82,18 @@ class TrendsScreenTest {
         )
 
         compose.onNodeWithText("Carga de treino").assertIsDisplayed()
-        compose.onNodeWithText("CTL").assertIsDisplayed()
-        compose.onNodeWithText("ACWR").assertIsDisplayed()
 
         val list = compose.onNodeWithTag("trends-list")
-        list.performScrollToNode(hasText("Sem alerta de ACWR"))
-        compose.onNodeWithText("Sem alerta de ACWR").assertIsDisplayed()
+        list.performScrollToNode(hasText("Acumulada", ignoreCase = true))
+        compose.onNodeWithText("Acumulada", ignoreCase = true).assertIsDisplayed()
+        list.performScrollToNode(hasText("ACWR", ignoreCase = true))
+        compose.onNodeWithText("ACWR", ignoreCase = true).assertIsDisplayed()
+
+        list.performScrollToNode(hasText("Sem alerta de carga"))
+        compose.onNodeWithText("Sem alerta de carga").assertIsDisplayed()
 
         list.performScrollToNode(hasText("Como a carga acumulou"))
-        compose.onNodeWithContentDescription("Gráfico de CTL e ATL dos últimos 42 dias")
+        compose.onNodeWithContentDescription("Gráfico de carga acumulada e recente dos últimos 42 dias")
             .assertExists()
     }
 
@@ -143,10 +146,10 @@ class TrendsScreenTest {
         val list = compose.onNodeWithTag("trends-list")
         list.performScrollToNode(hasText("Volume · 2 semanas"))
         compose.onNodeWithText("Volume · 2 semanas").assertIsDisplayed()
-        list.performScrollToNode(hasText("Consistência · 28 dias"))
+        list.performScrollToNode(hasText("Hábito · Dias ativos"))
         list.performScrollToNode(hasText("DIAS ATIVOS"))
         compose.onNodeWithText("DIAS ATIVOS").assertIsDisplayed()
-        list.performScrollToNode(hasText("Pace @ FC"))
+        list.performScrollToNode(hasText("Eficiência · Ritmo vs FC"))
         list.performScrollToNode(hasText("Eficiência"))
         compose.onNodeWithText("Eficiência").assertIsDisplayed()
         list.performScrollToNode(hasText("6:00 /km"))

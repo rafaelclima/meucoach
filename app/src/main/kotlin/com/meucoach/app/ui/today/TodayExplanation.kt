@@ -35,7 +35,7 @@ internal fun buildExplanation(
     val used = buildList {
         if (checkIn != null) add("Check-in de hoje")
         if (inputs.sleep != null) add("Sono recente")
-        if (inputs.hrv != null) add("HRV noturno")
+        if (inputs.hrv != null) add("Variabilidade cardíaca (HRV)")
         if (inputs.restingHeartRate != null) add("FC de repouso")
         if (load?.acwr != null) add("Carga recente (ACWR)")
         if (profile.thresholdPace != null) add("Pace de limiar calibrado")

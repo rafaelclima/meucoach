@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.today
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -232,6 +233,33 @@ class TodayPlanTest {
         val list = compose.onNodeWithTag("today-list")
         list.performScrollToNode(hasText("Feito"))
         compose.onNodeWithText("Feito").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the real load ratio`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState().copy(acwr = 1.42),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Proporção 1,42"))
+        compose.onNodeWithText("Proporção 1,42").assertIsDisplayed()
+    }
+
+    @Test
+    fun `does not invent a load ratio without history`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(onDemoAction = {}, state = demoTodayUiState())
+            }
+        }
+
+        compose.onAllNodesWithText("Proporção", substring = true).assertCountEquals(0)
     }
 
     private fun planWith(date: LocalDate) = WeeklyPlan(

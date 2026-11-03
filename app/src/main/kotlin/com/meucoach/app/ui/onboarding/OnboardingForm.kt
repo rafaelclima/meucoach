@@ -19,6 +19,20 @@ private val RACE_GOAL_TYPES = setOf(
     GoalType.MARATHON,
 )
 
+/**
+ * Aplica máscara de data (dd/MM/aaaa) enquanto o usuário digita.
+ * Remove tudo que não é número e adiciona as barras automaticamente.
+ */
+fun applyDateMask(input: String): String {
+    val digits = input.filter { it.isDigit() }.take(8)
+    return buildString {
+        digits.forEachIndexed { index, char ->
+            append(char)
+            if (index == 1 || index == 3) append('/')
+        }
+    }
+}
+
 enum class OnboardingField {
     BIRTH_DATE,
     HEIGHT,
@@ -158,10 +172,10 @@ object OnboardingValidator {
 
     private fun validateGoal(form: OnboardingForm, today: LocalDate): OnboardingValidation {
         val errors = mutableMapOf<OnboardingField, String>()
-        if (form.goalType in RACE_GOAL_TYPES) {
+        if (form.goalType in RACE_GOAL_TYPES && form.targetDate.isNotBlank()) {
             val date = parseDate(form.targetDate)
             when {
-                date == null -> errors[OnboardingField.TARGET_DATE] = "Escolha a data da prova."
+                date == null -> errors[OnboardingField.TARGET_DATE] = "Use dd/mm/aaaa."
                 !date.isAfter(today) -> errors[OnboardingField.TARGET_DATE] = "A prova precisa estar no futuro."
             }
         } else if (form.targetDate.isNotBlank() && parseDate(form.targetDate) == null) {

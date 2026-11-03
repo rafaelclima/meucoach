@@ -28,17 +28,24 @@ class OnboardingScreenshotTest {
         capture(darkTheme = false, file = "src/test/screenshots/onboarding-light.png")
     }
 
-    private fun capture(darkTheme: Boolean, file: String) {
+    @Test
+    fun onboardingRoutineDark() {
+        capture(darkTheme = true, step = 2, file = "src/test/screenshots/onboarding-routine-dark.png")
+    }
+
+    private fun capture(darkTheme: Boolean, step: Int = 0, file: String) {
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 OnboardingContent(
                     state = OnboardingUiState(
                         isLoading = false,
+                        step = step,
                         form = OnboardingForm(
                             birthDate = "01/01/1988",
                             heightCm = "174",
                             weightKg = "97",
                             timezone = "America/Sao_Paulo",
+                            city = "Natal",
                         ),
                     ),
                     onUpdate = {},

@@ -116,7 +116,8 @@ internal fun TrendsContent(
             state.snapshot == null || !state.snapshot.hasData -> McEmptyState(
                 icon = Icons.AutoMirrored.Outlined.ShowChart,
                 title = "Sem carga para mostrar",
-                description = "Importe corridas com FC ou pace e calibre o limiar para ver CTL, ATL e ACWR.",
+                description = "Importe corridas com FC ou ritmo e calibre seu limite. " +
+                    "Assim você vê carga e recuperação.",
                 modifier = Modifier.align(Alignment.Center),
             )
 
@@ -165,7 +166,8 @@ private fun LoadDetails(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "CTL, ATL e TSB dos últimos 42 dias. Tendência, não prescrição.",
+                    text = "Carga acumulada, carga recente e recuperação dos últimos 42 dias. " +
+                        "Tendência, não prescrição.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
@@ -175,17 +177,20 @@ private fun LoadDetails(
             McCard {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     McStat(
-                        label = "CTL",
+                        label = "Acumulada",
+                        hint = "42 dias",
                         value = formatOneDecimal(snapshot.ctl),
                         modifier = Modifier.weight(1f),
                     )
                     McStat(
-                        label = "ATL",
+                        label = "Recente",
+                        hint = "7 dias",
                         value = formatOneDecimal(snapshot.atl),
                         modifier = Modifier.weight(1f),
                     )
                     McStat(
-                        label = "TSB",
+                        label = "Balanço",
+                        hint = "recuperação",
                         value = formatOneDecimal(snapshot.tsb),
                         modifier = Modifier.weight(1f),
                     )
@@ -193,17 +198,20 @@ private fun LoadDetails(
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     McStat(
-                        label = "Carga 7d",
+                        label = "Carga",
+                        hint = "soma 7 dias",
                         value = formatOneDecimal(snapshot.daily.takeLast(7).sumOf { it.load }),
                         modifier = Modifier.weight(1f),
                     )
                     McStat(
-                        label = "ACWR",
+                        label = "Proporção",
+                        hint = "ACWR",
                         value = snapshot.acwr?.let { formatTwoDecimals(it) } ?: "—",
                         modifier = Modifier.weight(1f),
                     )
                     McStat(
-                        label = "Monotonia",
+                        label = "Variedade",
+                        hint = "monotonia",
                         value = snapshot.monotony?.let { formatTwoDecimals(it) } ?: "—",
                         modifier = Modifier.weight(1f),
                     )
@@ -220,7 +228,7 @@ private fun LoadDetails(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "O ACWR é um sinal de atenção, nunca uma meta. " +
+                    text = "A proporção (ACWR) é um sinal de atenção, nunca uma meta. " +
                         "${snapshot.missingDays} dias sem carga na janela.",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
@@ -235,24 +243,24 @@ private fun LoadDetails(
                 item { McSectionHeader(title = "Conclusão · ${planCompletion.windowWeeks} semanas") }
                 item { PlanCompletionCard(planCompletion) }
             }
-            item { McSectionHeader(title = "Consistência · ${activityTrends.consistency.windowDays} dias") }
+            item { McSectionHeader(title = "Hábito · Dias ativos") }
             item { ConsistencyCard(activityTrends) }
             if (activityTrends.records.hasData) {
-                item { McSectionHeader(title = "Recordes") }
+                item { McSectionHeader(title = "Seus melhores trechos") }
                 item { PersonalRecordsCard(activityTrends.records) }
             }
             if (activityTrends.paceHeartRate.isNotEmpty()) {
-                item { McSectionHeader(title = "Pace @ FC") }
+                item { McSectionHeader(title = "Eficiência · Ritmo vs FC") }
                 item { PaceHeartRateCard(activityTrends.paceHeartRate) }
             }
-            item { McSectionHeader(title = "Distribuição · 80/20") }
+            item { McSectionHeader(title = "Equilíbrio · Fácil vs Forte") }
             item { IntensityCard(distribution = intensity, lthr = lthr) }
         }
         if (readinessHistory.isNotEmpty()) {
             item { McSectionHeader(title = "Prontidão · 14 dias") }
             item { ReadinessHistoryCard(readinessHistory) }
         }
-        item { McSectionHeader(title = "PMC · 42 dias") }
+        item { McSectionHeader(title = "Evolução da carga · 42 dias") }
         item { PmcCard(snapshot) }
     }
 }
@@ -984,21 +992,21 @@ private fun PmcCard(snapshot: LoadSnapshot) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Linhas de CTL e ATL na mesma unidade de carga.",
+            text = "Carga acumulada e carga recente na mesma unidade.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
         Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            LegendDot(color = colors.accent, label = "CTL")
-            LegendDot(color = colors.coral, label = "ATL")
+            LegendDot(color = colors.accent, label = "Acumulada")
+            LegendDot(color = colors.coral, label = "Recente")
         }
         Spacer(modifier = Modifier.height(12.dp))
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(170.dp)
-                .semantics { contentDescription = "Gráfico de CTL e ATL dos últimos 42 dias" },
+                .semantics { contentDescription = "Gráfico de carga acumulada e recente dos últimos 42 dias" },
         ) {
             drawPmcGrid(colors.borderSubtle)
             val max = (snapshot.ctlSeries + snapshot.atlSeries).max().coerceAtLeast(1.0)
@@ -1065,11 +1073,11 @@ private data class AcwrFlag(val title: String, val color: Color)
 private fun acwrFlag(acwr: Double?): AcwrFlag {
     val colors = McTheme.colors
     return when {
-        acwr == null -> AcwrFlag("Sem dados suficientes para ACWR", colors.textTertiary)
+        acwr == null -> AcwrFlag("Sem dados suficientes para a proporção", colors.textTertiary)
         acwr > 1.5 -> AcwrFlag("Sinal alto: não aumente a carga", colors.danger)
-        acwr > 1.3 -> AcwrFlag("Carga aguda acima da faixa; revise a semana", colors.warning)
-        acwr < 0.8 -> AcwrFlag("Carga aguda baixa; retome com cautela", colors.warning)
-        else -> AcwrFlag("Sem alerta de ACWR", colors.success)
+        acwr > 1.3 -> AcwrFlag("Carga recente acima da faixa; revise a semana", colors.warning)
+        acwr < 0.8 -> AcwrFlag("Carga recente baixa; retome com cautela", colors.warning)
+        else -> AcwrFlag("Sem alerta de carga", colors.success)
     }
 }
 

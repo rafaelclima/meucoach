@@ -99,8 +99,8 @@ class OnboardingValidatorTest {
 
     @Test
     fun `requires a future race date and valid target time`() {
-        assertInvalid(1, form().copy(targetDate = ""), OnboardingField.TARGET_DATE)
         assertInvalid(1, form().copy(targetDate = "01/01/2020"), OnboardingField.TARGET_DATE)
+        assertInvalid(1, form().copy(targetDate = "31/02/2027"), OnboardingField.TARGET_DATE)
         assertInvalid(1, form().copy(targetTime = "trinta"), OnboardingField.TARGET_TIME)
         assertInvalid(1, form().copy(targetTime = "10:99"), OnboardingField.TARGET_TIME)
         assertInvalid(1, form().copy(targetTime = "1:75:00"), OnboardingField.TARGET_TIME)
@@ -149,11 +149,24 @@ class OnboardingValidatorTest {
     }
 
     @Test
+    fun `accepts a race goal without a target date`() {
+        // Without a date there is no taper, but the plan still works (conservative default).
+        val profile = OnboardingValidator.toProfile(
+            form().copy(targetDate = ""),
+            id = "athlete-1",
+            today = today,
+        )
+
+        assertThat(profile.goal?.type).isEqualTo(GoalType.FIVE_K)
+        assertThat(profile.goal?.targetDate).isNull()
+    }
+
+    @Test
     fun `aggregates errors from every step`() {
         val validation = OnboardingValidator.validateAll(
             form().copy(
                 birthDate = "data",
-                targetDate = "",
+                targetDate = "32/13/2026",
                 restingHeartRate = "10",
             ),
             today,

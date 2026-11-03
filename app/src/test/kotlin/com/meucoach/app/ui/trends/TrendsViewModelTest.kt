@@ -151,16 +151,19 @@ class TrendsViewModelTest {
     @Test
     fun `summarizes plan completion from stored sessions`(): Unit = runBlocking {
         profiles.saveProfile(profile())
+        // Sessions are keyed by (weekStart, date), so a plan cannot hold two on the same
+        // day. Anchoring on last week keeps the test independent of the current weekday.
         val today = LocalDate.now()
         val monday = today.with(
             java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
         )
+        val weekStart = monday.minusWeeks(1)
         plans.saveWeek(
             WeeklyPlan(
-                weekStart = monday,
+                weekStart = weekStart,
                 sessions = listOf(
-                    session(monday, SessionStatus.DONE),
-                    session(today, SessionStatus.SKIPPED),
+                    session(weekStart, SessionStatus.DONE),
+                    session(weekStart.plusDays(2), SessionStatus.SKIPPED),
                 ),
                 weeklyMinutes = 60,
                 longRunMinutes = null,

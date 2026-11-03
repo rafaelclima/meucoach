@@ -345,6 +345,7 @@ internal fun todayState(
         ctl = load?.ctl?.roundToInt() ?: base.ctl,
         atl = load?.atl?.roundToInt() ?: base.atl,
         tsb = load?.tsb?.roundToInt() ?: base.tsb,
+        acwr = load?.acwr,
         hasCheckedIn = checkIn != null,
         plan = plan,
         days = if (kmByDay.isEmpty() && weeklyLoadKm == null) base.days else days,

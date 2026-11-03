@@ -214,9 +214,9 @@ private fun StepHeader(step: Int, isEditing: Boolean) {
         else -> "Sua rotina"
     }
     val description = when (step) {
-        0 -> "Esses dados ajustam zonas, carga e metas. Nada sai do aparelho."
-        1 -> "Escolha um alvo e os dias que você consegue correr."
-        else -> "Fuso e localização ajudam a interpretar datas e clima."
+        0 -> "Esses dados ajudam a ajustar seu treino. Nada sai do aparelho."
+        1 -> "Escolha um objetivo (ex.: prova) ou apenas foque no hábito. Os dias são opcionais se não for prova."
+        else -> "Seu fuso e cidade ajudam a interpretar datas e clima local."
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
@@ -235,8 +235,12 @@ private fun aboutStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) -> O
     FormTextField(
         label = "Data de nascimento",
         value = form.birthDate,
-        onValueChange = { value -> onUpdate { it.copy(birthDate = value) } },
+        onValueChange = { value ->
+            val masked = applyDateMask(value)
+            onUpdate { it.copy(birthDate = masked) }
+        },
         placeholder = "dd/mm/aaaa",
+        keyboardType = KeyboardType.Number,
         error = state.errors[OnboardingField.BIRTH_DATE],
     )
     ChoiceChips(
@@ -289,10 +293,14 @@ private fun goalStep(
     )
     if (form.isRaceGoal) {
         FormTextField(
-            label = "Data da prova",
+            label = "Data da prova (opcional)",
             value = form.targetDate,
-            onValueChange = { value -> onUpdate { it.copy(targetDate = value) } },
+            onValueChange = { value ->
+                val masked = applyDateMask(value)
+                onUpdate { it.copy(targetDate = masked) }
+            },
             placeholder = "dd/mm/aaaa",
+            keyboardType = KeyboardType.Number,
             error = state.errors[OnboardingField.TARGET_DATE],
         )
         FormTextField(
@@ -354,20 +362,29 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
         style = McTextStyles.caption,
         color = McTheme.colors.textTertiary,
     )
-    FormTextField(
+    ChoiceChips(
         label = "Fuso horário",
-        value = form.timezone,
-        onValueChange = { value -> onUpdate { it.copy(timezone = value) } },
-        placeholder = "America/Sao_Paulo",
-        error = state.errors[OnboardingField.TIMEZONE],
+        options = AVAILABLE_TIMEZONES.map { it.zoneId to it.label },
+        selected = form.timezone,
+        onSelect = { value -> onUpdate { it.copy(timezone = value) } },
     )
-    FormTextField(
+    Text(
+        text = "Define quando o seu dia começa e termina.",
+        style = McTextStyles.caption,
+        color = McTheme.colors.textTertiary,
+    )
+    state.errors[OnboardingField.TIMEZONE]?.let { error ->
+        Text(text = error, style = McTextStyles.caption, color = McTheme.colors.danger)
+    }
+    ChoiceChips(
         label = "Cidade (opcional)",
-        value = form.city,
-        onValueChange = { value -> onUpdate { it.copy(city = value) } },
-        placeholder = "Natal",
-        error = state.errors[OnboardingField.CITY],
+        options = AVAILABLE_CITIES.map { it to it },
+        selected = form.city,
+        onSelect = { value -> onUpdate { it.copy(city = value) } },
     )
+    state.errors[OnboardingField.CITY]?.let { error ->
+        Text(text = error, style = McTextStyles.caption, color = McTheme.colors.danger)
+    }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(

@@ -462,11 +462,13 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
                     )
                 }
             }
-            McPill(
-                text = "ACWR 1,1",
-                containerColor = colors.success.copy(alpha = 0.10f),
-                contentColor = colors.success,
-            )
+            state.acwr?.let { acwr ->
+                McPill(
+                    text = "Proporção ${formatTwoDecimals(acwr)}",
+                    containerColor = acwrColor(acwr).copy(alpha = 0.10f),
+                    contentColor = acwrColor(acwr),
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         WeeklyLoadBars(days = state.days)
@@ -475,23 +477,23 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             McStat(
-                label = "CTL",
+                label = "Acumulada",
                 value = state.ctl.toString(),
-                hint = "fitness",
+                hint = "42 dias",
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
             )
             McStat(
-                label = "ATL",
+                label = "Recente",
                 value = state.atl.toString(),
-                hint = "fadiga",
+                hint = "7 dias",
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
             )
             McStat(
-                label = "TSB",
+                label = "Balanço",
                 value = state.tsb.toString(),
-                hint = "forma",
+                hint = "recuperação",
                 modifier = Modifier.weight(1f),
                 valueColor = colors.warning,
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -1133,6 +1135,19 @@ private fun readinessLabel(level: ReadinessLevel): String = when (level) {
 }
 
 private fun formatDecimal(value: Double): String = String.format(Locale.forLanguageTag("pt-BR"), "%.1f", value)
+
+private fun formatTwoDecimals(value: Double): String = String.format(Locale.forLanguageTag("pt-BR"), "%.2f", value)
+
+/** Same thresholds the trends screen explains; the pill never turns into a goal. */
+@Composable
+private fun acwrColor(acwr: Double): Color {
+    val colors = McTheme.colors
+    return when {
+        acwr > 1.5 -> colors.danger
+        acwr > 1.3 || acwr < 0.8 -> colors.warning
+        else -> colors.success
+    }
+}
 
 @Preview(name = "Hoje — Dark", showBackground = true, widthDp = 393, heightDp = 852)
 @Composable

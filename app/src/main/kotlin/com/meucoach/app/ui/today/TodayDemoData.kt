@@ -55,6 +55,8 @@ data class TodayUiState(
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     val explanation: TodayExplanationUi? = null,
+    /** Null when there is not enough load history; the UI must not invent a ratio. */
+    val acwr: Double? = null,
 )
 
 fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalTime.now()): TodayUiState {

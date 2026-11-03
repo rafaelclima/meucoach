@@ -84,7 +84,8 @@ internal fun ProfileContent(
             state.profile == null -> McEmptyState(
                 icon = Icons.Outlined.Person,
                 title = "Perfil ainda não configurado",
-                description = "Preencha seus dados para o coach ajustar zonas, carga e metas.",
+                description = "Preencha seus dados para que o app ajuste seu treino " +
+                    "(ritmo, carga e metas). Nada sai do aparelho.",
                 actionLabel = "Configurar perfil",
                 onAction = onEdit,
                 modifier = Modifier.align(Alignment.Center),
@@ -153,7 +154,7 @@ private fun ProfileDetails(
                 SummaryRow("Disponibilidade", availabilityLabel(profile))
             }
         }
-        item { McSectionHeader(title = "Calibração") }
+        item { McSectionHeader(title = "Seu limite de esforço") }
         item {
             val hasCalibration =
                 profile.vdot != null ||
@@ -161,12 +162,18 @@ private fun ProfileDetails(
                     profile.thresholdPace != null
             McCard(variant = McCardVariant.INSET) {
                 if (hasCalibration) {
-                    profile.vdot?.let { SummaryRow("VDOT", String.format(Locale.forLanguageTag("pt-BR"), "%.1f", it)) }
-                    profile.lactateThresholdHeartRate?.let { SummaryRow("LTHR", "$it bpm") }
-                    profile.thresholdPace?.let { SummaryRow("Pace de limiar", "${it.format()} /km") }
+                    profile.vdot?.let {
+                        SummaryRow(
+                            "Índice de aptidão (VDOT)",
+                            String.format(Locale.forLanguageTag("pt-BR"), "%.1f", it),
+                        )
+                    }
+                    profile.lactateThresholdHeartRate?.let { SummaryRow("FC no limite (LTHR)", "$it bpm") }
+                    profile.thresholdPace?.let { SummaryRow("Ritmo no limite", "${it.format()} /km") }
                 } else {
                     Text(
-                        text = "Ainda não calibrado. Use uma prova recente ou um TT de 30 min.",
+                        text = "Calibre com uma prova recente ou um treino de 30 min. " +
+                            "Assim o app ajusta zonas e carga.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
