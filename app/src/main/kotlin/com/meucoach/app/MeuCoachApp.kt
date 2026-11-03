@@ -153,6 +153,12 @@ private fun MainApp() {
                 TodayRoute(
                     onDemoAction = showDemoMessage,
                     onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
+                    onTrendsClick = {
+                        navController.navigate(AppDestination.Trends.route) { launchSingleTop = true }
+                    },
+                    onActivityClick = { activityId ->
+                        navController.navigate(activityDetailRoute(activityId))
+                    },
                 )
             }
             composable(CHECK_IN_ROUTE) {

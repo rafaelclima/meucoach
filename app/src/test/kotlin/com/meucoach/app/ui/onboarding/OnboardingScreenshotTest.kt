@@ -41,7 +41,7 @@ class OnboardingScreenshotTest {
                         isLoading = false,
                         step = step,
                         form = OnboardingForm(
-                            birthDate = "01/01/1988",
+                            birthDate = "01011988",
                             heightCm = "174",
                             weightKg = "97",
                             timezone = "America/Sao_Paulo",

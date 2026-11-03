@@ -1,6 +1,9 @@
-package com.meucoach.app.ui.onboarding
+package com.meucoach.app.ui.common
 
-/** A timezone keeps its IANA id as the stored value; the chip shows a place name. */
+import java.text.Normalizer
+import java.util.Locale
+
+/** A timezone keeps its IANA id as the stored value; the picker shows a place name. */
 data class TimezoneOption(val zoneId: String, val label: String)
 
 /**
@@ -49,3 +52,15 @@ val AVAILABLE_CITIES: List<String> = listOf(
     "Florianópolis",
 )
     .sorted()
+
+fun timezoneLabel(zoneId: String): String = AVAILABLE_TIMEZONES.firstOrNull { it.zoneId == zoneId }?.label ?: zoneId
+
+/** Accent-insensitive search so "brasilia" finds "Brasília". */
+fun matchesSearch(text: String, query: String): Boolean = normalize(text).contains(normalize(query))
+
+private fun normalize(value: String): String = Normalizer
+    .normalize(value, Normalizer.Form.NFD)
+    .replace(MARKS, "")
+    .lowercase(Locale.ROOT)
+
+private val MARKS = "\\p{M}+".toRegex()

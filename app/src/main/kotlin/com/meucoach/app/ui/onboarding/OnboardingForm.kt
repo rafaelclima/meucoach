@@ -19,20 +19,6 @@ private val RACE_GOAL_TYPES = setOf(
     GoalType.MARATHON,
 )
 
-/**
- * Aplica máscara de data (dd/MM/aaaa) enquanto o usuário digita.
- * Remove tudo que não é número e adiciona as barras automaticamente.
- */
-fun applyDateMask(input: String): String {
-    val digits = input.filter { it.isDigit() }.take(8)
-    return buildString {
-        digits.forEachIndexed { index, char ->
-            append(char)
-            if (index == 1 || index == 3) append('/')
-        }
-    }
-}
-
 enum class OnboardingField {
     BIRTH_DATE,
     HEIGHT,
@@ -74,6 +60,9 @@ object OnboardingValidator {
     private val DATE = DateTimeFormatter
         .ofPattern("dd/MM/uuuu")
         .withResolverStyle(java.time.format.ResolverStyle.STRICT)
+    private val DIGITS_DATE = DateTimeFormatter
+        .ofPattern("ddMMuuuu")
+        .withResolverStyle(java.time.format.ResolverStyle.STRICT)
 
     fun validateStep(step: Int, form: OnboardingForm, today: LocalDate = LocalDate.now()): OnboardingValidation =
         when (step) {
@@ -99,7 +88,7 @@ object OnboardingValidator {
         require(validation.isValid) { "Profile form has invalid fields: ${validation.errors.keys}" }
         return AthleteProfile(
             id = id,
-            birthDate = LocalDate.parse(form.birthDate.trim(), DATE),
+            birthDate = requireNotNull(parseDate(form.birthDate)) { "Birth date must be valid" },
             sex = form.sex,
             heightCm = form.heightCm.toDoubleOrNull(),
             weightKg = form.weightKg.toDoubleOrNull(),
@@ -125,13 +114,13 @@ object OnboardingValidator {
     fun fromProfile(profile: AthleteProfile?): OnboardingForm {
         if (profile == null) return OnboardingForm()
         return OnboardingForm(
-            birthDate = profile.birthDate.format(DATE),
+            birthDate = profile.birthDate.format(DIGITS_DATE),
             sex = profile.sex,
             heightCm = profile.heightCm?.let { formatDecimal(it) } ?: "",
             weightKg = profile.weightKg?.let { formatDecimal(it) } ?: "",
             experience = profile.experience,
             goalType = profile.goal?.type ?: GoalType.GENERAL_FITNESS,
-            targetDate = profile.goal?.targetDate?.format(DATE) ?: "",
+            targetDate = profile.goal?.targetDate?.format(DIGITS_DATE) ?: "",
             targetTime = profile.goal?.targetTimeSec?.let { formatDuration(it) } ?: "",
             availabilityMinutes = profile.weeklyAvailability.minutesByDay.mapValues { it.value.toString() },
             restingHeartRate = profile.restingHeartRate?.toString() ?: "",
@@ -238,7 +227,15 @@ object OnboardingValidator {
         GoalType.GENERAL_FITNESS, GoalType.CUSTOM -> null
     }
 
-    private fun parseDate(text: String): LocalDate? = runCatching { LocalDate.parse(text.trim(), DATE) }.getOrNull()
+    private fun parseDate(text: String): LocalDate? {
+        val trimmed = text.trim()
+        val digits = trimmed.filter { it.isDigit() }
+        return if (digits.length == DateMask.MAX_DIGITS && trimmed.all { it.isDigit() || it == '/' }) {
+            runCatching { LocalDate.parse(digits, DIGITS_DATE) }.getOrNull()
+        } else {
+            runCatching { LocalDate.parse(trimmed, DATE) }.getOrNull()
+        }
+    }
 
     private fun parseDuration(text: String): Int? {
         val parts = text.trim().split(":")

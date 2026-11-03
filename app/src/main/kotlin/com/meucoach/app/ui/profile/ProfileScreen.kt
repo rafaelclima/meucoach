@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.common.timezoneLabel
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McEmptyState
@@ -169,11 +170,11 @@ private fun ProfileDetails(
                 if (hasCalibration) {
                     profile.vdot?.let {
                         SummaryRow(
-                            "Índice de aptidão (VDOT)",
+                            "Índice de aptidão",
                             String.format(Locale.forLanguageTag("pt-BR"), "%.1f", it),
                         )
                     }
-                    profile.lactateThresholdHeartRate?.let { SummaryRow("FC no limite (LTHR)", "$it bpm") }
+                    profile.lactateThresholdHeartRate?.let { SummaryRow("FC no limite", "$it bpm") }
                     profile.thresholdPace?.let { SummaryRow("Ritmo no limite", "${it.format()} /km") }
                 } else {
                     Text(
@@ -198,7 +199,7 @@ private fun ProfileDetails(
             McCard(variant = McCardVariant.INSET) {
                 profile.restingHeartRate?.let { SummaryRow("FC de repouso", "$it bpm") }
                 profile.maxHeartRateObserved?.let { SummaryRow("FC máxima vista", "$it bpm") }
-                SummaryRow("Fuso horário", profile.timezone)
+                SummaryRow("Fuso horário", timezoneLabel(profile.timezone))
                 profile.city?.let { SummaryRow("Cidade", it) }
             }
         }
@@ -206,7 +207,7 @@ private fun ProfileDetails(
         item {
             McCard(variant = McCardVariant.INSET) {
                 Text(
-                    text = "Sono, FC de repouso, HRV e SpO2",
+                    text = "Sono, FC de repouso, variabilidade cardíaca e oxigenação",
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.textPrimary,
                 )

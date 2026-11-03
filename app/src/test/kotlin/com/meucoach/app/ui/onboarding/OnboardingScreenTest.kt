@@ -1,12 +1,18 @@
 package com.meucoach.app.ui.onboarding
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.GoalType
 import org.assertj.core.api.Assertions.assertThat
@@ -84,6 +90,55 @@ class OnboardingScreenTest {
         compose.onNodeWithText("Vamos nos conhecer").assertDoesNotExist()
     }
 
+    @Test
+    fun `formats the birth date while typing`() {
+        var state by mutableStateOf(step(0))
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                OnboardingContent(
+                    state = state,
+                    onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                    onNext = {},
+                    onBack = {},
+                    onSave = {},
+                    onToggleDay = {},
+                    onDayMinutes = { _, _ -> },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("birth-date-field").performTextInput("01111988")
+
+        compose.onNodeWithTag("birth-date-field").assertTextContains("01/11/1988")
+        assertThat(state.form.birthDate).isEqualTo("01111988")
+    }
+
+    @Test
+    fun `picks a timezone from a searchable list`() {
+        var state by mutableStateOf(step(2))
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                OnboardingContent(
+                    state = state,
+                    onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                    onNext = {},
+                    onBack = {},
+                    onSave = {},
+                    onToggleDay = {},
+                    onDayMinutes = { _, _ -> },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("onboarding-list").performScrollToNode(hasTestTag("timezone-field"))
+        compose.onNodeWithTag("timezone-field").performClick()
+        compose.onNodeWithTag("selection-search").performTextInput("noronha")
+        compose.onNodeWithText("Fernando de Noronha").assertIsDisplayed()
+        compose.onNodeWithText("Fernando de Noronha").performClick()
+
+        assertThat(state.form.timezone).isEqualTo("America/Noronha")
+    }
+
     private fun setContent(
         state: OnboardingUiState,
         onNext: () -> Unit = {},
@@ -114,9 +169,9 @@ class OnboardingScreenTest {
     )
 
     private fun form(goalType: GoalType = GoalType.FIVE_K) = OnboardingForm(
-        birthDate = "01/01/1988",
+        birthDate = "01011988",
         goalType = goalType,
-        targetDate = "14/03/2027",
+        targetDate = "14032027",
         timezone = "America/Sao_Paulo",
     )
 

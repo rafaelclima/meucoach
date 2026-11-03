@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.onboarding
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,33 +13,54 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.common.AVAILABLE_CITIES
+import com.meucoach.app.ui.common.AVAILABLE_TIMEZONES
+import com.meucoach.app.ui.common.matchesSearch
+import com.meucoach.app.ui.common.timezoneLabel
 import com.meucoach.app.ui.profile.availabilityDayLabel
 import com.meucoach.app.ui.profile.experienceLabel
 import com.meucoach.app.ui.profile.goalLabel
@@ -236,12 +258,13 @@ private fun aboutStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) -> O
         label = "Data de nascimento",
         value = form.birthDate,
         onValueChange = { value ->
-            val masked = applyDateMask(value)
-            onUpdate { it.copy(birthDate = masked) }
+            onUpdate { it.copy(birthDate = DateMask.digits(value)) }
         },
         placeholder = "dd/mm/aaaa",
         keyboardType = KeyboardType.Number,
         error = state.errors[OnboardingField.BIRTH_DATE],
+        visualTransformation = DateVisualTransformation,
+        modifier = Modifier.testTag("birth-date-field"),
     )
     ChoiceChips(
         label = "Sexo",
@@ -296,12 +319,13 @@ private fun goalStep(
             label = "Data da prova (opcional)",
             value = form.targetDate,
             onValueChange = { value ->
-                val masked = applyDateMask(value)
-                onUpdate { it.copy(targetDate = masked) }
+                onUpdate { it.copy(targetDate = DateMask.digits(value)) }
             },
             placeholder = "dd/mm/aaaa",
             keyboardType = KeyboardType.Number,
             error = state.errors[OnboardingField.TARGET_DATE],
+            visualTransformation = DateVisualTransformation,
+            modifier = Modifier.testTag("target-date-field"),
         )
         FormTextField(
             label = "Tempo alvo (opcional)",
@@ -362,28 +386,44 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
         style = McTextStyles.caption,
         color = McTheme.colors.textTertiary,
     )
-    ChoiceChips(
+    var timezoneOpen by rememberSaveable { mutableStateOf(false) }
+    var cityOpen by rememberSaveable { mutableStateOf(false) }
+    SelectField(
         label = "Fuso horário",
-        options = AVAILABLE_TIMEZONES.map { it.zoneId to it.label },
-        selected = form.timezone,
-        onSelect = { value -> onUpdate { it.copy(timezone = value) } },
+        value = timezoneLabel(form.timezone),
+        hint = "Define quando o seu dia começa e termina.",
+        error = state.errors[OnboardingField.TIMEZONE],
+        onClick = { timezoneOpen = true },
+        modifier = Modifier.testTag("timezone-field"),
     )
-    Text(
-        text = "Define quando o seu dia começa e termina.",
-        style = McTextStyles.caption,
-        color = McTheme.colors.textTertiary,
-    )
-    state.errors[OnboardingField.TIMEZONE]?.let { error ->
-        Text(text = error, style = McTextStyles.caption, color = McTheme.colors.danger)
-    }
-    ChoiceChips(
+    SelectField(
         label = "Cidade (opcional)",
-        options = AVAILABLE_CITIES.map { it to it },
-        selected = form.city,
-        onSelect = { value -> onUpdate { it.copy(city = value) } },
+        value = form.city.ifBlank { "Não informar" },
+        hint = "Usada para clima local; pode ficar em branco.",
+        error = state.errors[OnboardingField.CITY],
+        onClick = { cityOpen = true },
+        modifier = Modifier.testTag("city-field"),
     )
-    state.errors[OnboardingField.CITY]?.let { error ->
-        Text(text = error, style = McTextStyles.caption, color = McTheme.colors.danger)
+    if (timezoneOpen) {
+        SelectionSheet(
+            title = "Fuso horário",
+            options = AVAILABLE_TIMEZONES.map { it.zoneId to it.label },
+            selected = form.timezone,
+            onSelect = { value ->
+                if (value != null) onUpdate { it.copy(timezone = value) }
+            },
+            onDismiss = { timezoneOpen = false },
+        )
+    }
+    if (cityOpen) {
+        SelectionSheet(
+            title = "Cidade",
+            options = AVAILABLE_CITIES.map { it to it },
+            selected = form.city.ifBlank { null },
+            onSelect = { value -> onUpdate { it.copy(city = value.orEmpty()) } },
+            onDismiss = { cityOpen = false },
+            clearLabel = "Não informar",
+        )
     }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
@@ -393,7 +433,7 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
                 color = McTheme.colors.textPrimary,
             )
             Text(
-                text = "Vale como opção de qualidade no calor.",
+                text = "Vale como alternativa de treino forte no calor.",
                 style = McTextStyles.caption,
                 color = McTheme.colors.textTertiary,
             )
@@ -417,6 +457,182 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
 }
 
 @Composable
+private fun SelectField(
+    label: String,
+    value: String,
+    hint: String?,
+    error: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = McTheme.colors
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = colors.surface,
+            border = BorderStroke(1.dp, if (error != null) colors.danger else colors.borderStrong),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ExpandMore,
+                    contentDescription = null,
+                    tint = colors.textSecondary,
+                )
+            }
+        }
+        when {
+            error != null -> Text(text = error, style = McTextStyles.caption, color = colors.danger)
+            hint != null -> Text(text = hint, style = McTextStyles.caption, color = colors.textTertiary)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> SelectionSheet(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T?,
+    onSelect: (T?) -> Unit,
+    onDismiss: () -> Unit,
+    clearLabel: String? = null,
+) {
+    val colors = McTheme.colors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var query by rememberSaveable { mutableStateOf("") }
+    val filtered = remember(options, query) { options.filter { matchesSearch(it.second, query) } }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colors.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.textPrimary,
+            )
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("selection-search"),
+                placeholder = { Text(text = "Buscar") },
+                leadingIcon = {
+                    Icon(imageVector = Icons.Outlined.Search, contentDescription = null)
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.accent,
+                    unfocusedBorderColor = colors.borderStrong,
+                    focusedLabelColor = colors.accentText,
+                    unfocusedLabelColor = colors.textTertiary,
+                    cursorColor = colors.accent,
+                    focusedTextColor = colors.textPrimary,
+                    unfocusedTextColor = colors.textPrimary,
+                ),
+            )
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                if (clearLabel != null) {
+                    item {
+                        SelectionRow(
+                            label = clearLabel,
+                            selected = selected == null,
+                            onClick = {
+                                onSelect(null)
+                                onDismiss()
+                            },
+                        )
+                    }
+                }
+                items(filtered) { (value, label) ->
+                    SelectionRow(
+                        label = label,
+                        selected = value == selected,
+                        onClick = {
+                            onSelect(value)
+                            onDismiss()
+                        },
+                    )
+                }
+                if (filtered.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Nenhuma opção encontrada.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textTertiary,
+                            modifier = Modifier.padding(vertical = 16.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = McTheme.colors
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = if (selected) colors.accentSoft else Color.Transparent,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .padding(horizontal = 12.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (selected) colors.accentText else colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = colors.accentText,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FormTextField(
     label: String,
     value: String,
@@ -426,6 +642,7 @@ private fun FormTextField(
     suffix: String? = null,
     keyboardType: KeyboardType = KeyboardType.Ascii,
     error: String? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     val colors = McTheme.colors
     OutlinedTextField(
@@ -451,6 +668,7 @@ private fun FormTextField(
             null
         },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = visualTransformation,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = colors.accent,

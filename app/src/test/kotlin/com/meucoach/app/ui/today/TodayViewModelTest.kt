@@ -59,7 +59,7 @@ class TodayViewModelTest {
 
         assertThat(state.readinessConfidence).isEqualTo(DataConfidence.HIGH)
         assertThat(state.readinessSignals.map { it.label })
-            .contains("Sono", "HRV", "FC repouso")
+            .contains("Sono", "Variabilidade cardíaca", "FC de repouso")
         assertThat(state.readinessSignals.first { it.label == "Sono" }.value).isEqualTo("7h30")
     }
 
@@ -84,7 +84,7 @@ class TodayViewModelTest {
             today = today,
         )
 
-        assertThat(state.workout.title).isEqualTo("Fácil em Z2")
+        assertThat(state.workout.title).isEqualTo("Fácil e conversável")
         assertThat(state.workout.duration).isEqualTo("45")
         assertThat(state.workout.pace).isEqualTo("7:30–8:24")
         assertThat(state.workout.heartRate).isEqualTo("146–161")
@@ -116,8 +116,8 @@ class TodayViewModelTest {
         assertThat(explanation.evidence.map { it.id })
             .contains("EV-SEILER-2010", "EV-DANIELS-2014")
         assertThat(explanation.usedData)
-            .contains("Check-in de hoje", "Pace de limiar calibrado", "LTHR calibrado")
-        assertThat(explanation.missingData).contains("Sono", "HRV", "FC de repouso")
+            .contains("Check-in de hoje", "Ritmo no limite calibrado", "FC no limite calibrada")
+        assertThat(explanation.missingData).contains("Sono", "Variabilidade cardíaca", "FC de repouso")
     }
 
     @Test
@@ -133,8 +133,16 @@ class TodayViewModelTest {
     }
 
     @Test
+    fun `does not invent a recent activity without runs`() {
+        val state = todayState(checkIn(), profile = profile(), today = today)
+
+        assertThat(state.recentActivity).isNull()
+    }
+
+    @Test
     fun `carries real activity stats into the state`() {
         val recent = RecentActivityUi(
+            id = "activity-1",
             title = "Corrida",
             subtitle = "sexta, 30 out",
             distance = "5,00 km",
@@ -154,7 +162,7 @@ class TodayViewModelTest {
 
         assertThat(state.weeklyLoadKm).isEqualTo(5.0)
         assertThat(state.days.first { it.isToday }.loadKm).isEqualTo(5.0)
-        assertThat(state.recentActivity.title).isEqualTo("Corrida")
+        assertThat(state.recentActivity?.title).isEqualTo("Corrida")
         assertThat(state.athleteName).isEmpty()
     }
 

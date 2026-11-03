@@ -41,7 +41,7 @@ class TodayPlanTest {
                 PlannedSession(
                     date = monday,
                     type = WorkoutType.EASY,
-                    title = "Fácil em Z2",
+                    title = "Fácil e conversável",
                     durationMin = 40,
                     rationale = "Base.",
                     ruleIds = listOf("R-ZONE-01"),
@@ -78,8 +78,8 @@ class TodayPlanTest {
         val list = compose.onNodeWithTag("today-list")
         list.performScrollToNode(hasText("PLANO DA SEMANA"))
         compose.onNodeWithText("PLANO DA SEMANA").assertIsDisplayed()
-        list.performScrollToNode(hasText("Fácil em Z2"))
-        compose.onNodeWithText("Fácil em Z2").assertIsDisplayed()
+        list.performScrollToNode(hasText("Fácil e conversável"))
+        compose.onNodeWithText("Fácil e conversável").assertIsDisplayed()
         list.performScrollToNode(hasText("Longão"))
         compose.onAllNodesWithText("Longão")[0].assertIsDisplayed()
         list.performScrollToNode(hasText("Sem progressão até existir histórico."))
@@ -111,11 +111,11 @@ class TodayPlanTest {
     fun `opens the workout explanation`() {
         val today = LocalDate.of(2026, 11, 2)
         val explanation = TodayExplanationUi(
-            rationale = "Base aeróbica em Z2, conversável do início ao fim.",
+            rationale = "Base aeróbica em ritmo fácil, conversável do início ao fim.",
             confidence = DataConfidence.MEDIUM,
-            usedData = listOf("Check-in de hoje", "Pace de limiar calibrado"),
-            missingData = listOf("Sono", "HRV"),
-            rules = listOf(ExplanationRuleUi("R-ZONE-01", "Zonas por limiar")),
+            usedData = listOf("Check-in de hoje", "Ritmo no limite calibrado"),
+            missingData = listOf("Sono", "Variabilidade cardíaca"),
+            rules = listOf(ExplanationRuleUi("R-ZONE-01", "Zonas pelo limite de esforço")),
             evidence = listOf(
                 ExplanationEvidenceUi(
                     id = "EV-SEILER-2010",
@@ -139,12 +139,17 @@ class TodayPlanTest {
         compose.onNodeWithText("Ver explicação").performClick()
 
         compose.onNodeWithText("Por que este treino?").assertIsDisplayed()
-        compose.onNodeWithText("DADOS USADOS").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("REGRAS").performScrollTo()
+        compose.onNodeWithText("O QUE USEI").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("COMO DECIDI").performScrollTo()
         compose
-            .onNodeWithText("R-ZONE-01 · Zonas por limiar", substring = true)
+            .onNodeWithText("Zonas pelo limite de esforço", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
+        compose.onNodeWithText("R-ZONE-01", substring = true).assertDoesNotExist()
+
+        compose.onNodeWithText("Ver fontes e detalhes técnicos").performScrollTo().performClick()
+        compose.onNodeWithText("Seiler, IJSPP 2010", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("R-ZONE-01", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -247,8 +252,8 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Proporção 1,42"))
-        compose.onNodeWithText("Proporção 1,42").assertIsDisplayed()
+        list.performScrollToNode(hasText("Aumento 1,42× vs. mês"))
+        compose.onNodeWithText("Aumento 1,42× vs. mês").assertIsDisplayed()
     }
 
     @Test
@@ -276,7 +281,32 @@ class TodayPlanTest {
             }
         }
 
-        compose.onAllNodesWithText("Proporção", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Aumento", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `navigates to trends and to the recent activity`() {
+        var trends = false
+        var openedActivity: String? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(),
+                    onTrendsClick = { trends = true },
+                    onActivityClick = { openedActivity = it },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver tendências"))
+        compose.onNodeWithText("Ver tendências").performClick()
+        assertThat(trends).isTrue()
+
+        list.performScrollToNode(hasText("ÚLTIMA CORRIDA"))
+        compose.onNodeWithText("Corrida de rua").performClick()
+        assertThat(openedActivity).isEqualTo("demo-activity")
     }
 
     private fun planWith(date: LocalDate) = WeeklyPlan(
@@ -285,7 +315,7 @@ class TodayPlanTest {
             PlannedSession(
                 date = date,
                 type = WorkoutType.EASY,
-                title = "Fácil em Z2",
+                title = "Fácil e conversável",
                 durationMin = 40,
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),

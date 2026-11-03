@@ -47,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.component.McCard
@@ -81,6 +80,8 @@ fun TodayScreen(
     state: TodayUiState = demoTodayUiState(),
     today: LocalDate = LocalDate.now(),
     onCheckInClick: () -> Unit = {},
+    onTrendsClick: () -> Unit = {},
+    onActivityClick: (String) -> Unit = {},
     onCompleteSession: (LocalDate) -> Unit = {},
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
@@ -92,7 +93,7 @@ fun TodayScreen(
         if (state.explanation != null) {
             explanationOpen = true
         } else {
-            onDemoAction("Explicação disponível quando houver dados reais.")
+            onDemoAction("Configure seu perfil para ver a explicação.")
         }
     }
     LazyColumn(
@@ -125,19 +126,17 @@ fun TodayScreen(
             }
         }
         item {
-            WeeklyLoadCard(
-                state = state,
-                onTrendsClick = { onDemoAction("Tendências chegam na Fase 1.") },
-            )
+            WeeklyLoadCard(state = state, onTrendsClick = onTrendsClick)
         }
         item { CheckInCard(done = state.hasCheckedIn, onCheckInClick = onCheckInClick) }
-        item {
-            RecentActivityCard(
-                activity = state.recentActivity,
-                onClick = { onDemoAction("Detalhe da atividade chega na Fase 0.") },
-            )
+        state.recentActivity?.let { activity ->
+            item {
+                RecentActivityCard(
+                    activity = activity,
+                    onClick = { onActivityClick(activity.id) },
+                )
+            }
         }
-        item { DemoFooter() }
     }
 
     if (swapOpen) {
@@ -361,7 +360,7 @@ private fun NextWorkoutCard(
         Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             WorkoutMetric(
-                label = "PACE",
+                label = "RITMO",
                 value = workout.pace,
                 unit = "/km",
                 modifier = Modifier.weight(1f),
@@ -491,7 +490,7 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
                 }
                 state.acwr?.let { acwr ->
                     McPill(
-                        text = "Proporção ${formatTwoDecimals(acwr)}",
+                        text = "Aumento ${formatTwoDecimals(acwr)}× vs. mês",
                         containerColor = acwrColor(acwr).copy(alpha = 0.10f),
                         contentColor = acwrColor(acwr),
                     )
@@ -781,6 +780,7 @@ private fun PlanWeekCard(
 private fun ExplanationSheet(explanation: TodayExplanationUi, onDismiss: () -> Unit) {
     val colors = McTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showTechnicalDetails by remember { mutableStateOf(false) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -810,33 +810,58 @@ private fun ExplanationSheet(explanation: TodayExplanationUi, onDismiss: () -> U
             )
             Spacer(modifier = Modifier.height(18.dp))
             ExplanationList(
-                title = "Dados usados",
+                title = "O que usei",
                 items = explanation.usedData,
                 emptyText = "Nenhum dado de prontidão disponível.",
             )
             ExplanationList(
-                title = "Dados ausentes",
+                title = "O que faltou",
                 items = explanation.missingData,
                 emptyText = "Nenhum dado essencial ausente.",
             )
             ExplanationList(
-                title = "Regras",
-                items = explanation.rules.map { "${it.id} · ${it.title}" },
-                emptyText = "Nenhuma regra catalogada.",
+                title = "Como decidi",
+                items = explanation.rules.map { it.title },
+                emptyText = "Nenhuma regra específica para hoje.",
             )
-            ExplanationList(
-                title = "Evidências",
-                items = explanation.evidence.map { item ->
-                    if (item.source.isBlank()) {
-                        "${item.id} · ${item.title}"
-                    } else {
-                        "${item.id} · ${item.title} — ${item.source}"
-                    }
+            McTextButton(
+                text = if (showTechnicalDetails) {
+                    "Ocultar fontes e detalhes técnicos"
+                } else {
+                    "Ver fontes e detalhes técnicos"
                 },
-                emptyText = "Nenhuma evidência catalogada.",
+                onClick = { showTechnicalDetails = !showTechnicalDetails },
+                trailingArrow = false,
+                modifier = Modifier.testTag("explanation-technical-toggle"),
             )
+            if (showTechnicalDetails) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ExplanationList(
+                    title = "Fontes",
+                    items = explanation.evidence.map { item ->
+                        if (item.source.isBlank()) item.title else "${item.title} — ${item.source}"
+                    },
+                    emptyText = "Nenhuma fonte catalogada.",
+                )
+                val technicalIds = buildList {
+                    if (explanation.rules.isNotEmpty()) {
+                        add("regras: ${explanation.rules.joinToString { it.id }}")
+                    }
+                    if (explanation.evidence.isNotEmpty()) {
+                        add("evidências: ${explanation.evidence.joinToString { it.id }}")
+                    }
+                }.joinToString(" · ")
+                if (technicalIds.isNotEmpty()) {
+                    Text(
+                        text = "Para auditoria — $technicalIds.",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
             Text(
-                text = "Motor determinístico, sem LLM. Dados ficam no aparelho.",
+                text = "O app decide por regras fixas, não por IA. Seus dados ficam neste aparelho.",
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
             )
@@ -1075,7 +1100,7 @@ private fun planTypeLabel(type: com.meucoach.core.domain.prescription.WorkoutTyp
     com.meucoach.core.domain.prescription.WorkoutType.REST -> "Descanso"
     com.meucoach.core.domain.prescription.WorkoutType.EASY -> "Fácil"
     com.meucoach.core.domain.prescription.WorkoutType.LONG -> "Longão"
-    com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Qualidade"
+    com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Forte"
 }
 
 @Composable
@@ -1145,19 +1170,6 @@ private fun RecentActivityCard(activity: RecentActivityUi, onClick: () -> Unit) 
             )
         }
     }
-}
-
-@Composable
-private fun DemoFooter() {
-    Text(
-        text = "Fase 0 · dados de demonstração",
-        style = McTextStyles.caption,
-        color = McTheme.colors.textTertiary,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 8.dp),
-    )
 }
 
 private fun readinessLabel(level: ReadinessLevel): String = when (level) {

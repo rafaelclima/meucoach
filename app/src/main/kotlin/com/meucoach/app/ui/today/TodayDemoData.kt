@@ -28,6 +28,7 @@ data class WorkoutUi(
 data class DayLoadUi(val label: String, val loadKm: Double, val isToday: Boolean)
 
 data class RecentActivityUi(
+    val id: String,
     val title: String,
     val subtitle: String,
     val distance: String,
@@ -53,7 +54,8 @@ data class TodayUiState(
     val ctl: Int? = null,
     val atl: Int? = null,
     val tsb: Int? = null,
-    val recentActivity: RecentActivityUi,
+    /** Null until at least one activity exists; the UI hides the card instead of inventing a run. */
+    val recentActivity: RecentActivityUi? = null,
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     val explanation: TodayExplanationUi? = null,
@@ -87,27 +89,27 @@ fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalT
                 tone = SignalTone.WARNING,
             ),
             ReadinessSignalUi(
-                label = "HRV",
-                value = "−0,4 SWC",
-                hint = "dentro da variação",
+                label = "Variabilidade cardíaca",
+                value = "na média",
+                hint = "comparada à sua média",
                 tone = SignalTone.NEUTRAL,
             ),
             ReadinessSignalUi(
                 label = "Carga",
                 value = "1,1",
-                hint = "ACWR · zona segura",
+                hint = "aumento seguro",
                 tone = SignalTone.POSITIVE,
             ),
         ),
         workout =
         WorkoutUi(
             title = "Fácil, sem pressa",
-            zone = "Z2",
+            zone = "Z2 · leve",
             duration = "40",
             distance = "6,0",
             pace = "7:40–8:20",
             heartRate = "146–161",
-            rationale = "Base aeróbica em Z2. O volume semanal sobe 6%, sem adicionar qualidade.",
+            rationale = "Base aeróbica em ritmo fácil. O volume semanal sobe 6%, sem treino forte.",
         ),
         weeklyLoadKm = loads.sum(),
         days = days,
@@ -116,12 +118,13 @@ fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalT
         tsb = -7,
         recentActivity =
         RecentActivityUi(
+            id = "demo-activity",
             title = "Corrida de rua",
             subtitle = "5k do parque · 24 out",
             distance = "5,11 km",
             duration = "30:59",
             pace = "6:04 /km",
-            zone = "Z5",
+            zone = "Z5 · máximo",
         ),
         hasCheckedIn = true,
     )

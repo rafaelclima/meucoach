@@ -16,7 +16,7 @@ class TodayDemoDataTest {
         assertThat(state.days[1].isToday).isTrue()
         assertThat(state.weeklyLoadKm).isEqualTo(17.9)
         assertThat(state.readinessLevel).isEqualTo(ReadinessLevel.GREEN)
-        assertThat(state.workout.zone).isEqualTo("Z2")
+        assertThat(state.workout.zone).isEqualTo("Z2 · leve")
     }
 
     @Test

@@ -112,7 +112,7 @@ class TodayViewModelPersistTest {
         }
 
         assertThat(state.plan?.qualityCount).isEqualTo(2)
-        assertThat(state.plan?.rationale).contains("dose de qualidade")
+        assertThat(state.plan?.rationale).contains("concluiu pelo menos 80%")
     }
 
     @Test
@@ -131,12 +131,12 @@ class TodayViewModelPersistTest {
 
         val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
         val state = withTimeout(5_000) {
-            viewModel.uiState.first { it.plan?.rationale?.contains("Deload") == true }
+            viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
 
         assertThat(state.plan?.ruleIds).contains("R-PLAN-04")
         assertThat(state.plan?.evidenceIds).contains("EV-ISSURIN-2010")
-        assertThat(state.plan?.rationale).contains("semana 4 do bloco")
+        assertThat(state.plan?.rationale).contains("4 de 4 no bloco")
     }
 
     @Test

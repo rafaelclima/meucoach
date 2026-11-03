@@ -166,6 +166,7 @@ class TodayViewModel @Inject constructor(
             .mapValues { (_, rows) -> rows.sumOf { it.distance.kilometers } }
         val recent = activities.maxByOrNull { it.startTime }?.let { summary ->
             RecentActivityUi(
+                id = summary.id,
                 title = sportLabel(summary.sport),
                 subtitle = formatDateTime(summary.startTime, zone),
                 distance = "${formatDistance(summary.distance)} km",
@@ -257,6 +258,8 @@ internal fun readinessResult(
 fun TodayRoute(
     onDemoAction: (String) -> Unit,
     onCheckInClick: () -> Unit,
+    onTrendsClick: () -> Unit,
+    onActivityClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
@@ -266,6 +269,8 @@ fun TodayRoute(
         modifier = modifier,
         state = state,
         onCheckInClick = onCheckInClick,
+        onTrendsClick = onTrendsClick,
+        onActivityClick = onActivityClick,
         onCompleteSession = viewModel::completeSession,
         onSkipSession = viewModel::skipSession,
         onSwapSession = viewModel::swapSession,
@@ -352,7 +357,7 @@ internal fun todayState(
         plan = plan,
         days = days,
         weeklyLoadKm = weeklyLoadKm,
-        recentActivity = recentActivity ?: base.recentActivity,
+        recentActivity = recentActivity,
         athleteName = if (profile == null) base.athleteName else "",
         weather = profile?.city ?: "",
     )
@@ -360,7 +365,7 @@ internal fun todayState(
 
 private fun com.meucoach.core.domain.prescription.WorkoutRecommendation.toWorkoutUi() = WorkoutUi(
     title = title,
-    zone = if (type == com.meucoach.core.domain.prescription.WorkoutType.EASY) "Z2" else "—",
+    zone = if (type == com.meucoach.core.domain.prescription.WorkoutType.EASY) "Z2 · leve" else "—",
     duration = durationMin?.toString() ?: "—",
     distance = distanceKm?.let { String.format(PT_BR, "%.1f", it) } ?: "—",
     pace = pace?.let { "${it.fast.format()}–${it.slow.format()}" } ?: "—",
@@ -390,9 +395,13 @@ private fun buildSignals(
         val z = ln(hrv.rmssd7dMs / hrv.baseline60dMs) / hrv.sdLnMs
         add(
             ReadinessSignalUi(
-                label = "HRV",
-                value = String.format(PT_BR, "%+.1f SWC", z),
-                hint = "${hrv.validNights} noites válidas",
+                label = "Variabilidade cardíaca",
+                value = when {
+                    z < -1.0 -> "abaixo"
+                    z > 0.0 -> "acima"
+                    else -> "na média"
+                },
+                hint = "comparada à sua média · ${hrv.validNights} noites",
                 tone = when {
                     z < -1.0 -> SignalTone.WARNING
                     z > 0.0 -> SignalTone.POSITIVE
@@ -405,9 +414,9 @@ private fun buildSignals(
         val delta = rhr.average7dBpm - rhr.baseline30dBpm
         add(
             ReadinessSignalUi(
-                label = "FC repouso",
+                label = "FC de repouso",
                 value = String.format(PT_BR, "%+.0f bpm", delta),
-                hint = "vs baseline 30d",
+                hint = "comparada à média de 30 dias",
                 tone = when {
                     delta >= 7.0 -> SignalTone.WARNING
                     delta <= -3.0 -> SignalTone.POSITIVE
@@ -425,7 +434,7 @@ private fun buildSignals(
                     checkIn == null -> "15 s para medir o dia"
                     illness -> "sinal de alerta"
                     warning -> "revisar o dia"
-                    else -> "Hooper · menor é melhor"
+                    else -> "menor é melhor"
                 },
                 tone = if (warning) SignalTone.WARNING else SignalTone.NEUTRAL,
             ),
@@ -435,7 +444,7 @@ private fun buildSignals(
             ReadinessSignalUi(
                 label = "Alerta",
                 value = "Doença/lesão",
-                hint = "sem qualidade",
+                hint = "sem treino forte",
                 tone = SignalTone.WARNING,
             ),
         )
