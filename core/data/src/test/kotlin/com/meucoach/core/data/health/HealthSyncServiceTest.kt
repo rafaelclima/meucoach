@@ -73,6 +73,43 @@ class HealthSyncServiceTest {
     }
 
     @Test
+    fun `keeps csv-only fields when health connect covers the same day`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        metrics.saveAll(
+            listOf(
+                DailyMetrics(
+                    date = today,
+                    hrvRmssdMs = 55.0,
+                    spo2Avg = 98.0,
+                    source = DailyMetricsSource.CSV,
+                ),
+            ),
+        )
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(
+                    DailyMetrics(
+                        date = today,
+                        sleepDurationMin = 450,
+                        restingHeartRate = 58.0,
+                        source = DailyMetricsSource.HEALTH_CONNECT,
+                    ),
+                ),
+                missingPermissions = emptySet(),
+            ),
+        )
+
+        service(source).sync()
+
+        val merged = checkNotNull(metrics.get(today))
+        assertThat(merged.sleepDurationMin).isEqualTo(450)
+        assertThat(merged.restingHeartRate).isEqualTo(58.0)
+        assertThat(merged.hrvRmssdMs).isEqualTo(55.0)
+        assertThat(merged.spo2Avg).isEqualTo(98.0)
+        assertThat(merged.source).isEqualTo(DailyMetricsSource.HEALTH_CONNECT)
+    }
+
+    @Test
     fun `later sync starts one day before the last success`(): Unit = runBlocking {
         profiles.saveProfile(profile())
         store.markSynced(today)

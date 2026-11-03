@@ -3,6 +3,7 @@ package com.meucoach.core.data.repository
 import androidx.room.withTransaction
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
+import com.meucoach.core.domain.health.DailyMetricsMerger
 import com.meucoach.core.model.DailyMetrics
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,8 +22,11 @@ class DailyMetricsRepository(private val database: MeuCoachDatabase, private val
     suspend fun saveAll(metrics: List<DailyMetrics>): Int = database.withTransaction {
         val now = clock.millis()
         metrics.forEach { row ->
-            val createdAt = dao.get(row.date.toString())?.createdAt ?: now
-            dao.upsert(row.toEntity(createdAt = createdAt, updatedAt = now))
+            val existing = dao.get(row.date.toString())
+            val merged = existing
+                ?.let { DailyMetricsMerger.merge(it.toModel(), row) }
+                ?: row
+            dao.upsert(merged.toEntity(createdAt = existing?.createdAt ?: now, updatedAt = now))
         }
         metrics.size
     }

@@ -77,6 +77,78 @@ class DailyMetricsRepositoryTest {
     }
 
     @Test
+    fun `merges a health connect day without erasing csv fields`(): Unit = runBlocking {
+        repository.saveAll(
+            listOf(
+                metrics(
+                    date = date,
+                    sleep = null,
+                    restingHeartRate = null,
+                    hrv = 55.0,
+                    spo2 = 97.0,
+                    source = DailyMetricsSource.CSV,
+                ),
+            ),
+        )
+        clock.instant = Instant.parse("2026-10-31T12:00:00Z")
+
+        repository.saveAll(
+            listOf(
+                metrics(
+                    date = date,
+                    sleep = 460,
+                    restingHeartRate = 58.0,
+                    hrv = null,
+                    spo2 = null,
+                    source = DailyMetricsSource.HEALTH_CONNECT,
+                ),
+            ),
+        )
+
+        val merged = checkNotNull(repository.get(date))
+        assertThat(merged.sleepDurationMin).isEqualTo(460)
+        assertThat(merged.restingHeartRate).isEqualTo(58.0)
+        assertThat(merged.hrvRmssdMs).isEqualTo(55.0)
+        assertThat(merged.spo2Avg).isEqualTo(97.0)
+        assertThat(merged.source).isEqualTo(DailyMetricsSource.HEALTH_CONNECT)
+    }
+
+    @Test
+    fun `does not let a csv import overwrite health connect values`(): Unit = runBlocking {
+        repository.saveAll(
+            listOf(
+                metrics(
+                    date = date,
+                    sleep = 460,
+                    restingHeartRate = null,
+                    hrv = 60.0,
+                    spo2 = null,
+                    source = DailyMetricsSource.HEALTH_CONNECT,
+                ),
+            ),
+        )
+
+        repository.saveAll(
+            listOf(
+                metrics(
+                    date = date,
+                    sleep = 400,
+                    restingHeartRate = null,
+                    hrv = 50.0,
+                    spo2 = 98.0,
+                    source = DailyMetricsSource.CSV,
+                ),
+            ),
+        )
+
+        val merged = checkNotNull(repository.get(date))
+        assertThat(merged.sleepDurationMin).isEqualTo(460)
+        assertThat(merged.hrvRmssdMs).isEqualTo(60.0)
+        assertThat(merged.spo2Avg).isEqualTo(98.0)
+        assertThat(merged.source).isEqualTo(DailyMetricsSource.HEALTH_CONNECT)
+    }
+
+    @Test
     fun `deletes a date`(): Unit = runBlocking {
         repository.saveAll(listOf(metrics(date = date)))
 
@@ -85,13 +157,20 @@ class DailyMetricsRepositoryTest {
         assertThat(repository.delete(date)).isFalse()
     }
 
-    private fun metrics(date: LocalDate, hrv: Double = 60.0) = DailyMetrics(
+    private fun metrics(
+        date: LocalDate,
+        sleep: Int? = 450,
+        restingHeartRate: Double? = 58.0,
+        hrv: Double? = 60.0,
+        spo2: Double? = 97.0,
+        source: DailyMetricsSource = DailyMetricsSource.CSV,
+    ) = DailyMetrics(
         date = date,
-        sleepDurationMin = 450,
-        restingHeartRate = 58.0,
+        sleepDurationMin = sleep,
+        restingHeartRate = restingHeartRate,
         hrvRmssdMs = hrv,
-        spo2Avg = 97.0,
-        source = DailyMetricsSource.CSV,
+        spo2Avg = spo2,
+        source = source,
     )
 
     private class MutableClock(var instant: Instant) : Clock() {
