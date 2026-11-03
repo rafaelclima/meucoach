@@ -46,11 +46,13 @@ data class TodayUiState(
     val readinessConfidence: DataConfidence,
     val readinessSignals: List<ReadinessSignalUi>,
     val workout: WorkoutUi,
-    val weeklyLoadKm: Double,
-    val days: List<DayLoadUi>,
-    val ctl: Int,
-    val atl: Int,
-    val tsb: Int,
+    /** Null until there is at least one activity with distance; the UI shows an empty state. */
+    val weeklyLoadKm: Double? = null,
+    val days: List<DayLoadUi> = emptyList(),
+    /** Null when no load snapshot exists; the UI must not invent fitness, fatigue or form. */
+    val ctl: Int? = null,
+    val atl: Int? = null,
+    val tsb: Int? = null,
     val recentActivity: RecentActivityUi,
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,

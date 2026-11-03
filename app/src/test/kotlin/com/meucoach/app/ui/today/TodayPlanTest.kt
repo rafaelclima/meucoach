@@ -252,6 +252,23 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows an empty load card without any data`() {
+        val state = todayState(null, today = LocalDate.now())
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(onDemoAction = {}, state = state)
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("CARGA DA SEMANA"))
+        compose.onNodeWithText("Sem carga ainda").assertIsDisplayed()
+        compose.onNodeWithText("Acumulada", ignoreCase = true).assertDoesNotExist()
+        compose.onNodeWithText("Balanço", ignoreCase = true).assertDoesNotExist()
+    }
+
+    @Test
     fun `does not invent a load ratio without history`() {
         compose.setContent {
             McTheme(darkTheme = true) {

@@ -438,66 +438,98 @@ private fun WorkoutMetric(label: String, value: String, unit: String, modifier: 
 @Composable
 private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
     val colors = McTheme.colors
+    val hasLoad = state.ctl != null
+    val hasDistance = state.weeklyLoadKm != null
     McCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column {
-                Text(text = "CARGA DA SEMANA", style = McTextStyles.overline, color = colors.textTertiary)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = formatDecimal(state.weeklyLoadKm),
-                        style = McTextStyles.metric,
-                        color = colors.textPrimary,
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "km",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
-                        modifier = Modifier.padding(bottom = 3.dp),
+        Text(text = "CARGA DA SEMANA", style = McTextStyles.overline, color = colors.textTertiary)
+        Spacer(modifier = Modifier.height(4.dp))
+        if (!hasLoad && !hasDistance) {
+            Text(
+                text = "Sem carga ainda",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Importe uma corrida com FC ou ritmo para ver carga e recuperação.",
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                McTextButton(
+                    text = "Ver tendências",
+                    onClick = onTrendsClick,
+                    trailingArrow = true,
+                )
+            }
+            return@McCard
+        }
+        if (hasDistance || state.acwr != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column {
+                    state.weeklyLoadKm?.let { weeklyKm ->
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = formatDecimal(weeklyKm),
+                                style = McTextStyles.metric,
+                                color = colors.textPrimary,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "km",
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(bottom = 3.dp),
+                            )
+                        }
+                    }
+                }
+                state.acwr?.let { acwr ->
+                    McPill(
+                        text = "Proporção ${formatTwoDecimals(acwr)}",
+                        containerColor = acwrColor(acwr).copy(alpha = 0.10f),
+                        contentColor = acwrColor(acwr),
                     )
                 }
             }
-            state.acwr?.let { acwr ->
-                McPill(
-                    text = "Proporção ${formatTwoDecimals(acwr)}",
-                    containerColor = acwrColor(acwr).copy(alpha = 0.10f),
-                    contentColor = acwrColor(acwr),
+        }
+        if (state.days.any { it.loadKm > 0.0 }) {
+            Spacer(modifier = Modifier.height(16.dp))
+            WeeklyLoadBars(days = state.days)
+        }
+        if (hasLoad) {
+            Spacer(modifier = Modifier.height(12.dp))
+            McDivider()
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                McStat(
+                    label = "Acumulada",
+                    value = state.ctl?.toString() ?: NO_VALUE,
+                    hint = "42 dias",
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                )
+                McStat(
+                    label = "Recente",
+                    value = state.atl?.toString() ?: NO_VALUE,
+                    hint = "7 dias",
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                )
+                McStat(
+                    label = "Balanço",
+                    value = state.tsb?.toString() ?: NO_VALUE,
+                    hint = "recuperação",
+                    modifier = Modifier.weight(1f),
+                    valueColor = colors.warning,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 )
             }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        WeeklyLoadBars(days = state.days)
-        Spacer(modifier = Modifier.height(12.dp))
-        McDivider()
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            McStat(
-                label = "Acumulada",
-                value = state.ctl.toString(),
-                hint = "42 dias",
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            )
-            McStat(
-                label = "Recente",
-                value = state.atl.toString(),
-                hint = "7 dias",
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            )
-            McStat(
-                label = "Balanço",
-                value = state.tsb.toString(),
-                hint = "recuperação",
-                modifier = Modifier.weight(1f),
-                valueColor = colors.warning,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            )
         }
         Spacer(modifier = Modifier.height(6.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -1172,3 +1204,4 @@ private fun TodayScreenLightPreview() {
 }
 
 private val PLAN_LOCALE = Locale.forLanguageTag("pt-BR")
+private const val NO_VALUE = "—"

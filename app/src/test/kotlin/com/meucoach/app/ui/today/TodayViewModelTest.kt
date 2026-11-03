@@ -121,6 +121,18 @@ class TodayViewModelTest {
     }
 
     @Test
+    fun `does not invent load when there is no data`() {
+        val state = todayState(checkIn(), profile = profile(), today = today)
+
+        assertThat(state.ctl).isNull()
+        assertThat(state.atl).isNull()
+        assertThat(state.tsb).isNull()
+        assertThat(state.weeklyLoadKm).isNull()
+        assertThat(state.days).hasSize(7)
+        assertThat(state.days).allSatisfy { assertThat(it.loadKm).isZero() }
+    }
+
+    @Test
     fun `carries real activity stats into the state`() {
         val recent = RecentActivityUi(
             title = "Corrida",

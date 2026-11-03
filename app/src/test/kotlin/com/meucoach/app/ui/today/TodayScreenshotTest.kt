@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -53,6 +54,7 @@ class TodayScreenshotTest {
                         // Fixed time so the greeting does not change the golden during the day.
                         now = LocalTime.of(8, 0),
                         plan = plan(today),
+                        load = loadSnapshot(),
                         kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
                         weeklyLoadKm = 11.31,
                     ),
@@ -62,6 +64,20 @@ class TodayScreenshotTest {
 
         compose.onRoot().captureRoboImage(file)
     }
+
+    private fun loadSnapshot() = LoadSnapshot(
+        daily = emptyList(),
+        ctlSeries = emptyList(),
+        atlSeries = emptyList(),
+        ctl = 24.0,
+        atl = 31.0,
+        tsb = -7.0,
+        acuteAverage7d = 31.0,
+        chronicAverage28d = 24.0,
+        acwr = 1.29,
+        monotony = 1.4,
+        missingDays = 2,
+    )
 
     private fun plan(today: LocalDate): WeeklyPlan {
         val monday = today.minusDays(4)
