@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.component.McCard
@@ -88,10 +89,14 @@ fun TodayScreen(
 ) {
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
-    var explanationOpen by remember { mutableStateOf(false) }
-    val openExplanation = {
-        if (state.explanation != null) {
-            explanationOpen = true
+    var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
+    val openExplanation: (ExplanationSource) -> Unit = { source ->
+        val available = when (source) {
+            ExplanationSource.READINESS -> state.readinessExplanation
+            ExplanationSource.WORKOUT -> state.explanation
+        }
+        if (available != null) {
+            explanationSource = source
         } else {
             onDemoAction("Configure seu perfil para ver a explicação.")
         }
@@ -106,13 +111,13 @@ fun TodayScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { Greeting(state = state) }
-        item { ReadinessCard(state = state, onWhyClick = openExplanation) }
+        item { ReadinessCard(state = state, onWhyClick = { openExplanation(ExplanationSource.READINESS) }) }
         item {
             NextWorkoutCard(
                 workout = state.workout,
                 onSwapClick = { swapOpen = true },
                 onStartClick = { startOpen = true },
-                onWhyClick = openExplanation,
+                onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
             )
         }
         state.plan?.let { plan ->
@@ -164,15 +169,25 @@ fun TodayScreen(
             },
         )
     }
-    if (explanationOpen) {
-        state.explanation?.let { explanation ->
+    explanationSource?.let { source ->
+        val explanation = when (source) {
+            ExplanationSource.READINESS -> state.readinessExplanation
+            ExplanationSource.WORKOUT -> state.explanation
+        }
+        explanation?.let {
             ExplanationSheet(
-                explanation = explanation,
-                onDismiss = { explanationOpen = false },
+                title = when (source) {
+                    ExplanationSource.READINESS -> "Por que esta prontidão?"
+                    ExplanationSource.WORKOUT -> "Por que este treino?"
+                },
+                explanation = it,
+                onDismiss = { explanationSource = null },
             )
         }
     }
 }
+
+private enum class ExplanationSource { READINESS, WORKOUT }
 
 @Composable
 private fun Greeting(state: TodayUiState) {
@@ -293,24 +308,33 @@ private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = signal.label, style = McTextStyles.caption, color = colors.textTertiary)
+            Text(
+                text = signal.label,
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = signal.value,
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.textPrimary,
+                    maxLines = 1,
+                    softWrap = false,
                 )
+                signal.hint?.takeIf { it.isNotBlank() }?.let { hint ->
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "· $hint",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
             }
-            Text(
-                text = signal.hint,
-                style = McTextStyles.caption,
-                color = colors.textTertiary,
-                maxLines = 2,
-            )
         }
     }
 }
@@ -692,20 +716,18 @@ private fun PlanWeekCard(
                     }
                 }
                 val statusLabel = when (session.status) {
-                    com.meucoach.core.domain.prescription.SessionStatus.DONE -> "Feito"
-                    com.meucoach.core.domain.prescription.SessionStatus.SKIPPED -> "Pulado"
-                    com.meucoach.core.domain.prescription.SessionStatus.PLANNED -> planTypeLabel(session.type)
+                    SessionStatus.DONE -> "Feito"
+                    SessionStatus.SKIPPED -> "Pulado"
+                    SessionStatus.PLANNED -> null
                 }
-                val statusColor = when (session.status) {
-                    com.meucoach.core.domain.prescription.SessionStatus.DONE -> colors.success
-                    com.meucoach.core.domain.prescription.SessionStatus.SKIPPED -> colors.warning
-                    com.meucoach.core.domain.prescription.SessionStatus.PLANNED -> colors.textSecondary
+                if (statusLabel != null) {
+                    val statusColor = if (session.status == SessionStatus.DONE) colors.success else colors.warning
+                    McPill(
+                        text = statusLabel,
+                        containerColor = statusColor.copy(alpha = 0.12f),
+                        contentColor = statusColor,
+                    )
                 }
-                McPill(
-                    text = statusLabel,
-                    containerColor = statusColor.copy(alpha = 0.12f),
-                    contentColor = statusColor,
-                )
             }
             if (session.date == today &&
                 session.status == com.meucoach.core.domain.prescription.SessionStatus.PLANNED
@@ -777,7 +799,7 @@ private fun PlanWeekCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExplanationSheet(explanation: TodayExplanationUi, onDismiss: () -> Unit) {
+private fun ExplanationSheet(title: String, explanation: TodayExplanationUi, onDismiss: () -> Unit) {
     val colors = McTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showTechnicalDetails by remember { mutableStateOf(false) }
@@ -795,10 +817,12 @@ private fun ExplanationSheet(explanation: TodayExplanationUi, onDismiss: () -> U
         ) {
             Row(verticalAlignment = Alignment.Top) {
                 Text(
-                    text = "Por que este treino?",
+                    text = title,
                     style = MaterialTheme.typography.headlineSmall,
                     color = colors.textPrimary,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("explanation-title"),
                 )
                 McConfidenceBadge(confidence = explanation.confidence)
             }
@@ -1094,13 +1118,6 @@ private fun formatElapsed(seconds: Int): String {
 private fun formatPlanDay(date: LocalDate): String {
     val label = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, PLAN_LOCALE)
     return label.replaceFirstChar { it.uppercaseChar() }.trimEnd('.')
-}
-
-private fun planTypeLabel(type: com.meucoach.core.domain.prescription.WorkoutType): String = when (type) {
-    com.meucoach.core.domain.prescription.WorkoutType.REST -> "Descanso"
-    com.meucoach.core.domain.prescription.WorkoutType.EASY -> "Fácil"
-    com.meucoach.core.domain.prescription.WorkoutType.LONG -> "Longão"
-    com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Forte"
 }
 
 @Composable

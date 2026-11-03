@@ -337,6 +337,11 @@ internal fun todayState(
     } else {
         null
     }
+    val readinessExplanation = buildReadinessExplanation(
+        checkIn = checkIn,
+        inputs = inputs,
+        result = result,
+    )
     return base.copy(
         readinessScore = result.score,
         readinessLevel = result.level,
@@ -349,6 +354,7 @@ internal fun todayState(
         ),
         workout = recommendation?.toWorkoutUi() ?: base.workout,
         explanation = explanation,
+        readinessExplanation = readinessExplanation,
         ctl = load?.ctl?.roundToInt(),
         atl = load?.atl?.roundToInt(),
         tsb = load?.tsb?.roundToInt(),
@@ -386,7 +392,7 @@ private fun buildSignals(
             ReadinessSignalUi(
                 label = "Sono",
                 value = formatSleepDuration(sleep.durationMin),
-                hint = if (sleep.durationMin < 360) "abaixo de 6 h" else "ok",
+                hint = if (sleep.durationMin < 360) "abaixo de 6 h" else null,
                 tone = if (sleep.durationMin < 360) SignalTone.WARNING else SignalTone.NEUTRAL,
             ),
         )
@@ -395,13 +401,13 @@ private fun buildSignals(
         val z = ln(hrv.rmssd7dMs / hrv.baseline60dMs) / hrv.sdLnMs
         add(
             ReadinessSignalUi(
-                label = "Variabilidade cardíaca",
+                label = "Variabilidade",
                 value = when {
                     z < -1.0 -> "abaixo"
                     z > 0.0 -> "acima"
-                    else -> "na média"
+                    else -> "média"
                 },
-                hint = "comparada à sua média · ${hrv.validNights} noites",
+                hint = "${hrv.validNights} noites",
                 tone = when {
                     z < -1.0 -> SignalTone.WARNING
                     z > 0.0 -> SignalTone.POSITIVE
@@ -412,11 +418,12 @@ private fun buildSignals(
     }
     inputs.restingHeartRate?.let { rhr ->
         val delta = rhr.average7dBpm - rhr.baseline30dBpm
+        val rounded = delta.roundToInt()
         add(
             ReadinessSignalUi(
                 label = "FC de repouso",
-                value = String.format(PT_BR, "%+.0f bpm", delta),
-                hint = "comparada à média de 30 dias",
+                value = if (rounded == 0) "estável" else String.format(PT_BR, "%+d bpm", rounded),
+                hint = if (rounded == 0) null else "média mensal",
                 tone = when {
                     delta >= 7.0 -> SignalTone.WARNING
                     delta <= -3.0 -> SignalTone.POSITIVE
@@ -449,12 +456,6 @@ private fun buildSignals(
             ),
         )
     }
-}
-
-private fun formatSleepDuration(minutes: Int): String {
-    val hours = minutes / 60
-    val rest = minutes % 60
-    return if (hours > 0) "${hours}h${rest.toString().padStart(2, '0')}" else "${rest}min"
 }
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")

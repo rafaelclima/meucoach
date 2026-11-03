@@ -2,6 +2,7 @@ package com.meucoach.app.ui.today
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -81,6 +82,7 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("Fácil e conversável"))
         compose.onNodeWithText("Fácil e conversável").assertIsDisplayed()
         list.performScrollToNode(hasText("Longão"))
+        compose.onAllNodesWithText("Longão").assertCountEquals(1)
         compose.onAllNodesWithText("Longão")[0].assertIsDisplayed()
         list.performScrollToNode(hasText("Sem progressão até existir histórico."))
         compose.onNodeWithText("Sem progressão até existir histórico.").assertIsDisplayed()
@@ -150,6 +152,42 @@ class TodayPlanTest {
         compose.onNodeWithText("Ver fontes e detalhes técnicos").performScrollTo().performClick()
         compose.onNodeWithText("Seiler, IJSPP 2010", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("R-ZONE-01", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `opens the readiness explanation with its own title`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val explanation = TodayExplanationUi(
+            rationale = "Sua prontidão está verde (74/100): sono de 7h30 e variabilidade acima da média.",
+            confidence = DataConfidence.HIGH,
+            usedData = listOf("Check-in de hoje", "Sono recente"),
+            missingData = listOf("FC de repouso"),
+            rules = listOf(ExplanationRuleUi("R-READY-01", "Prontidão combina os sinais")),
+            evidence = listOf(
+                ExplanationEvidenceUi(
+                    id = "EV-SAW-2016",
+                    title = "Check-in subjetivo",
+                    source = "Saw et al., BJSM 2016",
+                ),
+            ),
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(readinessExplanation = explanation),
+                )
+            }
+        }
+
+        compose.onNodeWithText("Por que esta prontidão?").performClick()
+
+        compose.onNodeWithTag("explanation-title").assertTextEquals("Por que esta prontidão?")
+        compose
+            .onNodeWithText("Sua prontidão está verde", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("O QUE USEI").performScrollTo().assertIsDisplayed()
     }
 
     @Test

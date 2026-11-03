@@ -10,6 +10,8 @@ import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
+import com.meucoach.core.model.DailyMetrics
+import com.meucoach.core.model.DailyMetricsSource
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
@@ -41,6 +43,12 @@ class TodayScreenshotTest {
         capture(darkTheme = false, file = "src/test/screenshots/today-light.png")
     }
 
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun todayNarrowDark() {
+        capture(darkTheme = true, file = "src/test/screenshots/today-narrow-dark.png")
+    }
+
     private fun capture(darkTheme: Boolean, file: String) {
         val today = LocalDate.of(2026, 10, 30)
         compose.setContent {
@@ -49,6 +57,7 @@ class TodayScreenshotTest {
                     onDemoAction = {},
                     state = todayState(
                         checkIn = checkIn(today),
+                        metrics = metrics(today),
                         profile = profile(today),
                         today = today,
                         // Fixed time so the greeting does not change the golden during the day.
@@ -129,6 +138,17 @@ class TodayScreenshotTest {
         soreness = 1,
         stress = 2,
     )
+
+    /** Enough nights to show sleep, HRV and resting heart rate in the readiness card. */
+    private fun metrics(today: LocalDate) = (0..30).map { daysAgo ->
+        DailyMetrics(
+            date = today.minusDays(daysAgo.toLong()),
+            sleepDurationMin = if (daysAgo == 0) 553 else 450,
+            restingHeartRate = 52.0,
+            hrvRmssdMs = 60.0,
+            source = DailyMetricsSource.HEALTH_CONNECT,
+        )
+    }
 
     private fun profile(today: LocalDate) = AthleteProfile(
         id = "athlete-1",

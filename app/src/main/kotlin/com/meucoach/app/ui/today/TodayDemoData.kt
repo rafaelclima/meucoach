@@ -13,7 +13,7 @@ enum class SignalTone {
     WARNING,
 }
 
-data class ReadinessSignalUi(val label: String, val value: String, val hint: String, val tone: SignalTone)
+data class ReadinessSignalUi(val label: String, val value: String, val hint: String?, val tone: SignalTone)
 
 data class WorkoutUi(
     val title: String,
@@ -59,6 +59,7 @@ data class TodayUiState(
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     val explanation: TodayExplanationUi? = null,
+    val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */
     val acwr: Double? = null,
 )
@@ -89,9 +90,9 @@ fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalT
                 tone = SignalTone.WARNING,
             ),
             ReadinessSignalUi(
-                label = "Variabilidade cardíaca",
-                value = "na média",
-                hint = "comparada à sua média",
+                label = "Variabilidade",
+                value = "média",
+                hint = "7 noites",
                 tone = SignalTone.NEUTRAL,
             ),
             ReadinessSignalUi(

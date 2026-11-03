@@ -9,6 +9,7 @@ class ExplanationCatalogTest {
         val ids = listOf(
             "R-ZONE-01",
             "R-DATA-01",
+            "R-READY-01",
             "R-READY-03",
             "R-READY-04",
             "R-LOAD-03",
@@ -35,6 +36,9 @@ class ExplanationCatalogTest {
             "EV-GABBETT-2016",
             "EV-ELY-2007",
             "EV-FRIEL-2018",
+            "EV-PLEWS-2013",
+            "EV-BUCHHEIT-2014",
+            "EV-WALSH-2021",
         )
 
         ids.forEach { id ->

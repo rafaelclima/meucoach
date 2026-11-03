@@ -59,8 +59,9 @@ class TodayViewModelTest {
 
         assertThat(state.readinessConfidence).isEqualTo(DataConfidence.HIGH)
         assertThat(state.readinessSignals.map { it.label })
-            .contains("Sono", "Variabilidade cardíaca", "FC de repouso")
+            .contains("Sono", "Variabilidade", "FC de repouso")
         assertThat(state.readinessSignals.first { it.label == "Sono" }.value).isEqualTo("7h30")
+        assertThat(state.readinessSignals.first { it.label == "Sono" }.hint).isNull()
     }
 
     @Test
@@ -118,6 +119,53 @@ class TodayViewModelTest {
         assertThat(explanation.usedData)
             .contains("Check-in de hoje", "Ritmo no limite calibrado", "FC no limite calibrada")
         assertThat(explanation.missingData).contains("Sono", "Variabilidade cardíaca", "FC de repouso")
+    }
+
+    @Test
+    fun `builds a readiness explanation with drivers and evidence`() {
+        val metrics = (0..9).map { daysAgo ->
+            DailyMetrics(
+                date = today.minusDays(daysAgo.toLong()),
+                sleepDurationMin = if (daysAgo == 0) 450 else null,
+                restingHeartRate = 58.0,
+                hrvRmssdMs = 60.0 + daysAgo,
+                source = DailyMetricsSource.CSV,
+            )
+        }
+        val state = todayState(checkIn(), metrics = metrics, today = today)
+
+        val explanation = state.readinessExplanation
+        assertThat(explanation).isNotNull
+        assertThat(explanation!!.rationale).contains("Sua prontidão está", "sono de 7h30")
+        assertThat(explanation.usedData).contains(
+            "Check-in de hoje",
+            "Sono recente",
+            "Variabilidade cardíaca",
+            "FC de repouso",
+        )
+        assertThat(explanation.rules.map { it.id }).contains("R-READY-01")
+        assertThat(explanation.evidence.map { it.id }).contains(
+            "EV-SAW-2016",
+            "EV-WALSH-2021",
+            "EV-PLEWS-2013",
+            "EV-BUCHHEIT-2014",
+        )
+    }
+
+    @Test
+    fun `shows a flat resting heart rate as stable`() {
+        val metrics = (0..30).map { daysAgo ->
+            DailyMetrics(
+                date = today.minusDays(daysAgo.toLong()),
+                restingHeartRate = 58.0,
+                source = DailyMetricsSource.CSV,
+            )
+        }
+        val state = todayState(checkIn = null, metrics = metrics, today = today)
+
+        assertThat(state.readinessSignals.first { it.label == "FC de repouso" }.value)
+            .isEqualTo("estável")
+        assertThat(state.readinessSignals.first { it.label == "FC de repouso" }.hint).isNull()
     }
 
     @Test

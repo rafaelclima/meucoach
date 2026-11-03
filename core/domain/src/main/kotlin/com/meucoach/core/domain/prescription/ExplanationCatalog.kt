@@ -13,6 +13,7 @@ object ExplanationCatalog {
     private val rules = mapOf(
         "R-ZONE-01" to RuleExplanation("R-ZONE-01", "Zonas pelo limite de esforço"),
         "R-DATA-01" to RuleExplanation("R-DATA-01", "Dado ausente não vira zero"),
+        "R-READY-01" to RuleExplanation("R-READY-01", "Prontidão combina check-in, sono, HRV e FC de repouso"),
         "R-READY-03" to RuleExplanation("R-READY-03", "Prontidão limita a intensidade"),
         "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
         "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
@@ -74,6 +75,21 @@ object ExplanationCatalog {
             "EV-ISSURIN-2010",
             "Periodização em blocos",
             "Issurin, Sports Med 2010",
+        ),
+        "EV-PLEWS-2013" to EvidenceExplanation(
+            "EV-PLEWS-2013",
+            "Variabilidade cardíaca",
+            "Plews et al., Sports Med 2013",
+        ),
+        "EV-BUCHHEIT-2014" to EvidenceExplanation(
+            "EV-BUCHHEIT-2014",
+            "FC de repouso e variabilidade",
+            "Buchheit, Front Physiol 2014",
+        ),
+        "EV-WALSH-2021" to EvidenceExplanation(
+            "EV-WALSH-2021",
+            "Sono e recuperação",
+            "Walsh et al., BJSM 2021",
         ),
     )
 
