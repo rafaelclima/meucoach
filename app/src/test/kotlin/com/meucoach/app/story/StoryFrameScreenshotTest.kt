@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Typeface
 import androidx.compose.foundation.Image
@@ -14,6 +15,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.app.ui.activitydetail.ActivityDetailTestData
 import com.meucoach.core.designsystem.theme.McTheme
@@ -59,5 +61,34 @@ class StoryFrameScreenshotTest {
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("src/test/screenshots/story-frame-dark.png")
+    }
+
+    @Test
+    fun storyFrameWithLogoDark() {
+        val activity = ActivityDetailTestData.state().activity!!.imported
+        val storyPlan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(palette, Typeface.DEFAULT, logo)
+                        .render(storyPlan, timeSec = 8f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Quadro do story com logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-frame-logo-dark.png")
     }
 }

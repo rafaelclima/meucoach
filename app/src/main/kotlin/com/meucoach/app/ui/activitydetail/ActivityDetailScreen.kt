@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.res.ResourcesCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.story.StoryBranding
 import com.meucoach.app.story.StoryFrameRenderer
 import com.meucoach.app.story.StoryPlan
 import com.meucoach.app.story.StorySegmentType
@@ -469,7 +470,7 @@ private fun StoryPreview(plan: StoryPlan) {
             .firstOrNull { it.type == StorySegmentType.CARD }
             ?.let { it.startSec + 1f }
             ?: (plan.durationSec / 2f)
-        StoryFrameRenderer(colors.toStoryPalette(), typeface)
+        StoryFrameRenderer(colors.toStoryPalette(), typeface, StoryBranding.logo(context))
             .render(plan, timeSec = previewTime, width = 360, height = 640)
     }
     Text(

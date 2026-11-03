@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -14,10 +15,17 @@ private val PT_BR = Locale.forLanguageTag("pt-BR")
 /**
  * Draws one 9:16 frame with a route, progress marker and the current km card.
  * Kept independent of MediaCodec so the same drawing can feed a preview later.
+ *
+ * When [logoBitmap] is provided it replaces the text footer; without it the
+ * frame keeps the plain "Gerado no aparelho · MeuCoach" caption (ADR 0015 §2.8).
  */
-class StoryFrameRenderer(private val palette: StoryPalette, private val typeface: Typeface) {
-    fun render(plan: StoryPlan, timeSec: Float, width: Int, height: Int): android.graphics.Bitmap {
-        val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+class StoryFrameRenderer(
+    private val palette: StoryPalette,
+    private val typeface: Typeface,
+    private val logoBitmap: Bitmap? = null,
+) {
+    fun render(plan: StoryPlan, timeSec: Float, width: Int, height: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         render(Canvas(bitmap), plan, timeSec, width, height)
         return bitmap
     }
@@ -143,12 +151,12 @@ class StoryFrameRenderer(private val palette: StoryPalette, private val typeface
         val value = paint(palette.textPrimary, 30f * scale, bold = true)
         val rowTop = card.top + 92f * scale
         val column = (card.width() - 56f * scale) / 3f
-        drawMetric(canvas, card.left + 28f * scale, rowTop, "PACE", "${split.pace.format()} /km", label, value)
+        drawMetric(canvas, card.left + 28f * scale, rowTop, "RITMO", "${split.pace.format()} /km", label, value)
         drawMetric(
             canvas,
             card.left + 28f * scale + column,
             rowTop,
-            "FC",
+            "FC MÉDIA",
             split.heartRate?.let { "$it bpm" } ?: "—",
             label,
             value,
@@ -157,10 +165,18 @@ class StoryFrameRenderer(private val palette: StoryPalette, private val typeface
             canvas,
             card.left + 28f * scale + column * 2,
             rowTop,
-            "KCAL",
+            "CALORIAS",
             split.calories?.toString() ?: "—",
             label,
             value,
+        )
+        // Legenda simples para o usuário entender rapidamente.
+        val legend = paint(palette.textTertiary, 11f * scale)
+        canvas.drawText(
+            "Ritmo = tempo por km · FC = frequência cardíaca · Calorias = energia gasta",
+            card.left + 28f * scale,
+            card.bottom - 16f * scale,
+            legend,
         )
     }
 
@@ -178,6 +194,23 @@ class StoryFrameRenderer(private val palette: StoryPalette, private val typeface
     }
 
     private fun drawFooter(canvas: Canvas, width: Int, height: Int, scale: Float) {
+        if (logoBitmap == null) {
+            drawTextFooter(canvas, width, height, scale)
+            return
+        }
+        // The wordmark is wide (≈3.8:1); scale by height and keep the aspect ratio.
+        val logoHeight = 56f * scale
+        val logoWidth = logoHeight * logoBitmap.width / logoBitmap.height
+        val destination = RectF(
+            (width - logoWidth) / 2f,
+            height - 40f * scale - logoHeight,
+            (width + logoWidth) / 2f,
+            height - 40f * scale,
+        )
+        canvas.drawBitmap(logoBitmap, null, destination, null)
+    }
+
+    private fun drawTextFooter(canvas: Canvas, width: Int, height: Int, scale: Float) {
         val footer = paint(palette.textTertiary, 16f * scale)
         canvas.drawText(
             "Gerado no aparelho · MeuCoach",

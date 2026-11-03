@@ -37,6 +37,8 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
     }
 
+    private val defaultLogoBitmap: Bitmap? by lazy { StoryBranding.logo(context) }
+
     suspend fun export(plan: StoryPlan, palette: StoryPalette, onProgress: (Float) -> Unit = {}): StoryExportResult =
         withContext(Dispatchers.Default) {
             val output = File(
@@ -63,7 +65,7 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         val info = MediaCodec.BufferInfo()
         val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val renderer = StoryFrameRenderer(palette, typeface)
+        val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap)
         val yuvSize = WIDTH * HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
 
