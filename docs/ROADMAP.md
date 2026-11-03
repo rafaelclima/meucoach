@@ -205,7 +205,7 @@
 - [ ] Blocos/periodização.
 - [x] Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida).
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
-- [ ] Histórico de conclusão e limite de 2 qualidades/semana (regra implementada; falta tela).
+- [ ] Exibir no plano o limite de 2 treinos fortes por semana (regra implementada; o histórico de conclusão já está em Tendências).
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.
 
@@ -219,7 +219,7 @@
 - [x] Notificações locais de check-in e treino com deep link.
 - [x] Iniciar/trocar treino (sessão guiada e troca de dia com guardrails).
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
-- [ ] Check-in com streak.
+- [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências
 
@@ -253,6 +253,7 @@
 - [x] Sync incremental: primeira execução lê 30 dias; depois parte do último sucesso menos 1 dia.
 - [x] Sync periódico diário via WorkManager, com retry exponencial em erro de leitura.
 - [x] O mesmo `HealthSyncService` atende a tela de perfil e o worker.
+- [x] Mescla por campo entre CSV e Health Connect, sem apagar dados do dia (`ADR-0016`).
 
 ### P1-10 · Explicabilidade
 

@@ -125,18 +125,17 @@ Séries de 1 Hz podem gerar milhões de pontos. Estratégia:
 | Campo | Tipo | Fonte |
 |---|---|---|
 | `date` | LocalDate | PK |
-| `sleepStart` / `sleepEnd` | Instant? | Health Connect/CSV |
-| `sleepDurationMin` | Int? | |
-| `sleepEfficiency` | Double? | |
-| `deepMin` / `remMin` / `lightMin` / `awakeMin` | Int? | |
+| `sleepDurationMin` | Int? | Health Connect/CSV |
+| `restingHeartRate` | Double? | Health Connect/CSV |
 | `hrvRmssdMs` | Double? | Health Connect/CSV |
-| `restingHr` | Int? | |
-| `stressAvg` | Int? | |
-| `spo2Avg` | Double? | |
-| `steps` | Int? | |
+| `spo2Avg` | Double? | Health Connect/CSV |
 | `source` | enum | `HEALTH_CONNECT`, `CSV`, `MANUAL` |
-| `confidence` | enum | `HIGH`, `MEDIUM`, `LOW` |
-| `updatedAt` | Instant | |
+| `createdAt` / `updatedAt` | Long (epoch ms) | escrita local |
+
+Campos planejados (eficiência do sono, estágios, passos, estresse) ainda não
+foram implementados; ausentes ficam `null`, nunca `0`. Um dia pode reunir
+campos de mais de uma fonte: a mescla por campo segue o `ADR-0016`, e `source`
+guarda a fonte dominante (`MANUAL` > `HEALTH_CONNECT` > `CSV`).
 
 ### 3.6 `CheckIn`
 
@@ -215,7 +214,7 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 | `StepsRecord` | `DailyMetrics.steps` |
 | `WeightRecord` | `BodyMeasurement` |
 
-Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`; registrar a fonte (`dataOrigin`) para diagnóstico. Se o mesmo dia vier de CSV e Health Connect, priorizar Health Connect e manter o CSV como fallback.
+Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`; registrar a fonte (`dataOrigin`) para diagnóstico. Se o mesmo dia vier de CSV e Health Connect, os campos são mesclados: Health Connect tem precedência sobre CSV e o CSV só preenche lacunas (`ADR-0016`).
 
 ## 7. Migrações
 

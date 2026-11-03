@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 628 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 270 em `:app`)
-- **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
+- **Testes:** 639 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 88 em `core:data`, 270 em `:app`)
+- **Cobertura `core:domain`:** 98,39% de linhas (2.442/2.482), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.289/18.830)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -22,6 +22,7 @@
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
+- **Métricas diárias:** CSV e Health Connect são mesclados por campo, com precedência `MANUAL` > `Health Connect` > `CSV`; um sync não apaga mais o que só o CSV tinha (ADR 0016).
 - **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões, sincronização incremental (primeira execução 30 dias, depois desde o último sucesso) e sync periódico diário via WorkManager.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
@@ -43,6 +44,38 @@
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
+
+## Sessão 2026-11-03 — Mescla de métricas diárias por fonte
+
+### Concluído
+
+- **`DailyMetricsMerger`** (puro, `core:domain`) mescla um dia existente com um dia recebido campo a campo.
+- **Precedência:** `MANUAL` > `HEALTH_CONNECT` > `CSV`; fonte de menor precedência só preenche campos nulos e nunca apaga valores. Mesma fonte atualiza o dia, para que reimportar corrija.
+- **`DailyMetricsRepository.saveAll`** lê a linha existente dentro da transação e grava a mescla, preservando `createdAt`.
+- **`source`:** guarda a fonte dominante do dia. Proveniência por campo fica para um ADR futuro (exigiria schema v10).
+- **Docs:** `ADR-0016`, índice de decisões, `DATA_MODEL.md` §3.5/§6 e `ROADMAP.md` (P1-09); corrigidos também dois itens desatualizados do roadmap (histórico de conclusão e “check-in com streak”, que contrariava o princípio sem culpa).
+- **Testes:** 8 do merger no domínio, 2 no repositório e 1 de integração no `HealthSyncService`.
+
+### Evidências
+
+- `./gradlew check spotlessCheck koverVerify :app:assembleDebug` — sucesso.
+- 639 testes, 0 falhas (27 `core:model`, 254 `core:domain`, 88 `core:data`, 270 `:app`).
+- Cobertura `core:domain`: 98,39% de linhas, 83,65% de branches.
+- Lint sem erros.
+
+### Decisões e observações
+
+- **Health Connect continua vencendo o CSV** em campos compartilhados, como o `DATA_MODEL.md` §6 já pedia; o CSV entra como fallback nos campos que o dia do Health Connect não trouxe.
+- **Valores manuais são intocáveis** por fontes automáticas.
+- **Sem mudança de schema:** a mescla acontece na leitura/gravação; nenhuma migração nova.
+- **Custo:** uma leitura extra por dia dentro da transação; lotes de sync são de no máximo 30 dias.
+- **Limite conhecido:** quando o dia mistura fontes, `source` registra só a dominante. Nenhuma tela exibe esse campo hoje.
+
+### Próximo passo
+
+1. Validar no aparelho um dia que receba CSV e sync do Health Connect.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
+3. Se a proveniência por campo for necessária, abrir ADR com migração dedicada.
 
 ## Sessão 2026-11-03 — Apagar uma atividade pelo detalhe
 
