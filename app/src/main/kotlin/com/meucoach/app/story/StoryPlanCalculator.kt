@@ -7,9 +7,10 @@ import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.roundToInt
 
-enum class StorySegmentType { MOVE, CARD }
+enum class StorySegmentType { MOVE, CARD, FINAL }
 
 data class StorySplit(val km: Int, val pace: Pace, val heartRate: Int?, val calories: Int?, val progress: Float)
 
@@ -22,6 +23,13 @@ data class StorySegment(
     val split: StorySplit? = null,
 )
 
+/**
+ * Geographic extent of the run, in WGS-84 degrees. Kept separate from the
+ * normalized [RouteData] so a future map background can render exactly the
+ * same region the animated route was projected into (ADR 0015 §2.7).
+ */
+data class BoundingBox(val minLat: Double, val maxLat: Double, val minLon: Double, val maxLon: Double)
+
 data class StoryPlan(
     val route: RouteData,
     val splits: List<StorySplit>,
@@ -30,15 +38,20 @@ data class StoryPlan(
     val distanceKm: Double,
     val durationTotalSec: Int,
     val calories: Int?,
+    val averagePace: Pace?,
+    val averageHeartRate: Int?,
+    val boundingBox: BoundingBox?,
 )
 
 /**
  * Builds a 9:16 story timeline from a GPS run. The route moves between km
- * cards; each card pauses for [CARD_SECONDS] at its km position. Pure planning
- * so the video renderer stays a thin Android adapter.
+ * cards; each card pauses for [CARD_SECONDS] at its km position and the video
+ * always closes with a [StorySegmentType.FINAL] summary (ADR 0015 §2.6).
+ * Pure planning so the video renderer stays a thin Android adapter.
  */
 object StoryPlanCalculator {
     private const val CARD_SECONDS = 2.0
+    private const val FINAL_SECONDS = 3.0
     private const val MAX_CARDS = 8
     private const val MIN_ROUTE_METERS = 50.0
 
@@ -58,18 +71,23 @@ object StoryPlanCalculator {
             totalCalories = activity.calories,
         ).let { all -> capCards(all) }
 
+        val durationSec = max(targetDurationSec.toDouble(), FINAL_SECONDS)
         val segments = timeline(
             splits = splits,
-            targetDurationSec = targetDurationSec.toDouble(),
+            targetDurationSec = durationSec,
         )
+        val distanceKm = totalMeters / 1_000.0
         return StoryPlan(
             route = route,
             splits = splits,
             segments = segments,
-            durationSec = targetDurationSec.toFloat(),
-            distanceKm = totalMeters / 1_000.0,
+            durationSec = durationSec.toFloat(),
+            distanceKm = distanceKm,
             durationTotalSec = activity.durationSec,
             calories = activity.calories,
+            averagePace = activity.averagePace ?: averagePace(activity.durationSec, distanceKm),
+            averageHeartRate = activity.averageHeartRate ?: averageHeartRate(points),
+            boundingBox = bounds(points),
         )
     }
 
@@ -90,6 +108,29 @@ object StoryPlanCalculator {
             heartRate = sample.heartRate,
         )
     }
+
+    private fun bounds(points: List<GeoPoint>): BoundingBox? {
+        if (points.isEmpty()) return null
+        return BoundingBox(
+            minLat = points.minOf { it.latitude },
+            maxLat = points.maxOf { it.latitude },
+            minLon = points.minOf { it.longitude },
+            maxLon = points.maxOf { it.longitude },
+        )
+    }
+
+    private fun averagePace(durationSec: Int, distanceKm: Double): Pace? {
+        if (durationSec <= 0 || distanceKm <= 0.0) return null
+        val secondsPerKm = (durationSec / distanceKm).roundToInt()
+        return if (secondsPerKm > 0) Pace.fromSecondsPerKm(secondsPerKm) else null
+    }
+
+    private fun averageHeartRate(points: List<GeoPoint>): Int? = points
+        .mapNotNull { it.heartRate }
+        .filter { it > 0 }
+        .takeIf { it.isNotEmpty() }
+        ?.average()
+        ?.roundToInt()
 
     private fun cumulativeMeters(points: List<GeoPoint>): DoubleArray {
         val result = DoubleArray(points.size)
@@ -146,19 +187,33 @@ object StoryPlanCalculator {
     }
 
     private fun timeline(splits: List<StorySplit>, targetDurationSec: Double): List<StorySegment> {
-        if (splits.isEmpty()) {
-            return listOf(
-                StorySegment(
-                    startSec = 0f,
-                    endSec = targetDurationSec.toFloat(),
-                    type = StorySegmentType.MOVE,
-                    progressStart = 0f,
-                    progressEnd = 1f,
-                ),
-            )
+        // The closing frame is part of the requested duration, not an extra tail.
+        val finalStart = (targetDurationSec - FINAL_SECONDS).coerceAtLeast(0.0)
+        val finalSegment = StorySegment(
+            startSec = finalStart.toFloat(),
+            endSec = targetDurationSec.toFloat(),
+            type = StorySegmentType.FINAL,
+            progressStart = 1f,
+            progressEnd = 1f,
+        )
+        if (splits.isEmpty() || finalStart <= 0.0) {
+            return buildList {
+                if (finalStart > 0.0) {
+                    add(
+                        StorySegment(
+                            startSec = 0f,
+                            endSec = finalStart.toFloat(),
+                            type = StorySegmentType.MOVE,
+                            progressStart = 0f,
+                            progressEnd = 1f,
+                        ),
+                    )
+                }
+                add(finalSegment)
+            }
         }
-        val cardSeconds = CARD_SECONDS.coerceAtMost(targetDurationSec / (splits.size * 2.0))
-        val moveSeconds = (targetDurationSec - splits.size * cardSeconds).coerceAtLeast(0.0)
+        val cardSeconds = CARD_SECONDS.coerceAtMost(finalStart / (splits.size * 2.0))
+        val moveSeconds = (finalStart - splits.size * cardSeconds).coerceAtLeast(0.0)
         val totalDelta = splits.zipWithNext { previous, next ->
             (next.progress - previous.progress).coerceAtLeast(0f)
         }.sum() + splits.first().progress + (1f - splits.last().progress)
@@ -199,22 +254,8 @@ object StoryPlanCalculator {
                 progressStart = previousProgress,
                 progressEnd = 1f,
             )
-            cursor += duration
         }
-        if (segments.isEmpty()) {
-            return listOf(
-                StorySegment(
-                    startSec = 0f,
-                    endSec = targetDurationSec.toFloat(),
-                    type = StorySegmentType.MOVE,
-                    progressStart = 0f,
-                    progressEnd = 1f,
-                ),
-            )
-        }
-        // Normalize floating-point drift so the last frame lands exactly on the target.
-        val last = segments.last()
-        segments[segments.lastIndex] = last.copy(endSec = targetDurationSec.toFloat())
+        segments += finalSegment
         return segments
     }
 

@@ -2,6 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -25,14 +26,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -82,6 +91,10 @@ fun ActivityDetailScreen(
     val context = LocalContext.current
     val palette = McTheme.colors.toStoryPalette()
 
+    LaunchedEffect(state.deleted) {
+        if (state.deleted) onBack()
+    }
+
     ActivityDetailContent(
         state = state,
         onBack = onBack,
@@ -89,6 +102,8 @@ fun ActivityDetailScreen(
         onExportStory = { viewModel.exportStory(palette) },
         onCancelStory = viewModel::cancelStory,
         onShareStory = { uri -> shareStory(context, uri) },
+        onDelete = viewModel::deleteActivity,
+        onClearDeleteError = viewModel::clearDeleteError,
         modifier = modifier,
     )
 }
@@ -102,7 +117,11 @@ internal fun ActivityDetailContent(
     onExportStory: () -> Unit = {},
     onCancelStory: () -> Unit = {},
     onShareStory: (Uri) -> Unit = {},
+    onDelete: () -> Unit = {},
+    onClearDeleteError: () -> Unit = {},
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -117,7 +136,12 @@ internal fun ActivityDetailContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                DetailHeader(onBack = onBack)
+                DetailHeader(
+                    onBack = onBack,
+                    canDelete = state.activity != null,
+                    isDeleting = state.isDeleting,
+                    onDeleteRequest = { confirmDelete = true },
+                )
             }
             when {
                 state.isLoading -> item { LoadingRow() }
@@ -144,7 +168,7 @@ internal fun ActivityDetailContent(
                         }
                     }
                     if (state.activity.imported.laps.isNotEmpty()) {
-                        item { McSectionHeader(title = "Splits") }
+                        item { McSectionHeader(title = "Trechos") }
                         item { SplitsCard(state.activity) }
                     }
                     if (state.activity.imported.samples.any { it.latitude != null && it.longitude != null }) {
@@ -169,11 +193,69 @@ internal fun ActivityDetailContent(
             }
         }
     }
+
+    if (confirmDelete) {
+        val colors = McTheme.colors
+        AlertDialog(
+            onDismissRequest = { if (!state.isDeleting) confirmDelete = false },
+            title = { Text(text = "Apagar esta atividade?") },
+            text = {
+                Text(
+                    text = "Ela sai do histórico, das tendências e do cálculo de carga. " +
+                        "Essa ação não pode ser desfeita.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        onDelete()
+                    },
+                    enabled = !state.isDeleting,
+                    modifier = Modifier.testTag("activity-delete-confirm"),
+                ) {
+                    Text(
+                        text = if (state.isDeleting) "Apagando..." else "Apagar",
+                        color = colors.danger,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmDelete = false },
+                    enabled = !state.isDeleting,
+                ) {
+                    Text(text = "Cancelar", color = colors.textPrimary)
+                }
+            },
+            containerColor = colors.surface,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textSecondary,
+        )
+    }
+
+    state.deleteError?.let { message ->
+        val colors = McTheme.colors
+        AlertDialog(
+            onDismissRequest = onClearDeleteError,
+            title = { Text(text = "Não foi possível apagar") },
+            text = { Text(text = message) },
+            confirmButton = {
+                TextButton(onClick = onClearDeleteError) {
+                    Text(text = "Fechar", color = colors.textPrimary)
+                }
+            },
+            containerColor = colors.surface,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textSecondary,
+        )
+    }
 }
 
 @Composable
-private fun DetailHeader(onBack: () -> Unit) {
+private fun DetailHeader(onBack: () -> Unit, canDelete: Boolean, isDeleting: Boolean, onDeleteRequest: () -> Unit) {
     val colors = McTheme.colors
+    var menuOpen by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack) {
             Icon(
@@ -183,7 +265,41 @@ private fun DetailHeader(onBack: () -> Unit) {
             )
         }
         Spacer(modifier = Modifier.width(4.dp))
-        Text(text = "ATIVIDADE", style = McTextStyles.overline, color = colors.textTertiary)
+        Text(
+            text = "ATIVIDADE",
+            style = McTextStyles.overline,
+            color = colors.textTertiary,
+            modifier = Modifier.weight(1f),
+        )
+        if (canDelete) {
+            Box {
+                IconButton(
+                    onClick = { menuOpen = true },
+                    enabled = !isDeleting,
+                    modifier = Modifier.testTag("activity-menu"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = "Mais opções",
+                        tint = colors.textPrimary,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    containerColor = colors.surface,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(text = "Apagar atividade", color = colors.danger) },
+                        onClick = {
+                            menuOpen = false
+                            onDeleteRequest()
+                        },
+                        modifier = Modifier.testTag("activity-delete-menu"),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -255,7 +371,7 @@ private fun HeroCard(activity: StoredActivity) {
                 modifier = Modifier.weight(1f),
             )
             McStat(
-                label = "Pace médio",
+                label = "Ritmo médio",
                 value = paceLabel(imported.averagePace),
                 unit = if (imported.averagePace != null) "/km" else null,
                 modifier = Modifier.weight(1f),
@@ -293,13 +409,13 @@ private fun SplitsCard(activity: StoredActivity) {
     McCard {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "SPLIT",
+                text = "TRECHO",
                 style = McTextStyles.overline,
                 color = colors.textTertiary,
                 modifier = Modifier.weight(1.4f),
             )
             Text(
-                text = "PACE",
+                text = "RITMO",
                 style = McTextStyles.overline,
                 color = colors.textTertiary,
                 textAlign = TextAlign.End,
@@ -384,8 +500,8 @@ private fun StoryCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Vídeo de 30 s com a rota animada e um card por km. " +
-                "Gerado no aparelho, sem enviar localização para servidores.",
+            text = "Vídeo de 30 s com a rota sobre o mapa e um card por km. " +
+                "O mapa baixa tiles do OpenStreetMap via OpenFreeMap; nenhuma coordenada exata é enviada.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -397,7 +513,7 @@ private fun StoryCard(
             )
 
             is StoryExportUiState.Preview -> {
-                StoryPreview(plan = story.plan)
+                StoryPreview(plan = story.plan, mapBackground = story.mapBackground)
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     McPrimaryButton(
@@ -412,6 +528,12 @@ private fun StoryCard(
                     )
                 }
             }
+
+            StoryExportUiState.PreparingMap -> Text(
+                text = "Baixando o mapa do OpenStreetMap…",
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
 
             is StoryExportUiState.Generating -> Text(
                 text = "Gerando vídeo… ${(story.progress * 100).roundToInt()}%",
@@ -461,16 +583,16 @@ private fun StoryCard(
 }
 
 @Composable
-private fun StoryPreview(plan: StoryPlan) {
+private fun StoryPreview(plan: StoryPlan, mapBackground: Bitmap?) {
     val context = LocalContext.current
     val colors = McTheme.colors
-    val bitmap = remember(plan, colors) {
+    val bitmap = remember(plan, mapBackground, colors) {
         val typeface = ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
         val previewTime = plan.segments
             .firstOrNull { it.type == StorySegmentType.CARD }
             ?.let { it.startSec + 1f }
             ?: (plan.durationSec / 2f)
-        StoryFrameRenderer(colors.toStoryPalette(), typeface, StoryBranding.logo(context))
+        StoryFrameRenderer(colors.toStoryPalette(), typeface, StoryBranding.logo(context), mapBackground)
             .render(plan, timeSec = previewTime, width = 360, height = 640)
     }
     Text(
@@ -497,7 +619,7 @@ private fun SampleWarningCard(warning: String) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.INSET) {
         Text(
-            text = "Séries temporais indisponíveis",
+            text = "Gráficos indisponíveis",
             style = MaterialTheme.typography.titleSmall,
             color = colors.warning,
         )

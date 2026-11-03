@@ -39,17 +39,27 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
 
     private val defaultLogoBitmap: Bitmap? by lazy { StoryBranding.logo(context) }
 
-    suspend fun export(plan: StoryPlan, palette: StoryPalette, onProgress: (Float) -> Unit = {}): StoryExportResult =
-        withContext(Dispatchers.Default) {
-            val output = File(
-                File(context.cacheDir, "stories").apply { mkdirs() },
-                "meucoach-story-${System.currentTimeMillis()}.mp4",
-            )
-            encode(plan, palette, output, onProgress)
-            publish(output)
-        }
+    suspend fun export(
+        plan: StoryPlan,
+        palette: StoryPalette,
+        mapBackground: Bitmap? = null,
+        onProgress: (Float) -> Unit = {},
+    ): StoryExportResult = withContext(Dispatchers.Default) {
+        val output = File(
+            File(context.cacheDir, "stories").apply { mkdirs() },
+            "meucoach-story-${System.currentTimeMillis()}.mp4",
+        )
+        encode(plan, palette, mapBackground, output, onProgress)
+        publish(output)
+    }
 
-    private fun encode(plan: StoryPlan, palette: StoryPalette, output: File, onProgress: (Float) -> Unit) {
+    private fun encode(
+        plan: StoryPlan,
+        palette: StoryPalette,
+        mapBackground: Bitmap?,
+        output: File,
+        onProgress: (Float) -> Unit,
+    ) {
         val codecInfo = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { info ->
             info.isEncoder &&
                 info.supportedTypes.any { it.equals(MIME, ignoreCase = true) } &&
@@ -65,7 +75,7 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         val info = MediaCodec.BufferInfo()
         val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap)
+        val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground)
         val yuvSize = WIDTH * HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
 
@@ -213,11 +223,13 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         return StoryExportResult(uri = uri, savedToGallery = false)
     }
 
-    private companion object {
-        const val MIME = "video/avc"
-        const val WIDTH = 720
-        const val HEIGHT = 1280
-        const val FPS = 24
-        const val BITRATE = 4_000_000
+    companion object {
+        private const val MIME = "video/avc"
+        const val WIDTH = 1080
+        const val HEIGHT = 1920
+        private const val FPS = 24
+
+        // 1080p needs more bits than 720p; 8 Mbps keeps street labels crisp.
+        private const val BITRATE = 8_000_000
     }
 }

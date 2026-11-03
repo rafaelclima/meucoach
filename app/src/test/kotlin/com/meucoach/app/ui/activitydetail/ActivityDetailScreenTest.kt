@@ -2,6 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -59,21 +60,42 @@ class ActivityDetailScreenTest {
         compose.onNodeWithContentDescription("Voltar").assertIsDisplayed()
 
         val list = compose.onNodeWithTag("activity-detail-list")
-        list.performScrollToNode(hasText("Pace × FC × tempo"))
-        compose.onNodeWithText("Pace × FC × tempo").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Gráfico de pace e frequência cardíaca ao longo do tempo")
+        list.performScrollToNode(hasText("Ritmo × FC × tempo"))
+        compose.onNodeWithText("Ritmo × FC × tempo").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Gráfico de ritmo e frequência cardíaca ao longo do tempo")
             .assertIsDisplayed()
 
         list.performScrollToNode(hasText("Tempo em cada intensidade", substring = true))
         compose.onNodeWithText("Zonas de FC").assertIsDisplayed()
         compose.onNodeWithText("Tempo em cada intensidade", substring = true).assertIsDisplayed()
 
-        list.performScrollToNode(hasText("Splits"))
-        compose.onNodeWithText("Splits").assertIsDisplayed()
+        list.performScrollToNode(hasText("Trechos"))
+        compose.onNodeWithText("Trechos").assertIsDisplayed()
 
         list.performScrollToNode(hasText("O que aprendemos"))
         compose.onNodeWithText("O que aprendemos").assertIsDisplayed()
-        compose.onNodeWithText("R-ACT-01", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("R-ACT-01", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `confirms before deleting the activity`() {
+        var deleted = false
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state(),
+                onBack = {},
+                onDelete = { deleted = true },
+            )
+        }
+
+        compose.onNodeWithTag("activity-menu").performClick()
+        compose.onNodeWithText("Apagar atividade").performClick()
+        compose.onNodeWithText("Apagar esta atividade?").assertIsDisplayed()
+        assertThat(deleted).isFalse()
+
+        compose.onNodeWithTag("activity-delete-confirm").performClick()
+        assertThat(deleted).isTrue()
     }
 
     @Test
@@ -92,7 +114,7 @@ class ActivityDetailScreenTest {
         }
 
         val list = compose.onNodeWithTag("activity-detail-list")
-        list.performScrollToNode(hasText("Prévia do story"))
+        list.performScrollToNode(hasContentDescription("Prévia do story"))
         compose.onNodeWithContentDescription("Prévia do story").assertIsDisplayed()
         list.performScrollToNode(hasText("Gerar vídeo"))
         compose.onNodeWithText("Gerar vídeo").performClick()

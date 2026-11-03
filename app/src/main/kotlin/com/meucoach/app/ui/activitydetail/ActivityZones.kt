@@ -41,7 +41,7 @@ internal fun HrZonesCard(distribution: HrZoneDistribution, lthr: Int) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Tempo em cada intensidade · Baseado no seu limiar de esforço (LTHR: $lthr bpm)",
+            text = "Tempo em cada intensidade, a partir do seu limite de esforço ($lthr bpm).",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -79,10 +79,10 @@ internal fun HrZonesCard(distribution: HrZoneDistribution, lthr: Int) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Z${zone.zone.number}",
+                    text = "Z${zone.zone.number} · ${zoneLabel(zone.zone)}",
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.textPrimary,
-                    modifier = Modifier.width(32.dp),
+                    modifier = Modifier.width(112.dp),
                 )
                 Text(
                     text = formatDuration(zone.durationSec),
@@ -100,6 +100,14 @@ internal fun HrZonesCard(distribution: HrZoneDistribution, lthr: Int) {
             }
         }
     }
+}
+
+private fun zoneLabel(zone: HeartRateZone): String = when (zone) {
+    HeartRateZone.Z1 -> "Muito leve"
+    HeartRateZone.Z2 -> "Fácil"
+    HeartRateZone.Z3 -> "Moderado"
+    HeartRateZone.Z4 -> "Forte"
+    HeartRateZone.Z5 -> "Máximo"
 }
 
 @Composable

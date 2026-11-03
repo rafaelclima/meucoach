@@ -1,9 +1,12 @@
 package com.meucoach.app.ui.activitydetail
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.story.BoundingBox
+import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
@@ -134,6 +137,22 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `deletes the activity and hides it from the history`() {
+        runBlocking {
+            repository.saveImportedActivity(importedActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.deleteActivity()
+            val state = viewModel.uiState.first { it.deleted }
+
+            assertThat(state.isDeleting).isFalse()
+            assertThat(state.deleteError).isNull()
+            assertThat(repository.openActivity("activity-1")).isNull()
+        }
+    }
+
+    @Test
     fun `requires an activity id`() {
         assertThatThrownBy {
             ActivityDetailViewModel(
@@ -141,19 +160,22 @@ class ActivityDetailViewModelTest {
                 repository,
                 profiles,
                 StoryVideoExporter(ApplicationProvider.getApplicationContext()),
+                FakeMapBackgroundRenderer(),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
     }
 
-    private fun viewModel(activityId: String) = ActivityDetailViewModel(
-        savedStateHandle = SavedStateHandle(
-            mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
-        ),
-        repository = repository,
-        profileRepository = profiles,
-        storyExporter = StoryVideoExporter(ApplicationProvider.getApplicationContext()),
-    )
+    private fun viewModel(activityId: String, mapRenderer: MapBackgroundRenderer = FakeMapBackgroundRenderer()) =
+        ActivityDetailViewModel(
+            savedStateHandle = SavedStateHandle(
+                mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
+            ),
+            repository = repository,
+            profileRepository = profiles,
+            storyExporter = StoryVideoExporter(ApplicationProvider.getApplicationContext()),
+            mapRenderer = mapRenderer,
+        )
 
     @Test
     fun `reports missing gps when creating a story`() {
@@ -184,9 +206,52 @@ class ActivityDetailViewModelTest {
 
             assertThat(preview.plan.splits).isNotEmpty()
             assertThat(preview.plan.distanceKm).isGreaterThan(0.0)
+            assertThat(preview.mapBackground).isNotNull
 
             viewModel.cancelStory()
             assertThat(viewModel.uiState.value.storyExport).isEqualTo(StoryExportUiState.Idle)
+        }
+    }
+
+    @Test
+    fun `renders the map for the story frame size`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val renderer = FakeMapBackgroundRenderer()
+            val viewModel = viewModel("activity-1", renderer)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+
+            assertThat(renderer.width).isEqualTo(StoryVideoExporter.WIDTH)
+            assertThat(renderer.height).isEqualTo(StoryVideoExporter.HEIGHT)
+            assertThat(renderer.bounds).isEqualTo(
+                BoundingBox(
+                    minLat = -5.790,
+                    maxLat = -5.772,
+                    minLon = -35.210,
+                    maxLon = -35.210,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `reports a map failure instead of exporting without the map`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel(
+                "activity-1",
+                FakeMapBackgroundRenderer(error = IllegalStateException("offline")),
+            )
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            val state = viewModel.uiState.first { it.storyExport is StoryExportUiState.Error }
+
+            assertThat((state.storyExport as StoryExportUiState.Error).message)
+                .contains("mapa")
         }
     }
 
@@ -238,4 +303,18 @@ class ActivityDetailViewModelTest {
             ActivitySample(offsetSec = 1_800, heartRate = 160, speedMps = 2.9),
         ),
     )
+
+    private class FakeMapBackgroundRenderer(private val error: Throwable? = null) : MapBackgroundRenderer {
+        var bounds: BoundingBox? = null
+        var width: Int = 0
+        var height: Int = 0
+
+        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int): Bitmap {
+            this.bounds = boundingBox
+            this.width = width
+            this.height = height
+            error?.let { throw it }
+            return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+        }
+    }
 }

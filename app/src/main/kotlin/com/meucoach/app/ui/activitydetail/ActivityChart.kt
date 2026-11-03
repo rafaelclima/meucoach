@@ -41,7 +41,7 @@ internal fun ActivityChartCard(samples: List<ActivitySample>, modifier: Modifier
 
     McCard(modifier = modifier) {
         Text(
-            text = "Pace × FC × tempo",
+            text = "Ritmo × FC × tempo",
             style = MaterialTheme.typography.titleMedium,
             color = colors.textPrimary,
         )
@@ -54,7 +54,7 @@ internal fun ActivityChartCard(samples: List<ActivitySample>, modifier: Modifier
         Spacer(modifier = Modifier.height(12.dp))
         LegendLine(
             color = colors.accent,
-            label = "Pace",
+            label = "Ritmo",
             range = paceRangeLabel(data.paceRange),
         )
         if (data.heartRateRange != null) {
@@ -71,7 +71,7 @@ internal fun ActivityChartCard(samples: List<ActivitySample>, modifier: Modifier
                 .fillMaxWidth()
                 .height(CHART_HEIGHT)
                 .semantics {
-                    contentDescription = "Gráfico de pace e frequência cardíaca ao longo do tempo"
+                    contentDescription = "Gráfico de ritmo e frequência cardíaca ao longo do tempo"
                 },
         ) {
             drawChartGrid(gridColor = colors.borderSubtle)
