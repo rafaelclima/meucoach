@@ -73,7 +73,7 @@
 
 1. Reimportar uma corrida e revisar os cards de Tendências e do detalhe da atividade com dados reais.
 2. `P1-12`: validação E2E com 4 semanas de uso real.
-3. Fase 3 do plano: consistência de termos (HRV/SpO₂/fuso) e check-in em uma linha.
+3. Fase 3 do plano de apresentação: `ROADMAP.md` U-01 a U-04 (termos, check-in em uma linha, confiança do plano e revisão com corrida real).
 
 ## Sessão 2026-11-03 — Hoje: cards compactos e prontidão explicada
 

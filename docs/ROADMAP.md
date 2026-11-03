@@ -379,6 +379,17 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 
 ---
 
+## Backlog de apresentação (Fase 3)
+
+Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e ficam para a próxima sessão de UI.
+
+| ID | Item | Status |
+|---|---|---|
+| U-01 | Consistência de termos: “HRV” vs “variabilidade”, “SpO2” vs “SpO₂” e rótulo de fuso (“Fortaleza”) quando a cidade é “Natal”. | Pendente |
+| U-02 | Check-in em uma linha: “Check-in feito hoje” com resumo curto, sem repetir “Você pode revisar”. | Pendente |
+| U-03 | Contextualizar a confiança do plano (“Plano · confiança baixa”) para não competir visualmente com a confiança da prontidão. | Pendente |
+| U-04 | Revisar Tendências e o detalhe da atividade com uma corrida importada (cards, gráficos, splits e zonas). | Pendente — depende de uma importação real |
+
 ## Backlog técnico
 
 | ID | Item | Quando |
