@@ -9,6 +9,7 @@ import java.net.URI
 object NotificationNavigation {
     const val ROUTE_TODAY = "today"
     const val ROUTE_CHECK_IN = "check-in"
+    const val ROUTE_ACTIVITIES = "activities"
 
     private val _route = MutableStateFlow<String?>(null)
     val route: StateFlow<String?> = _route.asStateFlow()
@@ -27,7 +28,17 @@ object NotificationNavigation {
         if (uri.scheme != "meucoach") return null
         return when (uri.host) {
             "today" -> ROUTE_TODAY
+
             "check-in" -> ROUTE_CHECK_IN
+
+            "activities" -> ROUTE_ACTIVITIES
+
+            "activity" ->
+                uri.path
+                    ?.trim('/')
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { activityId -> "activity/$activityId" }
+
             else -> null
         }
     }

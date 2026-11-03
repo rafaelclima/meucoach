@@ -14,6 +14,7 @@ class ImportWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val processor: StagedImportProcessor,
+    private val notifier: ImportNotifier,
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
         val relativePath = inputData.getString(KEY_RELATIVE_PATH) ?: return Result.failure()
@@ -21,7 +22,8 @@ class ImportWorker @AssistedInject constructor(
         val mime = inputData.getString(KEY_MIME)
 
         return try {
-            processor.process(relativePath, displayName, mime)
+            val result = processor.process(relativePath, displayName, mime)
+            notifier.notify(result, displayName)
             Result.success()
         } catch (error: IOException) {
             // The staged file is still there; WorkManager will retry with backoff.

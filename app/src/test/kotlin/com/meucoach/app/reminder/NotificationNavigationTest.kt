@@ -11,6 +11,14 @@ class NotificationNavigationTest {
     }
 
     @Test
+    fun `maps import results`() {
+        assertThat(NotificationNavigation.routeFor("meucoach://activities")).isEqualTo("activities")
+        assertThat(NotificationNavigation.routeFor("meucoach://activity/abc-123"))
+            .isEqualTo("activity/abc-123")
+        assertThat(NotificationNavigation.routeFor("meucoach://activity/")).isNull()
+    }
+
+    @Test
     fun `ignores other links`() {
         assertThat(NotificationNavigation.routeFor("meucoach://profile")).isNull()
         assertThat(NotificationNavigation.routeFor("https://example.com/today")).isNull()
