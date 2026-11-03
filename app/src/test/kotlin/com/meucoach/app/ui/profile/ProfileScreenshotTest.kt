@@ -3,6 +3,7 @@ package com.meucoach.app.ui.profile
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.GoalType
@@ -39,7 +40,16 @@ class ProfileScreenshotTest {
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        health = ProfileHealthSummary(
+                            status = HealthConnectStatus.AVAILABLE,
+                            hasPermissions = true,
+                            storedDays = 47,
+                            lastSyncDate = LocalDate.now(),
+                        ),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
                     onImportMetrics = {},

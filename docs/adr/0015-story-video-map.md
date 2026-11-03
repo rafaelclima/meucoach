@@ -270,3 +270,17 @@ A primeira versão do mapa usava raster do `tile.openstreetmap.org` em 720×1280
 - **Privacidade:** os requests vão para `tiles.openfreemap.org` com a região aproximada; coordenadas exatas continuam só no aparelho. A atribuição `© OpenStreetMap · OpenMapTiles · OpenFreeMap` é desenhada no frame.
 
 **Pendente:** validar no aparelho os labels reais, o tempo de export em 1080p e a nitidez; se necessário, ajustar `MAP_ZOOM_FACTOR` (1,2) ou os tamanhos de label.
+
+## 9. Story v2 — Fase A: área segura, câmera e film look (03/11/2026)
+
+A proposta completa está em `docs/STORY_V2.md`. A Fase A entrega a camada visual, sem tocar no motor:
+
+- **Área segura:** `StoryLayout` concentra a geometria do frame 9:16 e reserva 13% no topo e 13% na base para a UI do Instagram (≈250 px em 1080×1920). O antigo rodapé com logo ficou dentro dessa área; agora o logo vai para o topo, a atribuição OSM ganha um fundo próprio acima da base e o frame final assina “Seu treino, com contexto.” dentro do card.
+- **Rota e card:** a moldura da rota passou a reservar espaço para o push da câmera (`StoryMotion.MAX_CAMERA_SCALE`), então a linha não invade mais o cabeçalho. O card termina em 84% da altura; a rota pode deslizar por baixo do painel opaco.
+- **Câmera:** `StoryMotion` move mapa e rota com a mesma transformação (zoom 1,08→1,13, rotação 0→2°→0, deriva mínima). O `StoryMapCameraCalculator` deixou de aplicar o fator fixo de 1,2×: o enquadramento agora vem da moldura da rota e o push é aplicado no renderer, mantendo o alinhamento.
+- **Nitidez:** o snapshot é pedido a 1,15× (`StoryVideoExporter.mapWidth/mapHeight`) e desenhado reduzido no frame; o push e a rotação não borram os labels.
+- **Film look:** grade de cor e vinheta no renderer, grão determinístico aplicado pelo exporter (`StoryFilm`) e sombra nas métricas do cabeçalho. Tudo desenhado por `Canvas`, sem dependência nova.
+- **Formato:** 30 fps, 10 Mbps, capa PNG do frame final em `Pictures/MeuCoach` (Android 10+) e reuso do buffer de pixels do encoder.
+- **Testes:** `StoryLayoutTest`, `StoryMotionTest`, câmera e goldens do story; mensagem de “vídeo e capa” coberta na UI.
+
+**Pendente:** validar no aparelho o tempo de export a 30 fps, a leitura do grão/rotação depois do reencode do Instagram e a capa na galeria.

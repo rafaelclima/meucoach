@@ -139,11 +139,36 @@ class ActivityDetailScreenTest {
         val list = compose.onNodeWithTag("activity-detail-list")
         list.performScrollToNode(hasText("Story do treino"))
         compose.onNodeWithText("Story do treino").assertIsDisplayed()
+        list.performScrollToNode(hasText("Vídeo salvo na galeria."))
         compose.onNodeWithText("Vídeo salvo na galeria.").assertIsDisplayed()
         list.performScrollToNode(hasText("Compartilhar"))
         compose.onNodeWithText("Compartilhar").performClick()
 
         assertThat(shared).isEqualTo(uri)
+    }
+
+    @Test
+    fun `mentions the cover when the story also saves one`() {
+        val uri = Uri.parse("content://media/external/video/media/42")
+        val cover = Uri.parse("content://media/external/images/media/43")
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    storyExport = StoryExportUiState.Done(
+                        uri = uri,
+                        savedToGallery = true,
+                        coverUri = cover,
+                    ),
+                ),
+                onBack = {},
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Vídeo e capa salvos na galeria."))
+        compose.onNodeWithText("Vídeo e capa salvos na galeria.").assertIsDisplayed()
+        list.performScrollToNode(hasText("A capa é o frame final, pronta para o feed."))
+        compose.onNodeWithText("A capa é o frame final, pronta para o feed.").assertIsDisplayed()
     }
 
     @Test

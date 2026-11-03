@@ -21,6 +21,12 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.app.ui.activitydetail.ActivityDetailTestData
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.model.ActivitySample
+import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.ImportedActivity
+import com.meucoach.core.model.Sport
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -28,6 +34,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.Instant
+import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
@@ -183,6 +191,104 @@ class StoryFrameScreenshotTest {
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("src/test/screenshots/story-final-map-dark.png")
+    }
+
+    @Test
+    fun storyCardWithVerdictDark() {
+        val storyPlan = easyPlan()
+        val cardStart = checkNotNull(
+            storyPlan.segments.firstOrNull {
+                it.type == StorySegmentType.CARD && it.split?.km == 1
+            },
+        ).startSec
+        val map = fakeMap()
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(palette, Typeface.DEFAULT, null, map)
+                        .render(storyPlan, timeSec = cardStart + 1f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Card do story com selo de veredito",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-card-verdict-dark.png")
+    }
+
+    @Test
+    fun storyFinalWithVerdictDark() {
+        val storyPlan = easyPlan()
+        val finalStart = storyPlan.segments.last { it.type == StorySegmentType.FINAL }.startSec
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(palette, Typeface.DEFAULT, logo)
+                        .render(storyPlan, timeSec = finalStart + 1f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Frame final do story com veredito",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-final-verdict-dark.png")
+    }
+
+    /** Synthetic 2 km easy run: every sample sits inside Z2 (`LTHR` 180, bpm 150). */
+    private fun easyPlan(): StoryPlan {
+        val activity = ImportedActivity(
+            source = ActivitySource.GPX,
+            sport = Sport.RUNNING,
+            startTime = Instant.parse("2026-10-24T12:00:00Z"),
+            durationSec = 720,
+            distanceM = 2_000.0,
+            calories = 140,
+            samples = listOf(
+                ActivitySample(offsetSec = 0, latitude = -5.790, longitude = -35.210, heartRate = 150),
+                ActivitySample(offsetSec = 360, latitude = -5.781, longitude = -35.210, heartRate = 150),
+                ActivitySample(offsetSec = 720, latitude = -5.772, longitude = -35.210, heartRate = 150),
+            ),
+        )
+        val session = PlannedSession(
+            date = LocalDate.parse("2026-10-24"),
+            type = WorkoutType.EASY,
+            title = "Fácil 40 min",
+            durationMin = 40,
+            rationale = "Teste determinístico.",
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-FRIEL-2018"),
+        )
+        return checkNotNull(
+            StoryPlanCalculator.calculate(
+                activity = activity,
+                lthrBpm = 180,
+                session = session,
+                nextSession = session.copy(
+                    date = session.date.plusDays(1),
+                    durationMin = 40,
+                ),
+            ),
+        )
     }
 
     /**

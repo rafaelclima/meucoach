@@ -2,7 +2,15 @@ package com.meucoach.app.story
 
 import com.meucoach.app.ui.activitydetail.RouteData
 import com.meucoach.app.ui.activitydetail.routeData
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.story.StoryKmEffort
+import com.meucoach.core.domain.story.StoryVerdict
+import com.meucoach.core.domain.story.StoryVerdictCalculator
+import com.meucoach.core.domain.story.StoryVerdictTone
+import com.meucoach.core.domain.zones.HeartRateZoneCalculator
+import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import com.meucoach.core.model.ActivitySample
+import com.meucoach.core.model.HeartRateZone
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import kotlin.math.ceil
@@ -12,7 +20,17 @@ import kotlin.math.roundToInt
 
 enum class StorySegmentType { MOVE, CARD, FINAL }
 
-data class StorySplit(val km: Int, val pace: Pace, val heartRate: Int?, val calories: Int?, val progress: Float)
+data class StorySplit(
+    val km: Int,
+    val pace: Pace,
+    val heartRate: Int?,
+    val calories: Int?,
+    val progress: Float,
+    val verdict: StoryVerdictTone? = null,
+)
+
+/** Stretch of the route painted with the heart-rate zone of that moment. */
+data class StoryZoneRun(val startProgress: Float, val endProgress: Float, val zone: HeartRateZone)
 
 data class StorySegment(
     val startSec: Float,
@@ -41,6 +59,8 @@ data class StoryPlan(
     val averagePace: Pace?,
     val averageHeartRate: Int?,
     val boundingBox: BoundingBox?,
+    val zoneRuns: List<StoryZoneRun> = emptyList(),
+    val verdict: StoryVerdict? = null,
 )
 
 /**
@@ -55,7 +75,13 @@ object StoryPlanCalculator {
     private const val MAX_CARDS = 8
     private const val MIN_ROUTE_METERS = 50.0
 
-    fun calculate(activity: ImportedActivity, targetDurationSec: Int = 30): StoryPlan? {
+    fun calculate(
+        activity: ImportedActivity,
+        targetDurationSec: Int = 30,
+        lthrBpm: Int? = null,
+        session: PlannedSession? = null,
+        nextSession: PlannedSession? = null,
+    ): StoryPlan? {
         if (targetDurationSec <= 0) return null
         val route = routeData(activity.samples) ?: return null
         val points = geoPoints(activity.samples)
@@ -64,12 +90,23 @@ object StoryPlanCalculator {
         val totalMeters = cumulative.last()
         if (totalMeters < MIN_ROUTE_METERS) return null
 
-        val splits = kmSplits(
+        val rawSplits = kmSplits(
             points = points,
             cumulative = cumulative,
             totalMeters = totalMeters,
             totalCalories = activity.calories,
-        ).let { all -> capCards(all) }
+        )
+        val verdict = StoryVerdictCalculator.calculate(
+            session = session,
+            distribution = lthrBpm?.let { HrZoneDistributionCalculator.calculate(activity.samples, it) },
+            lthrBpm = lthrBpm,
+            efforts = rawSplits.map { StoryKmEffort(km = it.km, averageHeartRateBpm = it.heartRate) },
+            nextSession = nextSession,
+        )
+        val stamps = verdict.stamps.associateBy { it.km }
+        val splits = capCards(
+            rawSplits.map { split -> split.copy(verdict = stamps[split.km]?.tone) },
+        )
 
         val durationSec = max(targetDurationSec.toDouble(), FINAL_SECONDS)
         val segments = timeline(
@@ -88,6 +125,8 @@ object StoryPlanCalculator {
             averagePace = activity.averagePace ?: averagePace(activity.durationSec, distanceKm),
             averageHeartRate = activity.averageHeartRate ?: averageHeartRate(points),
             boundingBox = bounds(points),
+            zoneRuns = lthrBpm?.let { zoneRuns(points, cumulative, totalMeters, it) }.orEmpty(),
+            verdict = verdict,
         )
     }
 
@@ -257,6 +296,43 @@ object StoryPlanCalculator {
         }
         segments += finalSegment
         return segments
+    }
+
+    private fun zoneRuns(
+        points: List<GeoPoint>,
+        cumulative: DoubleArray,
+        totalMeters: Double,
+        lthrBpm: Int,
+    ): List<StoryZoneRun> {
+        if (totalMeters <= 0.0) return emptyList()
+        val runs = mutableListOf<StoryZoneRun>()
+        var runStart = 0.0
+        var runZone: HeartRateZone? = null
+        points.forEachIndexed { index, point ->
+            val zone = point.heartRate?.let { bpm ->
+                runCatching { HeartRateZoneCalculator.zoneFor(bpm, lthrBpm) }.getOrNull()
+            }
+            val current = runZone
+            if (zone != current) {
+                if (current != null) {
+                    runs += StoryZoneRun(
+                        startProgress = (runStart / totalMeters).toFloat().coerceIn(0f, 1f),
+                        endProgress = (cumulative[index] / totalMeters).toFloat().coerceIn(0f, 1f),
+                        zone = current,
+                    )
+                }
+                runStart = cumulative[index]
+                runZone = zone
+            }
+        }
+        runZone?.let { zone ->
+            runs += StoryZoneRun(
+                startProgress = (runStart / totalMeters).toFloat().coerceIn(0f, 1f),
+                endProgress = 1f,
+                zone = zone,
+            )
+        }
+        return runs.filter { it.endProgress > it.startProgress }
     }
 
     private fun haversine(a: GeoPoint, b: GeoPoint): Double {

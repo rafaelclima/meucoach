@@ -12,7 +12,7 @@ sealed interface StoryExportUiState {
     data object PreparingMap : StoryExportUiState
     data class Preview(val plan: StoryPlan, val mapBackground: Bitmap? = null) : StoryExportUiState
     data class Generating(val progress: Float) : StoryExportUiState
-    data class Done(val uri: Uri, val savedToGallery: Boolean) : StoryExportUiState
+    data class Done(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null) : StoryExportUiState
     data class Error(val message: String) : StoryExportUiState
 }
 

@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
 import com.meucoach.core.data.health.HealthSyncService
+import com.meucoach.core.data.health.HealthSyncStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class HealthConnectUiState(
@@ -19,6 +21,7 @@ data class HealthConnectUiState(
     val missingPermissions: Set<String> = emptySet(),
     val isSyncing: Boolean = false,
     val importedDays: Int = 0,
+    val lastSyncDate: LocalDate? = null,
     val message: String? = null,
 ) {
     val hasPermissions: Boolean get() = missingPermissions.isEmpty()
@@ -28,6 +31,7 @@ data class HealthConnectUiState(
 class HealthConnectViewModel @Inject constructor(
     private val source: HealthDailySource,
     private val syncService: HealthSyncService,
+    private val syncStore: HealthSyncStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HealthConnectUiState())
     val uiState: StateFlow<HealthConnectUiState> = _uiState.asStateFlow()
@@ -49,6 +53,7 @@ class HealthConnectViewModel @Inject constructor(
                 } else {
                     source.requiredPermissions
                 },
+                lastSyncDate = syncStore.lastSyncedDate(),
             )
         }
     }
@@ -73,7 +78,7 @@ class HealthConnectViewModel @Inject constructor(
 
                 result.missingPermissions.isNotEmpty() ->
                     "Autorize a leitura de sono, FC de repouso, variabilidade cardíaca (HRV) " +
-                        "e oxigenação (SpO2)."
+                        "e oxigenação (SpO₂)."
 
                 result.importedDays == 0 -> "Nenhum dado novo encontrado."
 
@@ -86,6 +91,7 @@ class HealthConnectViewModel @Inject constructor(
                 isSyncing = false,
                 importedDays = result.importedDays,
                 missingPermissions = result.missingPermissions.ifEmpty { _uiState.value.missingPermissions },
+                lastSyncDate = syncStore.lastSyncedDate(),
                 message = message,
             )
         }

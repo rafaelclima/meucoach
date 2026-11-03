@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 645 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 275 em `:app`)
+- **Testes:** 663 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 293 em `:app`)
 - **Cobertura `core:domain`:** 98,40% de linhas (2.455/2.495), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.332/18.873)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
@@ -38,12 +38,89 @@
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 com mapa vetorial (`MapLibre` + `OpenFreeMap`, dados OSM) e frame final de 3 s (distância, tempo, ritmo médio, FC média, kcal e logo), export MP4 1080×1920 via MediaCodec, com galeria e compartilhamento; validado em aparelho real (mapa vetorial pendente de validação).
-- **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) de labels ampliados e fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; vídeo 1080p a 8 Mbps.
+- **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) de labels ampliados e fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; vídeo 1080p a 10 Mbps e 30 fps desde a Fase A do story v2.
+- **Story v2 — Fase A:** área segura do Instagram, câmera com zoom/rotação alinhada à rota, grão/vinheta/grade de cor, 30 fps, snapshot supersampleado e capa PNG do frame final.
+- **Story v2 — Fase B:** veredito determinístico por km e no encerramento (`StoryVerdictCalculator`), rota colorida por zona de FC, barra de splits e contador no card; sem plano/calibração/FC o story não inventa alvo.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
+- **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
+
+## Sessão 2026-11-03 — Story v2 (Fase B): veredito do coach e rota por zona
+
+### Concluído
+
+- **`StoryVerdictCalculator`** (`core:domain`): transforma sessão planejada + zonas de FC em manchete, prova (`% no alvo`), frase do coach, selos por km e metadados de auditoria. Alvos: fácil Z2, longão Z1–Z2, qualidade Z4–Z5; 70% do tempo medido dentro da zona conta como “no alvo”.
+- **Fallbacks honestos:** sem plano, sem LHTR ou sem FC, o veredito fica nulo e o texto assume (“Sem alvo definido — só o esforço” / “Sem FC, o story mostra só o esforço”).
+- **Card por km:** selo `NO ALVO`/`FORTE DEMAIS`/`LEVE DEMAIS`, barra de splits com o km atual aceso e contador de ritmo/FC/kcal nos primeiros 0,45 s.
+- **Frame final:** `TREINO CONCLUÍDO` vira overline, a manchete do veredito ganha destaque, o percentual entra abaixo e a frase do coach fecha com o próximo treino da semana.
+- **Rota por zona:** `StoryZoneRun` pinta o trecho percorrido com as cores de Z1–Z5; sem LTHR, a rota continua no lima da marca.
+- **Fluxo:** `ActivityDetailViewModel` carrega a sessão planejada da data local da atividade e a próxima sessão da semana antes de montar o story.
+- **Testes:** 14 testes novos no domínio (alvo, acima, abaixo, longão, qualidade, descanso, sem plano, sem calibração, sem FC, selos e texto sem `ruleId`), 2 do planner, 2 do ViewModel e 2 goldens novos.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 683 testes, 0 falhas (27 `core:model`, 268 `core:domain`, 89 `core:data`, 299 `:app`).
+- Cobertura `core:domain`: 98,14% de linhas (2.590/2.639), 83,10% de branches (2.016/2.426), 96,89% de instruções (19.248/19.866).
+- Goldens novos `story-card-verdict-dark.png` e `story-final-verdict-dark.png`; goldens finais existentes atualizados com o fallback “Só o esforço”.
+
+### Decisões e observações
+
+- **Veredito é leitura, não nota:** o selo descreve o esforço do dia (“forte demais hoje”), nunca culpa ou “errado” (`PRODUCT.md` §5.5).
+- **70% é o piso:** abaixo disso, o lado com mais tempo decide o tom; empate escolhe a leitura mais gentil.
+- **A próxima sessão só vira “amanhã” quando é o dia seguinte:** caso contrário, “Próximo”.
+- **Sem dados, sem selo:** ausência de plano/calibração/FC reduz o veredito a esforço, sem inventar alvo.
+
+## Sessão 2026-11-03 — Story v2 (Fase A): área segura, câmera e film look
+
+### Concluído
+
+- **Decisão de tom:** veredito de treinador com o número como prova — o selo grande usa “Fácil bem feito” e o percentual entra menor. Registrado em `docs/STORY_V2.md` §9.
+- **Área segura do Instagram:** `StoryLayout` centraliza a geometria 9:16 e reserva 13% no topo e na base. Logo no topo, métricas em linha, atribuição OSM com fundo próprio, card até 84% da altura e assinatura “Seu treino, com contexto.” no frame final.
+- **Câmera:** `StoryMotion` aplica zoom (1,08→1,13), rotação (0→2°→0) e deriva mínima ao mapa **e** à rota com a mesma matriz; o alinhamento às ruas continua exato. O fator fixo de 1,2× do mapa foi substituído pela moldura da rota.
+- **Nitidez:** snapshot do mapa a 1,15× (1242×2208) desenhado reduzido; push e rotação sem borrar labels.
+- **Film look:** grade de cor, grão determinístico, vinheta e sombra nas métricas para leitura sobre o mapa claro.
+- **Formato e capa:** 30 fps, 10 Mbps, capa PNG 1080×1920 em `Pictures/MeuCoach` e mensagem “Vídeo e capa salvos na galeria”.
+- **Performance:** buffer de pixels do encoder reutilizado (antes ~8 MB por frame) e grão aplicado pelo exporter (`StoryFilm`), fora dos goldens.
+- **Testes:** `StoryLayoutTest`, `StoryMotionTest`, `StoryFilmTest`, câmera e goldens do story atualizados; teste de UI para a capa.
+
+### Evidências
+
+- `./gradlew spotlessCheck :app:testDebugUnitTest` — sucesso.
+- Goldens `story-frame-dark`, `story-frame-logo-dark`, `story-map-dark`, `story-final-dark` e `story-final-map-dark` atualizados.
+
+### Decisões e observações
+
+- **A marca não pode morar no rodapé:** o rodapé é da UI do Instagram. O logo foi para o topo e a assinatura do encerramento foi para dentro do card.
+- **A câmera move mapa e rota juntos:** qualquer transformação aplicada só à rota quebraria a correspondência com as ruas.
+- **O card cobre a cauda da rota:** é intencional; o painel opaco evita que a linha cruze os números e mantém a leitura limpa.
+- **Fase B é a que muda o patamar:** veredito por km, rota colorida por zona e HUD cinético ainda não estão implementados.
+
+## Sessão 2026-11-03 — Perfil → Saúde e dados: explicar o Health Connect
+
+### Concluído
+
+- **Perfil:** a seção “Dados” virou “Saúde e dados”. O card “Alimente o coach com seu descanso” diz o benefício (prontidão e treino do dia mais certos), mostra o Health Connect com um pill de estado real (`Conectado · N dias`, `Ainda não conectado`, `Indisponível neste aparelho`) e explica em uma frase o que é o app de saúde do Android. O backup (“Exportar ou apagar dados”) saiu do mesmo bloco e ganhou um card próprio, “Seus dados, sob seu controle”.
+- **Estado real no perfil:** `ProfileViewModel` combina perfil, métricas diárias e status do Health Connect (`HealthDailySource` + `HealthSyncStore`), com refresh no `onResume`; o perfil passa a provar que o coach já usa os dados, em vez de só anunciar a integração.
+- **Tela de dados:** “Métricas diárias” virou “Seus dados de saúde”, com o Health Connect em primeiro lugar, um bloco “O que isso muda no treino” (prontidão, risco de exagero e um exemplo com os mesmos guardrails do motor), o CSV como alternativa explícita (“Sem Health Connect? Use um CSV”) e o diagnóstico renomeado para “O que já está salvo”.
+- **Quando o Health Connect não está disponível:** a tela oferece “Instalar o Health Connect” (Play Store, com fallback web) e diz que, no Android 14+, ele já vem no sistema.
+- **Vocabulário único:** `healthConnectStatusLabel` e `healthConnectLastSyncLabel` (em `ui/common`) são compartilhados pelo perfil e pela tela de dados; “variabilidade cardíaca (HRV)” e “oxigenação (SpO₂)” aparecem por extenso na primeira menção.
+- **Testes:** 6 novos testes do vocabulário e casos de UI para conectar, sincronizar, instalar e exibir dias salvos; goldens de perfil atualizados com o estado conectado.
+
+### Evidências
+
+- `./gradlew spotlessCheck :app:testDebugUnitTest` — sucesso.
+- `:app:verifyRoborazziDebug` — goldens de perfil e dados verificados.
+
+### Decisões e observações
+
+- **Benefício antes do mecanismo:** o usuário não precisa saber o que é Health Connect para entender que sono e recuperação mudam o treino de hoje; a definição vem logo depois, curta e sem jargão.
+- **Status é prova:** um pill com “47 dias” comunica mais do que “Gerenciar métricas”; números ausentes continuam ausentes (sem `0 dias`).
+- **Backup não é saúde:** misturar importar métricas com apagar tudo fazia o usuário hesitar; agora são duas intenções separadas.
+- **Sem permissão não é erro:** “Ainda não conectado” convida; “Indisponível neste aparelho” explica, e o CSV permanece como caminho válido.
 
 ## Sessão 2026-11-03 — Fase 2: plano, carga, métricas e perfil
 

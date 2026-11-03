@@ -26,11 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.common.healthConnectLastSyncLabel
+import com.meucoach.app.ui.common.healthConnectStatusLabel
+import com.meucoach.app.ui.common.isHealthConnectConnected
 import com.meucoach.app.ui.common.timezoneLabel
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McEmptyState
+import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McSectionHeader
@@ -49,6 +54,10 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshHealth()
+        onPauseOrDispose { }
+    }
 
     ProfileContent(
         state = state,
@@ -97,6 +106,7 @@ internal fun ProfileContent(
 
             else -> ProfileDetails(
                 profile = state.profile,
+                health = state.health,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
                 onImportMetrics = onImportMetrics,
@@ -109,6 +119,7 @@ internal fun ProfileContent(
 @Composable
 private fun ProfileDetails(
     profile: AthleteProfile,
+    health: ProfileHealthSummary,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
@@ -203,29 +214,74 @@ private fun ProfileDetails(
                 profile.city?.let { SummaryRow("Cidade", it) }
             }
         }
-        item { McSectionHeader(title = "Dados") }
+        item { McSectionHeader(title = "Saúde e dados") }
         item {
+            val connected = isHealthConnectConnected(health.status, health.hasPermissions)
             McCard(variant = McCardVariant.INSET) {
                 Text(
-                    text = "Métricas diárias",
-                    style = MaterialTheme.typography.titleSmall,
+                    text = "Alimente o coach com seu descanso",
+                    style = MaterialTheme.typography.titleMedium,
                     color = colors.textPrimary,
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Sono, FC de repouso, HRV e SpO₂ · Health Connect ou CSV.",
-                    style = McTextStyles.caption,
+                    text = "Sono, FC de repouso, variabilidade cardíaca e oxigenação deixam a " +
+                        "prontidão mais precisa e o treino do dia mais certo.",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+                McPill(
+                    text = healthConnectStatusLabel(
+                        status = health.status,
+                        hasPermissions = health.hasPermissions,
+                        storedDays = health.storedDays,
+                    ),
+                    containerColor = if (connected) colors.accentSoft else colors.surface,
+                    contentColor = if (connected) colors.accentText else colors.textSecondary,
+                    modifier = Modifier.testTag("profile-health-status"),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Health Connect é o app de saúde do Android: ele reúne o que seu " +
+                        "relógio e outros apps registram. O MeuCoach só lê o que você autorizar — " +
+                        "nunca escreve.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+                healthConnectLastSyncLabel(health.lastSyncDate)?.let { label ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = label,
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
                 McSecondaryButton(
-                    text = "Gerenciar métricas",
+                    text = if (connected) "Ver meus dados de saúde" else "Conectar Health Connect",
                     onClick = onImportMetrics,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("profile-import-metrics"),
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+        item {
+            McCard(variant = McCardVariant.INSET) {
+                Text(
+                    text = "Seus dados, sob seu controle",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Baixe uma cópia completa em JSON ou apague tudo. Nada sai deste " +
+                        "aparelho sem você.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 McSecondaryButton(
                     text = "Exportar ou apagar dados",
                     onClick = onManageData,
@@ -234,13 +290,6 @@ private fun ProfileDetails(
                         .testTag("profile-manage-data"),
                 )
             }
-        }
-        item {
-            Text(
-                text = "Seus dados ficam só neste aparelho. Nada é enviado para a nuvem.",
-                style = McTextStyles.caption,
-                color = colors.textTertiary,
-            )
         }
         item {
             McPrimaryButton(

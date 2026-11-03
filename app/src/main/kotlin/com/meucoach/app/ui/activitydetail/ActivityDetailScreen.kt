@@ -500,8 +500,9 @@ private fun StoryCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Vídeo de 30 s com a rota sobre o mapa e um card por km. " +
-                "O mapa baixa tiles do OpenStreetMap via OpenFreeMap; nenhuma coordenada exata é enviada.",
+            text = "Vídeo de 30 s com a rota colorida pela FC, um card por km com o veredito do coach " +
+                "e capa para o feed. O mapa baixa tiles do OpenStreetMap via OpenFreeMap; " +
+                "nenhuma coordenada exata é enviada.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -543,14 +544,22 @@ private fun StoryCard(
 
             is StoryExportUiState.Done -> {
                 Text(
-                    text = if (story.savedToGallery) {
-                        "Vídeo salvo na galeria."
-                    } else {
-                        "Vídeo pronto para compartilhar."
+                    text = when {
+                        story.savedToGallery && story.coverUri != null -> "Vídeo e capa salvos na galeria."
+                        story.savedToGallery -> "Vídeo salvo na galeria."
+                        else -> "Vídeo pronto para compartilhar."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.success,
                 )
+                if (story.coverUri != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "A capa é o frame final, pronta para o feed.",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                    )
+                }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     McPrimaryButton(

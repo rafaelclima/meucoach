@@ -149,3 +149,16 @@ Mas para a reformulação da comunicação, vou criar um arquivo de referência 
 3. Confiança pode aparecer; ID de regra/evidência, não.
 4. Fonte é opcional e sob demanda, no máximo em um lugar por recomendação.
 5. Números sempre com unidade e consequência ("carga subiu rápido: não aumente").
+
+### 6.6 Health Connect e dados (03/11/2026)
+
+O usuário 0 não sabia o que era o Health Connect e não entendia que a seção “Dados” do perfil alimentava o coach. A comunicação passou a seguir esta ordem:
+
+1. **Benefício primeiro:** “Alimente o coach com seu descanso” — sono e recuperação mudam a prontidão e o treino do dia.
+2. **Definição curta:** “Health Connect é o app de saúde do Android: ele reúne o que seu relógio e outros apps registram.”
+3. **Limite explícito:** “O MeuCoach só lê o que você autorizar — nunca escreve.”
+4. **Prova, não promessa:** um pill mostra `Conectado · N dias` ou `Última leitura hoje`; sem dados, o texto diz “sem dados ainda”, nunca `0`.
+5. **Alternativa visível:** “Sem Health Connect? Use um CSV”, com o formato sob demanda.
+6. **Backup separado:** exportar/apagar ganha card próprio (“Seus dados, sob seu controle”), porque não é a mesma intenção de importar métricas.
+
+Termos padronizados: `variabilidade cardíaca (HRV)` e `oxigenação (SpO₂)` por extenso na primeira menção; “FC de repouso” em vez de RHR.

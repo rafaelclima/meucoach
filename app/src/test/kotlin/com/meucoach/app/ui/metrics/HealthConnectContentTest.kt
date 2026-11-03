@@ -22,7 +22,7 @@ class HealthConnectContentTest {
     val compose = createComposeRule()
 
     @Test
-    fun `shows unavailable status`() {
+    fun `explains what health connect is and shows unavailable status`() {
         setContent(
             HealthConnectUiState(
                 isLoading = false,
@@ -31,6 +31,7 @@ class HealthConnectContentTest {
         )
 
         compose.onNodeWithText("Indisponível neste aparelho").assertIsDisplayed()
+        compose.onNodeWithText("É o app de saúde do Android", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -46,7 +47,7 @@ class HealthConnectContentTest {
             onAuthorize = { authorized = true },
         )
 
-        compose.onNodeWithText("Autorizar leitura").performClick()
+        compose.onNodeWithText("Conectar Health Connect").performClick()
 
         assertThat(authorized).isTrue()
     }
@@ -61,12 +62,30 @@ class HealthConnectContentTest {
                 requiredPermissions = setOf("sleep", "hr"),
                 missingPermissions = emptySet(),
             ),
+            storedDays = 12,
             onSync = { synced = true },
         )
 
-        compose.onNodeWithText("Sincronizar agora").performClick()
+        compose.onNodeWithText("Conectado · 12 dias").assertIsDisplayed()
+        compose.onNodeWithText("Atualizar agora").performClick()
 
         assertThat(synced).isTrue()
+    }
+
+    @Test
+    fun `offers installation when the provider is missing`() {
+        var installed = false
+        setContent(
+            HealthConnectUiState(
+                isLoading = false,
+                status = HealthConnectStatus.UNAVAILABLE,
+            ),
+            onInstall = { installed = true },
+        )
+
+        compose.onNodeWithText("Instalar o Health Connect").performClick()
+
+        assertThat(installed).isTrue()
     }
 
     @Test
@@ -83,10 +102,22 @@ class HealthConnectContentTest {
         compose.onNodeWithText("2 dias importados do Health Connect.").assertIsDisplayed()
     }
 
-    private fun setContent(state: HealthConnectUiState, onAuthorize: () -> Unit = {}, onSync: () -> Unit = {}) {
+    private fun setContent(
+        state: HealthConnectUiState,
+        storedDays: Int = 0,
+        onAuthorize: () -> Unit = {},
+        onSync: () -> Unit = {},
+        onInstall: () -> Unit = {},
+    ) {
         compose.setContent {
             McTheme(darkTheme = true) {
-                HealthConnectContent(state = state, onAuthorize = onAuthorize, onSync = onSync)
+                HealthConnectContent(
+                    state = state,
+                    storedDays = storedDays,
+                    onAuthorize = onAuthorize,
+                    onSync = onSync,
+                    onInstall = onInstall,
+                )
             }
         }
     }

@@ -9,7 +9,10 @@ import com.meucoach.app.story.StoryPlanCalculator
 import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.StoredActivity
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -21,6 +24,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,6 +33,7 @@ class ActivityDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: ActivityRepository,
     private val profileRepository: ProfileRepository,
+    private val planRepository: TrainingPlanRepository,
     private val storyExporter: StoryVideoExporter,
     private val mapRenderer: MapBackgroundRenderer,
 ) : ViewModel() {
@@ -67,13 +73,21 @@ class ActivityDetailViewModel @Inject constructor(
     }
 
     fun createStory() {
-        val activity = _uiState.value.activity ?: return
-        val current = _uiState.value.storyExport
+        val state = _uiState.value
+        val stored = state.activity ?: return
+        val current = state.storyExport
         if (current is StoryExportUiState.Generating || current is StoryExportUiState.PreparingMap) return
         _uiState.update { it.copy(storyExport = StoryExportUiState.PreparingMap) }
         viewModelScope.launch {
+            val planned = plannedSessions(stored)
             val plan = withContext(Dispatchers.Default) {
-                StoryPlanCalculator.calculate(activity.imported, targetDurationSec = 30)
+                StoryPlanCalculator.calculate(
+                    activity = stored.imported,
+                    targetDurationSec = 30,
+                    lthrBpm = state.lthr,
+                    session = planned.current,
+                    nextSession = planned.next,
+                )
             }
             if (plan == null) {
                 _uiState.update {
@@ -91,8 +105,8 @@ class ActivityDetailViewModel @Inject constructor(
                     withTimeoutOrNull(MAP_TIMEOUT_MS) {
                         mapRenderer.render(
                             bounds,
-                            StoryVideoExporter.WIDTH,
-                            StoryVideoExporter.HEIGHT,
+                            StoryVideoExporter.mapWidth(),
+                            StoryVideoExporter.mapHeight(),
                         )
                     }
                 }.getOrElse { error ->
@@ -135,6 +149,7 @@ class ActivityDetailViewModel @Inject constructor(
                         storyExport = StoryExportUiState.Done(
                             uri = result.uri,
                             savedToGallery = result.savedToGallery,
+                            coverUri = result.coverUri,
                         ),
                     )
                 }
@@ -153,6 +168,24 @@ class ActivityDetailViewModel @Inject constructor(
     fun cancelStory() {
         _uiState.update { it.copy(storyExport = StoryExportUiState.Idle) }
     }
+
+    /**
+     * Planned session on the activity date and the next one in the same week.
+     * Missing plans are not an error: the story then reports effort only.
+     */
+    private suspend fun plannedSessions(activity: StoredActivity): PlannedStorySessions {
+        val weekStart = activity.localDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val week = runCatching { planRepository.getWeek(weekStart) }.getOrNull()
+            ?: return PlannedStorySessions()
+        return PlannedStorySessions(
+            current = week.sessions.firstOrNull { it.date == activity.localDate },
+            next = week.sessions
+                .filter { it.date.isAfter(activity.localDate) }
+                .minByOrNull { it.date },
+        )
+    }
+
+    private data class PlannedStorySessions(val current: PlannedSession? = null, val next: PlannedSession? = null)
 
     fun deleteActivity() {
         val current = _uiState.value

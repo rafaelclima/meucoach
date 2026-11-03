@@ -35,7 +35,7 @@ class StoryMapCameraTest {
     }
 
     @Test
-    fun `zooms twenty percent closer than the route square`() {
+    fun `fills the route square with the bounds`() {
         val width = 720
         val height = 1280
         val camera = StoryMapCameraCalculator.calculate(bounds, width, height)
@@ -72,11 +72,11 @@ class StoryMapCameraTest {
     fun `keeps the route square proportional at preview size`() {
         val square = StoryMapCameraCalculator.routeSquare(360f, 640f)
 
-        assertThat(square.side).isCloseTo(246.8f, within(0.1f))
+        assertThat(square.side).isCloseTo(256.6f, within(0.1f))
         assertThat(square.centerX).isCloseTo(180f, within(0.1f))
-        assertThat(square.centerY).isCloseTo(273.4f, within(0.1f))
-        assertThat(square.left).isCloseTo(56.6f, within(0.1f))
-        assertThat(square.top).isCloseTo(150f, within(0.1f))
+        assertThat(square.centerY).isCloseTo(315f, within(0.1f))
+        assertThat(square.left).isCloseTo(51.7f, within(0.1f))
+        assertThat(square.top).isCloseTo(186.7f, within(0.1f))
     }
 
     @Test

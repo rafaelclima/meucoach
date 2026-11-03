@@ -1,7 +1,11 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.story.StoryVerdictTone
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.HeartRateZone
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sport
@@ -9,6 +13,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.Test
 import java.time.Instant
+import java.time.LocalDate
 
 class StoryPlanCalculatorTest {
     @Test
@@ -199,6 +204,54 @@ class StoryPlanCalculatorTest {
     }
 
     @Test
+    fun `stamps splits and paints the route with the measured zone`() {
+        val activity = activity(
+            samples = listOf(
+                sample(offsetSec = 0, latitude = -5.790, longitude = -35.210, hr = 150),
+                sample(offsetSec = 360, latitude = -5.781, longitude = -35.210, hr = 150),
+                sample(offsetSec = 720, latitude = -5.772, longitude = -35.210, hr = 150),
+            ),
+            durationSec = 720,
+            distanceM = 2_000.0,
+            calories = 140,
+        )
+
+        val plan = StoryPlanCalculator.calculate(
+            activity = activity,
+            lthrBpm = 180,
+            session = easySession(),
+        )
+
+        assertThat(plan).isNotNull
+        assertThat(plan!!.verdict?.tone).isEqualTo(StoryVerdictTone.ON_TARGET)
+        assertThat(plan.splits.map { it.verdict }).containsOnly(StoryVerdictTone.ON_TARGET)
+        assertThat(plan.zoneRuns).isNotEmpty()
+        assertThat(plan.zoneRuns.map { it.zone }).containsOnly(HeartRateZone.Z2)
+        assertThat(plan.zoneRuns.first().startProgress).isEqualTo(0f)
+        assertThat(plan.zoneRuns.last().endProgress).isEqualTo(1f)
+    }
+
+    @Test
+    fun `keeps the route unpainted without calibration`() {
+        val activity = activity(
+            samples = listOf(
+                sample(offsetSec = 0, latitude = -5.790, longitude = -35.210, hr = 150),
+                sample(offsetSec = 360, latitude = -5.781, longitude = -35.210, hr = 150),
+            ),
+            durationSec = 360,
+            distanceM = 1_000.0,
+            calories = 70,
+        )
+
+        val plan = StoryPlanCalculator.calculate(activity, session = easySession())
+
+        assertThat(plan!!.zoneRuns).isEmpty()
+        assertThat(plan.verdict?.tone).isNull()
+        assertThat(plan.verdict?.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+        assertThat(plan.splits.map { it.verdict }).containsOnlyNulls()
+    }
+
+    @Test
     fun `returns null without a gps route`() {
         val activity = activity(
             samples = listOf(sample(offsetSec = 0, latitude = null, longitude = null, hr = 140)),
@@ -209,6 +262,16 @@ class StoryPlanCalculatorTest {
 
         assertThat(StoryPlanCalculator.calculate(activity)).isNull()
     }
+
+    private fun easySession() = PlannedSession(
+        date = LocalDate.parse("2026-10-30"),
+        type = WorkoutType.EASY,
+        title = "Fácil",
+        durationMin = 30,
+        rationale = "Teste determinístico.",
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-FRIEL-2018"),
+    )
 
     private fun activity(
         samples: List<ActivitySample>,

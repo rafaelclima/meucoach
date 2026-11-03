@@ -1,5 +1,8 @@
 package com.meucoach.app.ui.metrics
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -13,9 +16,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
@@ -29,13 +35,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.common.healthConnectLastSyncLabel
+import com.meucoach.app.ui.common.healthConnectStatusLabel
+import com.meucoach.app.ui.common.isHealthConnectConnected
+import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
+import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
@@ -51,6 +63,7 @@ fun MetricsImportScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val healthViewModel: HealthConnectViewModel = hiltViewModel()
     val healthState by healthViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri -> uri?.let(viewModel::import) },
@@ -66,6 +79,7 @@ fun MetricsImportScreen(
         onPick = { launcher.launch(CSV_MIME_TYPES) },
         onAuthorize = { permissionLauncher.launch(healthState.requiredPermissions) },
         onSync = healthViewModel::sync,
+        onInstallHealthConnect = { openHealthConnectStore(context) },
         onBack = onBack,
         modifier = modifier,
     )
@@ -80,6 +94,7 @@ internal fun MetricsImportContent(
     healthState: HealthConnectUiState = HealthConnectUiState(),
     onAuthorize: () -> Unit = {},
     onSync: () -> Unit = {},
+    onInstallHealthConnect: () -> Unit = {},
 ) {
     val colors = McTheme.colors
     var showCsvFormat by remember { mutableStateOf(false) }
@@ -106,7 +121,7 @@ internal fun MetricsImportContent(
                         tint = colors.textPrimary,
                     )
                 }
-                Text(text = "DADOS", style = McTextStyles.overline, color = colors.textTertiary)
+                Text(text = "SAÚDE E DADOS", style = McTextStyles.overline, color = colors.textTertiary)
             }
 
             LazyColumn(
@@ -117,12 +132,13 @@ internal fun MetricsImportContent(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Métricas diárias",
+                            text = "Seus dados de saúde",
                             style = MaterialTheme.typography.headlineLarge,
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Sono, FC de repouso, HRV e SpO₂, do Health Connect ou de um CSV lido no aparelho.",
+                            text = "Sono e recuperação entram na prontidão. Conecte uma fonte e o " +
+                                "coach passa a usar seus dados todos os dias.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -131,20 +147,24 @@ internal fun MetricsImportContent(
                 item {
                     HealthConnectContent(
                         state = healthState,
+                        storedDays = state.storedDays,
                         onAuthorize = onAuthorize,
                         onSync = onSync,
+                        onInstall = onInstallHealthConnect,
                     )
                 }
+                item { WhyItMattersCard() }
                 item {
                     McCard(variant = McCardVariant.INSET) {
                         Text(
-                            text = "Formato do CSV",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = "Sem Health Connect? Use um CSV",
+                            style = MaterialTheme.typography.titleMedium,
                             color = colors.textPrimary,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Data, sono, FC de repouso, HRV e SpO₂.",
+                            text = "Uma planilha com data, sono, FC de repouso, variabilidade " +
+                                "cardíaca e oxigenação. Só a data é obrigatória.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -163,21 +183,19 @@ internal fun MetricsImportContent(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Só a coluna date é obrigatória. Datas ISO ou dd/mm/aaaa. " +
-                                    "Campos vazios continuam ausentes.",
+                                text = "Datas ISO ou dd/mm/aaaa. Campos vazios continuam ausentes.",
                                 style = McTextStyles.caption,
                                 color = colors.textTertiary,
                             )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        McSecondaryButton(
+                            text = if (state.isImporting) "Lendo..." else "Escolher CSV",
+                            onClick = onPick,
+                            enabled = !state.isImporting,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
-                }
-                item {
-                    McSecondaryButton(
-                        text = if (state.isImporting) "Lendo..." else "Escolher CSV",
-                        onClick = onPick,
-                        enabled = !state.isImporting,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
                 state.message?.let { message ->
                     item {
@@ -201,16 +219,16 @@ internal fun MetricsImportContent(
                 item {
                     McCard(variant = McCardVariant.INSET) {
                         Text(
-                            text = "Diagnóstico local",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = "O que já está salvo",
+                            style = MaterialTheme.typography.titleMedium,
                             color = colors.textPrimary,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = if (state.storedDays == 0) {
-                                "Nenhum dia de métricas salvo."
+                                "Nenhum dia ainda. Conecte o Health Connect ou importe um CSV."
                             } else {
-                                "${state.storedDays} dias salvos · última em " +
+                                "${state.storedDays} dias de sono e recuperação · última em " +
                                     (state.latestMetricDate?.format(DATE_FORMAT) ?: "—")
                             },
                             style = McTextStyles.caption,
@@ -218,7 +236,7 @@ internal fun MetricsImportContent(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "A confiança por componente aparece na tela Hoje.",
+                            text = "A confiança de cada métrica aparece na tela Hoje.",
                             style = McTextStyles.caption,
                             color = colors.textTertiary,
                         )
@@ -245,70 +263,181 @@ internal fun MetricsImportContent(
     }
 }
 
+/**
+ * Explains the benefit before the mechanics. The example uses the same
+ * guardrails the engine already applies, so the promise is auditable.
+ */
 @Composable
-internal fun HealthConnectContent(state: HealthConnectUiState, onAuthorize: () -> Unit, onSync: () -> Unit) {
+private fun WhyItMattersCard() {
     val colors = McTheme.colors
+    McCard {
+        Text(
+            text = "O que isso muda no treino",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        BenefitRow(
+            title = "Prontidão mais precisa",
+            description = "Sono e FC de repouso mostram se o corpo está pronto para o treino de hoje.",
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        BenefitRow(
+            title = "Menos risco de exagerar",
+            description = "Variabilidade cardíaca e oxigenação ajudam a notar o cansaço antes da lesão.",
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        BenefitRow(
+            title = "Exemplo",
+            description = "Sono curto e FC de repouso acima da média? O treino forte de hoje vira leve.",
+        )
+    }
+}
+
+@Composable
+private fun BenefitRow(title: String, description: String) {
+    val colors = McTheme.colors
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .size(5.dp)
+                .background(colors.accent, CircleShape),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
+            Text(
+                text = description,
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun HealthConnectContent(
+    state: HealthConnectUiState,
+    onAuthorize: () -> Unit,
+    onSync: () -> Unit,
+    storedDays: Int = 0,
+    onInstall: () -> Unit = {},
+) {
+    val colors = McTheme.colors
+    val available = state.status == HealthConnectStatus.AVAILABLE
+    val connected = isHealthConnectConnected(state.status, state.hasPermissions)
     McCard(variant = McCardVariant.INSET) {
         Text(
             text = "Health Connect",
             style = MaterialTheme.typography.titleMedium,
             color = colors.textPrimary,
         )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = when {
-                state.isLoading -> "Verificando..."
-
-                state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE -> "Disponível"
-
-                state.status == com.meucoach.core.data.health.HealthConnectStatus.UPDATE_REQUIRED ->
-                    "Atualize o Health Connect"
-
-                else -> "Indisponível neste aparelho"
-            },
-            style = McTextStyles.caption,
-            color = if (state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE) {
-                colors.success
+        Spacer(modifier = Modifier.height(8.dp))
+        McPill(
+            text = if (state.isLoading) {
+                "Verificando..."
             } else {
-                colors.textTertiary
+                healthConnectStatusLabel(state.status, state.hasPermissions, storedDays)
             },
+            containerColor = if (connected) colors.accentSoft else colors.surface,
+            contentColor = if (connected) colors.accentText else colors.textSecondary,
+            modifier = Modifier.testTag("health-connect-status"),
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "É o app de saúde do Android. Reúne o que seu relógio (Zepp, Garmin, " +
+                "Samsung) e outros apps registram.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "O APP LÊ",
+            style = McTextStyles.overline,
+            color = colors.textTertiary,
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = "Sono · FC de repouso · variabilidade cardíaca (HRV) · oxigenação (SpO₂).",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Sono, FC de repouso, HRV e SpO₂",
+            text = "O MeuCoach só lê, nunca escreve. A primeira conexão traz 30 dias; depois, " +
+                "só o que ainda falta. Sincroniza sozinho uma vez por dia.",
             style = McTextStyles.caption,
-            color = colors.textSecondary,
+            color = colors.textTertiary,
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Leitura local e incremental dos últimos 30 dias. O app nunca escreve no Health Connect.",
-            style = McTextStyles.caption,
-            color = colors.textSecondary,
-        )
+        healthConnectLastSyncLabel(state.lastSyncDate)?.let { label ->
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = label, style = McTextStyles.caption, color = colors.textTertiary)
+        }
         state.message?.let { message ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = message, style = McTextStyles.caption, color = colors.textSecondary)
         }
-        if (state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE && !state.isLoading) {
+        if (!state.isLoading) {
             Spacer(modifier = Modifier.height(12.dp))
-            if (state.hasPermissions) {
-                McPrimaryButton(
-                    text = if (state.isSyncing) "Sincronizando..." else "Sincronizar agora",
+            when {
+                available && state.hasPermissions -> McPrimaryButton(
+                    text = if (state.isSyncing) "Sincronizando..." else "Atualizar agora",
                     onClick = onSync,
                     enabled = !state.isSyncing,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("health-connect-sync"),
                 )
-            } else {
-                McSecondaryButton(
-                    text = "Autorizar leitura",
+
+                available -> McPrimaryButton(
+                    text = "Conectar Health Connect",
                     onClick = onAuthorize,
                     enabled = !state.isSyncing,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("health-connect-authorize"),
+                )
+
+                else -> McSecondaryButton(
+                    text = if (state.status == HealthConnectStatus.UPDATE_REQUIRED) {
+                        "Atualizar o Health Connect"
+                    } else {
+                        "Instalar o Health Connect"
+                    },
+                    onClick = onInstall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("health-connect-install"),
+                )
+            }
+            if (!available) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Grátis, do Google. No Android 14 ou mais novo, já vem no sistema.",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
                 )
             }
         }
     }
 }
 
+private fun openHealthConnectStore(context: Context) {
+    val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$HEALTH_CONNECT_PACKAGE"))
+    val web = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("https://play.google.com/store/apps/details?id=$HEALTH_CONNECT_PACKAGE"),
+    )
+    runCatching { context.startActivity(market) }.onFailure {
+        runCatching { context.startActivity(web) }
+    }
+}
+
+private const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
 private val CSV_MIME_TYPES = arrayOf("text/csv", "text/comma-separated-values", "text/plain", "*/*")
 private val DATE_FORMAT = java.time.format.DateTimeFormatter.ofPattern("dd/MM/uuuu")

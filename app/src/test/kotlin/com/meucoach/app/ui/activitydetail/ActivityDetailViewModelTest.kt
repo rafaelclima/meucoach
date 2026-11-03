@@ -11,11 +11,17 @@ import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.insights.ActivityInsightRules
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sex
@@ -36,9 +42,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.temporal.TemporalAdjusters
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -48,6 +56,7 @@ class ActivityDetailViewModelTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: ActivityRepository
     private lateinit var profiles: ProfileRepository
+    private lateinit var plans: TrainingPlanRepository
 
     @Before
     fun setUp() {
@@ -66,6 +75,10 @@ class ActivityDetailViewModelTest {
                 idGenerator = { "activity-1" },
             )
         profiles = ProfileRepository(
+            database = database,
+            clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
+        )
+        plans = TrainingPlanRepository(
             database = database,
             clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
         )
@@ -159,6 +172,7 @@ class ActivityDetailViewModelTest {
                 SavedStateHandle(),
                 repository,
                 profiles,
+                plans,
                 StoryVideoExporter(ApplicationProvider.getApplicationContext()),
                 FakeMapBackgroundRenderer(),
             )
@@ -173,6 +187,7 @@ class ActivityDetailViewModelTest {
             ),
             repository = repository,
             profileRepository = profiles,
+            planRepository = plans,
             storyExporter = StoryVideoExporter(ApplicationProvider.getApplicationContext()),
             mapRenderer = mapRenderer,
         )
@@ -214,6 +229,63 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `stamps the story with the planned session verdict`() {
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = java.time.LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    lactateThresholdHeartRate = 180,
+                    timezone = "America/Sao_Paulo",
+                ),
+            )
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            saveEasyPlan()
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            val preview = viewModel.uiState.first {
+                it.storyExport is StoryExportUiState.Preview
+            }.storyExport as StoryExportUiState.Preview
+
+            assertThat(preview.plan.verdict).isNotNull
+            assertThat(preview.plan.verdict?.tone).isNotNull
+            assertThat(preview.plan.verdict?.coachLine).isNotBlank()
+            assertThat(preview.plan.splits.map { it.verdict }).doesNotContainNull()
+            assertThat(preview.plan.zoneRuns).isNotEmpty()
+        }
+    }
+
+    @Test
+    fun `keeps the story honest when there is no plan`() {
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = java.time.LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    lactateThresholdHeartRate = 180,
+                    timezone = "America/Sao_Paulo",
+                ),
+            )
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            val preview = viewModel.uiState.first {
+                it.storyExport is StoryExportUiState.Preview
+            }.storyExport as StoryExportUiState.Preview
+
+            assertThat(preview.plan.verdict?.tone).isNull()
+            assertThat(preview.plan.verdict?.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+            assertThat(preview.plan.splits.map { it.verdict }).containsOnlyNulls()
+        }
+    }
+
+    @Test
     fun `renders the map for the story frame size`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
@@ -224,8 +296,8 @@ class ActivityDetailViewModelTest {
             viewModel.createStory()
             viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
 
-            assertThat(renderer.width).isEqualTo(StoryVideoExporter.WIDTH)
-            assertThat(renderer.height).isEqualTo(StoryVideoExporter.HEIGHT)
+            assertThat(renderer.width).isEqualTo(StoryVideoExporter.mapWidth())
+            assertThat(renderer.height).isEqualTo(StoryVideoExporter.mapHeight())
             assertThat(renderer.bounds).isEqualTo(
                 BoundingBox(
                     minLat = -5.790,
@@ -253,6 +325,34 @@ class ActivityDetailViewModelTest {
             assertThat((state.storyExport as StoryExportUiState.Error).message)
                 .contains("mapa")
         }
+    }
+
+    private suspend fun saveEasyPlan() {
+        val date = java.time.LocalDate.parse("2026-10-24")
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                sessions = listOf(
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.EASY,
+                        title = "Fácil 40 min",
+                        durationMin = 40,
+                        rationale = "Teste determinístico.",
+                        ruleIds = listOf("R-ZONE-01"),
+                        evidenceIds = listOf("EV-FRIEL-2018"),
+                        status = SessionStatus.DONE,
+                    ),
+                ),
+                weeklyMinutes = 40,
+                longRunMinutes = null,
+                qualityCount = 0,
+                rationale = "Semana de teste.",
+                confidence = DataConfidence.HIGH,
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-FRIEL-2018"),
+            ),
+        )
     }
 
     private fun gpsActivity() = ImportedActivity(

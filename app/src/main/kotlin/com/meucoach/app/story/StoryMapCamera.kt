@@ -19,16 +19,14 @@ data class StoryMapCamera(val latitude: Double, val longitude: Double, val zoom:
 
 object StoryMapCameraCalculator {
     /** MapLibre renders a 512 px world tile grid at zoom 0. */
-    // Extra zoom over the route square: a closer, less distant map (ADR 0015).
-    const val MAP_ZOOM_FACTOR = 1.2f
+    // The map bounds fill the route square; the cinematic push in
+    // StoryMotion is what brings the map closer during the video. The layout
+    // already reserves room for that push, so no extra zoom is applied here.
+    const val MAP_ZOOM_FACTOR = 1f
 
     private const val TILE_SIZE_PX = 512.0
     private const val MIN_SPAN = 1e-9
     private const val MAX_MERCATOR_LAT = 85.05112878
-    private const val ROUTE_MARGIN_DP = 56f
-    private const val ROUTE_TOP_DP = 300f
-    private const val ROUTE_BOTTOM_FRACTION = 0.62f
-    private const val FRAME_WIDTH = 720f
 
     data class RouteSquare(val left: Float, val top: Float, val side: Float) {
         val centerX: Float get() = left + side / 2f
@@ -37,16 +35,8 @@ object StoryMapCameraCalculator {
 
     /** Same geometry [StoryFrameRenderer.drawRoute] uses to draw the route. */
     fun routeSquare(width: Float, height: Float): RouteSquare {
-        val margin = ROUTE_MARGIN_DP * (width / FRAME_WIDTH)
-        val top = ROUTE_TOP_DP * (width / FRAME_WIDTH)
-        val bottom = height * ROUTE_BOTTOM_FRACTION
-        val side = minOf(width - 2f * margin, bottom - top)
-        val centerY = (top + bottom) / 2f
-        return RouteSquare(
-            left = width / 2f - side / 2f,
-            top = centerY - side / 2f,
-            side = side,
-        )
+        val square = StoryLayout.routeSquare(width, height)
+        return RouteSquare(left = square.left, top = square.top, side = square.side)
     }
 
     fun calculate(bounds: BoundingBox, width: Int = 720, height: Int = 1280): StoryMapCamera {

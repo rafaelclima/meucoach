@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.GoalType
@@ -76,6 +77,68 @@ class ProfileScreenTest {
         compose.onNodeWithText("Exportar ou apagar dados").performClick()
 
         assertThat(manageData).isTrue()
+    }
+
+    @Test
+    fun `explains health connect and opens the data screen`() {
+        var importMetrics = false
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        health = ProfileHealthSummary(
+                            status = HealthConnectStatus.AVAILABLE,
+                            hasPermissions = true,
+                            storedDays = 47,
+                            lastSyncDate = LocalDate.now(),
+                        ),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onImportMetrics = { importMetrics = true },
+                    onManageData = {},
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("Alimente o coach com seu descanso"))
+        compose.onNodeWithText("Alimente o coach com seu descanso").assertIsDisplayed()
+        compose.onNodeWithText("Conectado · 47 dias").assertIsDisplayed()
+        compose.onNodeWithText("Health Connect é o app de saúde do Android", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("Ver meus dados de saúde").performClick()
+
+        assertThat(importMetrics).isTrue()
+    }
+
+    @Test
+    fun `invites the user to connect when health connect is not authorized`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        health = ProfileHealthSummary(
+                            status = HealthConnectStatus.AVAILABLE,
+                            hasPermissions = false,
+                        ),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onImportMetrics = {},
+                    onManageData = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list")
+            .performScrollToNode(hasText("Conectar Health Connect"))
+        compose.onNodeWithText("Ainda não conectado").assertIsDisplayed()
+        compose.onNodeWithText("Conectar Health Connect").assertIsDisplayed()
     }
 
     @Test

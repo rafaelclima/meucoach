@@ -314,6 +314,8 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P3-05 · Story de treino ao ar livre (protótipo)
 
+**Proposta de evolução:** `docs/STORY_V2.md` — “O Veredito”. Fases A (área segura, câmera, film look, 30 fps e capa) e B (veredito por km, rota por zona) concluídas em 03/11/2026; fase C (áudio/morph) pendente.
+
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com validação pendente em aparelho real.
 
 - [x] Planejador de rota, splits por km e timeline de 30 s.
@@ -327,6 +329,8 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Frame final (3 s) com dados do treino (`distância`, `tempo`, `pace`, `FC média`, `kcal`) e branding `MeuCoach` (`ADR-0015`, entrega 1).
 - [x] `BoundingBox` geográfico no `StoryPlan` para o mapa (`ADR-0015`).
 - [ ] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`).
+- [x] Story v2 — Fase A: área segura do Instagram, câmera com zoom/rotação, film look, 30 fps e capa PNG (`docs/STORY_V2.md`).
+- [x] Story v2 — Fase B: rota colorida por zona e veredito do coach por km.
 - [x] Logo `MeuCoach` no rodapé do story (asset recortado em `core:designsystem`, prévia e vídeo).
 - [ ] Refinar a logo com prompt estruturado (`resposta 3`).
 
@@ -389,6 +393,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | U-02 | Check-in em uma linha: “Check-in feito hoje” com resumo curto, sem repetir “Você pode revisar”. | Pendente |
 | U-03 | Contextualizar a confiança do plano (“Plano · confiança baixa”) para não competir visualmente com a confiança da prontidão. | Pendente |
 | U-04 | Revisar Tendências e o detalhe da atividade com uma corrida importada (cards, gráficos, splits e zonas). | Pendente — depende de uma importação real |
+| U-05 | Perfil → Saúde e dados: explicar o Health Connect, mostrar o estado real da conexão e separar backup de importação de métricas. | Concluído em 03/11/2026 |
 
 ## Backlog técnico
 

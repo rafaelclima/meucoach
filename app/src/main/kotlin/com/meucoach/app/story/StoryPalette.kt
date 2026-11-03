@@ -2,6 +2,7 @@ package com.meucoach.app.story
 
 import androidx.compose.ui.graphics.toArgb
 import com.meucoach.core.designsystem.theme.McColors
+import com.meucoach.core.model.HeartRateZone
 
 data class StoryPalette(
     val background: Int,
@@ -17,7 +18,20 @@ data class StoryPalette(
     /** Dark ring under the route so lime stays readable on the light basemap. */
     val mapCasing: Int,
     val mapBaseRoute: Int,
-)
+    val zone1: Int,
+    val zone2: Int,
+    val zone3: Int,
+    val zone4: Int,
+    val zone5: Int,
+) {
+    fun zoneColor(zone: HeartRateZone): Int = when (zone) {
+        HeartRateZone.Z1 -> zone1
+        HeartRateZone.Z2 -> zone2
+        HeartRateZone.Z3 -> zone3
+        HeartRateZone.Z4 -> zone4
+        HeartRateZone.Z5 -> zone5
+    }
+}
 
 fun McColors.toStoryPalette() = StoryPalette(
     background = background.toArgb(),
@@ -33,4 +47,9 @@ fun McColors.toStoryPalette() = StoryPalette(
     // The story basemap is always light (OpenFreeMap liberty), in both app themes.
     mapCasing = 0xFF08090B.toInt(),
     mapBaseRoute = 0xFF4A545F.toInt(),
+    zone1 = zone1.toArgb(),
+    zone2 = zone2.toArgb(),
+    zone3 = zone3.toArgb(),
+    zone4 = zone4.toArgb(),
+    zone5 = zone5.toArgb(),
 )

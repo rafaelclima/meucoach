@@ -68,7 +68,7 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports missing permissions after refresh`(): Unit = runBlocking {
         val source = FakeSource(granted = emptySet())
-        val state = HealthConnectViewModel(source, service(source)).uiState.first { !it.isLoading }
+        val state = HealthConnectViewModel(source, service(source), syncStore).uiState.first { !it.isLoading }
 
         assertThat(state.status).isEqualTo(HealthConnectStatus.AVAILABLE)
         assertThat(state.hasPermissions).isFalse()
@@ -86,7 +86,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = emptySet(),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, service(source))
+        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -106,7 +106,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = setOf("sleep", "hr"),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, service(source))
+        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -119,7 +119,7 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports an unavailable client`(): Unit = runBlocking {
         val source = FakeSource(status = HealthConnectStatus.UNAVAILABLE)
-        val viewModel = HealthConnectViewModel(source, service(source))
+        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -137,7 +137,7 @@ class HealthConnectViewModelTest {
                 error = "Falha de leitura.",
             ),
         )
-        val viewModel = HealthConnectViewModel(source, service(source))
+        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
