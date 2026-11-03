@@ -279,8 +279,8 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 [ Ter, 27 de outubro · Natal, 28° ]
 
 [ HeroCard: Prontidão 72 · Verde · confiança média ]
-[ Gauge 220° ]  Sono 6h10 · HRV -0.4 SWC · Carga 1.1
-[ "Por que?" ]
+[ Gauge 220° ]  Sono 9h13 / Variabilidade média · 7 noites / FC estável
+[ "Por que esta prontidão?" ]
 
 [ Próximo treino ]
 [ Fácil Z2 · 40 min · 6,5 km ]
@@ -293,6 +293,8 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 
 [ Última atividade: 5,11 km · 30:59 · Z5 ]
 ```
+
+Na prontidão, cada sinal ocupa duas linhas (rótulo e valor + hint curto). O rótulo usa `maxLines = 1` com ellipsis e nunca quebra no meio da palavra; o hint só aparece quando acrescenta contexto (ex.: “abaixo de 6 h”, “7 noites”, “média mensal”).
 
 ### Atividade
 

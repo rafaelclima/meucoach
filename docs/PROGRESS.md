@@ -6,8 +6,8 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 640 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 270 em `:app`)
-- **Cobertura `core:domain`:** 98,39% de linhas (2.442/2.482), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.289/18.830)
+- **Testes:** 644 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 274 em `:app`)
+- **Cobertura `core:domain`:** 98,40% de linhas (2.455/2.495), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.332/18.873)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -44,6 +44,38 @@
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
+
+## Sessão 2026-11-03 — Hoje: cards compactos e prontidão explicada
+
+### Concluído
+
+- **Sinais de prontidão sem quebra no meio da palavra:** cada sinal agora usa duas linhas (rótulo e valor + hint), com `maxLines`/ellipsis; “Variabilidade cardíaca / acima” deixou de virar “aci/ma” em 360 dp.
+- **Menos ruído:** o hint “ok” do sono saiu; HRV mostra “média · 7 noites”; FC de repouso mostra “estável” quando o delta é zero (fim do “-0 bpm”) e “média mensal” quando há variação.
+- **Sheet por contexto:** “Por que esta prontidão?” abre um rationale próprio, construído a partir de sono, HRV, FC de repouso e check-in; “Por que este treino?” continua com o rationale da recomendação.
+- **Catálogo:** `R-READY-01`, `EV-PLEWS-2013`, `EV-BUCHHEIT-2014` e `EV-WALSH-2021` entraram no `ExplanationCatalog`, mantendo a auditoria.
+- **Plano da semana:** a pill de tipo repetia o título (“Longão” ao lado de “Longão”); agora só aparece para sessões concluídas ou puladas (“Feito”/“Pulado”).
+- **Golden novo:** `today-narrow-dark.png` em 360 dp, além de `today-dark`/`today-light`, para travar a regressão de largura.
+- **Testes:** +4 em `:app` (título do sheet, rationale da prontidão, delta zero e pill única) e catálogo atualizado no domínio.
+
+### Evidências
+
+- `./gradlew check spotlessCheck koverVerify :app:assembleDebug :app:verifyRoborazziDebug` — sucesso.
+- 644 testes, 0 falhas (27 `core:model`, 254 `core:domain`, 89 `core:data`, 274 `:app`).
+- Cobertura `core:domain`: 98,40% de linhas, 83,65% de branches.
+- Lint sem erros.
+
+### Decisões e observações
+
+- **Duas linhas por sinal:** o valor à direita espremia o rótulo em 360 dp; empilhar rótulo + valor/hint preserva a leitura e mantém a altura parecida.
+- **“Estável” em vez de “0 bpm”:** zero é um delta válido, mas “estável” comunica melhor e evita o sinal negativo.
+- **Sheet da prontidão é determinístico:** os textos vêm dos mesmos componentes do motor, sem LLM; regras e evidências continuam sob demanda.
+- **Plano ainda tem rationale de 3 linhas:** reduzir isso e o card de carga vazio ficam para a Fase 2 do plano de apresentação.
+
+### Próximo passo
+
+1. Fase 2 do plano: compactar o plano da semana, o card de carga vazio e a tela de Métricas (um primário por tela, CSV colapsável).
+2. Reimportar uma corrida e revisar os cards de Tendências e do detalhe da atividade com dados reais.
+3. `P1-12`: validação E2E com 4 semanas de uso real.
 
 ## Sessão 2026-11-03 — Apagar dados zera a janela do Health Connect
 

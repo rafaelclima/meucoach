@@ -219,6 +219,7 @@
 - [x] Notificações locais de check-in e treino com deep link.
 - [x] Iniciar/trocar treino (sessão guiada e troca de dia com guardrails).
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
+- [x] Cards compactos: prontidão em duas linhas por sinal e plano sem pill de tipo redundante.
 - [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências
@@ -263,6 +264,7 @@
 - [x] Dados usados e dados ausentes explícitos, sem preencher lacunas com zero.
 - [x] Catálogo de rótulos para `ruleId`/`evidenceId`, mantendo o ID bruto.
 - [x] Mesmo sheet acessível pela prontidão e pelo treino, sem texto gerado por LLM.
+- [x] Sheet da prontidão com rationale próprio e título por contexto.
 
 ### P1-11 · Notificações
 Treino do dia, check-in, import concluído. Sem culpa/streak.
