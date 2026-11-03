@@ -30,8 +30,11 @@ class MetricsImportScreenTest {
         setContent(MetricsImportUiState(), onPick = { picked = true })
 
         compose.onNodeWithText("Métricas diárias").assertIsDisplayed()
-        compose.onNodeWithTag("metrics-import-list").performScrollToNode(hasText("Formato esperado"))
-        compose.onNodeWithText("Formato esperado").assertIsDisplayed()
+        compose.onNodeWithTag("metrics-import-list").performScrollToNode(hasText("Formato do CSV"))
+        compose.onNodeWithText("Formato do CSV").assertIsDisplayed()
+        compose.onNodeWithText("date,sleep_minutes", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Ver formato do CSV").performClick()
+        compose.onNodeWithText("date,sleep_minutes", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("metrics-import-list").performScrollToNode(hasText("Escolher CSV"))
         compose.onNodeWithText("Escolher CSV").performClick()
 

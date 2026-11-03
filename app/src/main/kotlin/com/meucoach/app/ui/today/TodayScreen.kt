@@ -461,14 +461,14 @@ private fun WorkoutMetric(label: String, value: String, unit: String, modifier: 
 @Composable
 private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
     val colors = McTheme.colors
-    val hasLoad = state.ctl != null
-    val hasDistance = state.weeklyLoadKm != null
+    val hasLoad = (state.ctl ?: 0) > 0
+    val hasDistance = (state.weeklyLoadKm ?: 0.0) > 0.0
     McCard {
         Text(text = "CARGA DA SEMANA", style = McTextStyles.overline, color = colors.textTertiary)
         Spacer(modifier = Modifier.height(4.dp))
         if (!hasLoad && !hasDistance) {
             Text(
-                text = "Sem carga ainda",
+                text = "Nenhuma corrida nesta semana",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
             )
@@ -660,6 +660,7 @@ private fun PlanWeekCard(
     val colors = McTheme.colors
     var skipTarget by remember { mutableStateOf<LocalDate?>(null) }
     var skipReason by remember { mutableStateOf("") }
+    var rationaleExpanded by remember { mutableStateOf(false) }
     McCard(variant = McCardVariant.INSET) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -701,26 +702,31 @@ private fun PlanWeekCard(
                         text = session.title,
                         style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
-                    )
-                    Text(
-                        text = session.durationMin?.let { "$it min" } ?: "—",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     session.skipReason?.let { reason ->
                         Text(
                             text = "Motivo: $reason",
                             style = McTextStyles.caption,
                             color = colors.warning,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
+                Text(
+                    text = session.durationMin?.let { "$it min" } ?: "—",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
                 val statusLabel = when (session.status) {
                     SessionStatus.DONE -> "Feito"
                     SessionStatus.SKIPPED -> "Pulado"
                     SessionStatus.PLANNED -> null
                 }
                 if (statusLabel != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     val statusColor = if (session.status == SessionStatus.DONE) colors.success else colors.warning
                     McPill(
                         text = statusLabel,
@@ -757,7 +763,16 @@ private fun PlanWeekCard(
             text = plan.rationale,
             style = McTextStyles.caption,
             color = colors.textTertiary,
+            maxLines = if (rationaleExpanded) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis,
         )
+        if (plan.rationale.length > PLAN_RATIONALE_PREVIEW) {
+            McTextButton(
+                text = if (rationaleExpanded) "Ver menos" else "Ver mais",
+                onClick = { rationaleExpanded = !rationaleExpanded },
+                trailingArrow = false,
+            )
+        }
     }
 
     skipTarget?.let { date ->
@@ -1233,4 +1248,7 @@ private fun TodayScreenLightPreview() {
 }
 
 private val PLAN_LOCALE = Locale.forLanguageTag("pt-BR")
+
+/** Roughly two caption lines at 360 dp before the plan rationale needs a "Ver mais". */
+private const val PLAN_RATIONALE_PREVIEW = 90
 private const val NO_VALUE = "—"

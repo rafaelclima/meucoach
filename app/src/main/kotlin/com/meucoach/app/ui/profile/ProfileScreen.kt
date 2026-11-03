@@ -207,19 +207,19 @@ private fun ProfileDetails(
         item {
             McCard(variant = McCardVariant.INSET) {
                 Text(
-                    text = "Sono, FC de repouso, variabilidade cardíaca e oxigenação",
+                    text = "Métricas diárias",
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.textPrimary,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Importe um CSV diário. Sem conexão e sem enviar dados para fora.",
+                    text = "Sono, FC de repouso, HRV e SpO₂ · Health Connect ou CSV.",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 McSecondaryButton(
-                    text = "Importar CSV",
+                    text = "Gerenciar métricas",
                     onClick = onImportMetrics,
                     modifier = Modifier
                         .fillMaxWidth()

@@ -24,6 +24,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -33,9 +36,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
-import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
+import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 
@@ -79,6 +82,7 @@ internal fun MetricsImportContent(
     onSync: () -> Unit = {},
 ) {
     val colors = McTheme.colors
+    var showCsvFormat by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -118,8 +122,7 @@ internal fun MetricsImportContent(
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Importe sono, FC de repouso, variabilidade cardíaca (HRV) " +
-                                "e oxigenação (SpO2) de um CSV. O arquivo é lido no aparelho e não sai daqui.",
+                            text = "Sono, FC de repouso, HRV e SpO₂, do Health Connect ou de um CSV lido no aparelho.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -135,28 +138,41 @@ internal fun MetricsImportContent(
                 item {
                     McCard(variant = McCardVariant.INSET) {
                         Text(
-                            text = "Formato esperado",
+                            text = "Formato do CSV",
                             style = MaterialTheme.typography.titleSmall,
                             color = colors.textPrimary,
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "date,sleep_minutes,resting_heart_rate,hrv_rmssd,spo2\n" +
-                                "2026-10-30,450,58,60,97",
+                            text = "Data, sono, FC de repouso, HRV e SpO₂.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Só a coluna date é obrigatória. Datas ISO ou dd/mm/aaaa. " +
-                                "Campos vazios continuam ausentes.",
-                            style = McTextStyles.caption,
-                            color = colors.textTertiary,
+                        McTextButton(
+                            text = if (showCsvFormat) "Ocultar formato" else "Ver formato do CSV",
+                            onClick = { showCsvFormat = !showCsvFormat },
+                            trailingArrow = false,
+                            modifier = Modifier.testTag("csv-format-toggle"),
                         )
+                        if (showCsvFormat) {
+                            Text(
+                                text = "date,sleep_minutes,resting_heart_rate,hrv_rmssd,spo2\n" +
+                                    "2026-10-30,450,58,60,97",
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Só a coluna date é obrigatória. Datas ISO ou dd/mm/aaaa. " +
+                                    "Campos vazios continuam ausentes.",
+                                style = McTextStyles.caption,
+                                color = colors.textTertiary,
+                            )
+                        }
                     }
                 }
                 item {
-                    McPrimaryButton(
+                    McSecondaryButton(
                         text = if (state.isImporting) "Lendo..." else "Escolher CSV",
                         onClick = onPick,
                         enabled = !state.isImporting,
@@ -233,39 +249,36 @@ internal fun MetricsImportContent(
 internal fun HealthConnectContent(state: HealthConnectUiState, onAuthorize: () -> Unit, onSync: () -> Unit) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.INSET) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Health Connect",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.textPrimary,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = when {
-                        state.isLoading -> "Verificando..."
+        Text(
+            text = "Health Connect",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = when {
+                state.isLoading -> "Verificando..."
 
-                        state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE -> "Disponível"
+                state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE -> "Disponível"
 
-                        state.status == com.meucoach.core.data.health.HealthConnectStatus.UPDATE_REQUIRED ->
-                            "Atualize o Health Connect"
+                state.status == com.meucoach.core.data.health.HealthConnectStatus.UPDATE_REQUIRED ->
+                    "Atualize o Health Connect"
 
-                        else -> "Indisponível neste aparelho"
-                    },
-                    style = McTextStyles.caption,
-                    color = if (state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE) {
-                        colors.success
-                    } else {
-                        colors.textTertiary
-                    },
-                )
-            }
-            McPill(text = "Sono · FC · HRV · SpO2")
-        }
+                else -> "Indisponível neste aparelho"
+            },
+            style = McTextStyles.caption,
+            color = if (state.status == com.meucoach.core.data.health.HealthConnectStatus.AVAILABLE) {
+                colors.success
+            } else {
+                colors.textTertiary
+            },
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Sono, FC de repouso, HRV e SpO₂",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Leitura local e incremental dos últimos 30 dias. O app nunca escreve no Health Connect.",

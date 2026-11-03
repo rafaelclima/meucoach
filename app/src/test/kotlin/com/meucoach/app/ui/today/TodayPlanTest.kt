@@ -254,6 +254,29 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `expands the weekly plan rationale`() {
+        val today = LocalDate.now()
+        val plan = planWith(today).copy(
+            rationale = "Semana com 3 dias e 114 min no total. Sem treino forte: prontidão não está " +
+                "verde. Sem progressão até existir histórico de conclusão.",
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver mais"))
+        compose.onNodeWithText("Ver mais").performClick()
+        compose.onNodeWithText("Ver menos").assertIsDisplayed()
+    }
+
+    @Test
     fun `shows a completed session`() {
         val today = LocalDate.now()
         compose.setContent {
@@ -306,7 +329,7 @@ class TodayPlanTest {
 
         val list = compose.onNodeWithTag("today-list")
         list.performScrollToNode(hasText("CARGA DA SEMANA"))
-        compose.onNodeWithText("Sem carga ainda").assertIsDisplayed()
+        compose.onNodeWithText("Nenhuma corrida nesta semana").assertIsDisplayed()
         compose.onNodeWithText("Acumulada", ignoreCase = true).assertDoesNotExist()
         compose.onNodeWithText("Balanço", ignoreCase = true).assertDoesNotExist()
     }
