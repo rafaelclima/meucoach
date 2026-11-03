@@ -6,10 +6,10 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 663 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 293 em `:app`)
-- **Cobertura `core:domain`:** 98,40% de linhas (2.455/2.495), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.332/18.873)
+- **Testes:** 709 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 314 em `:app`)
+- **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
+- **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
 - **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
@@ -18,6 +18,8 @@
 - **Detalhe da atividade:** hero, métricas, gráfico pace × FC (Canvas), splits, rota offline e insights com `ruleId`/`evidenceId`/confiança.
 - **Perfil e onboarding:** formulário em 3 passos (dados, objetivo/disponibilidade, rotina), validação, persistência e edição.
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
+- **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
+- **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
@@ -41,6 +43,7 @@
 - **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) de labels ampliados e fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; vídeo 1080p a 10 Mbps e 30 fps desde a Fase A do story v2.
 - **Story v2 — Fase A:** área segura do Instagram, câmera com zoom/rotação alinhada à rota, grão/vinheta/grade de cor, 30 fps, snapshot supersampleado e capa PNG do frame final.
 - **Story v2 — Fase B:** veredito determinístico por km e no encerramento (`StoryVerdictCalculator`), rota colorida por zona de FC, barra de splits e contador no card; sem plano/calibração/FC o story não inventa alvo.
+- **Story v2 — câmera:** zoom extra enquanto o card de km está na tela e inclinação (`pitch`/`yaw`) via homografia aplicada ao mapa **e** à rota, com `MAX_CAMERA_SCALE` de 1,16 e a mesma matriz nos dois layers.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
@@ -48,12 +51,39 @@
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 
+## Sessão 2026-11-03 — LTHR manual, calibrar por corrida e câmera do story
+
+### Concluído
+
+- **`CalibrationCandidateDetector`** (`core:domain`): aceita apenas corrida/esteira recente (≤ 8 semanas), de 25–35 min, ≥ 1 km, FC média presente, ≥ 10 amostras de FC cobrindo ≥ 60% dos samples, variação p10–p90 ≤ 30 bpm e sem pausa > 2 min. Fora disso, nenhuma oferta de calibração.
+- **LTHR manual no perfil:** campo “FC no limite” no passo Rotina, validado contra 100–230 bpm, FC de repouso e FC máxima observada. Editar o perfil preserva VDOT/pace de limiar.
+- **“Usar esta corrida para calibrar”:** card no detalhe da atividade quando o detector aprova; abre a calibração com distância, tempo, data e FC preenchidos e um aviso para confirmar que foi esforço máximo e contínuo. Nada é calculado nem salvo sem o toque em Calcular/Salvar.
+- **Navegação:** rota `profile/calibration?activityId={activityId}`; o perfil continua abrindo a calibração sem atividade.
+- **Câmera do story:** `StoryMotion` ganhou foco de zoom por card (+0,04), `pitch` de 0 → 4° → 0 e `yaw` de 0 → 2° → 0 → −2° → 0. `StoryPerspective` aplica uma homografia rasa ao mapa **e** à rota com a mesma matriz; `MAX_CAMERA_SCALE` subiu para 1,16 e o layout reserva esse push.
+- **Testes:** 11 no detector, 2 no `OnboardingValidator`, 1 no `OnboardingScreen`, 2 no `CalibrationViewModel`, 2 no `ActivityDetailViewModel`, 2 no `ActivityDetailScreen`, 1 no `CalibrationScreen`, 2 no `StoryMotion` e 3 no `StoryPerspective`.
+
+### Evidências
+
+- `./gradlew check` — sucesso (inclui testes, spotless, koverVerify, lint e parser FIT).
+- 709 testes, 0 falhas (27 `core:model`, 279 `core:domain`, 89 `core:data`, 314 `:app`).
+- Cobertura `core:domain`: 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099).
+- Lint: 0 erros; 23 avisos não bloqueantes; nenhum no código novo.
+- Goldens atualizados: `onboarding-routine-dark`, `profile-dark`, `profile-light`, `story-frame-dark`, `story-frame-logo-dark`, `story-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-final-dark` e `story-final-map-dark`.
+- `./gradlew :app:verifyRoborazziDebug` — sucesso.
+
+### Decisões e observações
+
+- **LTHR manual não é inferência:** o valor é do usuário, então não recebe `ruleId`; as recomendações continuam citando `R-CAL-01`/`R-CAL-02` quando usam a calibração.
+- **Corrida elegível ainda pede confirmação:** o detector reduz o risco, mas não consegue provar que o esforço foi máximo. O app nunca grava um LTHR silenciosamente.
+- **Câmera é uma aproximação consciente:** a homografia inclina o snapshot inteiro; um pitch real de MapLibre exigiria re-renderizar o mapa por frame e uma matriz de projeção própria. O alinhamento rota/ruas foi preservado e o limite está em `docs/STORY_V2.md` §12.
+- **Próximo passo:** validar em aparelho real o fluxo de calibração por corrida e o movimento da câmera; se o tilt não convencer, avaliar `MapSnapshotter` com pitch na Fase D.
+
 ## Sessão 2026-11-03 — Story v2 (Fase B): veredito do coach e rota por zona
 
 ### Concluído
 
 - **`StoryVerdictCalculator`** (`core:domain`): transforma sessão planejada + zonas de FC em manchete, prova (`% no alvo`), frase do coach, selos por km e metadados de auditoria. Alvos: fácil Z2, longão Z1–Z2, qualidade Z4–Z5; 70% do tempo medido dentro da zona conta como “no alvo”.
-- **Fallbacks honestos:** sem plano, sem LHTR ou sem FC, o veredito fica nulo e o texto assume (“Sem alvo definido — só o esforço” / “Sem FC, o story mostra só o esforço”).
+- **Fallbacks honestos e voltados ao público do story:** sem plano, sem LHTR ou sem FC, o veredito fica nulo e o encerramento usa “Corrida feita” + “Cada corrida conta.”, sem expor plano, calibração ou jargão interno.
 - **Card por km:** selo `NO ALVO`/`FORTE DEMAIS`/`LEVE DEMAIS`, barra de splits com o km atual aceso e contador de ritmo/FC/kcal nos primeiros 0,45 s.
 - **Frame final:** `TREINO CONCLUÍDO` vira overline, a manchete do veredito ganha destaque, o percentual entra abaixo e a frase do coach fecha com o próximo treino da semana.
 - **Rota por zona:** `StoryZoneRun` pinta o trecho percorrido com as cores de Z1–Z5; sem LTHR, a rota continua no lima da marca.
@@ -65,7 +95,7 @@
 - `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
 - 683 testes, 0 falhas (27 `core:model`, 268 `core:domain`, 89 `core:data`, 299 `:app`).
 - Cobertura `core:domain`: 98,14% de linhas (2.590/2.639), 83,10% de branches (2.016/2.426), 96,89% de instruções (19.248/19.866).
-- Goldens novos `story-card-verdict-dark.png` e `story-final-verdict-dark.png`; goldens finais existentes atualizados com o fallback “Só o esforço”.
+- Goldens novos `story-card-verdict-dark.png` e `story-final-verdict-dark.png`; goldens finais existentes atualizados com o fallback “Corrida feita”.
 
 ### Decisões e observações
 

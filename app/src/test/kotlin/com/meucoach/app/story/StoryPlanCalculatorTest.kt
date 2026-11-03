@@ -247,7 +247,7 @@ class StoryPlanCalculatorTest {
 
         assertThat(plan!!.zoneRuns).isEmpty()
         assertThat(plan.verdict?.tone).isNull()
-        assertThat(plan.verdict?.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+        assertThat(plan.verdict?.coachLine).isEqualTo("Cada corrida conta.")
         assertThat(plan.splits.map { it.verdict }).containsOnlyNulls()
     }
 

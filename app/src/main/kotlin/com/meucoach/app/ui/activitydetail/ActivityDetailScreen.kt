@@ -78,12 +78,14 @@ import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.calibration.CalibrationCandidate
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
 @Composable
 fun ActivityDetailScreen(
     onBack: () -> Unit,
+    onCalibrate: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ActivityDetailViewModel = hiltViewModel(),
 ) {
@@ -98,6 +100,7 @@ fun ActivityDetailScreen(
     ActivityDetailContent(
         state = state,
         onBack = onBack,
+        onCalibrate = onCalibrate,
         onCreateStory = { viewModel.createStory() },
         onExportStory = { viewModel.exportStory(palette) },
         onCancelStory = viewModel::cancelStory,
@@ -113,6 +116,7 @@ internal fun ActivityDetailContent(
     state: ActivityDetailUiState,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onCalibrate: (String) -> Unit = {},
     onCreateStory: () -> Unit = {},
     onExportStory: () -> Unit = {},
     onCancelStory: () -> Unit = {},
@@ -165,6 +169,14 @@ internal fun ActivityDetailContent(
                     state.hrZones?.let { zones ->
                         state.lthr?.let { lthr ->
                             item { HrZonesCard(distribution = zones, lthr = lthr) }
+                        }
+                    }
+                    state.calibrationCandidate?.let { candidate ->
+                        item {
+                            CalibrationCandidateCard(
+                                candidate = candidate,
+                                onCalibrate = { onCalibrate(state.activity.id) },
+                            )
                         }
                     }
                     if (state.activity.imported.laps.isNotEmpty()) {
@@ -480,6 +492,34 @@ private fun SplitsCard(activity: StoredActivity) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CalibrationCandidateCard(candidate: CalibrationCandidate, onCalibrate: () -> Unit) {
+    val colors = McTheme.colors
+    McCard(variant = McCardVariant.INSET) {
+        Text(
+            text = "Esta corrida pode calibrar seu limite",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "${formatDuration(candidate.durationSec)} com FC média de " +
+                "${candidate.averageHeartRate} bpm. Se foi um esforço máximo e contínuo, " +
+                "use os dados para atualizar sua FC no limite. Nada é salvo sem sua confirmação.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        McSecondaryButton(
+            text = "Usar esta corrida para calibrar",
+            onClick = onCalibrate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("activity-calibrate"),
+        )
     }
 }
 

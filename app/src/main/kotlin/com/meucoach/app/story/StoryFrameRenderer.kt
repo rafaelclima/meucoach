@@ -72,7 +72,7 @@ class StoryFrameRenderer(
         val segment = StoryMotion.segmentAt(plan, timeSec)
         val isFinal = segment?.type == StorySegmentType.FINAL
         val square = StoryLayout.routeSquare(width.toFloat(), height.toFloat())
-        val camera = StoryMotion.camera(timeSec, plan.durationSec)
+        val camera = StoryMotion.camera(timeSec, plan)
 
         canvas.drawColor(palette.background)
         withCamera(canvas, camera, square, width, height) {
@@ -106,6 +106,12 @@ class StoryFrameRenderer(
         canvas.translate(camera.shiftX * width, camera.shiftY * height)
         canvas.scale(camera.scale, camera.scale, square.centerX, square.centerY)
         canvas.rotate(camera.rotationDegrees, square.centerX, square.centerY)
+        StoryPerspective.matrix(
+            width = width.toFloat(),
+            height = height.toFloat(),
+            pitchDegrees = camera.pitchDegrees,
+            yawDegrees = camera.yawDegrees,
+        )?.let { canvas.concat(it) }
         draw()
         canvas.restore()
     }

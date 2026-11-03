@@ -126,14 +126,16 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isNull()
-        assertThat(verdict.headline).isEqualTo("Só o esforço")
-        assertThat(verdict.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+        assertThat(verdict.headline).isEqualTo("Corrida feita")
+        assertThat(verdict.coachLine).isEqualTo("Cada corrida conta.")
         assertThat(verdict.proof).isNull()
         assertThat(verdict.onTargetPercent).isNull()
         assertThat(verdict.stamps).isEmpty()
         assertThat(verdict.ruleIds).isEmpty()
         assertThat(verdict.evidenceIds).isEmpty()
         assertThat(verdict.confidence).isEqualTo(DataConfidence.LOW)
+        assertThat(listOfNotNull(verdict.headline, verdict.proof, verdict.coachLine).joinToString(" ").lowercase())
+            .doesNotContain("plano", "calibra", "lthr", "alvo", "sem fc")
     }
 
     @Test
@@ -145,7 +147,7 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isNull()
-        assertThat(verdict.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+        assertThat(verdict.coachLine).isEqualTo("Cada corrida conta.")
         assertThat(verdict.targetZones).isEmpty()
     }
 
@@ -162,7 +164,7 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isNull()
-        assertThat(verdict.headline).isEqualTo("Sem FC para avaliar")
+        assertThat(verdict.headline).isEqualTo("Corrida feita")
         assertThat(verdict.proof).isNull()
         assertThat(verdict.targetZones).containsExactly(HeartRateZone.Z2)
         assertThat(verdict.stamps.map { it.tone }).containsOnlyNulls()
@@ -178,7 +180,7 @@ class StoryVerdictCalculatorTest {
 
         assertThat(verdict.tone).isNull()
         assertThat(verdict.targetZones).isEmpty()
-        assertThat(verdict.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+        assertThat(verdict.coachLine).isEqualTo("Cada corrida conta.")
     }
 
     @Test

@@ -1,10 +1,13 @@
 package com.meucoach.app.ui.calibration
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.calibration.CalibrationCalculator
+import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.calibration.CalibrationInput
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.model.AthleteProfile
@@ -15,6 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 
 data class CalibrationUiState(
@@ -24,6 +29,7 @@ data class CalibrationUiState(
     val errors: CalibrationFormErrors = CalibrationFormErrors(),
     val result: CalibrationResult? = null,
     val recentEfforts: Int = 0,
+    val prefilledFrom: CalibrationCandidate? = null,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
 )
@@ -32,7 +38,9 @@ data class CalibrationUiState(
 class CalibrationViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val activityRepository: ActivityRepository,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    private val activityId: String? = savedStateHandle[ARG_ACTIVITY_ID]
     private val _uiState = MutableStateFlow(CalibrationUiState())
     val uiState: StateFlow<CalibrationUiState> = _uiState.asStateFlow()
 
@@ -44,9 +52,14 @@ class CalibrationViewModel @Inject constructor(
                 ?.let { runCatching { ZoneId.of(it.timezone) }.getOrNull() }
                 ?: ZoneId.systemDefault()
             val recent = recentEffortCount(summaries, zone, LocalDate.now())
+            val candidate = activityId
+                ?.let { activityRepository.openActivity(it) }
+                ?.let { CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now()) }
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 profile = profile,
+                form = candidate?.let { prefillForm(it) } ?: CalibrationForm(),
+                prefilledFrom = candidate,
                 recentEfforts = recent,
             )
         }
@@ -101,5 +114,17 @@ class CalibrationViewModel @Inject constructor(
 
     fun consumeSaved() {
         _uiState.value = _uiState.value.copy(isSaved = false)
+    }
+
+    private fun prefillForm(candidate: CalibrationCandidate) = CalibrationForm(
+        distanceKm = String.format(Locale.forLanguageTag("pt-BR"), "%.2f", candidate.distanceM / 1_000.0),
+        time = CalibrationFormValidator.formatTime(candidate.durationSec),
+        date = candidate.date.format(DATE),
+        averageHeartRate = candidate.averageHeartRate.toString(),
+    )
+
+    companion object {
+        const val ARG_ACTIVITY_ID = "activityId"
+        private val DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu")
     }
 }

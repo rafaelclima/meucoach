@@ -48,7 +48,10 @@ import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.domain.calibration.CalibrationWarning
 import com.meucoach.core.model.DataConfidence
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private val DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu")
 
 @Composable
 fun CalibrationScreen(
@@ -147,6 +150,36 @@ internal fun CalibrationContent(
                         if (state.recentEfforts > 0) {
                             Text(
                                 text = "${state.recentEfforts} treinos recentes com FC e ritmo disponíveis.",
+                                style = McTextStyles.caption,
+                                color = colors.textTertiary,
+                            )
+                        }
+                    }
+                }
+                state.prefilledFrom?.let { candidate ->
+                    item {
+                        McCard(
+                            variant = McCardVariant.INSET,
+                            modifier = Modifier.testTag("calibration-prefill"),
+                        ) {
+                            Text(
+                                text = "Dados da corrida",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.textPrimary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Preenchido com a corrida de " +
+                                    "${candidate.date.format(DATE)} · " +
+                                    "${CalibrationFormValidator.formatTime(candidate.durationSec)} · " +
+                                    "${candidate.averageHeartRate} bpm de FC média.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Confirme se foi um esforço máximo e contínuo de 25 a 35 min. " +
+                                    "Se foi um treino leve ou com pausas, não salve: o valor sairia subestimado.",
                                 style = McTextStyles.caption,
                                 color = colors.textTertiary,
                             )

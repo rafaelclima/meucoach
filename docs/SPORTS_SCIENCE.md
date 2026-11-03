@@ -40,7 +40,7 @@ Cada regra declara `strength` (`STRONG`, `MODERATE`, `LIMITED`) e as evidências
 - Idade, sexo biológico, altura, peso.
 - FC de repouso (medida ou média de 7 dias).
 - FC máxima **observada** (nunca 220 − idade).
-- LTHR e pace de limiar (se conhecidos).
+- LTHR e pace de limiar (se conhecidos; o LTHR pode ser informado manualmente).
 - Melhor performance recente (5 km, 10 km, meia, maratona) com data.
 - Volume e frequência atuais.
 - Disponibilidade semanal e duração máxima por sessão.
@@ -65,6 +65,16 @@ Cada regra declara `strength` (`STRONG`, `MODERATE`, `LIMITED`) e as evidências
 - Pace de limiar = velocidade a 88% do VDOT, obtida invertendo a equação do VO2.
 - LTHR = FC média de um esforço de 25–35 min (TT de 30 min ou prova curta); fora
   dessa janela não há LTHR estimada.
+- O LTHR pode ser informado manualmente no perfil (100–230 bpm, acima da FC de
+  repouso e sem passar da FC máxima observada). É o caminho honesto para quem já
+  fez o teste e não quer depender de uma prova importada.
+- Uma corrida importada só pode **pré-preencher** o formulário de calibração
+  quando: tem até 8 semanas, dura 25–35 min, tem ≥ 1 km, FC média presente,
+  ≥ 10 amostras de FC cobrindo ≥ 60% dos samples, variação p10–p90 ≤ 30 bpm e
+  nenhuma pausa > 2 min.
+  Mesmo assim o app exige confirmação explícita de que foi um esforço máximo e
+  contínuo; nada é salvo automaticamente. Longões, treinos leves, intervalados e
+  arquivos com perda de sinal continuam sendo apenas atividades.
 - Se não houver performance válida, o motor não inventa VDOT: usa zonas de FC e RPE até o teste.
 - Performance é "recente" por 8 semanas (56 dias). Depois disso, voltar para Tier B/C.
 - Recalibrar a cada 6–8 semanas, após prova ou mudança relevante de volume.

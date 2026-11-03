@@ -150,6 +150,28 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `offers calibration for a sustained thirty minute effort`() {
+        runBlocking {
+            repository.saveImportedActivity(sustainedEffortActivity(), "sha")
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.calibrationCandidate).isNotNull
+            assertThat(state.calibrationCandidate?.durationSec).isEqualTo(30 * 60)
+            assertThat(state.calibrationCandidate?.averageHeartRate).isEqualTo(176)
+        }
+    }
+
+    @Test
+    fun `does not offer calibration for an activity without a sustained heart rate record`() {
+        runBlocking {
+            repository.saveImportedActivity(importedActivity(), "sha")
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.calibrationCandidate).isNull()
+        }
+    }
+
+    @Test
     fun `deletes the activity and hides it from the history`() {
         runBlocking {
             repository.saveImportedActivity(importedActivity(), "sha")
@@ -259,7 +281,7 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
-    fun `keeps the story honest when there is no plan`() {
+    fun `keeps the story positive when there is no plan`() {
         runBlocking {
             profiles.saveProfile(
                 AthleteProfile(
@@ -280,7 +302,7 @@ class ActivityDetailViewModelTest {
             }.storyExport as StoryExportUiState.Preview
 
             assertThat(preview.plan.verdict?.tone).isNull()
-            assertThat(preview.plan.verdict?.coachLine).isEqualTo("Sem alvo definido — só o esforço.")
+            assertThat(preview.plan.verdict?.coachLine).isEqualTo("Cada corrida conta.")
             assertThat(preview.plan.splits.map { it.verdict }).containsOnlyNulls()
         }
     }
@@ -367,6 +389,24 @@ class ActivityDetailViewModelTest {
             ActivitySample(offsetSec = 360, latitude = -5.781, longitude = -35.210, heartRate = 150),
             ActivitySample(offsetSec = 720, latitude = -5.772, longitude = -35.210, heartRate = 155),
         ),
+    )
+
+    private fun sustainedEffortActivity() = ImportedActivity(
+        source = ActivitySource.TCX,
+        sport = Sport.RUNNING,
+        startTime = Instant.now().minusSeconds(24 * 3_600),
+        durationSec = 30 * 60,
+        distanceM = 7_000.0,
+        averageHeartRate = 176,
+        averagePace = Pace.fromSecondsPerKm(257),
+        samples = (0..60).map { index ->
+            ActivitySample(
+                offsetSec = index * 30,
+                latitude = -5.790 + index * 0.00003,
+                longitude = -35.210,
+                heartRate = 176 + (if (index % 3 == 0) 1 else 0),
+            )
+        },
     )
 
     private fun importedActivity() = ImportedActivity(

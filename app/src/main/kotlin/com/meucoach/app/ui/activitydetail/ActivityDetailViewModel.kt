@@ -11,6 +11,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
@@ -61,6 +63,9 @@ class ActivityDetailViewModel @Inject constructor(
                     }
                 },
                 lthr = lthr,
+                calibrationCandidate = activity?.let {
+                    CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now())
+                },
             )
         }
     }

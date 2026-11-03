@@ -1,6 +1,6 @@
 # Story do treino v2 — “O Veredito”
 
-**Status:** Fases A e B implementadas em 03/11/2026 · Fases C–D propostas
+**Status:** Fases A e B implementadas em 03/11/2026 · câmera v2 (zoom por card + pitch/yaw) em 03/11/2026 · Fases C–D propostas
 **Data:** 03/11/2026
 **Não implementado:** áudio, morph rota → logo e auto-seleção dos kms (Fases C/D). Nenhuma linha deste documento altera o motor determinístico.
 
@@ -136,7 +136,7 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
 ### Fase B — “O veredito” (2–4 dias) — implementada em 03/11/2026
 - `StoryVerdictCalculator` puro: `PlannedSession` + distribuição de zonas → selo por km + selo final + frase.
 - Selo de veredito no card, barra de splits, contador animado.
-- Frase do coach no encerramento (com fallback quando não há plano ou calibração: “Sem alvo definido — só o esforço”).
+- Frase do coach no encerramento (com fallback quando não há plano ou calibração: “Corrida feita. Cada corrida conta.”).
 - Rota colorida por zona.
 
 **Aceite:** teste unitário do veredito com zona no alvo, acima e abaixo; golden com selo; nenhum `ruleId` visível.
@@ -208,7 +208,7 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
 
 - **`StoryVerdictCalculator`** (`core:domain`): recebe a `PlannedSession`, a distribuição de zonas, o LTHR, a FC média por km e a próxima sessão. Devolve tom, manchete, prova (`% no alvo`), frase do coach, selos por km, zonas-alvo, `ruleId`/`evidenceId` e confiança. Nada de LLM.
 - **Alvos por tipo:** fácil → Z2 (`R-ZONE-01`); longão → Z1–Z2; qualidade → Z4–Z5. Uma sessão conta como “no alvo” com pelo menos 70% do tempo medido dentro das zonas-alvo. Abaixo disso, o lado com mais tempo decide entre “forte demais” e “leve demais”; empate escolhe a leitura mais gentil.
-- **Fallbacks honestos:** sem plano, sem calibração ou sem FC, o tom fica nulo e o texto assume: “Sem alvo definido — só o esforço” ou “Sem FC, o story mostra só o esforço”. Nenhum selo é inventado.
+- **Fallbacks honestos e voltados ao público do story:** sem plano, sem calibração ou sem FC, o tom fica nulo e o encerramento assume “Corrida feita” + “Cada corrida conta.”. A cópia não cita plano, calibração, LTHR ou “sem alvo”: quem assiste quer o treino, não o diagnóstico do app. Nenhum selo é inventado.
 - **Frase do coach:** combina a manchete com o próximo treino da mesma semana. “Amanhã” só aparece quando a sessão é literalmente do dia seguinte; nos demais casos, “Próximo”.
 - **Card por km:** selo `NO ALVO` (lima), `FORTE DEMAIS` (coral) ou `LEVE DEMAIS` (azul), barra de splits com o km atual aceso e contador de ritmo/FC/kcal nos primeiros 0,45 s.
 - **Frame final:** `TREINO CONCLUÍDO` vira overline; a manchete do veredito ocupa o lugar principal, o percentual entra logo abaixo e a frase do coach fecha o card.
@@ -217,3 +217,17 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
 - **Testes:** 14 novos em `StoryVerdictCalculatorTest` (no alvo, acima, abaixo, longão, qualidade, descanso, sem plano, sem calibração, sem FC, selos por km e texto sem `ruleId`), 2 em `StoryPlanCalculatorTest`, 2 em `ActivityDetailViewModelTest` e 2 goldens novos (`story-card-verdict-dark.png`, `story-final-verdict-dark.png`).
 
 **Ainda pendente da Fase B:** validar a leitura dos selos em aparelho real e revisar o tom das manchetes com o usuário 0.
+
+---
+
+## 12. Nota de implementação — câmera v2 (03/11/2026)
+
+**Objetivo:** fazer o zoom e o ângulo de câmera responderem ao percurso e ao ritmo dos cards, sem sair do motor determinístico e sem dependência nova.
+
+- **Zoom por card:** `StoryMotion.camera(timeSec, plan)` mantém o push lento de 1,08 → 1,12 e adiciona um foco de +0,04 enquanto um card de km está na tela, com rampa de 1,4 s. Entre cards a câmera relaxa; o vídeo respira junto com os splits.
+- **Ângulo de câmera:** o mesmo `StoryCamera` passa a carregar `pitchDegrees` (0 → 4° → 0) e `yawDegrees` (0 → 2° → 0 → −2° → 0), além da rotação de 0 → 3° → 0. `StoryPerspective` projeta mapa **e** rota na mesma homografia rasa (`Canvas.concat`), então a linha continua exatamente sobre as ruas.
+- **Escala de layout:** `MAX_CAMERA_SCALE` subiu para 1,16 para reservar o zoom do card; `StoryLayout.routeSquare` usa esse valor, e a rota continua dentro da área segura.
+- **Limite consciente:** não é um pitch real de MapLibre. Re-renderizar o snapshot por frame com `pitch`/`bearing` exigiria uma chamada de mapa por frame e uma matriz de projeção própria; a homografia sobre o snapshot é a aproximação segura para o MVP e preserva o alinhamento.
+- **Testes:** `StoryMotionTest` cobre foco do card, pitch/yaw e o teto de escala; `StoryPerspectiveTest` cobre o repouso, o estreitamento do topo e a compressão lateral. Goldens do story atualizados.
+
+**Ainda pendente:** validar o movimento em aparelho real e decidir, na Fase D, se vale trocar a homografia por `MapSnapshotter` com pitch real.

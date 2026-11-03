@@ -16,11 +16,39 @@ class StoryMotionTest {
 
         assertThat(start.scale).isEqualTo(StoryMotion.MIN_SCALE)
         assertThat(start.rotationDegrees).isCloseTo(0f, within(1e-4f))
+        assertThat(start.pitchDegrees).isCloseTo(0f, within(1e-4f))
+        assertThat(start.yawDegrees).isCloseTo(0f, within(1e-4f))
         assertThat(start.shiftX).isCloseTo(0f, within(1e-4f))
         assertThat(middle.scale).isGreaterThan(start.scale)
         assertThat(end.scale).isEqualTo(StoryMotion.MIN_SCALE + StoryMotion.MAX_EXTRA_SCALE)
         assertThat(end.rotationDegrees).isCloseTo(0f, within(1e-3f))
         assertThat(middle.rotationDegrees).isCloseTo(StoryMotion.MAX_ROTATION_DEGREES, within(0.001f))
+        assertThat(middle.pitchDegrees).isCloseTo(StoryMotion.MAX_PITCH_DEGREES, within(0.001f))
+        assertThat(middle.yawDegrees).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.camera(7.5f, 30f).yawDegrees)
+            .isCloseTo(StoryMotion.MAX_YAW_DEGREES, within(0.001f))
+    }
+
+    @Test
+    fun `camera pushes in while a km card is on screen`() {
+        val plan = plan()
+        val withCard = StoryMotion.camera(11f, plan)
+        val withoutCard = StoryMotion.camera(11f, plan.durationSec)
+
+        assertThat(StoryMotion.cardFocus(plan, 11f)).isEqualTo(1f)
+        assertThat(withCard.scale).isGreaterThan(withoutCard.scale)
+        assertThat(StoryMotion.cardFocus(plan, 0f)).isEqualTo(0f)
+    }
+
+    @Test
+    fun `camera scale never exceeds the layout allowance`() {
+        val plan = plan()
+
+        plan.segments.forEach { segment ->
+            val time = (segment.startSec + segment.endSec) / 2f
+            assertThat(StoryMotion.camera(time, plan).scale)
+                .isLessThanOrEqualTo(StoryMotion.MAX_CAMERA_SCALE)
+        }
     }
 
     @Test

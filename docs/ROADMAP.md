@@ -158,13 +158,15 @@
 
 ### P1-02 · Calibração
 
-**Status:** concluído em 30/10/2026
+**Status:** concluído em 30/10/2026; ampliado em 03/11/2026
 
 - [x] Tier A/B/C por performance recente e treinos com FC+pace.
 - [x] VDOT, pace de limiar e LTHR com fórmulas documentadas.
 - [x] Tela de entrada/resultado, confiança e avisos.
 - [x] Salvamento no perfil e resumo de calibração.
 - [x] Zonas de FC no detalhe da atividade após calibrar.
+- [x] LTHR manual no perfil, com validação contra FC de repouso e máxima vista.
+- [x] “Usar esta corrida para calibrar” apenas em esforço elegível, com formulário preenchido e confirmação explícita.
 
 **Aceite:** performance recente gera VDOT/LTHR/pace; ausência de dados não inventa valores; perfil mantém a calibração.
 
@@ -314,7 +316,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P3-05 · Story de treino ao ar livre (protótipo)
 
-**Proposta de evolução:** `docs/STORY_V2.md` — “O Veredito”. Fases A (área segura, câmera, film look, 30 fps e capa) e B (veredito por km, rota por zona) concluídas em 03/11/2026; fase C (áudio/morph) pendente.
+**Proposta de evolução:** `docs/STORY_V2.md` — “O Veredito”. Fases A (área segura, câmera, film look, 30 fps e capa), B (veredito por km, rota por zona) e câmera v2 (zoom por card + pitch/yaw) concluídas em 03/11/2026; fase C (áudio/morph) pendente.
 
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com validação pendente em aparelho real.
 
@@ -331,6 +333,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [ ] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`).
 - [x] Story v2 — Fase A: área segura do Instagram, câmera com zoom/rotação, film look, 30 fps e capa PNG (`docs/STORY_V2.md`).
 - [x] Story v2 — Fase B: rota colorida por zona e veredito do coach por km.
+- [x] Story v2 — câmera v2: zoom por card + pitch/yaw via homografia no mapa e na rota (`docs/STORY_V2.md` §12).
 - [x] Logo `MeuCoach` no rodapé do story (asset recortado em `core:designsystem`, prévia e vídeo).
 - [ ] Refinar a logo com prompt estruturado (`resposta 3`).
 

@@ -28,6 +28,7 @@ enum class OnboardingField {
     AVAILABILITY,
     RESTING_HEART_RATE,
     MAX_HEART_RATE,
+    LACTATE_THRESHOLD_HEART_RATE,
     TIMEZONE,
     CITY,
 }
@@ -44,6 +45,7 @@ data class OnboardingForm(
     val availabilityMinutes: Map<DayOfWeek, String> = emptyMap(),
     val restingHeartRate: String = "",
     val maxHeartRateObserved: String = "",
+    val lactateThresholdHeartRate: String = "",
     val timezone: String = ZoneId.systemDefault().id,
     val city: String = "",
     val treadmillAccess: Boolean = false,
@@ -94,7 +96,7 @@ object OnboardingValidator {
             weightKg = form.weightKg.toDoubleOrNull(),
             restingHeartRate = form.restingHeartRate.toIntOrNull(),
             maxHeartRateObserved = form.maxHeartRateObserved.toIntOrNull(),
-            lactateThresholdHeartRate = existing?.lactateThresholdHeartRate,
+            lactateThresholdHeartRate = form.lactateThresholdHeartRate.toIntOrNull(),
             thresholdPace = existing?.thresholdPace,
             vdot = existing?.vdot,
             experience = form.experience,
@@ -125,6 +127,7 @@ object OnboardingValidator {
             availabilityMinutes = profile.weeklyAvailability.minutesByDay.mapValues { it.value.toString() },
             restingHeartRate = profile.restingHeartRate?.toString() ?: "",
             maxHeartRateObserved = profile.maxHeartRateObserved?.toString() ?: "",
+            lactateThresholdHeartRate = profile.lactateThresholdHeartRate?.toString() ?: "",
             timezone = profile.timezone,
             city = profile.city ?: "",
             treadmillAccess = profile.treadmillAccess,
@@ -186,6 +189,7 @@ object OnboardingValidator {
         val errors = mutableMapOf<OnboardingField, String>()
         val resting = form.restingHeartRate.toIntOrNull()
         val max = form.maxHeartRateObserved.toIntOrNull()
+        val lthr = form.lactateThresholdHeartRate.toIntOrNull()
         if (form.restingHeartRate.isNotBlank()) {
             if (resting == null || resting !in 30..120) {
                 errors[OnboardingField.RESTING_HEART_RATE] = "FC de repouso entre 30 e 120 bpm."
@@ -194,6 +198,21 @@ object OnboardingValidator {
         if (form.maxHeartRateObserved.isNotBlank()) {
             if (max == null || max !in 100..250) {
                 errors[OnboardingField.MAX_HEART_RATE] = "FC máxima entre 100 e 250 bpm."
+            }
+        }
+        if (form.lactateThresholdHeartRate.isNotBlank()) {
+            when {
+                lthr == null || lthr !in 100..230 ->
+                    errors[OnboardingField.LACTATE_THRESHOLD_HEART_RATE] =
+                        "FC no limite entre 100 e 230 bpm."
+
+                resting != null && lthr <= resting ->
+                    errors[OnboardingField.LACTATE_THRESHOLD_HEART_RATE] =
+                        "A FC no limite precisa ser maior que a de repouso."
+
+                max != null && lthr > max ->
+                    errors[OnboardingField.LACTATE_THRESHOLD_HEART_RATE] =
+                        "A FC no limite não pode passar da FC máxima vista."
             }
         }
         if (resting != null && max != null && max <= resting) {

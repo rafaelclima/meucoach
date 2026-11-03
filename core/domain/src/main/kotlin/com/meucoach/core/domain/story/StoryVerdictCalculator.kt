@@ -216,9 +216,9 @@ object StoryVerdictCalculator {
 
     private fun noTarget() = StoryVerdict(
         tone = null,
-        headline = "Só o esforço",
+        headline = "Corrida feita",
         proof = null,
-        coachLine = "Sem alvo definido — só o esforço.",
+        coachLine = "Cada corrida conta.",
         onTargetPercent = null,
         targetZones = emptyList(),
         stamps = emptyList(),
@@ -229,9 +229,9 @@ object StoryVerdictCalculator {
 
     private fun noHeartRate(targetZones: List<HeartRateZone>, stamps: List<StoryKmStamp>) = StoryVerdict(
         tone = null,
-        headline = "Sem FC para avaliar",
+        headline = "Corrida feita",
         proof = null,
-        coachLine = "Sem FC, o story mostra só o esforço.",
+        coachLine = "Cada corrida conta.",
         onTargetPercent = null,
         targetZones = targetZones,
         stamps = stamps,

@@ -386,6 +386,21 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
         style = McTextStyles.caption,
         color = McTheme.colors.textTertiary,
     )
+    FormTextField(
+        label = "FC no limite (opcional)",
+        value = form.lactateThresholdHeartRate,
+        onValueChange = { value -> onUpdate { it.copy(lactateThresholdHeartRate = value) } },
+        suffix = "bpm",
+        keyboardType = KeyboardType.Number,
+        error = state.errors[OnboardingField.LACTATE_THRESHOLD_HEART_RATE],
+        modifier = Modifier.testTag("profile-lthr-field"),
+    )
+    Text(
+        text = "Se você já fez um teste de 30 min, informe a FC média do esforço. " +
+            "Sem isso, calibre por uma prova ou teste recente.",
+        style = McTextStyles.caption,
+        color = McTheme.colors.textTertiary,
+    )
     var timezoneOpen by rememberSaveable { mutableStateOf(false) }
     var cityOpen by rememberSaveable { mutableStateOf(false) }
     SelectField(

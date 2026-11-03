@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.model.DataConfidence
@@ -79,6 +80,26 @@ class CalibrationScreenTest {
             .performScrollToNode(hasText("BASE INICIAL"))
         compose.onNodeWithTag("calibration-save").assertDoesNotExist()
         compose.onNodeWithText("BASE INICIAL").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the prefill confirmation when the form came from a run`() {
+        setContent(
+            state = loadedState().copy(
+                prefilledFrom = CalibrationCandidate(
+                    distanceM = 7_000.0,
+                    durationSec = 1_800,
+                    date = java.time.LocalDate.parse("2026-10-24"),
+                    averageHeartRate = 176,
+                    heartRateCoverage = 1.0,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("calibration-list")
+            .performScrollToNode(hasText("Confirme se foi um esforço máximo", substring = true))
+        compose.onNodeWithText("Dados da corrida").assertIsDisplayed()
+        compose.onNodeWithText("Confirme se foi um esforço máximo", substring = true).assertIsDisplayed()
     }
 
     @Test

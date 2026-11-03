@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import com.meucoach.app.story.StoryPlan
 import com.meucoach.core.data.repository.StoredActivity
+import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.insights.ActivityInsight
 import com.meucoach.core.domain.zones.HrZoneDistribution
 
@@ -23,6 +24,7 @@ data class ActivityDetailUiState(
     val insights: List<ActivityInsight> = emptyList(),
     val hrZones: HrZoneDistribution? = null,
     val lthr: Int? = null,
+    val calibrationCandidate: CalibrationCandidate? = null,
     val storyExport: StoryExportUiState = StoryExportUiState.Idle,
     val isDeleting: Boolean = false,
     val deleted: Boolean = false,

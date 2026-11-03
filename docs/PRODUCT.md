@@ -120,7 +120,7 @@ A promessa central:
 
 | Termo | Definição |
 |---|---|
-| **LTHR** | FC de limiar de lactato, estimada por TT de 30 min ou prova |
+| **LTHR** | FC de limiar de lactato, informada manualmente ou estimada por TT de 30 min/prova |
 | **VDOT** | Índice de aptidão de Daniels, derivado de performance |
 | **TRIMP** | Training Impulse — carga baseada em FC e tempo |
 | **rTSS** | Running Training Stress Score — carga baseada em pace/limiar |

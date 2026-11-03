@@ -7,6 +7,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.calibration.CalibrationTier
+import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.ImportedActivity
@@ -133,7 +134,42 @@ class CalibrationViewModelTest {
         assertThat(saved?.maxHeartRateObserved).isEqualTo(187)
     }
 
-    private fun viewModel() = CalibrationViewModel(profiles, activities)
+    @Test
+    fun `prefills the form from an eligible run without calculating or saving`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        activities.saveImportedActivity(effortActivity(), "sha-effort")
+        val activityId = activities.listActivitySummaries().first().id
+
+        val state = viewModel(activityId).uiState.first { !it.isLoading }
+
+        assertThat(state.prefilledFrom).isNotNull
+        assertThat(state.form.distanceKm).isEqualTo("7,00")
+        assertThat(state.form.time).isEqualTo("30:00")
+        assertThat(state.form.averageHeartRate).isEqualTo("176")
+        assertThat(state.result).isNull()
+        assertThat(profiles.getProfile()?.lactateThresholdHeartRate).isNull()
+    }
+
+    @Test
+    fun `does not prefill from an easy run outside the effort window`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        activities.saveImportedActivity(effortActivity(durationSec = 20 * 60), "sha-easy")
+        val activityId = activities.listActivitySummaries().first().id
+
+        val state = viewModel(activityId).uiState.first { !it.isLoading }
+
+        assertThat(state.prefilledFrom).isNull()
+        assertThat(state.form.distanceKm).isEqualTo("5")
+        assertThat(state.form.time).isEmpty()
+    }
+
+    private fun viewModel(activityId: String? = null) = CalibrationViewModel(
+        profileRepository = profiles,
+        activityRepository = activities,
+        savedStateHandle = androidx.lifecycle.SavedStateHandle(
+            activityId?.let { mapOf(CalibrationViewModel.ARG_ACTIVITY_ID to it) }.orEmpty(),
+        ),
+    )
 
     private fun fillRace(viewModel: CalibrationViewModel) {
         val date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/uuuu"))
@@ -164,5 +200,21 @@ class CalibrationViewModelTest {
         distanceM = 5_000.0,
         averageHeartRate = 150,
         averagePace = Pace.fromSecondsPerKm(360),
+    )
+
+    private fun effortActivity(durationSec: Int = 30 * 60) = ImportedActivity(
+        source = ActivitySource.TCX,
+        sport = Sport.RUNNING,
+        startTime = Instant.now().minusSeconds(24 * 3_600),
+        durationSec = durationSec,
+        distanceM = 7_000.0,
+        averageHeartRate = 176,
+        averagePace = Pace.fromSecondsPerKm(257),
+        samples = (0..60).map { index ->
+            ActivitySample(
+                offsetSec = index * 30,
+                heartRate = 176 + (if (index % 3 == 0) 1 else 0),
+            )
+        },
     )
 }

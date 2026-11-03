@@ -25,10 +25,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.meucoach.app.reminder.NotificationNavigation
 import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
@@ -65,12 +67,20 @@ private val destinations = listOf(
 
 private const val ACTIVITY_DETAIL_ROUTE = "activity/{activityId}"
 private const val PROFILE_EDIT_ROUTE = "profile/edit"
-private const val CALIBRATION_ROUTE = "profile/calibration"
+private const val CALIBRATION_ROUTE = "profile/calibration?activityId={activityId}"
+private const val CALIBRATION_BASE_ROUTE = "profile/calibration"
+private const val CALIBRATION_ACTIVITY_ARG = "activityId"
 private const val METRICS_IMPORT_ROUTE = "profile/metrics-import"
 private const val DATA_MANAGEMENT_ROUTE = "profile/data"
 private const val CHECK_IN_ROUTE = "check-in"
 
 private fun activityDetailRoute(activityId: String): String = "activity/${Uri.encode(activityId)}"
+
+private fun calibrationRoute(activityId: String? = null): String = if (activityId == null) {
+    CALIBRATION_BASE_ROUTE
+} else {
+    "$CALIBRATION_BASE_ROUTE?$CALIBRATION_ACTIVITY_ARG=${Uri.encode(activityId)}"
+}
 
 @Composable
 fun MeuCoachApp(gateViewModel: ProfileGateViewModel = hiltViewModel()) {
@@ -175,7 +185,12 @@ private fun MainApp() {
                 )
             }
             composable(ACTIVITY_DETAIL_ROUTE) {
-                ActivityDetailScreen(onBack = { navController.popBackStack() })
+                ActivityDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onCalibrate = { activityId ->
+                        navController.navigate(calibrationRoute(activityId))
+                    },
+                )
             }
             composable(AppDestination.Trends.route) {
                 TrendsScreen()
@@ -183,7 +198,7 @@ private fun MainApp() {
             composable(AppDestination.Profile.route) {
                 ProfileScreen(
                     onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
-                    onCalibrate = { navController.navigate(CALIBRATION_ROUTE) },
+                    onCalibrate = { navController.navigate(calibrationRoute()) },
                     onImportMetrics = { navController.navigate(METRICS_IMPORT_ROUTE) },
                     onManageData = { navController.navigate(DATA_MANAGEMENT_ROUTE) },
                 )
@@ -200,7 +215,16 @@ private fun MainApp() {
                     onCancel = { navController.popBackStack() },
                 )
             }
-            composable(CALIBRATION_ROUTE) {
+            composable(
+                route = CALIBRATION_ROUTE,
+                arguments = listOf(
+                    navArgument(CALIBRATION_ACTIVITY_ARG) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) {
                 CalibrationScreen(
                     onBack = { navController.popBackStack() },
                     onSaved = { navController.popBackStack() },

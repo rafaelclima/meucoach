@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.app.story.StoryPlanCalculator
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.calibration.CalibrationCandidate
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -76,6 +77,45 @@ class ActivityDetailScreenTest {
         compose.onNodeWithText("O que aprendemos").assertIsDisplayed()
         compose.onNodeWithText("R-ACT-01", substring = true).assertDoesNotExist()
         compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `offers calibration when the run can be a threshold effort`() {
+        var calibratedId: String? = null
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    calibrationCandidate = CalibrationCandidate(
+                        distanceM = 7_000.0,
+                        durationSec = 1_800,
+                        date = java.time.LocalDate.parse("2026-10-24"),
+                        averageHeartRate = 176,
+                        heartRateCoverage = 1.0,
+                    ),
+                ),
+                onBack = {},
+                onCalibrate = { calibratedId = it },
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Esta corrida pode calibrar seu limite"))
+        compose.onNodeWithText("Esta corrida pode calibrar seu limite").assertIsDisplayed()
+        list.performScrollToNode(hasText("Usar esta corrida para calibrar"))
+        compose.onNodeWithTag("activity-calibrate").performClick()
+
+        assertThat(calibratedId).isEqualTo("activity-1")
+    }
+
+    @Test
+    fun `hides calibration when the run is not a threshold effort`() {
+        setContent {
+            ActivityDetailContent(state = ActivityDetailTestData.state(), onBack = {})
+        }
+
+        compose.onNodeWithTag("activity-detail-list")
+            .performScrollToNode(hasText("Story do treino"))
+        compose.onNodeWithTag("activity-calibrate").assertDoesNotExist()
     }
 
     @Test

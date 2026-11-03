@@ -189,8 +189,8 @@ private fun ProfileDetails(
                     profile.thresholdPace?.let { SummaryRow("Ritmo no limite", "${it.format()} /km") }
                 } else {
                     Text(
-                        text = "Calibre com uma prova recente ou um treino de 30 min. " +
-                            "Assim o app ajusta zonas e carga.",
+                        text = "Se você já sabe sua FC de limite, informe em Editar perfil. " +
+                            "Ou calibre com uma prova recente ou um treino de 30 min.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )

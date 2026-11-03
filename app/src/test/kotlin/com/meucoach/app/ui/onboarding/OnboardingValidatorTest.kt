@@ -38,6 +38,42 @@ class OnboardingValidatorTest {
     }
 
     @Test
+    fun `accepts a manual lactate threshold heart rate`() {
+        val profile = OnboardingValidator.toProfile(
+            form().copy(lactateThresholdHeartRate = "178"),
+            id = "athlete-1",
+            today = today,
+        )
+
+        assertThat(profile.lactateThresholdHeartRate).isEqualTo(178)
+        assertThat(OnboardingValidator.fromProfile(profile).lactateThresholdHeartRate).isEqualTo("178")
+    }
+
+    @Test
+    fun `rejects a lactate threshold outside the heart rate range or inconsistent with the profile`() {
+        assertInvalid(
+            2,
+            form().copy(lactateThresholdHeartRate = "90"),
+            OnboardingField.LACTATE_THRESHOLD_HEART_RATE,
+        )
+        assertInvalid(
+            2,
+            form().copy(lactateThresholdHeartRate = "231"),
+            OnboardingField.LACTATE_THRESHOLD_HEART_RATE,
+        )
+        assertInvalid(
+            2,
+            form().copy(restingHeartRate = "100", lactateThresholdHeartRate = "100"),
+            OnboardingField.LACTATE_THRESHOLD_HEART_RATE,
+        )
+        assertInvalid(
+            2,
+            form().copy(maxHeartRateObserved = "170", lactateThresholdHeartRate = "180"),
+            OnboardingField.LACTATE_THRESHOLD_HEART_RATE,
+        )
+    }
+
+    @Test
     fun `round-trips editing without losing calibration or location`() {
         val existing = AthleteProfile(
             id = "athlete-1",

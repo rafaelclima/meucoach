@@ -139,6 +139,29 @@ class OnboardingScreenTest {
         assertThat(state.form.timezone).isEqualTo("America/Noronha")
     }
 
+    @Test
+    fun `edits the manual lactate threshold heart rate`() {
+        var state by mutableStateOf(step(2))
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                OnboardingContent(
+                    state = state,
+                    onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                    onNext = {},
+                    onBack = {},
+                    onSave = {},
+                    onToggleDay = {},
+                    onDayMinutes = { _, _ -> },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("onboarding-list").performScrollToNode(hasTestTag("profile-lthr-field"))
+        compose.onNodeWithTag("profile-lthr-field").performTextInput("178")
+
+        assertThat(state.form.lactateThresholdHeartRate).isEqualTo("178")
+    }
+
     private fun setContent(
         state: OnboardingUiState,
         onNext: () -> Unit = {},
