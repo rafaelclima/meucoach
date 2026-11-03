@@ -264,8 +264,10 @@
 ### P1-11 · Notificações
 Treino do dia, check-in, import concluído. Sem culpa/streak.
 
+**Status:** concluído em 03/11/2026
+
 - [x] Lembrete de check-in (18h) e do treino (7h) com deep link.
-- [ ] Notificação de importação concluída.
+- [x] Notificação de importação concluída (sucesso, duplicado ou falha), com atalho para o treino importado.
 
 ### P1-12 · E2E e validação
 Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.

@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 591 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 233 em `:app`)
+- **Testes:** 600 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 242 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -38,9 +38,38 @@
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 e export MP4 via MediaCodec, com galeria e compartilhamento; validado em aparelho real e com a logo `MeuCoach` no rodapé.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
-- **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
+- **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-11-03 — P1-11: notificação de importação concluída
+
+### Concluído
+
+- **`ImportNotifier`** posta o resultado do worker em um canal próprio (`meucoach-imports`, importância baixa, sem som/badge).
+- **Conteúdo por resultado** em `ImportNotification` (puro): sucesso, treino restaurado, duplicado e falha, com nome do arquivo, substituição, avisos e motivo do erro.
+- **Deep link:** sucesso/duplicado abrem o detalhe do treino (`meucoach://activity/<id>`); falha abre a lista (`meucoach://activities`). `NotificationNavigation` reconhece os dois.
+- **Worker:** `ImportWorker` notifica depois do processamento; retries de I/O continuam sem notificar.
+- **Um id por vez:** importações em lote mantêm o shade limpo e o último resultado vence.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 600 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 242 `:app`).
+- Novos testes: `ImportNotificationTest`, `ImportNotifierTest` e casos de rota em `NotificationNavigationTest`.
+
+### Decisões e observações
+
+- **Canal separado dos lembretes:** o usuário pode silenciar importação sem perder o lembrete de treino.
+- **Importância baixa:** importar é uma ação que o usuário pediu; não deve interromper nem tocar.
+- **Permissão:** já era pedida no primeiro launch (`MainActivity`); sem ela, o notifier simplesmente não posta.
+- **Falha abre a lista**, porque ainda não existe uma tela de detalhe do job com o motivo completo.
+
+### Próximo passo
+
+1. `P3-05`: mapa real (OSM + MapLibre) e frame final de 3 s (ADR 0015).
+2. Revisar o card de carga da tela Hoje, que ainda usa números de demonstração quando não há carga.
+3. Validação E2E com 4 semanas de uso real (P1-12).
 
 ## Sessão 2026-11-03 — T-06: exportar e apagar todos os dados
 
@@ -1283,3 +1312,4 @@
 | 02/11/2026 | P3-05: validação em aparelho real confirmada (`resposta 8`); `ADR-0015` aceito — mapa real (`OSM` + `MapLibre`), frame final (3 s) e logo `MeuCoach` |
 | 02/11/2026 | P1-13 concluído: linguagem simples em Hoje/Tendências, logo no story, proporção de carga real e onboarding mais robusto; 580 testes |
 | 03/11/2026 | T-06 concluído: tela Dados exporta JSON completo e apaga todos os dados em transação, com confirmação; 591 testes |
+| 03/11/2026 | P1-11 concluído: notificação de importação (sucesso/duplicado/falha) com deep link para o treino; 600 testes |
