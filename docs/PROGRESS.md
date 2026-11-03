@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 600 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 242 em `:app`)
+- **Testes:** 602 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 244 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -39,8 +39,34 @@
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 e export MP4 via MediaCodec, com galeria e compartilhamento; validado em aparelho real e com a logo `MeuCoach` no rodapé.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
-- **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
+- **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-11-03 — Hoje: carga honesta quando não há dados
+
+### Concluído
+
+- `TodayUiState.ctl/atl/tsb` e `weeklyLoadKm` agora são **nulos** quando não existe `LoadSnapshot` (antes caíam em 24/31/−7 e 17,9 km de demonstração).
+- O card **Carga da semana** mostra "Sem carga ainda" + atalho para Tendências, sem barras, km ou métricas inventadas.
+- Barras semanais só aparecem quando há km real em algum dia; a linha de CTL/ATL/TSB só quando há carga calculada.
+- `todayState` deixou de reutilizar `days`/`weeklyLoadKm` do estado de demonstração.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 602 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 244 `:app`).
+- Golden da tela Hoje passou a usar um `LoadSnapshot` fixo, exercitando o card completo.
+
+### Decisões e observações
+
+- **Ausência é `null`** (`AGENTS.md` §3.7): sem carga não existe fitness, fadiga ou balanço; mostrar zero também seria mentira.
+- O estado de demonstração continua existindo para previews e testes, mas não vaza mais para o estado real.
+- O atalho "Ver tendências" permanece no card vazio para o usuário entender onde o dado vai aparecer.
+
+### Próximo passo
+
+1. `P3-05`: mapa real (OSM + MapLibre) e frame final de 3 s (ADR 0015).
+2. Validação E2E com 4 semanas de uso real (P1-12).
 
 ## Sessão 2026-11-03 — P1-11: notificação de importação concluída
 
@@ -1313,3 +1339,4 @@
 | 02/11/2026 | P1-13 concluído: linguagem simples em Hoje/Tendências, logo no story, proporção de carga real e onboarding mais robusto; 580 testes |
 | 03/11/2026 | T-06 concluído: tela Dados exporta JSON completo e apaga todos os dados em transação, com confirmação; 591 testes |
 | 03/11/2026 | P1-11 concluído: notificação de importação (sucesso/duplicado/falha) com deep link para o treino; 600 testes |
+| 03/11/2026 | Hoje: card de carga deixa de usar números de demonstração sem dados; estado vazio honesto; 602 testes |
