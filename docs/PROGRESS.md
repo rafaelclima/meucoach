@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 639 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 88 em `core:data`, 270 em `:app`)
+- **Testes:** 640 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 270 em `:app`)
 - **Cobertura `core:domain`:** 98,39% de linhas (2.442/2.482), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.289/18.830)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
@@ -44,6 +44,35 @@
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
+
+## Sessão 2026-11-03 — Apagar dados zera a janela do Health Connect
+
+### Concluído
+
+- **Bug:** “Exportar ou apagar dados” apagava o banco, mas não a marca d'água do sync do Health Connect (`meucoach_health_sync`). Um perfil novo herdava a data do sync anterior e lia só o intervalo incremental (2 dias), em vez dos 30 dias iniciais.
+- **`HealthSyncStore.reset()`** remove a data do último sync; `UserDataRepository.deleteAllData` chama o reset depois da transação.
+- **Injeção:** `UserDataRepository` recebe o `HealthSyncStore` (mesmo singleton do `HealthSyncService`), garantindo que a tela e o worker usem a mesma marca.
+- **Recuperação no aparelho:** com a marca antiga removida, o sync voltou a importar 30 dias (05/10 a 03/11), com 29 dias de sono, 30 de FC de repouso, 28 de HRV e 28 de SpO₂.
+- **Testes:** `UserDataRepositoryTest` cobre o reset; constructores de `ActivityRepositoryTest` e `DataManagementViewModelTest` atualizados.
+
+### Evidências
+
+- `./gradlew check spotlessCheck koverVerify :app:assembleDebug` — sucesso.
+- 640 testes, 0 falhas (27 `core:model`, 254 `core:domain`, 89 `core:data`, 270 `:app`).
+- Cobertura `core:domain` inalterada: 98,39% de linhas, 83,65% de branches.
+- No aparelho: “30 dias importados do Health Connect” e “30 dias salvos · última em 03/11/2026”.
+
+### Decisões e observações
+
+- **Reset fora da transação:** o `SharedPreferences` não participa da transação do Room; o reset acontece só depois de a exclusão do banco concluir.
+- **Impacto:** apagar os dados e criar um perfil novo volta a ler a janela completa; apagar apenas um dia (`DailyMetricsRepository.delete`) não altera a marca.
+- **Dias recentes incompletos são esperados:** o Health Connect ainda pode não ter sono/HRV/SpO₂ do dia corrente; ausência continua `null`.
+- **Treinos não foram reimportados:** não havia `import_jobs`, arquivos em `files/imports` nem atividade após o reset. Se uma importação de FIT/TCX/GPX falhar, o próximo passo é capturar a mensagem da tela e o log do `ImportWorker`.
+
+### Próximo passo
+
+1. Reimportar um FIT/TCX/GPX e confirmar que a atividade volta à lista.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
 
 ## Sessão 2026-11-03 — Mescla de métricas diárias por fonte
 

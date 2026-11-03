@@ -43,6 +43,7 @@ pode reutilizar a mesma infraestrutura e o `HiltWorkerFactory`.
 
 - Menos leitura e menos sobrescrita no uso diário.
 - O usuário recebe atualização mesmo sem abrir o app.
-- Se o CSV for a fonte preferida em um dia, o sync do Health Connect ainda pode
-  sobrescrever esse dia; a mescla por fonte fica para uma evolução futura.
+- CSV e Health Connect são mesclados por campo desde o `ADR-0016`.
+- Apagar todos os dados zera a marca d'água (`T-06`), então um perfil novo relê
+  a janela inicial de 30 dias.
 - O worker é best-effort: falha de WorkManager não bloqueia o app.

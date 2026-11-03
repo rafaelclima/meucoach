@@ -383,7 +383,7 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 | T-03 | Kover para Android modules | Fase 1 |
 | T-04 | Property-based tests (Kotest) | Fase 1 |
 | T-05 | Fuzz leve do parser FIT | Fase 0/1 |
-| T-06 | Export JSON e "apagar todos os dados" na UI — **concluído em 03/11/2026**; ZIP descartado (os arquivos brutos não ficam guardados) | Fase 1 |
+| T-06 | Export JSON e "apagar todos os dados" na UI — **concluído em 03/11/2026**; ZIP descartado (os arquivos brutos não ficam guardados); o reset também zera a marca d'água do Health Connect | Fase 1 |
 | T-07 | Migração para MapLibre | Fase 2 |
 | T-08 | i18n (pt-BR base, en futuro) | Fase 2 |
 | T-09 | Fuso e cidade em lista fixa do Brasil: avaliar campo livre ou lista completa | Fase 2 |
