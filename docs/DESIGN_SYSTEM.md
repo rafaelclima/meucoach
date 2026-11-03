@@ -288,13 +288,15 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 [ Por que: base aeróbica + prontidão ]
 [ Iniciar / Trocar / Concluir ]
 
-[ Carga da semana: mini PMC + 18 km ]
+[ Carga da semana: mini PMC + 18 km, ou "Nenhuma corrida nesta semana" ]
 [ Check-in pendente · 15 s ]
 
 [ Última atividade: 5,11 km · 30:59 · Z5 ]
 ```
 
 Na prontidão, cada sinal ocupa duas linhas (rótulo e valor + hint curto). O rótulo usa `maxLines = 1` com ellipsis e nunca quebra no meio da palavra; o hint só aparece quando acrescenta contexto (ex.: “abaixo de 6 h”, “7 noites”, “média mensal”).
+
+No plano da semana, cada sessão ocupa uma linha (dia · título · duração); o rationale mostra duas linhas e ganha “Ver mais” quando passa do preview. Sem corrida na semana, o card de carga mostra a mensagem e o atalho, sem 0/0/0.
 
 ### Atividade
 

@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 644 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 274 em `:app`)
+- **Testes:** 645 testes, 0 falhas (27 em `core:model`, 254 em `core:domain`, 89 em `core:data`, 275 em `:app`)
 - **Cobertura `core:domain`:** 98,40% de linhas (2.455/2.495), 83,65% de branches (1.913/2.287), 97,13% de instruções (18.332/18.873)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
@@ -44,6 +44,36 @@
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
+
+## Sessão 2026-11-03 — Fase 2: plano, carga, métricas e perfil
+
+### Concluído
+
+- **Plano da semana:** cada sessão em uma linha (dia · título · duração); pill só para “Feito”/”Pulado”. O rationale aparece em duas linhas e ganha “Ver mais/Ver menos” quando passa do preview.
+- **Carga vazia:** quando não há corrida nem carga (`ctl`/`atl`/`tsb` zerados e 0 km), o card mostra “Nenhuma corrida nesta semana” e o atalho para Tendências, em vez de 0,0 km + 0/0/0.
+- **Métricas diárias:** subtítulo curto, Health Connect sem pill lateral, formato CSV atrás de “Ver formato do CSV” e “Escolher CSV” como secundário — sobra um único botão lima (Sincronizar).
+- **Perfil:** card “Métricas diárias” com subtítulo “Sono, FC de repouso, HRV e SpO₂ · Health Connect ou CSV” e ação “Gerenciar métricas”.
+- **Testes:** formato CSV colapsado, carga vazia e rationale expansível cobertos; goldens verificados.
+
+### Evidências
+
+- `./gradlew check spotlessCheck koverVerify :app:assembleDebug :app:verifyRoborazziDebug` — sucesso.
+- 645 testes, 0 falhas (27 `core:model`, 254 `core:domain`, 89 `core:data`, 275 `:app`).
+- Cobertura `core:domain` inalterada: 98,40% de linhas, 83,65% de branches.
+- Lint sem erros.
+
+### Decisões e observações
+
+- **Um primário por tela:** o sync é a ação lima; o CSV é a alternativa secundária.
+- **Formato não é conteúdo de primeira tela:** o cabeçalho técnico do CSV fica sob demanda, mas continua acessível.
+- **Zero não é estado vazio:** 0 km e 0/0/0 liam como fracasso; a mensagem explica que falta uma corrida, não que a carga é zero.
+- **Rationale recolhível:** duas linhas preservam o resumo; “Ver mais” evita esconder a progressão e o deload.
+
+### Próximo passo
+
+1. Reimportar uma corrida e revisar os cards de Tendências e do detalhe da atividade com dados reais.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
+3. Fase 3 do plano: consistência de termos (HRV/SpO₂/fuso) e check-in em uma linha.
 
 ## Sessão 2026-11-03 — Hoje: cards compactos e prontidão explicada
 

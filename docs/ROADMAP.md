@@ -220,6 +220,7 @@
 - [x] Iniciar/trocar treino (sessão guiada e troca de dia com guardrails).
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
 - [x] Cards compactos: prontidão em duas linhas por sinal e plano sem pill de tipo redundante.
+- [x] Plano em uma linha por sessão, rationale recolhível e carga vazia sem zeros.
 - [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências
@@ -255,6 +256,7 @@
 - [x] Sync periódico diário via WorkManager, com retry exponencial em erro de leitura.
 - [x] O mesmo `HealthSyncService` atende a tela de perfil e o worker.
 - [x] Mescla por campo entre CSV e Health Connect, sem apagar dados do dia (`ADR-0016`).
+- [x] Tela de métricas com um primário (sync), CSV secundário e formato sob demanda.
 
 ### P1-10 · Explicabilidade
 
@@ -287,6 +289,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Rótulo curto + `hint` nos `McStat`, sem quebra de palavra.
 - [x] Proporção de carga vinda do motor (nunca hardcoded).
 - [x] Onboarding com máscara de data, data de prova opcional e chips legíveis.
+- [x] Perfil com card “Métricas diárias” e ação “Gerenciar métricas”.
 
 ---
 
