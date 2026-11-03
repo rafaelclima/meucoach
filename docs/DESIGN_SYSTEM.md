@@ -360,3 +360,39 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 | Zonas com rótulo | Zonas só por cor |
 | Texto claro e curto | Jargão fisiológico sem explicação |
 | Movimento funcional | Animação decorativa infinita |
+
+---
+
+## 15. Princípios de conteúdo e comunicação
+
+> Baseado em `docs/COMMUNICATION.md` (§2) e nos princípios do produto (`AGENTS.md` §5, `PRODUCT.md` §5).
+
+1. **Uma pergunta por texto.** Cada texto na UI responde a uma pergunta clara do usuário (`Hoje`: "Como estou?" / `Trends`: "Estou evoluindo sem estourar?" / `Story`: "Quero compartilhar?").
+2. **Contexto antes do termo.** Todo termo técnico (`TRIMP`, `ACWR`, `LTHR`, `Z2`) deve ser acompanhado de uma definição simples (`docs/GLOSSARY.md`). Se não há contexto, não aparece sozinho.
+3. **Números com unidade e contexto.** Sempre explicar o que o número diz (`Carga crônica (42 dias)`, `Balanço (recuperação)`, `Proporção carga (ACWR)`).
+4. **Sem jargão sem explicação.** `TRIMP` → `Carga de treino (baseada em FC)`; `Monotonia` → `Variedade de treino`; `Recorde` → `Seus melhores trechos`.
+5. **Conservador por padrão.** A comunicação reforça que `ACWR > 1,5` é alerta (`nunca meta`), que `TSB < 0` é descanso (`não força`), e que `Pace de limiar` é um limite (`não um alvo diário`).
+6. **Acessível.** Contraste AA, fontes escaláveis (`Geist`/`Inter`), alvos de 48 dp, TalkBack (`DESIGN_SYSTEM.md` §10). Os textos devem ser curtos (`≤ 2 linhas` para legendas), claros e sem abreviações obscuras (`FC` é aceito porque é explicado; `TRIMP` não aparece sem contexto).
+7. **Auditável.** Os `ruleId` (`R-ACT-01`, `R-PLAN-01`) e `evidenceId` (`EV-...`) continuam no código (`core:domain`) para rastreabilidade (`ADR-0004`), mas a UI traduz para linguagem simples (`docs/COMMUNICATION.md` §3).
+
+---
+
+## 16. Acessibilidade e testes
+
+- Contraste mínimo **4.5:1** para texto e **3:1** para linhas (`DESIGN_SYSTEM.md` §3.5, §10).
+- Alvos de toque ≥ **48×48 dp** (`DESIGN_SYSTEM.md` §5).
+- Todo gráfico tem `contentDescription` (`DESIGN_SYSTEM.md` §8.2).
+- Screenshots (`Roborazzi`) atualizados após mudanças visuais (`docs/TESTING.md` §4).
+- Cobertura mínima `core:domain`: **≥ 85%** (`docs/TESTING.md` §7).
+
+---
+
+## 17. Referências
+
+- `docs/PRODUCT.md` (visão, usuário 0, métricas)
+- `docs/ARCHITECTURE.md` (módulos, dependências, privacidade)
+- `docs/SPORTS_SCIENCE.md` (ciência do esporte, evidências)
+- `docs/COMMUNICATION.md` (reformulação de textos, princípios de conteúdo)
+- `docs/GLOSSARY.md` (definições simples de termos técnicos)
+- `docs/adr/0012-story-video.md` (story de treino)
+- `docs/adr/0015-story-video-map.md` (mapa real no story)
