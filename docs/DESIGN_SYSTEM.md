@@ -185,6 +185,7 @@ Regras:
 | `McHeroCard` | raio 36, gradiente sutil, número display/xl |
 | `McPrimaryButton` | altura 56, pill, lima, texto ink, ícone opcional; estado pressed `lime-pressed` |
 | `McSecondaryButton` | borda 1 dp, fundo transparente, texto primary |
+| `McDangerButton` | borda 1 dp `danger`, texto `danger`, só para ação destrutiva confirmada |
 | `McChip` | pill, 36 dp, selecionado lima/ink |
 | `McStat` | label/sm + valor display/md + unidade body/md + delta opcional |
 | `McMetricRow` | 3–4 métricas com divisores |

@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 02/11/2026
+**Atualizado:** 03/11/2026
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 580 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 223 em `:app`)
+- **Testes:** 591 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 233 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -36,10 +36,49 @@
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
-- **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 e export MP4 via MediaCodec, com galeria e compartilhamento; validação em aparelho real pendente.
+- **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 e export MP4 via MediaCodec, com galeria e compartilhamento; validado em aparelho real e com a logo `MeuCoach` no rodapé.
+- **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-11-03 — T-06: exportar e apagar todos os dados
+
+### Concluído
+
+- **Tela Dados** (`Perfil → Exportar ou apagar dados`):
+  - Exporta um JSON com perfil, corridas, check-ins, métricas diárias, planos e importações.
+  - Usa o seletor de documentos do Android (`CreateDocument`), sem permissão de armazenamento.
+  - Apaga perfil, corridas, check-ins, métricas e planos em uma única transação, com diálogo de confirmação.
+  - Mostra contagem do que foi removido e deixa claro que Health Connect e arquivos originais não são alterados.
+- **`UserDataRepository`** (`core:data`) centraliza export/delete de todas as tabelas; `ActivityRepository` voltou a cuidar só de atividades.
+- **DAO:** `getAll` de check-ins, `getAllPlans`/`getAllSessions`/`deleteAllPlans`/`deleteAllSessions` de planos.
+- **Design system:** `McDangerButton` (borda e texto `danger`, só para ação destrutiva).
+- **Testes:**
+  - `UserDataRepositoryTest` cobre export de todas as tabelas e delete completo.
+  - `DataManagementViewModelTest` cobre escrita do arquivo, falha de escrita e resumo do delete.
+  - `DataManagementScreenTest` cobre confirmação, cancelamento e estado ocupado.
+  - Goldens novos: `data-management-dark.png` e `data-management-light.png`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 591 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 233 `:app`).
+- Cobertura `core:domain`: 98,37% de linhas e 83,55% de branches (inalterada).
+
+### Decisões e observações
+
+- **JSON, sem ZIP:** os arquivos brutos são apagados depois da importação (`StagedImportProcessor`), então não há o que empacotar; as amostras continuam representadas pela contagem.
+- **Exporta também itens com soft delete** (`getAllIncludingDeleted`), para o backup refletir o histórico real.
+- **Delete é transacional:** se uma tabela falhar, nada é apagado.
+- **Golden da tela Hoje** dependia da hora do dia (saudação "Bom dia"/"Boa tarde") e quebrava a cada regravação; o teste agora fixa `now = 08:00`.
+- Apagar o perfil devolve o app ao onboarding, como esperado.
+
+### Próximo passo
+
+1. `P3-05`: mapa real (OSM + MapLibre) e frame final de 3 s (ADR 0015).
+2. `P1-11`: notificação de importação concluída.
+3. Revisar o card de carga da tela Hoje, que ainda usa números de demonstração quando não há carga.
 
 ## Sessão 2026-11-02 — P1-13: linguagem simples, logo no story e carga honesta
 
@@ -1243,3 +1282,4 @@
 | 31/10/2026 | P3-05: prévia antes do export + confirmação/cancelamento; 570 testes |
 | 02/11/2026 | P3-05: validação em aparelho real confirmada (`resposta 8`); `ADR-0015` aceito — mapa real (`OSM` + `MapLibre`), frame final (3 s) e logo `MeuCoach` |
 | 02/11/2026 | P1-13 concluído: linguagem simples em Hoje/Tendências, logo no story, proporção de carga real e onboarding mais robusto; 580 testes |
+| 03/11/2026 | T-06 concluído: tela Dados exporta JSON completo e apaga todos os dados em transação, com confirmação; 591 testes |
