@@ -6,10 +6,10 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 602 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 244 em `:app`)
+- **Testes:** 628 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 85 em `core:data`, 270 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
+- **Lint:** 0 erros; 19 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x), nenhum de código novo
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
 - **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
@@ -36,11 +36,197 @@
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
-- **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 e export MP4 via MediaCodec, com galeria e compartilhamento; validado em aparelho real e com a logo `MeuCoach` no rodapé.
+- **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 com mapa vetorial (`MapLibre` + `OpenFreeMap`, dados OSM) e frame final de 3 s (distância, tempo, ritmo médio, FC média, kcal e logo), export MP4 1080×1920 via MediaCodec, com galeria e compartilhamento; validado em aparelho real (mapa vetorial pendente de validação).
+- **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) de labels ampliados e fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; vídeo 1080p a 8 Mbps.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+- **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
+
+## Sessão 2026-11-03 — Apagar uma atividade pelo detalhe
+
+### Concluído
+
+- **Menu no detalhe:** o cabeçalho da atividade ganhou `Mais opções` → `Apagar atividade`, em coral de perigo.
+- **Confirmação explícita:** dialog “Apagar esta atividade?” explica que ela sai do histórico, das tendências e do cálculo de carga, e que a ação não pode ser desfeita.
+- **Soft delete:** `ActivityDetailViewModel.deleteActivity()` usa `ActivityRepository.deleteActivity` (marca `deletedAt`), mantendo a política do Room e permitindo restaurar ao reimportar o mesmo arquivo.
+- **Feedback:** ao concluir, o detalhe volta para a lista; falha mostra um dialog “Não foi possível apagar”. Lista, Hoje e Tendências reagem sozinhos porque observam os Flows do repositório.
+- **Testes:** `ActivityDetailViewModelTest` cobre a exclusão e o sumiço em `openActivity`; `ActivityDetailScreenTest` cobre menu, confirmação e cancelamento implícito. Goldens do detalhe atualizados com o novo menu.
+
+### Evidências
+
+- `./gradlew check koverVerify :app:assembleDebug` — sucesso.
+- `./gradlew :app:recordRoborazziDebug :app:verifyRoborazziDebug` — sucesso.
+- 628 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 270 `:app`).
+
+### Decisões e observações
+
+- **Soft delete em vez de apagar em cascata:** consistente com `ActivityRepository` e com a importação (arquivo repetido pode restaurar). O export continua incluindo itens com `deletedAt`.
+- **Sem “desfazer” na UI:** a confirmação é o único ponto de segurança; para recuperar, é preciso reimportar o arquivo original.
+- **Ação no detalhe, não na lista:** evita exclusão acidental e mantém o menu de longo prazo para um gesto de long-press, se necessário.
+
+### Próximo passo
+
+1. Validar no aparelho o menu, o dialog e o retorno à lista.
+2. Se a exclusão for frequente na lista, avaliar long-press com a mesma confirmação.
+
+## Sessão 2026-11-03 — Comunicação: menos jargão, referência sob demanda
+
+### Concluído
+
+- **Referências científicas fora do fluxo principal:** o sheet “Por que este treino?” agora mostra `O que usei`, `O que faltou` e `Como decidi` (só títulos legíveis). Fontes e IDs brutos ficaram atrás de `Ver fontes e detalhes técnicos`, colapsado. `ActivityInsights`, `CalibrationScreen` e `TrendsScreen` não exibem mais `R-...`/`EV-...`.
+- **Jargão traduzido:** `ACWR` → `Aumento`/`vs. mês`; `LTHR` → `FC no limite`; `VDOT` → `Aptidão`; `RPE` → `esforço percebido`; `Taper` → `semana de prova`; `Deload` → `semana de descarga`; `TT` → `teste de 30 min`; `Qualidade` → `treino forte`; `Pace` → `ritmo`; `Split` → `trecho`; `Hooper` → `Recuperação`; `SWC`/`baseline` → `acima`/`abaixo da média`.
+- **Zonas com contexto:** `Z2` virou `Z2 · leve` na pill do treino; o detalhe da atividade mostra `Z1 · Muito leve` … `Z5 · Máximo`; as legendas de 80/20 mantêm `Fácil · Z1–Z2`.
+- **Rationales do motor:** textos de prescrição e plano reescritos em linguagem de treinador (calor, carga, taper/deload, sono curto e treino forte).
+- **Erros de borda:** falha de importação, séries temporais corrompidas e leitura do Health Connect deixaram de vazar mensagem técnica em inglês; agora dizem o que aconteceu e o que fazer.
+- **Fim do texto de demonstração:** o rodapé “Fase 0 · dados de demonstração” saiu da tela Hoje. “Ver tendências” e o card da última corrida agora navegam de verdade (Tendências e detalhe da atividade), em vez de mostrar um toast de fase.
+- **Testes:** `TodayPlanTest` cobre a divulgação progressiva (ID ausente antes do toggle, presente depois); `ActivityDetailScreenTest` e `CalibrationScreenTest` garantem ausência de IDs; goldens de Today, Trends, Atividade, Calibração, Check-in e Onboarding atualizados.
+
+### Evidências
+
+- `./gradlew :core:model:test :core:domain:test :core:data:test :app:testDebugUnitTest` — sucesso.
+- `./gradlew spotlessCheck` — sucesso.
+- `./gradlew :app:recordRoborazziDebug :app:verifyRoborazziDebug` — sucesso.
+- 626 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 268 `:app`).
+
+### Decisões e observações
+
+- **Auditoria preservada:** `ruleId`, `evidenceIds` e `confidence` continuam no domínio e no Room; a UI só os mostra sob demanda. Isso mantém `ADR-0004` e `PRODUCT.md` §1 sem entregar bibliografia para quem só quer treinar.
+- **Confiança continua visível:** `McConfidenceBadge` permanece no card de prontidão e no plano; o que saiu foi o ID, não o nível de confiança.
+- **Fonte única de explicação:** só o sheet de recomendação oferece detalhes técnicos; evita repetir referência em cinco telas.
+- **Copy do domínio é copy de usuário:** rationales de `WorkoutRecommender`/`WeeklyPlanGenerator` alimentam Hoje, plano e notificação, então também passaram pela varredura.
+
+### Próximo passo
+
+1. Validar a compreensão com o usuário 0 (`TESTING.md` §7, meta ≥ 80%) e ajustar termos que ainda exijam explicação.
+2. Verificar no aparelho o sheet com a divulgação progressiva e o novo detalhe de zonas.
+
+## Sessão 2026-11-03 — Story: mapa vetorial em 1080p
+
+### Concluído
+
+- **Saída do vídeo:** 720×1280 → **1080×1920** (H.264, 24 fps, 8 Mbps), mantendo o layout 9:16 escalável.
+- **Mapa vetorial:** troca do raster OSM pelo **OpenFreeMap** (`styles/liberty`, dados OSM) — sem chave, sem limite de visualizações. O `OpenFreeMapStyle` amplia e clareia os labels de lugar/rua/água, para dar para reconhecer o bairro/região em 1080p.
+- **Fallback:** se o style do OpenFreeMap não baixar, o renderer usa o style raster OSM inline; o mapa claro mantém o mesmo casing da rota.
+- **Contraste:** saturação 85% (antes 60%), sem scrim na animação e 80 no frame final; gradientes de topo/rodapé continuam protegendo o texto. A rota ganhou **casing escuro** e base cinza para o lima ficar legível sobre o mapa claro.
+- **Timeout** do mapa: 30 s → 45 s (style + tiles vetoriais + glyphs).
+- **Testes:** `OpenFreeMapStyleTest` cobre tamanho/cor dos labels, criação de `paint` e preservação de camadas não simbólicas.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 625 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 267 `:app`).
+- Lint sem erros; APK de debug inalterado (~49,7 MB; o mapa é download em runtime).
+- Saída do vídeo: ~30 MB para 30 s a 8 Mbps (antes ~15 MB a 4 Mbps).
+
+### Decisões e observações
+
+- **OpenFreeMap em vez de raster:** tiles vetoriais são nítidos em qualquer resolução e os labels podem ser ampliados, o que resolve o “não dá para distinguir a região”. O provedor é gratuito, sem chave e sem limite de requests; os dados continuam sendo OSM.
+- **Custo aceito:** 1080p processa ~2,25× mais pixels por frame; o export fica mais lento e o arquivo maior, sem impacto no APK.
+- **Fallback raster** é claro e também funciona com o casing; a atribuição `© OpenStreetMap contributors` cobre os dois.
+- **Validação pendente no aparelho:** conferir labels reais, tempo de export e nitidez do mapa.
+
+### Próximo passo
+
+1. Instalar este APK e gerar um story real; avaliar o mapa vetorial e o tempo de export.
+2. Se ainda faltar detalhe, aumentar o zoom (`MAP_ZOOM_FACTOR`) ou reduzir a área de labels.
+
+## Sessão 2026-11-03 — Ajustes de UX: data, seletores, última corrida e mapa
+
+### Concluído
+
+- **Data de nascimento/prova:** o estado guarda só os 8 dígitos e `DateVisualTransformation` insere as barras apenas na tela (`DateMask` com `OffsetMapping`). Digitar `01111988` produz `01/11/1988`; o cursor acompanha os dígitos e apagar sobre a barra não trava mais.
+- **Fuso horário e cidade:** os chips foram substituídos por campos de seleção compactos que abrem um **bottom sheet pesquisável** (busca sem acento), com lista de 56 dp, check na opção atual e “Não informar” para a cidade. O perfil mostra o rótulo amigável em vez do ID IANA.
+- **Dados compartilhados:** `TimezoneOption`, `AVAILABLE_TIMEZONES`, `AVAILABLE_CITIES` e `timezoneLabel` foram para `ui/common/LocationOptions.kt`, usados pelo onboarding e pelo perfil (sem dependência entre features).
+- **“Última corrida”:** o card só aparece quando existe atividade real. `TodayUiState.recentActivity` virou nullable e o fallback para os dados de demonstração foi removido — perfil novo não mostra mais corrida inventada.
+- **Mapa do story:** enquadramento 20% mais próximo (`MAP_ZOOM_FACTOR = 1.2`), saturação de 60% e scrim leve (alpha 50 na animação, 90 no final), com gradientes no topo/rodapé para preservar a leitura do cabeçalho. A rota é ampliada pelo mesmo fator, mantendo o alinhamento com as ruas.
+- **Testes:** digitação da data, seleção de fuso pela busca, ausência de última corrida, mapeamento do cursor e atualização dos goldens de onboarding/perfil/story com mapa.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 622 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 264 `:app`).
+- Cobertura `core:domain` inalterada.
+
+### Decisões e observações
+
+- **Barras fora do valor:** manter a máscara no estado era a causa do cursor pulando e do backspace preso; o campo agora edita dígitos e a transformação só desenha.
+- **Lista em vez de chips:** 15 fusos e 19 cidades em `FlowRow` poluíam a rotina; o sheet reduz a tela a dois campos e ainda permite buscar.
+- **“Não informar”:** a cidade é opcional; antes não havia como limpar uma cidade escolhida.
+- **Mapa menos apagado:** o cabeçalho ganhou um gradiente próprio em vez de escurecer o mapa inteiro; o centro do mapa e a rota ficam visíveis.
+- **Dados de demonstração** continuam existindo só para previews/testes, nunca para o estado real.
+
+### Próximo passo
+
+1. Reinstalar o APK no aparelho e validar a digitação da data, os seletores e o story com o novo enquadramento.
+2. Validação E2E com 4 semanas de uso real (P1-12).
+
+## Sessão 2026-11-03 — P3-05 (entrega 2): mapa real no story
+
+### Concluído
+
+- **`MapLibre` 12.3.1 + OSM raster** (estilo inline, sem chave de API): `MapLibreBackgroundRenderer` gera um snapshot 720×1280 via `MapSnapshotter`; a linha 13.x foi descartada porque exige Vulkan (`uses-feature` obrigatório).
+- **`StoryMapCameraCalculator`** (puro) alinha o `BoundingBox` ao mesmo quadrado usado pela rota, inclusive o offset vertical do cabeçalho. 5 testes cobrem centro, encaixe, zoom e geometria de preview.
+- **Fluxo:** `createStory` baixa o mapa uma vez, mostra `Baixando o mapa do OpenStreetMap…` e guarda a `Bitmap` no estado `Preview`; o export reaproveita a imagem. Sem rede ou após 30 s, o story mostra erro explícito e não gera vídeo.
+- **Renderer:** mapa full-bleed dessaturado a 60%, com scrim leve (alpha 50 na animação, 90 no final) e gradientes no topo/rodapé; zoom de 1,2× sobre o quadrado da rota para o mapa não parecer distante; rota base clara e atribuição `© OpenStreetMap contributors` em todo frame com mapa.
+- **Manifest:** `INTERNET`/`ACCESS_NETWORK_STATE`; permissões de localização herdadas do MapLibre removidas com `tools:node="remove"`.
+- **APK:** `abiFilters` em `arm64-v8a`/`x86_64`; o debug passou de ~24 MB para ~49 MB (~13 MB por ABI).
+- **UI:** prévia agora mostra o mapa real; o texto do card explica que tiles do OSM são baixados e que coordenadas exatas não saem do aparelho.
+- **Ícone do launcher:** o asset `design/icon/icon_mc.jpg` virou foreground adaptativo (PNGs por densidade sobre o fundo `#08090B`), substituindo o vetor “M” provisório; o `monochrome` usa a mesma silhueta.
+- **Testes:** 5 da câmera, 2 novos do ViewModel (mapa no preview e falha de rede) e 2 goldens sintéticos com grade de ruas (`story-map-dark.png`, `story-final-map-dark.png`), sem dados reais.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 618 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 260 `:app`).
+- Cobertura `core:domain` inalterada (98,37% de linhas).
+- APK debug: ~49 MB com duas ABIs (antes ~24 MB).
+
+### Decisões e observações
+
+- **Versão:** `12.3.1` é a última linha OpenGL; `13.x` adiciona Vulkan obrigatório e reduziria a compatibilidade de aparelhos.
+- **Tamanho acima do previsto:** o ADR estimava 3–5 MB; a biblioteca adiciona ~13 MB por ABI. Os filtros de ABI limitam o impacto, e 32 bits fica fora do MVP.
+- **Mapa na prévia, não no export:** evita baixar tiles duas vezes e permite ver o enquadramento antes de gerar o vídeo.
+- **Sem fallback offline silencioso:** o `ADR-0012` prometia vídeo 100% offline; o `ADR-0015` substitui isso por rede obrigatória, com erro claro. Timeout de 30 s evita travar a tela.
+- **Atribuição OSM** é requisito de licença, não decoração; permanece visível mesmo com a logo no rodapé.
+- **Pendente de validação real:** geração do snapshot, zoom/qualidade do OSM, alinhamento da rota, tempo de export e APK de release. O ponto de partida em emoji (§2.5) também segue pendente.
+
+### Próximo passo
+
+1. Validar o story com mapa em aparelho real (rede, enquadramento, export e tamanho do APK).
+2. Validação E2E com 4 semanas de uso real (P1-12).
+
+## Sessão 2026-11-03 — P3-05 (entrega 1): frame final de 3 s e bounding box
+
+### Concluído
+
+- **`StorySegmentType.FINAL`** encerra o vídeo com 3 s reservados **dentro** da duração alvo: com 30 s, a rota e os cards ocupam os 27 s iniciais. Alvos menores que 3 s geram só o encerramento.
+- O encerramento também aparece em treinos sem km completo (sem cards), para o vídeo sempre terminar com o resumo.
+- **`StoryFrameRenderer.drawFinal`** desenha o painel escuro com `TREINO CONCLUÍDO`, ritmo médio, FC média e calorias. Distância e tempo continuam no cabeçalho (sem salto de layout na transição) e a logo `MeuCoach` permanece no rodapé.
+- **`StoryPlan`** ganhou `averagePace`, `averageHeartRate` e `boundingBox`. Pace e FC preferem os campos canônicos de `ImportedActivity`; quando ausentes, derivam de `durationSec / distância` e da média dos samples. Sem dado, o frame mostra `—`.
+- **`BoundingBox`** calculado com todos os pontos GPS (não só a rota amostrada) para o mapa da entrega 2 não cortar extremos do traçado.
+- Novo golden `story-final-dark.png` e 6 testes novos do planner (frame final, duração mínima, valores canônicos, ausência de FC e bounding box).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 609 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 85 `core:data`, 251 `:app`).
+- Cobertura `core:domain` inalterada (98,37% de linhas).
+- Lint sem erros.
+
+### Decisões e observações
+
+- **Sem dependência nova nesta entrega:** só `Canvas`. `MapLibre` e a `Bitmap` estática do mapa ficam para a entrega 2, como combinado.
+- **`FINAL` sempre presente:** o §2.6 do ADR condicionava o encerramento a `splits` não vazio; o vídeo com menos de 1 km também merece fechamento. Divergência registrada na nota de implementação do ADR.
+- **Cabeçalho preservado no frame final:** evita que a transição para o resumo pareça um corte de tela; o painel cobre o restante dos dados.
+- **Campos canônicos primeiro:** a FC média do arquivo é mais confiável que a média dos samples; a derivação por GPS cobre fontes que não trazem o resumo.
+- O ponto de partida em emoji e o fundo escurecido sobre o mapa continuam pendentes na entrega 2.
+
+### Próximo passo
+
+1. `P3-05` entrega 2: `MapLibre` + `Bitmap` estática do mapa a partir do `BoundingBox` + rota animada por cima.
+2. Validação E2E com 4 semanas de uso real (P1-12).
 
 ## Sessão 2026-11-03 — Hoje: carga honesta quando não há dados
 

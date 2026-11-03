@@ -59,7 +59,7 @@ A promessa central:
 - Tela **Tendências** com gráficos de evolução.
 - Notificações locais: treino do dia, lembrete de check-in, import pendente.
 - Exportar/apagar todos os dados.
-- Funcionar 100% offline.
+- Funcionar offline — exceto o mapa do story, que baixa tiles do `OpenStreetMap` no momento da geração (`ADR-0015`).
 
 ### Fora (explícito)
 

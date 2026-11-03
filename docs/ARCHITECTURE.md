@@ -258,10 +258,15 @@ data class EngineOutput(
 - [ADR-0007](adr/0007-compose-design-tokens.md) — Compose + tokens de marca
 - [ADR-0008](adr/0008-backend-dokploy.md) — Ktor + Postgres + Dokploy
 - [ADR-0009](adr/0009-strength-out-of-scope.md) — musculação fora do escopo
+- [ADR-0010](adr/0010-availability-hard-cap-progression.md) — disponibilidade como teto
+- [ADR-0011](adr/0011-deload-block-anchor.md) — deload ancorado em semanas de plano
+- [ADR-0012](adr/0012-story-video.md) — story de treino (Canvas + MediaCodec)
+- [ADR-0013](adr/0013-manual-session-swap.md) — troca manual de sessões
+- [ADR-0014](adr/0014-incremental-health-sync.md) — sync incremental do Health Connect
+- [ADR-0015](adr/0015-story-video-map.md) — mapa real no story (OSM + MapLibre)
 
 ## 15. Perguntas abertas
 
-- Mapa: MapLibre/OSM vs. polyline estática + abrir app externo (decidir na Fase 1).
 - Widgets: Glance na Fase 2; quais métricas expor?
 - Sync: conflito de plano quando o usuário edita offline em dois dispositivos.
 - Export Zepp: mapear o schema real quando o pacote chegar.

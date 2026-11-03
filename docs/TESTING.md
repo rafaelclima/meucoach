@@ -256,6 +256,11 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 - `app/src/test/screenshots/checkin-light.png`
 - `app/src/test/screenshots/today-dark.png`
 - `app/src/test/screenshots/today-light.png`
+- `app/src/test/screenshots/story-frame-dark.png`
+- `app/src/test/screenshots/story-frame-logo-dark.png`
+- `app/src/test/screenshots/story-final-dark.png`
+- `app/src/test/screenshots/story-map-dark.png`
+- `app/src/test/screenshots/story-final-map-dark.png`
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 

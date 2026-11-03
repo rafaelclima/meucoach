@@ -104,6 +104,8 @@
 
 **Aceite:** importar, listar, abrir e apagar atividade sem perder consistência. Entregue com Room v2, migração testada, `SampleBlobCodec` (`gzip-columnar-v1`), `ActivityRepository`, export JSON básico e 26 testes em `core:data`.
 
+**Exclusão por atividade (UI):** concluída em 03/11/2026 — menu `Mais opções` no detalhe, confirmação e soft delete; lista, Hoje e Tendências reagem via Flow.
+
 ### P0-08 · Importação — CONCLUÍDO
 
 - [x] File picker (SAF) + share intent.
@@ -302,11 +304,11 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - P3-02 Social (opt-in, privacidade).
 - P3-03 LLM apenas para reescrever explicações determinísticas, com validação.
 - P3-04 Wear OS / companion.
-- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **protótipo validado; evolução com mapa real e frame final planejada (`ADR-0015`)**.
+- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **mapa vetorial 1080p implementado; validação em aparelho pendente**.
 
 ### P3-05 · Story de treino ao ar livre (protótipo)
 
-**Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real; evolução `ADR-0015` aceita (mapa real OSM + MapLibre, frame final 3 s, logo `MeuCoach`).
+**Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com validação pendente em aparelho real.
 
 - [x] Planejador de rota, splits por km e timeline de 30 s.
 - [x] Renderer 9:16 com rota, progresso e card por km (pace, FC, kcal).
@@ -314,9 +316,11 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Galeria no Android 10+ e compartilhamento via `ACTION_SEND`/FileProvider.
 - [x] Preview do vídeo antes de exportar.
 - [x] Validação de desempenho e qualidade em aparelho real (`resposta 8`).
-- [ ] Exportar em 1080×1920 se o desempenho permitir.
-- [ ] Mapa real (`OSM` + `MapLibre`) como background estático no vídeo (`ADR-0015`).
-- [ ] Frame final (3 s) com dados do treino (`distância`, `tempo`, `pace`, `FC média`, `kcal`) e branding `MeuCoach` (`ADR-0015`).
+- [x] Exportar em 1080×1920 (8 Mbps); validar tempo de export no aparelho.
+- [x] Mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) como background estático no vídeo (`ADR-0015`).
+- [x] Frame final (3 s) com dados do treino (`distância`, `tempo`, `pace`, `FC média`, `kcal`) e branding `MeuCoach` (`ADR-0015`, entrega 1).
+- [x] `BoundingBox` geográfico no `StoryPlan` para o mapa (`ADR-0015`).
+- [ ] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`).
 - [x] Logo `MeuCoach` no rodapé do story (asset recortado em `core:designsystem`, prévia e vídeo).
 - [ ] Refinar a logo com prompt estruturado (`resposta 3`).
 

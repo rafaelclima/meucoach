@@ -48,7 +48,7 @@
 | Termo | Nome simples | Definição para o usuário | Onde aparece |
 |---|---|---|---|
 | `Readiness` | Prontidão | Um score (`0-100`) que resume sono, fadiga, dor, estresse, FC de repouso e `HRV`. `≥ 70` = verde (`bom para treinar`). `50-69` = amarelo (`cuidado`). `< 50` = vermelho (`descanso`). | `TodayScreen` (`Hoje`) |
-| `Hooper` | Índice de recuperação | Soma das notas de sono (`1-5`), fadiga (`1-5`), dor (`1-5`) e estresse (`1-5`). Quanto menor, melhor (`≤ 6` é bom). | `CheckInScreen` / `TodayScreen` |
+| `Hooper` | Recuperação | Soma das notas de sono (`1-5`), fadiga (`1-5`), dor (`1-5`) e estresse (`1-5`). Quanto menor, melhor (`≤ 6` é bom). Na UI aparece como `Recuperação`. | `CheckInScreen` (`Recuperação`) / `TodayScreen` (`menor é melhor`) |
 
 ---
 
@@ -56,24 +56,24 @@
 
 | Termo | Nome simples | Definição para o usuário | Onde aparece |
 |---|---|---|---|
-| `RuleId` (`R-ACT-01`, `R-PLAN-01`, etc.) | Regra do motor | A regra que o app usou para decidir (`ex.: descanso por doença`). Mantida como ID bruto na UI para auditabilidade. | `TodayScreen` (`Por que este treino?`) / `Bottom Sheet` |
-| `EvidenceId` (`EV-...`) | Evidência científica | A fonte científica citada (`ex.: Daniels-2014`). Na UI, traduzida para `Fonte: estudo de 2014`. | `TodayScreen` / `Bottom Sheet` |
+| `RuleId` (`R-ACT-01`, `R-PLAN-01`, etc.) | Regra do motor | A regra que o app usou para decidir (`ex.: descanso por doença`). Fica no código e nos dados; na UI aparece traduzida e o ID bruto só em `Ver fontes e detalhes técnicos`. | `core:domain` / Room / sheet "Por que este treino?" (colapsado) |
+| `EvidenceId` (`EV-...`) | Evidência científica | A fonte científica citada (`ex.: Daniels-2014`). Na UI, aparece como fonte em linguagem simples, sob demanda; o ID bruto fica na auditoria. | `core:domain` / sheet "Por que este treino?" (colapsado) |
 | `Confidence` (`HIGH`, `MEDIUM`, `LOW`) | Confiança | Quão confiável é a recomendação, baseada na quantidade de dados disponíveis. `HIGH` = muitos dados. `LOW` = pouco ou nenhum dado. | `TodayScreen` / `Bottom Sheet` / `McConfidenceBadge` |
 
 ---
 
 ## Princípios de uso deste glossário
 
-1. **Nunca citar ID bruto sozinho.** Sempre traduzir (`R-ACT-01` → `Regra: ritmo constante`).
-2. **Sempre explicar o impacto.** (`ACWR` → `Proporção carga (ACWR): se passar de 1,5, cuidado.`)
+1. **Nunca citar ID bruto no fluxo principal.** Traduzir (`R-ACT-01` → `Ritmo constante`); IDs só na auditoria sob demanda.
+2. **Sempre explicar o impacto.** (`ACWR` → `Aumento da carga vs. mês: se passar de 1,5, cuidado.`)
 3. **Nunca inventar.** Se o termo não tem contexto, não aparecer na UI (`AGENTS.md` §5).
-4. **Manter IDs auditáveis.** Os `ruleId` e `evidenceId` continuam no código (`core:domain`) para rastreabilidade (`ADR-0004`).
+4. **Manter IDs auditáveis.** Os `ruleId` e `evidenceId` continuam no código e nos dados (`ADR-0004`); a UI os esconde atrás de `Ver fontes e detalhes técnicos`.
 
 ---
 
-## Próximos passos para completar a reformulação
+## Status da reformulação (2026-11-03)
 
-- [ ] Atualizar todos os textos críticos restantes (`ProfileScreen` — `Calibração` já feito; `TrendsScreen` — `Recordes`, `Distribuição 80/20`, `Pace @ FC` ainda pendentes)
-- [ ] Atualizar `docs/DESIGN_SYSTEM.md` com princípios de conteúdo (`§2` ou nova seção `§15`)
-- [ ] Testar com usuário 0 (`TESTING.md` §7: compreensão ≥ 80%)
-- [ ] Atualizar `docs/PROGRESS.md` após validação
+- [x] Textos críticos de `TodayScreen`, `ActivityDetailScreen`, `CalibrationScreen`, `CheckInScreen`, `ProfileScreen`, `TrendsScreen`, `Onboarding` e story revisados.
+- [x] `docs/DESIGN_SYSTEM.md` §15 atualizado com conteúdo e divulgação progressiva.
+- [x] IDs brutos removidos das telas comuns; auditoria preservada no sheet de explicação.
+- [ ] Testar com usuário 0 (`TESTING.md` §7: compreensão ≥ 80%).

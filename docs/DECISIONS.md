@@ -20,7 +20,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0012](adr/0012-story-video.md) | Story de treino ao ar livre (vídeo com animação do percurso) — planejamento com Canvas+MediaCodec | Substituído parcialmente por ADR-0015 | 31/10/2026 |
 | [0013](adr/0013-manual-session-swap.md) | Troca manual de sessões subordinada aos guardrails | Aceito | 31/10/2026 |
 | [0014](adr/0014-incremental-health-sync.md) | Sync incremental do Health Connect via WorkManager | Aceito | 31/10/2026 |
-| [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito | 02/11/2026 |
+| [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito — implementado; validação em aparelho pendente | 02/11/2026 |
 
 ## Decisões menores (registro rápido)
 

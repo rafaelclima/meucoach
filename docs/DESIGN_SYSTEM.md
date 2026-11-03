@@ -371,10 +371,11 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 1. **Uma pergunta por texto.** Cada texto na UI responde a uma pergunta clara do usuário (`Hoje`: "Como estou?" / `Trends`: "Estou evoluindo sem estourar?" / `Story`: "Quero compartilhar?").
 2. **Contexto antes do termo.** Todo termo técnico (`TRIMP`, `ACWR`, `LTHR`, `Z2`) deve ser acompanhado de uma definição simples (`docs/GLOSSARY.md`). Se não há contexto, não aparece sozinho.
 3. **Números com unidade e contexto.** Sempre explicar o que o número diz (`Carga crônica (42 dias)`, `Balanço (recuperação)`, `Proporção carga (ACWR)`).
-4. **Sem jargão sem explicação.** `TRIMP` → `Carga de treino (baseada em FC)`; `Monotonia` → `Variedade de treino`; `Recorde` → `Seus melhores trechos`.
+4. **Sem jargão sem explicação.** `TRIMP` → `Carga de treino (baseada em FC)`; `Monotonia` → `Variedade de treino`; `Recorde` → `Seus melhores trechos`; `Qualidade` → `treino forte`; `Pace` → `ritmo`.
 5. **Conservador por padrão.** A comunicação reforça que `ACWR > 1,5` é alerta (`nunca meta`), que `TSB < 0` é descanso (`não força`), e que `Pace de limiar` é um limite (`não um alvo diário`).
 6. **Acessível.** Contraste AA, fontes escaláveis (`Geist`/`Inter`), alvos de 48 dp, TalkBack (`DESIGN_SYSTEM.md` §10). Os textos devem ser curtos (`≤ 2 linhas` para legendas), claros e sem abreviações obscuras (`FC` é aceito porque é explicado; `TRIMP` não aparece sem contexto).
 7. **Auditável.** Os `ruleId` (`R-ACT-01`, `R-PLAN-01`) e `evidenceId` (`EV-...`) continuam no código (`core:domain`) para rastreabilidade (`ADR-0004`), mas a UI traduz para linguagem simples (`docs/COMMUNICATION.md` §3).
+8. **Referência sob demanda.** Fonte e ID não competem com a decisão: aparecem no máximo uma vez, colapsados, atrás de `Ver fontes e detalhes técnicos`. Nenhuma tela comum exibe `R-` ou `EV-`.
 
 ---
 

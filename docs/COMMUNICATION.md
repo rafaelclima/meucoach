@@ -1,7 +1,7 @@
 # Reformulação da comunicação — MeuCoach
 
-**Status:** proposta para Fase 1
-**Data:** 2026-11-02
+**Status:** implementado na Fase 1 — varredura concluída em 2026-11-03
+**Data:** 2026-11-02 (atualizado em 2026-11-03)
 **Responsável:** planejamento com Rafael (usuário 0)
 
 ---
@@ -91,10 +91,61 @@ Mas para a reformulação da comunicação, vou criar um arquivo de referência 
 
 ---
 
-## 5. Próximos passos (para entrega de maior valor)
+## 5. Escopo original da proposta
+
+> Itens 1, 2, 3 e 5 concluídos na varredura de 2026-11-03 (§6). O item 4 segue como validação com o usuário 0.
 
 1. **Revisar todos os textos do app** (`app/src/main/kotlin/`) contra os princípios acima.
 2. **Criar um catálogo de termos** (`docs/GLOSSARY.md`) com definições simples para cada termo técnico (`TRIMP`, `ACWR`, `LTHR`, etc.).
 3. **Atualizar `docs/DESIGN_SYSTEM.md`** com regras de conteúdo (não só visual).
 4. **Testar com o usuário 0** (`Rafael`) se os novos textos são compreensíveis (`TESTING.md` §7: "Usuário consegue explicar a recomendação ≥ 80%").
 5. **Manter IDs auditáveis** (`ruleId`, `evidenceId`) para o motor determinístico, mas traduzir para linguagem simples na UI.
+
+---
+
+## 6. Varredura de 2026-11-03 (implementado)
+
+### 6.1 Princípio adotado
+
+**A referência não compete com a decisão.** O usuário vê primeiro o que fazer e por quê, em linguagem de treinador. Fonte, ID de regra e ID de evidência são auditoria: ficam no código, nos dados persistidos e em uma divulgação progressiva opcional — nunca no fluxo principal.
+
+### 6.2 O que saiu da UI comum
+
+| Onde | Antes | Depois |
+|---|---|---|
+| Hoje — sheet "Por que este treino?" | Listas `Regras` e `Evidências` com `R-...`/`EV-...` | `Como decidi` só com títulos legíveis + `Ver fontes e detalhes técnicos` (colapsado) |
+| Detalhe da atividade — "O que aprendemos" | `R-ACT-01 · EV-... · confiança média` | Apenas a observação em linguagem simples |
+| Calibração — resultado | `R-CAL-01 · EV-DANIELS-2014, EV-FRIEL-2018` | Removido; ficam os números, a confiança e a recomendação |
+| Tendências — 80/20 | `Heurística R-ZONE-02 · EV-SEILER-2010` | `O ideal é passar cerca de 80% do tempo em ritmo fácil.` |
+
+### 6.3 Termos traduzidos na varredura
+
+| Termo técnico | Texto de usuário |
+|---|---|
+| `ACWR` / "Proporção" | `Aumento` / `vs. mês` / "sua carga subiu rápido" |
+| `CTL` / `ATL` / `TSB` | `Acumulada` / `Recente` / `Balanço` (com os dias ao lado) |
+| `LTHR` / `Pace de limiar` | `FC no limite` / `Ritmo no limite` / `limite de esforço` |
+| `VDOT` | `Aptidão` / `Índice de aptidão` |
+| `RPE` | `esforço percebido` / `esforço 8 de 10` |
+| `Taper` / `Deload` | `semana de prova` / `semana de descarga` |
+| `TT de 30 min` | `teste de 30 min` |
+| `Qualidade` | `treino forte` |
+| `Pace` / `Split` | `ritmo` / `trecho` |
+| `Hooper` | `Recuperação` |
+| `SWC` / `baseline` | `acima`/`abaixo da média` / `comparada à sua média` |
+| `Z2` sozinho | `Z2 · leve` na pill; `Fácil · Z1–Z2` nas legendas; rótulos por zona no detalhe |
+| `HRV` / `SpO2` | `variabilidade cardíaca (HRV)` / `oxigenação (SpO2)` na primeira menção |
+
+### 6.4 Onde a auditoria continua
+
+- `ruleId`, `evidenceIds` e `confidence` continuam em `core:domain`, no `WeeklyPlan`/`WorkoutRecommendation` e no Room (`ADR-0004`).
+- No sheet "Por que este treino?", `Ver fontes e detalhes técnicos` mostra as fontes em linguagem simples e, no fim, os IDs brutos para conferência.
+- Nenhuma tela comum (Hoje, Atividade, Calibração, Tendências) exibe `R-` ou `EV-`; há teste de regressão para isso.
+
+### 6.5 Regra para novos textos
+
+1. Se o texto precisa de um artigo científico para fazer sentido, ele ainda não está pronto para a UI.
+2. Toda sigla aparece com o nome simples antes (`FC no limite (LTHR)` só em contexto técnico; na UI, `FC no limite`).
+3. Confiança pode aparecer; ID de regra/evidência, não.
+4. Fonte é opcional e sob demanda, no máximo em um lugar por recomendação.
+5. Números sempre com unidade e consequência ("carga subiu rápido: não aumente").

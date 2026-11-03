@@ -226,3 +226,47 @@ O `mapBitmap` é passado para cada `StoryFrameRenderer.render(...)`.
 9. **Criar logo (`MeuCoach`) via LLM (ChatGPT/Gemini) com prompt estruturado, conforme `resposta 3`.**
 10. **Validar no aparelho real (`resposta 8`): desempenho, qualidade do mapa, precisão da região e frame final.**
 11. **Atualizar `docs/PROGRESS.md`.**
+
+---
+
+## 6. Nota de implementação — entrega 1 (03/11/2026)
+
+**Escopo entregue:** `BoundingBox` no plano e frame final de 3 s, apenas `Canvas` — **sem dependência nova**. O mapa real (`MapLibre`) veio na entrega 2.
+
+- `StoryPlanCalculator` passou a expor `boundingBox`, `averagePace` e `averageHeartRate`.
+  - O `boundingBox` usa todos os pontos GPS (não só a rota amostrada) para não cortar extremos do traçado.
+  - Pace e FC médias preferem os campos canônicos de `ImportedActivity`; quando ausentes, derivam de `durationSec / distância` e da média dos samples. Sem dado, o campo fica `null` e o frame desenha `—`.
+- Novo `StorySegmentType.FINAL` com `FINAL_SECONDS = 3.0`, **reservado dentro** da duração alvo (padrão 30 s → movimento/cards nos 27 s iniciais).
+  - Duração mínima de 3 s: alvos menores que o frame final geram só o encerramento.
+  - O `FINAL` também aparece em treinos sem km completo (sem cards), ao contrário da condição de `splits` não vazio no §2.6 — o vídeo sempre termina com o encerramento.
+- `StoryFrameRenderer.drawFinal` desenha o painel com `TREINO CONCLUÍDO`, ritmo médio, FC média e calorias; distância e tempo continuam no cabeçalho para não haver salto de layout na transição, e a logo permanece no rodapé.
+- Métricas do frame final: `—` quando `null`, nunca zero (`AGENTS.md` §3.7).
+- Validado com golden `story-final-dark.png` e testes de unidade do planner (bounding box, duração mínima e valores canônicos).
+
+## 7. Nota de implementação — entrega 2 (03/11/2026)
+
+**Escopo entregue:** mapa real com `MapLibre` + `OpenStreetMap`, gerado uma vez por story e reaproveitado em todos os frames.
+
+- **Versão:** `org.maplibre.gl:android-sdk:12.3.1` — a linha **13.x exige Vulkan** (`uses-feature android.hardware.vulkan.version required=true`), o que restringiria aparelhos compatíveis. `12.3.1` é a última linha OpenGL (minSdk 23) e atende `minSdk 26`/AGP 9.4.1.
+- **Tamanho real:** a AAR adiciona ~13,2 MB (arm64-v8a) e ~13,6 MB (x86_64) de biblioteca nativa, bem acima da estimativa inicial de 3–5 MB. Para conter o APK, `abiFilters` limita o app a `arm64-v8a` e `x86_64`; 32 bits fica fora do MVP. O APK de debug passou de ~24 MB para ~49 MB com as duas ABIs.
+- **Geração:** `MapLibreBackgroundRenderer` usa `MapSnapshotter` com estilo raster OSM inline (sem chave/API), `withLogo(false)`/`withAttribution(false)` e câmera calculada por `StoryMapCameraCalculator`. O snapshot é criado no `createStory` (prévia já mostra o mapa) e guardado no estado `Preview` para o export não baixar tiles duas vezes.
+- **Alinhamento:** `StoryMapCameraCalculator` projeta o `BoundingBox` no mesmo quadrado usado por `drawRoute` (`routeSquare`), com Mercator e o offset vertical do cabeçalho. A matemática é pura e testada sem carregar a biblioteca nativa.
+- **Legibilidade:** a foto OSM é dessaturada a 60% e recebe um scrim leve (alpha 50 na animação, 90 no `FINAL`) + gradientes no topo/rodapé. O enquadramento usa **1,2× de zoom** sobre o quadrado da rota, para o mapa não parecer distante, mantendo o traçado alinhado às ruas.
+- **Rede:** sem conexão, o `createStory` mostra "Não foi possível baixar o mapa. Verifique a conexão e tente novamente." e não gera o vídeo — o fallback offline do `ADR-0012` foi substituído conscientemente. Há timeout de 30 s.
+- **Privacidade e licença:** apenas tiles da região aproximada vão para `tile.openstreetmap.org`; coordenadas exatas nunca são enviadas. A atribuição `© OpenStreetMap` é desenhada em todo frame com mapa, e as permissões de localização herdadas do MapLibre foram removidas no manifest (`tools:node="remove"`).
+- **Testes:** 5 testes da câmera, testes do `ActivityDetailViewModel` (mapa no preview, tamanho do frame, falha de rede) e goldens sintéticos `story-map-dark.png`/`story-final-map-dark.png` (grade de ruas, sem dados reais).
+
+**Pendente:** validar em aparelho real a geração do snapshot, a qualidade/zoom do OSM, o alinhamento da rota, o tempo de export e o APK de release; o ponto de partida em emoji (§2.5) também segue pendente.
+
+## 8. Atualização — mapa vetorial e 1080p (03/11/2026)
+
+A primeira versão do mapa usava raster do `tile.openstreetmap.org` em 720×1280. No aparelho, os labels ficaram pequenos/borrados e não dava para reconhecer a região. A entrega foi ajustada sem mudar a arquitetura (snapshot + Canvas):
+
+- **Fonte:** `OpenFreeMap` (`https://tiles.openfreemap.org/styles/liberty`, dados OSM). É gratuito, sem chave, sem cadastro e sem limite de visualizações; o estilo vetorial mantém ruas e labels nítidos em qualquer resolução. O fallback é o style raster OSM inline, caso o download do style falhe.
+- **Labels:** `OpenFreeMapStyle` baixa o style e amplia/clareia os textos de lugar, rua, água e POI (14–28 px, halo branco) antes de entregar o JSON ao `MapSnapshotter`. Sem isso, o estilo padrão desenha labels de 10 px, ilegíveis no vídeo.
+- **Resolução:** o vídeo passou de 720×1280 para **1080×1920** (H.264, 24 fps, 8 Mbps). O snapshot do mapa acompanha o tamanho do frame; o layout já era escalável (`scale = width / 720`).
+- **Contraste:** saturação em 85%, sem scrim na animação e 80 no `FINAL`, mantendo os gradientes de topo/rodapé. A rota ganhou casing escuro e base cinza (`StoryPalette.mapCasing`/`mapBaseRoute`) para o lima continuar legível sobre um mapa claro.
+- **Custo:** ~2,25× mais pixels por frame; o export fica mais lento e o MP4 de 30 s passa de ~15 MB para ~30 MB. O APK não cresce (o mapa é download em runtime). Timeout do mapa: 45 s.
+- **Privacidade:** os requests vão para `tiles.openfreemap.org` com a região aproximada; coordenadas exatas continuam só no aparelho. A atribuição `© OpenStreetMap · OpenMapTiles · OpenFreeMap` é desenhada no frame.
+
+**Pendente:** validar no aparelho os labels reais, o tempo de export em 1080p e a nitidez; se necessário, ajustar `MAP_ZOOM_FACTOR` (1,2) ou os tamanhos de label.
