@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 31/10/2026
+**Atualizado:** 02/11/2026
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
-- **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 570 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 213 em `:app`)
+- **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
+- **Testes:** 580 testes, 0 falhas (27 em `core:model`, 246 em `core:domain`, 84 em `core:data`, 223 em `:app`)
 - **Cobertura `core:domain`:** 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268), 97,12% de instruções (18.165/18.703)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 4 avisos de versão/target, nenhum de código
@@ -40,6 +40,74 @@
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
+
+## Sessão 2026-11-02 — P1-13: linguagem simples, logo no story e carga honesta
+
+### Concluído
+
+- **Linguagem (Hoje e Tendências):**
+  - `CTL`/`ATL`/`TSB` viraram `Acumulada` (42 dias), `Recente` (7 dias) e `Balanço` (recuperação), com o mesmo rótulo nas duas telas.
+  - `PMC` virou "Evolução da carga · 42 dias"; a legenda do gráfico usa "Acumulada"/"Recente".
+  - `ACWR` aparece como "Proporção" com hint `ACWR` e o texto explica que é sinal de atenção, nunca meta.
+  - `Monotonia` virou "Variedade"; recordes viraram "Seus melhores trechos"; consistência virou "Hábito · Dias ativos".
+- **Story (P3-05):**
+  - `StoryBranding` centraliza a marca em `core:designsystem` (`drawable-nodpi/logo_mc.png`).
+  - O rodapé desenha a logo centralizada, com proporção preservada (3,8:1), na prévia e no vídeo.
+  - Sem logo, o rodapé de texto "Gerado no aparelho · MeuCoach" continua (ADR 0015 §2.8).
+  - Removidos os `println` de depuração e o `getIdentifier` reflexivo.
+- **Bug corrigido:** o pill "ACWR 1,1" da tela Hoje era **hardcoded**. Agora vem de `LoadSnapshot.acwr` e desaparece quando não há histórico.
+- **Onboarding:**
+  - Máscara `dd/mm/aaaa` nos campos de data (nascimento e prova).
+  - Data da prova passou a ser opcional (sem data não há taper; o plano continua conservador).
+  - Fuso e cidade por chips, com rótulos legíveis ("Recife", "Brasília · Sudeste") mantendo o ID IANA como valor.
+- **Docs:** `COMMUNICATION.md`, `GLOSSARY.md`, seções 15–17 do `DESIGN_SYSTEM.md` (tabela Do/Don't restaurada), ADR 0015 registrado em `DECISIONS.md`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 580 testes, 0 falhas (27 `core:model`, 246 `core:domain`, 84 `core:data`, 223 `:app`).
+- Cobertura `core:domain`: 98,37% de linhas (2.416/2.456), 83,55% de branches (1.895/2.268).
+- Dois goldens novos: `story-frame-logo-dark.png` e `onboarding-routine-dark.png`.
+- Nove goldens regravados pelas mudanças de texto.
+
+### Decisões e observações
+
+- Rótulo curto + `hint` substituiu descrições longas: em `McStat`, texto longo quebrava no meio da palavra ("RECUPERAÇÃ/O") e desalinhava os valores.
+- Dado ausente continua `null`: sem histórico de carga não existe pill de proporção, e não há número de reserva.
+- A logo fica em `drawable-nodpi` e em uma única cópia recortada; isso evita a escala automática de densidade e 40 KB duplicados no APK.
+- `summarizes plan completion` falhava **só às segundas**: duas sessões na mesma data colidem na chave `(weekStart, date)`. O teste passou a ancorar na semana anterior.
+- Fuso e cidade seguem em lista brasileira fixa (MVP). Usuário fora do Brasil não conclui o onboarding; registrado como T-09 no backlog.
+- O card de carga da tela Hoje ainda cai nos valores de demonstração quando não há carga (`ctl`/`atl`/`tsb`); revisar junto com o T-06.
+
+### Próximo passo
+
+1. Exportar e apagar todos os dados na UI (T-06, critério de saída do MVP).
+2. `P3-05`: mapa real (OSM + MapLibre) e frame final de 3 s (ADR 0015).
+3. `P1-11`: notificação de importação concluída.
+
+## Sessão 2026-11-02 — P3-05: evolução do story com mapa real (`ADR-0015`)
+
+### Concluído
+
+- `ADR-0015` criado e aceito (`docs/adr/0015-story-video-map.md`): mapa real (`OSM` + `MapLibre`) como background estático, frame final (`FINAL`, 3 s) e branding `MeuCoach`.
+- `docs/DECISIONS.md` atualizado (`ADR-0012` marcado como `Substituído parcialmente`).
+
+### Decisões e observações
+
+- **Fonte do mapa:** `OpenStreetMap` (`tile.openstreetmap.org`) — zero custo e usado pelo mercado (`Komoot`, `AllTrails`, `Strava`). O `bounding box` é calculado localmente; só tiles da região aproximada são baixados.
+- **Biblioteca:** `org.maplibre.gl:android-sdk` (`BSD-2-Clause`, `~3–5 MB` no APK), justificada pela regra 8 (`AGENTS.md`). **Ainda não foi adicionada**: a evolução não está implementada.
+- **Renderização:** `Bitmap` estática do mapa gerada uma vez, antes da exportação, usada como background em todos os frames; a rota continua animada por cima (`drawPath` + `PathMeasure`), preservando o desempenho já validado.
+- **Frame final:** novo `StorySegmentType.FINAL` com `distância`, `tempo`, `pace médio`, `FC média`, `kcal` e `MeuCoach`.
+- **Privacidade:** a exportação passa a exigir rede para os tiles `OSM`, mas não envia coordenadas exatas (aceito pelo usuário 0, `resposta 2`).
+- **Validação:** o protótipo (`P3-05`) está validado no aparelho (`resposta 8`); a evolução do `ADR-0015` ainda precisa ser implementada e validada.
+
+### Próximos passos
+
+1. `BoundingBox` no `StoryPlan` e no `StoryPlanCalculator`.
+2. `StoryMapRenderer` para gerar a `Bitmap` estática via `MapLibre`.
+3. `StoryFrameRenderer`/`StoryVideoExporter` recebendo `mapBackground` e o segmento `FINAL`.
+4. Dependência `org.maplibre.gl:android-sdk` em `gradle/libs.versions.toml` e `:app`.
+5. Validar no aparelho real (mapa preciso, desempenho, frame final, branding).
 
 ## Sessão 2026-10-31 — P3-05: prévia do story antes do export
 
@@ -1173,3 +1241,5 @@
 | 31/10/2026 | P1-09 concluído: sync incremental do Health Connect + worker diário via WorkManager; 562 testes |
 | 31/10/2026 | P3-05 protótipo: planner, renderer Canvas 9:16 e export MP4 via MediaCodec; 568 testes |
 | 31/10/2026 | P3-05: prévia antes do export + confirmação/cancelamento; 570 testes |
+| 02/11/2026 | P3-05: validação em aparelho real confirmada (`resposta 8`); `ADR-0015` aceito — mapa real (`OSM` + `MapLibre`), frame final (3 s) e logo `MeuCoach` |
+| 02/11/2026 | P1-13 concluído: linguagem simples em Hoje/Tendências, logo no story, proporção de carga real e onboarding mais robusto; 580 testes |

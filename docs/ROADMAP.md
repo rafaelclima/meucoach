@@ -264,8 +264,22 @@
 ### P1-11 · Notificações
 Treino do dia, check-in, import concluído. Sem culpa/streak.
 
+- [x] Lembrete de check-in (18h) e do treino (7h) com deep link.
+- [ ] Notificação de importação concluída.
+
 ### P1-12 · E2E e validação
 Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
+
+### P1-13 · Linguagem simples
+
+**Status:** concluído em 02/11/2026
+
+- [x] Termos técnicos traduzidos em Hoje e Tendências (carga, proporção, variedade, hábito).
+- [x] `COMMUNICATION.md` e `GLOSSARY.md` como fonte de verdade dos textos.
+- [x] Seções de conteúdo e acessibilidade no `DESIGN_SYSTEM.md`.
+- [x] Rótulo curto + `hint` nos `McStat`, sem quebra de palavra.
+- [x] Proporção de carga vinda do motor (nunca hardcoded).
+- [x] Onboarding com máscara de data, data de prova opcional e chips legíveis.
 
 ---
 
@@ -286,19 +300,23 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - P3-02 Social (opt-in, privacidade).
 - P3-03 LLM apenas para reescrever explicações determinísticas, com validação.
 - P3-04 Wear OS / companion.
-- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **protótipo implementado; validação em aparelho pendente**.
+- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **protótipo validado; evolução com mapa real e frame final planejada (`ADR-0015`)**.
 
 ### P3-05 · Story de treino ao ar livre (protótipo)
 
-**Status:** protótipo em 31/10/2026 — prévia + MP4 gerado no aparelho com Canvas + MediaCodec; validação visual em dispositivo pendente.
+**Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real; evolução `ADR-0015` aceita (mapa real OSM + MapLibre, frame final 3 s, logo `MeuCoach`).
 
 - [x] Planejador de rota, splits por km e timeline de 30 s.
 - [x] Renderer 9:16 com rota, progresso e card por km (pace, FC, kcal).
 - [x] Exportação MP4 720×1280/24 fps via MediaCodec, sem EGL nem dependência nova.
 - [x] Galeria no Android 10+ e compartilhamento via `ACTION_SEND`/FileProvider.
-- [ ] Validar qualidade e desempenho em aparelho real.
 - [x] Preview do vídeo antes de exportar.
+- [x] Validação de desempenho e qualidade em aparelho real (`resposta 8`).
 - [ ] Exportar em 1080×1920 se o desempenho permitir.
+- [ ] Mapa real (`OSM` + `MapLibre`) como background estático no vídeo (`ADR-0015`).
+- [ ] Frame final (3 s) com dados do treino (`distância`, `tempo`, `pace`, `FC média`, `kcal`) e branding `MeuCoach` (`ADR-0015`).
+- [x] Logo `MeuCoach` no rodapé do story (asset recortado em `core:designsystem`, prévia e vídeo).
+- [ ] Refinar a logo com prompt estruturado (`resposta 3`).
 
 **Descrição da feature (proposta inicial):**
 
@@ -316,7 +334,7 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 6. **Quando acionar:** a tela de criação do vídeo apareceria automaticamente após importar uma atividade com GPS, como uma ação manual no detalhe da atividade (`P0-09`), ou em uma aba separada (ex.: "Stories" no shell)?
 7. **Integração com o motor determinístico:** a feature não altera carga, prontidão ou prescrição; é apenas visualização/exportação. Confirmamos que nunca usará LLM para decidir o percurso, apenas para reescrever textos do overlay, se aplicável?
 
-**Status atual:** proposta aceita para planejamento — **respostas consolidadas em 31/10/2026** (ADR 0012); **nenhuma dependência nova adicionada**; implementação condicionada a build verde e validação visual (`Roborazzi`).
+**Status atual:** proposta aceita para planejamento — **respostas consolidadas em 31/10/2026** (`ADR 0012`); **evolução aceita em 02/11/2026** (`ADR 0015` — mapa real `OSM` + `MapLibre`, frame final 3 s, logo `MeuCoach`); implementação condicionada a build verde e validação visual (`Roborazzi`).
 
 **Decisões consolidadas (baseado nas respostas do usuário 0):**
 
@@ -324,10 +342,11 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 - **Acionamento:** manual, no detalhe da atividade (`P0-09`), apenas quando há posição.
 - **Design do vídeo:** card de pausa por km com `pace` + `FC média` + `kcal`; cores do design system (`lima` para destaque, `coral` para fisiologia); fonte grande; overlay elegante.
 - **Duração:** padrão 30 segundos (compatível com stories); exportação para galeria + `ACTION_SEND` direto.
-- **Renderização:** `Canvas` + `MediaCodec` (nativo Android SDK, sem dependência externa grande). Se a qualidade não atender ao objetivo de "postar com vontade", ADR futuro avaliará biblioteca leve com análise de peso/licença.
-- **Rota:** traçado real sanitizado (forma do percurso, sem pontos exatos de residência), totalmente offline, sem chamadas de rede para mapas.
+- **Renderização:** `Canvas` + `MediaCodec` (nativo Android SDK) com `Bitmap` de mapa estático (`ADR-0015`); nenhuma dependência externa grande hoje. `MapLibre` (`org.maplibre.gl:android-sdk`) entra no APK quando o mapa for implementado (`~3–5 MB`, `BSD-2-Clause`, justificado pela regra 8). Se a qualidade não atender ao objetivo de "postar com vontade", `ADR` futuro (`0016`) avaliará ajustes.
+- **Rota:** mapa real (`OSM` via `MapLibre`) como background estático no vídeo (`ADR-0015`); traçado da rota animado por cima (`Canvas` + `PathMeasure`); local de partida marcado com emoji (`🏃`). A região é precisa porque usa o `bounding box` das coordenadas GPS do treino. Quando implementado, não será totalmente offline na exportação (exige rede para tiles `tile.openstreetmap.org`), mas não enviará dados pessoais para servidores.
+- **Frame final:** novo segmento (`FINAL`, 3 s) após o percurso, com dados do treino (`distância`, `tempo`, `pace médio`, `FC média`, `kcal`) e branding `MeuCoach` (`nome` centralizado + logo opcional, já disponível como asset) (`ADR-0015`).
 - **Integridade:** apenas visual/exportação; motor determinístico (`core:domain`) não afetado; LLM não decide percurso.
-- **Privacidade:** posições nunca enviadas para servidores; vídeo 100% offline; sanitização já existente nos parsers (`P0-05`/`P0-06`) aplicada.
+- **Privacidade:** posições nunca enviadas para servidores (o `bounding box` é calculado localmente; quando o mapa existir, só tiles `OSM` de uma região aproximada serão baixados, sem identificação). Sanitização já existente nos parsers (`P0-05`/`P0-06`) aplicada.
 
 **Perguntas respondidas pelo usuário:**
 
@@ -357,9 +376,10 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 | T-03 | Kover para Android modules | Fase 1 |
 | T-04 | Property-based tests (Kotest) | Fase 1 |
 | T-05 | Fuzz leve do parser FIT | Fase 0/1 |
-| T-06 | Export JSON + ZIP | Fase 1 |
+| T-06 | Export JSON + ZIP e "apagar todos os dados" na UI (repositório já tem `exportJson`/`deleteAllData`) | Fase 1 |
 | T-07 | Migração para MapLibre | Fase 2 |
 | T-08 | i18n (pt-BR base, en futuro) | Fase 2 |
+| T-09 | Fuso e cidade em lista fixa do Brasil: avaliar campo livre ou lista completa | Fase 2 |
 
 ## Critérios de saída do MVP
 

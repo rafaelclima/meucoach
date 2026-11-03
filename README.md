@@ -9,8 +9,8 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 | Item | Estado |
 |---|---|
 | Planejamento de produto, ciência, dados e design | Concluído em 27/10/2026 |
-| Fundação técnica | `check` verde, 494 testes, parsers FIT/TCX/GPX/CSV, dedup, Room v8 + perfil/check-in/métricas/plano/status, Health Connect, recomendações, plano semanal com taper/progressão, Hoje com dados/ações/notificações, histórico de prontidão, tendências de volume/consistência/pace×FC, importação real, detalhe com zonas, onboarding, calibração, carga/PMC, goldens e screenshots (30/10/2026) |
-| Fase atual | **Fase 0 — Fundação** |
+| Fundação técnica | `check` verde, 580 testes, parsers FIT/TCX/GPX/CSV, dedup, Room v9 + perfil/check-in/métricas/plano/status, Health Connect, recomendações, plano semanal com taper/progressão/deload, Hoje com dados/ações/notificações, histórico de prontidão e check-ins, tendências de volume/consistência/pace×FC/80-20, importação real, detalhe com zonas, onboarding, calibração, carga/PMC, explicabilidade, story de treino, goldens e screenshots (02/11/2026) |
+| Fase atual | **Fase 1 — Coach** (em andamento) |
 | App | Android nativo — Kotlin + Jetpack Compose + Material 3 |
 | Backend | Fase 2 — Kotlin/Ktor + PostgreSQL + Dokploy |
 | Dados diários | Health Connect (sono já validado) + check-in + CSV |
