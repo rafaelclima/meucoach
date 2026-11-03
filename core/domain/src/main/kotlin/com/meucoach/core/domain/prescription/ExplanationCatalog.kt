@@ -13,7 +13,10 @@ object ExplanationCatalog {
     private val rules = mapOf(
         "R-ZONE-01" to RuleExplanation("R-ZONE-01", "Zonas pelo limite de esforço"),
         "R-DATA-01" to RuleExplanation("R-DATA-01", "Dado ausente não vira zero"),
-        "R-READY-01" to RuleExplanation("R-READY-01", "Prontidão combina check-in, sono, HRV e FC de repouso"),
+        "R-READY-01" to RuleExplanation(
+            "R-READY-01",
+            "Prontidão combina check-in, sono, variabilidade e FC de repouso",
+        ),
         "R-READY-03" to RuleExplanation("R-READY-03", "Prontidão limita a intensidade"),
         "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
         "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
