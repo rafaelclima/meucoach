@@ -21,6 +21,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.LocalDate
+import java.time.LocalTime
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
@@ -49,6 +50,8 @@ class TodayScreenshotTest {
                         checkIn = checkIn(today),
                         profile = profile(today),
                         today = today,
+                        // Fixed time so the greeting does not change the golden during the day.
+                        now = LocalTime.of(8, 0),
                         plan = plan(today),
                         kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
                         weeklyLoadKm = 11.31,

@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.ln
@@ -279,6 +280,7 @@ internal fun todayState(
     activities: List<ActivitySummary> = emptyList(),
     load: LoadSnapshot? = null,
     today: LocalDate = LocalDate.now(),
+    now: LocalTime = LocalTime.now(),
     plan: WeeklyPlan? = null,
     kmByDay: Map<LocalDate, Double> = emptyMap(),
     weeklyLoadKm: Double? = null,
@@ -296,7 +298,7 @@ internal fun todayState(
         signals = signals,
     )
     val warning = result.level != com.meucoach.core.model.ReadinessLevel.GREEN
-    val base = demoTodayUiState(today)
+    val base = demoTodayUiState(today, now)
     val weekStart = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
     val dayLabels = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
     val days = (0..6).map { offset ->
