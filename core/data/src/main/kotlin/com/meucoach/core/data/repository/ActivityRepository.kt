@@ -22,8 +22,6 @@ import com.meucoach.core.model.Pace
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import org.json.JSONArray
-import org.json.JSONObject
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -304,39 +302,6 @@ class ActivityRepository(
 
     suspend fun permanentlyDeleteActivity(id: String): Boolean = database.activityDao().hardDelete(id) > 0
 
-    suspend fun deleteAllData(): Int = database.withTransaction {
-        val deletedActivities = database.activityDao().deleteAll()
-        database.importJobDao().deleteAll()
-        deletedActivities
-    }
-
-    /**
-     * Basic JSON export for the settings screen and manual backup. Samples are
-     * represented by their count; the compressed blob stays in the database.
-     */
-    suspend fun exportJson(): String = database.withTransaction {
-        val activities = database.activityDao().getAllIncludingDeleted()
-        val jobs = database.importJobDao().getAll()
-
-        val activityArray = JSONArray()
-        activities.forEach { activity ->
-            val laps = database.lapDao().getForActivity(activity.id)
-            val blob = database.sampleBlobDao().getForActivity(activity.id)
-            val alternates = database.activityAlternateDao().getForActivity(activity.id)
-            activityArray.put(activity.toJson(laps, blob, alternates))
-        }
-
-        val jobArray = JSONArray()
-        jobs.forEach { jobArray.put(it.toJson()) }
-
-        JSONObject()
-            .put("schemaVersion", MeuCoachDatabase.VERSION)
-            .put("exportedAt", clock.instant().toString())
-            .put("activities", activityArray)
-            .put("importJobs", jobArray)
-            .toString(2)
-    }
-
     private fun ImportedActivity.toEntity(
         id: String,
         importedAt: Instant,
@@ -452,70 +417,6 @@ class ActivityRepository(
         return Pace.fromSecondsPerKm(seconds)
     }
 
-    private fun ActivityEntity.toJson(
-        laps: List<LapEntity>,
-        blob: SampleBlobEntity?,
-        alternates: List<ActivityAlternateEntity>,
-    ): JSONObject = JSONObject().apply {
-        put("id", id)
-        put("source", source.name)
-        putNullable("sourceId", sourceId)
-        putNullable("sourceFileSha256", sourceFileSha256)
-        put("sport", sport.name)
-        putNullable("subSport", subSport)
-        put("startTimeUtc", Instant.ofEpochMilli(startTimeUtc).toString())
-        put("zoneId", zoneId)
-        put("localDate", localDate)
-        put("durationSec", durationSec)
-        putNullable("movingTimeSec", movingTimeSec)
-        put("distanceM", distanceM)
-        putNullable("averagePaceSecPerKm", averagePaceSecPerKm)
-        putNullable("bestPaceSecPerKm", bestPaceSecPerKm)
-        putNullable("averageHeartRate", averageHeartRate)
-        putNullable("maxHeartRate", maxHeartRate)
-        putNullable("averageCadenceSpm", averageCadenceSpm)
-        putNullable("maxCadenceSpm", maxCadenceSpm)
-        putNullable("averagePowerW", averagePowerW)
-        putNullable("maxPowerW", maxPowerW)
-        putNullable("averageStepLengthM", averageStepLengthM)
-        putNullable("elevationGainM", elevationGainM)
-        putNullable("elevationLossM", elevationLossM)
-        putNullable("calories", calories)
-        putNullable("trainingEffectAerobic", trainingEffectAerobic)
-        putNullable("trainingEffectAnaerobic", trainingEffectAnaerobic)
-        putNullable("trainingLoadPeak", trainingLoadPeak)
-        putNullable("deviceName", deviceName)
-        putNullable("rawFilePath", rawFilePath)
-        put("parserVersion", parserVersion)
-        put("importedAt", Instant.ofEpochMilli(importedAt).toString())
-        putNullable("deletedAt", deletedAt?.let { Instant.ofEpochMilli(it).toString() })
-        put("sampleCount", blob?.sampleCount ?: 0)
-        put(
-            "laps",
-            JSONArray().apply {
-                laps.forEach { lap -> put(lap.toJson()) }
-            },
-        )
-        put(
-            "alternates",
-            JSONArray().apply {
-                alternates.forEach { alternate -> put(alternate.toJson()) }
-            },
-        )
-    }
-
-    private fun ActivityAlternateEntity.toJson(): JSONObject = JSONObject().apply {
-        put("source", source.name)
-        putNullable("sourceId", sourceId)
-        putNullable("sourceFileSha256", sourceFileSha256)
-        putNullable("rawFilePath", rawFilePath)
-        put("parserVersion", parserVersion)
-        put("importedAt", Instant.ofEpochMilli(importedAt).toString())
-        put("sampleCount", sampleCount)
-        put("durationSec", durationSec)
-        put("distanceM", distanceM)
-    }
-
     private fun ActivityAlternateEntity.toStoredAlternate() = StoredAlternate(
         source = source,
         sourceFileSha256 = sourceFileSha256,
@@ -524,19 +425,6 @@ class ActivityRepository(
         importedAt = Instant.ofEpochMilli(importedAt),
         sampleCount = sampleCount,
     )
-
-    private fun LapEntity.toJson(): JSONObject = JSONObject().apply {
-        put("index", lapIndex)
-        putNullable("startTimeUtc", startTimeUtc?.let { Instant.ofEpochMilli(it).toString() })
-        put("durationSec", durationSec)
-        put("distanceM", distanceM)
-        putNullable("averageHeartRate", averageHeartRate)
-        putNullable("maxHeartRate", maxHeartRate)
-        putNullable("averagePaceSecPerKm", averagePaceSecPerKm)
-        putNullable("averageCadenceSpm", averageCadenceSpm)
-        putNullable("averagePowerW", averagePowerW)
-        putNullable("elevationGainM", elevationGainM)
-    }
 
     private fun ImportJobEntity.toSummary() = ImportJobSummary(
         id = id,
@@ -548,25 +436,6 @@ class ActivityRepository(
         createdAt = Instant.ofEpochMilli(createdAt),
         finishedAt = finishedAt?.let(Instant::ofEpochMilli),
     )
-
-    private fun ImportJobEntity.toJson(): JSONObject = JSONObject().apply {
-        put("id", id)
-        put("fileName", fileName)
-        put("sha256", sha256)
-        putNullable("mime", mime)
-        put("sizeBytes", sizeBytes)
-        put("status", status.name)
-        putNullable("parserVersion", parserVersion)
-        putNullable("activityId", activityId)
-        putNullable("errorCode", errorCode)
-        putNullable("errorMessage", errorMessage)
-        put("createdAt", Instant.ofEpochMilli(createdAt).toString())
-        putNullable("finishedAt", finishedAt?.let { Instant.ofEpochMilli(it).toString() })
-    }
-
-    private fun JSONObject.putNullable(key: String, value: Any?) {
-        put(key, value ?: JSONObject.NULL)
-    }
 }
 
 sealed interface SaveActivityResult {

@@ -34,6 +34,7 @@ class ActivityRepositoryTest {
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: ActivityRepository
+    private lateinit var userData: UserDataRepository
     private val fixedClock = Clock.fixed(Instant.parse("2023-11-14T13:00:00Z"), ZoneOffset.UTC)
     private var nextId = 0
     private var nextAlternateId = 0
@@ -54,6 +55,7 @@ class ActivityRepositoryTest {
                 idGenerator = { "activity-${++nextId}" },
                 alternateIdGenerator = { "alternate-${++nextAlternateId}" },
             )
+        userData = UserDataRepository(database, fixedClock)
     }
 
     @After
@@ -129,7 +131,7 @@ class ActivityRepositoryTest {
             assertThat(alternate.sourceFileSha256).isEqualTo("tcx-sha")
             assertThat(alternate.rawFilePath).isEqualTo("imports/run.tcx")
             assertThat(alternate.sampleCount).isEqualTo(2)
-            val exported = JSONObject(repository.exportJson()).getJSONArray("activities").getJSONObject(0)
+            val exported = JSONObject(userData.exportJson()).getJSONArray("activities").getJSONObject(0)
             assertThat(exported.getJSONArray("alternates").length()).isEqualTo(1)
             assertThat(exported.getJSONArray("alternates").getJSONObject(0).getString("source"))
                 .isEqualTo("TCX")
@@ -275,18 +277,6 @@ class ActivityRepositoryTest {
     }
 
     @Test
-    fun `delete all data removes activities and import jobs`() {
-        runBlocking {
-            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
-            database.importJobDao().insert(testJob(saved.id))
-
-            assertThat(repository.deleteAllData()).isEqualTo(1)
-            assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
-            assertThat(database.importJobDao().getAll()).isEmpty()
-        }
-    }
-
-    @Test
     fun `observes import jobs as summaries`() {
         runBlocking {
             database.importJobDao().insert(testJob(activityId = null))
@@ -297,30 +287,6 @@ class ActivityRepositoryTest {
             assertThat(job.status).isEqualTo(ImportJobStatus.DONE)
             assertThat(job.activityId).isNull()
             assertThat(repository.listImportJobs()).hasSize(1)
-        }
-    }
-
-    @Test
-    fun `exports activities laps and import jobs as json`() {
-        runBlocking {
-            val saved = repository.saveImportedActivity(importedActivity(), "sha") as SaveActivityResult.Saved
-            database.importJobDao().insert(testJob(saved.id))
-
-            val export = JSONObject(repository.exportJson())
-
-            assertThat(export.getInt("schemaVersion")).isEqualTo(MeuCoachDatabase.VERSION)
-            assertThat(export.getString("exportedAt")).isEqualTo(fixedClock.instant().toString())
-            val activities = export.getJSONArray("activities")
-            assertThat(activities.length()).isEqualTo(1)
-            val activity = activities.getJSONObject(0)
-            assertThat(activity.getString("id")).isEqualTo(saved.id)
-            assertThat(activity.getDouble("distanceM")).isEqualTo(5_000.0)
-            assertThat(activity.getInt("sampleCount")).isEqualTo(2)
-            assertThat(activity.getJSONArray("laps").length()).isEqualTo(1)
-            assertThat(activity.getJSONArray("alternates").length()).isZero()
-            val jobs = export.getJSONArray("importJobs")
-            assertThat(jobs.length()).isEqualTo(1)
-            assertThat(jobs.getJSONObject(0).getString("status")).isEqualTo("DONE")
         }
     }
 

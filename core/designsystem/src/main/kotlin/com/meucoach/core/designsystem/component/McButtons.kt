@@ -98,6 +98,43 @@ fun McSecondaryButton(
 }
 
 @Composable
+fun McDangerButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    leadingIcon: ImageVector? = null,
+) {
+    val colors = McTheme.colors
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 56.dp),
+        enabled = enabled,
+        shape = McPillShape,
+        border = BorderStroke(1.dp, if (enabled) colors.danger else colors.borderSubtle),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = colors.danger,
+            disabledContentColor = colors.textTertiary,
+        ),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Text(text = text)
+        }
+    }
+}
+
+@Composable
 fun McTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, trailingArrow: Boolean = true) {
     val colors = McTheme.colors
     TextButton(

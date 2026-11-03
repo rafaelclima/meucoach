@@ -27,6 +27,12 @@ interface TrainingPlanDao {
     @Query("SELECT weekStart FROM weekly_plans WHERE weekStart < :weekStart ORDER BY weekStart DESC")
     suspend fun getPlanWeeksBefore(weekStart: String): List<String>
 
+    @Query("SELECT * FROM weekly_plans ORDER BY weekStart")
+    suspend fun getAllPlans(): List<WeeklyPlanEntity>
+
+    @Query("SELECT * FROM planned_sessions ORDER BY weekStart, date")
+    suspend fun getAllSessions(): List<PlannedSessionEntity>
+
     @Upsert
     suspend fun upsertPlan(plan: WeeklyPlanEntity)
 
@@ -51,8 +57,14 @@ interface TrainingPlanDao {
     @Query("DELETE FROM planned_sessions WHERE weekStart = :weekStart")
     suspend fun deleteSessions(weekStart: String): Int
 
+    @Query("DELETE FROM planned_sessions")
+    suspend fun deleteAllSessions(): Int
+
     @Query("DELETE FROM weekly_plans WHERE weekStart = :weekStart")
     suspend fun deletePlan(weekStart: String): Int
+
+    @Query("DELETE FROM weekly_plans")
+    suspend fun deleteAllPlans(): Int
 
     @Query(
         "UPDATE planned_sessions SET status = :status, skipReason = :skipReason, " +

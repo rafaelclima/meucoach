@@ -12,6 +12,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.data.repository.UserDataRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -70,6 +71,10 @@ object DataModule {
     @Singleton
     fun provideTrainingPlanRepository(database: MeuCoachDatabase): TrainingPlanRepository =
         TrainingPlanRepository(database)
+
+    @Provides
+    @Singleton
+    fun provideUserDataRepository(database: MeuCoachDatabase): UserDataRepository = UserDataRepository(database)
 
     @Provides
     @Singleton

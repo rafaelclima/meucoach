@@ -43,6 +43,7 @@ class ProfileScreenshotTest {
                     onEdit = {},
                     onCalibrate = {},
                     onImportMetrics = {},
+                    onManageData = {},
                 )
             }
         }

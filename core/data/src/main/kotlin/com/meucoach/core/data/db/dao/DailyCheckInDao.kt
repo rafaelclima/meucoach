@@ -17,6 +17,9 @@ interface DailyCheckInDao {
     @Query("SELECT * FROM daily_check_ins ORDER BY date DESC")
     fun observeAll(): Flow<List<DailyCheckInEntity>>
 
+    @Query("SELECT * FROM daily_check_ins ORDER BY date")
+    suspend fun getAll(): List<DailyCheckInEntity>
+
     @Upsert
     suspend fun upsert(checkIn: DailyCheckInEntity)
 

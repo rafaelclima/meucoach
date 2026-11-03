@@ -57,6 +57,28 @@ class ProfileScreenTest {
     }
 
     @Test
+    fun `opens data management from the data section`() {
+        var manageData = false
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onImportMetrics = {},
+                    onManageData = { manageData = true },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("Exportar ou apagar dados"))
+        compose.onNodeWithText("Exportar ou apagar dados").performClick()
+
+        assertThat(manageData).isTrue()
+    }
+
+    @Test
     fun `renders in the light theme`() {
         compose.setContent {
             McTheme(darkTheme = false) {
@@ -65,6 +87,7 @@ class ProfileScreenTest {
                     onEdit = {},
                     onCalibrate = {},
                     onImportMetrics = {},
+                    onManageData = {},
                 )
             }
         }
@@ -80,6 +103,7 @@ class ProfileScreenTest {
                     onEdit = onEdit,
                     onCalibrate = {},
                     onImportMetrics = {},
+                    onManageData = {},
                 )
             }
         }

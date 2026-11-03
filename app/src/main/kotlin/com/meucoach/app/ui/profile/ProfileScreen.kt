@@ -43,6 +43,7 @@ fun ProfileScreen(
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
+    onManageData: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -53,6 +54,7 @@ fun ProfileScreen(
         onEdit = onEdit,
         onCalibrate = onCalibrate,
         onImportMetrics = onImportMetrics,
+        onManageData = onManageData,
         modifier = modifier,
     )
 }
@@ -63,6 +65,7 @@ internal fun ProfileContent(
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
+    onManageData: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
@@ -96,6 +99,7 @@ internal fun ProfileContent(
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
                 onImportMetrics = onImportMetrics,
+                onManageData = onManageData,
             )
         }
     }
@@ -107,6 +111,7 @@ private fun ProfileDetails(
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
+    onManageData: () -> Unit,
 ) {
     val colors = McTheme.colors
     LazyColumn(
@@ -218,6 +223,14 @@ private fun ProfileDetails(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("profile-import-metrics"),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                McSecondaryButton(
+                    text = "Exportar ou apagar dados",
+                    onClick = onManageData,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile-manage-data"),
                 )
             }
         }
