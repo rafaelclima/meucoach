@@ -51,18 +51,18 @@ object SessionSwapper {
 
     private fun validate(sessions: List<PlannedSession>): String? {
         val qualities = sessions.filter { it.type == WorkoutType.QUALITY }
-        if (qualities.size > 2) return "O plano permite no máximo 2 qualidades por semana."
+        if (qualities.size > 2) return "O plano permite no máximo 2 treinos fortes por semana."
         val longDays = sessions.filter { it.type == WorkoutType.LONG }.map { it.date.dayOfWeek }
         qualities.forEach { quality ->
             val day = quality.date.dayOfWeek
             if (longDays.any { it == day || adjacent(it, day) }) {
-                return "Qualidade não pode ficar no dia do longão nem ao lado dele."
+                return "Treino forte não pode ficar no dia do longão nem ao lado dele."
             }
         }
         qualities.forEachIndexed { index, quality ->
             qualities.drop(index + 1).forEach { other ->
                 if (adjacent(quality.date.dayOfWeek, other.date.dayOfWeek)) {
-                    return "Não deixe duas qualidades em dias consecutivos."
+                    return "Não deixe dois treinos fortes em dias consecutivos."
                 }
             }
         }

@@ -118,8 +118,8 @@ internal fun MetricsImportContent(
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Importe sono, FC de repouso, HRV e SpO2 de um CSV. " +
-                                "O arquivo é lido no aparelho e não sai daqui.",
+                            text = "Importe sono, FC de repouso, variabilidade cardíaca (HRV) " +
+                                "e oxigenação (SpO2) de um CSV. O arquivo é lido no aparelho e não sai daqui.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )

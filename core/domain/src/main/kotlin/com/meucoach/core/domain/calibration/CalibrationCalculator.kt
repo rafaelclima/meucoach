@@ -117,7 +117,8 @@ object CalibrationCalculator {
             ruleId = "R-CAL-01",
             evidenceIds = EVIDENCE,
             warnings = warnings,
-            recommendation = "Use as paces E/M/T/I/R e as zonas de FC por LTHR. Recalibre em 6–8 semanas.",
+            recommendation = "Use os ritmos de treino e as zonas de FC pelo seu limite de esforço. " +
+                "Recalibre em 6–8 semanas.",
         )
     }
 
@@ -183,9 +184,10 @@ object CalibrationCalculator {
             evidenceIds = EVIDENCE,
             warnings = warnings,
             recommendation = if (tier == CalibrationTier.B) {
-                "Faça um TT de 30 min para estimar LTHR e pace de limiar. Até lá, use FC e RPE."
+                "Faça um teste de 30 min para estimar seu limite de esforço e seu ritmo de limiar. " +
+                    "Até lá, use a FC e o esforço percebido."
             } else {
-                "Complete 2 semanas de base e faça um TT de 30 min guiado antes de prescrever intensidade."
+                "Complete 2 semanas de base e faça um teste de 30 min guiado antes de prescrever intensidade."
             },
         )
     }

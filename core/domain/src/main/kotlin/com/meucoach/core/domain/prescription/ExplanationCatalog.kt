@@ -11,16 +11,16 @@ data class EvidenceExplanation(val id: String, val title: String, val source: St
  */
 object ExplanationCatalog {
     private val rules = mapOf(
-        "R-ZONE-01" to RuleExplanation("R-ZONE-01", "Zonas por limiar"),
+        "R-ZONE-01" to RuleExplanation("R-ZONE-01", "Zonas pelo limite de esforço"),
         "R-DATA-01" to RuleExplanation("R-DATA-01", "Dado ausente não vira zero"),
         "R-READY-03" to RuleExplanation("R-READY-03", "Prontidão limita a intensidade"),
-        "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia qualidade"),
-        "R-LOAD-03" to RuleExplanation("R-LOAD-03", "ACWR é alerta, não meta"),
-        "R-PLAN-02" to RuleExplanation("R-PLAN-02", "Máximo de 2 qualidades por semana"),
-        "R-PLAN-06" to RuleExplanation("R-PLAN-06", "80% do tempo fácil"),
-        "R-PLAN-07" to RuleExplanation("R-PLAN-07", "Ajuste conservador por calor"),
-        "R-PLAN-08" to RuleExplanation("R-PLAN-08", "Esteira é válida no calor"),
-        "R-CAL-02" to RuleExplanation("R-CAL-02", "Sem calibração, prescrever por RPE"),
+        "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
+        "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
+        "R-PLAN-02" to RuleExplanation("R-PLAN-02", "No máximo 2 treinos fortes por semana"),
+        "R-PLAN-06" to RuleExplanation("R-PLAN-06", "80% do tempo em ritmo fácil"),
+        "R-PLAN-07" to RuleExplanation("R-PLAN-07", "Calor pede ajuste conservador"),
+        "R-PLAN-08" to RuleExplanation("R-PLAN-08", "Esteira vale como opção no calor"),
+        "R-CAL-02" to RuleExplanation("R-CAL-02", "Sem calibração, prescrever pelo esforço percebido"),
         "R-SAFE-01" to RuleExplanation("R-SAFE-01", "Sinal de alerta interrompe o treino"),
     )
 
@@ -32,7 +32,7 @@ object ExplanationCatalog {
         ),
         "EV-DANIELS-2014" to EvidenceExplanation(
             "EV-DANIELS-2014",
-            "Paces e economia de corrida",
+            "Ritmos e economia de corrida",
             "Daniels, Daniels' Running Formula, 2014",
         ),
         "EV-SAW-2016" to EvidenceExplanation(
@@ -42,7 +42,7 @@ object ExplanationCatalog {
         ),
         "EV-GABBETT-2016" to EvidenceExplanation(
             "EV-GABBETT-2016",
-            "Carga aguda:crônica",
+            "Carga recente vs. acumulada",
             "Gabbett, BJSM 2016",
         ),
         "EV-ELY-2007" to EvidenceExplanation(
@@ -52,7 +52,7 @@ object ExplanationCatalog {
         ),
         "EV-FRIEL-2018" to EvidenceExplanation(
             "EV-FRIEL-2018",
-            "Zonas por LTHR",
+            "Zonas pelo limite de esforço",
             "Friel, The Triathlete's Training Bible, 2018",
         ),
         "EV-PFITZINGER-2008" to EvidenceExplanation(
@@ -62,12 +62,12 @@ object ExplanationCatalog {
         ),
         "EV-BOSQUET-2007" to EvidenceExplanation(
             "EV-BOSQUET-2007",
-            "Taper",
+            "Redução antes da prova",
             "Bosquet et al., MSSE 2007",
         ),
         "EV-MUJIKA-2003" to EvidenceExplanation(
             "EV-MUJIKA-2003",
-            "Taper",
+            "Redução antes da prova",
             "Mujika & Padilla, MSSE 2003",
         ),
         "EV-ISSURIN-2010" to EvidenceExplanation(

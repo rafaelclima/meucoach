@@ -102,7 +102,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("ACWR alto")
+        assertThat(plan.rationale).contains("sua carga subiu rápido")
     }
 
     @Test
@@ -195,7 +195,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(taper.weeklyMinutes).isLessThan(baseline.weeklyMinutes)
-        assertThat(taper.rationale).contains("Taper")
+        assertThat(taper.rationale).contains("Semana de prova")
         assertThat(taper.ruleIds).contains("R-PLAN-05")
         assertThat(taper.evidenceIds).contains("EV-BOSQUET-2007", "EV-MUJIKA-2003")
     }
@@ -246,7 +246,7 @@ class WeeklyPlanGeneratorTest {
 
         val plan = generator.generate(input(profile, readiness(ReadinessLevel.GREEN)))
 
-        assertThat(plan.rationale).doesNotContain("Taper")
+        assertThat(plan.rationale).doesNotContain("Semana de prova")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
     }
 
@@ -296,7 +296,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.qualityCount).isEqualTo(2)
-        assertThat(plan.rationale).contains("dose de qualidade")
+        assertThat(plan.rationale).contains("concluiu pelo menos 80%")
         val qualityDates = plan.sessions.filter { it.type == WorkoutType.QUALITY }.map { it.date.dayOfWeek }
         assertThat(qualityDates).doesNotContain(DayOfWeek.SUNDAY)
         assertThat(qualityDates.zipWithNext().none { (a, b) -> adjacent(a, b) }).isTrue()
@@ -389,7 +389,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
-        assertThat(quality.rationale).contains("RPE 8/10")
+        assertThat(quality.rationale).contains("esforço 8 de 10")
         assertThat(quality.rationale).doesNotContain("km/h")
     }
 
@@ -437,7 +437,7 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(baseline.weeklyMinutes).isEqualTo(114)
         assertThat(deload.weeklyMinutes).isEqualTo(86)
-        assertThat(deload.rationale).contains("Deload (semana 4 do bloco)", "−25%")
+        assertThat(deload.rationale).contains("Semana de descarga (4 de 4 no bloco)", "−25%")
         assertThat(deload.ruleIds).contains("R-PLAN-04")
         assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
         assertThat(baseline.ruleIds).doesNotContain("R-PLAN-04")
@@ -487,8 +487,8 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.rationale).contains("Taper")
-        assertThat(plan.rationale).doesNotContain("Deload")
+        assertThat(plan.rationale).contains("Semana de prova")
+        assertThat(plan.rationale).doesNotContain("Semana de descarga")
         assertThat(plan.ruleIds).contains("R-PLAN-05")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-04")
     }

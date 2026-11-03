@@ -270,16 +270,16 @@ class ActivityRepository(
 
         if (blob != null) {
             if (blob.version != SampleBlobCodec.VERSION || blob.encoding != SampleBlobCodec.ENCODING) {
-                sampleWarning = "Unsupported sample blob ${blob.encoding} v${blob.version}"
+                sampleWarning =
+                    "As séries temporais desta atividade estão em um formato que esta versão não lê."
             } else {
                 try {
                     samples = codec.decode(blob.bytes, Instant.ofEpochMilli(blob.startTimeUtc))
                     if (samples.size != blob.sampleCount) {
-                        sampleWarning =
-                            "Sample blob has ${samples.size} samples, expected ${blob.sampleCount}"
+                        sampleWarning = "As séries temporais desta atividade estão incompletas."
                     }
                 } catch (error: SampleBlobException) {
-                    sampleWarning = "Samples unavailable: ${error.message}"
+                    sampleWarning = "Não foi possível ler as séries temporais desta atividade."
                 }
             }
         }

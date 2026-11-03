@@ -166,8 +166,8 @@ private fun LoadDetails(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Carga acumulada, carga recente e recuperação dos últimos 42 dias. " +
-                        "Tendência, não prescrição.",
+                    text = "Como sua carga evoluiu nos últimos 42 dias. " +
+                        "É tendência, não prescrição.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
@@ -199,19 +199,19 @@ private fun LoadDetails(
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     McStat(
                         label = "Carga",
-                        hint = "soma 7 dias",
+                        hint = "7 dias",
                         value = formatOneDecimal(snapshot.daily.takeLast(7).sumOf { it.load }),
                         modifier = Modifier.weight(1f),
                     )
                     McStat(
-                        label = "Proporção",
-                        hint = "ACWR",
+                        label = "Aumento",
+                        hint = "vs. mês",
                         value = snapshot.acwr?.let { formatTwoDecimals(it) } ?: "—",
                         modifier = Modifier.weight(1f),
                     )
                     McStat(
                         label = "Variedade",
-                        hint = "monotonia",
+                        hint = "menor é melhor",
                         value = snapshot.monotony?.let { formatTwoDecimals(it) } ?: "—",
                         modifier = Modifier.weight(1f),
                     )
@@ -228,8 +228,8 @@ private fun LoadDetails(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "A proporção (ACWR) é um sinal de atenção, nunca uma meta. " +
-                        "${snapshot.missingDays} dias sem carga na janela.",
+                    text = "Comparar a carga da semana com a do mês mostra se você acelerou demais. " +
+                        "É um alerta, nunca uma meta. ${snapshot.missingDays} dias sem carga no período.",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
@@ -250,7 +250,7 @@ private fun LoadDetails(
                 item { PersonalRecordsCard(activityTrends.records) }
             }
             if (activityTrends.paceHeartRate.isNotEmpty()) {
-                item { McSectionHeader(title = "Eficiência · Ritmo vs FC") }
+                item { McSectionHeader(title = "Economia · Ritmo vs FC") }
                 item { PaceHeartRateCard(activityTrends.paceHeartRate) }
             }
             item { McSectionHeader(title = "Equilíbrio · Fácil vs Forte") }
@@ -299,7 +299,8 @@ private fun PeriodFilter(period: TrendsPeriod, onSelect: (TrendsPeriod) -> Unit)
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Afeta volume, consistência e eficiência. Carga e 80/20 têm janelas próprias.",
+            text = "Muda o período de volume, hábito e economia. " +
+                "Carga e equilíbrio têm janelas próprias.",
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
@@ -443,7 +444,7 @@ private fun ConsistencyCard(trends: com.meucoach.core.domain.trends.ActivityTren
         Text(
             text = String.format(
                 PT_BR,
-                "%.1f km no período · pace médio %s",
+                "%.1f km no período · ritmo médio %s",
                 trends.totalKilometers,
                 trends.averagePace?.format() ?: "—",
             ),
@@ -467,7 +468,7 @@ private fun ConsistencyHeatmap(days: List<ConsistencyDay>) {
     Column {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Mapa de consistência",
+                text = "Dias que você correu",
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
                 modifier = Modifier.weight(1f),
@@ -541,13 +542,13 @@ private fun PersonalRecordsCard(records: PersonalRecords) {
     val colors = McTheme.colors
     McCard {
         Text(
-            text = "Melhores esforços",
+            text = "Seus melhores trechos",
             style = MaterialTheme.typography.titleMedium,
             color = colors.textPrimary,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Das corridas importadas, em todo o histórico. Recorde descritivo, não prescrição.",
+            text = "Suas melhores marcas até hoje, para acompanhar a evolução — não é uma meta.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -562,7 +563,7 @@ private fun PersonalRecordsCard(records: PersonalRecords) {
         records.bestPace?.let { pace ->
             McDivider(modifier = Modifier.padding(vertical = 8.dp))
             RecordRow(
-                label = "Melhor pace",
+                label = "Melhor ritmo",
                 value = "${pace.format()} /km",
                 hint = records.bestPaceDistanceKm?.let { km ->
                     val date = records.bestPaceDate?.format(DAY_FORMAT)
@@ -580,7 +581,7 @@ private fun PersonalRecordsCard(records: PersonalRecords) {
         }
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "O melhor pace considera corridas com pelo menos 3 km.",
+            text = "O melhor ritmo considera corridas com pelo menos 3 km.",
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
@@ -623,13 +624,14 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
     val averageEfficiency = points.map { it.efficiencyMetersPerBeat }.average()
     McCard {
         Text(
-            text = "Eficiência",
+            text = "Metros por batimento",
             style = MaterialTheme.typography.titleMedium,
             color = colors.textPrimary,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Metros por batimento: proxy de economia. Compare sob condições semelhantes.",
+            text = "Quanto você corre por batimento cardíaco. Se sobe com o mesmo esforço, " +
+                "você está mais econômico. Compare sob condições semelhantes.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -694,7 +696,7 @@ private fun EfficiencyChart(points: List<PaceHeartRatePoint>) {
             .fillMaxWidth()
             .height(110.dp)
             .semantics {
-                contentDescription = "Evolução da eficiência pace por FC em ${points.size} corridas"
+                contentDescription = "Evolução da economia de corrida em ${points.size} corridas"
             },
     ) {
         drawPmcGrid(colors.borderSubtle)
@@ -744,8 +746,8 @@ private fun IntensityCard(distribution: IntensityDistribution?, lthr: Int?) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = lthr?.let { "LTHR $it bpm · últimos ${distribution?.windowDays ?: 28} dias" }
-                        ?: "Sem limiar calibrado",
+                    text = lthr?.let { "FC no limite $it bpm · últimos ${distribution?.windowDays ?: 28} dias" }
+                        ?: "Sem limite de esforço calibrado",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
@@ -757,8 +759,8 @@ private fun IntensityCard(distribution: IntensityDistribution?, lthr: Int?) {
             distribution != null -> IntensityDetails(distribution)
 
             lthr == null -> Text(
-                text = "A distribuição 80/20 é medida por tempo em zona de FC. " +
-                    "Calibre o limiar no perfil para liberá-la.",
+                text = "Como você distribuiu o tempo entre fácil, moderado e forte, pelas zonas de FC. " +
+                    "Calibre seu limite de esforço no perfil para liberá-la.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -817,7 +819,7 @@ private fun IntensityDetails(distribution: IntensityDistribution) {
             "80% ou mais do tempo em Z1–Z2."
         } else {
             "Menos de 80% do tempo em Z1–Z2."
-        } + " Heurística R-ZONE-02 · EV-SEILER-2010.",
+        } + " O ideal é passar cerca de 80% do tempo em ritmo fácil.",
         style = McTextStyles.caption,
         color = colors.textTertiary,
     )
@@ -1073,8 +1075,8 @@ private data class AcwrFlag(val title: String, val color: Color)
 private fun acwrFlag(acwr: Double?): AcwrFlag {
     val colors = McTheme.colors
     return when {
-        acwr == null -> AcwrFlag("Sem dados suficientes para a proporção", colors.textTertiary)
-        acwr > 1.5 -> AcwrFlag("Sinal alto: não aumente a carga", colors.danger)
+        acwr == null -> AcwrFlag("Sem dados suficientes para comparar a carga", colors.textTertiary)
+        acwr > 1.5 -> AcwrFlag("Carga subindo rápido: não aumente", colors.danger)
         acwr > 1.3 -> AcwrFlag("Carga recente acima da faixa; revise a semana", colors.warning)
         acwr < 0.8 -> AcwrFlag("Carga recente baixa; retome com cautela", colors.warning)
         else -> AcwrFlag("Sem alerta de carga", colors.success)

@@ -35,19 +35,19 @@ internal fun buildExplanation(
     val used = buildList {
         if (checkIn != null) add("Check-in de hoje")
         if (inputs.sleep != null) add("Sono recente")
-        if (inputs.hrv != null) add("Variabilidade cardíaca (HRV)")
+        if (inputs.hrv != null) add("Variabilidade cardíaca")
         if (inputs.restingHeartRate != null) add("FC de repouso")
-        if (load?.acwr != null) add("Carga recente (ACWR)")
-        if (profile.thresholdPace != null) add("Pace de limiar calibrado")
-        if (profile.lactateThresholdHeartRate != null) add("LTHR calibrado")
+        if (load?.acwr != null) add("Carga das últimas semanas")
+        if (profile.thresholdPace != null) add("Ritmo no limite calibrado")
+        if (profile.lactateThresholdHeartRate != null) add("FC no limite calibrada")
         if ("R-PLAN-08" in recommendation.ruleIds) add("Acesso a esteira")
         if (checkIn?.heatLevel == HeatLevel.HOT) add("Calor informado")
     }.distinct()
     val missing = buildList {
         result.missing.forEach { add(it.label()) }
-        if (recommendation.pace == null) add("Pace de limiar (sem calibração)")
-        if (recommendation.heartRate == null) add("LTHR (sem calibração)")
-        if (load?.acwr == null) add("Histórico de carga para ACWR")
+        if (recommendation.pace == null) add("Ritmo no limite (sem calibração)")
+        if (recommendation.heartRate == null) add("FC no limite (sem calibração)")
+        if (load?.acwr == null) add("Histórico de carga das últimas 4 semanas")
     }.distinct()
 
     return TodayExplanationUi(
@@ -69,6 +69,6 @@ internal fun buildExplanation(
 private fun ReadinessComponent.label(): String = when (this) {
     ReadinessComponent.SUBJECTIVE -> "Check-in de hoje"
     ReadinessComponent.SLEEP -> "Sono"
-    ReadinessComponent.HRV -> "HRV"
+    ReadinessComponent.HRV -> "Variabilidade cardíaca"
     ReadinessComponent.RESTING_HEART_RATE -> "FC de repouso"
 }

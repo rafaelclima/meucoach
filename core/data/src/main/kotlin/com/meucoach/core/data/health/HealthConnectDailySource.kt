@@ -122,7 +122,8 @@ class HealthConnectDailySource(context: Context) : HealthDailySource {
             HealthConnectReadResult(
                 days = emptyList(),
                 missingPermissions = emptySet(),
-                error = error.message ?: "Não foi possível ler o Health Connect.",
+                error = "Não foi possível ler o Health Connect. " +
+                    "Verifique as permissões e tente de novo.",
             )
         }
     }

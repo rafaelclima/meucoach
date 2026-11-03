@@ -214,7 +214,7 @@ private fun ActivityCard(activity: ActivitySummary, onClick: () -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             McStat(
-                label = "Pace",
+                label = "Ritmo",
                 value = paceLabel(activity.averagePace),
                 unit = if (activity.averagePace != null) "/km" else null,
                 modifier = Modifier.weight(1f),

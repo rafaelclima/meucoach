@@ -191,7 +191,7 @@ class UserDataRepositoryTest {
             PlannedSession(
                 date = monday,
                 type = WorkoutType.EASY,
-                title = "Fácil em Z2",
+                title = "Fácil e conversável",
                 durationMin = 40,
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),

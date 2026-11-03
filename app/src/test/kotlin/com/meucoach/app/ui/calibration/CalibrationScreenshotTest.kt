@@ -67,6 +67,7 @@ class CalibrationScreenshotTest {
         ruleId = "R-CAL-01",
         evidenceIds = listOf("EV-DANIELS-2014", "EV-FRIEL-2018"),
         warnings = emptySet(),
-        recommendation = "Use as paces E/M/T/I/R e as zonas de FC por LTHR. Recalibre em 6–8 semanas.",
+        recommendation = "Use os ritmos de treino e as zonas de FC pelo seu limite de esforço. " +
+            "Recalibre em 6–8 semanas.",
     )
 }

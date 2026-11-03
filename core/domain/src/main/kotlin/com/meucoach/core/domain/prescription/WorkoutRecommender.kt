@@ -134,16 +134,20 @@ class WorkoutRecommender {
             if (paceTarget == null && heartRateTarget == null) add("EV-FRIEL-2018")
         }
         val rationale = when {
-            shortSleep -> "Sono abaixo de 6 h: hoje é fácil, sem qualidade. " + easyHint(paceTarget, heartRateTarget)
+            shortSleep ->
+                "Sono abaixo de 6 h: hoje é fácil, sem treino forte. " +
+                    easyHint(paceTarget, heartRateTarget)
 
             acwrHigh ->
-                "ACWR alto: não aumente a carga. Fique no fácil e revise a semana. " +
+                "Sua carga subiu rápido: não aumente. Fique no fácil e revise a semana. " +
                     easyHint(paceTarget, heartRateTarget)
 
             readiness.level == ReadinessLevel.AMBER || noQuality ->
-                "Prontidão âmbar: hoje é fácil, sem qualidade. " + easyHint(paceTarget, heartRateTarget)
+                "Prontidão âmbar: hoje é fácil, sem treino forte. " + easyHint(paceTarget, heartRateTarget)
 
-            else -> "Base aeróbica em Z2, conversável do início ao fim. " + easyHint(paceTarget, heartRateTarget)
+            else ->
+                "Base aeróbica em ritmo fácil, conversável do início ao fim. " +
+                    easyHint(paceTarget, heartRateTarget)
         } + heatHint(heat, input.profile.treadmillAccess, paceTarget != null)
         val distance = paceTarget?.let { target ->
             val secondsPerKm = (target.fast.secondsPerKm + target.slow.secondsPerKm) / 2.0
@@ -152,7 +156,7 @@ class WorkoutRecommender {
 
         return WorkoutRecommendation(
             type = WorkoutType.EASY,
-            title = if (conservative) "Fácil, sem pressa" else "Fácil em Z2",
+            title = if (conservative) "Fácil, sem pressa" else "Fácil e conversável",
             durationMin = duration,
             distanceKm = distance,
             pace = paceTarget,
@@ -172,7 +176,7 @@ class WorkoutRecommender {
         pace = null,
         heartRate = null,
         rationale = if (illness) {
-            "Sinal de doença ou lesão: sem treino de qualidade hoje. Se persistir, procure avaliação."
+            "Sinal de doença ou lesão: sem treino forte hoje. Se persistir, procure avaliação."
         } else {
             "Prontidão vermelha: o corpo pede descanso. Não reponha o treino de outra forma."
         },
@@ -204,7 +208,9 @@ class WorkoutRecommender {
 
         heartRate != null -> "Alvo de FC ${heartRate.minBpm}–${heartRate.maxBpm} bpm."
 
-        else -> "Use RPE: esforço conversável; calibre o limiar para receber pace e FC."
+        else ->
+            "Corra pelo esforço: precisa dar para conversar. " +
+                "Calibre seu limite para receber ritmo e FC."
     }
 
     /**
@@ -216,12 +222,12 @@ class WorkoutRecommender {
         val treadmill = if (treadmillAccess) " A esteira também é válida hoje." else ""
         val percent = ((HEAT_PACE_FACTOR - 1.0) * 100).roundToInt()
         val pace = if (hasPaceTarget) {
-            "pace alvo $percent% mais lento, sem mudar a FC; "
+            "ritmo alvo $percent% mais lento, sem mudar a FC; "
         } else {
             "reduza o ritmo pelo esforço, sem mudar a FC; "
         }
         return " Calor informado: $pace" +
-            "use FC e RPE como guia e prefira o início da manhã.$treadmill"
+            "use a FC e o esforço percebido como guia e prefira o início da manhã.$treadmill"
     }
 
     private fun PaceTarget.slowerBy(factor: Double): PaceTarget = PaceTarget(

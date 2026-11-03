@@ -71,11 +71,12 @@ class ImportService(
             parse(format, request.bytes)
         } catch (error: CancellationException) {
             throw error
-        } catch (error: Exception) {
+        } catch (_: Exception) {
             return fail(
                 initialJob,
                 ImportErrorCode.PARSE_ERROR,
-                error.message ?: "Não foi possível ler o arquivo.",
+                "Não foi possível ler este arquivo ${format.name}. " +
+                    "Verifique se ele está completo e não está corrompido.",
             )
         }
 
@@ -120,11 +121,11 @@ class ImportService(
             }
         } catch (error: CancellationException) {
             throw error
-        } catch (error: Exception) {
+        } catch (_: Exception) {
             fail(
                 initialJob,
                 ImportErrorCode.STORAGE_ERROR,
-                error.message ?: "Não foi possível salvar a atividade.",
+                "Não foi possível salvar a atividade. Tente importar o arquivo de novo.",
             )
         }
     }

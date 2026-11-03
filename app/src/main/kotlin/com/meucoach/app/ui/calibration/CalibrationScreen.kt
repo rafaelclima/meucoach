@@ -134,19 +134,19 @@ internal fun CalibrationContent(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Seu limiar",
+                            text = "Seu limite de esforço",
                             style = MaterialTheme.typography.headlineLarge,
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Use uma prova ou um TT de 30 min recente. Sem dados válidos, " +
-                                "o app não inventa VDOT.",
+                            text = "Use uma prova ou um teste de 30 min recente. " +
+                                "Sem dados válidos, o app não inventa um resultado.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
                         if (state.recentEfforts > 0) {
                             Text(
-                                text = "${state.recentEfforts} treinos recentes com FC e pace disponíveis.",
+                                text = "${state.recentEfforts} treinos recentes com FC e ritmo disponíveis.",
                                 style = McTextStyles.caption,
                                 color = colors.textTertiary,
                             )
@@ -239,18 +239,18 @@ private fun CalibrationResultCard(result: CalibrationResult) {
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             McStat(
-                label = "VDOT",
+                label = "Aptidão",
                 value = result.vdot?.let { String.format(PT_BR, "%.1f", it) } ?: "—",
                 modifier = Modifier.weight(1f),
             )
             McStat(
-                label = "LTHR",
+                label = "FC no limite",
                 value = result.lthr?.toString() ?: "—",
                 unit = if (result.lthr != null) "bpm" else null,
                 modifier = Modifier.weight(1f),
             )
             McStat(
-                label = "Limiar",
+                label = "Ritmo",
                 value = result.thresholdPace?.format() ?: "—",
                 unit = if (result.thresholdPace != null) "/km" else null,
                 modifier = Modifier.weight(1f),
@@ -274,12 +274,6 @@ private fun CalibrationResultCard(result: CalibrationResult) {
                 },
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "${result.ruleId} · ${result.evidenceIds.joinToString(", ")}",
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
     }
 }
 
@@ -337,9 +331,9 @@ private fun CalibrationField(
 }
 
 private fun tierLabel(tier: CalibrationTier): String = when (tier) {
-    CalibrationTier.A -> "TIER A · PROVA/TT RECENTE"
-    CalibrationTier.B -> "TIER B · TREINOS RECENTES"
-    CalibrationTier.C -> "TIER C · BASE INICIAL"
+    CalibrationTier.A -> "CALIBRAÇÃO POR PROVA RECENTE"
+    CalibrationTier.B -> "CALIBRAÇÃO POR TREINOS RECENTES"
+    CalibrationTier.C -> "BASE INICIAL"
 }
 
 private fun confidenceLabel(confidence: DataConfidence): String = when (confidence) {
@@ -350,13 +344,13 @@ private fun confidenceLabel(confidence: DataConfidence): String = when (confiden
 
 private fun warningLabel(warning: CalibrationWarning): String = when (warning) {
     CalibrationWarning.MAX_HEART_RATE_INCONSISTENT ->
-        "A FC máxima informada parece baixa para este esforço; priorize o LTHR."
+        "A FC máxima informada parece baixa para este esforço; priorize a FC no limite."
 
     CalibrationWarning.NO_RECENT_PERFORMANCE ->
-        "Sem performance recente. Faça um TT de 30 min para calibrar."
+        "Sem performance recente. Faça um teste de 30 min para calibrar."
 
     CalibrationWarning.NO_EFFORT_HEART_RATE ->
-        "Sem FC média do esforço, o LTHR não foi estimado."
+        "Sem FC média do esforço, a FC no limite não foi estimada."
 
     CalibrationWarning.PERFORMANCE_DURATION_OUT_OF_RANGE ->
         "A performance está fora da faixa válida (1–100 km, 8–180 min)."

@@ -153,7 +153,7 @@ class WeeklyPlanGenerator {
                     type = WorkoutType.LONG,
                     title = "Longão",
                     durationMin = initialLongMinutes(available, input.profile.experience),
-                    rationale = "Longão em Z2, 25–30% do volume semanal. Iniciante ≤ 150 min.",
+                    rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
                     ruleIds = listOf("R-PLAN-03"),
                     evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
                 )
@@ -161,9 +161,9 @@ class WeeklyPlanGenerator {
                 else -> PlannedSession(
                     date = date,
                     type = WorkoutType.EASY,
-                    title = "Fácil em Z2",
+                    title = "Fácil e conversável",
                     durationMin = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN),
-                    rationale = "Base aeróbica conversável; sem qualidade neste dia.",
+                    rationale = "Base aeróbica conversável; sem treino forte neste dia.",
                     ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
                     evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
                 )
@@ -207,21 +207,21 @@ class WeeklyPlanGenerator {
         val confidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
         val rationale = buildString {
             if (taper != null) {
-                append("Taper para a prova em ${taper.daysToRace} dias: volume reduzido. ")
+                append("Semana de prova em ${taper.daysToRace} dias: volume reduzido. ")
             } else if (deload) {
                 append(
-                    "Deload (semana ${input.weekNumberInBlock} do bloco): volume −" +
+                    "Semana de descarga (${input.weekNumberInBlock} de 4 no bloco): volume −" +
                         "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
                 )
             }
             append("${adjusted.size} dias, $weeklyMinutes min no total. ")
             if (qualityCount == 0) {
-                append("Sem qualidade: ")
+                append("Sem treino forte: ")
                 append(
                     when {
                         safetyBlock -> "prontidão não está verde."
                         input.profile.experience == Experience.BEGINNER -> "iniciante prioriza base."
-                        (acwr ?: 0.0) > ACWR_MAX -> "ACWR alto."
+                        (acwr ?: 0.0) > ACWR_MAX -> "sua carga subiu rápido."
                         days.size < 3 -> "menos de 3 dias disponíveis."
                         else -> "sem dia seguro separado do longão."
                     },
@@ -229,7 +229,7 @@ class WeeklyPlanGenerator {
                 append(" ")
             }
             if (progressed) {
-                append("Progressão por dose de qualidade: semana anterior ≥80% concluída. ")
+                append("Progressão liberada: você concluiu pelo menos 80% da semana anterior. ")
                 append("O volume segue limitado pela disponibilidade.")
             } else {
                 append("Sem progressão até existir histórico de conclusão.")
@@ -287,11 +287,15 @@ class WeeklyPlanGenerator {
 
     private fun qualityRationale(profile: AthleteProfile): String {
         val base = when (profile.experience) {
-            Experience.ADVANCED -> "5×3 min em Z4–Z5 com 2 min de trote entre eles, em dia separado do longão."
-            else -> "20 min contínuos em Z3–Z4, com aquecimento e desaquecimento, em dia separado do longão."
+            Experience.ADVANCED ->
+                "5×3 min forte (Z4–Z5) com 2 min de trote entre eles, em dia separado do longão."
+
+            else ->
+                "20 min contínuos em esforço moderado a forte (Z3–Z4), com aquecimento e " +
+                    "desaquecimento, em dia separado do longão."
         }
         if (!profile.treadmillAccess) return base
-        return base + " Na esteira (opção para calor): 5–10% de inclinação em RPE 8/10" +
+        return base + " Na esteira (opção para calor): 5–10% de inclinação em esforço 8 de 10" +
             treadmillSpeedHint(profile.thresholdPace) + "."
     }
 

@@ -41,7 +41,7 @@ class ReminderContentTest {
             PlannedSession(
                 date = today,
                 type = WorkoutType.EASY,
-                title = "Fácil em Z2",
+                title = "Fácil e conversável",
                 durationMin = 40,
                 rationale = "Base aeróbica.",
                 ruleIds = listOf("R-ZONE-01"),
@@ -51,7 +51,7 @@ class ReminderContentTest {
 
         val message = ReminderContent.workout(today, plan)!!
 
-        assertThat(message.title).isEqualTo("Treino de hoje: Fácil em Z2")
+        assertThat(message.title).isEqualTo("Treino de hoje: Fácil e conversável")
         assertThat(message.body).contains("40 min", "Base aeróbica")
         assertThat(message.deepLink).isEqualTo(DEEP_LINK_TODAY)
     }

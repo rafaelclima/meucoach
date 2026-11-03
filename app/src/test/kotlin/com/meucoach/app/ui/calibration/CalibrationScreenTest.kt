@@ -33,7 +33,7 @@ class CalibrationScreenTest {
         var calculated = false
         setContent(state = loadedState(), onCalculate = { calculated = true })
 
-        compose.onNodeWithText("Seu limiar").assertIsDisplayed()
+        compose.onNodeWithText("Seu limite de esforço").assertIsDisplayed()
         compose.onNodeWithTag("calibration-list").performScrollToNode(hasText("Calcular"))
         compose.onNodeWithText("Calcular").performClick()
 
@@ -49,8 +49,9 @@ class CalibrationScreenTest {
         )
 
         compose.onNodeWithTag("calibration-list")
-            .performScrollToNode(hasText("TIER A · PROVA/TT RECENTE"))
-        compose.onNodeWithText("TIER A · PROVA/TT RECENTE").assertIsDisplayed()
+            .performScrollToNode(hasText("CALIBRAÇÃO POR PROVA RECENTE"))
+        compose.onNodeWithText("CALIBRAÇÃO POR PROVA RECENTE").assertIsDisplayed()
+        compose.onNodeWithText("R-CAL-01", substring = true).assertDoesNotExist()
         compose.onNodeWithText("29,6").assertIsDisplayed()
         compose.onAllNodesWithText("181")[0].assertIsDisplayed()
         compose.onNodeWithText("6:28").assertIsDisplayed()
@@ -75,9 +76,9 @@ class CalibrationScreenTest {
         )
 
         compose.onNodeWithTag("calibration-list")
-            .performScrollToNode(hasText("TIER C · BASE INICIAL"))
+            .performScrollToNode(hasText("BASE INICIAL"))
         compose.onNodeWithTag("calibration-save").assertDoesNotExist()
-        compose.onNodeWithText("TIER C · BASE INICIAL").assertIsDisplayed()
+        compose.onNodeWithText("BASE INICIAL").assertIsDisplayed()
     }
 
     @Test

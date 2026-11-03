@@ -72,7 +72,8 @@ class HealthConnectViewModel @Inject constructor(
                 result.error != null -> result.error
 
                 result.missingPermissions.isNotEmpty() ->
-                    "Autorize a leitura de sono, FC, HRV e SpO2."
+                    "Autorize a leitura de sono, FC de repouso, variabilidade cardíaca (HRV) " +
+                        "e oxigenação (SpO2)."
 
                 result.importedDays == 0 -> "Nenhum dado novo encontrado."
 

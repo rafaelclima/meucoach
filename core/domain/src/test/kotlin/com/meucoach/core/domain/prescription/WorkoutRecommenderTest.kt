@@ -61,7 +61,7 @@ class WorkoutRecommenderTest {
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
         assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
         assertThat(recommendation.ruleIds).contains("R-READY-03")
-        assertThat(recommendation.rationale).contains("sem qualidade")
+        assertThat(recommendation.rationale).contains("sem treino forte")
     }
 
     @Test
@@ -91,7 +91,7 @@ class WorkoutRecommenderTest {
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
         assertThat(recommendation.ruleIds).contains("R-LOAD-03")
-        assertThat(recommendation.rationale).contains("ACWR alto")
+        assertThat(recommendation.rationale).contains("carga subiu rápido")
     }
 
     @Test
@@ -101,7 +101,7 @@ class WorkoutRecommenderTest {
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
-        assertThat(recommendation.title).isEqualTo("Fácil em Z2")
+        assertThat(recommendation.title).isEqualTo("Fácil e conversável")
         assertThat(recommendation.pace).isEqualTo(
             PaceTarget(
                 fast = Pace.fromSecondsPerKm(450),
@@ -115,7 +115,7 @@ class WorkoutRecommenderTest {
     }
 
     @Test
-    fun `uncalibrated profile gets an RPE recommendation`() {
+    fun `uncalibrated profile gets an effort-based recommendation`() {
         val recommendation = recommender.recommend(
             input(
                 profile = profile(threshold = null, lthr = null),
@@ -128,7 +128,7 @@ class WorkoutRecommenderTest {
         assertThat(recommendation.heartRate).isNull()
         assertThat(recommendation.ruleIds).contains("R-CAL-02")
         assertThat(recommendation.confidence).isEqualTo(DataConfidence.LOW)
-        assertThat(recommendation.rationale).contains("RPE")
+        assertThat(recommendation.rationale).contains("esforço")
     }
 
     @Test

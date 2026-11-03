@@ -239,7 +239,7 @@ class ActivityRepositoryTest {
 
             assertThat(stored).isNotNull()
             assertThat(stored?.imported?.samples).isEmpty()
-            assertThat(stored?.sampleWarning).contains("Samples unavailable")
+            assertThat(stored?.sampleWarning).contains("séries temporais")
             assertThat(repository.listActivitySummaries()).hasSize(1)
         }
     }
@@ -254,7 +254,7 @@ class ActivityRepositoryTest {
             val stored = repository.openActivity(saved.id)
 
             assertThat(stored?.imported?.samples).isEmpty()
-            assertThat(stored?.sampleWarning).contains("Unsupported")
+            assertThat(stored?.sampleWarning).contains("formato")
         }
     }
 

@@ -192,7 +192,7 @@ internal fun CheckInContent(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Suspende treino de qualidade.",
+                                    text = "Suspende treino forte.",
                                     style = McTextStyles.caption,
                                     color = colors.textSecondary,
                                 )
@@ -226,7 +226,7 @@ internal fun CheckInContent(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Ajusta o pace alvo, sem mudar a FC.",
+                                    text = "Ajusta o ritmo alvo, sem mudar a FC.",
                                     style = McTextStyles.caption,
                                     color = colors.textSecondary,
                                 )
@@ -257,7 +257,7 @@ internal fun CheckInContent(
                                 color = colors.textTertiary,
                             )
                             Text(
-                                text = "Hooper menor é melhor; ele alimenta a prontidão de cada dia.",
+                                text = "Quanto menor, melhor. Esse índice alimenta a prontidão de cada dia.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colors.textSecondary,
                             )
@@ -335,7 +335,7 @@ private fun CheckInHistoryCard(history: List<DailyCheckIn>) {
                         color = colors.textPrimary,
                     )
                     Text(
-                        text = "Hooper",
+                        text = "Recuperação",
                         style = McTextStyles.caption,
                         color = colors.textTertiary,
                     )

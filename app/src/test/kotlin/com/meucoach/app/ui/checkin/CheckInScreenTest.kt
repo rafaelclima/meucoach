@@ -106,7 +106,8 @@ class CheckInScreenTest {
         compose.onNodeWithText("Doente/lesão").assertIsDisplayed()
         list.performScrollToNode(hasText("Calor"))
         compose.onNodeWithText("Calor").assertIsDisplayed()
-        compose.onAllNodesWithText("Hooper").assertCountEquals(2)
+        compose.onAllNodesWithText("Recuperação").assertCountEquals(2)
+        compose.onAllNodesWithText("Hooper").assertCountEquals(0)
     }
 
     @Test
