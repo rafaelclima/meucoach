@@ -283,3 +283,14 @@ O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 
 - **Leitura do coach saiu da prévia:** o veredito determinístico deixou de aparecer na hora de gerar o story; agora é um card privado na tela da atividade (“LEITURA DO COACH”), separado do vídeo público.
 - **Dados:** nome e caminho da foto vivem no perfil (Room v10); a foto é copiada para armazenamento privado do app e removida no “apagar todos os dados”.
 - **Testes:** golden `story-avatar-dark.png` (pin), migração 9→10, nome obrigatório no onboarding e leitura do coach no `ActivityDetailViewModelTest`.
+
+---
+
+## 18. Nota de implementação — câmera 3D real (projeção MapLibre portada, 04/11/2026)
+
+- **O que mudou:** o snapshot deixou de ser top-down com tilt falso. O MapLibre renderiza com **pitch de 38°** e a rota é desenhada pela **mesma câmera**, usando a projeção portada (`StoryMapProjection`) — o traçado continua sobre as ruas.
+- **Como:** port fiel da cadeia de matrizes (`perspective → flip → translate → rotateX(pitch) → rotateZ(-bearing)`), FOV vertical de 36,87°, Mercator 512. `calculateForStory` ajusta o zoom iterativamente para o bounding box caber no route square.
+- **Câmera do vídeo:** a movimentação (`StoryMotion`) continua 2D (zoom/pan/rotação); o warp sintético do `StoryPerspective` é desligado (`nativeTilt = true`) para não duplicar a perspectiva.
+- **Dados:** `StoryPlan.geoPoints` (amostrados até 400) são a fonte da rota no mapa; o pin da foto é desenhado em espaço de tela.
+- **Validação:** teste de paridade top-down (±2 px) e de enquadramento inclinado; frames reais em Clássico e Satélite com a linha sobre as ruas no S24 Ultra.
+- **Limite:** tilt fixo no snapshot; mudança de pitch durante o vídeo exigiria keyframes de snapshots ou pipeline GL (ADR 0019).

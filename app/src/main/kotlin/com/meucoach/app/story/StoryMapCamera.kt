@@ -5,6 +5,7 @@ import kotlin.math.atan
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.tan
 
 /**
@@ -15,7 +16,13 @@ import kotlin.math.tan
  * on the streets it was recorded on (ADR 0015 §2.5). Pure math on purpose: the
  * alignment can be unit-tested without loading MapLibre native code.
  */
-data class StoryMapCamera(val latitude: Double, val longitude: Double, val zoom: Double)
+data class StoryMapCamera(
+    val latitude: Double,
+    val longitude: Double,
+    val zoom: Double,
+    val pitchDegrees: Float = 0f,
+    val bearingDegrees: Float = 0f,
+)
 
 object StoryMapCameraCalculator {
     /** MapLibre renders a 512 px world tile grid at zoom 0. */
@@ -58,6 +65,61 @@ object StoryMapCameraCalculator {
             latitude = inverseMercatorY(targetY),
             longitude = inverseMercatorX(targetX),
             zoom = ln(scale / TILE_SIZE_PX) / ln(2.0),
+        )
+    }
+
+    /**
+     * Same framing as [calculate], but on a pitched/bearing camera. The bounds
+     * are fitted iteratively against the real projection so the tilted snapshot
+     * still contains the whole route.
+     */
+    fun calculateForStory(
+        bounds: BoundingBox,
+        width: Int = 720,
+        height: Int = 1280,
+        pitchDegrees: Float = 38f,
+        bearingDegrees: Float = 0f,
+    ): StoryMapCamera {
+        if (pitchDegrees == 0f && bearingDegrees == 0f) return calculate(bounds, width, height)
+        val square = routeSquare(width.toFloat(), height.toFloat())
+        val base = calculate(bounds, width, height)
+        var targetX = mercatorX(base.longitude)
+        var targetY = mercatorY(base.latitude)
+        var zoom = base.zoom
+        val corners = listOf(
+            bounds.minLat to bounds.minLon,
+            bounds.minLat to bounds.maxLon,
+            bounds.maxLat to bounds.minLon,
+            bounds.maxLat to bounds.maxLon,
+        )
+        repeat(8) {
+            val camera = StoryMapCamera(
+                latitude = inverseMercatorY(targetY),
+                longitude = inverseMercatorX(targetX),
+                zoom = zoom,
+                pitchDegrees = pitchDegrees,
+                bearingDegrees = bearingDegrees,
+            )
+            val projection = StoryMapProjection(camera, width, height)
+            val points = corners.map { projection.project(it.first, it.second) }
+            val minX = points.minOf { it[0] }
+            val maxX = points.maxOf { it[0] }
+            val minY = points.minOf { it[1] }
+            val maxY = points.maxOf { it[1] }
+            val spanX = (maxX - minX).coerceAtLeast(1f)
+            val spanY = (maxY - minY).coerceAtLeast(1f)
+            val factor = minOf(square.side / spanX, square.side / spanY)
+            zoom += ln(factor.toDouble()) / ln(2.0)
+            val worldSize = TILE_SIZE_PX * 2.0.pow(zoom)
+            targetX -= (square.centerX - (minX + maxX) / 2f) / worldSize
+            targetY -= (square.centerY - (minY + maxY) / 2f) / worldSize
+        }
+        return StoryMapCamera(
+            latitude = inverseMercatorY(targetY),
+            longitude = inverseMercatorX(targetX),
+            zoom = zoom,
+            pitchDegrees = pitchDegrees,
+            bearingDegrees = bearingDegrees,
         )
     }
 

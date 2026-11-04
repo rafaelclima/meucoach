@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 775 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 380 em `:app`)
+- **Testes:** 778 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 383 em `:app`)
 - **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
@@ -54,6 +54,16 @@
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-04 — Story com câmera 3D real (projeção MapLibre portada)
+**Objetivo:** trocar o "tilt falso" por perspectiva real sem perder o alinhamento da rota.
+
+- **Projeção pura:** `StoryMapProjection` porta a cadeia de matrizes do MapLibre (FOV, perspectiva, pitch/bearing, Mercator 512); o teste top-down prova que ela reproduz o enquadramento antigo (route square, ±2 px) e o teste inclinado garante o bbox dentro da moldura.
+- **Snapshot inclinado:** `MapBackgroundRenderer` usa `tilt(38°)` + bearing; `StoryPlan.geoPoints` (até 400) alimentam a rota projetada pela mesma câmera.
+- **Câmera cinematográfica 2D:** `StoryPerspective` ganhou `nativeTilt`; o warp sintético é pulado no story, mantendo zoom/pan/rotação sem dupla perspectiva.
+- **Pin:** foto desenhada fora da matriz da câmera, em pé, ~114 px.
+- **Validação:** paridade top-down nos testes, frame real em Clássico e Satélite no S24 Ultra com a rota sobre as ruas; ADR 0019 registra o port e os limites (tilt fixo, sem terreno 3D).
+- **Testes:** `StoryMapProjectionTest` (paridade, enquadramento inclinado, bearing); 778 testes.
 
 ## Sessão 2026-11-04 — Perfil com nome/foto, pin no story e leitura do coach na atividade
 **Objetivo:** personalizar o app e o vídeo, e tirar o julgamento do plano de dentro do story.
@@ -1879,3 +1889,4 @@
 | 04/11/2026 | Story público: destaques objetivos sem julgamento de plano, mapa Terreno com hillshade e aviso de download; botão full-width; 771 testes |
 | 04/11/2026 | Story: estilo Satélite (Esri + labels + véu), recomendado para cidades planas; 772 testes |
 | 04/11/2026 | Perfil com nome/foto (Room v10), avatar na Home/Perfil e pin do story; leitura do coach na tela da atividade; 775 testes |
+| 04/11/2026 | Story com câmera 3D real: projeção do MapLibre portada para Kotlin, snapshot inclinado e rota alinhada (ADR 0019); 778 testes |

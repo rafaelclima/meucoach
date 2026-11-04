@@ -41,12 +41,13 @@ data class StorySegment(
     val split: StorySplit? = null,
 )
 
-/**
- * Geographic extent of the run, in WGS-84 degrees. Kept separate from the
+/** Geographic extent of the run, in WGS-84 degrees. Kept separate from the
  * normalized [RouteData] so a future map background can render exactly the
- * same region the animated route was projected into (ADR 0015 §2.7).
- */
+ * same region the animated route was projected into (ADR 0015 §2.7). */
 data class BoundingBox(val minLat: Double, val maxLat: Double, val minLon: Double, val maxLon: Double)
+
+/** One route vertex in geographic coordinates, for the tilted projection. */
+data class StoryGeoPoint(val latitude: Double, val longitude: Double)
 
 data class StoryPlan(
     val route: RouteData,
@@ -61,6 +62,8 @@ data class StoryPlan(
     val boundingBox: BoundingBox?,
     val zoneRuns: List<StoryZoneRun> = emptyList(),
     val verdict: StoryVerdict? = null,
+    /** Route vertices used to project the line onto a tilted snapshot. */
+    val geoPoints: List<StoryGeoPoint> = emptyList(),
 )
 
 /**
@@ -127,6 +130,7 @@ object StoryPlanCalculator {
             boundingBox = bounds(points),
             zoneRuns = lthrBpm?.let { zoneRuns(points, cumulative, totalMeters, it) }.orEmpty(),
             verdict = verdict,
+            geoPoints = sampledGeoPoints(points),
         )
     }
 
@@ -158,8 +162,27 @@ object StoryPlanCalculator {
         )
     }
 
+    private fun sampledGeoPoints(points: List<GeoPoint>, maxPoints: Int = 400): List<StoryGeoPoint> {
+        if (points.size <= maxPoints) return points.map { StoryGeoPoint(it.latitude, it.longitude) }
+        val step = ceil(points.size.toDouble() / maxPoints).toInt().coerceAtLeast(1)
+        val sampled = buildList {
+            points.forEachIndexed { index, point ->
+                if (index % step == 0) add(StoryGeoPoint(point.latitude, point.longitude))
+            }
+            val last = points.last()
+            if (lastOrNull()?.latitude != last.latitude || lastOrNull()?.longitude != last.longitude) {
+                add(StoryGeoPoint(last.latitude, last.longitude))
+            }
+        }
+        return sampled
+    }
+
     private fun averagePace(durationSec: Int, distanceKm: Double): Pace? {
-        if (durationSec <= 0 || distanceKm <= 0.0) return null
+        if (durationSec <= 0 ||
+            distanceKm <= 0.0
+        ) {
+            return null
+        }
         val secondsPerKm = (durationSec / distanceKm).roundToInt()
         return if (secondsPerKm > 0) Pace.fromSecondsPerKm(secondsPerKm) else null
     }

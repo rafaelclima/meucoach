@@ -54,7 +54,7 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
         return withContext(Dispatchers.Main.immediate) {
             MapLibre.getInstance(context)
             suspendCancellableCoroutine { continuation ->
-                val camera = StoryMapCameraCalculator.calculate(boundingBox, width, height)
+                val camera = StoryMapCameraCalculator.calculateForStory(boundingBox, width, height)
                 val options = MapSnapshotter
                     .Options(width, height)
                     .withStyleBuilder(Style.Builder().fromJson(json))
@@ -62,6 +62,8 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
                         CameraPosition.Builder()
                             .target(LatLng(camera.latitude, camera.longitude))
                             .zoom(camera.zoom)
+                            .tilt(camera.pitchDegrees.toDouble())
+                            .bearing(camera.bearingDegrees.toDouble())
                             .build(),
                     )
                     .withLogo(false)

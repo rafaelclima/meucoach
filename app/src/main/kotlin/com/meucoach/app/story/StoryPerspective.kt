@@ -25,7 +25,13 @@ object StoryPerspective {
      * rotation, scale and focus. Kept in one place so the renderer and the
      * coverage test use the exact same matrix.
      */
-    fun cameraMatrix(camera: StoryCamera, square: StoryLayout.RouteSquare, width: Float, height: Float): Matrix {
+    fun cameraMatrix(
+        camera: StoryCamera,
+        square: StoryLayout.RouteSquare,
+        width: Float,
+        height: Float,
+        nativeTilt: Boolean = false,
+    ): Matrix {
         val routeFocusX = square.left + camera.focusX * square.side
         val routeFocusY = square.top + camera.focusY * square.side
         // The focus easing is quartic: the camera zooms in before it starts
@@ -34,7 +40,9 @@ object StoryPerspective {
         val focusX = square.centerX + (routeFocusX - square.centerX) * focusBlend
         val focusY = square.centerY + (routeFocusY - square.centerY) * focusBlend
         val matrix = Matrix()
-        matrixFor(width, height, camera.pitchDegrees, camera.yawDegrees)?.let { matrix.preConcat(it) }
+        if (!nativeTilt) {
+            matrixFor(width, height, camera.pitchDegrees, camera.yawDegrees)?.let { matrix.preConcat(it) }
+        }
         matrix.preTranslate(camera.targetX * width, camera.targetY * height)
         matrix.preRotate(camera.rotationDegrees)
         matrix.preScale(camera.scale * COVERAGE_SCALE, camera.scale * COVERAGE_SCALE)
