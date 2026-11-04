@@ -284,3 +284,17 @@ A proposta completa está em `docs/STORY_V2.md`. A Fase A entrega a camada visua
 - **Testes:** `StoryLayoutTest`, `StoryMotionTest`, câmera e goldens do story; mensagem de “vídeo e capa” coberta na UI.
 
 **Pendente:** validar no aparelho o tempo de export a 30 fps, a leitura do grão/rotação depois do reencode do Instagram e a capa na galeria.
+
+---
+
+## Addendum — 2026-11-04: limite do tilt nativo no snapshotter
+
+O story usa **um** snapshot do `MapLibre` e aplica uma homografia (`StoryPerspective`) sobre mapa **e** rota, o que mantém o traçado alinhado às ruas.
+
+Ao avaliar um tilt nativo (pitch real de 40–55°, "tipo Strava"), verificamos o `MapSnapshotter` da versão em uso (`org.maplibre.gl:android-sdk:12.3.1`):
+
+- `CameraPosition.Builder().tilt(...)` existe — o snapshot inclinado é possível.
+- O snapshotter **não expõe `Projection`, `getMapAsync` nem `getMap()`**; só `addImage`, `getLayer`, `getSource`, `setObserver` e `Options.withPixelRatio`.
+- Sem projeção, o `StoryFrameRenderer` não consegue posicionar a rota animada sobre um snapshot inclinado com a mesma matriz da câmera.
+
+Consequência: tilt nativo exige (a) portar a matemática de câmera do MapLibre para Kotlin puro, validando no aparelho, ou (b) assar a rota no próprio snapshot (`GeoJSON`/`line-gradient`) e revelar por keyframes. Ambas ficam registradas em `docs/STORY_V2.md` §14 como spike separado; a decisão atual mantém o tilt por homografia. Nenhuma coordenada muda de lugar: o snapshot continua local e a única chamada de rede segue sendo o download de tiles.

@@ -4,20 +4,20 @@ import com.meucoach.app.ui.activitydetail.RouteData
 import com.meucoach.app.ui.activitydetail.RoutePoint
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * Motion design for the story: a route-following flyover.
+ * Motion design for the story: a smooth route-following flyover.
  *
  * The camera starts with the whole route, dives into the runner's position,
- * keeps the direction of travel pointing up, tilts the map plane and pushes in
- * while a km card is on screen. At the closing segment it pulls back to the
- * overview. Every value is a pure function of time so the map background and
- * the route overlay receive the exact same camera and never drift apart.
+ * pushes in and tilts the map plane, then pulls back for the closing frame.
+ * The rotation is a slow, deterministic drift instead of a bearing snapped to
+ * the route: it avoids the side-to-side flips of a heading-driven camera.
+ * Every value is a pure function of time so the map background and the route
+ * overlay receive the exact same camera and never drift apart.
  */
 data class StoryCamera(
     val scale: Float,
@@ -37,31 +37,30 @@ data class StoryCamera(
 )
 
 object StoryMotion {
-    const val OVERVIEW_SCALE = 1.18f
-    const val FOLLOW_SCALE = 1.72f
-    const val CARD_EXTRA_SCALE = 0.06f
+    const val OVERVIEW_SCALE = 1.20f
+    const val FOLLOW_SCALE = 1.65f
+    const val CARD_EXTRA_SCALE = 0.04f
     const val MAX_CAMERA_SCALE = FOLLOW_SCALE + CARD_EXTRA_SCALE
-    const val OVERVIEW_PITCH_DEGREES = 8f
-    const val FOLLOW_PITCH_DEGREES = 32f
-    const val CARD_EXTRA_PITCH_DEGREES = 3f
-    const val FOLLOW_YAW_DEGREES = 2.5f
+    const val OVERVIEW_PITCH_DEGREES = 6f
+    const val FOLLOW_PITCH_DEGREES = 18f
+    const val CARD_EXTRA_PITCH_DEGREES = 2f
 
-    /**
-     * The map snapshot is a fixed top-down rectangle, so an unbounded bearing
-     * would rotate its corners into the frame. 22° is enough to feel like a
-     * camera turn while the 1.72× follow scale still covers the 9:16 frame.
-     */
-    const val MAX_ROTATION_DEGREES = 22f
-
-    /** Keeps the route slightly diagonal instead of a perfectly vertical line. */
-    const val BEARING_OFFSET_DEGREES = -8f
+    /** One gentle side-to-side roll during the run, never a hard bearing snap. */
+    const val DRIFT_ROTATION_DEGREES = 6f
+    const val FOLLOW_YAW_DEGREES = 1.5f
 
     /** The runner sits above the card, so the map has room to breathe. */
-    const val FOLLOW_TARGET_Y = 0.43f
+    const val FOLLOW_TARGET_Y = 0.47f
 
-    private const val INTRO_SECONDS = 1.8f
+    /**
+     * Keep the follow point away from the very edge of the route square. The
+     * camera stops chasing the last 15% so the tilted snapshot still covers
+     * the frame at the start/end of the run.
+     */
+    const val FOCUS_MARGIN = 0.35f
+
+    private const val INTRO_SECONDS = 1.6f
     private const val OUTRO_SECONDS = 1.2f
-    private const val HEADING_WINDOW = 0.03f
     private const val CARD_FOCUS_RAMP_SEC = 1.4f
 
     fun camera(timeSec: Float, plan: StoryPlan): StoryCamera {
@@ -69,20 +68,17 @@ object StoryMotion {
         val follow = followIntensity(plan, timeSec)
         val card = cardFocus(plan, timeSec)
         val point = routePointAt(plan.route, progress)
-        val heading = headingDegrees(plan.route, progress)
-        val turn = normalizeDegrees(heading + BEARING_OFFSET_DEGREES)
-            .coerceIn(-MAX_ROTATION_DEGREES, MAX_ROTATION_DEGREES)
         return StoryCamera(
             scale = OVERVIEW_SCALE +
                 (FOLLOW_SCALE - OVERVIEW_SCALE) * follow +
                 CARD_EXTRA_SCALE * card,
-            rotationDegrees = turn * follow,
+            rotationDegrees = sin(progress * PI * 2f).toFloat() * DRIFT_ROTATION_DEGREES * follow,
             pitchDegrees = OVERVIEW_PITCH_DEGREES +
                 (FOLLOW_PITCH_DEGREES - OVERVIEW_PITCH_DEGREES) * follow +
                 CARD_EXTRA_PITCH_DEGREES * card,
-            yawDegrees = sin(progress * PI * 2f).toFloat() * FOLLOW_YAW_DEGREES * follow,
-            focusX = point.x,
-            focusY = point.y,
+            yawDegrees = sin(progress * PI * 3f).toFloat() * FOLLOW_YAW_DEGREES * follow,
+            focusX = point.x.coerceIn(FOCUS_MARGIN, 1f - FOCUS_MARGIN),
+            focusY = point.y.coerceIn(FOCUS_MARGIN, 1f - FOCUS_MARGIN),
             follow = follow,
             targetX = 0.5f,
             targetY = 0.5f + (FOLLOW_TARGET_Y - 0.5f) * follow,
@@ -152,27 +148,6 @@ object StoryMotion {
     }
 
     /**
-     * Rotation that makes the current direction of travel point up, with a
-     * small diagonal offset. The heading is taken over a window before and
-     * after the runner, so GPS jitter and sharp turns do not spin the map.
-     */
-    fun headingDegrees(route: RouteData, progress: Float): Float {
-        val behind = routePointAt(route, (progress - HEADING_WINDOW).coerceIn(0f, 1f))
-        val ahead = routePointAt(route, (progress + HEADING_WINDOW).coerceIn(0f, 1f))
-        var dx = ahead.x - behind.x
-        var dy = ahead.y - behind.y
-        if (dx * dx + dy * dy <= EPSILON) {
-            val start = routePointAt(route, progress)
-            val end = routePointAt(route, (progress + HEADING_WINDOW).coerceIn(0f, 1f))
-            dx = end.x - start.x
-            dy = end.y - start.y
-        }
-        if (dx * dx + dy * dy <= EPSILON) return 0f
-        val direction = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
-        return normalizeDegrees(-90f - direction)
-    }
-
-    /**
      * Smoothstep inside a moving segment: the route slows down near a km card
      * and accelerates between cards, which reads as a speed ramp instead of a
      * constant ticker. Cards themselves stay frozen at their km.
@@ -195,8 +170,6 @@ object StoryMotion {
         val clamped = fraction.coerceIn(0f, 1f)
         return clamped * clamped * (3f - 2f * clamped)
     }
-
-    fun normalizeDegrees(value: Float): Float = ((value % 360f) + 540f) % 360f - 180f
 
     private fun distanceToSegment(timeSec: Float, segment: StorySegment): Float = when {
         timeSec < segment.startSec -> segment.startSec - timeSec

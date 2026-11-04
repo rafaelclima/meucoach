@@ -13,11 +13,39 @@ import kotlin.math.sin
  * (1.08+) is what keeps the corners covered after the projection.
  */
 object StoryPerspective {
-    private const val PITCH_STRENGTH = 0.42f
-    private const val PITCH_VERTICAL_STRENGTH = 0.18f
-    private const val YAW_STRENGTH = 0.28f
+    private const val PITCH_STRENGTH = 0.35f
+    private const val PITCH_VERTICAL_STRENGTH = 0.12f
+    private const val YAW_STRENGTH = 0.25f
 
-    fun matrix(width: Float, height: Float, pitchDegrees: Float, yawDegrees: Float): Matrix? {
+    /** Extra safety scale so the rotated/tilted snapshot always covers the frame. */
+    const val COVERAGE_SCALE = 1.15f
+
+    /**
+     * Full map/route transform: perspective, then the camera translation,
+     * rotation, scale and focus. Kept in one place so the renderer and the
+     * coverage test use the exact same matrix.
+     */
+    fun cameraMatrix(camera: StoryCamera, square: StoryLayout.RouteSquare, width: Float, height: Float): Matrix {
+        val routeFocusX = square.left + camera.focusX * square.side
+        val routeFocusY = square.top + camera.focusY * square.side
+        // The focus easing is quartic: the camera zooms in before it starts
+        // chasing the runner, which keeps the map edges covered during the dive.
+        val focusBlend = camera.follow * camera.follow * camera.follow * camera.follow
+        val focusX = square.centerX + (routeFocusX - square.centerX) * focusBlend
+        val focusY = square.centerY + (routeFocusY - square.centerY) * focusBlend
+        val matrix = Matrix()
+        matrixFor(width, height, camera.pitchDegrees, camera.yawDegrees)?.let { matrix.preConcat(it) }
+        matrix.preTranslate(camera.targetX * width, camera.targetY * height)
+        matrix.preRotate(camera.rotationDegrees)
+        matrix.preScale(camera.scale * COVERAGE_SCALE, camera.scale * COVERAGE_SCALE)
+        matrix.preTranslate(-focusX, -focusY)
+        return matrix
+    }
+
+    fun matrix(width: Float, height: Float, pitchDegrees: Float, yawDegrees: Float): Matrix? =
+        matrixFor(width, height, pitchDegrees, yawDegrees)
+
+    private fun matrixFor(width: Float, height: Float, pitchDegrees: Float, yawDegrees: Float): Matrix? {
         if (width <= 0f || height <= 0f) return null
         if (pitchDegrees == 0f && yawDegrees == 0f) return null
 

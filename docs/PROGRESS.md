@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 03/11/2026
+**Atualizado:** 04/11/2026 (story em segundo plano e cancelamento real)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 714 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 319 em `:app`)
+- **Testes:** 755 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 360 em `:app`)
 - **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
@@ -40,9 +40,10 @@
 - **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 com mapa vetorial (`MapLibre` + `OpenFreeMap`, dados OSM) e frame final de 3 s (distância, tempo, ritmo médio, FC média, kcal e logo), export MP4 1080×1920 via MediaCodec, com galeria e compartilhamento; validado em aparelho real (mapa vetorial pendente de validação).
-- **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) de labels ampliados e fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; vídeo 1080p a 10 Mbps e 30 fps desde a Fase A do story v2.
+- **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) filtrado em tempo de execução (POIs, transporte e aeroportos ocultos) e labels ampliados; fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, halo de foco na rota, ticks por km, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; snapshot em 2,25× (2430×4320), vídeo 1080p a 10 Mbps e 30 fps.
 - **Story v2 — Fase A:** área segura do Instagram, câmera com zoom/rotação alinhada à rota, grão/vinheta/grade de cor, 30 fps, snapshot supersampleado e capa PNG do frame final.
 - **Story v2 — Fase B:** veredito determinístico por km e no encerramento (`StoryVerdictCalculator`), rota colorida por zona de FC, barra de splits e contador no card; sem plano/calibração/FC o story não inventa alvo.
+- **Story em segundo plano (ADR 0018):** exportação via `WorkManager` (`StoryExportWorker`) com nome único por atividade, plano reconstruído dos repositórios e mapa da prévia reaproveitado em cache; cancelamento cooperativo no encoder (MP4 parcial apagado), progresso a cada 0,6 s com ETA suavizado, notificação de concluído/falha e estado restaurado ao reabrir a tela.
 - **Story v2 — câmera:** flyover que segue o corredor (overview 1,18×/8° → follow 1,72×/32°), rotação de até 22° pela direção da rota, zoom extra no card e pullback no encerramento; homografia aplicada ao mapa **e** à rota, com espessura da rota compensada pela escala.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
@@ -50,6 +51,59 @@
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
+- **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-04 — Story: mapa mais limpo e nítido (e o limite do tilt)
+**Objetivo:** elevar a leitura do mapa sem quebrar o alinhamento rota/ruas.
+
+- **Estilo outdoor:** `OpenFreeMapStyle` agora remove camadas de POI, transporte e aeroporto do `liberty` antes do snapshot; labels de cidade/rua seguem ampliados com halo. Mapa limpo, rota como único elemento colorido.
+- **Nitidez:** supersampling do snapshot de 1,95× para 2,25× (2430×4320); custo estimado de ~42 MB de ARGB — validar em aparelho de RAM baixa.
+- **Foco na rota:** halo radial lima acompanhando o marcador e ticks discretos por km percorrido, ambos no `Canvas` (determinísticos, sem rede).
+- **Tilt nativo — bloqueio registrado:** o `MapSnapshotter` 12.3.1 aceita `tilt`/`bearing`, mas não expõe `Projection`/`getMapAsync` (confirmado no AAR). Sem projeção, um snapshot inclinado desalinharia a rota animada. Saídas mapeadas em `STORY_V2` §14 (`ADR-0015` addendum): portar a matriz de câmera do MapLibre ou assar a rota no snapshot com revelação por keyframes. Fica como spike com validação em aparelho.
+- **Golden:** 7 snapshots do story regravados (halo + ticks); nenhuma mudança em tutorial/perfil.
+- **Testes:** +1 em `OpenFreeMapStyleTest` (clutter removido); verificação visual do story verde.
+- **Verificação:** `check`, `:app:assembleDebug` e `koverVerify` verdes.
+
+## Sessão 2026-11-04 — Story: geração em segundo plano e cancelamento real
+**Objetivo:** tirar o story do fluxo "prende a tela e o cancelar é simbólico", sem tocar no motor determinístico.
+
+- **WorkManager (`ADR 0018`):** `exportStory()` virou `StoryExportCoordinator` → `StoryExportWorker` (`@HiltWorker`), com nome único `story-export-<activityId>` e `ExistingWorkPolicy.REPLACE`. O app pode ser fechado; o worker continuar e notificar.
+- **Plano reconstruído:** `StoryPlanLoader` + `StorySessionResolver` recarregam atividade, LTHR e sessões planejadas dentro do worker; o mapa da prévia viaja como PNG em `cacheDir/stories/story-map-<id>.png` e só é re-renderizado se o cache sumir (com `Result.retry()` para falha transitória de rede).
+- **Cancelamento de verdade:** `CanvasStoryVideoExporter` (novo nome da implementação; interface `StoryVideoExporter`) recebe `isCancelled` derivado do `Job`, checa antes de cada frame e antes do `END_OF_STREAM`, libera codec/muxer e apaga o MP4 parcial. `cancelStory()` chama `cancelUniqueWork` e o worker trata `CancellationException` como cancelamento.
+- **Progresso e ETA:** `setProgress` a cada 600 ms com fração e `etaSec`; `StoryEtaEstimator` (puro) suaviza a taxa e faz clamp; a UI mostra “Cerca de N s restantes”, aviso “Pode sair da tela” e botão Cancelar no estado de geração.
+- **Estado restaurado:** o card observa o `WorkInfo` por nome único; reabrir a tela adota `Generating`/`Done`/`Error` de um export em andamento ou recém-concluído, ignorando saídas obsoletas quando o usuário já mudou de estado.
+- **Notificação:** `StoryNotifier` em canal `meucoach-story`, com deep link para o treino e respeito a `POST_NOTIFICATIONS`.
+- **Testes:** 28 novos — `StoryEtaEstimatorTest` (8), `StoryPaletteCodecTest` (2), `StoryExportProcessorTest` (6), `StoryExportCoordinatorTest` (4), `ActivityDetailViewModelTest` (7 de fluxo/estado) e `ActivityDetailScreenTest` (1 de geração); o encoder real continua validado só em aparelho.
+- **Verificação:** `./gradlew check`, `:app:assembleDebug` e `koverVerify` verdes; lint 0 erros.
+
+## Sessão 2026-11-03 — Tutorial de boas-vindas (primeira abertura)
+
+### Concluído
+
+- **Tour de 4 telas** (`ui/tutorial`): boas-vindas (“Seu coach de corrida”), as telas do app (Hoje/Corridas/Tendências/Perfil), o que mantém o coach informado (check-in das 4 perguntas com lembrete às 18h, corridas importadas via FIT/TCX/GPX compartilhados, Health Connect, calibração por prova/teste de 30 min) e “Você no controle” (nada sai do aparelho, explicação do treino sem jargão, registrar conclusão/adiamento/pulo, exportar ou apagar dados). Ícone de página em `accentSoft`, bullets com ponto lima, dots de progresso, botões `Continuar`/`Voltar`/`Tudo pronto` e `Pular` (finaliza e marca como visto).
+- **Gate de primeira execução:** quando existe perfil e o tutorial nunca foi concluído, o app abre o tour em tela cheia (sem bottom bar) antes de Hoje. Usuários antigos veem o tour uma única vez após atualizar. `TutorialViewModel` (`@HiltViewModel`) expõe `seen`; `TutorialStore` persiste a flag em SharedPreferences (`meucoach_tutorial`), no padrão do `HealthSyncStore` — sem migração de Room.
+- **Rever o tutorial:** nova seção “Ajuda” no Perfil (antes de “Editar perfil”) com card “Rever o tour de boas-vindas” e botão “Rever tutorial”; rota `tutorial` esconde a bottom bar e sempre finaliza com `popBackStack`.
+- **Texto alinhado ao produto:** sem jargão interno (uma menção genérica a FC/HRV/SpO₂ já traduzidas em outras telas), tom sem culpa (“o app fica conservador” quando falta dado), “Por que este treino?” como porta de explicação.
+- **Testes:** 10 novos do tutorial (`TutorialStoreTest` 2, `TutorialViewModelTest` 3, `TutorialScreenTest` 3, `TutorialScreenshotTest` 2 com goldens dark/light) + 1 no perfil (card abre o callback de revisão). Call sites de `ProfileContent` atualizados; goldens de Perfil regravados.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify` — sucesso.
+- 726 testes, 0 falhas (27 `core:model`, 279 `core:domain`, 89 `core:data`, 331 `:app`).
+- Lint: 0 erros; 23 avisos não bloqueantes (aviso `UseKtx` do tutorial corrigido com `prefs.edit { }`).
+- Goldens novos: `tutorial-dark.png` e `tutorial-light.png`.
+
+### Decisões e observações
+
+- **SharedPreferences, não Room:** a flag é preferência de UI, não dado do atleta; acompanha o padrão do `HealthSyncStore` e nunca exige migração de schema.
+- **Depois do onboarding, não antes:** o tour assume que o usuário já tem perfil, então explica “Calibrar” e “Health Connect” com contexto real; o onboarding continua sendo a única coisa na primeira execução sem perfil.
+- **Pular = visto:** “Pular” também marca o tutorial como concluído; a revisão fica no Perfil, sem insistência.
+- **Conteúdo declarativo, não interativo:** seguiram o padrão do próprio onboarding (steps declarativos) em vez de spotlight sobre cards reais — mais barato de manter e testável em CI.
+
+### Próximo passo
+
+1. Validar o tour no aparelho real (fluxo pós-onboarding e o acesso pelo Perfil).
+2. `P1-12`: validação E2E com 4 semanas de uso real.
 
 ## Sessão 2026-11-03 — Câmera flyover do story
 
@@ -1784,3 +1838,5 @@
 | 03/11/2026 | T-06 concluído: tela Dados exporta JSON completo e apaga todos os dados em transação, com confirmação; 591 testes |
 | 03/11/2026 | P1-11 concluído: notificação de importação (sucesso/duplicado/falha) com deep link para o treino; 600 testes |
 | 03/11/2026 | Hoje: card de carga deixa de usar números de demonstração sem dados; estado vazio honesto; 602 testes |
+| 04/11/2026 | Story: geração em segundo plano via WorkManager, cancelamento real no encoder, ETA e notificação (ADR 0018); 754 testes |
+| 04/11/2026 | Story: mapa outdoor sem POIs, snapshot 2,25×, foco na rota e ticks por km; bloqueio do tilt nativo documentado (ADR 0015 addendum); 755 testes |

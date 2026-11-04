@@ -29,9 +29,9 @@ class StoryLayoutTest {
     fun `projects the route into the square between header and card`() {
         val square = StoryLayout.routeSquare(720f, 1280f)
 
-        assertThat(square.side).isCloseTo(491.5f, within(0.1f))
-        assertThat(square.left).isCloseTo(114.2f, within(0.1f))
-        assertThat(square.top).isCloseTo(384.3f, within(0.1f))
+        assertThat(square.side).isCloseTo(483.3f, within(0.1f))
+        assertThat(square.left).isCloseTo(118.3f, within(0.1f))
+        assertThat(square.top).isCloseTo(388.3f, within(0.1f))
         assertThat(square.centerX).isCloseTo(360f, within(0.1f))
         assertThat(square.centerY).isCloseTo(630f, within(0.1f))
     }

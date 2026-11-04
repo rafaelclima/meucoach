@@ -30,6 +30,25 @@ class OpenFreeMapStyleTest {
     }
 
     @Test
+    fun `drops POI, transit and airport clutter`() {
+        val json = """
+            {"layers":[
+              {"id":"poi_z14","type":"symbol","layout":{"text-field":["get","name"]}},
+              {"id":"transit_stop","type":"circle"},
+              {"id":"airport","type":"symbol","layout":{"text-field":["get","name"]}},
+              {"id":"label_city","type":"symbol","layout":{"text-field":["get","name"]}},
+              {"id":"roads","type":"line","paint":{"line-color":"#fff"}}
+            ]}
+        """.trimIndent()
+
+        val layers = JSONObject(OpenFreeMapStyle.customize(json)).getJSONArray("layers")
+
+        assertThat(layers.length()).isEqualTo(2)
+        assertThat(layers.getJSONObject(0).getString("id")).isEqualTo("label_city")
+        assertThat(layers.getJSONObject(1).getString("id")).isEqualTo("roads")
+    }
+
+    @Test
     fun `adds a paint block when the label layer has none`() {
         val json = """
             {"layers":[{"id":"highway-name-minor","type":"symbol","layout":{"text-field":["get","name"]}}]}

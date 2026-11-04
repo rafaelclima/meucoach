@@ -24,7 +24,6 @@ class StoryMotionTest {
         assertThat(middle.follow).isCloseTo(1f, within(1e-4f))
         assertThat(middle.scale).isCloseTo(StoryMotion.FOLLOW_SCALE, within(1e-4f))
         assertThat(middle.pitchDegrees).isCloseTo(StoryMotion.FOLLOW_PITCH_DEGREES, within(1e-4f))
-        assertThat(middle.rotationDegrees).isCloseTo(-StoryMotion.MAX_ROTATION_DEGREES, within(0.001f))
 
         assertThat(end.follow).isCloseTo(0f, within(1e-4f))
         assertThat(end.scale).isCloseTo(StoryMotion.OVERVIEW_SCALE, within(1e-4f))
@@ -33,11 +32,20 @@ class StoryMotionTest {
     }
 
     @Test
+    fun `camera drifts smoothly instead of snapping to the route bearing`() {
+        val plan = plan()
+
+        assertThat(abs(StoryMotion.camera(2.5f, plan).rotationDegrees)).isGreaterThan(3f)
+        assertThat(abs(StoryMotion.camera(5f, plan).rotationDegrees)).isLessThan(0.01f)
+        assertThat(abs(StoryMotion.camera(7.5f, plan).rotationDegrees)).isGreaterThan(3f)
+    }
+
+    @Test
     fun `camera follows the runner point along the route`() {
         val plan = plan()
 
-        assertThat(StoryMotion.camera(0f, plan).focusX).isCloseTo(0f, within(1e-4f))
-        assertThat(StoryMotion.camera(0f, plan).focusY).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.camera(0f, plan).focusX).isCloseTo(StoryMotion.FOCUS_MARGIN, within(1e-4f))
+        assertThat(StoryMotion.camera(0f, plan).focusY).isCloseTo(StoryMotion.FOCUS_MARGIN, within(1e-4f))
         assertThat(StoryMotion.camera(5f, plan).focusX).isCloseTo(0.5f, within(1e-4f))
         assertThat(StoryMotion.camera(5f, plan).focusY).isCloseTo(0.5f, within(1e-4f))
     }
@@ -84,22 +92,11 @@ class StoryMotionTest {
     }
 
     @Test
-    fun `route heading makes the direction of travel point up`() {
-        val right = RouteData(listOf(RoutePoint(0f, 0.5f), RoutePoint(1f, 0.5f)))
-        val up = RouteData(listOf(RoutePoint(0.5f, 1f), RoutePoint(0.5f, 0f)))
-        val down = RouteData(listOf(RoutePoint(0.5f, 0f), RoutePoint(0.5f, 1f)))
-
-        assertThat(StoryMotion.headingDegrees(right, 0.5f)).isCloseTo(-90f, within(0.1f))
-        assertThat(StoryMotion.headingDegrees(up, 0.5f)).isCloseTo(0f, within(0.1f))
-        assertThat(abs(StoryMotion.headingDegrees(down, 0.5f))).isGreaterThan(170f)
-    }
-
-    @Test
     fun `follow intensity dives in and pulls back inside the closing segment`() {
         val plan = plan()
 
         assertThat(StoryMotion.followIntensity(plan, 0f)).isCloseTo(0f, within(1e-4f))
-        assertThat(StoryMotion.followIntensity(plan, 1.8f)).isCloseTo(1f, within(1e-4f))
+        assertThat(StoryMotion.followIntensity(plan, 1.6f)).isCloseTo(1f, within(1e-4f))
         assertThat(StoryMotion.followIntensity(plan, 11f)).isCloseTo(1f, within(1e-4f))
         assertThat(StoryMotion.followIntensity(plan, 12.6f)).isCloseTo(0.5f, within(0.001f))
         assertThat(StoryMotion.followIntensity(plan, 15f)).isCloseTo(0f, within(1e-4f))

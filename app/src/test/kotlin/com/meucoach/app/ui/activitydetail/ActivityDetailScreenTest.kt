@@ -163,6 +163,30 @@ class ActivityDetailScreenTest {
     }
 
     @Test
+    fun `shows the estimate, background hint and cancel while generating`() {
+        var cancelled = false
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    storyExport = StoryExportUiState.Generating(progress = 0.25f, etaSec = 12),
+                ),
+                onBack = {},
+                onCancelStory = { cancelled = true },
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Pode sair da tela: avisamos quando ficar pronto."))
+        compose.onNodeWithText("Gerando vídeo… 25%").assertExists()
+        compose.onNodeWithText("Cerca de 12 s restantes").assertIsDisplayed()
+        compose.onNodeWithText("Pode sair da tela: avisamos quando ficar pronto.").assertIsDisplayed()
+        list.performScrollToNode(hasText("Cancelar"))
+        compose.onNodeWithTag("story-cancel").performClick()
+
+        assertThat(cancelled).isTrue()
+    }
+
+    @Test
     fun `shares a finished story`() {
         val uri = Uri.parse("content://media/external/video/media/42")
         var shared: Uri? = null

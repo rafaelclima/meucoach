@@ -12,7 +12,10 @@ sealed interface StoryExportUiState {
     data object Idle : StoryExportUiState
     data object PreparingMap : StoryExportUiState
     data class Preview(val plan: StoryPlan, val mapBackground: Bitmap? = null) : StoryExportUiState
-    data class Generating(val progress: Float) : StoryExportUiState
+
+    /** Background export in progress. [etaSec] is null until the estimate is trustworthy (ADR 0018).*/
+    data class Generating(val progress: Float, val etaSec: Int? = null) : StoryExportUiState
+
     data class Done(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null) : StoryExportUiState
     data class Error(val message: String) : StoryExportUiState
 }

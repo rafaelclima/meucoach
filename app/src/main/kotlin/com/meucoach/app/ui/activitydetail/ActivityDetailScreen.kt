@@ -576,11 +576,35 @@ private fun StoryCard(
                 color = colors.textPrimary,
             )
 
-            is StoryExportUiState.Generating -> Text(
-                text = "Gerando vídeo… ${(story.progress * 100).roundToInt()}%",
-                style = MaterialTheme.typography.titleSmall,
-                color = colors.textPrimary,
-            )
+            is StoryExportUiState.Generating -> {
+                Text(
+                    text = "Gerando vídeo… ${(story.progress * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                )
+                if (story.etaSec != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Cerca de ${story.etaSec} s restantes",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Pode sair da tela: avisamos quando ficar pronto.",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                McSecondaryButton(
+                    text = "Cancelar",
+                    onClick = onCancelStory,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("story-cancel"),
+                )
+            }
 
             is StoryExportUiState.Done -> {
                 Text(

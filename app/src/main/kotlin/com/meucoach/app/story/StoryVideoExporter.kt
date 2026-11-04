@@ -19,7 +19,10 @@ import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import com.meucoach.core.designsystem.R
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -28,29 +31,77 @@ import kotlin.math.roundToInt
 data class StoryExportResult(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null)
 
 /**
+ * Contract for rendering the story MP4 out of a [StoryPlan]. An interface so
+ * the background export (ADR 0018) can be tested without the codec pipeline.
+ */
+interface StoryVideoExporter {
+    /**
+     * Renders every frame and encodes it. [isCancelled] is polled before each
+     * frame, so a cancelled export never starts another encode round. The
+     * returned file is owned by the exporter and must not be deleted by callers.
+     */
+    suspend fun export(
+        plan: StoryPlan,
+        palette: StoryPalette,
+        mapBackground: Bitmap? = null,
+        isCancelled: () -> Boolean = { false },
+        onProgress: suspend (progress: Float) -> Unit = {},
+    ): StoryExportResult
+
+    companion object {
+        const val WIDTH = 1080
+        const val HEIGHT = 1920
+
+        /**
+         * The map is rendered ~2.25× larger than the video and drawn down into
+         * the frame, so the overview and the 1.65× flyover stay sharp. Raising
+         * it further costs ~10 MB of ARGB per step; validate on a low-RAM
+         * device before touching this again.
+         */
+        const val MAP_SUPERSAMPLE = 2.25f
+
+        fun mapWidth(): Int = (WIDTH * MAP_SUPERSAMPLE).toInt()
+        fun mapHeight(): Int = (HEIGHT * MAP_SUPERSAMPLE).toInt()
+    }
+}
+
+/**
  * Canvas + MediaCodec MVP for the story video. The encoder uses Image input
  * (YUV420 flexible), so it does not need an EGL surface or a new dependency.
  * Devices whose H.264 encoder lacks that color format return a clear error.
  */
-class StoryVideoExporter @Inject constructor(@ApplicationContext private val context: Context) {
+class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private val context: Context) :
+    StoryVideoExporter {
     private val typeface: Typeface by lazy {
         ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
     }
 
     private val defaultLogoBitmap: Bitmap? by lazy { StoryBranding.logo(context) }
 
-    suspend fun export(
+    override suspend fun export(
         plan: StoryPlan,
         palette: StoryPalette,
-        mapBackground: Bitmap? = null,
-        onProgress: (Float) -> Unit = {},
+        mapBackground: Bitmap?,
+        isCancelled: () -> Boolean,
+        onProgress: suspend (progress: Float) -> Unit,
     ): StoryExportResult = withContext(Dispatchers.Default) {
+        // Cancellation must be polled synchronously: the encode loop never
+        // suspends, so simply cancelling this coroutine would not stop it.
+        val job = requireNotNull(currentCoroutineContext()[Job]) { "Export precisa de um Job ativo." }
+        val cancelled = { !job.isActive }
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val stamp = System.currentTimeMillis()
         val output = File(directory, "meucoach-story-$stamp.mp4")
-        encode(plan, palette, mapBackground, output, onProgress)
-        val cover = runCatching { writeCover(plan, palette, mapBackground, directory, stamp) }.getOrNull()
-        publish(output, cover)
+        try {
+            encode(plan, palette, mapBackground, output, cancelled, onProgress)
+            val cover = runCatching { writeCover(plan, palette, mapBackground, directory, stamp) }.getOrNull()
+            publish(output, cover)
+        } catch (error: Throwable) {
+            // A partial MP4 is unreadable: a cancelled or failed export leaves
+            // nothing in the cache for the user to stumble on.
+            runCatching { output.delete() }
+            throw error
+        }
     }
 
     /**
@@ -65,15 +116,15 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         stamp: Long,
     ): File {
         val file = File(directory, "meucoach-story-cover-$stamp.png")
-        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         try {
             val finalStart = plan.segments.lastOrNull { it.type == StorySegmentType.FINAL }?.startSec
                 ?: (plan.durationSec - 1f).coerceAtLeast(0f)
             val timeSec = finalStart + 1f
             val canvas = Canvas(bitmap)
             StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground)
-                .render(canvas, plan, timeSec, WIDTH, HEIGHT)
-            StoryFilm.drawGrain(canvas, WIDTH, HEIGHT, timeSec)
+                .render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
+            StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
             file.outputStream().use { output ->
                 check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
                     "Não foi possível salvar a capa do story."
@@ -85,12 +136,13 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         return file
     }
 
-    private fun encode(
+    private suspend fun encode(
         plan: StoryPlan,
         palette: StoryPalette,
         mapBackground: Bitmap?,
         output: File,
-        onProgress: (Float) -> Unit,
+        isCancelled: () -> Boolean,
+        onProgress: suspend (progress: Float) -> Unit,
     ) {
         val codecInfo = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { info ->
             info.isEncoder &&
@@ -105,12 +157,12 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         var muxerStarted = false
         var trackIndex = -1
         val info = MediaCodec.BufferInfo()
-        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         // Reused across frames: 1080×1920 ints per frame would allocate ~8 MB/frame.
-        val pixels = IntArray(WIDTH * HEIGHT)
+        val pixels = IntArray(StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT)
         val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground)
-        val yuvSize = WIDTH * HEIGHT * 3 / 2
+        val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
 
         fun drain(endOfStream: Boolean) {
@@ -146,7 +198,11 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         }
 
         try {
-            val format = MediaFormat.createVideoFormat(MIME, WIDTH, HEIGHT).apply {
+            val format = MediaFormat.createVideoFormat(
+                MIME,
+                StoryVideoExporter.WIDTH,
+                StoryVideoExporter.HEIGHT,
+            ).apply {
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
                 setInteger(MediaFormat.KEY_BIT_RATE, BITRATE)
                 setInteger(MediaFormat.KEY_FRAME_RATE, FPS)
@@ -156,9 +212,12 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
             codec.start()
 
             for (frame in 0 until frameCount) {
+                if (isCancelled()) {
+                    throw CancellationException("Geração do story cancelada.")
+                }
                 val timeSec = frame.toFloat() / FPS
-                renderer.render(canvas, plan, timeSec, WIDTH, HEIGHT)
-                StoryFilm.drawGrain(canvas, WIDTH, HEIGHT, timeSec)
+                renderer.render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
+                StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
                 val inputIndex = codec.dequeueInputBuffer(10_000L)
                 check(inputIndex >= 0) { "Encoder sem buffer de entrada." }
                 val image = codec.getInputImage(inputIndex)
@@ -172,9 +231,12 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
                     0,
                 )
                 drain(endOfStream = false)
-                if (frame % 12 == 0) onProgress(frame.toFloat() / frameCount)
+                if (frame % PROGRESS_EVERY_FRAMES == 0) onProgress(frame.toFloat() / frameCount)
             }
 
+            if (isCancelled()) {
+                throw CancellationException("Geração do story cancelada.")
+            }
             val inputIndex = codec.dequeueInputBuffer(10_000L)
             check(inputIndex >= 0) { "Encoder sem buffer para finalizar." }
             codec.queueInputBuffer(
@@ -195,13 +257,13 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
     }
 
     private fun fillImage(bitmap: Bitmap, image: Image, pixels: IntArray) {
-        bitmap.getPixels(pixels, 0, WIDTH, 0, 0, WIDTH, HEIGHT)
+        bitmap.getPixels(pixels, 0, StoryVideoExporter.WIDTH, 0, 0, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
         val yPlane = image.planes[0]
         val uPlane = image.planes[1]
         val vPlane = image.planes.getOrNull(2)
-        for (y in 0 until HEIGHT) {
-            for (x in 0 until WIDTH) {
-                val color = pixels[y * WIDTH + x]
+        for (y in 0 until StoryVideoExporter.HEIGHT) {
+            for (x in 0 until StoryVideoExporter.WIDTH) {
+                val color = pixels[y * StoryVideoExporter.WIDTH + x]
                 val red = (color shr 16) and 0xff
                 val green = (color shr 8) and 0xff
                 val blue = color and 0xff
@@ -291,20 +353,12 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
 
     companion object {
         private const val MIME = "video/avc"
-        const val WIDTH = 1080
-        const val HEIGHT = 1920
         private const val FPS = 30
 
         // Instagram re-encodes to 30 fps; 10 Mbps keeps street labels crisp.
         private const val BITRATE = 10_000_000
 
-        /**
-         * The map is rendered 75% larger than the video and drawn down into the
-         * frame, so the overview and the 1.72× flyover stay sharp.
-         */
-        const val MAP_SUPERSAMPLE = 1.75f
-
-        fun mapWidth(): Int = (WIDTH * MAP_SUPERSAMPLE).toInt()
-        fun mapHeight(): Int = (HEIGHT * MAP_SUPERSAMPLE).toInt()
+        /** Progress callback stays cheap for the encoder loop; callers throttle further. */
+        private const val PROGRESS_EVERY_FRAMES = 12
     }
 }

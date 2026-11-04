@@ -79,7 +79,16 @@ class StoryFrameRenderer(
             drawMapBackground(canvas, width, height)
         }
         withCamera(canvas, camera, square, width, height) {
-            drawRoute(canvas, plan, timeSec, width, height, scale, square, camera.scale)
+            drawRoute(
+                canvas,
+                plan,
+                timeSec,
+                width,
+                height,
+                scale,
+                square,
+                camera.scale * StoryPerspective.COVERAGE_SCALE,
+            )
         }
         drawScrims(canvas, width, height, scale, isFinal)
         drawHeader(canvas, plan, width, height, scale)
@@ -102,21 +111,8 @@ class StoryFrameRenderer(
         height: Int,
         draw: () -> Unit,
     ) {
-        val routeFocusX = square.left + camera.focusX * square.side
-        val routeFocusY = square.top + camera.focusY * square.side
-        val focusX = square.centerX + (routeFocusX - square.centerX) * camera.follow
-        val focusY = square.centerY + (routeFocusY - square.centerY) * camera.follow
         canvas.save()
-        StoryPerspective.matrix(
-            width = width.toFloat(),
-            height = height.toFloat(),
-            pitchDegrees = camera.pitchDegrees,
-            yawDegrees = camera.yawDegrees,
-        )?.let { canvas.concat(it) }
-        canvas.translate(camera.targetX * width, camera.targetY * height)
-        canvas.rotate(camera.rotationDegrees)
-        canvas.scale(camera.scale, camera.scale)
-        canvas.translate(-focusX, -focusY)
+        canvas.concat(StoryPerspective.cameraMatrix(camera, square, width.toFloat(), height.toFloat()))
         draw()
         canvas.restore()
     }
@@ -262,6 +258,13 @@ class StoryFrameRenderer(
             val y = projectY(point.y)
             if (index == 0) routePath.moveTo(x, y) else routePath.lineTo(x, y)
         }
+        val measure = PathMeasure(routePath, false)
+        val progress = StoryMotion.progressAt(plan, timeSec)
+        val position = FloatArray(2)
+        measure.getPosTan(measure.length * progress, position, null)
+        // Directional light around the runner: the map recedes and the eye
+        // follows the route instead of scanning the whole snapshot.
+        drawSpotlight(canvas, position[0], position[1], side)
         if (mapBackground != null) {
             val casing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
@@ -283,12 +286,9 @@ class StoryFrameRenderer(
         }
         canvas.drawPath(routePath, base)
 
-        val measure = PathMeasure(routePath, false)
-        val progress = StoryMotion.progressAt(plan, timeSec)
         drawTraveledRoute(canvas, plan, measure, progress, overlayScale)
+        drawKmTicks(canvas, plan, measure, overlayScale)
 
-        val position = FloatArray(2)
-        measure.getPosTan(measure.length * progress, position, null)
         val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = palette.accent
             alpha = 60
@@ -341,6 +341,43 @@ class StoryFrameRenderer(
             paint.color = palette.zoneColor(run.zone)
             canvas.drawPath(segment, paint)
         }
+    }
+
+    /**
+     * Small ticks at each finished kilometre. They turn the line into a scale:
+     * the viewer can see "how many km until the card" without reading numbers.
+     */
+    private fun drawKmTicks(canvas: Canvas, plan: StoryPlan, measure: PathMeasure, scale: Float) {
+        if (measure.length <= 0f || plan.splits.size < 2) return
+        val point = FloatArray(2)
+        val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = palette.mapCasing
+            alpha = 160
+        }
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = palette.textPrimary
+            alpha = 190
+        }
+        plan.splits.drop(1).forEach { split ->
+            measure.getPosTan(measure.length * split.progress, point, null)
+            canvas.drawCircle(point[0], point[1], 5.5f * scale, ring)
+            canvas.drawCircle(point[0], point[1], 3f * scale, dot)
+        }
+    }
+
+    /** Soft accent halo under the route, centred on the current position. */
+    private fun drawSpotlight(canvas: Canvas, x: Float, y: Float, side: Float) {
+        if (mapBackground == null) return
+        val radius = side * 0.55f
+        val shader = RadialGradient(
+            x,
+            y,
+            radius,
+            intArrayOf(withAlpha(palette.accent, 26), withAlpha(palette.accent, 0)),
+            floatArrayOf(0f, 1f),
+            Shader.TileMode.CLAMP,
+        )
+        canvas.drawCircle(x, y, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.shader = shader })
     }
 
     private fun routePaint(color: Int, scale: Float): Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

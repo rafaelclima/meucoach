@@ -1,6 +1,6 @@
 # Story do treino v2 — “O Veredito”
 
-**Status:** Fases A e B implementadas em 03/11/2026 · câmera v2 (zoom por card + pitch/yaw) em 03/11/2026 · Fases C–D propostas
+**Status:** Fases A e B implementadas em 03/11/2026 · câmera v2 (zoom por card + pitch/yaw) em 03/11/2026 · geração em segundo plano e cancelamento real em 04/11/2026 (`ADR 0018`) · Fases C–D propostas
 **Data:** 03/11/2026
 **Não implementado:** áudio, morph rota → logo e auto-seleção dos kms (Fases C/D). Nenhuma linha deste documento altera o motor determinístico.
 
@@ -115,7 +115,7 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
 
 **Regras que continuam valendo:** o motor determinístico decide o veredito; nenhum LLM entra no vídeo; nenhuma coordenada exata sai do aparelho; tudo é gerado localmente (o mapa continua sendo a única chamada de rede).
 
-**Regras que precisam de exceção consciente (ADR 0017):**
+**Regras que precisam de exceção consciente (registradas em `ADR-0012`/`ADR-0015`, restritas à exportação social):**
 
 - `DESIGN_SYSTEM.md` §2.6 (“movimento com propósito; nada decorativo”): grão, câmera e morph são **decoração deliberada** no contexto de exportação social. A exceção vale só para o vídeo, não para a UI.
 - `PRODUCT.md` §5.1 (“explicar, não impressionar”): o story é a única superfície em que impressionar é o objetivo — mas cada número continua vindo do motor e o veredito é explicável.
@@ -224,12 +224,26 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
 
 **Objetivo:** sair do "mapa parado com tilt mínimo" e criar um voo perceptível, sem sair do motor determinístico e sem dependência nova.
 
-- **Câmera que segue o corredor:** `StoryMotion.camera(timeSec, plan)` calcula o ponto da rota no progresso atual, mantém esse ponto em 43% da altura e puxa o mapa para perto. O vídeo começa no overview (1,18×/8°), mergulha em 1,8 s para 1,72×/32° e volta ao overview nos primeiros 1,2 s do frame final.
-- **Ângulo de câmera:** a rotação acompanha a direção da rota (limitada a ±22° para o snapshot ainda cobrir o 9:16), o `pitch` chega a 32° e o `yaw` dá um roll de até 2,5°. O `StoryPerspective` agora também derruba a borda superior em direção ao horizonte, o que dá leitura de plano inclinado, não só de trapézio horizontal.
+- **Câmera que segue o corredor:** `StoryMotion.camera(timeSec, plan)` calcula o ponto da rota no progresso atual, mantém esse ponto em 43% da altura e puxa o mapa para perto. O vídeo começa no overview (1,20×/6°), mergulha em 1,6 s para 1,65×/18° e volta ao overview no início do frame final.
+- **Ângulo de câmera:** a rotação acompanha a direção da rota (limitada a ±6° para o snapshot ainda cobrir o 9:16), o `pitch` chega a 18° e o `yaw` dá um roll de até 1,5°. O `StoryPerspective` agora também derruba a borda superior em direção ao horizonte, o que dá leitura de plano inclinado, não só de trapézio horizontal.
 - **Zoom por card:** enquanto um card de km está na tela, entram +0,06 de escala e +3° de pitch. Entre cards a câmera respira; no encerramento ela se afasta para mostrar a rota inteira.
 - **Rota legível no zoom:** a espessura da linha, o glow e os marcadores são divididos pela escala da câmera, então continuam com o mesmo tamanho de tela enquanto o mapa cresce.
-- **Mapa nítido:** o snapshot subiu para 1,75× (1890×3360) e o layout reserva a escala de overview; o zoom de 1,72× continua praticamente 1:1.
+- **Mapa nítido:** o snapshot subiu para 2,25× (2430×4320) e o layout reserva a escala de overview; o zoom de 1,65× continua praticamente 1:1 (ver §14).
 - **Limite consciente:** ainda é uma homografia sobre o snapshot, não terreno 3D. Um pitch real de MapLibre exigiria re-renderizar o mapa por frame; a versão atual preserva o alinhamento rota/ruas e é viável no MediaCodec.
 - **Testes:** `StoryMotionTest` cobre overview, mergulho, follow do ponto, heading, cards, pullback e teto de escala; `StoryPerspectiveTest` cobre o horizonte e a compressão lateral. Goldens do story atualizados.
 
 **Ainda pendente:** validar o movimento em aparelho real e medir o tempo de export com o snapshot maior; se o custo pesar, reduzir o supersampling para 1,5× e o follow para 1,55×.
+
+---
+
+## 14. Nota de implementação — mapa: polimento e limite técnico do tilt (04/11/2026)
+
+**Objetivo:** lapidar o mapa do story sem quebrar o alinhamento rota/ruas e registrar por que o tilt nativo ainda não entrou.
+
+- **Estilo mais limpo (`OpenFreeMapStyle`):** o `liberty` é filtrado em tempo de execução para remover camadas de POI, transporte e aeroporto (ícones e rótulos minúsculos que competiam com o traçado). Labels de cidade/rua continuam ampliados e com halo branco. O resultado é um mapa de leitura "outdoor", com a rota como único elemento de cor.
+- **Mais nitidez:** supersampling do snapshot subiu de 1,95× (2106×3744) para 2,25× (2430×4320). O custo é memória (~42 MB de ARGB no preview/worker) — validar em aparelho de RAM baixa antes de subir de novo.
+- **Foco na rota:** um halo radial lima (alpha baixo) acompanha o marcador durante o vídeo, e ticks discretos marcam cada km já percorrido. São mudanças de `Canvas`, determinísticas, sem custo de rede.
+- **O que o tilt nativo exige (e por que ficou para um spike):** `MapSnapshotter` do MapLibre 12.3.1 aceita `CameraPosition` com `tilt`/`bearing`, mas **não expõe `Projection` nem `getMapAsync`** (confirmado inspecionando o AAR). Sem projeção, desenhar a rota animada no `Canvas` sobre um snapshot inclinado exigiria reimplementar a matriz de câmera do MapLibre (ou renderizar via `MapView` offscreen), e o alinhamento rota/ruas só pode ser validado em aparelho real. Duas saídas possíveis:
+  1. **Portar a matemática de câmera** (`TransformState::latLngToScreenCoordinate` + `getProjMatrix`/`getCoordMatrix`) para Kotlin puro, com teste de paridade no top-down e checklist de calibração no aparelho;
+  2. **Assar a rota no snapshot** via `GeoJSON`/`line-gradient` (alinhamento garantido pelo próprio MapLibre) e revelar por keyframes, aceitando menos fluidez no traçado.
+- **Decisão:** manter o tilt "de matriz" atual nesta rodada e tratar o tilt nativo como spike próprio, com validação em aparelho. A Fase M2 (flyover por keyframes) só faz sentido depois dessa decisão.

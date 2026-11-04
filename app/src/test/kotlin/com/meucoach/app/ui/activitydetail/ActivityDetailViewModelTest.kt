@@ -5,8 +5,15 @@ import android.graphics.Bitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.Data
+import androidx.work.WorkInfo
+import androidx.work.workDataOf
 import com.meucoach.app.story.BoundingBox
 import com.meucoach.app.story.MapBackgroundRenderer
+import com.meucoach.app.story.StoryExportCoordinator
+import com.meucoach.app.story.StoryExportWorker
+import com.meucoach.app.story.StoryPalette
+import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
@@ -28,6 +35,8 @@ import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -47,6 +56,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.TemporalAdjusters
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -194,25 +204,28 @@ class ActivityDetailViewModelTest {
                 SavedStateHandle(),
                 repository,
                 profiles,
-                plans,
-                StoryVideoExporter(ApplicationProvider.getApplicationContext()),
+                StorySessionResolver(plans),
                 FakeMapBackgroundRenderer(),
+                FakeStoryExportCoordinator(),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
     }
 
-    private fun viewModel(activityId: String, mapRenderer: MapBackgroundRenderer = FakeMapBackgroundRenderer()) =
-        ActivityDetailViewModel(
-            savedStateHandle = SavedStateHandle(
-                mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
-            ),
-            repository = repository,
-            profileRepository = profiles,
-            planRepository = plans,
-            storyExporter = StoryVideoExporter(ApplicationProvider.getApplicationContext()),
-            mapRenderer = mapRenderer,
-        )
+    private fun viewModel(
+        activityId: String,
+        mapRenderer: MapBackgroundRenderer = FakeMapBackgroundRenderer(),
+        coordinator: StoryExportCoordinator = FakeStoryExportCoordinator(),
+    ) = ActivityDetailViewModel(
+        savedStateHandle = SavedStateHandle(
+            mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
+        ),
+        repository = repository,
+        profileRepository = profiles,
+        sessions = StorySessionResolver(plans),
+        mapRenderer = mapRenderer,
+        storyCoordinator = coordinator,
+    )
 
     @Test
     fun `reports missing gps when creating a story`() {
@@ -349,6 +362,198 @@ class ActivityDetailViewModelTest {
         }
     }
 
+    @Test
+    fun `exporting hands the preview and palette to the background coordinator`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val coordinator = FakeStoryExportCoordinator()
+            val viewModel = viewModel("activity-1", coordinator = coordinator)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+            viewModel.exportStory(testPalette())
+
+            assertThat(viewModel.uiState.value.storyExport)
+                .isEqualTo(StoryExportUiState.Generating(progress = 0f))
+            assertThat(coordinator.startedActivityId).isEqualTo("activity-1")
+            assertThat(coordinator.startedPalette).isEqualTo(testPalette())
+            assertThat(coordinator.startedMap).isNotNull()
+        }
+    }
+
+    @Test
+    fun `cancels the queued generation for real`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val coordinator = FakeStoryExportCoordinator()
+            val viewModel = viewModel("activity-1", coordinator = coordinator)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+            viewModel.exportStory(testPalette())
+            viewModel.cancelStory()
+
+            assertThat(coordinator.cancelledActivityId).isEqualTo("activity-1")
+            assertThat(viewModel.uiState.value.storyExport).isEqualTo(StoryExportUiState.Idle)
+        }
+    }
+
+    @Test
+    fun `adopts running background progress into the generating state`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.RUNNING,
+                    progress = workDataOf(
+                        StoryExportWorker.KEY_PROGRESS to 0.42f,
+                        StoryExportWorker.KEY_ETA_SEC to 12,
+                    ),
+                ),
+            )
+
+            val generating = viewModel.uiState.value.storyExport as StoryExportUiState.Generating
+            assertThat(generating.progress).isEqualTo(0.42f)
+            assertThat(generating.etaSec).isEqualTo(12)
+        }
+    }
+
+    @Test
+    fun `adopts a finished background export as done`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.SUCCEEDED,
+                    outputData = workDataOf(
+                        StoryExportWorker.KEY_VIDEO_URI to "content://media/external/video/media/42",
+                        StoryExportWorker.KEY_SAVED_TO_GALLERY to true,
+                        StoryExportWorker.KEY_COVER_URI to "content://media/external/images/media/43",
+                    ),
+                ),
+            )
+
+            val done = viewModel.uiState.value.storyExport as StoryExportUiState.Done
+            assertThat(done.uri.toString()).isEqualTo("content://media/external/video/media/42")
+            assertThat(done.savedToGallery).isTrue()
+            assertThat(done.coverUri.toString()).isEqualTo("content://media/external/images/media/43")
+        }
+    }
+
+    @Test
+    fun `maps a background failure into the error state`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.RUNNING,
+                    progress = workDataOf(StoryExportWorker.KEY_PROGRESS to 0.1f),
+                ),
+            )
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.FAILED,
+                    outputData = workDataOf(
+                        StoryExportWorker.KEY_ERROR to "Encoder sem buffer de entrada.",
+                    ),
+                ),
+            )
+
+            assertThat((viewModel.uiState.value.storyExport as StoryExportUiState.Error).message)
+                .isEqualTo("Encoder sem buffer de entrada.")
+        }
+    }
+
+    @Test
+    fun `ignores stale outputs when the user has moved on`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory()
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.SUCCEEDED,
+                    outputData = workDataOf(
+                        StoryExportWorker.KEY_VIDEO_URI to "content://media/external/video/media/42",
+                    ),
+                ),
+            )
+
+            // The user was in Preview: a finished export from before must not replace it.
+            assertThat(viewModel.uiState.value.storyExport).isInstanceOf(StoryExportUiState.Preview::class.java)
+        }
+    }
+
+    @Test
+    fun `does not resurrect the card with a stale emission after cancel`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.RUNNING,
+                    progress = workDataOf(StoryExportWorker.KEY_PROGRESS to 0.3f),
+                ),
+            )
+            viewModel.cancelStory()
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.RUNNING,
+                    progress = workDataOf(StoryExportWorker.KEY_PROGRESS to 0.4f),
+                ),
+            )
+
+            assertThat(viewModel.uiState.value.storyExport).isEqualTo(StoryExportUiState.Idle)
+        }
+    }
+
+    private fun workInfo(state: WorkInfo.State, progress: Data = Data.EMPTY, outputData: Data = Data.EMPTY) = WorkInfo(
+        id = UUID.randomUUID(),
+        state = state,
+        tags = setOf(StoryExportWorker.TAG),
+        progress = progress,
+        outputData = outputData,
+        runAttemptCount = 0,
+        generation = 0,
+    )
+
+    private fun testPalette() = StoryPalette(
+        background = 1,
+        surface = 2,
+        surfaceInset = 3,
+        border = 4,
+        textPrimary = 5,
+        textSecondary = 6,
+        textTertiary = 7,
+        accent = 8,
+        coral = 9,
+        onAccent = 10,
+        mapCasing = 11,
+        mapBaseRoute = 12,
+        zone1 = 13,
+        zone2 = 14,
+        zone3 = 15,
+        zone4 = 16,
+        zone5 = 17,
+    )
+
     private suspend fun saveEasyPlan() {
         val date = java.time.LocalDate.parse("2026-10-24")
         plans.saveWeek(
@@ -445,16 +650,43 @@ class ActivityDetailViewModelTest {
     )
 
     private class FakeMapBackgroundRenderer(private val error: Throwable? = null) : MapBackgroundRenderer {
+        var calls: Int = 0
         var bounds: BoundingBox? = null
         var width: Int = 0
         var height: Int = 0
 
         override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int): Bitmap {
+            this.calls += 1
             this.bounds = boundingBox
             this.width = width
             this.height = height
             error?.let { throw it }
-            return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+            return Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+        }
+    }
+
+    private class FakeStoryExportCoordinator : StoryExportCoordinator {
+        val infos = MutableStateFlow<List<WorkInfo>>(emptyList())
+        var startedActivityId: String? = null
+        var startedPalette: StoryPalette? = null
+        var startedMap: Bitmap? = null
+        var cancelledActivityId: String? = null
+
+        override suspend fun start(
+            activityId: String,
+            mapBackground: Bitmap?,
+            palette: StoryPalette,
+            isCancelled: () -> Boolean,
+        ) {
+            startedActivityId = activityId
+            startedMap = mapBackground
+            startedPalette = palette
+        }
+
+        override fun observe(activityId: String): Flow<List<WorkInfo>> = infos
+
+        override fun cancel(activityId: String) {
+            cancelledActivityId = activityId
         }
     }
 }
