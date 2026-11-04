@@ -307,3 +307,13 @@ O story ganhou um segundo estilo de mapa, `StoryMapStyle.TERRAIN`. Ele mantém o
 - camada `hillshade` abaixo dos labels, com exageração 0,35.
 
 É **relevo sombreado**, não terreno 3D nem câmera inclinada — o spike de perspectiva segue no adendo anterior/§14 do `STORY_V2`. A atribuição do frame passa a ser “© OpenStreetMap · OpenFreeMap · Elevation Mapzen” no estilo Terreno. O estilo Clássico permanece o padrão e não baixa os tiles de elevação.
+
+## Addendum — 2026-11-04: estilo Satélite (World Imagery)
+
+Para o público do story ("onde eu corri"), o estilo com melhor leitura é **satélite**, não relevo: em cidades planas como Natal o hillshade quase não aparece.
+
+- **Fonte:** Esri World Imagery (`server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`), raster JPEG, `maxzoom` 19.
+- **Composição:** a imagem substitui as camadas vetoriais de preenchimento/linha; as **labels** do `liberty` (cidade/rua/água) continuam por cima, em texto claro com halo escuro. Um **véu** `background` escuro (18%) entre imagem e labels mantém rota e cards legíveis.
+- **Tratamento:** `raster-brightness-max` 0,92, `raster-contrast` 0,15 e `raster-saturation` −0,2 aproximam a imagem do tom do app.
+- **Atribuição:** “Imagery © Esri · Data © OpenStreetMap” no frame.
+- **Licença (atenção para produção):** o uso pessoal do World Imagery com atribuição é aceitável para o MVP; antes de publicar o app, revisar os termos da Esri ou migrar para um provedor com chave e restrição por pacote (MapTiler/Mapbox). O `StoryMapStyle` isola essa troca em um único ponto.

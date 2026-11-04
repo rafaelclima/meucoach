@@ -31,6 +31,7 @@ fun McPrimaryButton(
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
     minHeight: Dp = 56.dp,
+    horizontalPadding: Dp = 24.dp,
 ) {
     val colors = McTheme.colors
     Button(
@@ -44,7 +45,7 @@ fun McPrimaryButton(
             disabledContainerColor = colors.surfaceInset,
             disabledContentColor = colors.textTertiary,
         ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -70,6 +71,7 @@ fun McSecondaryButton(
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
     minHeight: Dp = 56.dp,
+    horizontalPadding: Dp = 24.dp,
 ) {
     val colors = McTheme.colors
     OutlinedButton(
@@ -82,7 +84,7 @@ fun McSecondaryButton(
             contentColor = colors.textPrimary,
             disabledContentColor = colors.textTertiary,
         ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -268,6 +268,7 @@ O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 
 
 - **Destaques objetivos:** o vídeo deixou de mostrar veredito de plano. O encerramento usa `StoryHighlightsCalculator` (puro): `2ª METADE MAIS RÁPIDA`, `RITMO CONSTANTE`, `KM MAIS RÁPIDO` ou `CORRIDA CONCLUÍDA`, com prova curta e autoexplicativa. O selo por km virou `KM MAIS RÁPIDO` (somente em corridas com 3+ kms).
 - **Leitura do coach é privada:** a prévia no app mostra "Leitura do coach (só você vê): …" usando o veredito determinístico; ele não entra mais no vídeo.
+- **Estilos de mapa:** Clássico (vetorial), Terreno (hillshade Mapzen) e Satélite (World Imagery + labels + véu). Em cidades planas o relevo quase não aparece — satélite é o estilo que melhor responde “onde eu corri”.
 - **Mapa Terreno:** novo `StoryMapStyle.TERRAIN` insere `raster-dem` (Mapzen/AWS, `terrarium`) e uma camada `hillshade` no estilo `liberty`; a atribuição do frame passa a citar "Elevation Mapzen". É relevo (sombreamento), não terreno 3D — o spike de câmera inclinada segue em §14.
 - **Primeiro uso:** `StoryIntroStore` mostra uma vez o aviso de que os tiles (e o relevo) são baixados e ficam em cache, sem enviar coordenadas exatas.
 - **Botão:** "Criar story" ocupa a largura do card e usa 48 dp (`McPrimaryButton.minHeight`).

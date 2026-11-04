@@ -100,7 +100,7 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
                     instanceFollowRedirects = true
                 }
                 val json = connection.getInputStream().bufferedReader().use { it.readText() }
-                OpenFreeMapStyle.customize(json, terrain = style == StoryMapStyle.TERRAIN)
+                OpenFreeMapStyle.customize(json, style)
             }
         }.getOrElse { error ->
             if (error is CancellationException) throw error

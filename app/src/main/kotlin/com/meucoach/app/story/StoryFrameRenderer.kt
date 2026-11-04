@@ -656,10 +656,10 @@ class StoryFrameRenderer(
         // OSM tile policy requires attribution on every rendered map. It stays
         // above the Instagram footer and gets a small backdrop so the tiny text
         // survives the light basemap and the bottom gradient.
-        val text = if (palette.mapStyle == StoryMapStyle.TERRAIN) {
-            "© OpenStreetMap · OpenFreeMap · Elevation Mapzen"
-        } else {
-            "© OpenStreetMap · OpenMapTiles · OpenFreeMap"
+        val text = when (palette.mapStyle) {
+            StoryMapStyle.TERRAIN -> "© OpenStreetMap · OpenFreeMap · Elevation Mapzen"
+            StoryMapStyle.SATELLITE -> "Imagery © Esri · Data © OpenStreetMap"
+            StoryMapStyle.CLASSIC -> "© OpenStreetMap · OpenMapTiles · OpenFreeMap"
         }
         val attribution = paint(palette.textSecondary, 13f * scale)
         attribution.alpha = 220

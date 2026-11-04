@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 771 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 376 em `:app`)
+- **Testes:** 772 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 377 em `:app`)
 - **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
@@ -59,7 +59,8 @@
 - **Sem julgamento de plano no vídeo:** saíram “longão forte demais”, “no alvo”, “leve demais” e “amanhã: 40 min leve”. O card por km agora mostra só ritmo, FC e calorias (com selo “KM MAIS RÁPIDO” quando faz sentido) e o encerramento usa `StoryHighlightsCalculator`: “2ª METADE MAIS RÁPIDA”, “RITMO CONSTANTE”, “KM MAIS RÁPIDO” ou “CORRIDA CONCLUÍDA”, com prova objetiva (ex.: “km 3 em 6:12”).
 - **Leitura do coach continua privada:** o `StoryVerdictCalculator` segue no plano e aparece no card de prévia como “Leitura do coach (só você vê)”, fora do vídeo.
 - **Mapa Terreno:** `StoryMapStyle.TERRAIN` adiciona `raster-dem` + `hillshade` (tiles públicos Mapzen/AWS) ao estilo `liberty`, com atribuição “Elevation Mapzen” no frame. O estilo Clássico continua o padrão.
-- **Aviso de primeira vez:** `StoryIntroStore` mostra um cartão explicando o download de tiles (e relevo no Terreno), que fica em cache e não envia coordenadas exatas; “Entendi” dispensa e persiste.
+- **Mapa Satélite:** `StoryMapStyle.SATELLITE` usa World Imagery (Esri/Maxar) com véu escuro e as mesmas labels vetoriais por cima; atribuição “Imagery © Esri · Data © OpenStreetMap”. É o estilo recomendado para cidades planas (hillshade praticamente não aparece em Natal).
+- **Aviso de primeira vez:** `StoryIntroStore` mostra um cartão explicando o download de tiles (e satélite/relevo conforme o estilo), que fica em cache e não envia coordenadas exatas; “Entendi” dispensa e persiste.
 - **Botão “Criar story”:** largura total e 48 dp de altura (`McPrimaryButton` ganhou `minHeight`).
 - **Testes:** `StoryHighlightsCalculatorTest` (5), `StoryIntroStoreTest`, casos de estilo no VM, `OpenFreeMapStyleTest` (hillshade) e codec da paleta; goldens do story refeitos.
 - **Verificação:** `check`, `assembleDebug` e `verifyRoborazziDebug` verdes.
@@ -1864,3 +1865,4 @@
 | 04/11/2026 | Story: mapa outdoor sem POIs, snapshot 2,25×, foco na rota e ticks por km; bloqueio do tilt nativo documentado (ADR 0015 addendum); 755 testes |
 | 04/11/2026 | Story: progresso/ETA reais, foreground service, estado restaurado e encoder na GPU (190→42 ms/frame, export ~50 s); 760 testes |
 | 04/11/2026 | Story público: destaques objetivos sem julgamento de plano, mapa Terreno com hillshade e aviso de download; botão full-width; 771 testes |
+| 04/11/2026 | Story: estilo Satélite (Esri + labels + véu), recomendado para cidades planas; 772 testes |

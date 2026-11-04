@@ -56,7 +56,7 @@ class OpenFreeMapStyleTest {
             ]}
         """.trimIndent()
 
-        val root = JSONObject(OpenFreeMapStyle.customize(json, terrain = true))
+        val root = JSONObject(OpenFreeMapStyle.customize(json, StoryMapStyle.TERRAIN))
         val layers = root.getJSONArray("layers")
 
         assertThat(layers.getJSONObject(0).getString("type")).isEqualTo("hillshade")
@@ -66,6 +66,33 @@ class OpenFreeMapStyleTest {
         assertThat(terrain.getString("type")).isEqualTo("raster-dem")
         assertThat(terrain.getString("encoding")).isEqualTo("terrarium")
         assertThat(terrain.getJSONArray("tiles").getString(0)).contains("terrarium")
+    }
+
+    @Test
+    fun `satellite keeps labels over imagery with a dark veil`() {
+        val json = """
+            {"sources":{},"layers":[
+              {"id":"water","type":"fill"},
+              {"id":"roads","type":"line","paint":{"line-color":"#fff"}},
+              {"id":"label_city","type":"symbol","layout":{"text-field":["get","name"]}}
+            ]}
+        """.trimIndent()
+
+        val root = JSONObject(OpenFreeMapStyle.customize(json, StoryMapStyle.SATELLITE))
+        val layers = root.getJSONArray("layers")
+
+        assertThat(layers.getJSONObject(0).getString("type")).isEqualTo("raster")
+        assertThat(layers.getJSONObject(0).getString("source")).isEqualTo("satellite")
+        assertThat(layers.getJSONObject(1).getString("id")).isEqualTo("satellite-veil")
+        assertThat(layers.getJSONObject(2).getString("id")).isEqualTo("label_city")
+        assertThat(layers.length()).isEqualTo(3)
+        assertThat(
+            root.getJSONObject("sources").getJSONObject("satellite")
+                .getJSONArray("tiles").getString(0),
+        ).contains("arcgisonline")
+        assertThat(
+            layers.getJSONObject(2).getJSONObject("paint").getString("text-color"),
+        ).isEqualTo("#F4F6F7")
     }
 
     @Test

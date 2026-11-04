@@ -181,6 +181,7 @@ class ActivityDetailScreenTest {
 
         list.performScrollToNode(hasText("Terreno"))
         compose.onNodeWithText("Terreno").assertExists()
+        compose.onNodeWithText("Satélite").assertExists()
     }
 
     @Test

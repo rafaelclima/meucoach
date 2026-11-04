@@ -18,33 +18,105 @@ internal object OpenFreeMapStyle {
     private const val ELEVATION_TILES =
         "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
-    fun customize(json: String, terrain: Boolean = false): String {
+    private const val SATELLITE_TILES =
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+    fun customize(json: String, style: StoryMapStyle = StoryMapStyle.CLASSIC): String {
         val root = JSONObject(json)
         val source = root.optJSONArray("layers") ?: return json
+        val satellite = style == StoryMapStyle.SATELLITE
         val layers = JSONArray()
         for (index in 0 until source.length()) {
             val layer = source.optJSONObject(index) ?: continue
             if (isClutter(layer.optString("id"))) continue
-            if (layer.optString("type") == "symbol") {
+            val type = layer.optString("type")
+            // Satellite imagery replaces the vector base; labels stay on top.
+            if (satellite && type != "symbol") continue
+            if (type == "symbol") {
                 val layout = layer.optJSONObject("layout")
                 if (layout != null && layout.has("text-field")) {
                     labelFor(layer.optString("id"))?.let { label ->
                         layout.put("text-size", label.size)
                         val paint = layer.optJSONObject("paint") ?: JSONObject().also { layer.put("paint", it) }
-                        label.color?.let { paint.put("text-color", it) }
-                        paint.put("text-halo-color", "#FFFFFF")
+                        if (satellite) {
+                            paint.put("text-color", "#F4F6F7")
+                            paint.put("text-halo-color", "#0B0D10")
+                        } else {
+                            label.color?.let { paint.put("text-color", it) }
+                            paint.put("text-halo-color", "#FFFFFF")
+                        }
                         paint.put("text-halo-width", 1.8)
                     }
                 }
             }
             layers.put(layer)
         }
-        if (terrain) {
-            root.put("layers", withTerrain(root, layers))
-        } else {
-            root.put("layers", layers)
+        val result = when (style) {
+            StoryMapStyle.SATELLITE -> withSatellite(root, layers)
+            StoryMapStyle.TERRAIN -> withTerrain(root, layers)
+            StoryMapStyle.CLASSIC -> layers
         }
+        root.put("layers", result)
         return root.toString()
+    }
+
+    /**
+     * Satellite imagery with the same vector labels, muted and veiled so the
+     * lime route and the cards stay legible. Imagery: Esri World Imagery
+     * (attribution required).
+     */
+    private fun withSatellite(root: JSONObject, labels: JSONArray): JSONArray {
+        val sources = root.optJSONObject("sources") ?: JSONObject().also { root.put("sources", it) }
+        sources.put(
+            SATELLITE_SOURCE,
+            JSONObject(
+                """
+                {
+                  "type": "raster",
+                  "tiles": ["$SATELLITE_TILES"],
+                  "tileSize": 256,
+                  "maxzoom": 19,
+                  "attribution": "Imagery: Esri, Maxar, Earthstar Geographics"
+                }
+                """.trimIndent(),
+            ),
+        )
+        val result = JSONArray()
+        result.put(
+            JSONObject(
+                """
+                {
+                  "id": "satellite",
+                  "type": "raster",
+                  "source": "$SATELLITE_SOURCE",
+                  "paint": {
+                    "raster-opacity": 1.0,
+                    "raster-brightness-max": 0.92,
+                    "raster-contrast": 0.15,
+                    "raster-saturation": -0.2
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+        // Dark veil above the imagery, below the labels: keeps the route and
+        // the safe-area gradients readable on bright satellite photos.
+        result.put(
+            JSONObject(
+                """
+                {
+                  "id": "satellite-veil",
+                  "type": "background",
+                  "paint": {
+                    "background-color": "#0B0D10",
+                    "background-opacity": 0.18
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+        for (index in 0 until labels.length()) result.put(labels.getJSONObject(index))
+        return result
     }
 
     /**
@@ -99,6 +171,7 @@ internal object OpenFreeMapStyle {
     }
 
     private const val TERRAIN_SOURCE = "terrain-dem"
+    private const val SATELLITE_SOURCE = "satellite"
 
     /**
      * POI, transit and airport icons add noise over a 1080 px-wide route, and

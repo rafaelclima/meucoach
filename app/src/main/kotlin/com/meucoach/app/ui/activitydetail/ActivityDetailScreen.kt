@@ -573,9 +573,9 @@ private fun StoryCard(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Terreno, " +
-                                "o relevo (Mapzen). Depois o app usa o cache. Nenhuma coordenada " +
-                                "exata sai do aparelho.",
+                            text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Satélite ou " +
+                                "Terreno, a imagem de satélite ou o relevo. Depois o app usa o cache. " +
+                                "Nenhuma coordenada exata sai do aparelho.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -607,6 +607,14 @@ private fun StoryCard(
                             .testTag("story-style-classic"),
                     )
                     StoryStyleButton(
+                        text = "Satélite",
+                        selected = storyStyle == StoryMapStyle.SATELLITE,
+                        onClick = { onStoryStyleChange(StoryMapStyle.SATELLITE) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("story-style-satellite"),
+                    )
+                    StoryStyleButton(
                         text = "Terreno",
                         selected = storyStyle == StoryMapStyle.TERRAIN,
                         onClick = { onStoryStyleChange(StoryMapStyle.TERRAIN) },
@@ -615,13 +623,26 @@ private fun StoryCard(
                             .testTag("story-style-terrain"),
                     )
                 }
-                if (storyStyle == StoryMapStyle.TERRAIN) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Relevo do terreno via Mapzen · baixa na primeira vez.",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                    )
+                when (storyStyle) {
+                    StoryMapStyle.TERRAIN -> {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Relevo do terreno via Mapzen · baixa na primeira vez.",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                    }
+
+                    StoryMapStyle.SATELLITE -> {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Imagem de satélite (Esri) · baixa na primeira vez.",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                    }
+
+                    StoryMapStyle.CLASSIC -> Unit
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 McPrimaryButton(
@@ -743,9 +764,21 @@ private fun StoryCard(
 @Composable
 private fun StoryStyleButton(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     if (selected) {
-        McPrimaryButton(text = text, onClick = onClick, modifier = modifier, minHeight = 44.dp)
+        McPrimaryButton(
+            text = text,
+            onClick = onClick,
+            modifier = modifier,
+            minHeight = 44.dp,
+            horizontalPadding = 10.dp,
+        )
     } else {
-        McSecondaryButton(text = text, onClick = onClick, modifier = modifier, minHeight = 44.dp)
+        McSecondaryButton(
+            text = text,
+            onClick = onClick,
+            modifier = modifier,
+            minHeight = 44.dp,
+            horizontalPadding = 10.dp,
+        )
     }
 }
 

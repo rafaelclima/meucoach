@@ -5,6 +5,9 @@ enum class StoryMapStyle {
     /** Clean vector basemap (OpenFreeMap liberty). */
     CLASSIC,
 
+    /** Satellite imagery with vector labels (Esri World Imagery). */
+    SATELLITE,
+
     /** Adds a hillshade layer fed by public elevation tiles (Mapzen/AWS). */
     TERRAIN,
 }
