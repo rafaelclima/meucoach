@@ -294,3 +294,12 @@ O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 
 - **Dados:** `StoryPlan.geoPoints` (amostrados até 400) são a fonte da rota no mapa; o pin da foto é desenhado em espaço de tela.
 - **Validação:** teste de paridade top-down (±2 px) e de enquadramento inclinado; frames reais em Clássico e Satélite com a linha sobre as ruas no S24 Ultra.
 - **Limite:** tilt fixo no snapshot; mudança de pitch durante o vídeo exigiria keyframes de snapshots ou pipeline GL (ADR 0019).
+
+---
+
+## 19. Nota de implementação — roteiro de câmera (04/11/2026)
+
+- **Dois keyframes:** a câmera começa em **overview 22°** (mapa inteiro) e dissolve em **0,25 s** para o **follow 42°**, mantendo o zoom/pan 2D existente.
+- **Onde cada snapshot nasce:** follow vem da prévia/staging (2,25×); overview é renderizado pelo worker (1,3×) e é best-effort — sem rede, o follow cobre o vídeo.
+- **Rota e pin:** cada camada desenha a rota com sua própria projeção; durante o fade o pin interpola entre as posições e continua em pé, em espaço de tela.
+- **Limite:** é um roteiro de dois estados (cut suave), não um voo contínuo — câmera contínua exigiria keyframes de snapshots ou GL. ADR 0019 §4 registra o trade-off.

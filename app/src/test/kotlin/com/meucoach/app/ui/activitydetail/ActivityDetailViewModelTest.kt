@@ -759,7 +759,14 @@ class ActivityDetailViewModelTest {
         var height: Int = 0
         var style: StoryMapStyle? = null
 
-        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int, style: StoryMapStyle): Bitmap {
+        override suspend fun render(
+            boundingBox: BoundingBox,
+            width: Int,
+            height: Int,
+            style: StoryMapStyle,
+            pitchDegrees: Float,
+            bearingDegrees: Float,
+        ): Bitmap {
             this.calls += 1
             this.bounds = boundingBox
             this.width = width

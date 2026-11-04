@@ -47,6 +47,7 @@ interface StoryVideoExporter {
         plan: StoryPlan,
         palette: StoryPalette,
         mapBackground: Bitmap? = null,
+        overviewMap: Bitmap? = null,
         isCancelled: () -> Boolean = { false },
         onProgress: suspend (progress: Float) -> Unit = {},
     ): StoryExportResult
@@ -88,6 +89,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         plan: StoryPlan,
         palette: StoryPalette,
         mapBackground: Bitmap?,
+        overviewMap: Bitmap?,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
     ): StoryExportResult {
@@ -99,7 +101,14 @@ class CanvasStoryVideoExporter @Inject constructor(
             .asCoroutineDispatcher()
         return try {
             withContext(encoderThread) {
-                exportOnEncoderThread(plan, palette, mapBackground, isCancelled, onProgress)
+                exportOnEncoderThread(
+                    plan,
+                    palette,
+                    mapBackground,
+                    overviewMap,
+                    isCancelled,
+                    onProgress,
+                )
             }
         } finally {
             encoderThread.close()
@@ -110,6 +119,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         plan: StoryPlan,
         palette: StoryPalette,
         mapBackground: Bitmap?,
+        overviewMap: Bitmap?,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
     ): StoryExportResult {
@@ -124,9 +134,9 @@ class CanvasStoryVideoExporter @Inject constructor(
             profiles.getProfile()?.avatarPath?.let { photos.load(it, maxSize = 256) }
         }.getOrNull()
         return try {
-            encode(plan, palette, mapBackground, output, cancelled, onProgress, avatar)
+            encode(plan, palette, mapBackground, overviewMap, output, cancelled, onProgress, avatar)
             val cover = runCatching {
-                writeCover(plan, palette, mapBackground, directory, stamp, avatar)
+                writeCover(plan, palette, mapBackground, overviewMap, directory, stamp, avatar)
             }.getOrNull()
             publish(output, cover)
         } catch (error: Throwable) {
@@ -145,6 +155,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         plan: StoryPlan,
         palette: StoryPalette,
         mapBackground: Bitmap?,
+        overviewMap: Bitmap?,
         directory: File,
         stamp: Long,
         avatar: Bitmap?,
@@ -156,7 +167,7 @@ class CanvasStoryVideoExporter @Inject constructor(
                 ?: (plan.durationSec - 1f).coerceAtLeast(0f)
             val timeSec = finalStart + 1f
             val canvas = Canvas(bitmap)
-            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar)
+            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar, overviewMap)
                 .render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
             StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
             file.outputStream().use { output ->
@@ -174,6 +185,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         plan: StoryPlan,
         palette: StoryPalette,
         mapBackground: Bitmap?,
+        overviewMap: Bitmap?,
         output: File,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
@@ -188,7 +200,14 @@ class CanvasStoryVideoExporter @Inject constructor(
         val info = MediaCodec.BufferInfo()
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar)
+        val renderer = StoryFrameRenderer(
+            palette,
+            typeface,
+            defaultLogoBitmap,
+            mapBackground,
+            avatar,
+            overviewMap,
+        )
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
         val useSurface = supportsSurface(codecInfo)

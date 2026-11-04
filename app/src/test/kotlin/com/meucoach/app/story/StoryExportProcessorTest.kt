@@ -87,8 +87,8 @@ class StoryExportProcessorTest {
             )
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
-            assertThat(mapRenderer.width).isEqualTo(StoryVideoExporter.mapWidth())
-            assertThat(mapRenderer.height).isEqualTo(StoryVideoExporter.mapHeight())
+            assertThat(mapRenderer.widths).contains(StoryVideoExporter.mapWidth())
+            assertThat(mapRenderer.widths).contains(StoryMapScript.overviewWidth())
         }
     }
 
@@ -107,7 +107,8 @@ class StoryExportProcessorTest {
             )
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
-            assertThat(mapRenderer.calls).isEqualTo(0)
+            // Only the wide overview is re-rendered; the follow shot is staged.
+            assertThat(mapRenderer.widths).containsExactly(StoryMapScript.overviewWidth())
             // Coordinates do not linger in the cache after the export.
             assertThat(staged.exists()).isFalse()
         }
@@ -127,7 +128,7 @@ class StoryExportProcessorTest {
             )
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
-            assertThat(mapRenderer.calls).isEqualTo(1)
+            assertThat(mapRenderer.calls).isEqualTo(2)
         }
     }
 
@@ -217,16 +218,19 @@ class StoryExportProcessorTest {
     private class FakeExporter(private val fractions: List<Float>) : StoryVideoExporter {
         var renderedPlan: StoryPlan? = null
         var renderedBackground: Bitmap? = null
+        var renderedOverview: Bitmap? = null
 
         override suspend fun export(
             plan: StoryPlan,
             palette: StoryPalette,
             mapBackground: Bitmap?,
+            overviewMap: Bitmap?,
             isCancelled: () -> Boolean,
             onProgress: suspend (progress: Float) -> Unit,
         ): StoryExportResult {
             renderedPlan = plan
             renderedBackground = mapBackground
+            renderedOverview = overviewMap
             fractions.forEach { onProgress(it) }
             return StoryExportResult(uri = android.net.Uri.parse("content://video/42"), savedToGallery = false)
         }
@@ -237,12 +241,21 @@ class StoryExportProcessorTest {
         var width: Int = 0
         var height: Int = 0
         var style: StoryMapStyle? = null
+        val widths = mutableListOf<Int>()
 
-        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int, style: StoryMapStyle): Bitmap {
+        override suspend fun render(
+            boundingBox: BoundingBox,
+            width: Int,
+            height: Int,
+            style: StoryMapStyle,
+            pitchDegrees: Float,
+            bearingDegrees: Float,
+        ): Bitmap {
             calls += 1
             this.width = width
             this.height = height
             this.style = style
+            widths += width
             error?.let { throw it }
             return Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
         }

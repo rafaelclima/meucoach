@@ -44,10 +44,32 @@ class StoryExportProcessor @Inject constructor(
         atMs: () -> Long = { SystemClock.elapsedRealtime() },
     ): StoryExportOutcome {
         val plan = planLoader.load(activityId) ?: return StoryExportOutcome.Failed(StoryMessages.MISSING_GPS)
-        val mapBackground = mapBackground(plan, mapPath, palette.mapStyle)
-            ?: return StoryExportOutcome.Retry(StoryMessages.MAP_UNAVAILABLE)
+        val mapBackground = mapBackground(
+            plan,
+            mapPath,
+            palette.mapStyle,
+            StoryMapScript.FOLLOW_PITCH_DEGREES,
+        ) ?: return StoryExportOutcome.Retry(StoryMessages.MAP_UNAVAILABLE)
+        val overviewMap = plan.boundingBox?.let { bounds ->
+            runCatching {
+                withTimeoutOrNull(StoryMessages.MAP_TIMEOUT_MS) {
+                    mapRenderer.render(
+                        bounds,
+                        StoryMapScript.overviewWidth(),
+                        StoryMapScript.overviewHeight(),
+                        palette.mapStyle,
+                        StoryMapScript.OVERVIEW_PITCH_DEGREES,
+                    )
+                }
+            }.getOrNull()
+        }
         val eta = StoryEtaEstimator()
-        val result = exporter.export(plan, palette, mapBackground) { fraction ->
+        val result = exporter.export(
+            plan = plan,
+            palette = palette,
+            mapBackground = mapBackground,
+            overviewMap = overviewMap,
+        ) { fraction ->
             onProgress(fraction, eta.remainingSec(fraction, atMs()))
         }
         // The staged snapshot is a picture of the run's region: keep it only
@@ -60,7 +82,12 @@ class StoryExportProcessor @Inject constructor(
      * The staged map from the preview is preferred (no duplicate tile fetch);
      * if the cache entry is gone the snapshot is rendered again.
      */
-    private suspend fun mapBackground(plan: StoryPlan, mapPath: String?, style: StoryMapStyle): Bitmap? {
+    private suspend fun mapBackground(
+        plan: StoryPlan,
+        mapPath: String?,
+        style: StoryMapStyle,
+        pitchDegrees: Float,
+    ): Bitmap? {
         val bounds = plan.boundingBox ?: return null
         mapPath?.let { path ->
             // A staged entry can be evicted between preview and export; skip
@@ -80,6 +107,7 @@ class StoryExportProcessor @Inject constructor(
                     StoryVideoExporter.mapWidth(),
                     StoryVideoExporter.mapHeight(),
                     style,
+                    pitchDegrees,
                 )
             }
         }.getOrElse { error ->

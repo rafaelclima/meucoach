@@ -51,3 +51,15 @@ Port fiel da cadeia usada pelo MapLibre (`_calcMatrices`): perspectiva (FOV vert
 - Positivas: perspectiva real de ruas e prédios, rota alinhada, menos "print inclinado"; nenhuma dependência nova; tudo determinístico e testável.
 - Custos: ~150 linhas de matemática de matrizes; recalcular a projeção por frame é barato (400 pontos).
 - Próximos passos naturais: bearing acompanhando a direção da rota, keyframes de câmera (M2) e composição em GL para 30 fps com folga.
+
+---
+
+## 4. Addendum — roteiro de câmera com dois keyframes (04/11/2026)
+
+O tilt fixo evoluiu para um pequeno roteiro:
+
+- **Overview 22°** por 2,2 s (mapa inteiro, mais plano) e **follow 42°** até o fim; transição de **0,25 s** com crossfade.
+- O overview é renderizado **no worker** em 1,3× (≈14 MB) e o follow vem da prévia em 2,25× (≈42 MB). O staging existente não muda; o overview é best-effort (se a rede falhar, o follow cobre todo o vídeo).
+- Durante o fade, os dois mapas e as duas rotas são desenhados com alfa (o segundo sobre o primeiro); o pin é interpolado entre as duas projeções e desenhado uma vez, em espaço de tela.
+- **Trade-off:** um crossfade entre ângulos diferentes gera breve dupla exposição; com 0,25 s o efeito lê como motion blur. Alternativa futura: wipe/máscara ou pipeline GL (câmera contínua).
+- Validado no S24 Ultra com frames em 1 s, 2,3 s e 8 s (rota sobre as ruas no overview e no follow).

@@ -33,6 +33,8 @@ interface MapBackgroundRenderer {
         width: Int,
         height: Int,
         style: StoryMapStyle = StoryMapStyle.CLASSIC,
+        pitchDegrees: Float = StoryMapScript.FOLLOW_PITCH_DEGREES,
+        bearingDegrees: Float = 0f,
     ): Bitmap
 }
 
@@ -46,7 +48,14 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
     MapBackgroundRenderer {
     private val cachedStyles = java.util.concurrent.ConcurrentHashMap<StoryMapStyle, String>()
 
-    override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int, style: StoryMapStyle): Bitmap {
+    override suspend fun render(
+        boundingBox: BoundingBox,
+        width: Int,
+        height: Int,
+        style: StoryMapStyle,
+        pitchDegrees: Float,
+        bearingDegrees: Float,
+    ): Bitmap {
         if (!hasNetwork()) {
             throw IllegalStateException("Sem conexão para baixar o mapa.")
         }
@@ -54,7 +63,13 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
         return withContext(Dispatchers.Main.immediate) {
             MapLibre.getInstance(context)
             suspendCancellableCoroutine { continuation ->
-                val camera = StoryMapCameraCalculator.calculateForStory(boundingBox, width, height)
+                val camera = StoryMapCameraCalculator.calculateForStory(
+                    boundingBox,
+                    width,
+                    height,
+                    pitchDegrees = pitchDegrees,
+                    bearingDegrees = bearingDegrees,
+                )
                 val options = MapSnapshotter
                     .Options(width, height)
                     .withStyleBuilder(Style.Builder().fromJson(json))

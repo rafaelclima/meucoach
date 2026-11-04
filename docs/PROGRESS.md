@@ -55,6 +55,15 @@
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
 
+## Sessão 2026-11-04 — Roteiro de câmera: overview → follow
+**Objetivo:** animar o pitch real sem multiplicar snapshots na memória.
+
+- **Script:** `StoryMapScript` define overview 22° até 2,2 s, follow 42° e crossfade de 0,25 s; o worker renderiza o overview em 1,3× (best-effort) e o follow continua vindo do staging (2,25×).
+- **Render:** durante o fade, mapa e rota de cada keyframe são desenhados com alfa (a segunda camada por cima); o pin interpola entre as projeções e é desenhado uma vez em espaço de tela.
+- **Custo:** +1 snapshot (~14 MB) e ~1–3 s de render no worker; nenhuma mudança no staging/UI. Sem rede, o overview é omitido e o follow cobre o vídeo.
+- **Validação no S24 Ultra:** frames em 1 s (overview), 2,3 s (transição) e 8 s (follow) com a rota sobre as ruas; ghosting do fade curto o suficiente para ler como motion blur.
+- **Docs:** addendum no ADR 0019 (§4) e STORY_V2 §19. 778 testes.
+
 ## Sessão 2026-11-04 — Story com câmera 3D real (projeção MapLibre portada)
 **Objetivo:** trocar o "tilt falso" por perspectiva real sem perder o alinhamento da rota.
 
@@ -1890,3 +1899,4 @@
 | 04/11/2026 | Story: estilo Satélite (Esri + labels + véu), recomendado para cidades planas; 772 testes |
 | 04/11/2026 | Perfil com nome/foto (Room v10), avatar na Home/Perfil e pin do story; leitura do coach na tela da atividade; 775 testes |
 | 04/11/2026 | Story com câmera 3D real: projeção do MapLibre portada para Kotlin, snapshot inclinado e rota alinhada (ADR 0019); 778 testes |
+| 04/11/2026 | Story: roteiro overview 22° → follow 42° com crossfade de 0,25 s e segundo snapshot no worker; 778 testes |
