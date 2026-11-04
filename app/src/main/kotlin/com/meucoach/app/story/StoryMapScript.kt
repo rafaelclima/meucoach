@@ -6,15 +6,15 @@ package com.meucoach.app.story
  * so the video can change real 3D pitch without paying for it in the preview.
  */
 object StoryMapScript {
-    const val OVERVIEW_PITCH_DEGREES = 22f
+    const val OVERVIEW_PITCH_DEGREES = 32f
     const val FOLLOW_PITCH_DEGREES = 42f
 
-    /** Overview is shown until this time, then dissolves into the follow shot. */
-    const val OVERVIEW_UNTIL_SEC = 2.2f
-    const val OVERVIEW_FADE_SEC = 0.25f
+    /** Overview is shown only while the video fades in; no visible cut later. */
+    const val OVERVIEW_UNTIL_SEC = 0f
+    const val OVERVIEW_FADE_SEC = 0.6f
 
     /** The overview is wider, so it can be rendered smaller than the follow map. */
-    const val OVERVIEW_SUPERSAMPLE = 1.3f
+    const val OVERVIEW_SUPERSAMPLE = 2.0f
 
     fun overviewWidth(): Int = (StoryVideoExporter.WIDTH * OVERVIEW_SUPERSAMPLE).toInt()
     fun overviewHeight(): Int = (StoryVideoExporter.HEIGHT * OVERVIEW_SUPERSAMPLE).toInt()

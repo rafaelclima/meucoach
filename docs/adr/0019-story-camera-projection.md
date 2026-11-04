@@ -58,8 +58,8 @@ Port fiel da cadeia usada pelo MapLibre (`_calcMatrices`): perspectiva (FOV vert
 
 O tilt fixo evoluiu para um pequeno roteiro:
 
-- **Overview 22°** por 2,2 s (mapa inteiro, mais plano) e **follow 42°** até o fim; transição de **0,25 s** com crossfade.
+- **Overview 32°** e **follow 42°**; a troca acontece nos primeiros **0,6 s**, escondida por um **fade-in** a partir da cor de fundo. Não há corte visível depois.
 - O overview é renderizado **no worker** em 1,3× (≈14 MB) e o follow vem da prévia em 2,25× (≈42 MB). O staging existente não muda; o overview é best-effort (se a rede falhar, o follow cobre todo o vídeo).
-- Durante o fade, os dois mapas e as duas rotas são desenhados com alfa (o segundo sobre o primeiro); o pin é interpolado entre as duas projeções e desenhado uma vez, em espaço de tela.
-- **Trade-off:** um crossfade entre ângulos diferentes gera breve dupla exposição; com 0,25 s o efeito lê como motion blur. Alternativa futura: wipe/máscara ou pipeline GL (câmera contínua).
+- Durante a abertura, o mapa/rota do overview aparecem sob a camada de fade e o follow é revelado por um **reveal radial** centrado no pin; quando a imagem clareia, o follow já está inteiro na tela.
+- **Trade-off:** a mudança de ângulo existe, mas fica subordinada ao fade de abertura; para um voo de pitch visível e contínuo seria preciso pipeline GL ou muito mais keyframes.
 - Validado no S24 Ultra com frames em 1 s, 2,3 s e 8 s (rota sobre as ruas no overview e no follow).

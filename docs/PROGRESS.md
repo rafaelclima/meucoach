@@ -58,10 +58,10 @@
 ## Sessão 2026-11-04 — Roteiro de câmera: overview → follow
 **Objetivo:** animar o pitch real sem multiplicar snapshots na memória.
 
-- **Script:** `StoryMapScript` define overview 22° até 2,2 s, follow 42° e crossfade de 0,25 s; o worker renderiza o overview em 1,3× (best-effort) e o follow continua vindo do staging (2,25×).
-- **Render:** durante o fade, mapa e rota de cada keyframe são desenhados com alfa (a segunda camada por cima); o pin interpola entre as projeções e é desenhado uma vez em espaço de tela.
-- **Custo:** +1 snapshot (~14 MB) e ~1–3 s de render no worker; nenhuma mudança no staging/UI. Sem rede, o overview é omitido e o follow cobre o vídeo.
-- **Validação no S24 Ultra:** frames em 1 s (overview), 2,3 s (transição) e 8 s (follow) com a rota sobre as ruas; ghosting do fade curto o suficiente para ler como motion blur.
+- **Script:** `StoryMapScript` define overview 32° e follow 42°; a troca acontece nos primeiros **0,6 s**, escondida por um fade-in a partir da cor de fundo, com reveal radial centrado no pin. O worker renderiza o overview em 1,3× (best-effort) e o follow continua vindo do staging (2,25×).
+- **Render:** o overview fica sob o fade; o follow é revelado radialmente. Depois de 0,6 s só existe o follow — sem corte, sem dupla exposição e sem “pop” de nitidez.
+- **Custo:** +1 snapshot e ~1–3 s de render no worker; nenhuma mudança no staging/UI. Sem rede, o overview é omitido e o follow cobre o vídeo.
+- **Validação no S24 Ultra:** frames em 0,3 s (fade/overview), 0,9 s (follow) e 8 s; sem transição visível no meio do vídeo.
 - **Docs:** addendum no ADR 0019 (§4) e STORY_V2 §19. 778 testes.
 
 ## Sessão 2026-11-04 — Story com câmera 3D real (projeção MapLibre portada)
@@ -1899,4 +1899,4 @@
 | 04/11/2026 | Story: estilo Satélite (Esri + labels + véu), recomendado para cidades planas; 772 testes |
 | 04/11/2026 | Perfil com nome/foto (Room v10), avatar na Home/Perfil e pin do story; leitura do coach na tela da atividade; 775 testes |
 | 04/11/2026 | Story com câmera 3D real: projeção do MapLibre portada para Kotlin, snapshot inclinado e rota alinhada (ADR 0019); 778 testes |
-| 04/11/2026 | Story: roteiro overview 22° → follow 42° com crossfade de 0,25 s e segundo snapshot no worker; 778 testes |
+| 04/11/2026 | Story: abertura com overview 32° → follow 42° sob fade-in de 0,6 s (sem corte visível); 778 testes |

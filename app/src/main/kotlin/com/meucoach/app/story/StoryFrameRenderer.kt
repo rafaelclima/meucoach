@@ -106,9 +106,9 @@ class StoryFrameRenderer(
             }
         }
         var followPosition: FloatArray? = null
-        if (followBlend > 0f) {
+        if (followBlend >= 1f) {
             withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, mapBackground, alpha = followBlend)
+                drawMapLayer(canvas, width, height, mapBackground, alpha = 1f)
                 followPosition = drawRoute(
                     canvas,
                     plan,
@@ -117,9 +117,46 @@ class StoryFrameRenderer(
                     square,
                     camera.scale * StoryPerspective.COVERAGE_SCALE,
                     followProjection,
-                    alpha = followBlend,
+                    alpha = 1f,
                 )
             }
+        } else if (followBlend > 0f) {
+            // Radial reveal around the runner: the follow shot opens over the
+            // overview without the double exposure of a map crossfade.
+            val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
+            withCamera(canvas, cameraMatrix) {
+                drawMapLayer(canvas, width, height, mapBackground, alpha = 1f)
+                followPosition = drawRoute(
+                    canvas,
+                    plan,
+                    timeSec,
+                    scale,
+                    square,
+                    camera.scale * StoryPerspective.COVERAGE_SCALE,
+                    followProjection,
+                    alpha = 1f,
+                )
+            }
+            val center = followPosition?.copyOf() ?: floatArrayOf(width / 2f, height / 2f)
+            cameraMatrix.mapPoints(center)
+            val maxRadius = kotlin.math.hypot(
+                maxOf(center[0], width - center[0]).toDouble(),
+                maxOf(center[1], height - center[1]).toDouble(),
+            ).toFloat()
+            val radius = (maxRadius * followBlend).coerceAtLeast(1f)
+            val mask = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = RadialGradient(
+                    center[0],
+                    center[1],
+                    radius,
+                    intArrayOf(0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0x00FFFFFF),
+                    floatArrayOf(0f, 0.82f, 1f),
+                    Shader.TileMode.CLAMP,
+                )
+                xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+            }
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), mask)
+            canvas.restoreToCount(layer)
         }
         // The avatar pin is screen-space on purpose: it must stay upright and
         // legible while the map rotates/zooms under the camera.
@@ -151,6 +188,28 @@ class StoryFrameRenderer(
         }
         if (mapBackground != null) drawAttribution(canvas, width, height, scale)
         drawVignette(canvas, width, height)
+        drawOpeningFade(canvas, timeSec, width, height)
+    }
+
+    /**
+     * The opening fades from the background color while the overview dissolves
+     * into the follow shot. Hiding the angle change under the fade removes the
+     * "quick cut" at the start without needing a continuous 3D camera.
+     */
+    private fun drawOpeningFade(canvas: Canvas, timeSec: Float, width: Int, height: Int) {
+        val progress = (timeSec / StoryMapScript.OVERVIEW_FADE_SEC).coerceIn(0f, 1f)
+        val eased = progress * progress * (3f - 2f * progress)
+        val alpha = ((1f - eased) * 255f).toInt().coerceIn(0, 255)
+        if (alpha <= 0) return
+        canvas.drawRect(
+            0f,
+            0f,
+            width.toFloat(),
+            height.toFloat(),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = withAlpha(palette.background, alpha)
+            },
+        )
     }
 
     private inline fun withCamera(canvas: Canvas, cameraMatrix: android.graphics.Matrix, draw: () -> Unit) {

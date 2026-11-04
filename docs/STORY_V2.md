@@ -299,7 +299,7 @@ O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 
 
 ## 19. Nota de implementação — roteiro de câmera (04/11/2026)
 
-- **Dois keyframes:** a câmera começa em **overview 22°** (mapa inteiro) e dissolve em **0,25 s** para o **follow 42°**, mantendo o zoom/pan 2D existente.
+- **Dois keyframes:** a câmera começa em **overview 32°** e troca para o **follow 42°** nos primeiros **0,6 s**, escondida por um **fade-in**; depois disso não há mudança de ângulo.
 - **Onde cada snapshot nasce:** follow vem da prévia/staging (2,25×); overview é renderizado pelo worker (1,3×) e é best-effort — sem rede, o follow cobre o vídeo.
-- **Rota e pin:** cada camada desenha a rota com sua própria projeção; durante o fade o pin interpola entre as posições e continua em pé, em espaço de tela.
+- **Rota e pin:** o overview fica sob o fade e o follow é revelado por um **reveal radial** centrado no pin; a rota segue a projeção da camada ativa e o pin continua em pé, em espaço de tela.
 - **Limite:** é um roteiro de dois estados (cut suave), não um voo contínuo — câmera contínua exigiria keyframes de snapshots ou GL. ADR 0019 §4 registra o trade-off.
