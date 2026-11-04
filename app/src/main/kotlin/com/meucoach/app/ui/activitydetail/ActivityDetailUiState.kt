@@ -6,6 +6,7 @@ import com.meucoach.app.story.StoryPlan
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.insights.ActivityInsight
+import com.meucoach.core.domain.story.StoryVerdict
 import com.meucoach.core.domain.zones.HrZoneDistribution
 
 sealed interface StoryExportUiState {
@@ -30,6 +31,10 @@ data class ActivityDetailUiState(
     val calibrationCandidate: CalibrationCandidate? = null,
     val storyExport: StoryExportUiState = StoryExportUiState.Idle,
     val storyIntroSeen: Boolean = true,
+    /** Profile photo used by the story pin and the closing badge. */
+    val avatar: Bitmap? = null,
+    /** Private coach reading, shown on this screen and never in the video. */
+    val coachVerdict: StoryVerdict? = null,
     val isDeleting: Boolean = false,
     val deleted: Boolean = false,
     val deleteError: String? = null,

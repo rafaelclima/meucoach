@@ -212,6 +212,9 @@ class ActivityDetailViewModelTest {
                 FakeStoryExportCoordinator(),
                 StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
                 StoryIntroStore(ApplicationProvider.getApplicationContext()),
+                com.meucoach.app.profile.ProfilePhotoStore(
+                    ApplicationProvider.getApplicationContext(),
+                ),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
@@ -236,6 +239,9 @@ class ActivityDetailViewModelTest {
         storyCoordinator = coordinator,
         storyFailures = failures,
         storyIntro = intro,
+        profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
+            ApplicationProvider.getApplicationContext(),
+        ),
     )
 
     @Test
@@ -269,6 +275,28 @@ class ActivityDetailViewModelTest {
 
             assertThat(viewModel.uiState.value.storyIntroSeen).isTrue()
             assertThat(intro.seen()).isTrue()
+        }
+    }
+
+    @Test
+    fun `exposes the private coach reading on the detail screen`() {
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = java.time.LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    lactateThresholdHeartRate = 180,
+                    timezone = "America/Sao_Paulo",
+                    name = "Rafael",
+                ),
+            )
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            saveEasyPlan()
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.coachVerdict).isNotNull
+            assertThat(state.coachVerdict?.headline).isNotBlank()
         }
     }
 

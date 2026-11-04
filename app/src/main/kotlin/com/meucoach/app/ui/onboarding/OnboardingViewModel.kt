@@ -26,7 +26,10 @@ data class OnboardingUiState(
 }
 
 @HiltViewModel
-class OnboardingViewModel @Inject constructor(private val repository: ProfileRepository) : ViewModel() {
+class OnboardingViewModel @Inject constructor(
+    private val repository: ProfileRepository,
+    private val photoStore: com.meucoach.app.profile.ProfilePhotoStore,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
@@ -64,6 +67,21 @@ class OnboardingViewModel @Inject constructor(private val repository: ProfileRep
                 form.copy(availabilityMinutes = form.availabilityMinutes + (day to minutes.filter { it.isDigit() }))
             }
         }
+    }
+
+    fun setAvatar(uri: android.net.Uri) {
+        viewModelScope.launch {
+            val path = photoStore.save(uri) ?: return@launch
+            val previous = _uiState.value.form.avatarPath
+            if (previous.isNotBlank() && previous != path) photoStore.delete(previous)
+            update { it.copy(avatarPath = path) }
+        }
+    }
+
+    fun clearAvatar() {
+        val previous = _uiState.value.form.avatarPath
+        photoStore.delete(previous)
+        update { it.copy(avatarPath = "") }
     }
 
     fun next() {
@@ -126,6 +144,7 @@ class OnboardingViewModel @Inject constructor(private val repository: ProfileRep
         private const val DEFAULT_DAY_MINUTES = "40"
 
         private val ABOUT_FIELDS = setOf(
+            OnboardingField.NAME,
             OnboardingField.BIRTH_DATE,
             OnboardingField.HEIGHT,
             OnboardingField.WEIGHT,

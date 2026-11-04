@@ -51,6 +51,8 @@ class ProfileRepository(private val database: MeuCoachDatabase, private val cloc
         longitude = longitude,
         units = units,
         treadmillAccess = treadmillAccess,
+        name = name,
+        avatarPath = avatarPath,
     )
 
     private fun AthleteProfile.toEntity(createdAt: Long, updatedAt: Long) = AthleteProfileEntity(
@@ -73,6 +75,8 @@ class ProfileRepository(private val database: MeuCoachDatabase, private val cloc
         longitude = longitude,
         units = units,
         treadmillAccess = treadmillAccess,
+        name = name,
+        avatarPath = avatarPath,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )

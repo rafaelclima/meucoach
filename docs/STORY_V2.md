@@ -273,3 +273,13 @@ O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 
 - **Primeiro uso:** `StoryIntroStore` mostra uma vez o aviso de que os tiles (e o relevo) são baixados e ficam em cache, sem enviar coordenadas exatas.
 - **Botão:** "Criar story" ocupa a largura do card e usa 48 dp (`McPrimaryButton.minHeight`).
 - **Testes:** `StoryHighlightsCalculatorTest`, `StoryIntroStoreTest`, seleção de estilo no `ActivityDetailViewModelTest`, hillshade no `OpenFreeMapStyleTest` e estilo no codec da paleta; goldens do story refeitos.
+
+---
+
+## 17. Nota de implementação — rosto no story e leitura do coach fora da prévia (04/11/2026)
+
+- **Pin com a foto do perfil:** o marcador que percorre a rota virou um badge circular com a foto do usuário (anel lima + ponteiro). Ele é desenhado **em espaço de tela**, fora da matriz da câmera — assim não gira junto com o mapa — com diâmetro de ~114 px em 1080p (visível no Instagram sem cobrir a rota). Sem foto, volta o ponto lima antigo.
+- **Foto na capa:** o exportador carrega a foto do perfil e usa o mesmo pin no frame final/capa.
+- **Leitura do coach saiu da prévia:** o veredito determinístico deixou de aparecer na hora de gerar o story; agora é um card privado na tela da atividade (“LEITURA DO COACH”), separado do vídeo público.
+- **Dados:** nome e caminho da foto vivem no perfil (Room v10); a foto é copiada para armazenamento privado do app e removida no “apagar todos os dados”.
+- **Testes:** golden `story-avatar-dark.png` (pin), migração 9→10, nome obrigatório no onboarding e leitura do coach no `ActivityDetailViewModelTest`.

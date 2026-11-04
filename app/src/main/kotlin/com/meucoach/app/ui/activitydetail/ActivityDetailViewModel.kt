@@ -45,6 +45,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyCoordinator: StoryExportCoordinator,
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
+    private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
 ) : ViewModel() {
     private val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
         "Activity detail requires an activityId"
@@ -62,7 +63,23 @@ class ActivityDetailViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val activity = repository.openActivity(activityId)
-            val lthr = profileRepository.getProfile()?.lactateThresholdHeartRate
+            val profile = profileRepository.getProfile()
+            val lthr = profile?.lactateThresholdHeartRate
+            val avatar = withContext(Dispatchers.IO) {
+                profile?.avatarPath?.let { profilePhotos.load(it, maxSize = 256) }
+            }
+            val coachVerdict = activity?.let { stored ->
+                val planned = sessions.resolve(stored.localDate)
+                withContext(Dispatchers.Default) {
+                    StoryPlanCalculator.calculate(
+                        activity = stored.imported,
+                        targetDurationSec = StoryPlanLoader.TARGET_DURATION_SEC,
+                        lthrBpm = lthr,
+                        session = planned.current,
+                        nextSession = planned.next,
+                    )?.verdict
+                }
+            }
             // update(), not a fresh state: the WorkManager observer may have
             // restored a Generating/Done story while this load was running.
             _uiState.update {
@@ -83,6 +100,8 @@ class ActivityDetailViewModel @Inject constructor(
                         CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now())
                     },
                     storyIntroSeen = storyIntro.seen(),
+                    avatar = avatar,
+                    coachVerdict = coachVerdict,
                 )
             }
         }

@@ -62,6 +62,7 @@ data class TodayUiState(
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */
     val acwr: Double? = null,
+    val avatarPath: String? = null,
 )
 
 fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalTime.now()): TodayUiState {

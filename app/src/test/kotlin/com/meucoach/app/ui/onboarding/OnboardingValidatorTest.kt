@@ -77,6 +77,7 @@ class OnboardingValidatorTest {
     fun `round-trips editing without losing calibration or location`() {
         val existing = AthleteProfile(
             id = "athlete-1",
+            name = "Rafael",
             birthDate = LocalDate.of(1988, 1, 1),
             sex = Sex.MALE,
             heightCm = 174.0,
@@ -228,6 +229,7 @@ class OnboardingValidatorTest {
     }
 
     private fun form() = OnboardingForm(
+        name = "Rafael",
         birthDate = "01/01/1988",
         sex = Sex.MALE,
         heightCm = "174",

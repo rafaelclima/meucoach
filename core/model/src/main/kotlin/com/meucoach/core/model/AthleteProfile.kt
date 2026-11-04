@@ -82,6 +82,9 @@ data class AthleteProfile(
     val units: Units = Units.METRIC,
     /** Athlete has access to a treadmill, which is a valid modality in heat (`R-PLAN-08`). */
     val treadmillAccess: Boolean = false,
+    val name: String? = null,
+    /** Local path of the imported profile photo (app-private storage). */
+    val avatarPath: String? = null,
 ) {
     init {
         require(id.isNotBlank()) { "Athlete id must not be blank" }

@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 772 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 377 em `:app`)
+- **Testes:** 775 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 380 em `:app`)
 - **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
@@ -44,6 +44,8 @@
 - **Story v2 — Fase A:** área segura do Instagram, câmera com zoom/rotação alinhada à rota, grão/vinheta/grade de cor, 30 fps, snapshot supersampleado e capa PNG do frame final.
 - **Story v2 — Fase B:** veredito determinístico por km e no encerramento (`StoryVerdictCalculator`), rota colorida por zona de FC, barra de splits e contador no card; sem plano/calibração/FC o story não inventa alvo.
 - **Story em segundo plano (ADR 0018):** exportação via `WorkManager` (`StoryExportWorker`) com nome único por atividade, plano reconstruído dos repositórios e mapa da prévia reaproveitado em cache; cancelamento cooperativo no encoder (MP4 parcial apagado), progresso a cada 0,6 s com ETA suavizado, notificação de concluído/falha e estado restaurado ao reabrir a tela.
+- **Perfil com nome e foto:** `AthleteProfile.name`/`avatarPath` (Room v10), nome obrigatório no onboarding, foto importada pelo seletor do Android e copiada para `filesDir/profile` (512 px); avatar no lugar do “M” na Home, no Perfil e como pin do story.
+- **Story com a foto:** o pin do percurso é a foto do perfil (desenhada fora da câmera, sempre em pé, ~114 px de diâmetro em 1080p); a leitura do coach saiu da prévia e virou card privado na tela da atividade.
 - **Story v2 — câmera:** flyover que segue o corredor (overview 1,18×/8° → follow 1,72×/32°), rotação de até 22° pela direção da rota, zoom extra no card e pullback no encerramento; homografia aplicada ao mapa **e** à rota, com espessura da rota compensada pela escala.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
@@ -52,6 +54,16 @@
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-04 — Perfil com nome/foto, pin no story e leitura do coach na atividade
+**Objetivo:** personalizar o app e o vídeo, e tirar o julgamento do plano de dentro do story.
+
+- **Nome e foto:** `AthleteProfile` ganhou `name` e `avatarPath` (Room v10, migração 9→10); onboarding pede o nome (obrigatório, até 40 caracteres) e permite importar foto via `PickVisualMedia`, copiada para `filesDir/profile/avatar.jpg` (512 px, JPEG 90). O avatar substitui o “M” na Home e aparece no Perfil.
+- **Pin do story:** `StoryFrameRenderer` desenha a foto como pin circular com anel lima e ponteiro; ele é desenhado **fora** da matriz da câmera (não gira com o mapa) e com ~114 px de diâmetro em 1080p. O exportador carrega a foto do perfil e a usa também na capa.
+- **Leitura do coach:** saiu da prévia do story e virou um card privado na tela da atividade (“LEITURA DO COACH”, headline/prova/frase), usando `StoryVerdictCalculator` na carga da atividade.
+- **Privacidade:** a foto fica em armazenamento privado do app; apagar todos os dados também remove o arquivo.
+- **Testes:** pin no golden `story-avatar-dark.png`, leitura do coach no VM, nome obrigatório no onboarding, migração 9→10 e ajustes de perfis de teste; 775 testes.
+- **Verificação:** `check`, `assembleDebug`, `verifyRoborazziDebug` e validação no S24 Ultra (home “Rafael”, foto e pin no vídeo).
 
 ## Sessão 2026-11-04 — Story público: destaques objetivos, mapa Terreno e aviso
 **Objetivo:** o vídeo passa a fazer sentido para quem nunca viu o plano; o mapa ganha relevo e a primeira geração é explicada.
@@ -1866,3 +1878,4 @@
 | 04/11/2026 | Story: progresso/ETA reais, foreground service, estado restaurado e encoder na GPU (190→42 ms/frame, export ~50 s); 760 testes |
 | 04/11/2026 | Story público: destaques objetivos sem julgamento de plano, mapa Terreno com hillshade e aviso de download; botão full-width; 771 testes |
 | 04/11/2026 | Story: estilo Satélite (Esri + labels + véu), recomendado para cidades planas; 772 testes |
+| 04/11/2026 | Perfil com nome/foto (Room v10), avatar na Home/Perfil e pin do story; leitura do coach na tela da atividade; 775 testes |

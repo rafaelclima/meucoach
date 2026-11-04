@@ -62,7 +62,12 @@ class DataManagementViewModelTest {
             HealthSyncStore(context, prefsName = "data-management-${System.nanoTime()}"),
             clock,
         )
-        viewModel = DataManagementViewModel(userData, context)
+        viewModel = DataManagementViewModel(
+            userData = userData,
+            profiles = com.meucoach.core.data.repository.ProfileRepository(database, clock),
+            photos = com.meucoach.app.profile.ProfilePhotoStore(context),
+            context = context,
+        )
     }
 
     @After

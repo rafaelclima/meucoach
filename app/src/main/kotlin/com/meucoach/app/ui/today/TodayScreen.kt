@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.meucoach.app.ui.common.ProfileAvatar
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McConfidenceBadge
@@ -237,10 +238,10 @@ private fun Greeting(state: TodayUiState) {
                 .border(1.dp, colors.borderSubtle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = state.athleteName.take(1).ifBlank { "M" }.uppercase(Locale.forLanguageTag("pt-BR")),
-                style = MaterialTheme.typography.titleLarge,
-                color = colors.accentText,
+            ProfileAvatar(
+                name = state.athleteName,
+                avatarPath = state.avatarPath,
+                size = 44.dp,
             )
         }
     }

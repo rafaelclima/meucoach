@@ -20,6 +20,7 @@ private val RACE_GOAL_TYPES = setOf(
 )
 
 enum class OnboardingField {
+    NAME,
     BIRTH_DATE,
     HEIGHT,
     WEIGHT,
@@ -34,6 +35,8 @@ enum class OnboardingField {
 }
 
 data class OnboardingForm(
+    val name: String = "",
+    val avatarPath: String = "",
     val birthDate: String = "",
     val sex: Sex = Sex.UNSPECIFIED,
     val heightCm: String = "",
@@ -90,6 +93,8 @@ object OnboardingValidator {
         require(validation.isValid) { "Profile form has invalid fields: ${validation.errors.keys}" }
         return AthleteProfile(
             id = id,
+            name = form.name.trim().ifBlank { null },
+            avatarPath = form.avatarPath.ifBlank { null },
             birthDate = requireNotNull(parseDate(form.birthDate)) { "Birth date must be valid" },
             sex = form.sex,
             heightCm = form.heightCm.toDoubleOrNull(),
@@ -116,6 +121,8 @@ object OnboardingValidator {
     fun fromProfile(profile: AthleteProfile?): OnboardingForm {
         if (profile == null) return OnboardingForm()
         return OnboardingForm(
+            name = profile.name.orEmpty(),
+            avatarPath = profile.avatarPath.orEmpty(),
             birthDate = profile.birthDate.format(DIGITS_DATE),
             sex = profile.sex,
             heightCm = profile.heightCm?.let { formatDecimal(it) } ?: "",
@@ -136,6 +143,11 @@ object OnboardingValidator {
 
     private fun validateAbout(form: OnboardingForm, today: LocalDate): OnboardingValidation {
         val errors = mutableMapOf<OnboardingField, String>()
+        val name = form.name.trim()
+        when {
+            name.isBlank() -> errors[OnboardingField.NAME] = "Informe seu nome."
+            name.length > MAX_NAME_LENGTH -> errors[OnboardingField.NAME] = "Use até $MAX_NAME_LENGTH caracteres."
+        }
         val birthDate = parseDate(form.birthDate)
         when {
             birthDate == null -> errors[OnboardingField.BIRTH_DATE] = "Use dd/mm/aaaa."
@@ -292,6 +304,7 @@ object OnboardingValidator {
         if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
 
     private const val MIN_HEIGHT_CM = 80.0
+    private const val MAX_NAME_LENGTH = 40
     private const val MAX_HEIGHT_CM = 250.0
     private const val MIN_WEIGHT_KG = 30.0
     private const val MAX_WEIGHT_KG = 300.0

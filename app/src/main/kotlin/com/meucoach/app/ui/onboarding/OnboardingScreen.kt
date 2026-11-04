@@ -1,5 +1,8 @@
 package com.meucoach.app.ui.onboarding
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +62,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.ui.common.AVAILABLE_CITIES
 import com.meucoach.app.ui.common.AVAILABLE_TIMEZONES
+import com.meucoach.app.ui.common.ProfileAvatar
 import com.meucoach.app.ui.common.matchesSearch
 import com.meucoach.app.ui.common.timezoneLabel
 import com.meucoach.app.ui.profile.availabilityDayLabel
@@ -83,6 +87,9 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.setAvatar(uri)
+    }
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) {
@@ -99,6 +106,12 @@ fun OnboardingScreen(
         onSave = viewModel::save,
         onToggleDay = viewModel::toggleDay,
         onDayMinutes = viewModel::updateDayMinutes,
+        onPickAvatar = {
+            picker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
+        },
+        onClearAvatar = viewModel::clearAvatar,
         onCancel = onCancel,
         modifier = modifier,
     )
@@ -113,6 +126,8 @@ internal fun OnboardingContent(
     onSave: () -> Unit,
     onToggleDay: (DayOfWeek) -> Unit,
     onDayMinutes: (DayOfWeek, String) -> Unit,
+    onPickAvatar: () -> Unit = {},
+    onClearAvatar: () -> Unit = {},
     modifier: Modifier = Modifier,
     onCancel: (() -> Unit)? = null,
 ) {
@@ -172,7 +187,7 @@ internal fun OnboardingContent(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         when (state.step) {
-                            0 -> aboutStep(state, onUpdate)
+                            0 -> aboutStep(state, onUpdate, onPickAvatar, onClearAvatar)
                             1 -> goalStep(state, onUpdate, onToggleDay, onDayMinutes)
                             else -> routineStep(state, onUpdate)
                         }
@@ -252,8 +267,56 @@ private fun StepHeader(step: Int, isEditing: Boolean) {
 }
 
 @Composable
-private fun aboutStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) -> OnboardingForm) -> Unit) {
+private fun aboutStep(
+    state: OnboardingUiState,
+    onUpdate: ((OnboardingForm) -> OnboardingForm) -> Unit,
+    onPickAvatar: () -> Unit,
+    onClearAvatar: () -> Unit,
+) {
     val form = state.form
+    val colors = McTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ProfileAvatar(
+            name = form.name,
+            avatarPath = form.avatarPath.ifBlank { null },
+            size = 72.dp,
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "Foto de perfil (opcional)",
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                McSecondaryButton(
+                    text = if (form.avatarPath.isBlank()) "Escolher foto" else "Trocar foto",
+                    onClick = onPickAvatar,
+                    minHeight = 44.dp,
+                    horizontalPadding = 12.dp,
+                    modifier = Modifier.testTag("profile-photo-pick"),
+                )
+                if (form.avatarPath.isNotBlank()) {
+                    McTextButton(
+                        text = "Remover",
+                        onClick = onClearAvatar,
+                        trailingArrow = false,
+                    )
+                }
+            }
+        }
+    }
+    FormTextField(
+        label = "Seu nome",
+        value = form.name,
+        onValueChange = { value -> onUpdate { it.copy(name = value) } },
+        placeholder = "Como o coach deve te chamar",
+        error = state.errors[OnboardingField.NAME],
+        modifier = Modifier.testTag("profile-name-field"),
+    )
     FormTextField(
         label = "Data de nascimento",
         value = form.birthDate,

@@ -62,7 +62,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun trainingPlanDao(): TrainingPlanDao
 
     companion object {
-        const val VERSION = 9
+        const val VERSION = 10
         const val NAME = "meucoach.db"
 
         /**
@@ -270,6 +270,13 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `athlete_profile` ADD COLUMN `name` TEXT")
+                db.execSQL("ALTER TABLE `athlete_profile` ADD COLUMN `avatarPath` TEXT")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -281,6 +288,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
+                MIGRATION_9_10,
             )
             .build()
     }

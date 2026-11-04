@@ -103,6 +103,20 @@ class OnboardingViewModelTest {
         assertThat(saved?.id).isNotBlank()
         assertThat(saved?.goal?.type).isEqualTo(GoalType.FIVE_K)
         assertThat(saved?.weeklyAvailability?.totalMinutes).isEqualTo(180)
+        assertThat(saved?.name).isEqualTo("Rafael")
+    }
+
+    @Test
+    fun `requires a name on the first step`(): Unit = runBlocking {
+        val viewModel = viewModel()
+        viewModel.uiState.first { !it.isLoading }
+        fillValidForm(viewModel)
+        viewModel.update { it.copy(name = "  ") }
+
+        viewModel.next()
+
+        assertThat(viewModel.uiState.value.step).isZero()
+        assertThat(viewModel.uiState.value.errors).containsKey(OnboardingField.NAME)
     }
 
     @Test
@@ -156,11 +170,17 @@ class OnboardingViewModelTest {
         assertThat(viewModel.uiState.value.form.availabilityMinutes).isEmpty()
     }
 
-    private fun viewModel() = OnboardingViewModel(repository)
+    private fun viewModel() = OnboardingViewModel(
+        repository,
+        com.meucoach.app.profile.ProfilePhotoStore(
+            ApplicationProvider.getApplicationContext(),
+        ),
+    )
 
     private fun fillValidForm(viewModel: OnboardingViewModel) {
         viewModel.update {
             it.copy(
+                name = "Rafael",
                 birthDate = "01/01/1988",
                 sex = Sex.MALE,
                 heightCm = "174",
@@ -183,6 +203,7 @@ class OnboardingViewModelTest {
 
     private fun existingProfile() = AthleteProfile(
         id = "athlete-1",
+        name = "Rafael",
         birthDate = LocalDate.of(1988, 1, 1),
         sex = Sex.MALE,
         heightCm = 174.0,

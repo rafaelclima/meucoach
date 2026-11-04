@@ -291,10 +291,60 @@ class StoryFrameScreenshotTest {
         )
     }
 
+    @Test
+    fun storyFrameWithAvatarDark() {
+        val activity = ActivityDetailTestData.state().activity!!.imported
+        val storyPlan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
+        val map = fakeMap()
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(palette, Typeface.DEFAULT, logo, map, fakeAvatar())
+                        .render(storyPlan, timeSec = 8f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Quadro do story com foto de perfil",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-avatar-dark.png")
+    }
+
     /**
      * Synthetic tiles: a street grid with a park and water block. Never real
      * location data (privacy rules in AGENTS.md §4).
      */
+    private fun fakeAvatar(): Bitmap {
+        val bitmap = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(0xFF2A3310.toInt())
+        canvas.drawCircle(
+            64f,
+            64f,
+            58f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD8FF3E.toInt() },
+        )
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF0A0B0D.toInt()
+            textSize = 64f
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        canvas.drawText("R", 64f, 88f, text)
+        return bitmap
+    }
+
     private fun fakeMap(): Bitmap {
         val bitmap = Bitmap.createBitmap(720, 1280, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)

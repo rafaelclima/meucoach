@@ -29,6 +29,8 @@ data class DataManagementUiState(
 @HiltViewModel
 class DataManagementViewModel @Inject constructor(
     private val userData: UserDataRepository,
+    private val profiles: com.meucoach.core.data.repository.ProfileRepository,
+    private val photos: com.meucoach.app.profile.ProfilePhotoStore,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DataManagementUiState())
@@ -69,7 +71,10 @@ class DataManagementViewModel @Inject constructor(
         if (_uiState.value.isBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true, message = null, error = null) }
-            val result = runCatching { userData.deleteAllData() }
+            val result = runCatching {
+                val avatar = profiles.getProfile()?.avatarPath
+                userData.deleteAllData().also { photos.delete(avatar) }
+            }
             _uiState.update { state ->
                 result.fold(
                     onSuccess = { deletion -> state.copy(isDeleting = false, message = deletion.message()) },

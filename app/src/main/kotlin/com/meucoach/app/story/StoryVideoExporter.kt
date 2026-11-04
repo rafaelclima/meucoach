@@ -73,8 +73,11 @@ interface StoryVideoExporter {
  * (YUV420 flexible), so it does not need an EGL surface or a new dependency.
  * Devices whose H.264 encoder lacks that color format return a clear error.
  */
-class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private val context: Context) :
-    StoryVideoExporter {
+class CanvasStoryVideoExporter @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val profiles: com.meucoach.core.data.repository.ProfileRepository,
+    private val photos: com.meucoach.app.profile.ProfilePhotoStore,
+) : StoryVideoExporter {
     private val typeface: Typeface by lazy {
         ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
     }
@@ -117,9 +120,14 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val stamp = System.currentTimeMillis()
         val output = File(directory, "meucoach-story-$stamp.mp4")
+        val avatar = runCatching {
+            profiles.getProfile()?.avatarPath?.let { photos.load(it, maxSize = 256) }
+        }.getOrNull()
         return try {
-            encode(plan, palette, mapBackground, output, cancelled, onProgress)
-            val cover = runCatching { writeCover(plan, palette, mapBackground, directory, stamp) }.getOrNull()
+            encode(plan, palette, mapBackground, output, cancelled, onProgress, avatar)
+            val cover = runCatching {
+                writeCover(plan, palette, mapBackground, directory, stamp, avatar)
+            }.getOrNull()
             publish(output, cover)
         } catch (error: Throwable) {
             // A partial MP4 is unreadable: a cancelled or failed export leaves
@@ -139,6 +147,7 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         mapBackground: Bitmap?,
         directory: File,
         stamp: Long,
+        avatar: Bitmap?,
     ): File {
         val file = File(directory, "meucoach-story-cover-$stamp.png")
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
@@ -147,7 +156,7 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
                 ?: (plan.durationSec - 1f).coerceAtLeast(0f)
             val timeSec = finalStart + 1f
             val canvas = Canvas(bitmap)
-            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground)
+            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar)
                 .render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
             StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
             file.outputStream().use { output ->
@@ -168,6 +177,7 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         output: File,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
+        avatar: Bitmap?,
     ) {
         val codecInfo = selectEncoder()
 
@@ -178,7 +188,7 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         val info = MediaCodec.BufferInfo()
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground)
+        val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar)
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
         val useSurface = supportsSurface(codecInfo)

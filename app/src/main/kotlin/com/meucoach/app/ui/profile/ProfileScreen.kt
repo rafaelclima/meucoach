@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.common.ProfileAvatar
 import com.meucoach.app.ui.common.healthConnectLastSyncLabel
 import com.meucoach.app.ui.common.healthConnectStatusLabel
 import com.meucoach.app.ui.common.isHealthConnectConnected
@@ -142,18 +143,30 @@ private fun ProfileDetails(
         item {
             Column {
                 Text(text = "PERFIL", style = McTextStyles.overline, color = colors.textTertiary)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Seu perfil",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = colors.textPrimary,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Dados usados para individualizar zonas, carga e metas.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ProfileAvatar(
+                        name = profile.name,
+                        avatarPath = profile.avatarPath,
+                        size = 72.dp,
+                    )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = profile.name?.takeIf { it.isNotBlank() } ?: "Seu perfil",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            text = "Dados usados para individualizar zonas, carga e metas.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                        )
+                    }
+                }
             }
         }
         item {

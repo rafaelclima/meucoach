@@ -81,6 +81,7 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.StoryVerdict
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
@@ -172,6 +173,9 @@ internal fun ActivityDetailContent(
                 state.activity != null -> {
                     item { HeroCard(state.activity) }
                     item { MetricsCard(state.activity) }
+                    state.coachVerdict?.let { verdict ->
+                        item { CoachReadingCard(verdict) }
+                    }
                     if (state.activity.imported.samples.size >= 2) {
                         item { ActivityChartCard(samples = state.activity.imported.samples) }
                     }
@@ -656,7 +660,12 @@ private fun StoryCard(
             }
 
             is StoryExportUiState.Preview -> {
-                StoryPreview(plan = story.plan, mapBackground = story.mapBackground, style = storyStyle)
+                StoryPreview(
+                    plan = story.plan,
+                    mapBackground = story.mapBackground,
+                    style = storyStyle,
+                    avatar = state.avatar,
+                )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     McPrimaryButton(
@@ -783,10 +792,10 @@ private fun StoryStyleButton(text: String, selected: Boolean, onClick: () -> Uni
 }
 
 @Composable
-private fun StoryPreview(plan: StoryPlan, mapBackground: Bitmap?, style: StoryMapStyle) {
+private fun StoryPreview(plan: StoryPlan, mapBackground: Bitmap?, style: StoryMapStyle, avatar: Bitmap?) {
     val context = LocalContext.current
     val colors = McTheme.colors
-    val bitmap = remember(plan, mapBackground, colors, style) {
+    val bitmap = remember(plan, mapBackground, colors, style, avatar) {
         val typeface = ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
         val previewTime = plan.segments
             .firstOrNull { it.type == StorySegmentType.CARD }
@@ -797,6 +806,7 @@ private fun StoryPreview(plan: StoryPlan, mapBackground: Bitmap?, style: StoryMa
             typeface,
             StoryBranding.logo(context),
             mapBackground,
+            avatar,
         )
             .render(plan, timeSec = previewTime, width = 360, height = 640)
     }
@@ -817,12 +827,36 @@ private fun StoryPreview(plan: StoryPlan, mapBackground: Bitmap?, style: StoryMa
             contentScale = ContentScale.Fit,
         )
     }
-    plan.verdict?.let { verdict ->
+}
+
+@Composable
+private fun CoachReadingCard(verdict: StoryVerdict) {
+    val colors = McTheme.colors
+    McCard(variant = McCardVariant.INSET) {
+        Text(
+            text = "LEITURA DO COACH",
+            style = McTextStyles.overline,
+            color = colors.textTertiary,
+        )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Leitura do coach (só você vê): ${verdict.headline}",
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
+            text = verdict.headline,
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.accentText,
+        )
+        verdict.proof?.let { proof ->
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = proof,
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = verdict.coachLine,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
         )
     }
 }

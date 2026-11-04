@@ -364,7 +364,8 @@ internal fun todayState(
         days = days,
         weeklyLoadKm = weeklyLoadKm,
         recentActivity = recentActivity,
-        athleteName = if (profile == null) base.athleteName else "",
+        athleteName = profile?.name.orEmpty(),
+        avatarPath = profile?.avatarPath,
         weather = profile?.city ?: "",
     )
 }
