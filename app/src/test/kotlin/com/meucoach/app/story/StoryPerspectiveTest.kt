@@ -31,6 +31,15 @@ class StoryPerspectiveTest {
     }
 
     @Test
+    fun `pitch drops the top edge toward the horizon`() {
+        val points = corners()
+        StoryPerspective.matrix(width, height, pitchDegrees = 3f, yawDegrees = 0f)!!.mapPoints(points)
+
+        assertThat(points[1]).isGreaterThan(0f)
+        assertThat(points[3]).isGreaterThan(0f)
+    }
+
+    @Test
     fun `yaw compresses the left and stretches the right`() {
         val points = corners()
         StoryPerspective.matrix(width, height, pitchDegrees = 0f, yawDegrees = 2f)!!.mapPoints(points)

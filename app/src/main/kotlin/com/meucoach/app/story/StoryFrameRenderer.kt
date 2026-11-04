@@ -78,11 +78,11 @@ class StoryFrameRenderer(
         withCamera(canvas, camera, square, width, height) {
             drawMapBackground(canvas, width, height)
         }
+        withCamera(canvas, camera, square, width, height) {
+            drawRoute(canvas, plan, timeSec, width, height, scale, square, camera.scale)
+        }
         drawScrims(canvas, width, height, scale, isFinal)
         drawHeader(canvas, plan, width, height, scale)
-        withCamera(canvas, camera, square, width, height) {
-            drawRoute(canvas, plan, timeSec, width, height, scale, square)
-        }
         when {
             segment?.type == StorySegmentType.CARD && segment.split != null ->
                 drawCard(canvas, plan, segment, timeSec, width, height, scale)
@@ -102,16 +102,21 @@ class StoryFrameRenderer(
         height: Int,
         draw: () -> Unit,
     ) {
+        val routeFocusX = square.left + camera.focusX * square.side
+        val routeFocusY = square.top + camera.focusY * square.side
+        val focusX = square.centerX + (routeFocusX - square.centerX) * camera.follow
+        val focusY = square.centerY + (routeFocusY - square.centerY) * camera.follow
         canvas.save()
-        canvas.translate(camera.shiftX * width, camera.shiftY * height)
-        canvas.scale(camera.scale, camera.scale, square.centerX, square.centerY)
-        canvas.rotate(camera.rotationDegrees, square.centerX, square.centerY)
         StoryPerspective.matrix(
             width = width.toFloat(),
             height = height.toFloat(),
             pitchDegrees = camera.pitchDegrees,
             yawDegrees = camera.yawDegrees,
         )?.let { canvas.concat(it) }
+        canvas.translate(camera.targetX * width, camera.targetY * height)
+        canvas.rotate(camera.rotationDegrees)
+        canvas.scale(camera.scale, camera.scale)
+        canvas.translate(-focusX, -focusY)
         draw()
         canvas.restore()
     }
@@ -233,8 +238,12 @@ class StoryFrameRenderer(
         height: Int,
         scale: Float,
         square: StoryLayout.RouteSquare,
+        cameraScale: Float,
     ) {
         val side = square.side
+        // Keep the route, markers and glow at a stable screen size while the
+        // map itself flies in and out under the camera.
+        val overlayScale = scale / cameraScale.coerceAtLeast(0.01f)
         // The map snapshot uses the same zoom factor, keeping the line on the streets.
         val zoom = if (mapBackground != null) StoryMapCameraCalculator.MAP_ZOOM_FACTOR else 1f
         fun projectX(x: Float): Float = if (mapBackground == null) {
@@ -256,7 +265,7 @@ class StoryFrameRenderer(
         if (mapBackground != null) {
             val casing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 19f * scale
+                strokeWidth = 19f * overlayScale
                 strokeCap = Paint.Cap.ROUND
                 strokeJoin = Paint.Join.ROUND
                 color = palette.mapCasing
@@ -266,7 +275,7 @@ class StoryFrameRenderer(
         }
         val base = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 10f * scale
+            strokeWidth = 10f * overlayScale
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             color = if (mapBackground != null) palette.mapBaseRoute else palette.border
@@ -276,7 +285,7 @@ class StoryFrameRenderer(
 
         val measure = PathMeasure(routePath, false)
         val progress = StoryMotion.progressAt(plan, timeSec)
-        drawTraveledRoute(canvas, plan, measure, progress, scale)
+        drawTraveledRoute(canvas, plan, measure, progress, overlayScale)
 
         val position = FloatArray(2)
         measure.getPosTan(measure.length * progress, position, null)
@@ -284,8 +293,8 @@ class StoryFrameRenderer(
             color = palette.accent
             alpha = 60
         }
-        canvas.drawCircle(position[0], position[1], 24f * scale, glow)
-        canvas.drawCircle(position[0], position[1], 9f * scale, paint(palette.accent, 0f))
+        canvas.drawCircle(position[0], position[1], 24f * overlayScale, glow)
+        canvas.drawCircle(position[0], position[1], 9f * overlayScale, paint(palette.accent, 0f))
         val startX = projectX(plan.route.start.x)
         val startY = projectY(plan.route.start.y)
         val endX = projectX(plan.route.end.x)
@@ -295,11 +304,11 @@ class StoryFrameRenderer(
                 color = palette.mapCasing
                 alpha = 210
             }
-            canvas.drawCircle(startX, startY, 9f * scale, ring)
-            canvas.drawCircle(endX, endY, 9f * scale, ring)
+            canvas.drawCircle(startX, startY, 9f * overlayScale, ring)
+            canvas.drawCircle(endX, endY, 9f * overlayScale, ring)
         }
-        canvas.drawCircle(startX, startY, 6f * scale, paint(palette.textPrimary, 0f))
-        canvas.drawCircle(endX, endY, 6f * scale, paint(palette.coral, 0f))
+        canvas.drawCircle(startX, startY, 6f * overlayScale, paint(palette.textPrimary, 0f))
+        canvas.drawCircle(endX, endY, 6f * overlayScale, paint(palette.coral, 0f))
     }
 
     /** Paints the traveled part of the route with the zone measured on that stretch. */

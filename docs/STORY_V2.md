@@ -220,14 +220,16 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
 
 ---
 
-## 12. Nota de implementação — câmera v2 (03/11/2026)
+## 12. Nota de implementação — câmera flyover (03/11/2026)
 
-**Objetivo:** fazer o zoom e o ângulo de câmera responderem ao percurso e ao ritmo dos cards, sem sair do motor determinístico e sem dependência nova.
+**Objetivo:** sair do "mapa parado com tilt mínimo" e criar um voo perceptível, sem sair do motor determinístico e sem dependência nova.
 
-- **Zoom por card:** `StoryMotion.camera(timeSec, plan)` mantém o push lento de 1,08 → 1,12 e adiciona um foco de +0,04 enquanto um card de km está na tela, com rampa de 1,4 s. Entre cards a câmera relaxa; o vídeo respira junto com os splits.
-- **Ângulo de câmera:** o mesmo `StoryCamera` passa a carregar `pitchDegrees` (0 → 4° → 0) e `yawDegrees` (0 → 2° → 0 → −2° → 0), além da rotação de 0 → 3° → 0. `StoryPerspective` projeta mapa **e** rota na mesma homografia rasa (`Canvas.concat`), então a linha continua exatamente sobre as ruas.
-- **Escala de layout:** `MAX_CAMERA_SCALE` subiu para 1,16 para reservar o zoom do card; `StoryLayout.routeSquare` usa esse valor, e a rota continua dentro da área segura.
-- **Limite consciente:** não é um pitch real de MapLibre. Re-renderizar o snapshot por frame com `pitch`/`bearing` exigiria uma chamada de mapa por frame e uma matriz de projeção própria; a homografia sobre o snapshot é a aproximação segura para o MVP e preserva o alinhamento.
-- **Testes:** `StoryMotionTest` cobre foco do card, pitch/yaw e o teto de escala; `StoryPerspectiveTest` cobre o repouso, o estreitamento do topo e a compressão lateral. Goldens do story atualizados.
+- **Câmera que segue o corredor:** `StoryMotion.camera(timeSec, plan)` calcula o ponto da rota no progresso atual, mantém esse ponto em 43% da altura e puxa o mapa para perto. O vídeo começa no overview (1,18×/8°), mergulha em 1,8 s para 1,72×/32° e volta ao overview nos primeiros 1,2 s do frame final.
+- **Ângulo de câmera:** a rotação acompanha a direção da rota (limitada a ±22° para o snapshot ainda cobrir o 9:16), o `pitch` chega a 32° e o `yaw` dá um roll de até 2,5°. O `StoryPerspective` agora também derruba a borda superior em direção ao horizonte, o que dá leitura de plano inclinado, não só de trapézio horizontal.
+- **Zoom por card:** enquanto um card de km está na tela, entram +0,06 de escala e +3° de pitch. Entre cards a câmera respira; no encerramento ela se afasta para mostrar a rota inteira.
+- **Rota legível no zoom:** a espessura da linha, o glow e os marcadores são divididos pela escala da câmera, então continuam com o mesmo tamanho de tela enquanto o mapa cresce.
+- **Mapa nítido:** o snapshot subiu para 1,75× (1890×3360) e o layout reserva a escala de overview; o zoom de 1,72× continua praticamente 1:1.
+- **Limite consciente:** ainda é uma homografia sobre o snapshot, não terreno 3D. Um pitch real de MapLibre exigiria re-renderizar o mapa por frame; a versão atual preserva o alinhamento rota/ruas e é viável no MediaCodec.
+- **Testes:** `StoryMotionTest` cobre overview, mergulho, follow do ponto, heading, cards, pullback e teto de escala; `StoryPerspectiveTest` cobre o horizonte e a compressão lateral. Goldens do story atualizados.
 
-**Ainda pendente:** validar o movimento em aparelho real e decidir, na Fase D, se vale trocar a homografia por `MapSnapshotter` com pitch real.
+**Ainda pendente:** validar o movimento em aparelho real e medir o tempo de export com o snapshot maior; se o custo pesar, reduzir o supersampling para 1,5× e o follow para 1,55×.

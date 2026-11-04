@@ -72,11 +72,11 @@ class StoryMapCameraTest {
     fun `keeps the route square proportional at preview size`() {
         val square = StoryMapCameraCalculator.routeSquare(360f, 640f)
 
-        assertThat(square.side).isCloseTo(250f, within(0.1f))
+        assertThat(square.side).isCloseTo(245.8f, within(0.1f))
         assertThat(square.centerX).isCloseTo(180f, within(0.1f))
         assertThat(square.centerY).isCloseTo(315f, within(0.1f))
-        assertThat(square.left).isCloseTo(55f, within(0.1f))
-        assertThat(square.top).isCloseTo(190f, within(0.1f))
+        assertThat(square.left).isCloseTo(57.1f, within(0.1f))
+        assertThat(square.top).isCloseTo(192.1f, within(0.1f))
     }
 
     @Test

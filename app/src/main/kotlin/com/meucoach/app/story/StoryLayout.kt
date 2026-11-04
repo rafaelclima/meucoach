@@ -60,16 +60,15 @@ object StoryLayout {
     }
 
     /**
-     * Square the route is projected into. The camera pushes up to
-     * [StoryMotion.MAX_CAMERA_SCALE], so the square is pre-shrunk: after the
-     * push the route fills exactly the reserved extent (top 340, bottom 920 on
-     * the 720×1280 reference) and never invades the header.
+     * Square the route is projected into. It is sized for the overview camera
+     * ([StoryMotion.OVERVIEW_SCALE]); the flyover pushes into this square while
+     * following the runner, so the route can extend under the header/card.
      */
     fun routeSquare(width: Float, height: Float): RouteSquare {
         val margin = margin(width)
         val top = routeTop(height)
         val bottom = routeBottom(height)
-        val side = minOf(width - 2f * margin, (bottom - top) / StoryMotion.MAX_CAMERA_SCALE)
+        val side = minOf(width - 2f * margin, (bottom - top) / StoryMotion.OVERVIEW_SCALE)
         val centerY = (top + bottom) / 2f
         return RouteSquare(
             left = width / 2f - side / 2f,

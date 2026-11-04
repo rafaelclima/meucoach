@@ -333,7 +333,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [ ] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`).
 - [x] Story v2 — Fase A: área segura do Instagram, câmera com zoom/rotação, film look, 30 fps e capa PNG (`docs/STORY_V2.md`).
 - [x] Story v2 — Fase B: rota colorida por zona e veredito do coach por km.
-- [x] Story v2 — câmera v2: zoom por card + pitch/yaw via homografia no mapa e na rota (`docs/STORY_V2.md` §12).
+- [x] Story v2 — câmera v2: flyover com follow do corredor, zoom por card, rotação pela direção da rota e pitch/yaw via homografia no mapa e na rota (`docs/STORY_V2.md` §12).
 - [x] Logo `MeuCoach` no rodapé do story (asset recortado em `core:designsystem`, prévia e vídeo).
 - [ ] Refinar a logo com prompt estruturado (`resposta 3`).
 

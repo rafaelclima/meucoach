@@ -6,49 +6,103 @@ import com.meucoach.core.model.Pace
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.Test
+import kotlin.math.abs
 
 class StoryMotionTest {
     @Test
-    fun `camera starts still and pushes in without exposing the frame`() {
-        val start = StoryMotion.camera(0f, 30f)
-        val middle = StoryMotion.camera(15f, 30f)
-        val end = StoryMotion.camera(30f, 30f)
+    fun `camera starts on the overview and dives into follow`() {
+        val plan = plan()
+        val start = StoryMotion.camera(0f, plan)
+        val middle = StoryMotion.camera(5f, plan)
+        val end = StoryMotion.camera(15f, plan)
 
-        assertThat(start.scale).isEqualTo(StoryMotion.MIN_SCALE)
+        assertThat(start.follow).isCloseTo(0f, within(1e-4f))
+        assertThat(start.scale).isCloseTo(StoryMotion.OVERVIEW_SCALE, within(1e-4f))
         assertThat(start.rotationDegrees).isCloseTo(0f, within(1e-4f))
-        assertThat(start.pitchDegrees).isCloseTo(0f, within(1e-4f))
-        assertThat(start.yawDegrees).isCloseTo(0f, within(1e-4f))
-        assertThat(start.shiftX).isCloseTo(0f, within(1e-4f))
-        assertThat(middle.scale).isGreaterThan(start.scale)
-        assertThat(end.scale).isEqualTo(StoryMotion.MIN_SCALE + StoryMotion.MAX_EXTRA_SCALE)
-        assertThat(end.rotationDegrees).isCloseTo(0f, within(1e-3f))
-        assertThat(middle.rotationDegrees).isCloseTo(StoryMotion.MAX_ROTATION_DEGREES, within(0.001f))
-        assertThat(middle.pitchDegrees).isCloseTo(StoryMotion.MAX_PITCH_DEGREES, within(0.001f))
-        assertThat(middle.yawDegrees).isCloseTo(0f, within(1e-4f))
-        assertThat(StoryMotion.camera(7.5f, 30f).yawDegrees)
-            .isCloseTo(StoryMotion.MAX_YAW_DEGREES, within(0.001f))
+        assertThat(start.pitchDegrees).isCloseTo(StoryMotion.OVERVIEW_PITCH_DEGREES, within(1e-4f))
+
+        assertThat(middle.follow).isCloseTo(1f, within(1e-4f))
+        assertThat(middle.scale).isCloseTo(StoryMotion.FOLLOW_SCALE, within(1e-4f))
+        assertThat(middle.pitchDegrees).isCloseTo(StoryMotion.FOLLOW_PITCH_DEGREES, within(1e-4f))
+        assertThat(middle.rotationDegrees).isCloseTo(-StoryMotion.MAX_ROTATION_DEGREES, within(0.001f))
+
+        assertThat(end.follow).isCloseTo(0f, within(1e-4f))
+        assertThat(end.scale).isCloseTo(StoryMotion.OVERVIEW_SCALE, within(1e-4f))
+        assertThat(end.rotationDegrees).isCloseTo(0f, within(1e-4f))
+        assertThat(end.pitchDegrees).isCloseTo(StoryMotion.OVERVIEW_PITCH_DEGREES, within(1e-4f))
     }
 
     @Test
-    fun `camera pushes in while a km card is on screen`() {
+    fun `camera follows the runner point along the route`() {
+        val plan = plan()
+
+        assertThat(StoryMotion.camera(0f, plan).focusX).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.camera(0f, plan).focusY).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.camera(5f, plan).focusX).isCloseTo(0.5f, within(1e-4f))
+        assertThat(StoryMotion.camera(5f, plan).focusY).isCloseTo(0.5f, within(1e-4f))
+    }
+
+    @Test
+    fun `camera pushes in and tilts while a km card is on screen`() {
         val plan = plan()
         val withCard = StoryMotion.camera(11f, plan)
-        val withoutCard = StoryMotion.camera(11f, plan.durationSec)
 
         assertThat(StoryMotion.cardFocus(plan, 11f)).isEqualTo(1f)
-        assertThat(withCard.scale).isGreaterThan(withoutCard.scale)
-        assertThat(StoryMotion.cardFocus(plan, 0f)).isEqualTo(0f)
+        assertThat(withCard.scale).isCloseTo(StoryMotion.MAX_CAMERA_SCALE, within(1e-4f))
+        assertThat(withCard.pitchDegrees)
+            .isCloseTo(StoryMotion.FOLLOW_PITCH_DEGREES + StoryMotion.CARD_EXTRA_PITCH_DEGREES, within(0.001f))
     }
 
     @Test
     fun `camera scale never exceeds the layout allowance`() {
         val plan = plan()
 
-        plan.segments.forEach { segment ->
-            val time = (segment.startSec + segment.endSec) / 2f
+        var time = 0f
+        while (time <= plan.durationSec) {
             assertThat(StoryMotion.camera(time, plan).scale)
                 .isLessThanOrEqualTo(StoryMotion.MAX_CAMERA_SCALE)
+            time += 0.25f
         }
+    }
+
+    @Test
+    fun `route point is interpolated by path length`() {
+        val route = RouteData(
+            listOf(
+                RoutePoint(0f, 0f),
+                RoutePoint(1f, 0f),
+                RoutePoint(1f, 1f),
+            ),
+        )
+
+        assertThat(StoryMotion.routePointAt(route, 0.25f).x).isCloseTo(0.5f, within(1e-4f))
+        assertThat(StoryMotion.routePointAt(route, 0.25f).y).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.routePointAt(route, 0.5f).x).isCloseTo(1f, within(1e-4f))
+        assertThat(StoryMotion.routePointAt(route, 0.5f).y).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.routePointAt(route, 0.75f).x).isCloseTo(1f, within(1e-4f))
+        assertThat(StoryMotion.routePointAt(route, 0.75f).y).isCloseTo(0.5f, within(1e-4f))
+    }
+
+    @Test
+    fun `route heading makes the direction of travel point up`() {
+        val right = RouteData(listOf(RoutePoint(0f, 0.5f), RoutePoint(1f, 0.5f)))
+        val up = RouteData(listOf(RoutePoint(0.5f, 1f), RoutePoint(0.5f, 0f)))
+        val down = RouteData(listOf(RoutePoint(0.5f, 0f), RoutePoint(0.5f, 1f)))
+
+        assertThat(StoryMotion.headingDegrees(right, 0.5f)).isCloseTo(-90f, within(0.1f))
+        assertThat(StoryMotion.headingDegrees(up, 0.5f)).isCloseTo(0f, within(0.1f))
+        assertThat(abs(StoryMotion.headingDegrees(down, 0.5f))).isGreaterThan(170f)
+    }
+
+    @Test
+    fun `follow intensity dives in and pulls back inside the closing segment`() {
+        val plan = plan()
+
+        assertThat(StoryMotion.followIntensity(plan, 0f)).isCloseTo(0f, within(1e-4f))
+        assertThat(StoryMotion.followIntensity(plan, 1.8f)).isCloseTo(1f, within(1e-4f))
+        assertThat(StoryMotion.followIntensity(plan, 11f)).isCloseTo(1f, within(1e-4f))
+        assertThat(StoryMotion.followIntensity(plan, 12.6f)).isCloseTo(0.5f, within(0.001f))
+        assertThat(StoryMotion.followIntensity(plan, 15f)).isCloseTo(0f, within(1e-4f))
     }
 
     @Test

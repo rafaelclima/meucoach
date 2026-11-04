@@ -299,10 +299,10 @@ class StoryVideoExporter @Inject constructor(@ApplicationContext private val con
         private const val BITRATE = 10_000_000
 
         /**
-         * The map is rendered 15% larger than the video and drawn down into the
-         * frame, so the 1.08–1.13 camera push and the 2° rotation stay sharp.
+         * The map is rendered 75% larger than the video and drawn down into the
+         * frame, so the overview and the 1.72× flyover stay sharp.
          */
-        const val MAP_SUPERSAMPLE = 1.15f
+        const val MAP_SUPERSAMPLE = 1.75f
 
         fun mapWidth(): Int = (WIDTH * MAP_SUPERSAMPLE).toInt()
         fun mapHeight(): Int = (HEIGHT * MAP_SUPERSAMPLE).toInt()

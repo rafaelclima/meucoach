@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 709 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 314 em `:app`)
+- **Testes:** 714 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 319 em `:app`)
 - **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
@@ -43,13 +43,40 @@
 - **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) de labels ampliados e fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; vídeo 1080p a 10 Mbps e 30 fps desde a Fase A do story v2.
 - **Story v2 — Fase A:** área segura do Instagram, câmera com zoom/rotação alinhada à rota, grão/vinheta/grade de cor, 30 fps, snapshot supersampleado e capa PNG do frame final.
 - **Story v2 — Fase B:** veredito determinístico por km e no encerramento (`StoryVerdictCalculator`), rota colorida por zona de FC, barra de splits e contador no card; sem plano/calibração/FC o story não inventa alvo.
-- **Story v2 — câmera:** zoom extra enquanto o card de km está na tela e inclinação (`pitch`/`yaw`) via homografia aplicada ao mapa **e** à rota, com `MAX_CAMERA_SCALE` de 1,16 e a mesma matriz nos dois layers.
+- **Story v2 — câmera:** flyover que segue o corredor (overview 1,18×/8° → follow 1,72×/32°), rotação de até 22° pela direção da rota, zoom extra no card e pullback no encerramento; homografia aplicada ao mapa **e** à rota, com espessura da rota compensada pela escala.
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
+
+## Sessão 2026-11-03 — Câmera flyover do story
+
+### Concluído
+
+- **Câmera que segue o corredor:** `StoryMotion` agora mantém o ponto atual da rota em 43% da altura, começa no overview (1,18×/8°), mergulha em 1,8 s para 1,72×/32° e puxa de volta no primeiro 1,2 s do frame final.
+- **Rotação com direção:** a rotação acompanha o heading suavizado da rota, limitado a ±22° para o snapshot ainda cobrir o 9:16; o pitch sobe até 32° e o yaw dá um roll de até 2,5°.
+- **Perspectiva mais 3D:** `StoryPerspective` passou a derrubar a borda superior em direção ao horizonte, além de estreitar o topo e alargar a base. O mapa lê como plano inclinado, não apenas como trapézio.
+- **Cards e encerramento:** `+0,06` de escala e `+3°` de pitch durante o card; o pullback do encerramento revela a rota inteira atrás do frame final.
+- **Rota estável no zoom:** linha, glow e marcadores são compensados por `scale / cameraScale` para manter o mesmo tamanho de tela durante o voo.
+- **Mapa nítido:** snapshot de 1,75× (1890×3360), escala de overview no layout e rota projetada no mesmo quadrado.
+- **Testes:** `StoryMotionTest` reescrito para overview/mergulho/follow/heading/cards/pullback/teto de escala; `StoryPerspectiveTest` ganhou o caso do horizonte. Goldens do story refeitos.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — sucesso.
+- 714 testes, 0 falhas (27 `core:model`, 279 `core:domain`, 89 `core:data`, 319 `:app`).
+- Cobertura `core:domain`: 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099).
+- Lint: 0 erros; 23 avisos não bloqueantes.
+- Goldens atualizados: `story-frame-dark`, `story-frame-logo-dark`, `story-map-dark`, `story-card-verdict-dark`, `story-final-dark`, `story-final-map-dark` e `story-final-verdict-dark`.
+
+### Decisões e observações
+
+- **Rotação limitada é intencional:** sem limite, o retângulo do snapshot gira para fora do frame e abre buracos pretos. Com 22° e 1,72× a cobertura é segura e o movimento continua evidente.
+- **Zoom alto exige snapshot maior:** 1,75× mantém o mapa praticamente 1:1 no follow. Se o export no aparelho ficar lento, o primeiro ajuste é cair para 1,5×/1,55×.
+- **Ainda não é terreno 3D:** a homografia inclina o plano do mapa; um flyover com relevo exigiria DEM e re-renderização do mapa, fora do escopo desta rodada.
+- **Próximo passo:** gerar um vídeo real no aparelho e avaliar ritmo, legibilidade dos labels e tempo de export.
 
 ## Sessão 2026-11-03 — LTHR manual, calibrar por corrida e câmera do story
 
