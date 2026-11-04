@@ -298,3 +298,12 @@ Ao avaliar um tilt nativo (pitch real de 40–55°, "tipo Strava"), verificamos 
 - Sem projeção, o `StoryFrameRenderer` não consegue posicionar a rota animada sobre um snapshot inclinado com a mesma matriz da câmera.
 
 Consequência: tilt nativo exige (a) portar a matemática de câmera do MapLibre para Kotlin puro, validando no aparelho, ou (b) assar a rota no próprio snapshot (`GeoJSON`/`line-gradient`) e revelar por keyframes. Ambas ficam registradas em `docs/STORY_V2.md` §14 como spike separado; a decisão atual mantém o tilt por homografia. Nenhuma coordenada muda de lugar: o snapshot continua local e a única chamada de rede segue sendo o download de tiles.
+
+## Addendum — 2026-11-04: estilo Terreno (hillshade) e atribuição
+
+O story ganhou um segundo estilo de mapa, `StoryMapStyle.TERRAIN`. Ele mantém o `liberty` (vetorial, labels nítidos) e acrescenta:
+
+- fonte `raster-dem` com os tiles públicos de elevação Mapzen/AWS (`encoding: terrarium`);
+- camada `hillshade` abaixo dos labels, com exageração 0,35.
+
+É **relevo sombreado**, não terreno 3D nem câmera inclinada — o spike de perspectiva segue no adendo anterior/§14 do `STORY_V2`. A atribuição do frame passa a ser “© OpenStreetMap · OpenFreeMap · Elevation Mapzen” no estilo Terreno. O estilo Clássico permanece o padrão e não baixa os tiles de elevação.

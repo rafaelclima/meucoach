@@ -23,6 +23,7 @@ data class StoryPalette(
     val zone3: Int,
     val zone4: Int,
     val zone5: Int,
+    val mapStyle: StoryMapStyle = StoryMapStyle.CLASSIC,
 ) {
     fun zoneColor(zone: HeartRateZone): Int = when (zone) {
         HeartRateZone.Z1 -> zone1
@@ -33,7 +34,7 @@ data class StoryPalette(
     }
 }
 
-fun McColors.toStoryPalette() = StoryPalette(
+fun McColors.toStoryPalette(mapStyle: StoryMapStyle = StoryMapStyle.CLASSIC) = StoryPalette(
     background = background.toArgb(),
     surface = surface.toArgb(),
     surfaceInset = surfaceInset.toArgb(),
@@ -52,4 +53,5 @@ fun McColors.toStoryPalette() = StoryPalette(
     zone3 = zone3.toArgb(),
     zone4 = zone4.toArgb(),
     zone5 = zone5.toArgb(),
+    mapStyle = mapStyle,
 )

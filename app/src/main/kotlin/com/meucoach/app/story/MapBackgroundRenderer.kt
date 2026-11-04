@@ -27,8 +27,13 @@ import kotlin.coroutines.resumeWithException
  * Suspending and injectable so previews/tests can run without network or the
  * MapLibre native library.
  */
-fun interface MapBackgroundRenderer {
-    suspend fun render(boundingBox: BoundingBox, width: Int, height: Int): Bitmap
+interface MapBackgroundRenderer {
+    suspend fun render(
+        boundingBox: BoundingBox,
+        width: Int,
+        height: Int,
+        style: StoryMapStyle = StoryMapStyle.CLASSIC,
+    ): Bitmap
 }
 
 /**
@@ -39,21 +44,20 @@ fun interface MapBackgroundRenderer {
  */
 class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private val context: Context) :
     MapBackgroundRenderer {
-    @Volatile
-    private var cachedStyle: String? = null
+    private val cachedStyles = java.util.concurrent.ConcurrentHashMap<StoryMapStyle, String>()
 
-    override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int): Bitmap {
+    override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int, style: StoryMapStyle): Bitmap {
         if (!hasNetwork()) {
             throw IllegalStateException("Sem conexão para baixar o mapa.")
         }
-        val style = styleJson()
+        val json = styleJson(style)
         return withContext(Dispatchers.Main.immediate) {
             MapLibre.getInstance(context)
             suspendCancellableCoroutine { continuation ->
                 val camera = StoryMapCameraCalculator.calculate(boundingBox, width, height)
                 val options = MapSnapshotter
                     .Options(width, height)
-                    .withStyleBuilder(Style.Builder().fromJson(style))
+                    .withStyleBuilder(Style.Builder().fromJson(json))
                     .withCameraPosition(
                         CameraPosition.Builder()
                             .target(LatLng(camera.latitude, camera.longitude))
@@ -84,9 +88,9 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
         }
     }
 
-    private suspend fun styleJson(): String {
-        cachedStyle?.let { return it }
-        val style = runCatching {
+    private suspend fun styleJson(style: StoryMapStyle): String {
+        cachedStyles[style]?.let { return it }
+        val json = runCatching {
             withContext(Dispatchers.IO) {
                 val connection = (URL(OpenFreeMapStyle.STYLE_URL).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 10_000
@@ -96,14 +100,18 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
                     instanceFollowRedirects = true
                 }
                 val json = connection.getInputStream().bufferedReader().use { it.readText() }
-                OpenFreeMapStyle.customize(json)
+                OpenFreeMapStyle.customize(json, terrain = style == StoryMapStyle.TERRAIN)
             }
         }.getOrElse { error ->
             if (error is CancellationException) throw error
+            if (style == StoryMapStyle.TERRAIN) {
+                // No relief overlay without the style download; keep the story usable.
+                return styleJson(StoryMapStyle.CLASSIC)
+            }
             return OSM_RASTER_STYLE
         }
-        cachedStyle = style
-        return style
+        cachedStyles[style] = json
+        return json
     }
 
     private fun hasNetwork(): Boolean {

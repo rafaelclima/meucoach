@@ -9,7 +9,7 @@ package com.meucoach.app.story
  */
 object StoryPaletteCodec {
     const val KEY = "storyPalette"
-    internal const val FIELD_COUNT = 17
+    internal const val FIELD_COUNT = 18
 
     fun encode(palette: StoryPalette): IntArray = intArrayOf(
         palette.background,
@@ -29,6 +29,7 @@ object StoryPaletteCodec {
         palette.zone3,
         palette.zone4,
         palette.zone5,
+        palette.mapStyle.ordinal,
     )
 
     fun decode(values: IntArray?): StoryPalette? {
@@ -51,6 +52,7 @@ object StoryPaletteCodec {
             zone3 = values[14],
             zone4 = values[15],
             zone5 = values[16],
+            mapStyle = StoryMapStyle.entries.getOrNull(values[17]) ?: StoryMapStyle.CLASSIC,
         )
     }
 }

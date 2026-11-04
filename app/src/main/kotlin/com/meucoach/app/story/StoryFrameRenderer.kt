@@ -11,7 +11,6 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import com.meucoach.app.ui.activities.formatDuration
-import com.meucoach.core.domain.story.StoryVerdictTone
 import com.meucoach.core.model.Pace
 import java.util.Locale
 import kotlin.math.max
@@ -59,6 +58,7 @@ class StoryFrameRenderer(
         val isFinal = segment?.type == StorySegmentType.FINAL
         val square = StoryLayout.routeSquare(width.toFloat(), height.toFloat())
         val camera = StoryMotion.camera(timeSec, plan)
+        val highlights = StoryHighlightsCalculator.calculate(plan)
 
         canvas.drawColor(palette.background)
         withCamera(canvas, camera, square, width, height) {
@@ -80,10 +80,10 @@ class StoryFrameRenderer(
         drawHeader(canvas, plan, width, height, scale)
         when {
             segment?.type == StorySegmentType.CARD && segment.split != null ->
-                drawCard(canvas, plan, segment, timeSec, width, height, scale)
+                drawCard(canvas, plan, segment, timeSec, width, height, scale, highlights)
 
             isFinal ->
-                drawFinal(canvas, plan, width, height, scale)
+                drawFinal(canvas, plan, width, height, scale, highlights)
         }
         if (mapBackground != null) drawAttribution(canvas, width, height, scale)
         drawVignette(canvas, width, height)
@@ -387,6 +387,7 @@ class StoryFrameRenderer(
         width: Int,
         height: Int,
         scale: Float,
+        highlights: StoryHighlights,
     ) {
         val split = segment.split ?: return
         val card = cardBounds(width, height)
@@ -397,7 +398,7 @@ class StoryFrameRenderer(
 
         val kmPaint = paint(palette.accent, 52f * scale, bold = true)
         canvas.drawText("KM ${split.km}", card.left + 28f * scale, card.top + 64f * scale, kmPaint)
-        drawVerdictStamp(canvas, card, split.verdict, scale)
+        drawFastestStamp(canvas, card, split, highlights, plan.splits.size, scale)
 
         val label = paint(palette.textTertiary, 16f * scale, bold = true)
         val value = paint(palette.textPrimary, 30f * scale, bold = true)
@@ -450,13 +451,21 @@ class StoryFrameRenderer(
         return String.format(PT_BR, "%d:%02d /km", seconds / 60, seconds % 60)
     }
 
-    private fun drawVerdictStamp(canvas: Canvas, card: RectF, tone: StoryVerdictTone?, scale: Float) {
-        if (tone == null) return
-        val (text, background) = when (tone) {
-            StoryVerdictTone.ON_TARGET -> "NO ALVO" to palette.accent
-            StoryVerdictTone.TOO_HARD -> "FORTE DEMAIS" to palette.coral
-            StoryVerdictTone.TOO_EASY -> "LEVE DEMAIS" to palette.zone1
-        }
+    /**
+     * The fastest kilometre is the only badge a public viewer can understand
+     * without knowing the prescribed session. On short runs (one or two kms)
+     * it says nothing, so it is omitted.
+     */
+    private fun drawFastestStamp(
+        canvas: Canvas,
+        card: RectF,
+        split: StorySplit,
+        highlights: StoryHighlights,
+        splitCount: Int,
+        scale: Float,
+    ) {
+        if (splitCount < 3 || highlights.fastestKm != split.km) return
+        val text = "KM MAIS RÁPIDO"
         val stampPaint = paint(palette.onAccent, 13f * scale, bold = true)
         val paddingH = 10f * scale
         val paddingV = 5f * scale
@@ -469,7 +478,7 @@ class StoryFrameRenderer(
             rect,
             height / 2f,
             height / 2f,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = background },
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent },
         )
         val baseline = rect.centerY() - (stampPaint.descent() + stampPaint.ascent()) / 2f
         canvas.drawText(text, rect.left + paddingH, baseline, stampPaint)
@@ -506,49 +515,41 @@ class StoryFrameRenderer(
      * summary. Distance and duration stay in the header so the cut from the
      * animated route has no layout jump.
      */
-    private fun drawFinal(canvas: Canvas, plan: StoryPlan, width: Int, height: Int, scale: Float) {
+    private fun drawFinal(
+        canvas: Canvas,
+        plan: StoryPlan,
+        width: Int,
+        height: Int,
+        scale: Float,
+        highlights: StoryHighlights,
+    ) {
         val card = cardBounds(width, height)
         drawPanel(canvas, card, scale)
 
-        val verdict = plan.verdict
         val label = paint(palette.textTertiary, 16f * scale, bold = true)
         val value = paint(palette.textPrimary, 30f * scale, bold = true)
-        val rowTop = if (verdict != null) {
-            val overline = paint(palette.textTertiary, 12f * scale, bold = true)
-            canvas.drawText("TREINO CONCLUÍDO", card.left + 28f * scale, card.top + 30f * scale, overline)
-            val headline = paint(palette.accent, 27f * scale, bold = true)
-            canvas.drawText(
-                verdict.headline.uppercase(PT_BR),
-                card.left + 28f * scale,
-                card.top + 62f * scale,
-                headline,
-            )
-            verdict.proof?.let { proof ->
-                val proofPaint = paint(palette.textSecondary, 15f * scale, bold = true)
-                canvas.drawText(proof, card.left + 28f * scale, card.top + 84f * scale, proofPaint)
-            }
-            val rule = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent }
-            canvas.drawRect(
-                card.left + 28f * scale,
-                card.top + 94f * scale,
-                card.left + 68f * scale,
-                card.top + 98f * scale,
-                rule,
-            )
-            card.top + 124f * scale
-        } else {
-            val title = paint(palette.accent, 20f * scale, bold = true)
-            canvas.drawText("TREINO CONCLUÍDO", card.left + 28f * scale, card.top + 52f * scale, title)
-            val rule = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent }
-            canvas.drawRect(
-                card.left + 28f * scale,
-                card.top + 66f * scale,
-                card.left + 68f * scale,
-                card.top + 70f * scale,
-                rule,
-            )
-            card.top + 120f * scale
+        val overline = paint(palette.textTertiary, 12f * scale, bold = true)
+        canvas.drawText("CORRIDA CONCLUÍDA", card.left + 28f * scale, card.top + 30f * scale, overline)
+        val headline = paint(palette.accent, 27f * scale, bold = true)
+        canvas.drawText(
+            highlights.headline.uppercase(PT_BR),
+            card.left + 28f * scale,
+            card.top + 62f * scale,
+            headline,
+        )
+        highlights.proof?.let { proof ->
+            val proofPaint = paint(palette.textSecondary, 15f * scale, bold = true)
+            canvas.drawText(proof, card.left + 28f * scale, card.top + 84f * scale, proofPaint)
         }
+        val rule = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent }
+        canvas.drawRect(
+            card.left + 28f * scale,
+            card.top + 94f * scale,
+            card.left + 68f * scale,
+            card.top + 98f * scale,
+            rule,
+        )
+        val rowTop = card.top + 124f * scale
 
         val column = (card.width() - 56f * scale) / 3f
         drawMetric(
@@ -579,15 +580,13 @@ class StoryFrameRenderer(
             value,
         )
 
-        verdict?.coachLine?.let { line ->
-            val coach = paint(palette.textSecondary, 13f * scale, bold = true)
-            canvas.drawText(
-                line,
-                card.left + 28f * scale,
-                card.bottom - 46f * scale,
-                coach,
-            )
-        }
+        val closing = paint(palette.textSecondary, 13f * scale, bold = true)
+        canvas.drawText(
+            highlights.closingLine,
+            card.left + 28f * scale,
+            card.bottom - 46f * scale,
+            closing,
+        )
 
         // Closing brand stays inside the card, above the Instagram footer.
         val tagline = paint(palette.textTertiary, 11f * scale)
@@ -657,7 +656,11 @@ class StoryFrameRenderer(
         // OSM tile policy requires attribution on every rendered map. It stays
         // above the Instagram footer and gets a small backdrop so the tiny text
         // survives the light basemap and the bottom gradient.
-        val text = "© OpenStreetMap · OpenMapTiles · OpenFreeMap"
+        val text = if (palette.mapStyle == StoryMapStyle.TERRAIN) {
+            "© OpenStreetMap · OpenFreeMap · Elevation Mapzen"
+        } else {
+            "© OpenStreetMap · OpenMapTiles · OpenFreeMap"
+        }
         val attribution = paint(palette.textSecondary, 13f * scale)
         attribution.alpha = 220
         val margin = StoryLayout.margin(width.toFloat())

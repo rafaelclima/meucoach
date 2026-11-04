@@ -1,6 +1,6 @@
 # Story do treino v2 — “O Veredito”
 
-**Status:** Fases A e B implementadas em 03/11/2026 · câmera v2 (zoom por card + pitch/yaw) em 03/11/2026 · geração em segundo plano e cancelamento real em 04/11/2026 (`ADR 0018`) · Fases C–D propostas
+**Status:** Fases A e B implementadas em 03/11/2026 · câmera v2 (zoom por card + pitch/yaw) em 03/11/2026 · geração em segundo plano e cancelamento real em 04/11/2026 (`ADR 0018`) · vídeo público sem julgamento de plano e mapa Terreno em 04/11/2026 (§16) · Fases C–D propostas
 **Data:** 03/11/2026
 **Não implementado:** áudio, morph rota → logo e auto-seleção dos kms (Fases C/D). Nenhuma linha deste documento altera o motor determinístico.
 
@@ -259,3 +259,16 @@ O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 
 - **Render:** removemos o filtro de cor aplicado ao bitmap do mapa **a cada frame** (~13 ms); o estilo OpenFreeMap já entrega o contraste da marca. A composição do mapa em GL (para chegar a 30 fps com folga) fica como próximo passo.
 - **Foreground:** o worker sobe como serviço `dataSync`; a notificação pertence ao WorkManager e é atualizada com `setForeground(...)` — postar uma notificação própria com o mesmo id derrubava o serviço.
 - **Validado no aparelho:** MP4 final com 1080×1920, 30 fps, 900 frames, 30,000 s; capa PNG correta; export concluído com o app em segundo plano.
+
+---
+
+## 16. Nota de implementação — vídeo público, mapa Terreno e primeiro uso (04/11/2026)
+
+**Objetivo:** o story é assistido por quem nunca viu o plano; julgar adesão ("longão forte demais", "no alvo") só faz sentido para o dono do treino.
+
+- **Destaques objetivos:** o vídeo deixou de mostrar veredito de plano. O encerramento usa `StoryHighlightsCalculator` (puro): `2ª METADE MAIS RÁPIDA`, `RITMO CONSTANTE`, `KM MAIS RÁPIDO` ou `CORRIDA CONCLUÍDA`, com prova curta e autoexplicativa. O selo por km virou `KM MAIS RÁPIDO` (somente em corridas com 3+ kms).
+- **Leitura do coach é privada:** a prévia no app mostra "Leitura do coach (só você vê): …" usando o veredito determinístico; ele não entra mais no vídeo.
+- **Mapa Terreno:** novo `StoryMapStyle.TERRAIN` insere `raster-dem` (Mapzen/AWS, `terrarium`) e uma camada `hillshade` no estilo `liberty`; a atribuição do frame passa a citar "Elevation Mapzen". É relevo (sombreamento), não terreno 3D — o spike de câmera inclinada segue em §14.
+- **Primeiro uso:** `StoryIntroStore` mostra uma vez o aviso de que os tiles (e o relevo) são baixados e ficam em cache, sem enviar coordenadas exatas.
+- **Botão:** "Criar story" ocupa a largura do card e usa 48 dp (`McPrimaryButton.minHeight`).
+- **Testes:** `StoryHighlightsCalculatorTest`, `StoryIntroStoreTest`, seleção de estilo no `ActivityDetailViewModelTest`, hillshade no `OpenFreeMapStyleTest` e estilo no codec da paleta; goldens do story refeitos.

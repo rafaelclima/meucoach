@@ -236,11 +236,13 @@ class StoryExportProcessorTest {
         var calls: Int = 0
         var width: Int = 0
         var height: Int = 0
+        var style: StoryMapStyle? = null
 
-        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int): Bitmap {
+        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int, style: StoryMapStyle): Bitmap {
             calls += 1
             this.width = width
             this.height = height
+            this.style = style
             error?.let { throw it }
             return Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
         }

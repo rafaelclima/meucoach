@@ -49,6 +49,26 @@ class OpenFreeMapStyleTest {
     }
 
     @Test
+    fun `adds a hillshade layer fed by elevation tiles for terrain`() {
+        val json = """
+            {"sources":{},"layers":[
+              {"id":"label_city","type":"symbol","layout":{"text-field":["get","name"]}}
+            ]}
+        """.trimIndent()
+
+        val root = JSONObject(OpenFreeMapStyle.customize(json, terrain = true))
+        val layers = root.getJSONArray("layers")
+
+        assertThat(layers.getJSONObject(0).getString("type")).isEqualTo("hillshade")
+        assertThat(layers.getJSONObject(0).getString("source")).isEqualTo("terrain-dem")
+        assertThat(layers.getJSONObject(1).getString("id")).isEqualTo("label_city")
+        val terrain = root.getJSONObject("sources").getJSONObject("terrain-dem")
+        assertThat(terrain.getString("type")).isEqualTo("raster-dem")
+        assertThat(terrain.getString("encoding")).isEqualTo("terrarium")
+        assertThat(terrain.getJSONArray("tiles").getString(0)).contains("terrarium")
+    }
+
+    @Test
     fun `adds a paint block when the label layer has none`() {
         val json = """
             {"layers":[{"id":"highway-name-minor","type":"symbol","layout":{"text-field":["get","name"]}}]}

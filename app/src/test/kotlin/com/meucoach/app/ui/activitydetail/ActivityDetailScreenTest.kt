@@ -3,6 +3,7 @@ package com.meucoach.app.ui.activitydetail
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryPlanCalculator
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
@@ -160,6 +162,25 @@ class ActivityDetailScreenTest {
         compose.onNodeWithText("Gerar vídeo").performClick()
 
         assertThat(exported).isTrue()
+    }
+
+    @Test
+    fun `offers the terrain map style and the first-run notice`() {
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(storyIntroSeen = false),
+                onBack = {},
+                storyStyle = StoryMapStyle.CLASSIC,
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Antes de gerar"))
+        compose.onNodeWithText("Antes de gerar").assertIsDisplayed()
+        compose.onNodeWithText("Entendi").assertExists()
+
+        list.performScrollToNode(hasText("Terreno"))
+        compose.onNodeWithText("Terreno").assertExists()
     }
 
     @Test

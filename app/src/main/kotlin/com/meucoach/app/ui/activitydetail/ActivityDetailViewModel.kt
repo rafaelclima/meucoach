@@ -9,6 +9,8 @@ import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
+import com.meucoach.app.story.StoryIntroStore
+import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryMessages
 import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StoryPlanCalculator
@@ -42,6 +44,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val mapRenderer: MapBackgroundRenderer,
     private val storyCoordinator: StoryExportCoordinator,
     private val storyFailures: StoryExportFailureStore,
+    private val storyIntro: StoryIntroStore,
 ) : ViewModel() {
     private val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
         "Activity detail requires an activityId"
@@ -79,6 +82,7 @@ class ActivityDetailViewModel @Inject constructor(
                     calibrationCandidate = activity?.let {
                         CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now())
                     },
+                    storyIntroSeen = storyIntro.seen(),
                 )
             }
         }
@@ -89,7 +93,7 @@ class ActivityDetailViewModel @Inject constructor(
         const val ARG_ACTIVITY_ID = "activityId"
     }
 
-    fun createStory() {
+    fun createStory(style: StoryMapStyle = StoryMapStyle.CLASSIC) {
         val state = _uiState.value
         val stored = state.activity ?: return
         val current = state.storyExport
@@ -122,6 +126,7 @@ class ActivityDetailViewModel @Inject constructor(
                             bounds,
                             StoryVideoExporter.mapWidth(),
                             StoryVideoExporter.mapHeight(),
+                            style,
                         )
                     }
                 }.getOrElse { error ->
@@ -170,6 +175,12 @@ class ActivityDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** First-run explanation of the map/relief download, dismissed by the user. */
+    fun dismissStoryIntro() {
+        storyIntro.markSeen()
+        _uiState.update { it.copy(storyIntroSeen = true) }
     }
 
     /** Real cancellation (ADR 0018): the WorkManager job stops the codec between frames. */

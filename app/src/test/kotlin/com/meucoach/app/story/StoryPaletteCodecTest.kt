@@ -31,6 +31,14 @@ class StoryPaletteCodecTest {
     }
 
     @Test
+    fun `round trips the terrain map style`() {
+        val terrain = palette.copy(mapStyle = StoryMapStyle.TERRAIN)
+
+        assertThat(StoryPaletteCodec.decode(StoryPaletteCodec.encode(terrain))?.mapStyle)
+            .isEqualTo(StoryMapStyle.TERRAIN)
+    }
+
+    @Test
     fun `rejects payloads without the full field count`() {
         assertThat(StoryPaletteCodec.decode(IntArray(3))).isNull()
         assertThat(StoryPaletteCodec.decode(null)).isNull()

@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McPillShape
 import com.meucoach.core.designsystem.theme.McTheme
@@ -29,11 +30,12 @@ fun McPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
+    minHeight: Dp = 56.dp,
 ) {
     val colors = McTheme.colors
     Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 56.dp),
+        modifier = modifier.heightIn(min = minHeight),
         enabled = enabled,
         shape = McPillShape,
         colors = ButtonDefaults.buttonColors(
@@ -67,11 +69,12 @@ fun McSecondaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
+    minHeight: Dp = 56.dp,
 ) {
     val colors = McTheme.colors
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 56.dp),
+        modifier = modifier.heightIn(min = minHeight),
         enabled = enabled,
         shape = McPillShape,
         border = BorderStroke(1.dp, colors.borderStrong),

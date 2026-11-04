@@ -15,7 +15,10 @@ import org.json.JSONObject
 internal object OpenFreeMapStyle {
     const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
-    fun customize(json: String): String {
+    private const val ELEVATION_TILES =
+        "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+
+    fun customize(json: String, terrain: Boolean = false): String {
         val root = JSONObject(json)
         val source = root.optJSONArray("layers") ?: return json
         val layers = JSONArray()
@@ -36,9 +39,66 @@ internal object OpenFreeMapStyle {
             }
             layers.put(layer)
         }
-        root.put("layers", layers)
+        if (terrain) {
+            root.put("layers", withTerrain(root, layers))
+        } else {
+            root.put("layers", layers)
+        }
         return root.toString()
     }
+
+    /**
+     * Hillshade over the vector basemap: cheap relief that reads as "terrain"
+     * even on the top-down snapshot. Tiles come from the public Mapzen terrain
+     * set hosted on AWS; attribution is required and rendered on the frame.
+     */
+    private fun withTerrain(root: JSONObject, layers: JSONArray): JSONArray {
+        val sources = root.optJSONObject("sources") ?: JSONObject().also { root.put("sources", it) }
+        sources.put(
+            TERRAIN_SOURCE,
+            JSONObject(
+                """
+                {
+                  "type": "raster-dem",
+                  "tiles": ["$ELEVATION_TILES"],
+                  "encoding": "terrarium",
+                  "tileSize": 256,
+                  "attribution": "Elevation: Mapzen"
+                }
+                """.trimIndent(),
+            ),
+        )
+        val hillshade = JSONObject(
+            """
+            {
+              "id": "terrain-hillshade",
+              "type": "hillshade",
+              "source": "$TERRAIN_SOURCE",
+              "paint": {
+                "hillshade-exaggeration": 0.35,
+                "hillshade-shadow-color": "#3A3226",
+                "hillshade-highlight-color": "#FFF6E5",
+                "hillshade-accent-color": "#6B5A45"
+              }
+            }
+            """.trimIndent(),
+        )
+        // Drawn under every label so street names stay readable.
+        val result = JSONArray()
+        var inserted = false
+        for (index in 0 until layers.length()) {
+            val layer = layers.getJSONObject(index)
+            if (!inserted && layer.optString("type") == "symbol") {
+                result.put(hillshade)
+                inserted = true
+            }
+            result.put(layer)
+        }
+        if (!inserted) result.put(hillshade)
+        return result
+    }
+
+    private const val TERRAIN_SOURCE = "terrain-dem"
 
     /**
      * POI, transit and airport icons add noise over a 1080 px-wide route, and

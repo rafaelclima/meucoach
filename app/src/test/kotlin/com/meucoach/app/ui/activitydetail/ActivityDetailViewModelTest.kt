@@ -13,6 +13,8 @@ import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
+import com.meucoach.app.story.StoryIntroStore
+import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
@@ -209,6 +211,7 @@ class ActivityDetailViewModelTest {
                 FakeMapBackgroundRenderer(),
                 FakeStoryExportCoordinator(),
                 StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
+                StoryIntroStore(ApplicationProvider.getApplicationContext()),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
@@ -221,6 +224,7 @@ class ActivityDetailViewModelTest {
         failures: StoryExportFailureStore = StoryExportFailureStore(
             ApplicationProvider.getApplicationContext(),
         ),
+        intro: StoryIntroStore = StoryIntroStore(ApplicationProvider.getApplicationContext()),
     ) = ActivityDetailViewModel(
         savedStateHandle = SavedStateHandle(
             mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
@@ -231,7 +235,42 @@ class ActivityDetailViewModelTest {
         mapRenderer = mapRenderer,
         storyCoordinator = coordinator,
         storyFailures = failures,
+        storyIntro = intro,
     )
+
+    @Test
+    fun `forwards the terrain style to the map renderer`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val renderer = FakeMapBackgroundRenderer()
+            val viewModel = viewModel("activity-1", renderer)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.createStory(StoryMapStyle.TERRAIN)
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+
+            assertThat(renderer.style).isEqualTo(StoryMapStyle.TERRAIN)
+        }
+    }
+
+    @Test
+    fun `dismisses the one-time map notice`() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.getSharedPreferences("meucoach_story_intro", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val intro = StoryIntroStore(context)
+            val viewModel = viewModel("activity-1", intro = intro)
+            val initial = viewModel.uiState.first { !it.isLoading }
+            assertThat(initial.storyIntroSeen).isFalse()
+
+            viewModel.dismissStoryIntro()
+
+            assertThat(viewModel.uiState.value.storyIntroSeen).isTrue()
+            assertThat(intro.seen()).isTrue()
+        }
+    }
 
     @Test
     fun `reports missing gps when creating a story`() {
@@ -690,12 +729,14 @@ class ActivityDetailViewModelTest {
         var bounds: BoundingBox? = null
         var width: Int = 0
         var height: Int = 0
+        var style: StoryMapStyle? = null
 
-        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int): Bitmap {
+        override suspend fun render(boundingBox: BoundingBox, width: Int, height: Int, style: StoryMapStyle): Bitmap {
             this.calls += 1
             this.bounds = boundingBox
             this.width = width
             this.height = height
+            this.style = style
             error?.let { throw it }
             return Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
         }
