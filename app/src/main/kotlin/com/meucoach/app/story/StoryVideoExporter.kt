@@ -15,6 +15,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.view.Surface
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import com.meucoach.core.designsystem.R
@@ -22,9 +23,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.Executors
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
@@ -84,7 +87,29 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         mapBackground: Bitmap?,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
-    ): StoryExportResult = withContext(Dispatchers.Default) {
+    ): StoryExportResult {
+        // EGL contexts are bound to the thread that made them current. Progress
+        // callbacks suspend the coroutine, so a shared pool could resume the
+        // loop on another thread and break the encoder Surface (EGL_BAD_ACCESS).
+        val encoderThread = Executors
+            .newSingleThreadExecutor { runnable -> Thread(runnable, "story-encoder") }
+            .asCoroutineDispatcher()
+        return try {
+            withContext(encoderThread) {
+                exportOnEncoderThread(plan, palette, mapBackground, isCancelled, onProgress)
+            }
+        } finally {
+            encoderThread.close()
+        }
+    }
+
+    private suspend fun exportOnEncoderThread(
+        plan: StoryPlan,
+        palette: StoryPalette,
+        mapBackground: Bitmap?,
+        isCancelled: () -> Boolean,
+        onProgress: suspend (progress: Float) -> Unit,
+    ): StoryExportResult {
         // Cancellation must be polled synchronously: the encode loop never
         // suspends, so simply cancelling this coroutine would not stop it.
         val job = requireNotNull(currentCoroutineContext()[Job]) { "Export precisa de um Job ativo." }
@@ -92,7 +117,7 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val stamp = System.currentTimeMillis()
         val output = File(directory, "meucoach-story-$stamp.mp4")
-        try {
+        return try {
             encode(plan, palette, mapBackground, output, cancelled, onProgress)
             val cover = runCatching { writeCover(plan, palette, mapBackground, directory, stamp) }.getOrNull()
             publish(output, cover)
@@ -144,13 +169,7 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
     ) {
-        val codecInfo = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { info ->
-            info.isEncoder &&
-                info.supportedTypes.any { it.equals(MIME, ignoreCase = true) } &&
-                info.getCapabilitiesForType(MIME)
-                    .colorFormats
-                    .contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
-        } ?: error("Nenhum encoder H.264 com YUV420 flexível neste aparelho.")
+        val codecInfo = selectEncoder()
 
         val codec = MediaCodec.createByCodecName(codecInfo.name)
         val muxer = MediaMuxer(output.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -159,11 +178,16 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
         val info = MediaCodec.BufferInfo()
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        // Reused across frames: 1080×1920 ints per frame would allocate ~8 MB/frame.
-        val pixels = IntArray(StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT)
         val renderer = StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground)
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
+        val useSurface = supportsSurface(codecInfo)
+        // Scratch planes are only needed by the fallback Image path.
+        var pixels: IntArray? = null
+        var luma: ByteArray? = null
+        var chroma: ByteArray? = null
+        var inputSurface: Surface? = null
+        var glEncoder: StorySurfaceEncoder? = null
 
         fun drain(endOfStream: Boolean) {
             var idle = 0
@@ -203,12 +227,25 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
                 StoryVideoExporter.WIDTH,
                 StoryVideoExporter.HEIGHT,
             ).apply {
-                setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+                setInteger(
+                    MediaFormat.KEY_COLOR_FORMAT,
+                    if (useSurface) {
+                        MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
+                    } else {
+                        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
+                    },
+                )
                 setInteger(MediaFormat.KEY_BIT_RATE, BITRATE)
                 setInteger(MediaFormat.KEY_FRAME_RATE, FPS)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
             }
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            if (useSurface) {
+                inputSurface = codec.createInputSurface()
+                // Grafika order: EGL surface first, then start the codec, so the
+                // producer is attached before the first buffer arrives.
+                glEncoder = StorySurfaceEncoder(inputSurface)
+            }
             codec.start()
 
             for (frame in 0 until frameCount) {
@@ -218,18 +255,29 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
                 val timeSec = frame.toFloat() / FPS
                 renderer.render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
                 StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
-                val inputIndex = codec.dequeueInputBuffer(10_000L)
-                check(inputIndex >= 0) { "Encoder sem buffer de entrada." }
-                val image = codec.getInputImage(inputIndex)
-                    ?: error("Encoder sem entrada de imagem YUV.")
-                fillImage(bitmap, image, pixels)
-                codec.queueInputBuffer(
-                    inputIndex,
-                    0,
-                    yuvSize,
-                    frame * 1_000_000L / FPS,
-                    0,
-                )
+                val encoder = glEncoder
+                if (encoder != null) {
+                    encoder.draw(bitmap, frame * 1_000_000_000L / FPS)
+                } else {
+                    val inputIndex = codec.dequeueInputBuffer(10_000L)
+                    check(inputIndex >= 0) { "Encoder sem buffer de entrada." }
+                    val image = codec.getInputImage(inputIndex)
+                        ?: error("Encoder sem entrada de imagem YUV.")
+                    val pixelBuffer = pixels ?: IntArray(StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT)
+                        .also { pixels = it }
+                    val lumaBuffer = luma ?: ByteArray(StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT)
+                        .also { luma = it }
+                    val chromaBuffer = chroma ?: ByteArray(StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT / 2)
+                        .also { chroma = it }
+                    fillImage(bitmap, image, pixelBuffer, lumaBuffer, chromaBuffer)
+                    codec.queueInputBuffer(
+                        inputIndex,
+                        0,
+                        yuvSize,
+                        frame * 1_000_000L / FPS,
+                        0,
+                    )
+                }
                 drain(endOfStream = false)
                 if (frame % PROGRESS_EVERY_FRAMES == 0) onProgress(frame.toFloat() / frameCount)
             }
@@ -237,30 +285,143 @@ class CanvasStoryVideoExporter @Inject constructor(@ApplicationContext private v
             if (isCancelled()) {
                 throw CancellationException("Geração do story cancelada.")
             }
-            val inputIndex = codec.dequeueInputBuffer(10_000L)
-            check(inputIndex >= 0) { "Encoder sem buffer para finalizar." }
-            codec.queueInputBuffer(
-                inputIndex,
-                0,
-                0,
-                frameCount * 1_000_000L / FPS,
-                MediaCodec.BUFFER_FLAG_END_OF_STREAM,
-            )
+            if (glEncoder != null) {
+                codec.signalEndOfInputStream()
+            } else {
+                val inputIndex = codec.dequeueInputBuffer(10_000L)
+                check(inputIndex >= 0) { "Encoder sem buffer para finalizar." }
+                codec.queueInputBuffer(
+                    inputIndex,
+                    0,
+                    0,
+                    frameCount * 1_000_000L / FPS,
+                    MediaCodec.BUFFER_FLAG_END_OF_STREAM,
+                )
+            }
             drain(endOfStream = true)
             onProgress(1f)
         } finally {
+            glEncoder?.release()
             runCatching { codec.stop() }
             codec.release()
+            inputSurface?.release()
             if (muxerStarted) runCatching { muxer.stop() }
             runCatching { muxer.release() }
         }
     }
 
-    private fun fillImage(bitmap: Bitmap, image: Image, pixels: IntArray) {
+    /**
+     * Prefers the Surface path: the GPU performs RGB→YUV and we skip the
+     * ~110 ms/frame CPU conversion. Falls back to the Image path when the
+     * device encoder has no input surface.
+     */
+    private fun selectEncoder(): MediaCodecInfo {
+        val encoders = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.filter { info ->
+            info.isEncoder && info.supportedTypes.any { it.equals(MIME, ignoreCase = true) }
+        }
+        return encoders.firstOrNull { supportsSurface(it) }
+            ?: encoders.firstOrNull { supportsFlexibleYuv(it) }
+            ?: error("Nenhum encoder H.264 compatível neste aparelho.")
+    }
+
+    private fun supportsSurface(info: MediaCodecInfo): Boolean =
+        info.colorFormats().contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+
+    private fun supportsFlexibleYuv(info: MediaCodecInfo): Boolean =
+        info.colorFormats().contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+
+    private fun MediaCodecInfo.colorFormats(): IntArray = getCapabilitiesForType(MIME).colorFormats
+
+    /**
+     * Converts the rendered ARGB frame into the encoder's YUV420 planes.
+     *
+     * The planes are filled into reusable [luma]/[chroma] byte arrays and then
+     * copied in bulk rows; writing one byte at a time through the direct
+     * ByteBuffer crosses into native code ~3M times per frame. Layouts the
+     * fast path cannot describe fall back to the original per-pixel write.
+     */
+    private fun fillImage(bitmap: Bitmap, image: Image, pixels: IntArray, luma: ByteArray, chroma: ByteArray) {
         bitmap.getPixels(pixels, 0, StoryVideoExporter.WIDTH, 0, 0, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
         val yPlane = image.planes[0]
         val uPlane = image.planes[1]
         val vPlane = image.planes.getOrNull(2)
+        if (yPlane.pixelStride != 1) {
+            fillPerPixel(pixels, yPlane, uPlane, vPlane)
+            return
+        }
+
+        for (y in 0 until StoryVideoExporter.HEIGHT) {
+            val row = y * StoryVideoExporter.WIDTH
+            for (x in 0 until StoryVideoExporter.WIDTH) {
+                val color = pixels[row + x]
+                val red = (color shr 16) and 0xff
+                val green = (color shr 8) and 0xff
+                val blue = color and 0xff
+                luma[row + x] = (((66 * red + 129 * green + 25 * blue + 128) shr 8) + 16).toByte()
+            }
+        }
+        writePlaneRows(yPlane, luma, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
+
+        if (vPlane == null) {
+            // Semi-planar: U and V interleaved, two bytes per sample (pixelStride 2).
+            if (uPlane.pixelStride != 2) {
+                fillPerPixel(pixels, yPlane, uPlane, vPlane)
+                return
+            }
+            for (y in 0 until StoryVideoExporter.HEIGHT step 2) {
+                val uvRow = (y / 2) * StoryVideoExporter.WIDTH
+                val pixelRow = y * StoryVideoExporter.WIDTH
+                for (x in 0 until StoryVideoExporter.WIDTH step 2) {
+                    val color = pixels[pixelRow + x]
+                    val red = (color shr 16) and 0xff
+                    val green = (color shr 8) and 0xff
+                    val blue = color and 0xff
+                    chroma[uvRow + x] = (((-38 * red - 74 * green + 112 * blue + 128) shr 8) + 128).toByte()
+                    chroma[uvRow + x + 1] = (((112 * red - 94 * green - 18 * blue + 128) shr 8) + 128).toByte()
+                }
+            }
+            writePlaneRows(uPlane, chroma, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT / 2)
+            return
+        }
+
+        if (uPlane.pixelStride != 1 || vPlane.pixelStride != 1) {
+            fillPerPixel(pixels, yPlane, uPlane, vPlane)
+            return
+        }
+        val halfWidth = StoryVideoExporter.WIDTH / 2
+        val vOffset = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT / 4
+        for (y in 0 until StoryVideoExporter.HEIGHT step 2) {
+            val row = (y / 2) * halfWidth
+            val pixelRow = y * StoryVideoExporter.WIDTH
+            for (x in 0 until StoryVideoExporter.WIDTH step 2) {
+                val color = pixels[pixelRow + x]
+                val red = (color shr 16) and 0xff
+                val green = (color shr 8) and 0xff
+                val blue = color and 0xff
+                chroma[row + x / 2] = (((-38 * red - 74 * green + 112 * blue + 128) shr 8) + 128).toByte()
+                chroma[vOffset + row + x / 2] = (((112 * red - 94 * green - 18 * blue + 128) shr 8) + 128).toByte()
+            }
+        }
+        writePlaneRows(uPlane, chroma, halfWidth, StoryVideoExporter.HEIGHT / 2)
+        writePlaneRows(vPlane, chroma, halfWidth, StoryVideoExporter.HEIGHT / 2, start = vOffset)
+    }
+
+    /** Bulk copy into a plane, honouring any row padding the encoder reports. */
+    private fun writePlaneRows(plane: Image.Plane, bytes: ByteArray, rowLength: Int, rows: Int, start: Int = 0) {
+        val buffer = plane.buffer
+        if (plane.rowStride == rowLength) {
+            buffer.position(0)
+            buffer.put(bytes, start, rowLength * rows)
+            return
+        }
+        for (row in 0 until rows) {
+            buffer.position(row * plane.rowStride)
+            buffer.put(bytes, start + row * rowLength, rowLength)
+        }
+    }
+
+    /** Encoder layouts outside the common YUV420 ones: slow but always correct. */
+    private fun fillPerPixel(pixels: IntArray, yPlane: Image.Plane, uPlane: Image.Plane, vPlane: Image.Plane?) {
         for (y in 0 until StoryVideoExporter.HEIGHT) {
             for (x in 0 until StoryVideoExporter.WIDTH) {
                 val color = pixels[y * StoryVideoExporter.WIDTH + x]

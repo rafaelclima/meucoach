@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 755 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 360 em `:app`)
+- **Testes:** 760 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 365 em `:app`)
 - **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
@@ -52,6 +52,17 @@
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-04 — Story: progresso real, foreground e encoder na GPU
+**Objetivo:** destravar a geração no aparelho (0% eterno, cancelar simbólico, 3 min de espera).
+
+- **Progresso em 0%:** `lastProgressMs = Long.MIN_VALUE` fazia `now - lastProgressMs` estourar para negativo; `setProgress` nunca era chamado. A notificação escapava pelo caso `fraction <= 0`, o que mascarava o bug.
+- **Foreground service:** `StoryExportWorker` sobe como `dataSync` antes do trabalho pesado e atualiza a notificação via `setForeground` (nunca com `notify` no mesmo id — isso substituía a notificação do FGS e o sistema derrubava o job).
+- **Estado restaurado:** o `init` do `ActivityDetailViewModel` sobrescrevia o estado com `ActivityDetailUiState()` novo, apagando o `Generating/Done` restaurado do WorkManager; agora usa `update {}`. `FAILED` sem `outputData` passa a ler a mensagem persistida por `StoryExportFailureStore` (o WorkManager não persiste outputData em falha).
+- **Encoder na GPU:** medição no S24 Ultra: ~190 ms/frame (fill YUV 113 ms + render 75 ms). O `MediaCodec` passou a receber o frame pelo Surface (`COLOR_FormatSurface`, EGL/GLES via `StorySurfaceEncoder`) em thread única; `fill` caiu para ~1,5 ms. Filtro de cor do mapa por frame foi removido (~13 ms). Total ~42–52 ms/frame; export de 30 s caiu de ~3 min para ~50 s.
+- **Validação no aparelho:** MP4 1080×1920, 30 fps, 900 frames, 30,000 s; capa correta; export concluiu com o app em segundo plano.
+- **Testes:** `StoryExportFailureStoreTest` (2), `StoryNotificationTest` (1); 760 testes no total.
+- **Docs:** `ADR-0018` §2.4 (GPU/foreground) e `STORY_V2` §15 (números medidos).
 
 ## Sessão 2026-11-04 — Story: mapa mais limpo e nítido (e o limite do tilt)
 **Objetivo:** elevar a leitura do mapa sem quebrar o alinhamento rota/ruas.
@@ -1840,3 +1851,4 @@
 | 03/11/2026 | Hoje: card de carga deixa de usar números de demonstração sem dados; estado vazio honesto; 602 testes |
 | 04/11/2026 | Story: geração em segundo plano via WorkManager, cancelamento real no encoder, ETA e notificação (ADR 0018); 754 testes |
 | 04/11/2026 | Story: mapa outdoor sem POIs, snapshot 2,25×, foco na rota e ticks por km; bloqueio do tilt nativo documentado (ADR 0015 addendum); 755 testes |
+| 04/11/2026 | Story: progresso/ETA reais, foreground service, estado restaurado e encoder na GPU (190→42 ms/frame, export ~50 s); 760 testes |

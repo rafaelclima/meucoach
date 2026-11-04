@@ -32,6 +32,12 @@ A geração passa a ser um `OneTimeWorkRequest` (`StoryExportWorker`,
 
 - **Processo morto não perde o trabalho:** o worker é replanejado pelo
   WorkManager.
+- **Foreground service:** o worker sobe como `dataSync` antes de qualquer
+  trabalho pesado. Sem isso, Android/Samsung interrompe o job poucos segundos
+  depois de o app sair do primeiro plano — e o export nunca termina.
+- **A notificação do FGS pertence ao WorkManager:** atualize-a com
+  `setForeground(...)`; postar uma notificação própria com o mesmo id
+  substitui a notificação do serviço e o sistema derruba o worker.
 - **Entrada pequena e serializável:** `activityId`, caminho do mapa em cache e
   a paleta empacotada em `IntArray` (`StoryPaletteCodec`) — `Data` não carrega
   tipos Android.
@@ -82,7 +88,24 @@ de cada frame e antes do `END_OF_STREAM`.
 - `applyWorkInfo` é `internal` para o teste exercitar a máquina de estados sem
   depender do agendador do WorkManager.
 
-### 2.4 Testes
+### 2.4 Encoder na GPU (Surface + EGL)
+
+O caminho `Image`/YUV420 no CPU custava ~113 ms/frame (conversão pixel a
+pixel). O exporter agora prefere `COLOR_FormatSurface`: o frame é desenhado no
+`Canvas`, enviado como textura e composto no Surface do `MediaCodec`
+(`StorySurfaceEncoder`, EGL + GLES2). A conversão RGB→YUV passa a ser da GPU.
+
+- **Thread única:** contexto EGL é preso à thread; callbacks de progresso
+  suspendem a corrotina, então o pipeline roda em um executor de thread única
+  (`story-encoder`) até o fim do encode.
+- **Fallback:** se o aparelho não tiver Surface no encoder, o caminho YUV420
+  continua disponível (com escrita em bloco, não byte a byte).
+- **Medido no S24 Ultra:** ~190 ms/frame antes (fill 113 ms + render 75 ms) e
+  ~42–52 ms/frame depois (render 36–50 ms + 1,5 ms de composição); o export de
+  30 s caiu de ~3 min para ~50 s. O gargalo restante é o desenho do mapa em
+  software; o próximo passo é compor mapa/overlays em GL (ADR futuro).
+
+### 2.5 Testes
 
 - `StoryEtaEstimatorTest` (JVM puro): primeira amostra nula, taxa suavizada,
   stalled, burst clampado, teto, amostra final = 0.

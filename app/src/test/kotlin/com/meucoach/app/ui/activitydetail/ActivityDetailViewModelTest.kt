@@ -11,6 +11,7 @@ import androidx.work.workDataOf
 import com.meucoach.app.story.BoundingBox
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
+import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StorySessionResolver
@@ -207,6 +208,7 @@ class ActivityDetailViewModelTest {
                 StorySessionResolver(plans),
                 FakeMapBackgroundRenderer(),
                 FakeStoryExportCoordinator(),
+                StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
@@ -216,6 +218,9 @@ class ActivityDetailViewModelTest {
         activityId: String,
         mapRenderer: MapBackgroundRenderer = FakeMapBackgroundRenderer(),
         coordinator: StoryExportCoordinator = FakeStoryExportCoordinator(),
+        failures: StoryExportFailureStore = StoryExportFailureStore(
+            ApplicationProvider.getApplicationContext(),
+        ),
     ) = ActivityDetailViewModel(
         savedStateHandle = SavedStateHandle(
             mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
@@ -225,6 +230,7 @@ class ActivityDetailViewModelTest {
         sessions = StorySessionResolver(plans),
         mapRenderer = mapRenderer,
         storyCoordinator = coordinator,
+        storyFailures = failures,
     )
 
     @Test
@@ -496,6 +502,36 @@ class ActivityDetailViewModelTest {
 
             // The user was in Preview: a finished export from before must not replace it.
             assertThat(viewModel.uiState.value.storyExport).isInstanceOf(StoryExportUiState.Preview::class.java)
+        }
+    }
+
+    @Test
+    fun `surfaces a failure stored by the worker when the work data is empty`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val failures = StoryExportFailureStore(ApplicationProvider.getApplicationContext())
+            failures.save("activity-1", "Encoder sem buffer de entrada.")
+            val viewModel = viewModel("activity-1", failures = failures)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(workInfo(state = WorkInfo.State.FAILED))
+
+            assertThat((viewModel.uiState.value.storyExport as StoryExportUiState.Error).message)
+                .isEqualTo("Encoder sem buffer de entrada.")
+        }
+    }
+
+    @Test
+    fun `falls back to a generic message when no failure was stored`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(workInfo(state = WorkInfo.State.FAILED))
+
+            assertThat((viewModel.uiState.value.storyExport as StoryExportUiState.Error).message)
+                .isEqualTo(com.meucoach.app.story.StoryMessages.EXPORT_FAILED)
         }
     }
 

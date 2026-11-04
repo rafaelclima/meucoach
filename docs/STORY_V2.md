@@ -247,3 +247,15 @@ Duração 24–30 s, 30 fps, 1080×1920, silencioso-primeiro (funciona sem áudi
   1. **Portar a matemática de câmera** (`TransformState::latLngToScreenCoordinate` + `getProjMatrix`/`getCoordMatrix`) para Kotlin puro, com teste de paridade no top-down e checklist de calibração no aparelho;
   2. **Assar a rota no snapshot** via `GeoJSON`/`line-gradient` (alinhamento garantido pelo próprio MapLibre) e revelar por keyframes, aceitando menos fluidez no traçado.
 - **Decisão:** manter o tilt "de matriz" atual nesta rodada e tratar o tilt nativo como spike próprio, com validação em aparelho. A Fase M2 (flyover por keyframes) só faz sentido depois dessa decisão.
+
+---
+
+## 15. Nota de implementação — performance do export (04/11/2026)
+
+O story deixou de prender a tela (ADR 0018) e o tempo de geração caiu de **~3 min para ~50 s** no Galaxy S24 Ultra.
+
+- **O que estava lento:** medição por frame no aparelho mostrou ~190 ms/frame — `fill` (RGB→YUV no CPU, 2 M pixels) 113 ms e `render` 75 ms. O encoder não era o gargalo.
+- **O que mudou:** o `MediaCodec` passou a receber o frame pelo **Surface** (`COLOR_FormatSurface`) via EGL/GLES (`StorySurfaceEncoder`), com o pipeline em **thread única** (contexto EGL é preso à thread; os callbacks de progresso suspendem a corrotina). Isso levou `fill` para ~1,5 ms.
+- **Render:** removemos o filtro de cor aplicado ao bitmap do mapa **a cada frame** (~13 ms); o estilo OpenFreeMap já entrega o contraste da marca. A composição do mapa em GL (para chegar a 30 fps com folga) fica como próximo passo.
+- **Foreground:** o worker sobe como serviço `dataSync`; a notificação pertence ao WorkManager e é atualizada com `setForeground(...)` — postar uma notificação própria com o mesmo id derrubava o serviço.
+- **Validado no aparelho:** MP4 final com 1080×1920, 30 fps, 900 frames, 30,000 s; capa PNG correta; export concluído com o app em segundo plano.

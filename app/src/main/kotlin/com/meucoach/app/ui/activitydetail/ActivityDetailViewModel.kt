@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
+import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryMessages
 import com.meucoach.app.story.StoryPalette
@@ -40,6 +41,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val sessions: StorySessionResolver,
     private val mapRenderer: MapBackgroundRenderer,
     private val storyCoordinator: StoryExportCoordinator,
+    private val storyFailures: StoryExportFailureStore,
 ) : ViewModel() {
     private val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
         "Activity detail requires an activityId"
@@ -58,23 +60,27 @@ class ActivityDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val activity = repository.openActivity(activityId)
             val lthr = profileRepository.getProfile()?.lactateThresholdHeartRate
-            _uiState.value = ActivityDetailUiState(
-                isLoading = false,
-                activity = activity,
-                notFound = activity == null,
-                insights = activity
-                    ?.let { insightsCalculator.calculate(it.imported.laps) }
-                    .orEmpty(),
-                hrZones = activity?.let { stored ->
-                    lthr?.let { value ->
-                        HrZoneDistributionCalculator.calculate(stored.imported.samples, value)
-                    }
-                },
-                lthr = lthr,
-                calibrationCandidate = activity?.let {
-                    CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now())
-                },
-            )
+            // update(), not a fresh state: the WorkManager observer may have
+            // restored a Generating/Done story while this load was running.
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    activity = activity,
+                    notFound = activity == null,
+                    insights = activity
+                        ?.let { stored -> insightsCalculator.calculate(stored.imported.laps) }
+                        .orEmpty(),
+                    hrZones = activity?.let { stored ->
+                        lthr?.let { value ->
+                            HrZoneDistributionCalculator.calculate(stored.imported.samples, value)
+                        }
+                    },
+                    lthr = lthr,
+                    calibrationCandidate = activity?.let {
+                        CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now())
+                    },
+                )
+            }
         }
         observeStoryExport()
     }
@@ -147,6 +153,7 @@ class ActivityDetailViewModel @Inject constructor(
         val token = Any()
         activeExport = token
         blockWorkAdoption = false
+        storyFailures.clear(activityId)
         _uiState.update { it.copy(storyExport = StoryExportUiState.Generating(progress = 0f)) }
         viewModelScope.launch {
             runCatching {
@@ -212,6 +219,7 @@ class ActivityDetailViewModel @Inject constructor(
 
             WorkInfo.State.SUCCEEDED -> {
                 val videoUri = workInfo.outputData.getString(StoryExportWorker.KEY_VIDEO_URI) ?: return
+                storyFailures.clear(activityId)
                 _uiState.update {
                     it.copy(
                         storyExport = StoryExportUiState.Done(
@@ -229,7 +237,11 @@ class ActivityDetailViewModel @Inject constructor(
             }
 
             WorkInfo.State.FAILED -> {
-                val message = workInfo.outputData.getString(StoryExportWorker.KEY_ERROR) ?: return
+                // WorkManager drops the failure outputData; the worker stores
+                // the message separately so this state is never silent.
+                val message = workInfo.outputData.getString(StoryExportWorker.KEY_ERROR)
+                    ?: storyFailures.messageFor(activityId)
+                    ?: StoryMessages.EXPORT_FAILED
                 _uiState.update { it.copy(storyExport = StoryExportUiState.Error(message)) }
             }
 

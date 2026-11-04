@@ -578,7 +578,11 @@ private fun StoryCard(
 
             is StoryExportUiState.Generating -> {
                 Text(
-                    text = "Gerando vídeo… ${(story.progress * 100).roundToInt()}%",
+                    text = if (story.progress <= 0f) {
+                        "Preparando o vídeo…"
+                    } else {
+                        "Gerando vídeo… ${(story.progress * 100).roundToInt()}%"
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.textPrimary,
                 )

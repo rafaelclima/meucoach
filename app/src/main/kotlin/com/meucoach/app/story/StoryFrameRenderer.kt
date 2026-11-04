@@ -2,8 +2,6 @@ package com.meucoach.app.story
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
@@ -39,22 +37,10 @@ class StoryFrameRenderer(
     private val mapBackground: Bitmap? = null,
 ) {
     private val mapPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
-        // Slight desaturation plus contrast keeps OpenFreeMap close to the brand.
-        colorFilter = ColorMatrixColorFilter(
-            ColorMatrix().apply {
-                setSaturation(0.88f)
-                postConcat(
-                    ColorMatrix(
-                        floatArrayOf(
-                            1.05f, 0f, 0f, 0f, -6f,
-                            0f, 1.05f, 0f, 0f, -6f,
-                            0f, 0f, 1.06f, 0f, -4f,
-                            0f, 0f, 0f, 1f, 0f,
-                        ),
-                    ),
-                )
-            },
-        )
+        // The colour grade used to run per frame; keeping the source style as
+        // is saves ~10 ms/frame on software Canvas. Re-enable only with a
+        // once-per-export bake.
+        colorFilter = null
     }
 
     private var vignettePaint: Paint? = null

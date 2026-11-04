@@ -1,10 +1,14 @@
 package com.meucoach.app.story
 
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.SystemClock
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.Data
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.assisted.Assisted
@@ -15,6 +19,10 @@ import kotlinx.coroutines.CancellationException
  * WorkManager entry point for the story export (ADR 0018). The plan and the
  * map are always resolved from inside the worker, so the export survives the
  * detail screen being closed and the process being killed.
+ *
+ * The worker runs as a foreground service: without it, Android/Samsung stops
+ * the job a few seconds after the app leaves the foreground and the export
+ * never finishes.
  */
 @HiltWorker
 class StoryExportWorker @AssistedInject constructor(
@@ -22,15 +30,24 @@ class StoryExportWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val processor: StoryExportProcessor,
     private val notifier: StoryNotifier,
+    private val failures: StoryExportFailureStore,
 ) : CoroutineWorker(appContext, params) {
+    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(
+        activityId = inputData.getString(KEY_ACTIVITY_ID).orEmpty(),
+        progress = 0f,
+        etaSec = null,
+    )
+
     override suspend fun doWork(): Result {
         val activityId = inputData.getString(KEY_ACTIVITY_ID) ?: return Result.failure()
         val palette = StoryPaletteCodec.decode(inputData.getIntArray(StoryPaletteCodec.KEY))
             ?: return Result.failure()
         val mapPath = inputData.getString(KEY_MAP_PATH)
+        failures.clear(activityId)
+        enterForeground(activityId)
 
         val outcome = try {
-            processor.export(activityId, palette, mapPath, onProgress = ::emitProgress)
+            processor.export(activityId, palette, mapPath, onProgress = ::publishProgress)
         } catch (error: CancellationException) {
             // Cancellation is not a failure: the user cancelled the export.
             throw error
@@ -48,31 +65,67 @@ class StoryExportWorker @AssistedInject constructor(
                 if (runAttemptCount < MAX_ATTEMPTS) {
                     Result.retry()
                 } else {
-                    notifier.notifyFailed(activityId, outcome.message)
-                    Result.failure(workDataOf(KEY_ERROR to outcome.message))
+                    fail(activityId, outcome.message)
                 }
 
-            is StoryExportOutcome.Failed -> {
-                notifier.notifyFailed(activityId, outcome.message)
-                Result.failure(workDataOf(KEY_ERROR to outcome.message))
-            }
+            is StoryExportOutcome.Failed -> fail(activityId, outcome.message)
         }
     }
 
-    /** Throttled coarse progress; WorkManager persists every write, so 30 fps is not viable. */
-    private suspend fun emitProgress(fraction: Float, etaSec: Int?) {
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastEmitMs < EMIT_INTERVAL_MS && fraction < 1f) return
-        lastEmitMs = now
-        setProgress(
-            workDataOf(
-                KEY_PROGRESS to fraction,
-                KEY_ETA_SEC to (etaSec ?: -1),
-            ),
-        )
+    private fun fail(activityId: String, message: String): Result {
+        // FAILED work does not carry outputData to WorkInfo; persist the
+        // message so the detail screen can explain what happened.
+        failures.save(activityId, message)
+        notifier.notifyFailed(activityId, message)
+        return Result.failure()
     }
 
-    private var lastEmitMs = Long.MIN_VALUE
+    private suspend fun enterForeground(activityId: String) {
+        // Android 12+ may refuse a background foreground-service start; the
+        // export then behaves like before instead of crashing the worker.
+        runCatching { setForeground(foregroundInfo(activityId, progress = 0f, etaSec = null)) }
+            .onFailure { error -> Log.w(TAG, "Foreground service indisponível", error) }
+    }
+
+    private fun foregroundInfo(activityId: String, progress: Float, etaSec: Int?): ForegroundInfo {
+        val notification = notifier.buildProgress(activityId, progress, etaSec)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                StoryNotification.PROGRESS_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        } else {
+            ForegroundInfo(StoryNotification.PROGRESS_ID, notification)
+        }
+    }
+
+    /** Throttled coarse progress + notification; WorkManager persists each write. */
+    private suspend fun publishProgress(fraction: Float, etaSec: Int?) {
+        val activityId = inputData.getString(KEY_ACTIVITY_ID).orEmpty()
+        val now = SystemClock.elapsedRealtime()
+        // Start at 0, not Long.MIN_VALUE: `now - Long.MIN_VALUE` overflows and
+        // would compare as negative forever.
+        if (now - lastProgressMs >= PROGRESS_INTERVAL_MS || fraction >= 1f) {
+            lastProgressMs = now
+            setProgress(
+                workDataOf(
+                    KEY_PROGRESS to fraction,
+                    KEY_ETA_SEC to (etaSec ?: -1),
+                ),
+            )
+        }
+        if (now - lastNotificationMs >= NOTIFICATION_INTERVAL_MS || fraction <= 0f || fraction >= 1f) {
+            lastNotificationMs = now
+            // WorkManager owns the foreground notification: update it through
+            // setForeground. Posting our own notification with the same id
+            // replaces the FGS notification and Android stops the worker.
+            runCatching { setForeground(foregroundInfo(activityId, fraction, etaSec)) }
+        }
+    }
+
+    private var lastProgressMs = 0L
+    private var lastNotificationMs = 0L
 
     private fun outputData(result: StoryExportResult): Data = workDataOf(
         KEY_VIDEO_URI to result.uri.toString(),
@@ -94,7 +147,8 @@ class StoryExportWorker @AssistedInject constructor(
         const val KEY_COVER_URI = "coverUri"
         const val KEY_ERROR = "error"
 
-        private const val EMIT_INTERVAL_MS = 600L
+        private const val PROGRESS_INTERVAL_MS = 600L
+        private const val NOTIFICATION_INTERVAL_MS = 1_500L
         private const val MAX_ATTEMPTS = 2
     }
 }
