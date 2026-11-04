@@ -68,6 +68,7 @@ class ProfileScreenTest {
                     onCalibrate = {},
                     onImportMetrics = {},
                     onManageData = { manageData = true },
+                    onShowTutorial = {},
                 )
             }
         }
@@ -99,6 +100,7 @@ class ProfileScreenTest {
                     onCalibrate = {},
                     onImportMetrics = { importMetrics = true },
                     onManageData = {},
+                    onShowTutorial = {},
                 )
             }
         }
@@ -131,6 +133,7 @@ class ProfileScreenTest {
                     onCalibrate = {},
                     onImportMetrics = {},
                     onManageData = {},
+                    onShowTutorial = {},
                 )
             }
         }
@@ -139,6 +142,29 @@ class ProfileScreenTest {
             .performScrollToNode(hasText("Conectar Health Connect"))
         compose.onNodeWithText("Ainda não conectado").assertIsDisplayed()
         compose.onNodeWithText("Conectar Health Connect").assertIsDisplayed()
+    }
+
+    @Test
+    fun `offers the tutorial replay and reports it`() {
+        var showTutorial = false
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onImportMetrics = {},
+                    onManageData = {},
+                    onShowTutorial = { showTutorial = true },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("Rever tutorial"))
+        compose.onNodeWithText("Rever tutorial").performClick()
+
+        assertThat(showTutorial).isTrue()
     }
 
     @Test
@@ -151,6 +177,7 @@ class ProfileScreenTest {
                     onCalibrate = {},
                     onImportMetrics = {},
                     onManageData = {},
+                    onShowTutorial = {},
                 )
             }
         }
@@ -167,6 +194,7 @@ class ProfileScreenTest {
                     onCalibrate = {},
                     onImportMetrics = {},
                     onManageData = {},
+                    onShowTutorial = {},
                 )
             }
         }

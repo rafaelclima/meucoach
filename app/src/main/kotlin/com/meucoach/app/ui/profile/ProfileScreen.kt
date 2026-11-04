@@ -50,6 +50,7 @@ fun ProfileScreen(
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
     onManageData: () -> Unit,
+    onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -65,6 +66,7 @@ fun ProfileScreen(
         onCalibrate = onCalibrate,
         onImportMetrics = onImportMetrics,
         onManageData = onManageData,
+        onShowTutorial = onShowTutorial,
         modifier = modifier,
     )
 }
@@ -76,6 +78,7 @@ internal fun ProfileContent(
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
     onManageData: () -> Unit,
+    onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
@@ -111,6 +114,7 @@ internal fun ProfileContent(
                 onCalibrate = onCalibrate,
                 onImportMetrics = onImportMetrics,
                 onManageData = onManageData,
+                onShowTutorial = onShowTutorial,
             )
         }
     }
@@ -124,6 +128,7 @@ private fun ProfileDetails(
     onCalibrate: () -> Unit,
     onImportMetrics: () -> Unit,
     onManageData: () -> Unit,
+    onShowTutorial: () -> Unit,
 ) {
     val colors = McTheme.colors
     LazyColumn(
@@ -288,6 +293,31 @@ private fun ProfileDetails(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("profile-manage-data"),
+                )
+            }
+        }
+        item { McSectionHeader(title = "Ajuda") }
+        item {
+            McCard(variant = McCardVariant.INSET) {
+                Text(
+                    text = "Rever o tour de boas-vindas",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Uma passada rápida pelas telas e cards do app e pelo que você " +
+                        "mantém em dia para o coach acertar sempre.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                McSecondaryButton(
+                    text = "Rever tutorial",
+                    onClick = onShowTutorial,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile-show-tutorial"),
                 )
             }
         }

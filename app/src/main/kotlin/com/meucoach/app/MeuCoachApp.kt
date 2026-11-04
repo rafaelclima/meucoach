@@ -43,6 +43,8 @@ import com.meucoach.app.ui.profile.ProfileGateViewModel
 import com.meucoach.app.ui.profile.ProfileScreen
 import com.meucoach.app.ui.today.TodayRoute
 import com.meucoach.app.ui.trends.TrendsScreen
+import com.meucoach.app.ui.tutorial.TutorialScreen
+import com.meucoach.app.ui.tutorial.TutorialViewModel
 import com.meucoach.core.designsystem.component.McBottomBar
 import com.meucoach.core.designsystem.component.McBottomBarItem
 import com.meucoach.core.designsystem.theme.McTheme
@@ -73,6 +75,7 @@ private const val CALIBRATION_ACTIVITY_ARG = "activityId"
 private const val METRICS_IMPORT_ROUTE = "profile/metrics-import"
 private const val DATA_MANAGEMENT_ROUTE = "profile/data"
 private const val CHECK_IN_ROUTE = "check-in"
+private const val TUTORIAL_ROUTE = "tutorial"
 
 private fun activityDetailRoute(activityId: String): String = "activity/${Uri.encode(activityId)}"
 
@@ -104,6 +107,17 @@ fun MeuCoachApp(gateViewModel: ProfileGateViewModel = hiltViewModel()) {
 
 @Composable
 private fun MainApp() {
+    val tutorialViewModel: TutorialViewModel = hiltViewModel()
+    val tutorialState by tutorialViewModel.uiState.collectAsStateWithLifecycle()
+    if (!tutorialState.seen) {
+        TutorialScreen(onDone = {})
+    } else {
+        MainContent()
+    }
+}
+
+@Composable
+private fun MainContent() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
@@ -112,7 +126,8 @@ private fun MainApp() {
         currentRoute != CALIBRATION_ROUTE &&
         currentRoute != METRICS_IMPORT_ROUTE &&
         currentRoute != DATA_MANAGEMENT_ROUTE &&
-        currentRoute != CHECK_IN_ROUTE
+        currentRoute != CHECK_IN_ROUTE &&
+        currentRoute != TUTORIAL_ROUTE
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -201,6 +216,7 @@ private fun MainApp() {
                     onCalibrate = { navController.navigate(calibrationRoute()) },
                     onImportMetrics = { navController.navigate(METRICS_IMPORT_ROUTE) },
                     onManageData = { navController.navigate(DATA_MANAGEMENT_ROUTE) },
+                    onShowTutorial = { navController.navigate(TUTORIAL_ROUTE) },
                 )
             }
             composable(METRICS_IMPORT_ROUTE) {
@@ -208,6 +224,9 @@ private fun MainApp() {
             }
             composable(DATA_MANAGEMENT_ROUTE) {
                 DataManagementScreen(onBack = { navController.popBackStack() })
+            }
+            composable(TUTORIAL_ROUTE) {
+                TutorialScreen(onDone = { navController.popBackStack() })
             }
             composable(PROFILE_EDIT_ROUTE) {
                 OnboardingScreen(

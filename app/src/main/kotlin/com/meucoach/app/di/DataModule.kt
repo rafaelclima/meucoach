@@ -1,6 +1,7 @@
 package com.meucoach.app.di
 
 import android.content.Context
+import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectDailySource
 import com.meucoach.core.data.health.HealthDailySource
@@ -76,6 +77,10 @@ object DataModule {
     @Singleton
     fun provideUserDataRepository(database: MeuCoachDatabase, healthSyncStore: HealthSyncStore): UserDataRepository =
         UserDataRepository(database, healthSyncStore)
+
+    @Provides
+    @Singleton
+    fun provideTutorialStore(@ApplicationContext context: Context): TutorialStore = TutorialStore(context)
 
     @Provides
     @Singleton

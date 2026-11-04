@@ -54,6 +54,7 @@ class ProfileScreenshotTest {
                     onCalibrate = {},
                     onImportMetrics = {},
                     onManageData = {},
+                    onShowTutorial = {},
                 )
             }
         }
