@@ -23,6 +23,7 @@
 | Banco | Room `MigrationTestHelper` | Migrações e queries | JVM/instrumentado |
 | UI | Compose UI Test + Robolectric | Estados, acessibilidade básica | JVM, cada PR |
 | Screenshot | Roborazzi | Regressão visual dark/light | JVM, cada PR (Fase 1) |
+| Gráficos | Roborazzi + Vico | Eixos, unidades, lacunas e cores de nível nas telas Tendências e Saúde | JVM, cada PR |
 | Instrumentado | Compose UI Test + AndroidX Test | Fluxos reais, Health Connect fake | Emulador, nightly |
 | E2E | Fluxo import → hoje | Aceitação do MVP | Emulador, release |
 
@@ -33,6 +34,7 @@ core/model/src/test/          # value objects (pace, distância)
 core/domain/src/test/
   zones/                      # FC, pace, distribuição
   load/                       # TRIMP, rTSS, CTL/ATL/TSB, ACWR
+  health/                     # séries diárias de sono, FC de repouso, HRV e SpO2
   readiness/                  # score, confiança, overrides
   prescription/               # plano, progressão, taper, guardrails
   parser/                     # FIT, TCX, GPX, CSV
@@ -173,7 +175,7 @@ Evidência atual (30/10/2026):
 
 ### 6.2 Carga
 
-- TRIMP calculado à mão para 30 min, FC 150, repouso 58, máx 187.
+- TRIMP calculado à mão para 30 min, FC 150, repouso 58, máx 187 ⇒ 53,85 pontos (fórmula em minutos, não segundos).
 - rTSS: 60 min no limiar = 100; 30 min = 50; pace 10% mais lento ⇒ ~82,6.
 - CTL/ATL: série constante → converge; TSB = CTL − ATL.
 - ACWR: crônico 0 → `null`; 7d/28d conhecido.

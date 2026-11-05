@@ -31,6 +31,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Tema:** dark-first, light completo; sem dynamic color.
 - **Fonte:** Geist (display) + Inter (texto), OFL.
 - **Acentuação:** lima como única cor de ação; coral para fisiologia.
+- **Gráficos:** Vico 3.3.1 para line/bar; Canvas para gauge/zone bar/heatmap; eixos em pt-BR.
 - **Backend:** só na Fase 2; app nunca depende dele.
 - **Força:** fora do escopo; fadiga global no check-in.
 - **Calor:** ajuste empírico conservador, confiança limitada.

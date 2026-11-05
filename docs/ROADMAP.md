@@ -227,7 +227,7 @@
 
 ### P1-07 · Tendências
 
-**Status:** concluído em 31/10/2026
+**Status:** concluído em 31/10/2026 — gráficos Vico em 04/11/2026
 
 - [x] Volume semanal.
 - [x] Consistência em 42/84/182 dias, conforme o filtro de período.
@@ -236,6 +236,9 @@
 - [x] Recordes pessoais: maior distância, melhor pace em corridas ≥ 3 km e maior tempo.
 - [x] Filtros de período das atividades (6/12/26 semanas).
 - [x] Heatmap de consistência por dia, alinhado por semana e colorido por volume.
+- [x] Gráficos cartesianos migrados para Vico 3.3.1 (`McLineChart`/`McBarChart`) com eixos, unidade, tooltip, legenda e lacunas sem linha inventada.
+- [x] PMC com base, fadiga e balanço (CTL/ATL/TSB) na mesma escala e eixo em pontos.
+- [x] Prontidão em barras coloridas por nível e economia com eixo ampliado e aviso explícito.
 
 ### P1-08 · Check-in
 
@@ -249,7 +252,7 @@
 
 ### P1-09 · Health Connect
 
-**Status:** concluído em 31/10/2026
+**Status:** concluído em 31/10/2026 — painel de saúde em 04/11/2026
 
 - [x] Permissões read-only de sono, FC de repouso, HRV e SpO2.
 - [x] Leitura com paginação e agregação por dia local.
@@ -259,6 +262,8 @@
 - [x] O mesmo `HealthSyncService` atende a tela de perfil e o worker.
 - [x] Mescla por campo entre CSV e Health Connect, sem apagar dados do dia (`ADR-0016`).
 - [x] Tela de métricas com um primário (sync), CSV secundário e formato sob demanda.
+- [x] Painel de saúde com sono, FC de repouso, HRV e SpO₂: média móvel de 7 dias, base individual, faixa-alvo, janela 7/30/60 dias e tabela por métrica.
+- [x] `DailyMetricsTrendsCalculator` puro no domínio, com lacunas preservadas e cobertura de dias.
 
 ### P1-10 · Explicabilidade
 
@@ -397,6 +402,10 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | U-03 | Contextualizar a confiança do plano (“Plano · confiança baixa”) para não competir visualmente com a confiança da prontidão. | Pendente |
 | U-04 | Revisar Tendências e o detalhe da atividade com uma corrida importada (cards, gráficos, splits e zonas). | Pendente — depende de uma importação real |
 | U-05 | Perfil → Saúde e dados: explicar o Health Connect, mostrar o estado real da conexão e separar backup de importação de métricas. | Concluído em 03/11/2026 |
+| U-06 | Prontidão sem nome de cor: títulos **Alta/Moderada/Baixa** no gauge e no histórico. | Concluído em 04/11/2026 |
+| U-07 | Voltar para Hoje depois de Tendências (inclusive entrando pelo card) sem reabrir a aba anterior. | Concluído em 04/11/2026 |
+| U-08 | Foto do cabeçalho da Hoje abre o Perfil. | Concluído em 04/11/2026 |
+| U-09 | Explicar a carga de treino (Base, Fadiga, Balanço, Carga, Aumento e Variedade) e corrigir o TRIMP para minutos. | Concluído em 04/11/2026 |
 
 ## Backlog técnico
 

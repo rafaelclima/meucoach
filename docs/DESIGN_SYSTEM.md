@@ -100,6 +100,8 @@ O resultado deve parecer um equipamento de precisão, não um brinquedo.
 
 **Regra:** nunca codificar zona apenas por cor. Sempre usar rótulo (Z1, Z2…), posição na barra e descrição acessível.
 
+**Prontidão:** o texto é sempre **Alta / Moderada / Baixa**; verde, âmbar e vermelho são só o canal visual. Não usar o nome da cor como título.
+
 ### 3.5 Contraste e uso do lima
 
 - Lima `#D8FF3E` sobre `#08090B`: contraste alto — ok para texto grande, ícones e CTA.
@@ -192,8 +194,8 @@ Regras:
 | `McGauge` | anel de 220° com score, nível e confiança; espessura 10 dp |
 | `McConfidenceBadge` | HIGH/MEDIUM/LOW com ponto + label; nunca só cor |
 | `McSparkline` | linha 2 dp, área 12% opacidade, sem eixos |
-| `McLineChart` | Vico; eixos, tooltip, legenda, unidade |
-| `McBarChart` | barras com raio 6; gaps 8; destaque no dia atual |
+| `McLineChart` | Vico 3.3.1; eixos com unidade, tooltip, legenda, `contentDescription`; lacunas quebram a linha |
+| `McBarChart` | Vico 3.3.1; barras com raio 6, gaps 8, destaque da semana atual ou cor por nível |
 | `McZoneBar` | barra empilhada 5 zonas + legenda com tempo/% |
 | `McCalendarHeatmap` | 7×N, 12 dp, escala de 5 níveis, tooltip |
 | `McSplitTable` | splits por km, pace, FC, elevação, destaque do melhor |
@@ -221,6 +223,9 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 8. **Acessibilidade.** Cada gráfico tem `contentDescription` com resumo e opção "ver tabela".
 9. **Contexto.** Linha de referência (limiar, média 30d, meta) quando ajudam.
 10. **Sem 3D, sem gradientes enganosos, sem eixos truncados sem aviso.**
+11. **Lacuna é lacuna.** Dia sem medição não vira zero nem linha reta entre pontos; a série quebra.
+12. **Eixo dinâmico pede aviso.** Quando o eixo começa perto dos dados para mostrar a variação
+    (FC de repouso, HRV, economia), uma nota diz o intervalo; sono e SpO₂ usam faixas fixas com alvo.
 
 ### 8.2 Gráficos por tela
 
@@ -242,6 +247,8 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 | Tendências | Pace @ FC (eficiência) | "Fiquei mais eficiente?" |
 | Tendências | Recordes | "Qual foi meu melhor esforço?" |
 | Tendências | Heatmap de consistência | "Mantive o hábito?" |
+| Saúde | Sono, FC de repouso, HRV e SpO₂ | "Como estou recuperando?" |
+| Saúde | Histórico de prontidão | "Como evoluí nos últimos dias?" |
 
 ### 8.3 Paleta de séries
 
@@ -278,7 +285,7 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 [ Bom dia, Rafael ]                     [avatar]
 [ Ter, 27 de outubro · Natal, 28° ]
 
-[ HeroCard: Prontidão 72 · Verde · confiança média ]
+[ HeroCard: Prontidão 72 · Alta · confiança média ]
 [ Gauge 220° ]  Sono 9h13 / Variabilidade média · 7 noites / FC estável
 [ "Por que esta prontidão?" ]
 
@@ -349,7 +356,9 @@ No plano da semana, cada sessão ocupa uma linha (dia · título · duração); 
 - Tema Compose em `core/designsystem`: `McTheme` com `darkColorScheme`/`lightColorScheme`, tipografia e shapes.
 - Sem dynamic color do Material You; a marca manda.
 - Fontes em `core/designsystem/src/main/res/font/` (Geist, Inter, Geist Mono).
-- Vico para line/bar; Canvas para gauge, zone bar e heatmap.
+- Vico 3.3.1 para line/bar; Canvas para gauge, zone bar e heatmap.
+- Cada gráfico tem `contentDescription`; as telas de Tendências e Saúde oferecem tabela ou resumo
+  textual quando o gráfico é a única leitura (Saúde tem “Ver tabela” por métrica).
 - Componentes têm previews e testes de screenshot (Fase 1).
 - Toda tela usa `McScaffold` e tokens; nenhum hexadecimal solto no código.
 

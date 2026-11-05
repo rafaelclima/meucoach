@@ -1,15 +1,15 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 04/11/2026 (story em segundo plano e cancelamento real)
+**Atualizado:** 04/11/2026 (gráficos Vico em Tendências e painel de saúde)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 778 testes, 0 falhas (27 em `core:model`, 279 em `core:domain`, 89 em `core:data`, 383 em `:app`)
-- **Cobertura `core:domain`:** 98,17% de linhas (2.622/2.671), 83,16% de branches (2.049/2.464), 96,90% de instruções (19.475/20.099)
+- **Testes:** 805 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 402 em `:app`)
+- **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 23 avisos não bloqueantes (versão/target, KTX, naming, ícone e MapLibre 13.x)
+- **Lint:** 0 erros; 31 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
 - **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
@@ -21,7 +21,7 @@
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
-- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC.
+- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Métricas diárias:** CSV e Health Connect são mesclados por campo, com precedência `MANUAL` > `Health Connect` > `CSV`; um sync não apaga mais o que só o CSV tinha (ADR 0016).
@@ -50,10 +50,67 @@
 - **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
+- **Prontidão legível sem cor:** níveis aparecem como **Alta/Moderada/Baixa** no gauge e no histórico, com a cor como reforço; a foto do cabeçalho abre o Perfil.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-04 — Gráficos de verdade: Vico, Tendências e painel de saúde
+**Objetivo:** elevar a leitura dos gráficos e transformar a tela de saúde em um painel de recuperação, sem tirar o motor determinístico do centro.
+
+### Concluído
+
+- **Vico 3.3.1:** adicionado `com.patrykandpatrick.vico:compose` (Apache 2.0) ao `:core:designsystem`. Nenhuma feature importa Vico diretamente; `McLineChart` e `McBarChart` encapsulam eixos, unidade, tooltip, legenda, `contentDescription`, lacunas e estado vazio.
+- **Tendências redesenhada:** volume com eixos em km e destaque da semana atual; conclusão do plano em %; PMC com **CTL/ATL/TSB** na mesma escala e eixo em pontos; prontidão em barras coloridas por nível (Baixa/Moderada/Alta); economia com média de 7 dias, variação e eixo ampliado com aviso explícito; heatmap com células inativas visíveis.
+- **Saúde diária (nova visão):** a tela `profile/metrics-import` virou um painel antes das fontes: hero com sono, FC de repouso, HRV e SpO₂, cobertura de dias e seleção 7/30/60 dias. Cada métrica tem gráfico de linha com média móvel de 7 dias, base individual ou faixa-alvo, resumo numérico e “Ver tabela” com os últimos 7 dias.
+- **Domínio puro:** `DailyMetricsTrendsCalculator` (core:domain/health) filtra a janela, preserva lacunas, calcula média móvel de 7 dias, base do período, variação, cobertura e faixas de sono (7–9 h) e SpO₂ (95–100%). RHR e HRV usam a base individual, nunca um alvo inventado.
+- **Sem zero inventado:** dia sem medição continua ausente; a linha quebra em vez de ligar dois pontos distantes. O eixo dinâmico de RHR/HRV/economia vem acompanhado da nota “Eixo de X a Y…”.
+- **Acessibilidade:** todo gráfico novo tem `contentDescription` com resumo e fonte; a tabela por métrica é a alternativa textual; cores de prontidão continuam acompanhadas do rótulo.
+- **Testes:** 8 do calculador de tendências, 4 da visão de saúde, 5 goldens (saúde dark/light/estreito, gráficos de saúde e recuperação), 3 goldens de Tendências com dados completos e 1 teste de ViewModel para janela/trends. Total: **805 testes**.
+- **Docs:** `DESIGN_SYSTEM` §7/§8/§13, `TESTING` §3/§4, `ROADMAP` P1-07/P1-09 e addendum do `ADR-0007` com Vico 3.3.1 e alternativas rejeitadas.
+
+### Evidências
+
+- `./gradlew check` — testes, spotless, lint e cobertura verdes.
+- `./gradlew koverVerify` — `core:domain` 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736); parser FIT 93,01% de branches.
+- Goldens novos: `health-dark`, `health-light`, `health-narrow-dark`, `health-charts-dark`, `health-recovery-dark`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark`; `trends-dark`/`trends-light` regravados.
+- Lint: 0 erros.
+
+### Decisões e observações
+
+- **Vico, não várias bibliotecas:** Vico 3.3.1 ficou como único motor cartesiano por ser mantido, multiplataforma, Apache 2.0 e já previsto no ADR-0007. Compose Charts, KoalaPlot, YCharts e MPAndroidChart foram avaliados e rejeitados (controle de eixos, manutenção ou base View).
+- **Canvas continua onde a marca manda:** gauge de prontidão, barra de zonas, heatmap e sparkline não foram reescritos; uma biblioteca genérica não entrega o comportamento específico desses componentes.
+- **Eixo dinâmico é transparência, não truque:** RHR/HRV/economia usam zoom no intervalo dos dados e dizem isso na tela; sono e SpO₂ mantêm faixa fixa com alvo visível.
+- **Painel reusa a tela de importação:** evita uma nova rota e mantém Health Connect/CSV como fontes explícitas, mas agora abaixo do que já foi medido. O empty state ainda leva a conectar/importar.
+- **Locale:** eixos e tooltips formatam números em pt-BR (vírgula decimal), alinhados ao restante do app.
+- **Sem LLM:** os gráficos só descrevem dados existentes; nenhum texto de recomendação é gerado por modelo.
+
+### Próximo passo
+
+1. Validar no aparelho real o toque (tooltip), a legibilidade em fonte 200% e o comportamento do gráfico de 26 semanas em tela estreita.
+2. Revisar Tendências e Saúde com uma importação real (4 FIT/TCX sanitizados) e conferir se a escala dos dados reais não gera eixos apertados.
+3. `P1-12`: validação E2E com 4 semanas de uso real.
+
+## Sessão 2026-11-04 — Carga de treino explicada e TRIMP em minutos
+**Objetivo:** fazer o usuário entender o primeiro card de Tendências e corrigir a escala dos pontos de carga.
+
+- **Card reescrito:** a primeira carta agora diz que a carga é medida em **pontos de esforço**, calculados pela FC ou pelo ritmo, e que a comparação é com o próprio histórico. “Acumulada/Recente” virou **Base (média diária · 42d)** e **Fadiga (média diária · 7d)**; “Balanço” mostra a conta `base − fadiga`; “Carga” e “Aumento” ganharam hints `soma · 7 dias` e `7d ÷ 28d`.
+- **Ajuda sob demanda:** “Entenda cada número” abre um bottom sheet com definições curtas de Base, Fadiga, Balanço (incluindo que negativo não é erro), Carga, Aumento (faixa 0,8–1,3) e Variedade.
+- **Home alinhada:** o card de carga usa os mesmos rótulos/hints e o pill de ACWR passou de “vs. mês” para “vs. 4 sem” (a janela real é de 28 dias).
+- **Bug de escala no TRIMP:** `TrainingLoadCalculator.trimp` multiplicava a duração em **segundos**, embora a fórmula de Banister use **minutos**. Isso inflava a carga em 60× (ex.: 30 min ≈ 3.231 em vez de ≈ 53,8 pontos) e produzia CTL/ATL/TSB e “Aumento” fora de escala. Corrigido para minutos; rTSS já estava correto.
+- **Impacto:** a carga é recalculada a partir das atividades, sem migração; ACWR/monotonia são razões e não mudam de significado. Goldens `G-LOAD-01` e `G-LOAD-02` atualizados.
+- **Testes:** `TrainingLoadCalculatorTest` fixa o TRIMP de 30 min em 53,85; `TrendsScreenTest` cobre o sheet de ajuda e os novos rótulos; goldens de Hoje/Tendências regravados.
+- **Docs:** `SPORTS_SCIENCE` §6.1 explicita `dur(min)` e a escala de pontos de carga.
+
+## Sessão 2026-11-04 — Prontidão sem nome de cor, volta para Hoje e atalho de perfil
+**Objetivo:** tirar o nome da cor dos títulos de prontidão, consertar a volta para Hoje e abrir o Perfil pela foto.
+
+- **Rótulos semânticos:** o gauge da Hoje e o histórico de Tendências passam de “Verde/Âmbar/Vermelho” para **Alta/Moderada/Baixa** (`readinessLabel`). A cor continua sendo o sinal visual, mas o texto se explica sozinho; o rationale de novos planos e treinos também deixou de dizer “prontidão não está verde”, “Prontidão âmbar” e “Prontidão vermelha” (planos já persistidos mantêm o texto até a próxima geração).
+- **Bug da volta para Hoje:** a barra inferior usava `restoreState` também para a tela inicial. O Navigation guarda o estado da aba que foi deixada sob o id do `popUpTo`, então, depois de abrir Tendências pelo card “Ver tendências” e tocar em Hoje, ele reabria Tendências. `navigateToTab` agora nunca restaura a tela inicial (pop sem `saveState`); as demais abas continuam preservando estado.
+- **Foto abre o Perfil:** o avatar da Home ganhou alvo de 44 dp com `Role.Button`, rótulo “Abrir perfil” e navega para a aba Perfil pelo mesmo caminho da barra inferior.
+- **Testes:** `NavigationTest` reproduz a sequência Tendências → Hoje (inclusive entrando pelo card e saindo por outra aba) e falha com o código antigo; `TodayPlanTest` cobre o clique no avatar; racional do plano e do treino atualizados.
+- **Docs:** `SPORTS_SCIENCE` §7.2 e `DESIGN_SYSTEM` §3.4 registram Alta/Moderada/Baixa como rótulo de UI.
 
 ## Sessão 2026-11-04 — Roteiro de câmera: overview → follow
 **Objetivo:** animar o pitch real sem multiplicar snapshots na memória.

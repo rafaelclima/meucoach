@@ -134,7 +134,7 @@ O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
 
 | Métrica | Fórmula | Uso |
 |---|---|---|
-| **TRIMP** (Banister) | `dur × ΔHR × 0,64·e^(1,92·x)` (homens) / `0,86·e^(1,67·x)` (mulheres), `x=(HRavg−HRrest)/(HRmax−HRrest)` | Carga fisiológica por FC |
+| **TRIMP** (Banister) | `dur(min) × ΔHR × 0,64·e^(1,92·x)` (homens) / `0,86·e^(1,67·x)` (mulheres), `x=(HRavg−HRrest)/(HRmax−HRrest)` | Carga fisiológica por FC |
 | **rTSS** | `(seg × NGP / paceLimiar)² × 100 / 3600` | Carga por pace normalizado |
 | **sRPE** | `RPE × minutos` | Carga subjetiva; valida FC duvidosa |
 | **CTL** | EMA de 42 dias | Fitness/carga crônica |
@@ -145,6 +145,8 @@ O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
 | **Strain** | `carga semanal × monotonia` | Combinação de volume e monotonia |
 
 **Importante:** TRIMP e rTSS medem coisas diferentes e não são somados. O app mostra os dois e usa TRIMP como principal quando a FC é confiável; rTSS quando só o pace é confiável. Na série diária do PMC, cada dia recebe um único métrico: TRIMP se houver FC válida; caso contrário, rTSS; sem nenhum dos dois, o dia fica sem carga (não vira zero silencioso).
+
+Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pontos ≈ 1 hora no limiar para o rTSS; no TRIMP, uma hora fácil rende menos e uma hora forte rende mais. O número serve para comparar o atleta com ele mesmo ao longo do tempo, nunca entre pessoas diferentes.
 
 ### 6.2 Normalização de NGP
 
@@ -184,9 +186,11 @@ Quando falta uma entrada, os pesos são **renormalizados** e a confiança cai. N
 
 | Nível | Score | Ação |
 |---|---|---|
-| **Verde** | ≥ 70 | Executar o plano; pode progredir se as outras regras permitirem |
-| **Âmbar** | 40–69 | Reduzir volume/intensidade em 10–20%; trocar qualidade por fácil |
-| **Vermelho** | < 40 | Qualidade suspensa; fácil curto ou descanso; checar sinais |
+| **Verde** (UI: **Alta**) | ≥ 70 | Executar o plano; pode progredir se as outras regras permitirem |
+| **Âmbar** (UI: **Moderada**) | 40–69 | Reduzir volume/intensidade em 10–20%; trocar qualidade por fácil |
+| **Vermelho** (UI: **Baixa**) | < 40 | Qualidade suspensa; fácil curto ou descanso; checar sinais |
+
+No app, o texto visível é **Alta / Moderada / Baixa**; a cor acompanha o mesmo estado, mas o rótulo nunca depende dela (leitura para daltonismo, TalkBack e telas em preto e branco).
 
 **Overrides de segurança** (independente do score):
 
