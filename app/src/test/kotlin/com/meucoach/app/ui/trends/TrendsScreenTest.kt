@@ -84,8 +84,8 @@ class TrendsScreenTest {
         compose.onNodeWithText("Carga de treino").assertIsDisplayed()
 
         val list = compose.onNodeWithTag("trends-list")
-        list.performScrollToNode(hasText("Acumulada", ignoreCase = true))
-        compose.onNodeWithText("Acumulada", ignoreCase = true).assertIsDisplayed()
+        list.performScrollToNode(hasText("Base", ignoreCase = true))
+        compose.onNodeWithText("Base", ignoreCase = true).assertIsDisplayed()
         list.performScrollToNode(hasText("Aumento", ignoreCase = true))
         compose.onNodeWithText("Aumento", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithText("ACWR", ignoreCase = true).assertDoesNotExist()
@@ -94,7 +94,7 @@ class TrendsScreenTest {
         compose.onNodeWithText("Sem alerta de carga").assertIsDisplayed()
 
         list.performScrollToNode(hasText("Como a carga acumulou"))
-        compose.onNodeWithContentDescription("Gráfico de carga acumulada e recente dos últimos 42 dias")
+        compose.onNodeWithContentDescription("Gráfico de carga de base e fadiga recente dos últimos 42 dias")
             .assertExists()
     }
 
@@ -126,7 +126,7 @@ class TrendsScreenTest {
         compose.onNodeWithText("Prontidão · 14 dias").assertIsDisplayed()
         list.performScrollToNode(hasText("48"))
         compose.onNodeWithText("48").assertIsDisplayed()
-        compose.onNodeWithText("Âmbar").assertIsDisplayed()
+        compose.onNodeWithText("Moderada").assertIsDisplayed()
     }
 
     @Test
@@ -323,6 +323,7 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("Maior distância"))
         compose.onNodeWithText("Maior distância").assertIsDisplayed()
         compose.onNodeWithText("8,4 km").assertIsDisplayed()
+        list.performScrollToNode(hasText("Melhor ritmo"))
         compose.onNodeWithText("Melhor ritmo").assertIsDisplayed()
         compose.onNodeWithText("5:48 /km").assertIsDisplayed()
     }
@@ -367,6 +368,30 @@ class TrendsScreenTest {
         averagePace = Pace.fromSecondsPerKm(360),
         averageHeartRate = 150,
     )
+
+    @Test
+    fun `explains every load number on demand`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Entenda cada número"))
+        compose.onNodeWithTag("load-help-button").performClick()
+
+        compose.onNodeWithTag("load-help-content").assertIsDisplayed()
+        compose.onNodeWithText("Como ler a carga").assertIsDisplayed()
+        compose.onNodeWithText("Média diária de esforço das últimas 6 semanas", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("Negativo significa que a fadiga recente", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("Carga dos últimos 7 dias dividida", substring = true)
+            .assertExists()
+    }
 
     private fun setContent(state: TrendsUiState, onPeriodSelected: (TrendsPeriod) -> Unit = {}) {
         compose.setContent {

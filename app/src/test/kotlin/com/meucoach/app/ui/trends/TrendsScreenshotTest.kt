@@ -1,7 +1,10 @@
 package com.meucoach.app.ui.trends
 
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
@@ -32,6 +35,28 @@ class TrendsScreenshotTest {
     @Test
     fun trendsLight() {
         capture(darkTheme = false, file = "src/test/screenshots/trends-light.png")
+    }
+
+    @Test
+    fun trendsChartsDark() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TrendsContent(
+                    state = TrendsUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        snapshot = snapshot(),
+                    ),
+                )
+            }
+        }
+        compose.onNodeWithTag("trends-list")
+            .performScrollToNode(
+                androidx.compose.ui.test.hasContentDescription(
+                    "Gráfico de carga de base e fadiga recente dos últimos 42 dias",
+                ),
+            )
+        compose.onRoot().captureRoboImage("src/test/screenshots/trends-charts-dark.png")
     }
 
     private fun capture(darkTheme: Boolean, file: String) {

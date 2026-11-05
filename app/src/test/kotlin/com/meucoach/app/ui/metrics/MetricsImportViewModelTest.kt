@@ -2,12 +2,14 @@ package com.meucoach.app.ui.metrics
 
 import android.content.Context
 import android.net.Uri
+import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -19,6 +21,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
 
@@ -34,6 +37,7 @@ class MetricsImportViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
+        shadowOf(Looper.getMainLooper()).idle()
         context = ApplicationProvider.getApplicationContext()
         database =
             Room
@@ -45,6 +49,7 @@ class MetricsImportViewModelTest {
 
     @After
     fun tearDown() {
+        shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
     }
@@ -110,9 +115,48 @@ class MetricsImportViewModelTest {
         assertThat(state.message).isNotNull
     }
 
+    @Test
+    fun `builds health trends and changes the window`() {
+        val today = java.time.LocalDate.now()
+        kotlinx.coroutines.runBlocking {
+            repository.saveAll(
+                listOf(
+                    com.meucoach.core.model.DailyMetrics(date = today, sleepDurationMin = 480),
+                    com.meucoach.core.model.DailyMetrics(
+                        date = today.minusDays(1),
+                        restingHeartRate = 58.0,
+                    ),
+                ),
+            )
+        }
+        val viewModel = MetricsImportViewModel(context, repository)
+        val state = kotlinx.coroutines.runBlocking {
+            withTimeout(5_000) {
+                viewModel.uiState.first { it.trends.hasData }
+            }
+        }
+
+        assertThat(state.storedDays).isEqualTo(2)
+        assertThat(state.windowDays).isEqualTo(30)
+        assertThat(state.trends.trend(com.meucoach.core.domain.health.HealthMetric.SLEEP)!!.latest!!.value)
+            .isEqualTo(480.0)
+
+        viewModel.selectWindow(7)
+
+        assertThat(viewModel.uiState.value.windowDays).isEqualTo(7)
+        assertThat(viewModel.uiState.value.trends.windowDays).isEqualTo(7)
+        assertThat(viewModel.uiState.value.trends.hasData).isTrue()
+    }
+
     private fun awaitIdle(viewModel: MetricsImportViewModel): MetricsImportUiState = kotlinx.coroutines.runBlocking {
-        withTimeout(5_000) {
-            viewModel.uiState.first { !it.isImporting }
+        withTimeout(15_000) {
+            var state = viewModel.uiState.value
+            while (state.isImporting || state.message == null) {
+                shadowOf(Looper.getMainLooper()).idle()
+                delay(10)
+                state = viewModel.uiState.value
+            }
+            state
         }
     }
 

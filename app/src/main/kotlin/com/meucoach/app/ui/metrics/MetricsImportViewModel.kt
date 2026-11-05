@@ -5,8 +5,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.domain.health.DailyMetricsTrends
+import com.meucoach.core.domain.health.DailyMetricsTrendsCalculator
 import com.meucoach.core.domain.importer.CsvRowError
 import com.meucoach.core.domain.importer.DailyMetricsCsvParser
+import com.meucoach.core.model.DailyMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +20,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class MetricsImportUiState(
@@ -27,6 +31,8 @@ data class MetricsImportUiState(
     val message: String? = null,
     val storedDays: Int = 0,
     val latestMetricDate: java.time.LocalDate? = null,
+    val windowDays: Int = DailyMetricsTrendsCalculator.DEFAULT_WINDOW_DAYS,
+    val trends: DailyMetricsTrends = emptyTrends(),
 )
 
 @HiltViewModel
@@ -35,18 +41,36 @@ class MetricsImportViewModel @Inject constructor(
     private val repository: DailyMetricsRepository,
 ) : ViewModel() {
     private val parser = DailyMetricsCsvParser()
+    private val trendsCalculator = DailyMetricsTrendsCalculator()
     private val _uiState = MutableStateFlow(MetricsImportUiState())
     val uiState: StateFlow<MetricsImportUiState> = _uiState.asStateFlow()
+    private var storedMetrics: List<DailyMetrics> = emptyList()
 
     init {
         viewModelScope.launch {
             repository.observeAll().collect { rows ->
-                _uiState.value = _uiState.value.copy(
-                    storedDays = rows.size,
-                    latestMetricDate = rows.lastOrNull()?.date,
-                )
+                storedMetrics = rows
+                refresh(rows)
             }
         }
+    }
+
+    fun selectWindow(days: Int) {
+        require(days > 0) { "Window must be positive" }
+        refresh(storedMetrics, windowDays = days)
+    }
+
+    private fun refresh(rows: List<DailyMetrics>, windowDays: Int = _uiState.value.windowDays) {
+        _uiState.value = _uiState.value.copy(
+            storedDays = rows.size,
+            latestMetricDate = rows.lastOrNull()?.date,
+            windowDays = windowDays,
+            trends = trendsCalculator.calculate(
+                metrics = rows,
+                today = LocalDate.now(),
+                windowDays = windowDays,
+            ),
+        )
     }
 
     fun import(uri: Uri) {
@@ -103,4 +127,15 @@ class MetricsImportViewModel @Inject constructor(
     private companion object {
         const val MAX_CHARS = 2_000_000
     }
+}
+
+private fun emptyTrends(): DailyMetricsTrends {
+    val today = LocalDate.now()
+    return DailyMetricsTrends(
+        windowDays = DailyMetricsTrendsCalculator.DEFAULT_WINDOW_DAYS,
+        startDate = today.minusDays(DailyMetricsTrendsCalculator.DEFAULT_WINDOW_DAYS - 1L),
+        endDate = today,
+        days = emptyList(),
+        trends = emptyList(),
+    )
 }

@@ -17,27 +17,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -46,13 +49,18 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.ui.activities.formatDuration
+import com.meucoach.app.ui.common.readinessLabel
+import com.meucoach.core.designsystem.component.McBarChart
 import com.meucoach.core.designsystem.component.McCard
+import com.meucoach.core.designsystem.component.McChartSeries
 import com.meucoach.core.designsystem.component.McConfidenceBadge
 import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McEmptyState
+import com.meucoach.core.designsystem.component.McLineChart
 import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McStat
+import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
@@ -147,6 +155,7 @@ private fun LoadDetails(
     lthr: Int?,
 ) {
     val colors = McTheme.colors
+    var loadHelpOpen by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -174,49 +183,7 @@ private fun LoadDetails(
             }
         }
         item {
-            McCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    McStat(
-                        label = "Acumulada",
-                        hint = "42 dias",
-                        value = formatOneDecimal(snapshot.ctl),
-                        modifier = Modifier.weight(1f),
-                    )
-                    McStat(
-                        label = "Recente",
-                        hint = "7 dias",
-                        value = formatOneDecimal(snapshot.atl),
-                        modifier = Modifier.weight(1f),
-                    )
-                    McStat(
-                        label = "Balanço",
-                        hint = "recuperação",
-                        value = formatOneDecimal(snapshot.tsb),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    McStat(
-                        label = "Carga",
-                        hint = "7 dias",
-                        value = formatOneDecimal(snapshot.daily.takeLast(7).sumOf { it.load }),
-                        modifier = Modifier.weight(1f),
-                    )
-                    McStat(
-                        label = "Aumento",
-                        hint = "vs. mês",
-                        value = snapshot.acwr?.let { formatTwoDecimals(it) } ?: "—",
-                        modifier = Modifier.weight(1f),
-                    )
-                    McStat(
-                        label = "Variedade",
-                        hint = "menor é melhor",
-                        value = snapshot.monotony?.let { formatTwoDecimals(it) } ?: "—",
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
+            LoadSummaryCard(snapshot = snapshot, onHelpClick = { loadHelpOpen = true })
         }
         item {
             val flag = acwrFlag(snapshot.acwr)
@@ -228,8 +195,10 @@ private fun LoadDetails(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Comparar a carga da semana com a do mês mostra se você acelerou demais. " +
-                        "É um alerta, nunca uma meta. ${snapshot.missingDays} dias sem carga no período.",
+                    text = "O aumento compara a carga dos últimos 7 dias com a média das últimas " +
+                        "4 semanas. Entre 0,8 e 1,3 é uma faixa de segurança; acima de 1,5 é sinal " +
+                        "de subida rápida. É um alerta, nunca uma meta. " +
+                        "${snapshot.missingDays} dias sem carga no período.",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
@@ -262,6 +231,168 @@ private fun LoadDetails(
         }
         item { McSectionHeader(title = "Evolução da carga · 42 dias") }
         item { PmcCard(snapshot) }
+    }
+    if (loadHelpOpen) {
+        LoadHelpSheet(onDismiss = { loadHelpOpen = false })
+    }
+}
+
+@Composable
+private fun LoadSummaryCard(snapshot: LoadSnapshot, onHelpClick: () -> Unit) {
+    val colors = McTheme.colors
+    McCard {
+        Text(text = "CARGA DE TREINO", style = McTextStyles.overline, color = colors.textTertiary)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Em pontos de esforço",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Calculada pela FC ou pelo ritmo. Compare com você mesmo ao longo das semanas — " +
+                "não é km, minutos nem calorias.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            McStat(
+                label = "Base",
+                hint = "média/dia · 42d",
+                value = formatOneDecimal(snapshot.ctl),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Fadiga",
+                hint = "média/dia · 7d",
+                value = formatOneDecimal(snapshot.atl),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Balanço",
+                hint = "base − fadiga",
+                value = formatOneDecimal(snapshot.tsb),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        McDivider()
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            McStat(
+                label = "Carga",
+                hint = "soma · 7 dias",
+                value = formatOneDecimal(snapshot.daily.takeLast(7).sumOf { it.load }),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Aumento",
+                hint = "7d ÷ 28d",
+                value = snapshot.acwr?.let { formatTwoDecimals(it) } ?: "—",
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Variedade",
+                hint = "menor é melhor",
+                value = snapshot.monotony?.let { formatTwoDecimals(it) } ?: "—",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        McTextButton(
+            text = "Entenda cada número",
+            onClick = onHelpClick,
+            modifier = Modifier.testTag("load-help-button"),
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LoadHelpSheet(onDismiss: () -> Unit) {
+    val colors = McTheme.colors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colors.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
+                .testTag("load-help-content"),
+        ) {
+            Text(
+                text = "Como ler a carga",
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.textPrimary,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Os números são pontos de esforço. Não existe um valor universal de “bom”: " +
+                    "o que importa é a direção ao longo das semanas.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            LoadHelpItem(
+                title = "Base · 42 dias",
+                description = "Média diária de esforço das últimas 6 semanas. É o seu condicionamento; " +
+                    "sobe devagar com treino consistente e cai com pausas longas.",
+            )
+            LoadHelpItem(
+                title = "Fadiga · 7 dias",
+                description = "Média diária da última semana. Sobe depois de treinos fortes e cai com descanso.",
+            )
+            LoadHelpItem(
+                title = "Balanço",
+                description = "Base menos fadiga. Negativo significa que a fadiga recente está acima da base — " +
+                    "normal em semana de treino, não é erro. Positivo significa que você está mais descansado " +
+                    "que o normal.",
+            )
+            LoadHelpItem(
+                title = "Carga · 7 dias",
+                description = "Soma de todos os pontos dos últimos 7 dias. É o volume de esforço da semana.",
+            )
+            LoadHelpItem(
+                title = "Aumento",
+                description = "Carga dos últimos 7 dias dividida pela média das últimas 4 semanas. " +
+                    "Entre 0,8 e 1,3 é a faixa de segurança; acima de 1,5 indica subida rápida.",
+            )
+            LoadHelpItem(
+                title = "Variedade",
+                description = "Mostra se todos os dias têm esforço parecido. Números altos indicam semana " +
+                    "monótona, com pouco contraste entre dias leves e fortes.",
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "A carga vem da FC (quando confiável) ou do ritmo. Por isso o número é relativo: " +
+                    "compare você com você, nunca com outra pessoa.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadHelpItem(title: String, description: String) {
+    val colors = McTheme.colors
+    Column(modifier = Modifier.padding(bottom = 14.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = description,
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
     }
 }
 
@@ -310,34 +441,83 @@ private fun PeriodFilter(period: TrendsPeriod, onSelect: (TrendsPeriod) -> Unit)
 @Composable
 private fun WeeklyVolumeCard(weeks: List<com.meucoach.core.domain.trends.WeeklyVolume>) {
     val colors = McTheme.colors
-    val max = weeks.maxOf { it.kilometers }.coerceAtLeast(1.0)
     val total = weeks.sumOf { it.kilometers }
+    val average = total / weeks.size
+    val best = weeks.maxByOrNull { it.kilometers }
+    val maxKilometers = weeks.maxOfOrNull { it.kilometers } ?: 0.0
+    val yStep = when {
+        maxKilometers <= 6.0 -> 1.0
+        maxKilometers <= 12.0 -> 2.0
+        maxKilometers <= 25.0 -> 5.0
+        else -> 10.0
+    }
     McCard {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .semantics { contentDescription = "Volume semanal em quilômetros" },
-        ) {
-            val slot = size.width / weeks.size
-            val barWidth = slot * 0.55f
-            weeks.forEachIndexed { index, week ->
-                val height = (week.kilometers / max * size.height).toFloat()
-                val left = index * slot + (slot - barWidth) / 2
-                drawRoundRect(
-                    color = colors.accent,
-                    topLeft = Offset(left, size.height - height),
-                    size = androidx.compose.ui.geometry.Size(barWidth, height),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Distância por semana",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Cada barra é uma semana; a última é a semana atual.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = String.format(PT_BR, "%.1f", total),
+                    style = McTextStyles.metricSmall,
+                    color = colors.textPrimary,
+                )
+                Text(
+                    text = "km no total",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
                 )
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = String.format(PT_BR, "%.1f km no total · média %.1f km/semana", total, total / weeks.size),
-            style = McTextStyles.caption,
-            color = colors.textSecondary,
+        Spacer(modifier = Modifier.height(16.dp))
+        McBarChart(
+            values = weeks.map { it.kilometers },
+            labels = weeks.map { it.weekStart.format(DAY_FORMAT) },
+            highlightIndex = weeks.lastIndex,
+            ySuffix = " km",
+            yDecimals = 0,
+            yStep = yStep,
+            labelSpacing = when {
+                weeks.size > 12 -> 4
+                weeks.size > 6 -> 2
+                else -> 1
+            },
+            height = 156.dp,
+            contentDescription = "Volume semanal em quilômetros",
         )
+        Spacer(modifier = Modifier.height(12.dp))
+        McDivider()
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            McStat(
+                label = "Média",
+                hint = "por semana",
+                value = String.format(PT_BR, "%.1f km", average),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Melhor",
+                hint = best?.weekStart?.format(DAY_FORMAT) ?: "—",
+                value = best?.let { String.format(PT_BR, "%.1f km", it.kilometers) } ?: "—",
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Corridas",
+                hint = "no período",
+                value = weeks.sumOf { it.runs }.toString(),
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -368,38 +548,23 @@ private fun PlanCompletionCard(completion: PlanCompletion) {
             }
         }
         Spacer(modifier = Modifier.height(14.dp))
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(96.dp)
-                .semantics {
-                    contentDescription = "Conclusão do plano nas últimas " +
-                        "${completion.windowWeeks} semanas: ${completion.done} de " +
-                        "${completion.planned} sessões concluídas e ${completion.skipped} puladas"
-                },
-        ) {
-            val slot = size.width / completion.weeks.size
-            val barWidth = slot * 0.55f
-            val radius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
-            completion.weeks.forEachIndexed { index, week ->
-                val left = index * slot + (slot - barWidth) / 2
-                drawRoundRect(
-                    color = colors.surfaceInset,
-                    topLeft = Offset(left, 0f),
-                    size = androidx.compose.ui.geometry.Size(barWidth, size.height),
-                    cornerRadius = radius,
-                )
-                week.completionRatio?.takeIf { it > 0.0 }?.let { ratio ->
-                    val height = (ratio * size.height).toFloat()
-                    drawRoundRect(
-                        color = colors.accent,
-                        topLeft = Offset(left, size.height - height),
-                        size = androidx.compose.ui.geometry.Size(barWidth, height),
-                        cornerRadius = radius,
-                    )
-                }
-            }
-        }
+        McBarChart(
+            values = completion.weeks.map { week ->
+                week.completionRatio?.takeIf { it > 0.0 }?.times(100)
+            },
+            labels = completion.weeks.map { it.weekStart.format(DAY_FORMAT) },
+            highlightIndex = completion.weeks.lastIndex,
+            ySuffix = "%",
+            yDecimals = 0,
+            yStep = 25.0,
+            minY = 0.0,
+            maxY = 100.0,
+            labelSpacing = if (completion.weeks.size > 6) 2 else 1,
+            height = 132.dp,
+            contentDescription = "Conclusão do plano nas últimas " +
+                "${completion.windowWeeks} semanas: ${completion.done} de " +
+                "${completion.planned} sessões concluídas e ${completion.skipped} puladas",
+        )
         Spacer(modifier = Modifier.height(10.dp))
         val skipped = when (completion.skipped) {
             0 -> ""
@@ -503,7 +668,7 @@ private fun ConsistencyHeatmap(days: List<ConsistencyDay>) {
                 val row = day.date.dayOfWeek.value - 1
                 val fraction = (day.kilometers / maxKm).coerceIn(0.0, 1.0)
                 val color = if (day.runs == 0) {
-                    colors.surfaceInset
+                    colors.borderSubtle.copy(alpha = 0.42f)
                 } else {
                     colors.accent.copy(alpha = (0.25 + 0.65 * fraction).toFloat())
                 }
@@ -622,31 +787,93 @@ private fun RecordRow(label: String, value: String, hint: String?) {
 private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
     val colors = McTheme.colors
     val averageEfficiency = points.map { it.efficiencyMetersPerBeat }.average()
+    val latest = points.last().efficiencyMetersPerBeat
+    val change = if (points.size > 1) latest - points.first().efficiencyMetersPerBeat else null
+    val minEfficiency = points.minOf { it.efficiencyMetersPerBeat }
+    val maxEfficiency = points.maxOf { it.efficiencyMetersPerBeat }
+    val axisMin = (minEfficiency * 12).toInt() / 12.0 - 0.05
+    val axisMax = (maxEfficiency * 12).toInt() / 12.0 + 0.10
     McCard {
-        Text(
-            text = "Metros por batimento",
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.textPrimary,
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Metros por batimento",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Quanto você corre por batimento cardíaco. Se sobe com o mesmo esforço, " +
+                        "você está mais econômico. Compare sob condições semelhantes.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = String.format(PT_BR, "%.2f", latest),
+                    style = McTextStyles.metricSmall,
+                    color = colors.textPrimary,
+                )
+                Text(
+                    text = "m/batimento",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        McLineChart(
+            series = listOf(
+                McChartSeries(
+                    label = "Metros por batimento",
+                    values = points.map { it.efficiencyMetersPerBeat },
+                    color = colors.accent,
+                    area = true,
+                    showPoints = true,
+                ),
+            ),
+            xLabels = points.map { it.date.format(DAY_FORMAT) },
+            ySuffix = "",
+            yDecimals = 2,
+            yStep = 0.05,
+            minY = axisMin,
+            maxY = axisMax,
+            labelSpacing = if (points.size > 8) 2 else 1,
+            height = 168.dp,
+            showLegend = false,
+            contentDescription = "Evolução da economia de corrida em ${points.size} corridas",
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Quanto você corre por batimento cardíaco. Se sobe com o mesmo esforço, " +
-                "você está mais econômico. Compare sob condições semelhantes.",
-            style = McTextStyles.caption,
-            color = colors.textSecondary,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        EfficiencyChart(points)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            McStat(
+                label = "Média",
+                hint = "m/batimento",
+                value = String.format(PT_BR, "%.2f", averageEfficiency),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Última",
+                hint = "m/batimento",
+                value = String.format(PT_BR, "%.2f", latest),
+                modifier = Modifier.weight(1f),
+            )
+            McStat(
+                label = "Variação",
+                hint = "1ª → última",
+                value = change?.let { String.format(PT_BR, "%+.2f", it) } ?: "—",
+                modifier = Modifier.weight(1f),
+            )
+        }
         Text(
             text = String.format(
                 PT_BR,
-                "Média %.2f m/batimento em %d corridas",
-                averageEfficiency,
-                points.size,
+                "Eixo de %.2f a %.2f m/batimento para mostrar a variação.",
+                axisMin,
+                axisMax,
             ),
             style = McTextStyles.caption,
-            color = colors.textSecondary,
+            color = colors.textTertiary,
         )
         McDivider(modifier = Modifier.padding(vertical = 10.dp))
         Text(
@@ -679,55 +906,6 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EfficiencyChart(points: List<PaceHeartRatePoint>) {
-    val colors = McTheme.colors
-    val values = points.map { it.efficiencyMetersPerBeat }
-    val min = values.minOrNull() ?: return
-    val max = values.maxOrNull() ?: return
-    val range = max - min
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(110.dp)
-            .semantics {
-                contentDescription = "Evolução da economia de corrida em ${points.size} corridas"
-            },
-    ) {
-        drawPmcGrid(colors.borderSubtle)
-        if (points.size == 1) {
-            drawCircle(
-                color = colors.accent,
-                radius = 4.dp.toPx(),
-                center = Offset(size.width / 2f, size.height / 2f),
-            )
-        } else {
-            val path = Path()
-            val positions = points.mapIndexed { index, point ->
-                val x = index.toFloat() / (points.size - 1) * size.width
-                val normalized = if (range < 0.0001) 0.5 else (point.efficiencyMetersPerBeat - min) / range
-                val y = size.height - normalized.toFloat() * size.height
-                Offset(x, y)
-            }
-            positions.forEachIndexed { index, position ->
-                if (index == 0) path.moveTo(position.x, position.y) else path.lineTo(position.x, position.y)
-            }
-            drawPath(
-                path = path,
-                color = colors.accent,
-                style = Stroke(
-                    width = 2.5.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round,
-                ),
-            )
-            positions.forEach { position ->
-                drawCircle(color = colors.accent, radius = 3.dp.toPx(), center = position)
             }
         }
     }
@@ -941,6 +1119,33 @@ private fun IntensityBar(easySec: Int, moderateSec: Int, hardSec: Int, modifier:
 private fun ReadinessHistoryCard(days: List<ReadinessHistoryDay>) {
     val colors = McTheme.colors
     McCard {
+        McBarChart(
+            values = days.map { it.score.toDouble() },
+            labels = days.map { it.date.format(DAY_FORMAT) },
+            pointColors = days.map { day ->
+                when (day.level) {
+                    com.meucoach.core.model.ReadinessLevel.GREEN -> colors.success.copy(alpha = 0.88f)
+                    com.meucoach.core.model.ReadinessLevel.AMBER -> colors.warning.copy(alpha = 0.88f)
+                    com.meucoach.core.model.ReadinessLevel.RED -> colors.danger.copy(alpha = 0.88f)
+                }
+            },
+            highlightIndex = days.lastIndex,
+            ySuffix = "",
+            yDecimals = 0,
+            yStep = 25.0,
+            minY = 0.0,
+            maxY = 100.0,
+            labelSpacing = if (days.size > 7) 3 else 2,
+            height = 128.dp,
+            contentDescription = "Prontidão dos últimos ${days.size} dias",
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Quanto mais alto, mais pronto para treinar. A cor reforça o nível; o texto explica.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        McDivider(modifier = Modifier.padding(vertical = 10.dp))
         days.forEachIndexed { index, day ->
             if (index > 0) {
                 McDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -962,11 +1167,7 @@ private fun ReadinessHistoryCard(days: List<ReadinessHistoryDay>) {
                     modifier = Modifier.weight(1f),
                 )
                 McPill(
-                    text = when (day.level) {
-                        com.meucoach.core.model.ReadinessLevel.GREEN -> "Verde"
-                        com.meucoach.core.model.ReadinessLevel.AMBER -> "Âmbar"
-                        com.meucoach.core.model.ReadinessLevel.RED -> "Vermelho"
-                    },
+                    text = readinessLabel(day.level),
                     containerColor = when (day.level) {
                         com.meucoach.core.model.ReadinessLevel.GREEN -> colors.success.copy(alpha = 0.12f)
                         com.meucoach.core.model.ReadinessLevel.AMBER -> colors.warning.copy(alpha = 0.12f)
@@ -986,87 +1187,78 @@ private fun ReadinessHistoryCard(days: List<ReadinessHistoryDay>) {
 @Composable
 private fun PmcCard(snapshot: LoadSnapshot) {
     val colors = McTheme.colors
+    val maxLoad = (snapshot.ctlSeries + snapshot.atlSeries).maxOrNull() ?: 0.0
+    val loadStep = when {
+        maxLoad <= 5.0 -> 1.0
+        maxLoad <= 12.0 -> 2.0
+        maxLoad <= 30.0 -> 5.0
+        else -> 10.0
+    }
     McCard {
-        Text(
-            text = "Como a carga acumulou",
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.textPrimary,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Carga acumulada e carga recente na mesma unidade.",
-            style = McTextStyles.caption,
-            color = colors.textSecondary,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            LegendDot(color = colors.accent, label = "Acumulada")
-            LegendDot(color = colors.coral, label = "Recente")
+        Row(verticalAlignment = Alignment.Top) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Como a carga acumulou",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Base (42 dias), fadiga recente (7 dias) e balanço na mesma unidade.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = formatOneDecimal(snapshot.tsb),
+                    style = McTextStyles.metricSmall,
+                    color = if (snapshot.tsb < 0) colors.coral else colors.success,
+                )
+                Text(
+                    text = "balanço hoje",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(170.dp)
-                .semantics { contentDescription = "Gráfico de carga acumulada e recente dos últimos 42 dias" },
-        ) {
-            drawPmcGrid(colors.borderSubtle)
-            val max = (snapshot.ctlSeries + snapshot.atlSeries).max().coerceAtLeast(1.0)
-            drawLoadLine(snapshot.ctlSeries, max, colors.accent)
-            drawLoadLine(snapshot.atlSeries, max, colors.coral)
-        }
+        Spacer(modifier = Modifier.height(14.dp))
+        McLineChart(
+            series = listOf(
+                McChartSeries(
+                    label = "Base",
+                    values = snapshot.ctlSeries,
+                    color = colors.accent,
+                    area = true,
+                ),
+                McChartSeries(
+                    label = "Fadiga",
+                    values = snapshot.atlSeries,
+                    color = colors.coral,
+                ),
+                McChartSeries(
+                    label = "Balanço",
+                    values = snapshot.tsbSeries,
+                    color = colors.lavender,
+                    dashed = true,
+                ),
+            ),
+            xLabels = snapshot.daily.map { it.date.format(DAY_FORMAT) },
+            ySuffix = " pts",
+            yDecimals = 0,
+            yStep = loadStep,
+            labelSpacing = 7,
+            height = 196.dp,
+            contentDescription = "Gráfico de carga de base e fadiga recente dos últimos 42 dias",
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Semana atual à direita.",
+            text = "Semana atual à direita. Balanço negativo significa mais fadiga que base — " +
+                "normal em semana de treino, não é erro.",
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
     }
-}
-
-@Composable
-private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Spacer(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(text = label, style = McTextStyles.caption, color = McTheme.colors.textSecondary)
-    }
-}
-
-private fun DrawScope.drawPmcGrid(gridColor: Color) {
-    repeat(4) { index ->
-        val y = size.height * index / 3
-        drawLine(
-            color = gridColor,
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
-            strokeWidth = 1f,
-        )
-    }
-}
-
-private fun DrawScope.drawLoadLine(values: List<Double>, max: Double, color: Color) {
-    if (values.size < 2) return
-    val path = Path()
-    values.forEachIndexed { index, value ->
-        val x = index.toFloat() / (values.size - 1) * size.width
-        val y = size.height - (value / max).toFloat() * size.height
-        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-    }
-    drawPath(
-        path = path,
-        color = color,
-        style = Stroke(
-            width = 2.5.dp.toPx(),
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round,
-        ),
-    )
 }
 
 private data class AcwrFlag(val title: String, val color: Color)

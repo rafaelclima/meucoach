@@ -50,6 +50,7 @@ import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
+import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
@@ -80,6 +81,7 @@ fun MetricsImportScreen(
         onAuthorize = { permissionLauncher.launch(healthState.requiredPermissions) },
         onSync = healthViewModel::sync,
         onInstallHealthConnect = { openHealthConnectStore(context) },
+        onWindowSelected = viewModel::selectWindow,
         onBack = onBack,
         modifier = modifier,
     )
@@ -95,6 +97,7 @@ internal fun MetricsImportContent(
     onAuthorize: () -> Unit = {},
     onSync: () -> Unit = {},
     onInstallHealthConnect: () -> Unit = {},
+    onWindowSelected: (Int) -> Unit = {},
 ) {
     val colors = McTheme.colors
     var showCsvFormat by remember { mutableStateOf(false) }
@@ -137,13 +140,21 @@ internal fun MetricsImportContent(
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Sono e recuperação entram na prontidão. Conecte uma fonte e o " +
-                                "coach passa a usar seus dados todos os dias.",
+                            text = "Sono, recuperação e oxigenação dos últimos dias. O coach usa " +
+                                "esses sinais na prontidão e no treino de hoje.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
                     }
                 }
+                item {
+                    HealthMetricsOverview(
+                        trends = state.trends,
+                        windowDays = state.windowDays,
+                        onWindowSelected = onWindowSelected,
+                    )
+                }
+                item { McSectionHeader(title = "Fontes de dados") }
                 item {
                     HealthConnectContent(
                         state = healthState,
