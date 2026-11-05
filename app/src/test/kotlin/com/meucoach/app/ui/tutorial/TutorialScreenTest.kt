@@ -38,7 +38,7 @@ class TutorialScreenTest {
 
         compose.onNodeWithText("Rafael, sua semana está pronta.").assertIsDisplayed()
 
-        compose.onNodeWithTag("tutorial-secondary-plan").performClick()
+        compose.onNodeWithTag("tutorial-next").performClick()
         compose.onNodeWithText("Você corre. Eu ajusto.").assertIsDisplayed()
 
         compose.onNodeWithTag("tutorial-next").performClick()
@@ -49,13 +49,12 @@ class TutorialScreenTest {
     }
 
     @Test
-    fun `finishes from the plan reveal`() {
-        var finished = false
-        setContent(onFinish = { finished = true })
+    fun `continues from the plan reveal`() {
+        setContent()
 
-        compose.onNodeWithText("Ver meu treino de hoje").performClick()
+        compose.onNodeWithTag("tutorial-next").performClick()
 
-        assertThat(finished).isTrue()
+        compose.onNodeWithText("Você corre. Eu ajusto.").assertIsDisplayed()
     }
 
     @Test
@@ -64,7 +63,7 @@ class TutorialScreenTest {
 
         compose.onNodeWithTag("tutorial-progress").assertContentDescriptionEquals("Passo 1 de 3")
 
-        compose.onNodeWithTag("tutorial-secondary-plan").performClick()
+        compose.onNodeWithTag("tutorial-next").performClick()
 
         compose.onNodeWithTag("tutorial-progress").assertContentDescriptionEquals("Passo 2 de 3")
     }
@@ -73,7 +72,7 @@ class TutorialScreenTest {
     fun `goes back to the previous scene`() {
         setContent()
 
-        compose.onNodeWithTag("tutorial-secondary-plan").performClick()
+        compose.onNodeWithTag("tutorial-next").performClick()
         compose.onNodeWithText("Você corre. Eu ajusto.").assertIsDisplayed()
         compose.onNodeWithContentDescription("Voltar").performClick()
 
@@ -171,9 +170,7 @@ class TutorialScreenTest {
         }
 
         compose.onNodeWithTag("tutorial-next").assertIsDisplayed()
-        compose.onNodeWithTag("tutorial-page-list-1")
-            .performScrollToNode(hasText("Como o coach pensa"))
-        compose.onNodeWithTag("tutorial-secondary-plan").performClick()
+        compose.onNodeWithTag("tutorial-next").performClick()
         compose.onNodeWithTag("tutorial-next").performClick()
         compose.onNodeWithTag("tutorial-page-3")
             .performScrollToNode(hasText("Conectar Health Connect"))
@@ -199,9 +196,7 @@ class TutorialScreenTest {
     }
 
     private fun goToFirstAction() {
-        compose.onNodeWithTag("tutorial-page-list-1")
-            .performScrollToNode(hasText("Como o coach pensa"))
-        compose.onNodeWithTag("tutorial-secondary-plan").performClick()
+        compose.onNodeWithTag("tutorial-next").performClick()
         compose.onNodeWithTag("tutorial-next").performClick()
     }
 

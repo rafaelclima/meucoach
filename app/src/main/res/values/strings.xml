@@ -15,8 +15,6 @@
     <string name="tutorial_scene_1_title">Sua semana está pronta.</string>
     <string name="tutorial_scene_1_title_name">%1$s, sua semana está pronta.</string>
     <string name="tutorial_scene_1_body">Montei sua semana com base no seu objetivo. Cada treino vem com o porquê — e muda se o seu descanso pedir.</string>
-    <string name="tutorial_scene_1_cta">Ver meu treino de hoje</string>
-    <string name="tutorial_scene_1_secondary">Como o coach pensa</string>
     <string name="tutorial_scene_1_trust">Tudo calculado no seu aparelho. Nada é enviado.</string>
     <string name="tutorial_scene_1_loading">Montando sua semana…</string>
     <string name="tutorial_scene_1_empty_title">Sua semana ainda não está pronta.</string>
@@ -32,7 +30,6 @@
     <string name="tutorial_scene_2_title">Você corre. Eu ajusto.</string>
     <string name="tutorial_scene_2_body">Sono, carga e check-in mudam a recomendação. Sem dados suficientes, eu fico conservador — não invento.</string>
     <string name="tutorial_scene_2_cta">Entendi</string>
-    <string name="tutorial_scene_2_secondary">Voltar</string>
     <string name="tutorial_scene_2_step_1_title">Você corre</string>
     <string name="tutorial_scene_2_step_1_body">Importa FIT, TCX ou GPX</string>
     <string name="tutorial_scene_2_step_2_title">Eu leio esforço e descanso</string>

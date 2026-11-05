@@ -158,9 +158,9 @@ Onboarding (3 passos, já existe)
         ▼
 Cena 1 — “Seu plano está pronto”        ← revelação personalizada
         │
-        ├── “Ver meu treino de hoje” ──────────────► Hoje
+        ├── “Pular” ────────────────────────────────► Hoje
         │
-        └── “Como o coach pensa” ──► Cena 2 ──► Cena 3
+        └── “Continuar” ──► Cena 2 ──► “Entendi” ──► Cena 3
                                                    │
                                                    ├── Check-in agora ──► CheckIn
                                                    ├── Importar corrida ─► Corridas/import
@@ -229,8 +229,7 @@ Dicas contextuais (uma vez por tela)
 │  treino vem com o porquê — e muda se │
 │  o seu descanso pedir.               │
 │                                      │
-│  [ Ver meu treino de hoje ]          │
-│  Como o coach pensa                  │
+│  [ Continuar ]                       │
 │                                      │
 │  🔒 Tudo calculado no seu aparelho.  │
 └──────────────────────────────────────┘
@@ -247,10 +246,10 @@ Dicas contextuais (uma vez por tela)
 - Overline: `SEU PLANO`
 - Título: `Rafael, sua semana está pronta.`
 - Corpo: `Montei 3 dias para o seu 5 km. Cada treino vem com o porquê — e muda se o seu descanso pedir.`
-- CTA primário: `Ver meu treino de hoje`
-- CTA secundário: `Como o coach pensa`
+- CTA primário: `Continuar`
 - Rodapé de confiança: `Tudo calculado no seu aparelho. Nada é enviado.`
-- Sair: `Agora não`
+- Sair: `Pular` (topo)
+- **Ajuste pós-teste no aparelho:** o CTA primário não encerra mais o tour. `Ver meu treino de hoje` saiu da cena 1 para o usuário não pular as cenas 2 e 3 sem querer.
 
 **Estados:**
 - **Carregando:** skeleton do card + `Montando sua semana…` (sem números falsos).
@@ -259,8 +258,8 @@ Dicas contextuais (uma vez por tela)
 - **Erro:** `Não consegui montar sua semana agora.` CTA `Ir para Hoje`.
 
 **Ação:**
-- `Ver meu treino de hoje` → marca o tutorial como visto e vai para Hoje.
-- `Como o coach pensa` → Cena 2.
+- `Continuar` → Cena 2.
+- `Pular` → marca o tutorial como visto e vai para Hoje.
 
 ---
 
@@ -289,7 +288,6 @@ Dicas contextuais (uma vez por tela)
 │  eu fico conservador — não invento.  │
 │                                      │
 │  [ Entendi ]                         │
-│  Voltar                              │
 └──────────────────────────────────────┘
 ```
 
@@ -307,7 +305,7 @@ Se usar dados reais de prontidão, mostrar o gauge real e o treino real. Se não
 - Título: `Você corre. Eu ajusto.`
 - Corpo: `Sono, carga e check-in mudam a recomendação. Sem dados suficientes, eu fico conservador — não invento.`
 - CTA: `Entendi`
-- Voltar: `Voltar`
+- Voltar: ícone `←` no topo
 
 **Regra:** nada de jargão (`TRIMP`, `ACWR`, `TSB`, `LTHR`). Se precisar citar, traduzir na hora: “carga de treino”, “aumento recente”, “limite de esforço”.
 
@@ -554,8 +552,7 @@ Respeitar `Settings.Global.ANIMATOR_DURATION_SCALE` e redução de movimento. Se
 | Cena 1 overline | `SEU PLANO` |
 | Cena 1 título | `{Nome}, sua semana está pronta.` |
 | Cena 1 corpo | `Montei {N} dias para o seu {objetivo}. Cada treino vem com o porquê — e muda se o seu descanso pedir.` |
-| Cena 1 CTA | `Ver meu treino de hoje` |
-| Cena 1 secundário | `Como o coach pensa` |
+| Cena 1 CTA | `Continuar` |
 | Cena 1 confiança | `Tudo calculado no seu aparelho. Nada é enviado.` |
 | Cena 2 overline | `O PORQUÊ` |
 | Cena 2 título | `Você corre. Eu ajusto.` |
@@ -565,7 +562,7 @@ Respeitar `Settings.Global.ANIMATOR_DURATION_SCALE` e redução de movimento. Se
 | Cena 3 título | `Comece com 30 segundos.` |
 | Cena 3 corpo | `Um check-in rápido já melhora a prontidão de hoje. Importar uma corrida e conectar o Health Connect deixam o coach mais preciso.` |
 | Cena 3 CTA | `Fazer check-in agora` |
-| Cena 3 secundário | `Depois` |
+| Cena 3 secundário | `Depois` (botão secundário) |
 | Checklist título | `Complete seu setup` |
 | Checklist subtítulo | `3 passos para o coach ficar mais preciso.` |
 | Checklist dismiss | `Agora não` |

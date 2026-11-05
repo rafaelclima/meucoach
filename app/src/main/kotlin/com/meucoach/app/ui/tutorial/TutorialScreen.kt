@@ -64,6 +64,7 @@ import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
+import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.component.TutorialActionCard
 import com.meucoach.core.designsystem.component.TutorialProgress
@@ -162,7 +163,7 @@ internal fun TutorialContent(
     }
 
     val cta = when (currentPage) {
-        0 -> TutorialCta(stringResource(R.string.tutorial_scene_1_cta), onFinish)
+        0 -> TutorialCta(stringResource(R.string.tutorial_continue), goNext)
 
         1 -> TutorialCta(stringResource(R.string.tutorial_scene_2_cta), goNext)
 
@@ -217,11 +218,10 @@ internal fun TutorialContent(
                 when (page) {
                     0 -> PlanScene(
                         state = state,
-                        onNext = goNext,
                         onRetry = onRetry,
                     )
 
-                    1 -> CoachScene(state = state, onBack = goBack)
+                    1 -> CoachScene(state = state)
 
                     else -> FirstActionScene(
                         state = state,
@@ -293,7 +293,7 @@ private fun TutorialTopBar(currentPage: Int, totalPages: Int, onBack: () -> Unit
 }
 
 @Composable
-private fun PlanScene(state: TutorialUiState, onNext: () -> Unit, onRetry: () -> Unit) {
+private fun PlanScene(state: TutorialUiState, onRetry: () -> Unit) {
     val colors = McTheme.colors
     val name = state.name?.takeIf { it.isNotBlank() }
     val title = if (name == null) {
@@ -347,18 +347,8 @@ private fun PlanScene(state: TutorialUiState, onNext: () -> Unit, onRetry: () ->
                 }
             }
             item {
-                Spacer(modifier = Modifier.size(10.dp))
-                McTextButton(
-                    text = stringResource(R.string.tutorial_scene_1_secondary),
-                    onClick = onNext,
-                    trailingArrow = false,
-                    contentColor = colors.textSecondary,
-                    modifier = Modifier.testTag("tutorial-secondary-plan"),
-                )
-            }
-            item {
                 Row(
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -515,7 +505,7 @@ private fun PlanVisual(state: TutorialUiState, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun CoachScene(state: TutorialUiState, onBack: () -> Unit) {
+private fun CoachScene(state: TutorialUiState) {
     val colors = McTheme.colors
     val title = stringResource(R.string.tutorial_scene_2_title)
 
@@ -562,16 +552,6 @@ private fun CoachScene(state: TutorialUiState, onBack: () -> Unit) {
                         color = colors.textSecondary,
                     )
                 }
-            }
-            item {
-                Spacer(modifier = Modifier.size(10.dp))
-                McTextButton(
-                    text = stringResource(R.string.tutorial_scene_2_secondary),
-                    onClick = onBack,
-                    trailingArrow = false,
-                    contentColor = colors.textSecondary,
-                    modifier = Modifier.testTag("tutorial-secondary-coach"),
-                )
             }
         }
     }
@@ -768,12 +748,12 @@ private fun FirstActionScene(
             )
         }
         item {
-            McTextButton(
+            McSecondaryButton(
                 text = stringResource(R.string.tutorial_scene_3_secondary),
                 onClick = onDismiss,
-                trailingArrow = false,
-                contentColor = colors.textSecondary,
-                modifier = Modifier.testTag("tutorial-secondary-actions"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("tutorial-secondary-actions"),
             )
         }
         item {
