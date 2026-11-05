@@ -22,6 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
@@ -66,7 +67,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(isLoading = false, profile = profile()),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = { manageData = true },
                     onShowTutorial = {},
                 )
@@ -81,8 +82,8 @@ class ProfileScreenTest {
     }
 
     @Test
-    fun `explains health connect and opens the data screen`() {
-        var importMetrics = false
+    fun `shows the compact health summary and opens the health tab`() {
+        var openedHealth = false
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
@@ -93,12 +94,12 @@ class ProfileScreenTest {
                             status = HealthConnectStatus.AVAILABLE,
                             hasPermissions = true,
                             storedDays = 47,
-                            lastSyncDate = LocalDate.now(),
+                            lastSyncedAt = Instant.now(),
                         ),
                     ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = { importMetrics = true },
+                    onOpenHealth = { openedHealth = true },
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -106,14 +107,12 @@ class ProfileScreenTest {
         }
 
         val list = compose.onNodeWithTag("profile-list")
-        list.performScrollToNode(hasText("Alimente o coach com seu descanso"))
-        compose.onNodeWithText("Alimente o coach com seu descanso").assertIsDisplayed()
+        list.performScrollToNode(hasText("Sono, recuperação e oxigenação"))
+        compose.onNodeWithText("Sono, recuperação e oxigenação").assertIsDisplayed()
         compose.onNodeWithText("Conectado · 47 dias").assertIsDisplayed()
-        compose.onNodeWithText("Health Connect é o app de saúde do Android", substring = true)
-            .assertIsDisplayed()
-        compose.onNodeWithText("Ver meus dados de saúde").performClick()
+        compose.onNodeWithTag("profile-open-health").performClick()
 
-        assertThat(importMetrics).isTrue()
+        assertThat(openedHealth).isTrue()
     }
 
     @Test
@@ -131,7 +130,7 @@ class ProfileScreenTest {
                     ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -139,9 +138,9 @@ class ProfileScreenTest {
         }
 
         compose.onNodeWithTag("profile-list")
-            .performScrollToNode(hasText("Conectar Health Connect"))
+            .performScrollToNode(hasText("Ainda não conectado"))
         compose.onNodeWithText("Ainda não conectado").assertIsDisplayed()
-        compose.onNodeWithText("Conectar Health Connect").assertIsDisplayed()
+        compose.onNodeWithTag("profile-open-health").assertIsDisplayed()
     }
 
     @Test
@@ -163,7 +162,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(isLoading = false, profile = profile()),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = { showTutorial = true },
                 )
@@ -185,7 +184,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(isLoading = false, profile = profile()),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -202,7 +201,7 @@ class ProfileScreenTest {
                     state = state,
                     onEdit = onEdit,
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )

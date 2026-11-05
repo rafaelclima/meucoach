@@ -229,7 +229,9 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 10. **Sem 3D, sem gradientes enganosos, sem eixos truncados sem aviso.**
 11. **Lacuna é lacuna.** Dia sem medição não vira zero nem linha reta entre pontos; a série quebra.
 12. **Eixo dinâmico pede aviso.** Quando o eixo começa perto dos dados para mostrar a variação
-    (FC de repouso, HRV, economia), uma nota diz o intervalo; sono e SpO₂ usam faixas fixas com alvo.
+    (FC de repouso, HRV, economia), uma nota **logo abaixo do gráfico** diz “Escala ampliada (X a Y
+    unidade) para destacar diferenças pequenas”; o eixo carrega a unidade. Sono e SpO₂ usam faixas
+    fixas com alvo.
 
 ### 8.2 Gráficos por tela
 
@@ -283,6 +285,10 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 
 ## 11. Blueprints de tela
 
+Barra inferior: **Hoje · Corridas · Tendências · Saúde · Perfil**. Os quatro
+primeiros são destinos de conteúdo; o Perfil concentra identidade, calibração,
+backup e ajuda.
+
 ### Hoje
 
 ```
@@ -292,6 +298,7 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 [ HeroCard: Prontidão 72 · Alta · confiança média ]
 [ Gauge 220° ]  Sono 9h13 / Variabilidade média · 7 noites / FC estável
 [ "Por que esta prontidão?" ]
+[ "Ver recuperação" → aba Saúde ]
 
 [ Próximo treino ]
 [ Fácil Z2 · 40 min · 6,5 km ]
@@ -335,6 +342,26 @@ No plano da semana, cada sessão ocupa uma linha (dia · título · duração); 
 [ Consistência (heatmap) ]
 [ Recordes ]
 ```
+
+### Saúde
+
+```
+[ SAÚDE ]
+[ Seus dados de saúde ]
+[ Hero: "Como seu corpo chegou" · N dias com dados ]
+[ Sono | FC de repouso | HRV | SpO₂ · média de 7 dias ]
+[ "Os dados de hoje ainda não chegaram" · quando o dia atual falta ]
+[ Período 7 / 30 / 60 dias ]
+[ Gráficos por métrica: por dia + média móvel ]
+[ Fontes: Health Connect / CSV + última leitura ]
+[ "Abrir Health Connect" · diagnóstico ]
+```
+
+A aba Saúde é destino principal, sem seta de voltar. O status do Health Connect
+e a última leitura ficam no card de fontes; o Perfil só tem um link compacto.
+A ausência de um dia continua sendo lacuna, nunca zero. O aviso de frescor é
+informativo e desaparece sozinho quando o dado do dia chega; “Abrir Health
+Connect” é secundário e não compete com “Atualizar agora”.
 
 ### Importar
 

@@ -1,15 +1,15 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 05/11/2026 (tutorial Fases A, B e C)
+**Atualizado:** 05/11/2026 (tutorial Fases A–C; Saúde na barra, sync automático, clareza de confiança e escala)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
-- **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 840 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 437 em `:app`)
+- **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
+- **Testes:** 872 testes, 0 falhas (27 em `core:model`, 288 em `core:domain`, 100 em `core:data`, 457 em `:app`)
 - **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 31 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
+- **Lint:** 0 erros; 38 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
 - **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
@@ -53,8 +53,128 @@
 - **Prontidão legível sem cor:** níveis aparecem como **Alta/Moderada/Baixa** no gauge e no histórico, com a cor como reforço; a foto do cabeçalho abre o Perfil.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
-- **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
+- **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
+- **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-05 — Clareza de confiança e escala
+
+**Objetivo:** tirar duas informações órfãs da UI: a confiança do plano da semana e a nota do eixo de economia em Tendências.
+
+### Concluído
+
+- **“Por que este plano?”:** o badge solto de confiança saiu do cabeçalho do plano. O card mantém só um aviso curto quando os dados são parciais (“Dados de recuperação parciais: a semana segue conservadora.”) e ganhou o botão que abre um sheet com rationale, confiança, dados usados/ausentes, regras e evidências.
+- **Confiança explicada:** o sheet diz que a confiança é capturada quando a semana é montada, fica no máximo média e não muda durante a semana; novos dados entram no plano seguinte.
+- **Economia com escala clara:** a nota do eixo mudou para “Escala ampliada (X a Y m/batimento) para destacar diferenças pequenas entre corridas” e passou para logo abaixo do gráfico, antes das estatísticas. O eixo agora carrega a unidade (`m/b`) e o `contentDescription` inclui o intervalo.
+- **Catálogo:** `R-PLAN-03`, `R-PLAN-04` e `R-PLAN-05` ganharam títulos legíveis, evitando IDs brutos no sheet do plano.
+- **Testes:** +1 em `core:domain` (confiança baixa preservada) e +3 em `:app` (sheet do plano, aviso de dados parciais e ausência do aviso com confiança média). Total: **872 testes**.
+- **Goldens:** `today-*` e `trends-efficiency-dark` regravados; `trends-readiness-dark` mudou apenas pelo deslocamento causado pela nota acima.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Lint: 0 erros; 38 avisos não bloqueantes.
+- Nenhuma mudança de schema, dependência ou regra de treino.
+
+### Decisões e observações
+
+- **Confiança não é decisão:** como no sheet do treino, a referência fica a um toque e não compete com o plano.
+- **Valor histórico:** a confiança do plano continua sendo a da criação da semana; a UI agora diz isso em vez de sugerir que ela acompanha os dados de hoje.
+- **Escala honesta:** o aviso continua existindo, mas agora explica o efeito (diferenças pequenas ficam visíveis) e fica junto do gráfico que ele descreve.
+
+### Próximo passo
+
+1. Validar o sheet do plano e a nota do eixo em aparelho, incluindo fonte 200%.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
+3. Avaliar no futuro uma confiança de plano baseada em disponibilidade/calibração/histórico, separada da prontidão (exige ADR).
+
+## Sessão 2026-11-05 — Saúde Fase 3: frescor e fontes
+
+**Objetivo:** fechar a leitura de “os dados de hoje ainda não chegaram” e dar um caminho de diagnóstico para o Health Connect.
+
+### Concluído
+
+- **Aviso de frescor:** quando o Health Connect está conectado, existe histórico e a última métrica é anterior a hoje, a aba Saúde mostra “Os dados de hoje ainda não chegaram”, explicando que o app já tenta atualizar sozinho e que o relógio pode não ter sincronizado ainda. O card desaparece sozinho quando o dado do dia chega.
+- **Abrir Health Connect:** o card de fontes ganhou o link “Abrir Health Connect”, que usa `HealthConnectClient.getHealthConnectManageDataIntent` e cai para a loja se o provedor não estiver disponível.
+- **Testes:** +5 em `:app` (hint presente/ausente, link de configurações e dois goldens novos). Total: **868 testes**.
+- **Goldens:** `health-today-hint-dark` e `health-sources-dark`; `health-dark/light/narrow` passaram a 760 dp para não cortar gráfico e os goldens de gráficos viraram capturas focadas/mais altas para evitar a corrida do Vico no Robolectric.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Lint: 0 erros; 38 avisos não bloqueantes.
+- Nenhuma dependência nova, nenhuma migração de Room.
+
+### Decisões e observações
+
+- **Sem resumo extra no Hoje:** o link “Ver recuperação” já resolve a ponte; um card de métricas duplicaria a prontidão e competiria com “Iniciar”.
+- **Hint honesto:** ele não afirma que houve falha de sync; só diz que o dado do dia não está no Health Connect ainda.
+- **Screenshot estável:** a captura do card de fontes usa o nó do card, e a de HRV usa o card da métrica, evitando gráficos parcialmente visíveis que o Vico às vezes não desenha no Robolectric.
+- **Proveniência por campo:** continua como decisão futura; a `source` do dia é a dominante.
+
+### Próximo passo
+
+1. Validar no aparelho o hint após um dia sem sync e o link “Abrir Health Connect”.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
+3. Avaliar proveniência por campo só se o usuário precisar auditar cada métrica.
+
+## Sessão 2026-11-05 — Saúde na barra e sync automático (implementação)
+
+**Objetivo:** executar as Fases 1 e 2 do plano, tirando a Saúde do Perfil e eliminando a dependência do botão manual de sync.
+
+### Concluído
+
+- **5ª aba Saúde:** `AppDestination.Health` (`health`) entrou na barra inferior entre Tendências e Perfil; a rota `profile/metrics-import` saiu. A tela virou `HealthScreen`/`HealthContent`, sem seta de voltar.
+- **Hoje:** o card de prontidão ganhou “Ver recuperação”, que abre a aba; o CTA principal do treino continua intacto.
+- **Perfil:** o card grande de Health Connect virou um resumo compacto com pill de estado, última leitura e “Abrir”; o card de backup/privacidade ficou separado.
+- **Deep links:** checklist e tutorial agora navegam para a aba Saúde pelo mesmo caminho da barra, preservando estado.
+- **Store:** `HealthSyncStore` ganhou `lastSyncedAt`/`lastAttemptAt` e `reset()` limpa as três chaves; a data incremental continua compatível com instalações antigas.
+- **Serviço:** `HealthSyncService` ganhou `Clock`, `Mutex`, `syncIfStale()` (frescor de 6 h) e backoff de 15 min; erro grava `lastAttemptAt`, falta de permissão não grava.
+- **Coordinator:** `HealthSyncCoordinator` singleton dispara o sync no `LifecycleResumeEffect` do `MainContent`, sem abrir diálogo de permissão; `HealthConnectViewModel` passou a observar o estado compartilhado.
+- **Worker:** `HealthSyncWorker` continua como fallback diário; `ExistingPeriodicWorkPolicy.KEEP` preserva o ciclo.
+- **UI:** “Atualizado há X” (agora/min/h/ontem/data), “Sincronizando…” no botão e erro automático como caption passiva; a explicação passou a dizer que o app sincroniza ao abrir e uma vez por dia.
+- **Testes:** +11 em `core:data` (store e serviço) e +12 em `:app` (coordinator, tela sem seta, link do Hoje, erro passivo e dois goldens do card de saúde no Perfil). Total: **863 testes**.
+- **Goldens:** `health-*`, `today-*` e `profile-health-dark/light` regravados; o Perfil acima da dobra não mudou.
+
+### Evidências
+
+- `./gradlew check` — verde (testes, spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:verifyRoborazziDebug` — verde.
+- Lint: 0 erros; 38 avisos não bloqueantes.
+- Nenhuma dependência nova, nenhuma migração de Room; tudo em `SharedPreferences`.
+
+### Decisões e observações
+
+- **5 abas é o limite:** “Tendências” é o rótulo mais longo. Os goldens cobrem 393/360 dp; falta a validação em aparelho com fonte 200%.
+- **Saúde não duplica o Hoje:** o painel completo mora na aba; o Hoje só linka. Isso preserva “uma decisão por tela”.
+- **Frescura de 6 h:** leitura local e barata; o worker cobre quem não abre o app. O sync manual ignora o frescor de propósito.
+- **Erro passivo:** falha automática não vira toast/dialog; o app tenta de novo após o backoff.
+- **Limite do Health Connect:** o app só lê o que o app de origem já escreveu. Se o relógio ainda não sincronizou, não há dado novo; a UI não inventa sucesso.
+- **Screenshot de gráficos:** a captura de recuperação passou a esperar os gráficos visíveis (`mc-chart-ready` + ausência de `mc-chart-loading`) e a avançar frame a frame; o FC de repouso não sai mais em branco por corrida de composição.
+
+### Próximo passo
+
+1. Validar no aparelho: 5 abas em fonte 200%, link do Hoje, permissão revogada e sync após 6 h.
+2. Fase 3 opcional: caption “os dados de hoje ainda não chegaram”, link para abrir o Health Connect e resumo compacto no Hoje.
+3. `P1-12`: validação E2E com 4 semanas de uso real.
+
+## Sessão 2026-11-05 — Planejamento: Saúde no topo e sync automático
+
+**Objetivo:** tirar a tela de Saúde do Perfil e reduzir a dependência do botão manual de sync.
+
+### Decidido
+
+- **ADR 0020:** Saúde vira a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), com rota top-level `health` e sem seta de voltar. O Hoje ganha “Ver recuperação” no card de prontidão; o Perfil mantém só link compacto + backup.
+- **ADR 0021:** o app sincroniza o Health Connect no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro e worker diário como fallback. `HealthSyncStore` passa a guardar `lastSyncedAt`/`lastAttemptAt`; o botão manual continua sendo override.
+- **Plano:** `docs/HEALTH_TOP_LEVEL_PLAN.md` com fases, arquivos, testes, goldens e aceite.
+- **Fora desta sessão:** nenhuma alteração de código, nenhuma migração de Room e nenhuma dependência nova.
+
+### Próximo passo
+
+1. Implementar Fase 1 (IA/navegação) e regravar os goldens de Hoje, Perfil e Saúde.
+2. Implementar Fase 2 (coordinator, timestamps e sync no resume).
+3. Validar no aparelho: 5 abas em 360 dp/fonte 200%, sync após 6 h, permissão revogada e worker fallback.
 
 ## Sessão 2026-11-05 — Tutorial Fase C: ativação mensurável
 
@@ -167,7 +287,7 @@
 - **Tendências redesenhada:** volume com eixos em km e destaque da semana atual; conclusão do plano em %; PMC com **CTL/ATL/TSB** na mesma escala e eixo em pontos; prontidão em barras coloridas por nível (Baixa/Moderada/Alta); economia com média de 7 dias, variação e eixo ampliado com aviso explícito; heatmap com células inativas visíveis.
 - **Saúde diária (nova visão):** a tela `profile/metrics-import` virou um painel antes das fontes: hero com sono, FC de repouso, HRV e SpO₂, cobertura de dias e seleção 7/30/60 dias. Cada métrica tem gráfico de linha com média móvel de 7 dias, base individual ou faixa-alvo, resumo numérico e “Ver tabela” com os últimos 7 dias.
 - **Domínio puro:** `DailyMetricsTrendsCalculator` (core:domain/health) filtra a janela, preserva lacunas, calcula média móvel de 7 dias, base do período, variação, cobertura e faixas de sono (7–9 h) e SpO₂ (95–100%). RHR e HRV usam a base individual, nunca um alvo inventado.
-- **Sem zero inventado:** dia sem medição continua ausente; a linha quebra em vez de ligar dois pontos distantes. O eixo dinâmico de RHR/HRV/economia vem acompanhado da nota “Eixo de X a Y…”.
+- **Sem zero inventado:** dia sem medição continua ausente; a linha quebra em vez de ligar dois pontos distantes. O eixo dinâmico de RHR/HRV/economia vem acompanhado da nota de escala ampliada.
 - **Acessibilidade:** todo gráfico novo tem `contentDescription` com resumo e fonte; a tabela por métrica é a alternativa textual; cores de prontidão continuam acompanhadas do rótulo.
 - **Testes:** 8 do calculador de tendências, 4 da visão de saúde, 5 goldens (saúde dark/light/estreito, gráficos de saúde e recuperação), 3 goldens de Tendências com dados completos e 1 teste de ViewModel para janela/trends. Total: **805 testes**.
 - **Docs:** `DESIGN_SYSTEM` §7/§8/§13, `TESTING` §3/§4, `ROADMAP` P1-07/P1-09 e addendum do `ADR-0007` com Vico 3.3.1 e alternativas rejeitadas.

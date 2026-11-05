@@ -188,10 +188,12 @@ data class EngineOutput(
 
 - `HealthConnectClient` com permissões mínimas: sono, RHR, HRV, SpO2.
 - Leitura read-only com paginação; a primeira sincronização cobre 30 dias e as seguintes partem do último sucesso menos 1 dia.
-- `HealthSyncService` compartilha a mesma lógica entre a tela de perfil e o `HealthSyncWorker`; o worker roda diariamente via WorkManager.
-- O último sync bem-sucedido fica em `SharedPreferences` (não é dado de saúde); falhas de permissão/leitura não avançam a data.
+- `HealthSyncService` compartilha a mesma lógica entre o resume do app, a aba Saúde e o `HealthSyncWorker`; o worker roda diariamente via WorkManager como fallback.
+- `HealthSyncCoordinator` dispara um sync no resume quando a última leitura bem-sucedida tem mais de 6 h; falta de permissão não abre diálogo e erro de leitura tem backoff de 15 min (`ADR-0021`).
+- O último sync bem-sucedido e a última tentativa ficam em `SharedPreferences` (não são dados de saúde); falhas de permissão/leitura não avançam a marca d'água.
+- `Mutex` no serviço impede leitura concorrente entre resume, botão manual e worker.
 - **Nunca** tratar ausência como recuperação ruim.
-- Card de diagnóstico com status, autorização, sincronização e base local.
+- Aba Saúde com diagnóstico de status, autorização, última leitura, aviso de dados do dia e link direto para o Health Connect.
 - Se o Zepp não gravar um tipo, o app mostra "sem dados" e usa fallback (check-in/CSV).
 - Em Android < 14, Health Connect pode exigir o app oficial instalado; o app detecta disponibilidade.
 - Permissões declaradas no manifest; app usa `ACTION_SHOW_PERMISSIONS_RATIONALE` para a política.
@@ -264,6 +266,11 @@ data class EngineOutput(
 - [ADR-0013](adr/0013-manual-session-swap.md) — troca manual de sessões
 - [ADR-0014](adr/0014-incremental-health-sync.md) — sync incremental do Health Connect
 - [ADR-0015](adr/0015-story-video-map.md) — mapa real no story (OSM + MapLibre)
+- [ADR-0016](adr/0016-daily-metrics-merge.md) — mescla de métricas por campo
+- [ADR-0018](adr/0018-story-export-background.md) — story em segundo plano
+- [ADR-0019](adr/0019-story-camera-projection.md) — câmera 3D no story
+- [ADR-0020](adr/0020-health-top-level-destination.md) — Saúde como destino principal
+- [ADR-0021](adr/0021-health-sync-on-resume.md) — sync automático no resume
 
 ## 15. Perguntas abertas
 

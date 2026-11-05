@@ -38,8 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.ui.common.healthConnectLastSyncLabel
 import com.meucoach.app.ui.common.healthConnectStatusLabel
@@ -54,16 +56,21 @@ import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import java.time.LocalDate
 
 @Composable
-fun MetricsImportScreen(
-    onBack: () -> Unit,
+fun HealthScreen(
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     viewModel: MetricsImportViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val healthViewModel: HealthConnectViewModel = hiltViewModel()
     val healthState by healthViewModel.uiState.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        healthViewModel.refresh()
+        onPauseOrDispose { }
+    }
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -74,13 +81,14 @@ fun MetricsImportScreen(
         onResult = { healthViewModel.onPermissionsResult() },
     )
 
-    MetricsImportContent(
+    HealthContent(
         state = state,
         healthState = healthState,
         onPick = { launcher.launch(CSV_MIME_TYPES) },
         onAuthorize = { permissionLauncher.launch(healthState.requiredPermissions) },
         onSync = healthViewModel::sync,
         onInstallHealthConnect = { openHealthConnectStore(context) },
+        onOpenHealthConnect = { openHealthConnectSettings(context) },
         onWindowSelected = viewModel::selectWindow,
         onBack = onBack,
         modifier = modifier,
@@ -88,19 +96,24 @@ fun MetricsImportScreen(
 }
 
 @Composable
-internal fun MetricsImportContent(
+internal fun HealthContent(
     state: MetricsImportUiState,
     onPick: () -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     healthState: HealthConnectUiState = HealthConnectUiState(),
     onAuthorize: () -> Unit = {},
     onSync: () -> Unit = {},
     onInstallHealthConnect: () -> Unit = {},
+    onOpenHealthConnect: () -> Unit = {},
     onWindowSelected: (Int) -> Unit = {},
+    today: LocalDate = LocalDate.now(),
 ) {
     val colors = McTheme.colors
     var showCsvFormat by remember { mutableStateOf(false) }
+    val showTodayHint = isHealthConnectConnected(healthState.status, healthState.hasPermissions) &&
+        state.storedDays > 0 &&
+        state.latestMetricDate?.isBefore(today) == true
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -114,17 +127,19 @@ internal fun MetricsImportContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 20.dp, top = 8.dp),
+                    .padding(start = if (onBack == null) 20.dp else 8.dp, end = 20.dp, top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Voltar",
-                        tint = colors.textPrimary,
-                    )
+                onBack?.let { back ->
+                    IconButton(onClick = back) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Voltar",
+                            tint = colors.textPrimary,
+                        )
+                    }
                 }
-                Text(text = "SAÚDE E DADOS", style = McTextStyles.overline, color = colors.textTertiary)
+                Text(text = "SAÚDE", style = McTextStyles.overline, color = colors.textTertiary)
             }
 
             LazyColumn(
@@ -152,6 +167,7 @@ internal fun MetricsImportContent(
                         trends = state.trends,
                         windowDays = state.windowDays,
                         onWindowSelected = onWindowSelected,
+                        showTodayHint = showTodayHint,
                     )
                 }
                 item { McSectionHeader(title = "Fontes de dados") }
@@ -162,6 +178,7 @@ internal fun MetricsImportContent(
                         onAuthorize = onAuthorize,
                         onSync = onSync,
                         onInstall = onInstallHealthConnect,
+                        onOpenHealthConnect = onOpenHealthConnect,
                     )
                 }
                 item { WhyItMattersCard() }
@@ -338,11 +355,15 @@ internal fun HealthConnectContent(
     onSync: () -> Unit,
     storedDays: Int = 0,
     onInstall: () -> Unit = {},
+    onOpenHealthConnect: () -> Unit = {},
 ) {
     val colors = McTheme.colors
     val available = state.status == HealthConnectStatus.AVAILABLE
     val connected = isHealthConnectConnected(state.status, state.hasPermissions)
-    McCard(variant = McCardVariant.INSET) {
+    McCard(
+        variant = McCardVariant.INSET,
+        modifier = Modifier.testTag("health-connect-card"),
+    ) {
         Text(
             text = "Health Connect",
             style = MaterialTheme.typography.titleMedium,
@@ -381,13 +402,20 @@ internal fun HealthConnectContent(
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = "O MeuCoach só lê, nunca escreve. A primeira conexão traz 30 dias; depois, " +
-                "só o que ainda falta. Sincroniza sozinho uma vez por dia.",
+                "só o que ainda falta. Sincroniza sozinho ao abrir o app e uma vez por dia " +
+                "em segundo plano.",
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
-        healthConnectLastSyncLabel(state.lastSyncDate)?.let { label ->
+        healthConnectLastSyncLabel(state.lastSyncedAt)?.let { label ->
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = label, style = McTextStyles.caption, color = colors.textTertiary)
+        }
+        if (state.message == null) {
+            state.lastError?.let { error ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = error, style = McTextStyles.caption, color = colors.warning)
+            }
         }
         state.message?.let { message ->
             Spacer(modifier = Modifier.height(8.dp))
@@ -426,6 +454,15 @@ internal fun HealthConnectContent(
                         .testTag("health-connect-install"),
                 )
             }
+            if (available) {
+                Spacer(modifier = Modifier.height(2.dp))
+                McTextButton(
+                    text = "Abrir Health Connect",
+                    onClick = onOpenHealthConnect,
+                    contentColor = colors.textSecondary,
+                    modifier = Modifier.testTag("health-connect-open"),
+                )
+            }
             if (!available) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -446,6 +483,14 @@ private fun openHealthConnectStore(context: Context) {
     )
     runCatching { context.startActivity(market) }.onFailure {
         runCatching { context.startActivity(web) }
+    }
+}
+
+private fun openHealthConnectSettings(context: Context) {
+    runCatching {
+        context.startActivity(HealthConnectClient.getHealthConnectManageDataIntent(context))
+    }.onFailure {
+        openHealthConnectStore(context)
     }
 }
 

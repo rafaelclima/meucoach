@@ -3,6 +3,7 @@ package com.meucoach.app.ui.today
 import com.meucoach.app.ui.common.readinessLabelLowercase
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.ExplanationCatalog
+import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutRecommendation
 import com.meucoach.core.domain.readiness.HrvMetrics
 import com.meucoach.core.domain.readiness.ReadinessComponent
@@ -29,6 +30,8 @@ data class TodayExplanationUi(
     val missingData: List<String>,
     val rules: List<ExplanationRuleUi>,
     val evidence: List<ExplanationEvidenceUi>,
+    /** Explains where the confidence comes from and why it does not change during the week. */
+    val confidenceNote: String? = null,
 )
 
 internal fun buildExplanation(
@@ -71,6 +74,59 @@ internal fun buildExplanation(
             ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
         },
     )
+}
+
+/**
+ * Explains a persisted weekly plan. The confidence is the readiness confidence captured when the
+ * week was built, capped at medium; it is not recomputed as the week goes by.
+ */
+internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
+    val used = buildList {
+        add("Sua disponibilidade semanal")
+        add("Sua prontidão quando a semana foi montada")
+        if (plan.qualityCount >= 2) add("Histórico de conclusão da semana anterior")
+        if ("R-PLAN-04" in plan.ruleIds || "R-PLAN-05" in plan.ruleIds) {
+            add("Semanas anteriores do bloco")
+        }
+        if ("R-PLAN-08" in plan.ruleIds) add("Acesso a esteira")
+    }.distinct()
+    val missing = buildList {
+        if (plan.confidence == DataConfidence.LOW) {
+            add("Dados objetivos de recuperação (sono, FC de repouso ou HRV)")
+        }
+    }.distinct()
+
+    return TodayExplanationUi(
+        rationale = plan.rationale,
+        confidence = plan.confidence,
+        usedData = used,
+        missingData = missing,
+        rules = plan.ruleIds.distinct().map { id ->
+            val rule = ExplanationCatalog.rule(id)
+            ExplanationRuleUi(id = rule.id, title = rule.title)
+        },
+        evidence = plan.evidenceIds.distinct().map { id ->
+            val item = ExplanationCatalog.evidence(id)
+            ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
+        },
+        confidenceNote = planConfidenceNote(plan.confidence),
+    )
+}
+
+private fun planConfidenceNote(confidence: DataConfidence): String = when (confidence) {
+    DataConfidence.LOW ->
+        "A confiança é calculada quando a semana é montada. Com dados parciais, o plano segue " +
+            "conservador e não libera progressão. Ela não muda durante esta semana; novos dados " +
+            "entram no plano da próxima."
+
+    DataConfidence.MEDIUM ->
+        "A confiança é calculada quando a semana é montada e fica no máximo média: a semana é uma " +
+            "estimativa conservadora. Ela não muda durante esta semana; novos dados entram no plano " +
+            "da próxima."
+
+    DataConfidence.HIGH ->
+        "A confiança é calculada quando a semana é montada. Ela não muda durante esta semana; " +
+            "novos dados entram no plano da próxima."
 }
 
 private fun ReadinessComponent.label(): String = when (this) {

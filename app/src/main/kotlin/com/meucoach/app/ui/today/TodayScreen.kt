@@ -74,6 +74,7 @@ import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.model.DataConfidence
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalTime
@@ -100,10 +101,12 @@ fun TodayScreen(
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
+    val planExplanation = remember(state.plan) { state.plan?.let(::buildPlanExplanation) }
     val openExplanation: (ExplanationSource) -> Unit = { source ->
         val available = when (source) {
             ExplanationSource.READINESS -> state.readinessExplanation
             ExplanationSource.WORKOUT -> state.explanation
+            ExplanationSource.PLAN -> planExplanation
         }
         if (available != null) {
             explanationSource = source
@@ -141,7 +144,13 @@ fun TodayScreen(
                 )
             }
         }
-        item { ReadinessCard(state = state, onWhyClick = { openExplanation(ExplanationSource.READINESS) }) }
+        item {
+            ReadinessCard(
+                state = state,
+                onWhyClick = { openExplanation(ExplanationSource.READINESS) },
+                onHealthClick = onHealthClick,
+            )
+        }
         item {
             NextWorkoutCard(
                 workout = state.workout,
@@ -157,6 +166,7 @@ fun TodayScreen(
                     today = today,
                     onComplete = onCompleteSession,
                     onSkip = onSkipSession,
+                    onExplain = { openExplanation(ExplanationSource.PLAN) },
                 )
             }
         }
@@ -203,12 +213,14 @@ fun TodayScreen(
         val explanation = when (source) {
             ExplanationSource.READINESS -> state.readinessExplanation
             ExplanationSource.WORKOUT -> state.explanation
+            ExplanationSource.PLAN -> planExplanation
         }
         explanation?.let {
             ExplanationSheet(
                 title = when (source) {
                     ExplanationSource.READINESS -> "Por que esta prontidão?"
                     ExplanationSource.WORKOUT -> "Por que este treino?"
+                    ExplanationSource.PLAN -> "Por que este plano?"
                 },
                 explanation = it,
                 onDismiss = { explanationSource = null },
@@ -217,7 +229,7 @@ fun TodayScreen(
     }
 }
 
-private enum class ExplanationSource { READINESS, WORKOUT }
+private enum class ExplanationSource { READINESS, WORKOUT, PLAN }
 
 @Composable
 private fun Greeting(state: TodayUiState, onProfileClick: () -> Unit) {
@@ -282,7 +294,7 @@ private fun Greeting(state: TodayUiState, onProfileClick: () -> Unit) {
 }
 
 @Composable
-private fun ReadinessCard(state: TodayUiState, onWhyClick: () -> Unit) {
+private fun ReadinessCard(state: TodayUiState, onWhyClick: () -> Unit, onHealthClick: () -> Unit) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.ELEVATED) {
         Row(
@@ -324,6 +336,14 @@ private fun ReadinessCard(state: TodayUiState, onWhyClick: () -> Unit) {
             text = "Por que esta prontidão?",
             onClick = onWhyClick,
             modifier = Modifier.align(Alignment.Start),
+        )
+        McTextButton(
+            text = "Ver recuperação",
+            onClick = onHealthClick,
+            contentColor = colors.textSecondary,
+            modifier = Modifier
+                .align(Alignment.Start)
+                .testTag("readiness-health-link"),
         )
     }
 }
@@ -691,23 +711,26 @@ private fun PlanWeekCard(
     today: LocalDate,
     onComplete: (LocalDate) -> Unit,
     onSkip: (LocalDate, String) -> Unit,
+    onExplain: () -> Unit,
 ) {
     val colors = McTheme.colors
     var skipTarget by remember { mutableStateOf<LocalDate?>(null) }
     var skipReason by remember { mutableStateOf("") }
     var rationaleExpanded by remember { mutableStateOf(false) }
     McCard(variant = McCardVariant.INSET) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Text(
+            text = "PLANO DA SEMANA",
+            style = McTextStyles.overline,
+            color = colors.textTertiary,
+        )
+        if (plan.confidence == DataConfidence.LOW) {
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "PLANO DA SEMANA",
-                style = McTextStyles.overline,
+                text = "Dados de recuperação parciais: a semana segue conservadora.",
+                style = McTextStyles.caption,
                 color = colors.textTertiary,
+                modifier = Modifier.testTag("plan-low-confidence-note"),
             )
-            McConfidenceBadge(confidence = plan.confidence)
         }
         Spacer(modifier = Modifier.height(10.dp))
         if (plan.sessions.isEmpty()) {
@@ -715,6 +738,13 @@ private fun PlanWeekCard(
                 text = plan.rationale,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            McTextButton(
+                text = "Por que este plano?",
+                onClick = onExplain,
+                trailingArrow = false,
+                modifier = Modifier.testTag("plan-explanation-link"),
             )
             return@McCard
         }
@@ -808,6 +838,13 @@ private fun PlanWeekCard(
                 trailingArrow = false,
             )
         }
+        Spacer(modifier = Modifier.height(4.dp))
+        McTextButton(
+            text = "Por que este plano?",
+            onClick = onExplain,
+            trailingArrow = false,
+            modifier = Modifier.testTag("plan-explanation-link"),
+        )
     }
 
     skipTarget?.let { date ->
@@ -882,6 +919,14 @@ private fun ExplanationSheet(title: String, explanation: TodayExplanationUi, onD
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
+            explanation.confidenceNote?.let { note ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = note,
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+            }
             Spacer(modifier = Modifier.height(18.dp))
             ExplanationList(
                 title = "O que usei",

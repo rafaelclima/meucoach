@@ -44,6 +44,24 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `keeps low confidence when recovery data is partial`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40),
+                ),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    confidence = DataConfidence.LOW,
+                ),
+            ),
+        )
+
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
     fun `allows one quality session away from the long run`() {
         val plan = generator.generate(
             input(
@@ -541,14 +559,18 @@ class WeeklyPlanGeneratorTest {
         weekNumberInBlock = weekNumberInBlock,
     )
 
-    private fun readiness(level: ReadinessLevel, flags: Set<ReadinessFlag> = emptySet()) = ReadinessResult(
+    private fun readiness(
+        level: ReadinessLevel,
+        flags: Set<ReadinessFlag> = emptySet(),
+        confidence: DataConfidence = DataConfidence.HIGH,
+    ) = ReadinessResult(
         score = when (level) {
             ReadinessLevel.GREEN -> 80
             ReadinessLevel.AMBER -> 55
             ReadinessLevel.RED -> 20
         },
         level = level,
-        confidence = DataConfidence.HIGH,
+        confidence = confidence,
         components = mapOf(ReadinessComponent.SUBJECTIVE to 80),
         missing = emptySet(),
         flags = flags,

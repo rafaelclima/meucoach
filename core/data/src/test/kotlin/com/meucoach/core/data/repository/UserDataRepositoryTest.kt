@@ -125,7 +125,7 @@ class UserDataRepositoryTest {
 
     @Test
     fun `resets the health connect watermark when deleting everything`(): Unit = runBlocking {
-        healthStore.markSynced(LocalDate.of(2026, 11, 2))
+        healthStore.markSynced(Instant.parse("2026-11-02T12:00:00Z"), LocalDate.of(2026, 11, 2))
         seedEverything()
 
         userData.deleteAllData()

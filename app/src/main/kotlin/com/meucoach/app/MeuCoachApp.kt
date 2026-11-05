@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -32,13 +34,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.meucoach.app.health.HealthSyncViewModel
 import com.meucoach.app.reminder.NotificationNavigation
 import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
 import com.meucoach.app.ui.checkin.CheckInScreen
 import com.meucoach.app.ui.data.DataManagementScreen
-import com.meucoach.app.ui.metrics.MetricsImportScreen
+import com.meucoach.app.ui.metrics.HealthScreen
 import com.meucoach.app.ui.onboarding.OnboardingScreen
 import com.meucoach.app.ui.profile.ProfileGateViewModel
 import com.meucoach.app.ui.profile.ProfileScreen
@@ -58,6 +61,7 @@ private sealed class AppDestination(val route: String, val label: String, val ic
         Icons.AutoMirrored.Outlined.DirectionsRun,
     )
     data object Trends : AppDestination("trends", "Tendências", Icons.AutoMirrored.Outlined.ShowChart)
+    data object Health : AppDestination("health", "Saúde", Icons.Outlined.MonitorHeart)
     data object Profile : AppDestination("profile", "Perfil", Icons.Outlined.Person)
 }
 
@@ -65,6 +69,7 @@ private val destinations = listOf(
     AppDestination.Today,
     AppDestination.Activities,
     AppDestination.Trends,
+    AppDestination.Health,
     AppDestination.Profile,
 )
 
@@ -73,7 +78,6 @@ private const val PROFILE_EDIT_ROUTE = "profile/edit"
 private const val CALIBRATION_ROUTE = "profile/calibration?activityId={activityId}"
 private const val CALIBRATION_BASE_ROUTE = "profile/calibration"
 private const val CALIBRATION_ACTIVITY_ARG = "activityId"
-private const val METRICS_IMPORT_ROUTE = "profile/metrics-import"
 private const val DATA_MANAGEMENT_ROUTE = "profile/data"
 private const val CHECK_IN_ROUTE = "check-in"
 private const val TUTORIAL_ROUTE = "tutorial"
@@ -125,13 +129,17 @@ fun MeuCoachApp(gateViewModel: ProfileGateViewModel = hiltViewModel()) {
 private fun MainContent() {
     val tutorialViewModel: TutorialViewModel = hiltViewModel()
     val tutorialState by tutorialViewModel.uiState.collectAsStateWithLifecycle()
+    val healthSyncViewModel: HealthSyncViewModel = hiltViewModel()
     val navController = rememberNavController()
+    LifecycleResumeEffect(Unit) {
+        healthSyncViewModel.syncOnResume()
+        onPauseOrDispose { }
+    }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
     val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE &&
         currentRoute != PROFILE_EDIT_ROUTE &&
         currentRoute != CALIBRATION_ROUTE &&
-        currentRoute != METRICS_IMPORT_ROUTE &&
         currentRoute != DATA_MANAGEMENT_ROUTE &&
         currentRoute != CHECK_IN_ROUTE &&
         currentRoute != TUTORIAL_ROUTE
@@ -193,7 +201,7 @@ private fun MainContent() {
                             navController.navigateToTab(AppDestination.Activities.route)
                         },
                         onHealthClick = {
-                            navController.navigate(METRICS_IMPORT_ROUTE)
+                            navController.navigateToTab(AppDestination.Health.route)
                         },
                     )
                 }
@@ -225,13 +233,13 @@ private fun MainContent() {
                     ProfileScreen(
                         onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
                         onCalibrate = { navController.navigate(calibrationRoute()) },
-                        onImportMetrics = { navController.navigate(METRICS_IMPORT_ROUTE) },
+                        onOpenHealth = { navController.navigateToTab(AppDestination.Health.route) },
                         onManageData = { navController.navigate(DATA_MANAGEMENT_ROUTE) },
                         onShowTutorial = { navController.navigate(TUTORIAL_ROUTE) },
                     )
                 }
-                composable(METRICS_IMPORT_ROUTE) {
-                    MetricsImportScreen(onBack = { navController.popBackStack() })
+                composable(AppDestination.Health.route) {
+                    HealthScreen()
                 }
                 composable(DATA_MANAGEMENT_ROUTE) {
                     DataManagementScreen(onBack = { navController.popBackStack() })
@@ -241,7 +249,7 @@ private fun MainContent() {
                         onDone = { navController.popBackStack() },
                         onCheckIn = { navController.navigate(CHECK_IN_ROUTE) },
                         onImport = { navController.navigateToTab(AppDestination.Activities.route) },
-                        onHealth = { navController.navigate(METRICS_IMPORT_ROUTE) },
+                        onHealth = { navController.navigateToTab(AppDestination.Health.route) },
                     )
                 }
                 composable(PROFILE_EDIT_ROUTE) {
@@ -272,7 +280,7 @@ private fun MainContent() {
                 onDone = {},
                 onCheckIn = { navController.navigate(CHECK_IN_ROUTE) },
                 onImport = { navController.navigateToTab(AppDestination.Activities.route) },
-                onHealth = { navController.navigate(METRICS_IMPORT_ROUTE) },
+                onHealth = { navController.navigateToTab(AppDestination.Health.route) },
                 viewModel = tutorialViewModel,
             )
         }

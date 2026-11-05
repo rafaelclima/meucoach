@@ -20,7 +20,7 @@ class WorkManagerHealthSyncScheduler @Inject constructor(private val workManager
             .build()
         workManager.enqueueUniquePeriodicWork(
             UNIQUE_NAME,
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingPeriodicWorkPolicy.KEEP,
             request,
         )
     }

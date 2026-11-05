@@ -3,7 +3,9 @@ package com.meucoach.app.ui.common
 import com.meucoach.core.data.health.HealthConnectStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
-import java.time.LocalDate
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
 
 class HealthConnectCopyTest {
     @Test
@@ -57,13 +59,24 @@ class HealthConnectCopyTest {
     }
 
     @Test
-    fun `formats the last read relative to today`() {
-        val today = LocalDate.of(2026, 11, 3)
+    fun `formats the last read relative to now`() {
+        val now = Instant.parse("2026-11-03T18:00:00Z")
 
-        assertThat(healthConnectLastSyncLabel(today, today)).isEqualTo("Última leitura hoje")
-        assertThat(healthConnectLastSyncLabel(today.minusDays(1), today)).isEqualTo("Última leitura ontem")
-        assertThat(healthConnectLastSyncLabel(today.minusDays(8), today)).isEqualTo("Última leitura em 26/10")
-        assertThat(healthConnectLastSyncLabel(null, today)).isNull()
+        assertThat(healthConnectLastSyncLabel(now.minusSeconds(10), now)).isEqualTo("Atualizado agora")
+        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofMinutes(12)), now))
+            .isEqualTo("Atualizado há 12 min")
+        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofHours(3)), now))
+            .isEqualTo("Atualizado há 3 h")
+        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofDays(1)), now))
+            .isEqualTo("Atualizado ontem")
+        assertThat(
+            healthConnectLastSyncLabel(
+                lastSyncedAt = now.minus(Duration.ofDays(8)),
+                now = now,
+                zone = ZoneOffset.UTC,
+            ),
+        ).isEqualTo("Atualizado em 26/10")
+        assertThat(healthConnectLastSyncLabel(null, now)).isNull()
     }
 
     @Test

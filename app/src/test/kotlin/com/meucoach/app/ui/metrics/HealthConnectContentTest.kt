@@ -89,6 +89,20 @@ class HealthConnectContentTest {
     }
 
     @Test
+    fun `shows an automatic error as a passive caption`() {
+        setContent(
+            HealthConnectUiState(
+                isLoading = false,
+                status = HealthConnectStatus.AVAILABLE,
+                missingPermissions = emptySet(),
+                lastError = "Falha de leitura.",
+            ),
+        )
+
+        compose.onNodeWithText("Falha de leitura.").assertIsDisplayed()
+    }
+
+    @Test
     fun `shows a sync message`() {
         setContent(
             HealthConnectUiState(
@@ -102,12 +116,30 @@ class HealthConnectContentTest {
         compose.onNodeWithText("2 dias importados do Health Connect.").assertIsDisplayed()
     }
 
+    @Test
+    fun `opens the health connect settings`() {
+        var opened = false
+        setContent(
+            HealthConnectUiState(
+                isLoading = false,
+                status = HealthConnectStatus.AVAILABLE,
+                missingPermissions = emptySet(),
+            ),
+            onOpenHealthConnect = { opened = true },
+        )
+
+        compose.onNodeWithText("Abrir Health Connect").performClick()
+
+        assertThat(opened).isTrue()
+    }
+
     private fun setContent(
         state: HealthConnectUiState,
         storedDays: Int = 0,
         onAuthorize: () -> Unit = {},
         onSync: () -> Unit = {},
         onInstall: () -> Unit = {},
+        onOpenHealthConnect: () -> Unit = {},
     ) {
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -117,6 +149,7 @@ class HealthConnectContentTest {
                     onAuthorize = onAuthorize,
                     onSync = onSync,
                     onInstall = onInstall,
+                    onOpenHealthConnect = onOpenHealthConnect,
                 )
             }
         }

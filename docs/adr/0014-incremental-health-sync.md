@@ -47,3 +47,19 @@ pode reutilizar a mesma infraestrutura e o `HiltWorkerFactory`.
 - Apagar todos os dados zera a marca d'água (`T-06`), então um perfil novo relê
   a janela inicial de 30 dias.
 - O worker é best-effort: falha de WorkManager não bloqueia o app.
+
+## Addendum — sync no resume (05/11/2026)
+
+O worker diário deixou de ser o único caminho. O `ADR-0021` adiciona:
+
+- sync automático no resume do app quando a última leitura bem-sucedida tem
+  mais de **6 h**;
+- `HealthSyncStore` com `lastSyncedAt` e `lastAttemptAt`, além da data
+  incremental;
+- backoff de **15 min** após erro de leitura;
+- `Mutex` no `HealthSyncService` para serializar resume, botão manual e worker;
+- `syncIfStale()` no serviço e `HealthSyncCoordinator` no app;
+- worker com `ExistingPeriodicWorkPolicy.KEEP` como fallback.
+
+O botão manual continua chamando `sync()` e ignora o frescor de propósito. A
+marca d'água incremental e a janela de 30 dias permanecem iguais.

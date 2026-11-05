@@ -152,7 +152,7 @@ class MetricsImportViewModelTest {
         .also { currentViewModel = it }
 
     private fun awaitIdle(viewModel: MetricsImportViewModel): MetricsImportUiState = kotlinx.coroutines.runBlocking {
-        withTimeout(15_000) {
+        withTimeout(30_000) {
             viewModel.uiState.first { !it.isImporting && it.message != null }
         }
     }

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.health.DailyMetricsTrendsCalculator
 import com.meucoach.core.model.DailyMetrics
@@ -83,14 +84,51 @@ class HealthMetricsContentTest {
         compose.onNodeWithText("Fontes de dados").assertIsDisplayed()
     }
 
-    private fun setContent(state: MetricsImportUiState, onWindowSelected: (Int) -> Unit = {}) {
+    @Test
+    fun `shows a hint when today's data has not arrived`() {
+        setContent(
+            state = stateWithMetrics(),
+            healthState = connectedHealth(),
+            today = LocalDate.of(2026, 11, 5),
+        )
+
+        compose.onNodeWithTag("metrics-import-list")
+            .performScrollToNode(hasText("Os dados de hoje ainda não chegaram"))
+        compose.onNodeWithText("Os dados de hoje ainda não chegaram").assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the hint when today's data is present`() {
+        setContent(
+            state = stateWithMetrics(),
+            healthState = connectedHealth(),
+            today = LocalDate.of(2026, 11, 4),
+        )
+
+        compose.onNodeWithText("Os dados de hoje ainda não chegaram").assertDoesNotExist()
+    }
+
+    private fun connectedHealth() = HealthConnectUiState(
+        isLoading = false,
+        status = HealthConnectStatus.AVAILABLE,
+        missingPermissions = emptySet(),
+    )
+
+    private fun setContent(
+        state: MetricsImportUiState,
+        onWindowSelected: (Int) -> Unit = {},
+        healthState: HealthConnectUiState = HealthConnectUiState(),
+        today: LocalDate = LocalDate.now(),
+    ) {
         compose.setContent {
             McTheme(darkTheme = true) {
-                MetricsImportContent(
+                HealthContent(
                     state = state,
                     onPick = {},
                     onBack = {},
+                    healthState = healthState,
                     onWindowSelected = onWindowSelected,
+                    today = today,
                 )
             }
         }

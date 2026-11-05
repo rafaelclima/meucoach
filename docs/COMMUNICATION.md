@@ -116,6 +116,8 @@ Mas para a reformulação da comunicação, vou criar um arquivo de referência 
 | Hoje — sheet "Por que este treino?" | Listas `Regras` e `Evidências` com `R-...`/`EV-...` | `Como decidi` só com títulos legíveis + `Ver fontes e detalhes técnicos` (colapsado) |
 | Detalhe da atividade — "O que aprendemos" | `R-ACT-01 · EV-... · confiança média` | Apenas a observação em linguagem simples |
 | Calibração — resultado | `R-CAL-01 · EV-DANIELS-2014, EV-FRIEL-2018` | Removido; ficam os números, a confiança e a recomendação |
+| Hoje — Plano da semana | Badge “Confiança baixa” sem contexto no cabeçalho | Confiança movida para “Por que este plano?”, com dados usados/ausentes e aviso de que o valor é da criação da semana |
+| Tendências — economia | “Eixo de X a Y para mostrar a variação.” | “Escala ampliada (X a Y m/batimento) para destacar diferenças pequenas entre corridas.”, logo abaixo do gráfico |
 | Tendências — 80/20 | `Heurística R-ZONE-02 · EV-SEILER-2010` | `O ideal é passar cerca de 80% do tempo em ritmo fácil.` |
 
 ### 6.3 Termos traduzidos na varredura

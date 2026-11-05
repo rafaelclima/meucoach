@@ -111,6 +111,85 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `explains the weekly plan and its confidence`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val plan = planWith(today, confidence = DataConfidence.LOW)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Por que este plano?"))
+        compose.onNodeWithTag("plan-explanation-link").performClick()
+
+        compose.onNodeWithTag("explanation-title").assertTextEquals("Por que este plano?")
+        compose.onNodeWithText("Confiança baixa").assertIsDisplayed()
+        compose
+            .onNodeWithText("A confiança é calculada quando a semana é montada", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("O QUE USEI").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText("Sua disponibilidade semanal", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("O QUE FALTOU").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText("Dados objetivos de recuperação", substring = true)
+            .assertIsDisplayed()
+        compose
+            .onNodeWithText("Zonas pelo limite de esforço", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText("R-ZONE-01", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows a partial-data note only for a low-confidence plan`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today, confidence = DataConfidence.LOW),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Dados de recuperação parciais: a semana segue conservadora."))
+        compose
+            .onNodeWithText("Dados de recuperação parciais: a semana segue conservadora.")
+            .assertIsDisplayed()
+        compose.onNodeWithTag("plan-low-confidence-note").assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the partial-data note for a medium-confidence plan`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    today = today,
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today, confidence = DataConfidence.MEDIUM),
+                    ),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("plan-low-confidence-note").assertDoesNotExist()
+    }
+
+    @Test
     fun `opens the workout explanation`() {
         val today = LocalDate.of(2026, 11, 2)
         val explanation = TodayExplanationUi(
@@ -398,6 +477,25 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `opens the health tab from the readiness card`() {
+        var health = false
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(),
+                    onHealthClick = { health = true },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("readiness-health-link").performClick()
+
+        assertThat(health).isTrue()
+    }
+
+    @Test
     fun `opens the profile when tapping the avatar`() {
         var profile = false
 
@@ -415,7 +513,7 @@ class TodayPlanTest {
         assertThat(profile).isTrue()
     }
 
-    private fun planWith(date: LocalDate) = WeeklyPlan(
+    private fun planWith(date: LocalDate, confidence: DataConfidence = DataConfidence.MEDIUM) = WeeklyPlan(
         weekStart = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)),
         sessions = listOf(
             PlannedSession(
@@ -431,8 +529,8 @@ class TodayPlanTest {
         weeklyMinutes = 40,
         longRunMinutes = null,
         qualityCount = 0,
-        rationale = "Sem progressão.",
-        confidence = DataConfidence.MEDIUM,
+        rationale = "Sem progressão até existir histórico.",
+        confidence = confidence,
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
     )

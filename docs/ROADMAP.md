@@ -259,7 +259,8 @@
 - [x] Diagnóstico de status, autorização, base local e fallback para check-in/CSV.
 - [x] Sync incremental: primeira execução lê 30 dias; depois parte do último sucesso menos 1 dia.
 - [x] Sync periódico diário via WorkManager, com retry exponencial em erro de leitura.
-- [x] O mesmo `HealthSyncService` atende a tela de perfil e o worker.
+- [x] Sync automático no resume quando a última leitura tem mais de 6 h, com backoff de 15 min e worker como fallback (`ADR-0021`).
+- [x] O mesmo `HealthSyncService` atende o resume, a aba Saúde e o worker.
 - [x] Mescla por campo entre CSV e Health Connect, sem apagar dados do dia (`ADR-0016`).
 - [x] Tela de métricas com um primário (sync), CSV secundário e formato sob demanda.
 - [x] Painel de saúde com sono, FC de repouso, HRV e SpO₂: média móvel de 7 dias, base individual, faixa-alvo, janela 7/30/60 dias e tabela por métrica.
@@ -297,6 +298,46 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Proporção de carga vinda do motor (nunca hardcoded).
 - [x] Onboarding com máscara de data, data de prova opcional e chips legíveis.
 - [x] Perfil com card “Métricas diárias” e ação “Gerenciar métricas”.
+- [x] Plano da semana explica a confiança em “Por que este plano?” e avisa quando os dados são parciais.
+- [x] Economia mostra a escala ampliada abaixo do gráfico e a unidade no eixo.
+
+### P1-14 · Saúde como destino principal
+
+**Status:** concluído em 05/11/2026 — validação em aparelho pendente
+
+- [x] 5ª aba `Saúde` (`Hoje · Corridas · Tendências · Saúde · Perfil`), rota top-level `health`, sem seta de voltar.
+- [x] Hoje com link “Ver recuperação” no card de prontidão, sem duplicar gráficos.
+- [x] Perfil sem o card grande de Health Connect; link compacto + backup/privacidade.
+- [x] Checklist e tutorial apontam para a aba Saúde.
+- [x] Testes e goldens em 393/360 dp; falta validar fonte 200% no aparelho.
+
+**Aceite:** a Saúde é descoberta sem passar pelo Perfil e o Hoje continua decidindo o treino.
+
+### P1-15 · Sync automático do Health Connect
+
+**Status:** concluído em 05/11/2026 — validação em aparelho pendente
+
+- [x] `HealthSyncStore` com `lastSyncedAt`/`lastAttemptAt` além da data incremental.
+- [x] `HealthSyncService.syncIfStale()` com frescor de 6 h, backoff de 15 min e `Mutex`.
+- [x] `HealthSyncCoordinator` + `LifecycleResumeEffect` no `MainContent`.
+- [x] Worker diário como fallback (`ExistingPeriodicWorkPolicy.KEEP`).
+- [x] UI com “Sincronizando…”/“Atualizado há X” e erro passivo; manual continua override.
+- [x] Testes de store, serviço, coordenador e cópia.
+- [ ] Validar no aparelho: sync após 6 h, permissão revogada e worker fallback.
+
+**Aceite:** abrir o app após 6 h atualiza o Health Connect sem tocar em botão; sem permissão, nenhum diálogo automático.
+
+### P1-16 · Polimento da aba Saúde
+
+**Status:** concluído em 05/11/2026 — validação em aparelho pendente
+
+- [x] Aviso “Os dados de hoje ainda não chegaram” quando há histórico, HC conectado e a última métrica é anterior a hoje.
+- [x] Link “Abrir Health Connect” para diagnóstico, com fallback para a loja.
+- [x] Testes e goldens do aviso e do card de fontes.
+- [ ] Resumo compacto no Hoje — avaliado e adiado; o link “Ver recuperação” já resolve.
+- [ ] Proveniência por campo — decisão futura, se houver necessidade de auditoria por métrica.
+
+**Aceite:** o usuário entende por que o dia atual ainda não aparece e consegue abrir o Health Connect sem sair da aba.
 
 ---
 

@@ -22,6 +22,10 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0014](adr/0014-incremental-health-sync.md) | Sync incremental do Health Connect via WorkManager | Aceito | 31/10/2026 |
 | [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito — implementado; validação em aparelho pendente | 02/11/2026 |
 | [0016](adr/0016-daily-metrics-merge.md) | Mescla de métricas diárias por campo, com precedência de origem | Aceito | 03/11/2026 |
+| [0018](adr/0018-story-export-background.md) | Geração do story em segundo plano e cancelamento real | Aceito — implementado | 04/11/2026 |
+| [0019](adr/0019-story-camera-projection.md) | Câmera 3D real no snapshot do story (port da projeção do MapLibre) | Aceito — implementado | 04/11/2026 |
+| [0020](adr/0020-health-top-level-destination.md) | Saúde como 5ª aba e destino principal; Perfil sem o card grande | Aceito — implementado | 05/11/2026 |
+| [0021](adr/0021-health-sync-on-resume.md) | Sync automático do Health Connect ao abrir o app (6 h) + worker diário | Aceito — implementado | 05/11/2026 |
 
 ## Decisões menores (registro rápido)
 
@@ -33,6 +37,9 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Acentuação:** lima como única cor de ação; coral para fisiologia.
 - **Gráficos:** Vico 3.3.1 para line/bar; Canvas para gauge/zone bar/heatmap; eixos em pt-BR.
 - **Permissões:** notificação só no contexto (Perfil → Ajuda/checklist), nunca no launch; o app segue utilizável se o usuário recusar.
+- **Saúde:** 5ª aba principal (`Hoje · Corridas · Tendências · Saúde · Perfil`); o Hoje só linka “Ver recuperação” e o Perfil mantém link compacto + backup (ADR-0020).
+- **Health Connect:** sync incremental no resume se a última leitura tem mais de 6 h; worker diário como fallback; o botão manual continua sendo override (ADR-0021).
+- **Saúde (polimento):** aviso “os dados de hoje ainda não chegaram” quando há histórico e o dia atual falta, mais o link secundário “Abrir Health Connect”; resumo extra no Hoje adiado para não competir com “Iniciar”.
 - **Tutorial:** camada sobre o Hoje, 3 cenas com dados reais e checklist dismissível; sem streak, sem dados inventados.
 - **Ativação:** métricas locais (timestamps/contadores) no JSON de backup, sem SDK de analytics; dicas contextuais únicas e dismissíveis.
 - **Backend:** só na Fase 2; app nunca depende dele.

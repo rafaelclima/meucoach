@@ -852,7 +852,7 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
                 ),
             ),
             xLabels = points.map { it.date.format(DAY_FORMAT) },
-            ySuffix = "",
+            ySuffix = " m/b",
             yDecimals = 2,
             yStep = 0.05,
             minY = axisMin,
@@ -860,7 +860,25 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
             labelSpacing = if (points.size > 8) 2 else 1,
             height = 168.dp,
             showLegend = false,
-            contentDescription = "Evolução da economia de corrida em ${points.size} corridas",
+            contentDescription = String.format(
+                PT_BR,
+                "Evolução da economia de corrida em %d corridas. " +
+                    "Escala ampliada de %.2f a %.2f metros por batimento.",
+                points.size,
+                axisMin,
+                axisMax,
+            ),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = String.format(
+                PT_BR,
+                "Escala ampliada (%.2f a %.2f m/batimento) para destacar diferenças pequenas entre corridas.",
+                axisMin,
+                axisMax,
+            ),
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
         )
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -883,16 +901,6 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
                 modifier = Modifier.weight(1f),
             )
         }
-        Text(
-            text = String.format(
-                PT_BR,
-                "Eixo de %.2f a %.2f m/batimento para mostrar a variação.",
-                axisMin,
-                axisMax,
-            ),
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
         McDivider(modifier = Modifier.padding(vertical = 10.dp))
         Text(
             text = "Últimas corridas",

@@ -1,7 +1,10 @@
 package com.meucoach.app.ui.profile
 
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
@@ -17,6 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
@@ -36,23 +40,43 @@ class ProfileScreenshotTest {
         capture(darkTheme = false, file = "src/test/screenshots/profile-light.png")
     }
 
+    @Test
+    fun profileHealthDark() {
+        captureHealth(darkTheme = true, file = "src/test/screenshots/profile-health-dark.png")
+    }
+
+    @Test
+    fun profileHealthLight() {
+        captureHealth(darkTheme = false, file = "src/test/screenshots/profile-health-light.png")
+    }
+
+    private fun captureHealth(darkTheme: Boolean, file: String) {
+        compose.setContent {
+            McTheme(darkTheme = darkTheme) {
+                ProfileContent(
+                    state = state(),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list")
+            .performScrollToNode(hasText("Sono, recuperação e oxigenação"))
+        compose.onRoot().captureRoboImage(file)
+    }
+
     private fun capture(darkTheme: Boolean, file: String) {
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 ProfileContent(
-                    state = ProfileUiState(
-                        isLoading = false,
-                        profile = profile(),
-                        health = ProfileHealthSummary(
-                            status = HealthConnectStatus.AVAILABLE,
-                            hasPermissions = true,
-                            storedDays = 47,
-                            lastSyncDate = LocalDate.now(),
-                        ),
-                    ),
+                    state = state(),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -61,6 +85,17 @@ class ProfileScreenshotTest {
 
         compose.onRoot().captureRoboImage(file)
     }
+
+    private fun state() = ProfileUiState(
+        isLoading = false,
+        profile = profile(),
+        health = ProfileHealthSummary(
+            status = HealthConnectStatus.AVAILABLE,
+            hasPermissions = true,
+            storedDays = 47,
+            lastSyncedAt = Instant.now(),
+        ),
+    )
 
     private fun profile() = AthleteProfile(
         id = "athlete-1",

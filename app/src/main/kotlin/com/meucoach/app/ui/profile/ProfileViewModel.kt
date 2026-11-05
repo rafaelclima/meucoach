@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -47,7 +48,7 @@ data class ProfileHealthSummary(
     val hasPermissions: Boolean = false,
     val storedDays: Int = 0,
     val latestMetricDate: LocalDate? = null,
-    val lastSyncDate: LocalDate? = null,
+    val lastSyncedAt: Instant? = null,
 )
 
 data class ProfileUiState(
@@ -66,7 +67,7 @@ class ProfileViewModel @Inject constructor(
     private data class HealthAccess(
         val status: HealthConnectStatus = HealthConnectStatus.UNAVAILABLE,
         val hasPermissions: Boolean = false,
-        val lastSyncDate: LocalDate? = null,
+        val lastSyncedAt: Instant? = null,
     )
 
     private val access = MutableStateFlow(HealthAccess())
@@ -84,7 +85,7 @@ class ProfileViewModel @Inject constructor(
                 hasPermissions = access.hasPermissions,
                 storedDays = metrics.size,
                 latestMetricDate = metrics.lastOrNull()?.date,
-                lastSyncDate = access.lastSyncDate,
+                lastSyncedAt = access.lastSyncedAt,
             ),
         )
     }.stateIn(
@@ -106,7 +107,7 @@ class ProfileViewModel @Inject constructor(
             access.value = HealthAccess(
                 status = status,
                 hasPermissions = hasPermissions,
-                lastSyncDate = syncStore.lastSyncedDate(),
+                lastSyncedAt = syncStore.lastSyncedAt(),
             )
         }
     }

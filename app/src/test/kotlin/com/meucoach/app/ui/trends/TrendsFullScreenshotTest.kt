@@ -51,7 +51,10 @@ class TrendsFullScreenshotTest {
     @Test
     fun efficiencyDark() {
         capture(
-            scrollTo = hasContentDescription("Evolução da economia de corrida em 6 corridas"),
+            scrollTo = hasContentDescription(
+                "Evolução da economia de corrida em 6 corridas",
+                substring = true,
+            ),
             file = "src/test/screenshots/trends-efficiency-dark.png",
         )
     }

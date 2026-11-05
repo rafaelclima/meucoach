@@ -54,8 +54,9 @@ A promessa central:
 - Calibração por prova/TT recente (Tier A/B) ou teste guiado (Tier C).
 - Motor de zonas (LTHR + pace), carga (TRIMP, rTSS, CTL/ATL/TSB, ACWR), prontidão e prescrição.
 - Check-in diário de 15 s (sono, fadiga, dor, stress).
-- Leitura de **Health Connect** (sono, RHR, HRV, SpO2, exercícios) com diagnóstico de sincronização.
-- Tela **Hoje** com prontidão, treino prescrito e "por quê".
+- Leitura de **Health Connect** (sono, RHR, HRV, SpO2, exercícios) com diagnóstico de sincronização e atualização automática ao abrir o app.
+- Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação.
+- Tela **Saúde** como destino principal: painel de sono, FC de repouso, HRV e SpO₂, com período, fontes e aviso quando o dia atual ainda não chegou.
 - Tela **Tendências** com gráficos de evolução.
 - Notificações locais: treino do dia, lembrete de check-in, import pendente.
 - Exportar/apagar todos os dados.

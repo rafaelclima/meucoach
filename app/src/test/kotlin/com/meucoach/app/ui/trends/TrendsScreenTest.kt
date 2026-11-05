@@ -153,6 +153,14 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("Economia · Ritmo vs FC"))
         list.performScrollToNode(hasText("Metros por batimento"))
         compose.onNodeWithText("Metros por batimento").assertIsDisplayed()
+        list.performScrollToNode(hasText("Escala ampliada", substring = true))
+        compose
+            .onNodeWithText("Escala ampliada", substring = true)
+            .assertIsDisplayed()
+        compose
+            .onNodeWithText("para destacar diferenças pequenas entre corridas", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("Eixo de", substring = true).assertDoesNotExist()
         list.performScrollToNode(hasText("6:00 /km"))
         compose.onNodeWithText("6:00 /km").assertIsDisplayed()
     }
