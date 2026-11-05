@@ -1,6 +1,6 @@
 # TUTORIAL_V2.md — Ativação pós-perfil
 
-**Status:** Fase A implementada em 05/11/2026; Fases B–D propostas
+**Status:** Fases A e B implementadas em 05/11/2026; Fases C–D propostas
 **Data:** 05/11/2026
 **Substitui:** tour de 4 telas em `app/src/main/kotlin/com/meucoach/app/ui/tutorial/`
 **Importante:** este documento é um plano. Nenhum código foi alterado nesta sessão.
@@ -728,31 +728,34 @@ Objetivo: parar de parecer rascunho sem reescrever a narrativa.
 
 **Aceite:** o tour atual fica apresentável e sem bugs de plataforma, mas ainda é o carrossel antigo.
 
-**Implementação (05/11/2026):** `TutorialProgress` em `core:designsystem`; `NotificationReminderCard` em Perfil → Ajuda; goldens `tutorial-2/3/4-{dark,light}.png`; capturas de gráficos Vico estabilizadas com espera explícita (sem mudança de produto).
+**Implementação (05/11/2026):** `TutorialProgress` em `core:designsystem`; `NotificationReminderCard` em Perfil → Ajuda; goldens `tutorial-2/3-{dark,light}.png`; capturas de gráficos Vico estabilizadas com espera explícita (sem mudança de produto).
 
 ### Fase B — Redesenho da narrativa (esforço M, impacto alto)
 
 Objetivo: trocar 4 slides por 3 cenas com produto real.
 
-- [ ] Cena 1 “Seu plano está pronto” com nome, objetivo e plano real.
-- [ ] Cena 2 “Como o coach pensa” com loop visual.
-- [ ] Cena 3 “Comece com 30 segundos” com 3 ações.
-- [ ] `TutorialScaffold`, `TutorialProgress`, `TutorialActionCard`, `TutorialScene`.
-- [ ] Movimento e haptics.
-- [ ] Fallbacks honestos (sem plano, sem calibração, erro).
-- [ ] Checklist no Hoje.
-- [ ] Dicas contextuais nas telas vazias.
-- [ ] Goldens de todas as cenas.
+- [x] Cena 1 “Seu plano está pronto” com nome, objetivo e plano real.
+- [x] Cena 2 “Como o coach pensa” com loop visual.
+- [x] Cena 3 “Comece com 30 segundos” com 3 ações.
+- [x] `TutorialProgress`, `TutorialActionCard` e scaffold em `TutorialContent`.
+- [x] Movimento e haptics leves na troca de cena.
+- [x] Fallbacks honestos (sem plano, sem calibração, carregando, erro).
+- [x] Checklist “Complete seu setup” no Hoje.
+- [ ] Dicas contextuais nas telas vazias — adiado para a Fase C.
+- [x] Goldens de todas as cenas (3 páginas × dark/light).
 
 **Aceite:** um usuário novo entende o valor, vê o plano real e chega ao check-in em ≤ 2 toques.
 
+**Implementação (05/11/2026):** o tutorial virou uma camada sobre o Hoje (`MainContent`), com `TutorialViewModel` lendo perfil, plano, prontidão, check-in, atividades e Health Connect. A cena 1 mostra a semana real, a cena 2 usa a prontidão/treino reais e a cena 3 prioriza check-in → importar → Health Connect. O checklist do Hoje observa os mesmos repositórios, persiste o dismiss por 7 dias e desaparece quando os 3 passos terminam. Goldens: `tutorial-{dark,light}`, `tutorial-2-{dark,light}`, `tutorial-3-{dark,light}` e `today-checklist-dark`.
+
 ### Fase C — Ativação e permissões (esforço M, impacto alto)
 
-- [ ] Pré-permissão de notificação contextual.
-- [ ] Checklist persistente com deep links e dismiss.
+- [x] Pré-permissão de notificação contextual em Perfil → Ajuda (Fase A).
+- [x] Checklist persistente com deep links e dismiss de 7 dias.
 - [ ] Primeira vitória: mensagem após check-in/import.
 - [ ] Medição local (timestamps/contadores) + export no JSON.
 - [ ] Versionamento do tutorial e revisão no Perfil.
+- [ ] Dicas contextuais nas telas vazias (check-in, importação, Tendências).
 - [ ] Teste com 5 usuários (incluindo o usuário 0).
 - [ ] Ajustes de copy e ordem com base no teste.
 

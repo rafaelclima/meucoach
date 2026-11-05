@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 05/11/2026 (tutorial Fase A)
+**Atualizado:** 05/11/2026 (tutorial Fases A e B)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 815 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 412 em `:app`)
+- **Testes:** 834 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 431 em `:app`)
 - **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 31 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
@@ -55,6 +55,40 @@
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-05 — Tutorial Fase B: 3 cenas com dados reais e checklist
+
+**Objetivo:** trocar o carrossel de 4 páginas por uma revelação personalizada, explicar o motor em uma cena e levar o usuário a uma primeira ação sem sair do produto.
+
+### Concluído
+
+- **Camada sobre o Hoje:** o tutorial deixou de ser um gate antes do app. `MainContent` mostra o Hoje e, na primeira execução, uma camada em tela cheia por cima; ao terminar ou pular, o usuário já está no lugar certo.
+- **Cena 1 — plano real:** `TutorialViewModel` lê perfil, check-in, métricas, atividades e plano; se a semana ainda não existe, gera com o mesmo `WeeklyPlanGenerator` e salva. A cena mostra nome, objetivo, disponibilidade, 3 sessões reais e o próximo treino. Sem plano, mostra fallback honesto; com erro, oferece “Tentar de novo”.
+- **Cena 2 — como o coach pensa:** loop “Você corre → Eu leio esforço e descanso → Você recebe o próximo treino”, com prontidão real e o título do treino recomendado.
+- **Cena 3 — primeiro passo:** três ações (check-in 30 s, importar corrida, Health Connect). O CTA primário é dinâmico: check-in → importar → saúde → “Ver meu treino de hoje”, conforme o que já foi feito.
+- **Checklist no Hoje:** `FirstRunChecklistViewModel` + `FirstRunChecklistCard` mostram 3 passos com progresso, deep links e “Agora não”. O dismiss persiste por 7 dias; o card desaparece quando os 3 passos terminam. Sem streak, prazo ou cobrança.
+- **Design system:** `TutorialActionCard` e `TutorialProgress`; painel visual com rota/glow; haptic leve na troca de cena; largura máxima 640 dp.
+- **Testes:** +19 em `:app` (cenas, CTAs dinâmicos, fallbacks, fonte 200%, back, ViewModel com plano real, checklist/ViewModel, store e goldens). Total: **834 testes**.
+- **Goldens:** `tutorial-{dark,light}`, `tutorial-2-{dark,light}`, `tutorial-3-{dark,light}` e `today-checklist-dark`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Nenhuma dependência nova; nenhum dado real em fixtures/goldens.
+- O teste de importação CSV e as capturas de gráficos Vico voltaram a ser estáveis após ajuste de espera.
+
+### Decisões e observações
+
+- **Dados reais, não mock:** a cena 1 usa o plano que o motor já gera. Se não há dados, o tutorial não inventa números; mostra o que falta.
+- **Checklist como continuação do tutorial:** a cena 3 apresenta as ações; o card no Hoje mantém o caminho visível sem prender o usuário.
+- **Dicas contextuais adiadas:** as telas vazias já têm CTAs claros; a dica contextual única entra na Fase C junto com a primeira vitória e a medição local.
+- **Tutorial revisível:** a rota de Perfil → Ajuda agora executa as ações da cena 3 e volta para o fluxo normal.
+
+### Próximo passo
+
+1. Validar no aparelho real o overlay sobre o Hoje, o back, a fonte 200% e o checklist.
+2. Fase C: mensagem de primeira vitória, dicas contextuais e medição local.
+3. Teste moderado com 5 usuários para ajustar copy/ordem.
 
 ## Sessão 2026-11-05 — Tutorial Fase A: base de produto, não rascunho
 

@@ -164,6 +164,16 @@ Evidência atual (30/10/2026):
 - `ActivityTrendsCalculatorTest`: volume semanal, consistência, pace×FC e janelas inválidas.
 - `TrendsScreenTest`: cards de volume, consistência e pace×FC.
 
+## 5.5 Testes de tutorial e primeiro uso
+
+- `TutorialScreenTest`: 3 cenas, progresso, back, CTAs dinâmicos, fallback de carregamento/erro, fonte 200% e fonte escalável.
+- `TutorialSystemBackTest`: back do sistema na primeira cena marca como visto.
+- `TutorialViewModelTest`: perfil, plano real gerado/persistido, prontidão, Health Connect e `markSeen`.
+- `TutorialStoreTest`: flag de intro e dismiss do checklist por 7 dias.
+- `FirstRunChecklistViewModelTest`: estado inicial, check-in, Health Connect, dismiss e conclusão dos 3 passos.
+- `FirstRunChecklistCardTest` e `TodayPlanTest`: card no Hoje, ações e dismiss.
+- Goldens: 3 cenas × dark/light + `today-checklist-dark`.
+
 ## 6. Testes de domínio
 
 ### 6.1 Zonas
@@ -269,8 +279,7 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 - `app/src/test/screenshots/tutorial-2-light.png`
 - `app/src/test/screenshots/tutorial-3-dark.png`
 - `app/src/test/screenshots/tutorial-3-light.png`
-- `app/src/test/screenshots/tutorial-4-dark.png`
-- `app/src/test/screenshots/tutorial-4-light.png`
+- `app/src/test/screenshots/today-checklist-dark.png`
 - `app/src/test/screenshots/checkin-dark.png`
 - `app/src/test/screenshots/checkin-light.png`
 - `app/src/test/screenshots/today-dark.png`

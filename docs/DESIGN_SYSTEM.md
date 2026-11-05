@@ -204,6 +204,8 @@ Regras:
 | `McErrorState` | causa, ação, detalhes técnicos colapsáveis |
 | `McSkeleton` | shimmer sutil, respeita reduced motion |
 | `TutorialProgress` | barra segmentada 4 dp com `progressBarRangeInfo` e “Passo X de Y” |
+| `TutorialActionCard` | ação de primeiro uso: ícone, título, meta, descrição e chevron; alvo 48 dp |
+| `FirstRunChecklistCard` | checklist de 3 passos no Hoje, com progresso, deep links e dismiss |
 | `McBottomBar` | 4 destinos + ação central circular lima |
 
 ### 7.2 Estados
