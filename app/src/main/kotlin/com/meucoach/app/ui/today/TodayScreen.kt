@@ -47,10 +47,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.meucoach.app.ui.common.ProfileAvatar
+import com.meucoach.app.ui.common.readinessLabel
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McConfidenceBadge
@@ -69,7 +73,6 @@ import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
-import com.meucoach.core.model.ReadinessLevel
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalTime
@@ -84,6 +87,7 @@ fun TodayScreen(
     onCheckInClick: () -> Unit = {},
     onTrendsClick: () -> Unit = {},
     onActivityClick: (String) -> Unit = {},
+    onProfileClick: () -> Unit = {},
     onCompleteSession: (LocalDate) -> Unit = {},
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
@@ -111,7 +115,7 @@ fun TodayScreen(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { Greeting(state = state) }
+        item { Greeting(state = state, onProfileClick = onProfileClick) }
         item { ReadinessCard(state = state, onWhyClick = { openExplanation(ExplanationSource.READINESS) }) }
         item {
             NextWorkoutCard(
@@ -191,7 +195,7 @@ fun TodayScreen(
 private enum class ExplanationSource { READINESS, WORKOUT }
 
 @Composable
-private fun Greeting(state: TodayUiState) {
+private fun Greeting(state: TodayUiState, onProfileClick: () -> Unit) {
     val colors = McTheme.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -234,6 +238,11 @@ private fun Greeting(state: TodayUiState) {
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
+                .clickable(
+                    onClick = onProfileClick,
+                    role = Role.Button,
+                )
+                .semantics { contentDescription = "Abrir perfil" }
                 .background(colors.surface)
                 .border(1.dp, colors.borderSubtle, CircleShape),
             contentAlignment = Alignment.Center,
@@ -515,7 +524,7 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
                 }
                 state.acwr?.let { acwr ->
                     McPill(
-                        text = "Aumento ${formatTwoDecimals(acwr)}× vs. mês",
+                        text = "Aumento ${formatTwoDecimals(acwr)}× vs. 4 sem",
                         containerColor = acwrColor(acwr).copy(alpha = 0.10f),
                         contentColor = acwrColor(acwr),
                     )
@@ -532,23 +541,23 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 McStat(
-                    label = "Acumulada",
+                    label = "Base",
                     value = state.ctl?.toString() ?: NO_VALUE,
-                    hint = "42 dias",
+                    hint = "média/dia · 42d",
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 McStat(
-                    label = "Recente",
+                    label = "Fadiga",
                     value = state.atl?.toString() ?: NO_VALUE,
-                    hint = "7 dias",
+                    hint = "média/dia · 7d",
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 McStat(
                     label = "Balanço",
                     value = state.tsb?.toString() ?: NO_VALUE,
-                    hint = "recuperação",
+                    hint = "base − fadiga",
                     modifier = Modifier.weight(1f),
                     valueColor = colors.warning,
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1203,12 +1212,6 @@ private fun RecentActivityCard(activity: RecentActivityUi, onClick: () -> Unit) 
             )
         }
     }
-}
-
-private fun readinessLabel(level: ReadinessLevel): String = when (level) {
-    ReadinessLevel.GREEN -> "Verde"
-    ReadinessLevel.AMBER -> "Âmbar"
-    ReadinessLevel.RED -> "Vermelho"
 }
 
 private fun formatDecimal(value: Double): String = String.format(Locale.forLanguageTag("pt-BR"), "%.1f", value)

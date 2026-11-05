@@ -260,6 +260,7 @@ fun TodayRoute(
     onCheckInClick: () -> Unit,
     onTrendsClick: () -> Unit,
     onActivityClick: (String) -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
@@ -271,6 +272,7 @@ fun TodayRoute(
         onCheckInClick = onCheckInClick,
         onTrendsClick = onTrendsClick,
         onActivityClick = onActivityClick,
+        onProfileClick = onProfileClick,
         onCompleteSession = viewModel::completeSession,
         onSkipSession = viewModel::skipSession,
         onSwapSession = viewModel::swapSession,

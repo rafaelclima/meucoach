@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.today
 
+import com.meucoach.app.ui.common.readinessLabelLowercase
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.ExplanationCatalog
 import com.meucoach.core.domain.prescription.WorkoutRecommendation
@@ -171,11 +172,7 @@ private fun restingHeartRateLabel(metrics: RestingHeartRateMetrics): String {
     }
 }
 
-private fun ReadinessLevel.label(): String = when (this) {
-    ReadinessLevel.GREEN -> "verde"
-    ReadinessLevel.AMBER -> "âmbar"
-    ReadinessLevel.RED -> "vermelha"
-}
+private fun ReadinessLevel.label(): String = readinessLabelLowercase(this)
 
 private fun DataConfidence.label(): String = when (this) {
     DataConfidence.HIGH -> "alta"

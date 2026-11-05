@@ -1,6 +1,7 @@
 package com.meucoach.app.ui.today
 
 import android.content.Context
+import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -28,6 +29,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.time.Clock
 import java.time.Instant
@@ -50,6 +52,7 @@ class TodayViewModelPersistTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
+        shadowOf(Looper.getMainLooper()).idle()
         val context = ApplicationProvider.getApplicationContext<Context>()
         database =
             Room
@@ -72,6 +75,7 @@ class TodayViewModelPersistTest {
 
     @After
     fun tearDown() {
+        shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
     }

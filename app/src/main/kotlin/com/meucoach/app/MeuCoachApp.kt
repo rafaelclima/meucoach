@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -83,6 +84,21 @@ private fun calibrationRoute(activityId: String? = null): String = if (activityI
     CALIBRATION_BASE_ROUTE
 } else {
     "$CALIBRATION_BASE_ROUTE?$CALIBRATION_ACTIVITY_ARG=${Uri.encode(activityId)}"
+}
+
+/**
+ * Switches bottom-bar tabs while keeping the other tabs' state.
+ *
+ * The start destination is never restored: Navigation stores the saved state of the
+ * tab that was left under the `popUpTo` destination's id, so restoring "today" after
+ * visiting "trends" reopened "trends" instead of going home.
+ */
+internal fun NavHostController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = route != AppDestination.Today.route
+    }
 }
 
 @Composable
@@ -155,13 +171,7 @@ private fun MainContent() {
                     },
                     selectedRoute = currentRoute,
                     onSelect = { route ->
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navController.navigateToTab(route)
                     },
                 )
             }
@@ -179,10 +189,13 @@ private fun MainContent() {
                     onDemoAction = showDemoMessage,
                     onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
                     onTrendsClick = {
-                        navController.navigate(AppDestination.Trends.route) { launchSingleTop = true }
+                        navController.navigateToTab(AppDestination.Trends.route)
                     },
                     onActivityClick = { activityId ->
                         navController.navigate(activityDetailRoute(activityId))
+                    },
+                    onProfileClick = {
+                        navController.navigateToTab(AppDestination.Profile.route)
                     },
                 )
             }

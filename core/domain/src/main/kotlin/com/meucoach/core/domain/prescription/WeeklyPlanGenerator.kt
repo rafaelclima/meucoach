@@ -219,7 +219,7 @@ class WeeklyPlanGenerator {
                 append("Sem treino forte: ")
                 append(
                     when {
-                        safetyBlock -> "prontidão não está verde."
+                        safetyBlock -> "prontidão não está alta."
                         input.profile.experience == Experience.BEGINNER -> "iniciante prioriza base."
                         (acwr ?: 0.0) > ACWR_MAX -> "sua carga subiu rápido."
                         days.size < 3 -> "menos de 3 dias disponíveis."

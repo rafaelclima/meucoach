@@ -143,7 +143,7 @@ class WorkoutRecommender {
                     easyHint(paceTarget, heartRateTarget)
 
             readiness.level == ReadinessLevel.AMBER || noQuality ->
-                "Prontidão âmbar: hoje é fácil, sem treino forte. " + easyHint(paceTarget, heartRateTarget)
+                "Prontidão moderada: hoje é fácil, sem treino forte. " + easyHint(paceTarget, heartRateTarget)
 
             else ->
                 "Base aeróbica em ritmo fácil, conversável do início ao fim. " +
@@ -178,7 +178,7 @@ class WorkoutRecommender {
         rationale = if (illness) {
             "Sinal de doença ou lesão: sem treino forte hoje. Se persistir, procure avaliação."
         } else {
-            "Prontidão vermelha: o corpo pede descanso. Não reponha o treino de outra forma."
+            "Prontidão baixa: o corpo pede descanso. Não reponha o treino de outra forma."
         },
         ruleIds = if (illness) listOf("R-SAFE-01", "R-READY-03") else listOf("R-READY-03"),
         evidenceIds = listOf("EV-SAW-2016"),

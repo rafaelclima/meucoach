@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -158,7 +159,7 @@ class TodayPlanTest {
     fun `opens the readiness explanation with its own title`() {
         val today = LocalDate.of(2026, 11, 2)
         val explanation = TodayExplanationUi(
-            rationale = "Sua prontidão está verde (74/100): sono de 7h30 e variabilidade acima da média.",
+            rationale = "Sua prontidão está alta (74/100): sono de 7h30 e variabilidade acima da média.",
             confidence = DataConfidence.HIGH,
             usedData = listOf("Check-in de hoje", "Sono recente"),
             missingData = listOf("FC de repouso"),
@@ -185,7 +186,7 @@ class TodayPlanTest {
 
         compose.onNodeWithTag("explanation-title").assertTextEquals("Por que esta prontidão?")
         compose
-            .onNodeWithText("Sua prontidão está verde", substring = true)
+            .onNodeWithText("Sua prontidão está alta", substring = true)
             .assertIsDisplayed()
         compose.onNodeWithText("O QUE USEI").performScrollTo().assertIsDisplayed()
     }
@@ -258,7 +259,7 @@ class TodayPlanTest {
         val today = LocalDate.now()
         val plan = planWith(today).copy(
             rationale = "Semana com 3 dias e 114 min no total. Sem treino forte: prontidão não está " +
-                "verde. Sem progressão até existir histórico de conclusão.",
+                "alta. Sem progressão até existir histórico de conclusão.",
         )
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -313,8 +314,8 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Aumento 1,42× vs. mês"))
-        compose.onNodeWithText("Aumento 1,42× vs. mês").assertIsDisplayed()
+        list.performScrollToNode(hasText("Aumento 1,42× vs. 4 sem"))
+        compose.onNodeWithText("Aumento 1,42× vs. 4 sem").assertIsDisplayed()
     }
 
     @Test
@@ -330,7 +331,7 @@ class TodayPlanTest {
         val list = compose.onNodeWithTag("today-list")
         list.performScrollToNode(hasText("CARGA DA SEMANA"))
         compose.onNodeWithText("Nenhuma corrida nesta semana").assertIsDisplayed()
-        compose.onNodeWithText("Acumulada", ignoreCase = true).assertDoesNotExist()
+        compose.onNodeWithText("Base", ignoreCase = true).assertDoesNotExist()
         compose.onNodeWithText("Balanço", ignoreCase = true).assertDoesNotExist()
     }
 
@@ -368,6 +369,24 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("ÚLTIMA CORRIDA"))
         compose.onNodeWithText("Corrida de rua").performClick()
         assertThat(openedActivity).isEqualTo("demo-activity")
+    }
+
+    @Test
+    fun `opens the profile when tapping the avatar`() {
+        var profile = false
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(),
+                    onProfileClick = { profile = true },
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Abrir perfil").performClick()
+        assertThat(profile).isTrue()
     }
 
     private fun planWith(date: LocalDate) = WeeklyPlan(

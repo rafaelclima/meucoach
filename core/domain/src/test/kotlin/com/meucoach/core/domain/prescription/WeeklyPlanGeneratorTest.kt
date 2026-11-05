@@ -85,7 +85,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("não está verde")
+        assertThat(plan.rationale).contains("não está alta")
     }
 
     @Test
@@ -121,7 +121,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("não está verde")
+        assertThat(plan.rationale).contains("não está alta")
     }
 
     @Test
