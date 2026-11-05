@@ -1,4 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MeuCoach</string>
+
+    <!-- Tutorial -->
+    <string name="tutorial_step">PASSO %1$d DE %2$d</string>
+    <string name="tutorial_step_a11y">Passo %1$d de %2$d</string>
+    <string name="tutorial_skip">Pular</string>
+    <string name="tutorial_back">Voltar</string>
+    <string name="tutorial_continue">Continuar</string>
+    <string name="tutorial_finish">Tudo pronto</string>
+
+    <string name="tutorial_page_1_visual">SEU COACH</string>
+    <string name="tutorial_page_1_overline">BEM-VINDO</string>
+    <string name="tutorial_page_1_title">Seu coach de corrida</string>
+    <string name="tutorial_page_1_description">O MeuCoach lê seus treinos, aprende com seu descanso e prescreve o próximo passo — explicando sempre por quê. Este tour rápido mostra o essencial.</string>
+
+    <string name="tutorial_page_2_visual">4 TELAS</string>
+    <string name="tutorial_page_2_overline">AS TELAS</string>
+    <string name="tutorial_page_2_title">Quatro abas, um coach</string>
+    <string name="tutorial_page_2_description">Tudo fica na base do app, organizado em quatro lugares:</string>
+    <string name="tutorial_page_2_bullet_1">Hoje — prontidão do dia, treino recomendado e plano da semana</string>
+    <string name="tutorial_page_2_bullet_2">Corridas — histórico dos treinos importados e detalhe de cada um</string>
+    <string name="tutorial_page_2_bullet_3">Tendências — carga, consistência e evolução semana a semana</string>
+    <string name="tutorial_page_2_bullet_4">Perfil — calibração, dados de saúde e backup dos seus dados</string>
+
+    <string name="tutorial_page_3_visual">O QUE IMPORTA</string>
+    <string name="tutorial_page_3_overline">SEU PAPEL</string>
+    <string name="tutorial_page_3_title">O que mantém o coach informado</string>
+    <string name="tutorial_page_3_description">Quanto mais frescas as informações, mais certeiro o treino de amanhã:</string>
+    <string name="tutorial_page_3_bullet_1">Check-in diário — 4 perguntas de 30 segundos (sono, fadiga, dor e estresse); há lembrete às 18h</string>
+    <string name="tutorial_page_3_bullet_2">Corridas importadas — compartilhe o arquivo FIT, TCX ou GPX com o app quando terminar o treino</string>
+    <string name="tutorial_page_3_bullet_3">Descanso automático — conecte o Health Connect para trazer sono, FC de repouso, HRV e SpO₂</string>
+    <string name="tutorial_page_3_bullet_4">Calibração — depois de uma prova ou teste de 30 min, use Calibrar para refinar zonas e ritmos</string>
+
+    <string name="tutorial_page_4_visual">NO APARELHO</string>
+    <string name="tutorial_page_4_overline">VOCÊ NO CONTROLE</string>
+    <string name="tutorial_page_4_title">Nada sai do aparelho</string>
+    <string name="tutorial_page_4_description">Perfil, corridas e check-ins vivem apenas no seu celular. O app nunca inventa dados nem culpa você: sem informação suficiente, ele fica conservador.</string>
+    <string name="tutorial_page_4_bullet_1">Cada treino tem a explicação em “Por que este treino?” — sem jargão, sem bibliografia no caminho</string>
+    <string name="tutorial_page_4_bullet_2">Você decide: concluir, adiar ou pular uma sessão com motivo — tudo fica registrado</string>
+    <string name="tutorial_page_4_bullet_3">Exporte ou apague tudo quando quiser, em Perfil → Seus dados</string>
+
+    <!-- Perfil · lembretes -->
+    <string name="profile_reminders_title">Lembretes</string>
+    <string name="profile_reminders_body">Um lembrete por dia para o check-in (18h) e para o treino (7h). Sem cobrança.</string>
+    <string name="profile_reminders_enable">Ativar lembretes</string>
+    <string name="profile_reminders_enabled">Lembretes ativados</string>
+    <string name="profile_reminders_settings">Abrir configurações</string>
 </resources>

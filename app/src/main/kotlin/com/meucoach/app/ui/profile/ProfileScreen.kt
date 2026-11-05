@@ -334,6 +334,7 @@ private fun ProfileDetails(
                 )
             }
         }
+        item { NotificationReminderCard() }
         item {
             McPrimaryButton(
                 text = "Editar perfil",

@@ -19,19 +19,49 @@ class TutorialScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun tutorialDark() {
-        capture(darkTheme = true, file = "src/test/screenshots/tutorial-dark.png")
+    fun tutorialPage1Dark() {
+        capture(darkTheme = true, page = 0, file = "src/test/screenshots/tutorial-dark.png")
     }
 
     @Test
-    fun tutorialLight() {
-        capture(darkTheme = false, file = "src/test/screenshots/tutorial-light.png")
+    fun tutorialPage1Light() {
+        capture(darkTheme = false, page = 0, file = "src/test/screenshots/tutorial-light.png")
     }
 
-    private fun capture(darkTheme: Boolean, file: String) {
+    @Test
+    fun tutorialPage2Dark() {
+        capture(darkTheme = true, page = 1, file = "src/test/screenshots/tutorial-2-dark.png")
+    }
+
+    @Test
+    fun tutorialPage2Light() {
+        capture(darkTheme = false, page = 1, file = "src/test/screenshots/tutorial-2-light.png")
+    }
+
+    @Test
+    fun tutorialPage3Dark() {
+        capture(darkTheme = true, page = 2, file = "src/test/screenshots/tutorial-3-dark.png")
+    }
+
+    @Test
+    fun tutorialPage3Light() {
+        capture(darkTheme = false, page = 2, file = "src/test/screenshots/tutorial-3-light.png")
+    }
+
+    @Test
+    fun tutorialPage4Dark() {
+        capture(darkTheme = true, page = 3, file = "src/test/screenshots/tutorial-4-dark.png")
+    }
+
+    @Test
+    fun tutorialPage4Light() {
+        capture(darkTheme = false, page = 3, file = "src/test/screenshots/tutorial-4-light.png")
+    }
+
+    private fun capture(darkTheme: Boolean, page: Int, file: String) {
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
-                TutorialContent(onFinish = {}, onDismiss = {})
+                TutorialContent(onFinish = {}, onDismiss = {}, initialPage = page)
             }
         }
 

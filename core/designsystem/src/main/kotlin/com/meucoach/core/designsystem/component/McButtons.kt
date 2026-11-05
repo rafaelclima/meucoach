@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -140,12 +141,17 @@ fun McDangerButton(
 }
 
 @Composable
-fun McTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, trailingArrow: Boolean = true) {
-    val colors = McTheme.colors
+fun McTextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailingArrow: Boolean = true,
+    contentColor: Color = McTheme.colors.accentText,
+) {
     TextButton(
         onClick = onClick,
         modifier = modifier,
-        colors = ButtonDefaults.textButtonColors(contentColor = colors.accentText),
+        colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Row(

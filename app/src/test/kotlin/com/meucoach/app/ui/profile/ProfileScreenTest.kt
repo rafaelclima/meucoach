@@ -145,6 +145,16 @@ class ProfileScreenTest {
     }
 
     @Test
+    fun `offers notification priming in the help section`() {
+        setContent(state = ProfileUiState(isLoading = false, profile = profile()), onEdit = {})
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("Lembretes"))
+        compose.onNodeWithText("Lembretes").assertIsDisplayed()
+        compose.onNodeWithText("Um lembrete por dia", substring = true).assertIsDisplayed()
+    }
+
+    @Test
     fun `offers the tutorial replay and reports it`() {
         var showTutorial = false
         compose.setContent {
