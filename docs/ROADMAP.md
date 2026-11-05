@@ -408,6 +408,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | U-09 | Explicar a carga de treino (Base, Fadiga, Balanço, Carga, Aumento e Variedade) e corrigir o TRIMP para minutos. | Concluído em 04/11/2026 |
 | U-10 | Tutorial Fase A: back nativo, progresso acessível, CTA estável, layout ancorado, strings e permissão de notificação contextual. | Concluído em 05/11/2026 |
 | U-11 | Tutorial Fase B: 3 cenas com plano/prontidão reais, primeiro passo dinâmico e checklist “Complete seu setup” no Hoje. | Concluído em 05/11/2026 |
+| U-12 | Tutorial Fase C: primeira vitória, dicas contextuais únicas, medição local exportável e versionamento do tutorial. | Concluído em 05/11/2026 |
 
 ## Backlog técnico
 

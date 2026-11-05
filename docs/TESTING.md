@@ -172,6 +172,9 @@ Evidência atual (30/10/2026):
 - `TutorialStoreTest`: flag de intro e dismiss do checklist por 7 dias.
 - `FirstRunChecklistViewModelTest`: estado inicial, check-in, Health Connect, dismiss e conclusão dos 3 passos.
 - `FirstRunChecklistCardTest` e `TodayPlanTest`: card no Hoje, ações e dismiss.
+- `FirstRunMetricsStoreTest`: timeline do tutorial, maior passo, primeira ação e eventos do checklist.
+- `FirstRunTipStoreTest` e `FirstRunTipCardTest`: dica única, ação e dismiss.
+- `DataManagementViewModelTest`: export inclui o objeto `firstRun`.
 - Goldens: 3 cenas × dark/light + `today-checklist-dark`.
 
 ## 6. Testes de domínio

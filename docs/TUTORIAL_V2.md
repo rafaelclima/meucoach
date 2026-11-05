@@ -752,14 +752,16 @@ Objetivo: trocar 4 slides por 3 cenas com produto real.
 
 - [x] Pré-permissão de notificação contextual em Perfil → Ajuda (Fase A).
 - [x] Checklist persistente com deep links e dismiss de 7 dias.
-- [ ] Primeira vitória: mensagem após check-in/import.
-- [ ] Medição local (timestamps/contadores) + export no JSON.
-- [ ] Versionamento do tutorial e revisão no Perfil.
-- [ ] Dicas contextuais nas telas vazias (check-in, importação, Tendências).
+- [x] Primeira vitória: “Prontidão atualizada” após o check-in e “Corrida importada” na lista.
+- [x] Medição local (timestamps/contadores) + export no JSON em `firstRun`.
+- [x] Versionamento do tutorial (`introVersion = 2`) e revisão no Perfil.
+- [x] Dicas contextuais únicas em Corridas e Tendências.
 - [ ] Teste com 5 usuários (incluindo o usuário 0).
 - [ ] Ajustes de copy e ordem com base no teste.
 
 **Aceite:** ASI em 24 h ≥ 40% na primeira coorte; negativa de notificação não piora.
+
+**Implementação (05/11/2026):** `FirstRunMetricsStore` registra início/fim/pulo do tutorial, maior passo, primeira ação, dismiss e conclusão do checklist. O JSON de backup ganhou o objeto `firstRun`. `FirstRunTipCard` cobre “Prontidão atualizada”, “Corrida importada”, o estado vazio de Corridas e o de Tendências, com dismiss permanente por dica. O tutorial passou a gravar `introVersion = 2` sem forçar usuários antigos a revê-lo.
 
 ### Fase D — Experimentos (contínuo)
 

@@ -206,6 +206,7 @@ Regras:
 | `TutorialProgress` | barra segmentada 4 dp com `progressBarRangeInfo` e “Passo X de Y” |
 | `TutorialActionCard` | ação de primeiro uso: ícone, título, meta, descrição e chevron; alvo 48 dp |
 | `FirstRunChecklistCard` | checklist de 3 passos no Hoje, com progresso, deep links e dismiss |
+| `FirstRunTipCard` | dica contextual única, dismissível, com ação opcional |
 | `McBottomBar` | 4 destinos + ação central circular lima |
 
 ### 7.2 Estados

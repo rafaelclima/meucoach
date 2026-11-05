@@ -34,6 +34,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Gráficos:** Vico 3.3.1 para line/bar; Canvas para gauge/zone bar/heatmap; eixos em pt-BR.
 - **Permissões:** notificação só no contexto (Perfil → Ajuda/checklist), nunca no launch; o app segue utilizável se o usuário recusar.
 - **Tutorial:** camada sobre o Hoje, 3 cenas com dados reais e checklist dismissível; sem streak, sem dados inventados.
+- **Ativação:** métricas locais (timestamps/contadores) no JSON de backup, sem SDK de analytics; dicas contextuais únicas e dismissíveis.
 - **Backend:** só na Fase 2; app nunca depende dele.
 - **Força:** fora do escopo; fadiga global no check-in.
 - **Calor:** ajuste empírico conservador, confiança limitada.

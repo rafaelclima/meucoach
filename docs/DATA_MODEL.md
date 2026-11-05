@@ -243,6 +243,6 @@ O usuário pode exportar:
 - CSV de métricas diárias.
 - ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
 
-Estado atual (P0-07): `ActivityRepository.exportJson()` exporta atividades (inclusive lixeira), laps, contagem de samples e jobs de importação. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
+Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões, atividades (inclusive lixeira), laps, contagem de samples, jobs de importação e o objeto local `firstRun` (timeline do tutorial, primeira ação e checklist). Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
 
 Excluir tudo remove banco, arquivos e blobs, mantendo apenas um recibo anônimo de exclusão por 30 dias.

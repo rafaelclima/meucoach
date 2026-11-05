@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 05/11/2026 (tutorial Fases A e B)
+**Atualizado:** 05/11/2026 (tutorial Fases A, B e C)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 834 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 431 em `:app`)
+- **Testes:** 840 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 437 em `:app`)
 - **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 31 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
@@ -54,7 +54,39 @@
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
-- **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+- **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-05 — Tutorial Fase C: ativação mensurável
+
+**Objetivo:** fechar o ciclo do primeiro uso com primeira vitória, dicas contextuais, medição local exportável e versionamento.
+
+### Concluído
+
+- **Primeira vitória:** depois do primeiro check-in, o Hoje mostra “Prontidão atualizada — o treino de hoje já considera este check-in”. Depois da primeira importação, a lista de Corridas mostra “Corrida importada — toque para ver zonas, splits e o porquê”.
+- **Dicas contextuais únicas:** `FirstRunTipCard` + `FirstRunTipStore` mostram uma dica por tela, uma única vez: Corridas vazia, Tendências sem carga, primeira importação e primeiro check-in. O dismiss é permanente por dica.
+- **Medição local:** `FirstRunMetricsStore` registra início, conclusão, pulo, maior passo, primeira ação, dismiss e conclusão do checklist. Nada sai do aparelho; os dados entram no JSON de backup como `firstRun`.
+- **Versionamento:** `TutorialStore` grava `introVersion = 2` sem forçar quem já viu a v1 a repetir o tour; a revisão continua em Perfil → Ajuda.
+- **Export:** `UserDataRepository.exportJson(firstRun)` aceita o objeto local e o inclui no backup; `DataManagementViewModel` injeta o store.
+- **Testes:** +6 em `:app` (store de métricas, store de dicas e card de dica), além dos testes de tutorial/checklist já existentes. Total: **840 testes**.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- `today-checklist-dark.png` regravado com o card de primeira vitória.
+- Nenhuma dependência nova; nenhum dado sai do aparelho.
+
+### Decisões e observações
+
+- **Métrica local, não analytics:** o app não adiciona SDK nem envia eventos. O usuário vê e exporta os próprios dados.
+- **Primeira vitória acoplada ao primeiro uso:** o card de check-in só aparece enquanto o checklist de setup está ativo; depois disso, o Hoje fica limpo.
+- **Dica única, sem insistência:** cada dica é dismissível e não volta. Não há streak, prazo ou cobrança.
+- **Versão sem retrabalho:** usuários antigos não são forçados a rever o tour; a versão fica registrada para futuras migrações de conteúdo.
+
+### Próximo passo
+
+1. Validação no aparelho real dos cards, do checklist e do export `firstRun`.
+2. Teste moderado com 5 usuários para ajustar copy/ordem.
+3. Fase D: experimentos de ordem/CTA e spotlight opcional no Hoje.
 
 ## Sessão 2026-11-05 — Tutorial Fase B: 3 cenas com dados reais e checklist
 
