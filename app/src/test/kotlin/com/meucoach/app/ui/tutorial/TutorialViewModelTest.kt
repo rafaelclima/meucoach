@@ -3,6 +3,7 @@ package com.meucoach.app.ui.tutorial
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
 import com.meucoach.core.data.health.HealthConnectStatus
@@ -44,6 +45,7 @@ class TutorialViewModelTest {
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var store: TutorialStore
+    private lateinit var metrics: FirstRunMetricsStore
     private lateinit var profileRepository: ProfileRepository
     private lateinit var checkInRepository: CheckInRepository
     private lateinit var metricsRepository: DailyMetricsRepository
@@ -59,6 +61,7 @@ class TutorialViewModelTest {
             .clear()
             .commit()
         store = TutorialStore(context)
+        metrics = FirstRunMetricsStore(context, prefsName = "tutorial-metrics-${System.nanoTime()}")
         database = Room
             .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
             .allowMainThreadQueries()
@@ -79,6 +82,7 @@ class TutorialViewModelTest {
     @Test
     fun `starts unseen when the intro was never completed`() {
         val viewModel = viewModel()
+        awaitLoaded(viewModel)
 
         assertThat(viewModel.uiState.value.seen).isFalse()
     }
@@ -86,13 +90,16 @@ class TutorialViewModelTest {
     @Test
     fun `starts seen when the intro was already completed`() {
         store.markIntroDone()
+        val viewModel = viewModel()
+        awaitLoaded(viewModel)
 
-        assertThat(viewModel().uiState.value.seen).isTrue()
+        assertThat(viewModel.uiState.value.seen).isTrue()
     }
 
     @Test
     fun `marking seen persists the flag`() {
         val viewModel = viewModel()
+        awaitLoaded(viewModel)
 
         viewModel.markSeen()
 
@@ -140,8 +147,17 @@ class TutorialViewModelTest {
         assertThat(state.healthConnected).isTrue()
     }
 
+    private fun awaitLoaded(viewModel: TutorialViewModel) {
+        runBlocking {
+            withTimeout(5_000) {
+                viewModel.uiState.first { !it.isLoading }
+            }
+        }
+    }
+
     private fun viewModel(healthConnected: Boolean = false): TutorialViewModel = TutorialViewModel(
         store = store,
+        metrics = metrics,
         profileRepository = profileRepository,
         checkInRepository = checkInRepository,
         metricsRepository = metricsRepository,

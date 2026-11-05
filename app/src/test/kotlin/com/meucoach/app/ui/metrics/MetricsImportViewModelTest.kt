@@ -3,13 +3,14 @@ package com.meucoach.app.ui.metrics
 import android.content.Context
 import android.net.Uri
 import android.os.Looper
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -33,6 +34,7 @@ class MetricsImportViewModelTest {
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: DailyMetricsRepository
+    private var currentViewModel: MetricsImportViewModel? = null
 
     @Before
     fun setUp() {
@@ -49,6 +51,7 @@ class MetricsImportViewModelTest {
 
     @After
     fun tearDown() {
+        currentViewModel?.viewModelScope?.cancel()
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
@@ -56,7 +59,7 @@ class MetricsImportViewModelTest {
 
     @Test
     fun `imports valid rows and reports duplicates`() {
-        val viewModel = MetricsImportViewModel(context, repository)
+        val viewModel = viewModel()
         viewModel.import(
             file(
                 """
@@ -76,7 +79,7 @@ class MetricsImportViewModelTest {
 
     @Test
     fun `keeps valid rows when some are invalid`() {
-        val viewModel = MetricsImportViewModel(context, repository)
+        val viewModel = viewModel()
         viewModel.import(
             file(
                 """
@@ -95,7 +98,7 @@ class MetricsImportViewModelTest {
 
     @Test
     fun `reports a missing date column`() {
-        val viewModel = MetricsImportViewModel(context, repository)
+        val viewModel = viewModel()
         viewModel.import(file("sleep_minutes\n450"))
 
         val state = awaitIdle(viewModel)
@@ -106,7 +109,7 @@ class MetricsImportViewModelTest {
 
     @Test
     fun `reports an unreadable file`() {
-        val viewModel = MetricsImportViewModel(context, repository)
+        val viewModel = viewModel()
         viewModel.import(Uri.fromFile(File(context.cacheDir, "missing.csv")))
 
         val state = awaitIdle(viewModel)
@@ -129,7 +132,7 @@ class MetricsImportViewModelTest {
                 ),
             )
         }
-        val viewModel = MetricsImportViewModel(context, repository)
+        val viewModel = viewModel()
         val state = kotlinx.coroutines.runBlocking {
             withTimeout(5_000) {
                 viewModel.uiState.first { it.trends.hasData }
@@ -148,15 +151,13 @@ class MetricsImportViewModelTest {
         assertThat(viewModel.uiState.value.trends.hasData).isTrue()
     }
 
+    private fun viewModel(): MetricsImportViewModel = MetricsImportViewModel(context, repository)
+        .also { it.ioDispatcher = dispatcher }
+        .also { currentViewModel = it }
+
     private fun awaitIdle(viewModel: MetricsImportViewModel): MetricsImportUiState = kotlinx.coroutines.runBlocking {
         withTimeout(15_000) {
-            var state = viewModel.uiState.value
-            while (state.isImporting || state.message == null) {
-                dispatcher.scheduler.advanceUntilIdle()
-                delay(10)
-                state = viewModel.uiState.value
-            }
-            state
+            viewModel.uiState.first { !it.isImporting && it.message != null }
         }
     }
 

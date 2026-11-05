@@ -1,8 +1,10 @@
 package com.meucoach.app.ui.today
 
 import android.content.Context
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
@@ -13,6 +15,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.model.DailyCheckIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -37,8 +40,10 @@ class FirstRunChecklistViewModelTest {
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var store: TutorialStore
+    private lateinit var metrics: FirstRunMetricsStore
     private lateinit var checkInRepository: CheckInRepository
     private lateinit var activityRepository: ActivityRepository
+    private var currentViewModel: FirstRunChecklistViewModel? = null
 
     @Before
     fun setUp() {
@@ -49,6 +54,7 @@ class FirstRunChecklistViewModelTest {
             .clear()
             .commit()
         store = TutorialStore(context)
+        metrics = FirstRunMetricsStore(context, prefsName = "checklist-metrics-${System.nanoTime()}")
         database = Room
             .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
             .allowMainThreadQueries()
@@ -59,6 +65,7 @@ class FirstRunChecklistViewModelTest {
 
     @After
     fun tearDown() {
+        currentViewModel?.viewModelScope?.cancel()
         database.close()
         Dispatchers.resetMain()
     }
@@ -132,7 +139,8 @@ class FirstRunChecklistViewModelTest {
         activityRepository = activityRepository,
         healthSource = FakeChecklistHealthSource(healthConnected),
         store = store,
-    )
+        metrics = metrics,
+    ).also { currentViewModel = it }
 }
 
 private class FakeChecklistHealthSource(private val connected: Boolean) : HealthDailySource {

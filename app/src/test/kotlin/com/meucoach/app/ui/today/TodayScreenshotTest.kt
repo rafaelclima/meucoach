@@ -1,8 +1,11 @@
 package com.meucoach.app.ui.today
 
+import android.content.Context
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlannedSession
@@ -17,6 +20,7 @@ import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +36,15 @@ import java.time.LocalTime
 class TodayScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Before
+    fun clearTips() {
+        ApplicationProvider.getApplicationContext<Context>()
+            .getSharedPreferences(FirstRunTipStore.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
+    }
 
     @Test
     fun todayDark() {
