@@ -53,6 +53,7 @@ class HealthMetricsScreenshotTest {
         }
         compose.onNodeWithTag("metrics-import-list")
             .performScrollToNode(hasTestTag("health-table-sleep"))
+        settle()
         compose.onRoot().captureRoboImage("src/test/screenshots/health-charts-dark.png")
     }
 
@@ -69,6 +70,7 @@ class HealthMetricsScreenshotTest {
         }
         compose.onNodeWithTag("metrics-import-list")
             .performScrollToNode(hasTestTag("health-table-hrv"))
+        settle()
         compose.onRoot().captureRoboImage("src/test/screenshots/health-recovery-dark.png")
     }
 
@@ -83,7 +85,15 @@ class HealthMetricsScreenshotTest {
             }
         }
 
+        settle()
         compose.onRoot().captureRoboImage(file)
+    }
+
+    /** Vico draws after the first layout pass; wait for the chart before capturing. */
+    private fun settle() {
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
     }
 
     private fun state(): MetricsImportUiState {

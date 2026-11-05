@@ -81,7 +81,17 @@ class TrendsFullScreenshotTest {
             }
         }
         compose.onNodeWithTag("trends-list").performScrollToNode(scrollTo)
+        settle()
         compose.onRoot().captureRoboImage(file)
+    }
+
+    /** Vico builds the model off the composition; give it a moment before capturing. */
+    private fun settle() {
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        Thread.sleep(300)
+        compose.waitForIdle()
     }
 
     private fun profile() = AthleteProfile(
