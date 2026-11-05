@@ -9,6 +9,7 @@ import org.junit.Test
 class TrainingLoadCalculatorTest {
     @Test
     fun `calculates trimp for male athlete`() {
+        // Banister's formula uses minutes, so 30 min stays in the same 0-100 scale as rTSS.
         val result =
             TrainingLoadCalculator.trimp(
                 durationSec = 1_800,
@@ -18,7 +19,7 @@ class TrainingLoadCalculatorTest {
                 sex = Sex.MALE,
             )
 
-        assertThat(result).isCloseTo(3_230.955_973_724_988, within(1e-9))
+        assertThat(result).isCloseTo(53.849_266_228_749_8, within(1e-9))
     }
 
     @Test
@@ -32,7 +33,7 @@ class TrainingLoadCalculatorTest {
                 sex = Sex.MALE,
             )
 
-        assertThat(result).isCloseTo(7_080.602_553_607_659_5, within(1e-9))
+        assertThat(result).isCloseTo(118.010_042_560_127_66, within(1e-9))
     }
 
     @Test
@@ -40,8 +41,8 @@ class TrainingLoadCalculatorTest {
         val female = TrainingLoadCalculator.trimp(1_800, 150, 58, 187, Sex.FEMALE)
         val neutral = TrainingLoadCalculator.trimp(1_800, 150, 58, 187, Sex.UNSPECIFIED)
 
-        assertThat(female).isCloseTo(3_632.596_565_231_864_6, within(1e-9))
-        assertThat(neutral).isCloseTo(3_475.720_151_439_445, within(1e-9))
+        assertThat(female).isCloseTo(60.543_276_087_197_74, within(1e-9))
+        assertThat(neutral).isCloseTo(57.928_669_190_657_42, within(1e-9))
     }
 
     @Test

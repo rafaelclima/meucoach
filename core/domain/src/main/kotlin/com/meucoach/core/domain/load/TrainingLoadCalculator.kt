@@ -29,7 +29,9 @@ object TrainingLoadCalculator {
                 Sex.FEMALE -> 0.86 to 1.67
                 Sex.OTHER, Sex.UNSPECIFIED -> 0.75 to 1.80
             }
-        return durationSec * x * coefficient * exp(exponent * x)
+        // Banister's TRIMP is defined per minute of effort; durationSec must be converted.
+        val durationMin = durationSec / 60.0
+        return durationMin * x * coefficient * exp(exponent * x)
     }
 
     fun rTss(durationSec: Int, normalizedPaceSecPerKm: Int, thresholdPaceSecPerKm: Int): Double {

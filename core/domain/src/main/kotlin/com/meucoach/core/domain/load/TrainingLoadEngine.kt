@@ -36,6 +36,10 @@ data class LoadSnapshot(
     val missingDays: Int,
 ) {
     val hasData: Boolean get() = daily.any { it.metric != null }
+
+    /** Daily training stress balance: base minus fatigue, same unit as the other PMC series. */
+    val tsbSeries: List<Double>
+        get() = ctlSeries.zip(atlSeries) { ctl, atl -> TrainingLoadCalculator.tsb(ctl, atl) }
 }
 
 /**
