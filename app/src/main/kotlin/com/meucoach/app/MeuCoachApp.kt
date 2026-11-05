@@ -219,7 +219,7 @@ private fun MainContent() {
                     )
                 }
                 composable(AppDestination.Trends.route) {
-                    TrendsScreen()
+                    TrendsScreen(onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) })
                 }
                 composable(AppDestination.Profile.route) {
                     ProfileScreen(

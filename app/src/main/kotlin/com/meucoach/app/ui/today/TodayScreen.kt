@@ -55,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.meucoach.app.ui.common.ProfileAvatar
 import com.meucoach.app.ui.common.readinessLabel
+import com.meucoach.app.ui.firstrun.FirstRunTipCard
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McConfidenceBadge
@@ -128,6 +129,15 @@ fun TodayScreen(
                     onImport = onImportClick,
                     onHealth = onHealthClick,
                     onDismiss = onChecklistDismiss,
+                )
+            }
+        }
+        if (checklistState.shouldShow && checklistState.hasCheckedIn) {
+            item {
+                FirstRunTipCard(
+                    tipId = "first-win-checkin",
+                    title = "Prontidão atualizada",
+                    body = "O treino de hoje já considera este check-in.",
                 )
             }
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.ActivityRepository
@@ -45,6 +46,7 @@ class DataManagementViewModelTest {
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var userData: UserDataRepository
+    private lateinit var firstRunMetrics: FirstRunMetricsStore
     private lateinit var viewModel: DataManagementViewModel
     private val clock = Clock.fixed(Instant.parse("2026-11-03T12:00:00Z"), ZoneOffset.UTC)
 
@@ -62,10 +64,16 @@ class DataManagementViewModelTest {
             HealthSyncStore(context, prefsName = "data-management-${System.nanoTime()}"),
             clock,
         )
+        firstRunMetrics = FirstRunMetricsStore(
+            context,
+            clock,
+            prefsName = "data-management-metrics-${System.nanoTime()}",
+        )
         viewModel = DataManagementViewModel(
             userData = userData,
             profiles = com.meucoach.core.data.repository.ProfileRepository(database, clock),
             photos = com.meucoach.app.profile.ProfilePhotoStore(context),
+            firstRunMetrics = firstRunMetrics,
             context = context,
         )
     }
@@ -89,6 +97,7 @@ class DataManagementViewModelTest {
         val export = JSONObject(file.readText())
         assertThat(export.getJSONArray("activities").length()).isEqualTo(1)
         assertThat(export.getJSONObject("profile").getString("id")).isEqualTo("athlete-1")
+        assertThat(export.has("firstRun")).isTrue()
     }
 
     @Test

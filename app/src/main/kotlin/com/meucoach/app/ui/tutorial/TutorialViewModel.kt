@@ -2,6 +2,8 @@ package com.meucoach.app.ui.tutorial
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.firstrun.FirstActionType
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.ui.common.readinessLabel
 import com.meucoach.app.ui.profile.availabilityLabel
 import com.meucoach.app.ui.profile.goalLabel
@@ -84,6 +86,7 @@ data class TutorialUiState(
 @HiltViewModel
 class TutorialViewModel @Inject constructor(
     private val store: TutorialStore,
+    private val metrics: FirstRunMetricsStore,
     private val profileRepository: ProfileRepository,
     private val checkInRepository: CheckInRepository,
     private val metricsRepository: DailyMetricsRepository,
@@ -96,12 +99,28 @@ class TutorialViewModel @Inject constructor(
     val uiState: StateFlow<TutorialUiState> = _uiState.asStateFlow()
 
     init {
+        if (!store.isIntroDone()) metrics.markTutorialStarted()
         load()
     }
 
     fun markSeen() {
         store.markIntroDone()
+        metrics.markTutorialCompleted()
         _uiState.update { it.copy(seen = true) }
+    }
+
+    fun markSkipped() {
+        store.markIntroDone()
+        metrics.markTutorialSkipped()
+        _uiState.update { it.copy(seen = true) }
+    }
+
+    fun onStepChanged(step: Int) {
+        metrics.markTutorialStep(step)
+    }
+
+    fun markFirstAction(type: FirstActionType) {
+        metrics.markFirstAction(type)
     }
 
     fun retry() {

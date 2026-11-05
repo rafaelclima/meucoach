@@ -41,8 +41,8 @@ class UserDataRepository(
     private val healthSyncStore: HealthSyncStore,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    suspend fun exportJson(): String = database.withTransaction {
-        JSONObject()
+    suspend fun exportJson(firstRun: JSONObject? = null): String = database.withTransaction {
+        val root = JSONObject()
             .put("schemaVersion", MeuCoachDatabase.VERSION)
             .put("exportedAt", clock.instant().toString())
             .put("profile", database.profileDao().get()?.toJson() ?: JSONObject.NULL)
@@ -51,7 +51,8 @@ class UserDataRepository(
             .put("weeklyPlans", exportPlans())
             .put("activities", exportActivities())
             .put("importJobs", database.importJobDao().getAll().toJsonArray { it.toJson() })
-            .toString(2)
+        firstRun?.let { root.put("firstRun", it) }
+        root.toString(2)
     }
 
     suspend fun deleteAllData(): UserDataDeletion {

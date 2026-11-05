@@ -2,6 +2,7 @@ package com.meucoach.app.ui.metrics
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.core.data.repository.DailyMetricsRepository
@@ -12,6 +13,7 @@ import com.meucoach.core.domain.importer.DailyMetricsCsvParser
 import com.meucoach.core.model.DailyMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,9 @@ class MetricsImportViewModel @Inject constructor(
 ) : ViewModel() {
     private val parser = DailyMetricsCsvParser()
     private val trendsCalculator = DailyMetricsTrendsCalculator()
+
+    @VisibleForTesting
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
     private val _uiState = MutableStateFlow(MetricsImportUiState())
     val uiState: StateFlow<MetricsImportUiState> = _uiState.asStateFlow()
     private var storedMetrics: List<DailyMetrics> = emptyList()
@@ -82,7 +87,7 @@ class MetricsImportViewModel @Inject constructor(
                 errors = emptyList(),
             )
             val parsed = runCatching {
-                val text = withContext(Dispatchers.IO) { read(uri) }
+                val text = withContext(ioDispatcher) { read(uri) }
                 parser.parse(text)
             }
             parsed.fold(

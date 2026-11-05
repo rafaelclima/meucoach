@@ -2,6 +2,7 @@ package com.meucoach.app.ui.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
@@ -36,8 +37,10 @@ class FirstRunChecklistViewModel @Inject constructor(
     activityRepository: ActivityRepository,
     private val healthSource: HealthDailySource,
     private val store: TutorialStore,
+    private val metrics: FirstRunMetricsStore,
 ) : ViewModel() {
     private val today = LocalDate.now()
+    private var completedMarked = false
     private val _uiState = MutableStateFlow(
         FirstRunChecklistState(dismissed = store.isChecklistDismissed()),
     )
@@ -58,6 +61,7 @@ class FirstRunChecklistViewModel @Inject constructor(
                         hasActivities = hasActivities,
                     )
                 }
+                markCompletedIfNeeded()
             }
         }
         refreshHealth()
@@ -70,11 +74,21 @@ class FirstRunChecklistViewModel @Inject constructor(
                     healthSource.grantedPermissions().containsAll(healthSource.requiredPermissions)
             }.getOrDefault(false)
             _uiState.update { it.copy(healthConnected = connected) }
+            markCompletedIfNeeded()
         }
     }
 
     fun dismiss() {
         store.dismissChecklist()
+        metrics.markChecklistDismissed()
         _uiState.update { it.copy(dismissed = true) }
+    }
+
+    private fun markCompletedIfNeeded() {
+        if (completedMarked) return
+        if (_uiState.value.completed == _uiState.value.total) {
+            completedMarked = true
+            metrics.markChecklistCompleted()
+        }
     }
 }

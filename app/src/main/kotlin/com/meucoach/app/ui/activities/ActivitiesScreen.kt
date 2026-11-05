@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.firstrun.FirstRunTipCard
 import com.meucoach.core.data.db.entity.ImportJobStatus
 import com.meucoach.core.data.repository.ImportJobSummary
 import com.meucoach.core.designsystem.component.McCard
@@ -98,9 +99,16 @@ internal fun ActivitiesContent(
             when {
                 state.isLoading -> item { LoadingRow() }
 
-                state.activities.isEmpty() -> item { EmptyActivities() }
+                state.activities.isEmpty() -> item { EmptyActivities(onImportClick = onImportClick) }
 
                 else -> {
+                    item {
+                        FirstRunTipCard(
+                            tipId = "first-import",
+                            title = "Corrida importada",
+                            body = "Toque em uma corrida para ver zonas, splits e o porquê do esforço.",
+                        )
+                    }
                     item { McSectionHeader(title = "Corridas") }
                     items(state.activities, key = { it.id }) { activity ->
                         ActivityCard(activity = activity, onClick = { onActivityClick(activity.id) })
@@ -167,13 +175,23 @@ private fun LoadingRow() {
 }
 
 @Composable
-private fun EmptyActivities() {
-    McEmptyState(
-        icon = Icons.AutoMirrored.Outlined.DirectionsRun,
-        title = "Nenhuma corrida importada",
-        description = "Selecione um ou mais arquivos para começar. Você também pode compartilhar " +
-            "um arquivo FIT, TCX ou GPX direto para o MeuCoach.",
-    )
+private fun EmptyActivities(onImportClick: () -> Unit) {
+    Column {
+        McEmptyState(
+            icon = Icons.AutoMirrored.Outlined.DirectionsRun,
+            title = "Nenhuma corrida importada",
+            description = "Selecione um ou mais arquivos para começar. Você também pode compartilhar " +
+                "um arquivo FIT, TCX ou GPX direto para o MeuCoach.",
+        )
+        FirstRunTipCard(
+            tipId = "activities-empty",
+            title = "Comece pela primeira corrida",
+            body = "Compartilhe um FIT, TCX ou GPX com o app. Tudo é lido no aparelho, sem enviar " +
+                "seus dados para a nuvem.",
+            actionLabel = "Importar arquivo",
+            onAction = onImportClick,
+        )
+    }
 }
 
 @Composable

@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.R
+import com.meucoach.app.firstrun.FirstActionType
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
@@ -90,25 +91,29 @@ fun TutorialScreen(
             onDone()
         },
         onDismiss = {
-            viewModel.markSeen()
+            viewModel.markSkipped()
             onDone()
         },
         onCheckIn = {
+            viewModel.markFirstAction(FirstActionType.CHECK_IN)
             viewModel.markSeen()
             onDone()
             onCheckIn()
         },
         onImport = {
+            viewModel.markFirstAction(FirstActionType.IMPORT)
             viewModel.markSeen()
             onDone()
             onImport()
         },
         onHealth = {
+            viewModel.markFirstAction(FirstActionType.HEALTH)
             viewModel.markSeen()
             onDone()
             onHealth()
         },
         onRetry = viewModel::retry,
+        onStepChanged = viewModel::onStepChanged,
         modifier = modifier,
     )
 }
@@ -124,6 +129,7 @@ internal fun TutorialContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
+    onStepChanged: (Int) -> Unit = {},
 ) {
     val colors = McTheme.colors
     val scope = rememberCoroutineScope()
@@ -145,6 +151,7 @@ internal fun TutorialContent(
     }
 
     LaunchedEffect(currentPage) {
+        onStepChanged(currentPage + 1)
         if (currentPage > 0) {
             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         }

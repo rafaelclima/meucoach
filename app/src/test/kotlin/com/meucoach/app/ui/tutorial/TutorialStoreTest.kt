@@ -33,6 +33,7 @@ class TutorialStoreTest {
         store.markIntroDone()
 
         assertThat(store.isIntroDone()).isTrue()
+        assertThat(store.introVersion()).isEqualTo(TutorialStore.CURRENT_INTRO_VERSION)
         assertThat(TutorialStore(context).isIntroDone()).isTrue()
     }
 

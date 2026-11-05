@@ -50,6 +50,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.ui.activities.formatDuration
 import com.meucoach.app.ui.common.readinessLabel
+import com.meucoach.app.ui.firstrun.FirstRunTipCard
 import com.meucoach.core.designsystem.component.McBarChart
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McChartSeries
@@ -78,6 +79,7 @@ import java.util.Locale
 @Composable
 fun TrendsScreen(
     modifier: Modifier = Modifier,
+    onCheckInClick: () -> Unit = {},
     viewModel: TrendsViewModel = hiltViewModel(),
     historyViewModel: ReadinessHistoryViewModel = hiltViewModel(),
 ) {
@@ -88,6 +90,7 @@ fun TrendsScreen(
         modifier = modifier,
         readinessHistory = history.days,
         onPeriodSelected = viewModel::selectPeriod,
+        onCheckInClick = onCheckInClick,
     )
 }
 
@@ -97,6 +100,7 @@ internal fun TrendsContent(
     modifier: Modifier = Modifier,
     readinessHistory: List<ReadinessHistoryDay> = emptyList(),
     onPeriodSelected: (TrendsPeriod) -> Unit = {},
+    onCheckInClick: () -> Unit = {},
 ) {
     val colors = McTheme.colors
     Box(
@@ -121,13 +125,27 @@ internal fun TrendsContent(
                 modifier = Modifier.align(Alignment.Center),
             )
 
-            state.snapshot == null || !state.snapshot.hasData -> McEmptyState(
-                icon = Icons.AutoMirrored.Outlined.ShowChart,
-                title = "Sem carga para mostrar",
-                description = "Importe corridas com FC ou ritmo e calibre seu limite. " +
-                    "Assim você vê carga e recuperação.",
-                modifier = Modifier.align(Alignment.Center),
-            )
+            state.snapshot == null || !state.snapshot.hasData -> Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                McEmptyState(
+                    icon = Icons.AutoMirrored.Outlined.ShowChart,
+                    title = "Sem carga para mostrar",
+                    description = "Importe corridas com FC ou ritmo e calibre seu limite. " +
+                        "Assim você vê carga e recuperação.",
+                )
+                FirstRunTipCard(
+                    tipId = "trends-empty",
+                    title = "A evolução aparece com o tempo",
+                    body = "Depois de 2 semanas de corridas, carga e tendências ficam mais claras. " +
+                        "Enquanto isso, o check-in de hoje já ajusta seu treino.",
+                    actionLabel = "Fazer check-in",
+                    onAction = onCheckInClick,
+                )
+            }
 
             else -> LoadDetails(
                 snapshot = state.snapshot,

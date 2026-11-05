@@ -14,8 +14,13 @@ class TutorialStore(context: Context, prefsName: String = PREFS_NAME) {
     fun isIntroDone(): Boolean = prefs.getBoolean(KEY_INTRO_DONE, false)
 
     fun markIntroDone() {
-        prefs.edit { putBoolean(KEY_INTRO_DONE, true) }
+        prefs.edit {
+            putBoolean(KEY_INTRO_DONE, true)
+            putInt(KEY_INTRO_VERSION, CURRENT_INTRO_VERSION)
+        }
     }
+
+    fun introVersion(): Int = prefs.getInt(KEY_INTRO_VERSION, 1)
 
     fun isChecklistDismissed(nowMillis: Long = System.currentTimeMillis()): Boolean =
         prefs.getLong(KEY_CHECKLIST_DISMISSED_UNTIL, 0L) > nowMillis
@@ -30,7 +35,9 @@ class TutorialStore(context: Context, prefsName: String = PREFS_NAME) {
     companion object {
         const val PREFS_NAME = "meucoach_tutorial"
         private const val KEY_INTRO_DONE = "introDone"
+        private const val KEY_INTRO_VERSION = "introVersion"
         private const val KEY_CHECKLIST_DISMISSED_UNTIL = "checklistDismissedUntil"
+        const val CURRENT_INTRO_VERSION = 2
         private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
     }
 }

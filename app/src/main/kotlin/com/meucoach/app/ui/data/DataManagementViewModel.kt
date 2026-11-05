@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.core.data.repository.UserDataDeletion
 import com.meucoach.core.data.repository.UserDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +32,7 @@ class DataManagementViewModel @Inject constructor(
     private val userData: UserDataRepository,
     private val profiles: com.meucoach.core.data.repository.ProfileRepository,
     private val photos: com.meucoach.app.profile.ProfilePhotoStore,
+    private val firstRunMetrics: FirstRunMetricsStore,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DataManagementUiState())
@@ -41,7 +43,7 @@ class DataManagementViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isExporting = true, message = null, error = null) }
             val result = runCatching {
-                val json = userData.exportJson()
+                val json = userData.exportJson(firstRun = firstRunMetrics.toJson())
                 withContext(Dispatchers.IO) {
                     val stream = context.contentResolver.openOutputStream(uri)
                         ?: error("Não foi possível abrir o arquivo escolhido.")

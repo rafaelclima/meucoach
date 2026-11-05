@@ -1,6 +1,7 @@
 package com.meucoach.app.di
 
 import android.content.Context
+import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectDailySource
@@ -81,6 +82,11 @@ object DataModule {
     @Provides
     @Singleton
     fun provideTutorialStore(@ApplicationContext context: Context): TutorialStore = TutorialStore(context)
+
+    @Provides
+    @Singleton
+    fun provideFirstRunMetricsStore(@ApplicationContext context: Context): FirstRunMetricsStore =
+        FirstRunMetricsStore(context)
 
     @Provides
     @Singleton
