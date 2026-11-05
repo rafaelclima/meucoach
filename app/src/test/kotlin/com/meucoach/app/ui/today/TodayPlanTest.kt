@@ -372,6 +372,32 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows the first-run checklist above the readiness card`() {
+        var imported = false
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(),
+                    checklistState = FirstRunChecklistState(
+                        isLoading = false,
+                        hasCheckedIn = true,
+                        hasActivities = false,
+                        healthConnected = false,
+                    ),
+                    onImportClick = { imported = true },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("first-run-checklist").assertIsDisplayed()
+        compose.onNodeWithTag("checklist-import").performClick()
+
+        assertThat(imported).isTrue()
+    }
+
+    @Test
     fun `opens the profile when tapping the avatar`() {
         var profile = false
 

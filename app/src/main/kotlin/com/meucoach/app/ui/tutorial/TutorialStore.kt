@@ -17,8 +17,20 @@ class TutorialStore(context: Context, prefsName: String = PREFS_NAME) {
         prefs.edit { putBoolean(KEY_INTRO_DONE, true) }
     }
 
+    fun isChecklistDismissed(nowMillis: Long = System.currentTimeMillis()): Boolean =
+        prefs.getLong(KEY_CHECKLIST_DISMISSED_UNTIL, 0L) > nowMillis
+
+    fun dismissChecklist(days: Long = 7, nowMillis: Long = System.currentTimeMillis()) {
+        require(days > 0) { "Dismissal must last at least one day" }
+        prefs.edit {
+            putLong(KEY_CHECKLIST_DISMISSED_UNTIL, nowMillis + days * MILLIS_PER_DAY)
+        }
+    }
+
     companion object {
         const val PREFS_NAME = "meucoach_tutorial"
         private const val KEY_INTRO_DONE = "introDone"
+        private const val KEY_CHECKLIST_DISMISSED_UNTIL = "checklistDismissedUntil"
+        private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
     }
 }

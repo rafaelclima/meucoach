@@ -117,23 +117,14 @@ fun MeuCoachApp(gateViewModel: ProfileGateViewModel = hiltViewModel()) {
 
         gate.profile == null -> OnboardingScreen(onDone = {})
 
-        else -> MainApp()
-    }
-}
-
-@Composable
-private fun MainApp() {
-    val tutorialViewModel: TutorialViewModel = hiltViewModel()
-    val tutorialState by tutorialViewModel.uiState.collectAsStateWithLifecycle()
-    if (!tutorialState.seen) {
-        TutorialScreen(onDone = {})
-    } else {
-        MainContent()
+        else -> MainContent()
     }
 }
 
 @Composable
 private fun MainContent() {
+    val tutorialViewModel: TutorialViewModel = hiltViewModel()
+    val tutorialState by tutorialViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
@@ -155,113 +146,135 @@ private fun MainContent() {
         NotificationNavigation.consume()
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = McTheme.colors.background,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (showBottomBar) {
-                McBottomBar(
-                    items = destinations.map { destination ->
-                        McBottomBarItem(
-                            route = destination.route,
-                            label = destination.label,
-                            icon = destination.icon,
-                        )
-                    },
-                    selectedRoute = currentRoute,
-                    onSelect = { route ->
-                        navController.navigateToTab(route)
-                    },
-                )
-            }
-        },
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = AppDestination.Today.route,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            composable(AppDestination.Today.route) {
-                TodayRoute(
-                    onDemoAction = showDemoMessage,
-                    onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
-                    onTrendsClick = {
-                        navController.navigateToTab(AppDestination.Trends.route)
-                    },
-                    onActivityClick = { activityId ->
-                        navController.navigate(activityDetailRoute(activityId))
-                    },
-                    onProfileClick = {
-                        navController.navigateToTab(AppDestination.Profile.route)
-                    },
-                )
-            }
-            composable(CHECK_IN_ROUTE) {
-                CheckInScreen(
-                    onBack = { navController.popBackStack() },
-                    onSaved = { navController.popBackStack() },
-                )
-            }
-            composable(AppDestination.Activities.route) {
-                ActivitiesScreen(
-                    onActivityClick = { activityId ->
-                        navController.navigate(activityDetailRoute(activityId))
-                    },
-                )
-            }
-            composable(ACTIVITY_DETAIL_ROUTE) {
-                ActivityDetailScreen(
-                    onBack = { navController.popBackStack() },
-                    onCalibrate = { activityId ->
-                        navController.navigate(calibrationRoute(activityId))
-                    },
-                )
-            }
-            composable(AppDestination.Trends.route) {
-                TrendsScreen()
-            }
-            composable(AppDestination.Profile.route) {
-                ProfileScreen(
-                    onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
-                    onCalibrate = { navController.navigate(calibrationRoute()) },
-                    onImportMetrics = { navController.navigate(METRICS_IMPORT_ROUTE) },
-                    onManageData = { navController.navigate(DATA_MANAGEMENT_ROUTE) },
-                    onShowTutorial = { navController.navigate(TUTORIAL_ROUTE) },
-                )
-            }
-            composable(METRICS_IMPORT_ROUTE) {
-                MetricsImportScreen(onBack = { navController.popBackStack() })
-            }
-            composable(DATA_MANAGEMENT_ROUTE) {
-                DataManagementScreen(onBack = { navController.popBackStack() })
-            }
-            composable(TUTORIAL_ROUTE) {
-                TutorialScreen(onDone = { navController.popBackStack() })
-            }
-            composable(PROFILE_EDIT_ROUTE) {
-                OnboardingScreen(
-                    onDone = { navController.popBackStack() },
-                    onCancel = { navController.popBackStack() },
-                )
-            }
-            composable(
-                route = CALIBRATION_ROUTE,
-                arguments = listOf(
-                    navArgument(CALIBRATION_ACTIVITY_ARG) {
-                        type = NavType.StringType
-                        nullable = true
-                        defaultValue = null
-                    },
-                ),
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = McTheme.colors.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                if (showBottomBar) {
+                    McBottomBar(
+                        items = destinations.map { destination ->
+                            McBottomBarItem(
+                                route = destination.route,
+                                label = destination.label,
+                                icon = destination.icon,
+                            )
+                        },
+                        selectedRoute = currentRoute,
+                        onSelect = { route ->
+                            navController.navigateToTab(route)
+                        },
+                    )
+                }
+            },
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = AppDestination.Today.route,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
             ) {
-                CalibrationScreen(
-                    onBack = { navController.popBackStack() },
-                    onSaved = { navController.popBackStack() },
-                )
+                composable(AppDestination.Today.route) {
+                    TodayRoute(
+                        onDemoAction = showDemoMessage,
+                        onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
+                        onTrendsClick = {
+                            navController.navigateToTab(AppDestination.Trends.route)
+                        },
+                        onActivityClick = { activityId ->
+                            navController.navigate(activityDetailRoute(activityId))
+                        },
+                        onProfileClick = {
+                            navController.navigateToTab(AppDestination.Profile.route)
+                        },
+                        onImportClick = {
+                            navController.navigateToTab(AppDestination.Activities.route)
+                        },
+                        onHealthClick = {
+                            navController.navigate(METRICS_IMPORT_ROUTE)
+                        },
+                    )
+                }
+                composable(CHECK_IN_ROUTE) {
+                    CheckInScreen(
+                        onBack = { navController.popBackStack() },
+                        onSaved = { navController.popBackStack() },
+                    )
+                }
+                composable(AppDestination.Activities.route) {
+                    ActivitiesScreen(
+                        onActivityClick = { activityId ->
+                            navController.navigate(activityDetailRoute(activityId))
+                        },
+                    )
+                }
+                composable(ACTIVITY_DETAIL_ROUTE) {
+                    ActivityDetailScreen(
+                        onBack = { navController.popBackStack() },
+                        onCalibrate = { activityId ->
+                            navController.navigate(calibrationRoute(activityId))
+                        },
+                    )
+                }
+                composable(AppDestination.Trends.route) {
+                    TrendsScreen()
+                }
+                composable(AppDestination.Profile.route) {
+                    ProfileScreen(
+                        onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
+                        onCalibrate = { navController.navigate(calibrationRoute()) },
+                        onImportMetrics = { navController.navigate(METRICS_IMPORT_ROUTE) },
+                        onManageData = { navController.navigate(DATA_MANAGEMENT_ROUTE) },
+                        onShowTutorial = { navController.navigate(TUTORIAL_ROUTE) },
+                    )
+                }
+                composable(METRICS_IMPORT_ROUTE) {
+                    MetricsImportScreen(onBack = { navController.popBackStack() })
+                }
+                composable(DATA_MANAGEMENT_ROUTE) {
+                    DataManagementScreen(onBack = { navController.popBackStack() })
+                }
+                composable(TUTORIAL_ROUTE) {
+                    TutorialScreen(
+                        onDone = { navController.popBackStack() },
+                        onCheckIn = { navController.navigate(CHECK_IN_ROUTE) },
+                        onImport = { navController.navigateToTab(AppDestination.Activities.route) },
+                        onHealth = { navController.navigate(METRICS_IMPORT_ROUTE) },
+                    )
+                }
+                composable(PROFILE_EDIT_ROUTE) {
+                    OnboardingScreen(
+                        onDone = { navController.popBackStack() },
+                        onCancel = { navController.popBackStack() },
+                    )
+                }
+                composable(
+                    route = CALIBRATION_ROUTE,
+                    arguments = listOf(
+                        navArgument(CALIBRATION_ACTIVITY_ARG) {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                    ),
+                ) {
+                    CalibrationScreen(
+                        onBack = { navController.popBackStack() },
+                        onSaved = { navController.popBackStack() },
+                    )
+                }
             }
+        }
+        if (!tutorialState.seen) {
+            TutorialScreen(
+                onDone = {},
+                onCheckIn = { navController.navigate(CHECK_IN_ROUTE) },
+                onImport = { navController.navigateToTab(AppDestination.Activities.route) },
+                onHealth = { navController.navigate(METRICS_IMPORT_ROUTE) },
+                viewModel = tutorialViewModel,
+            )
         }
     }
 }

@@ -49,7 +49,28 @@ class TodayScreenshotTest {
         capture(darkTheme = true, file = "src/test/screenshots/today-narrow-dark.png")
     }
 
-    private fun capture(darkTheme: Boolean, file: String) {
+    @Test
+    fun todayChecklistDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-checklist-dark.png",
+            checklistState = FirstRunChecklistState(
+                isLoading = false,
+                hasCheckedIn = true,
+                hasActivities = false,
+                healthConnected = false,
+            ),
+        )
+    }
+
+    private fun capture(
+        darkTheme: Boolean,
+        file: String,
+        checklistState: FirstRunChecklistState = FirstRunChecklistState(
+            isLoading = false,
+            dismissed = true,
+        ),
+    ) {
         val today = LocalDate.of(2026, 10, 30)
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
@@ -67,6 +88,7 @@ class TodayScreenshotTest {
                         kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
                         weeklyLoadKm = 11.31,
                     ),
+                    checklistState = checklistState,
                 )
             }
         }

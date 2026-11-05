@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.ui.activities.formatDateTime
@@ -61,7 +62,6 @@ class TodayViewModel @Inject constructor(
     activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
 ) : ViewModel() {
-    private val engine = TrainingLoadEngine()
     private val recommender = WorkoutRecommender()
     private val planGenerator = WeeklyPlanGenerator()
     private val currentWeekStart = LocalDate.now()
@@ -152,7 +152,7 @@ class TodayViewModel @Inject constructor(
         activities: List<ActivitySummary>,
     ): TodayContext {
         val today = LocalDate.now()
-        val load = profile?.let { buildLoad(activities, it, today) }
+        val load = profile?.let { buildLoadSnapshot(activities, it, today) }
         val zone = profile?.let { runCatching { java.time.ZoneId.of(it.timezone) }.getOrNull() }
             ?: java.time.ZoneId.systemDefault()
         val weekStart = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
@@ -214,26 +214,30 @@ class TodayViewModel @Inject constructor(
         }
     }
 
-    private fun buildLoad(activities: List<ActivitySummary>, profile: AthleteProfile, today: LocalDate): LoadSnapshot {
-        val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
-            ?: java.time.ZoneId.systemDefault()
-        return engine.calculate(
-            activities = activities.map { summary ->
-                LoadActivity(
-                    date = summary.startTime.atZone(zone).toLocalDate(),
-                    durationSec = summary.durationSec,
-                    averageHeartRate = summary.averageHeartRate,
-                    averagePace = summary.averagePace,
-                )
-            },
-            profile = profile,
-            today = today,
-        )
-    }
-
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }
+}
+
+internal fun buildLoadSnapshot(
+    activities: List<ActivitySummary>,
+    profile: AthleteProfile,
+    today: LocalDate,
+): LoadSnapshot {
+    val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
+        ?: java.time.ZoneId.systemDefault()
+    return TrainingLoadEngine().calculate(
+        activities = activities.map { summary ->
+            LoadActivity(
+                date = summary.startTime.atZone(zone).toLocalDate(),
+                durationSec = summary.durationSec,
+                averageHeartRate = summary.averageHeartRate,
+                averagePace = summary.averagePace,
+            )
+        },
+        profile = profile,
+        today = today,
+    )
 }
 
 internal fun readinessResult(
@@ -261,10 +265,18 @@ fun TodayRoute(
     onTrendsClick: () -> Unit,
     onActivityClick: (String) -> Unit,
     onProfileClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onHealthClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TodayViewModel = hiltViewModel(),
+    checklistViewModel: FirstRunChecklistViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val checklistState by checklistViewModel.uiState.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        checklistViewModel.refreshHealth()
+        onPauseOrDispose { }
+    }
     TodayScreen(
         onDemoAction = onDemoAction,
         modifier = modifier,
@@ -273,6 +285,10 @@ fun TodayRoute(
         onTrendsClick = onTrendsClick,
         onActivityClick = onActivityClick,
         onProfileClick = onProfileClick,
+        onImportClick = onImportClick,
+        onHealthClick = onHealthClick,
+        checklistState = checklistState,
+        onChecklistDismiss = checklistViewModel::dismiss,
         onCompleteSession = viewModel::completeSession,
         onSkipSession = viewModel::skipSession,
         onSwapSession = viewModel::swapSession,

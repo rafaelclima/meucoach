@@ -88,6 +88,10 @@ fun TodayScreen(
     onTrendsClick: () -> Unit = {},
     onActivityClick: (String) -> Unit = {},
     onProfileClick: () -> Unit = {},
+    onImportClick: () -> Unit = {},
+    onHealthClick: () -> Unit = {},
+    checklistState: FirstRunChecklistState = FirstRunChecklistState(isLoading = false, dismissed = true),
+    onChecklistDismiss: () -> Unit = {},
     onCompleteSession: (LocalDate) -> Unit = {},
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
@@ -116,6 +120,17 @@ fun TodayScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { Greeting(state = state, onProfileClick = onProfileClick) }
+        if (checklistState.shouldShow) {
+            item {
+                FirstRunChecklistCard(
+                    state = checklistState,
+                    onCheckIn = onCheckInClick,
+                    onImport = onImportClick,
+                    onHealth = onHealthClick,
+                    onDismiss = onChecklistDismiss,
+                )
+            }
+        }
         item { ReadinessCard(state = state, onWhyClick = { openExplanation(ExplanationSource.READINESS) }) }
         item {
             NextWorkoutCard(

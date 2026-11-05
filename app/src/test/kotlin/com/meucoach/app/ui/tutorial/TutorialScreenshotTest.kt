@@ -48,23 +48,23 @@ class TutorialScreenshotTest {
         capture(darkTheme = false, page = 2, file = "src/test/screenshots/tutorial-3-light.png")
     }
 
-    @Test
-    fun tutorialPage4Dark() {
-        capture(darkTheme = true, page = 3, file = "src/test/screenshots/tutorial-4-dark.png")
-    }
-
-    @Test
-    fun tutorialPage4Light() {
-        capture(darkTheme = false, page = 3, file = "src/test/screenshots/tutorial-4-light.png")
-    }
-
     private fun capture(darkTheme: Boolean, page: Int, file: String) {
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
-                TutorialContent(onFinish = {}, onDismiss = {}, initialPage = page)
+                TutorialContent(
+                    state = tutorialState(),
+                    onFinish = {},
+                    onDismiss = {},
+                    onCheckIn = {},
+                    onImport = {},
+                    onHealth = {},
+                    onRetry = {},
+                    initialPage = page,
+                )
             }
         }
 
+        compose.waitForIdle()
         compose.onRoot().captureRoboImage(file)
     }
 }
