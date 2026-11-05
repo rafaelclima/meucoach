@@ -9,6 +9,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -149,7 +150,13 @@ class MetricsImportViewModelTest {
 
     private fun awaitIdle(viewModel: MetricsImportViewModel): MetricsImportUiState = kotlinx.coroutines.runBlocking {
         withTimeout(15_000) {
-            viewModel.uiState.first { !it.isImporting && it.message != null }
+            var state = viewModel.uiState.value
+            while (state.isImporting || state.message == null) {
+                dispatcher.scheduler.advanceUntilIdle()
+                delay(10)
+                state = viewModel.uiState.value
+            }
+            state
         }
     }
 

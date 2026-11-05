@@ -89,10 +89,12 @@ class HealthMetricsScreenshotTest {
         compose.onRoot().captureRoboImage(file)
     }
 
-    /** Vico draws after the first layout pass; wait for the chart before capturing. */
+    /** Vico builds the model off the composition; give it a moment before capturing. */
     private fun settle() {
         compose.waitForIdle()
         compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        Thread.sleep(300)
         compose.waitForIdle()
     }
 
