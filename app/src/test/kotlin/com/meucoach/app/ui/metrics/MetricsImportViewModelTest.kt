@@ -2,7 +2,6 @@ package com.meucoach.app.ui.metrics
 
 import android.content.Context
 import android.net.Uri
-import android.os.Looper
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -22,7 +21,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
 
@@ -39,7 +37,6 @@ class MetricsImportViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        shadowOf(Looper.getMainLooper()).idle()
         context = ApplicationProvider.getApplicationContext()
         database =
             Room
@@ -52,7 +49,6 @@ class MetricsImportViewModelTest {
     @After
     fun tearDown() {
         currentViewModel?.viewModelScope?.cancel()
-        shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
     }

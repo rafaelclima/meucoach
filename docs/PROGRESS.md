@@ -81,6 +81,8 @@
 - **Primeira vitória acoplada ao primeiro uso:** o card de check-in só aparece enquanto o checklist de setup está ativo; depois disso, o Hoje fica limpo.
 - **Dica única, sem insistência:** cada dica é dismissível e não volta. Não há streak, prazo ou cobrança.
 - **Versão sem retrabalho:** usuários antigos não são forçados a rever o tour; a versão fica registrada para futuras migrações de conteúdo.
+- **Ajuste pós-teste no aparelho:** o CTA primário da cena 1 virou `Continuar`; `Ver meu treino de hoje` saiu dali para o usuário não pular as cenas 2 e 3 sem querer. A cena 2 perdeu o `Voltar` duplicado (o ícone do topo resolve) e o `Depois` da cena 3 virou botão secundário.
+- **Screenshot de gráfico:** `McLineChart`/`McBarChart` expõem `mc-chart-ready` quando o modelo Vico foi aplicado; os testes de screenshot esperam essa tag em vez de tempo fixo.
 
 ### Próximo passo
 

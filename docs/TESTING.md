@@ -297,9 +297,10 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 
-Gráficos Vico desenham depois do primeiro layout. Testes de screenshot que rolam até um gráfico
-precisam de `waitForIdle` + avanço do relógio + uma pequena espera antes de `captureRoboImage`;
-sem isso a captura pode pegar a área do gráfico vazia e falhar de forma intermitente.
+Gráficos Vico desenham depois do primeiro layout. `McLineChart`/`McBarChart` expõem a tag
+`mc-chart-ready` quando o modelo foi aplicado; testes de screenshot devem esperar por ela
+(`waitUntil` + `onAllNodesWithTag`) antes de `captureRoboImage`. Isso substitui esperas fixas e
+evita capturar a área do gráfico vazia.
 
 ## 9. Health Connect
 

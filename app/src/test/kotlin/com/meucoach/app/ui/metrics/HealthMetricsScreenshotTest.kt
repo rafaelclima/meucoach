@@ -1,7 +1,8 @@
 package com.meucoach.app.ui.metrics
 
-import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
@@ -52,7 +53,8 @@ class HealthMetricsScreenshotTest {
             }
         }
         compose.onNodeWithTag("metrics-import-list")
-            .performScrollToNode(hasTestTag("health-table-sleep"))
+            .performScrollToNode(hasContentDescription("Sono nos últimos 30 dias", substring = true))
+        awaitChartReady()
         settle()
         compose.onRoot().captureRoboImage("src/test/screenshots/health-charts-dark.png")
     }
@@ -69,7 +71,8 @@ class HealthMetricsScreenshotTest {
             }
         }
         compose.onNodeWithTag("metrics-import-list")
-            .performScrollToNode(hasTestTag("health-table-hrv"))
+            .performScrollToNode(hasContentDescription("HRV nos últimos 30 dias", substring = true))
+        awaitChartReady()
         settle()
         compose.onRoot().captureRoboImage("src/test/screenshots/health-recovery-dark.png")
     }
@@ -85,16 +88,22 @@ class HealthMetricsScreenshotTest {
             }
         }
 
+        awaitChartReady()
         settle()
         compose.onRoot().captureRoboImage(file)
     }
 
-    /** Vico builds the model off the composition; give it a moment before capturing. */
+    /** Vico builds the model off the composition; wait for the ready tag before capturing. */
+    private fun awaitChartReady() {
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithTag("mc-chart-ready").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.waitForIdle()
+    }
+
     private fun settle() {
         compose.waitForIdle()
         compose.mainClock.advanceTimeBy(1_000)
-        compose.waitForIdle()
-        Thread.sleep(300)
         compose.waitForIdle()
     }
 
