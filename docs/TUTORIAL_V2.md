@@ -749,7 +749,7 @@ Objetivo: trocar 4 slides por 3 cenas com produto real.
 
 - [x] Pré-permissão de notificação contextual em Perfil → Ajuda (Fase A).
 - [x] Checklist persistente com deep links e dismiss de 7 dias.
-- [x] Primeira vitória: “Prontidão atualizada” após o check-in e “Corrida importada” na lista.
+- [x] Primeira vitória: “Prontidão atualizada” após o check-in e “Corrida importada” na lista, já apontando para o story de compartilhamento.
 - [x] Medição local (timestamps/contadores) + export no JSON em `firstRun`.
 - [x] Versionamento do tutorial (`introVersion = 2`) e revisão no Perfil.
 - [x] Dicas contextuais únicas em Corridas e Tendências.

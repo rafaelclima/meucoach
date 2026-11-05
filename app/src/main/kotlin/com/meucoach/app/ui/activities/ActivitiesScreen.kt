@@ -106,7 +106,8 @@ internal fun ActivitiesContent(
                         FirstRunTipCard(
                             tipId = "first-import",
                             title = "Corrida importada",
-                            body = "Toque em uma corrida para ver zonas, splits e o porquê do esforço.",
+                            body = "Toque em uma corrida para ver zonas, splits, o porquê do esforço " +
+                                "e o story para compartilhar.",
                         )
                     }
                     item { McSectionHeader(title = "Corridas") }

@@ -182,7 +182,7 @@
 
 ### Concluído
 
-- **Primeira vitória:** depois do primeiro check-in, o Hoje mostra “Prontidão atualizada — o treino de hoje já considera este check-in”. Depois da primeira importação, a lista de Corridas mostra “Corrida importada — toque para ver zonas, splits e o porquê”.
+- **Primeira vitória:** depois do primeiro check-in, o Hoje mostra “Prontidão atualizada — o treino de hoje já considera este check-in”. Depois da primeira importação, a lista de Corridas mostra “Corrida importada — toque para ver zonas, splits, o porquê do esforço e o story para compartilhar”.
 - **Dicas contextuais únicas:** `FirstRunTipCard` + `FirstRunTipStore` mostram uma dica por tela, uma única vez: Corridas vazia, Tendências sem carga, primeira importação e primeiro check-in. O dismiss é permanente por dica.
 - **Medição local:** `FirstRunMetricsStore` registra início, conclusão, pulo, maior passo, primeira ação, dismiss e conclusão do checklist. Nada sai do aparelho; os dados entram no JSON de backup como `firstRun`.
 - **Versionamento:** `TutorialStore` grava `introVersion = 2` sem forçar quem já viu a v1 a repetir o tour; a revisão continua em Perfil → Ajuda.
