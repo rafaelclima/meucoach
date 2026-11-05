@@ -254,6 +254,23 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 - `app/src/test/screenshots/calibration-light.png`
 - `app/src/test/screenshots/trends-dark.png`
 - `app/src/test/screenshots/trends-light.png`
+- `app/src/test/screenshots/trends-charts-dark.png`
+- `app/src/test/screenshots/trends-volume-dark.png`
+- `app/src/test/screenshots/trends-efficiency-dark.png`
+- `app/src/test/screenshots/trends-readiness-dark.png`
+- `app/src/test/screenshots/health-dark.png`
+- `app/src/test/screenshots/health-light.png`
+- `app/src/test/screenshots/health-narrow-dark.png`
+- `app/src/test/screenshots/health-charts-dark.png`
+- `app/src/test/screenshots/health-recovery-dark.png`
+- `app/src/test/screenshots/tutorial-dark.png`
+- `app/src/test/screenshots/tutorial-light.png`
+- `app/src/test/screenshots/tutorial-2-dark.png`
+- `app/src/test/screenshots/tutorial-2-light.png`
+- `app/src/test/screenshots/tutorial-3-dark.png`
+- `app/src/test/screenshots/tutorial-3-light.png`
+- `app/src/test/screenshots/tutorial-4-dark.png`
+- `app/src/test/screenshots/tutorial-4-light.png`
 - `app/src/test/screenshots/checkin-dark.png`
 - `app/src/test/screenshots/checkin-light.png`
 - `app/src/test/screenshots/today-dark.png`
@@ -267,6 +284,10 @@ Screenshots atuais (Roborazzi + Robolectric Native Graphics):
 - `app/src/test/screenshots/story-final-verdict-dark.png`
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
+
+Gráficos Vico desenham depois do primeiro layout. Testes de screenshot que rolam até um gráfico
+precisam de `waitForIdle` + avanço do relógio + uma pequena espera antes de `captureRoboImage`;
+sem isso a captura pode pegar a área do gráfico vazia e falhar de forma intermitente.
 
 ## 9. Health Connect
 

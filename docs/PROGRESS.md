@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 04/11/2026 (gráficos Vico em Tendências e painel de saúde)
+**Atualizado:** 05/11/2026 (tutorial Fase A)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 805 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 402 em `:app`)
+- **Testes:** 815 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 412 em `:app`)
 - **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 31 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
@@ -55,6 +55,40 @@
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
 - **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
 - **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+
+## Sessão 2026-11-05 — Tutorial Fase A: base de produto, não rascunho
+
+**Objetivo:** corrigir os problemas de plataforma e de composição do tour de 4 telas antes de reescrever a narrativa (Fase B).
+
+### Concluído
+
+- **Back nativo:** `BackHandler` volta uma página; na primeira, marca o tutorial como visto e sai. O tour não reaparece na próxima abertura.
+- **Progresso legível:** dots de 8 dp viraram `TutorialProgress`, uma barra segmentada em `core:designsystem` com `progressBarRangeInfo` e descrição “Passo X de 4” para TalkBack.
+- **Ação estável:** o CTA primário ocupa a largura toda em todas as páginas; “Voltar” virou ícone de 48 dp no topo, eliminando o salto de layout. “Pular” passou para `textSecondary`.
+- **Composição:** o visual ganhou peso próprio (`weight`) com painel, rota da marca, glow sutil e pill de contexto; o texto fica ancorado logo abaixo, sem o vazio central da versão anterior.
+- **Responsivo:** conteúdo limitado a 640 dp e centralizado em tablets; o texto rola quando a fonte cresce.
+- **Strings:** todo o texto do tutorial saiu do Kotlin para `strings.xml`, com `tutorial_step_a11y` para leitura por voz.
+- **Permissão no contexto:** `MainActivity` não pede mais `POST_NOTIFICATIONS` no primeiro frame. Perfil → Ajuda ganhou `NotificationReminderCard`, que explica frequência e só abre o diálogo do sistema quando o usuário toca em “Ativar lembretes”; negativa mantém o caminho para as configurações.
+- **Testes:** +2 no `TutorialScreenTest` (progresso e fonte 200%), +1 `TutorialSystemBackTest`, +6 goldens (páginas 2–4 dark/light) e +1 no `ProfileScreenTest` (pré-permissão). Total: **815 testes**.
+- **Estabilidade de screenshots:** as capturas de gráficos Vico passaram a esperar o modelo/layout antes do `captureRoboImage`; `MetricsImportViewModelTest` voltou a esperar o primeiro estado com `message != null` via Flow, eliminando timeout intermitente.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Goldens novos: `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light`, `tutorial-4-dark`, `tutorial-4-light`; `tutorial-dark`/`tutorial-light` regravados.
+- Nenhuma dependência nova; nenhum dado real em fixtures/goldens.
+
+### Decisões e observações
+
+- **Fase A sem reescrever a narrativa:** o conteúdo ainda é o tour de 4 telas; a Fase B troca por 3 cenas com plano real.
+- **Pré-permissão em Perfil → Ajuda:** é o caminho durável; a Fase C leva o convite para o momento pós-check-in/checklist.
+- **Espera explícita em screenshot:** o Vico desenha depois do primeiro layout; `waitForIdle` sozinho não garantia o frame. A espera é só de teste, não de produção.
+
+### Próximo passo
+
+1. Validar no aparelho real: back, fonte 200%, TalkBack e leitura do painel em dark/light.
+2. Iniciar a Fase B: cena 1 com nome/objetivo/plano real, cena 2 “como o coach pensa” e cena 3 “primeiro passo”.
+3. Levar o checklist “Complete seu setup” para o Hoje e as dicas contextuais.
 
 ## Sessão 2026-11-04 — Gráficos de verdade: Vico, Tendências e painel de saúde
 **Objetivo:** elevar a leitura dos gráficos e transformar a tela de saúde em um painel de recuperação, sem tirar o motor determinístico do centro.

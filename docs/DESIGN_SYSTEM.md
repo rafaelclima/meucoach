@@ -203,6 +203,7 @@ Regras:
 | `McEmptyState` | ícone, título, descrição, CTA opcional |
 | `McErrorState` | causa, ação, detalhes técnicos colapsáveis |
 | `McSkeleton` | shimmer sutil, respeita reduced motion |
+| `TutorialProgress` | barra segmentada 4 dp com `progressBarRangeInfo` e “Passo X de Y” |
 | `McBottomBar` | 4 destinos + ação central circular lima |
 
 ### 7.2 Estados

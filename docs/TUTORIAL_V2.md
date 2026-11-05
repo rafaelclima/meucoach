@@ -1,6 +1,6 @@
 # TUTORIAL_V2.md — Ativação pós-perfil
 
-**Status:** proposta para revisão
+**Status:** Fase A implementada em 05/11/2026; Fases B–D propostas
 **Data:** 05/11/2026
 **Substitui:** tour de 4 telas em `app/src/main/kotlin/com/meucoach/app/ui/tutorial/`
 **Importante:** este documento é um plano. Nenhum código foi alterado nesta sessão.
@@ -715,18 +715,20 @@ app/src/main/res/values/strings.xml
 
 Objetivo: parar de parecer rascunho sem reescrever a narrativa.
 
-- [ ] `BackHandler` no tutorial (marca como visto ou confirma).
-- [ ] Remover permissão de notificação do `MainActivity`.
-- [ ] “Pular” em `textSecondary`, não lima.
-- [ ] CTA primário de largura fixa; “Voltar” como ícone no topo.
-- [ ] Barra de progresso segmentada com semântica.
-- [ ] Largura máxima 640 dp e padding responsivo.
-- [ ] Strings em `strings.xml`.
-- [ ] Screenshots de todas as páginas em dark/light.
-- [ ] Teste de fonte 200% e TalkBack.
-- [ ] Corrigir o vazio: ancorar conteúdo e reservar área para o visual.
+- [x] `BackHandler` no tutorial: volta uma página ou marca como visto na primeira.
+- [x] Remover permissão de notificação do `MainActivity`; a ativação foi para Perfil → Ajuda, com pré-permissão.
+- [x] “Pular” em `textSecondary`, não lima.
+- [x] CTA primário de largura fixa; “Voltar” como ícone no topo.
+- [x] Barra de progresso segmentada com semântica (`Passo X de Y`).
+- [x] Largura máxima 640 dp e padding responsivo.
+- [x] Strings em `strings.xml`.
+- [x] Screenshots de todas as páginas em dark/light.
+- [x] Teste de fonte 200% e TalkBack.
+- [x] Corrigir o vazio: visual com peso próprio e texto ancorado.
 
 **Aceite:** o tour atual fica apresentável e sem bugs de plataforma, mas ainda é o carrossel antigo.
+
+**Implementação (05/11/2026):** `TutorialProgress` em `core:designsystem`; `NotificationReminderCard` em Perfil → Ajuda; goldens `tutorial-2/3/4-{dark,light}.png`; capturas de gráficos Vico estabilizadas com espera explícita (sem mudança de produto).
 
 ### Fase B — Redesenho da narrativa (esforço M, impacto alto)
 
