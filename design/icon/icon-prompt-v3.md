@@ -1,5 +1,7 @@
 # Prompt atualizado — Ícone do app MeuCoach (launcher / Play Store) v3
 
+> **Substituído:** a direção de corredor + rota foi aposentada. Use `icon-prompt-v5.md` (corredor no M + cronômetro).
+
 > **Nova direção:** silhueta estilizada de um corredor com uma rota saindo dos seus pés. Representa que o app é um **coach de corrida** (não só tracking) — o corredor é o usuário, a rota é o treino guiado.
 
 ---
