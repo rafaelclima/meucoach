@@ -105,6 +105,12 @@ class UserDataRepositoryTest {
         val prescription = export.getJSONArray("dailyPrescriptions").getJSONObject(0)
         assertThat(prescription.getString("date")).isEqualTo(monday.toString())
         assertThat(prescription.getString("adjustment")).isEqualTo("KEEP")
+        val execution = export.getJSONArray("sessionExecutions").getJSONObject(0)
+        assertThat(execution.getString("plannedSessionId")).isEqualTo("2026-11-02-2026-11-02")
+        assertThat(execution.getString("source")).isEqualTo("ACTIVITY")
+        val doneSession = plan.getJSONArray("sessions").getJSONObject(0)
+        assertThat(doneSession.getString("status")).isEqualTo("DONE")
+        assertThat(doneSession.getString("completionEvidence")).isEqualTo("ACTIVITY")
     }
 
     @Test
@@ -133,6 +139,7 @@ class UserDataRepositoryTest {
         assertThat(deletion.metrics).isEqualTo(1)
         assertThat(deletion.plans).isEqualTo(1)
         assertThat(deletion.prescriptions).isEqualTo(1)
+        assertThat(deletion.executions).isEqualTo(1)
         assertThat(deletion.profileDeleted).isTrue()
         assertThat(deletion.removedAnything).isTrue()
         assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
@@ -142,6 +149,7 @@ class UserDataRepositoryTest {
         assertThat(database.dailyMetricsDao().getAll()).isEmpty()
         assertThat(database.trainingPlanDao().getAllPlans()).isEmpty()
         assertThat(database.trainingPlanDao().getAllSessions()).isEmpty()
+        assertThat(database.sessionExecutionDao().getAll()).isEmpty()
         assertThat(database.dailyPrescriptionDao().getAll()).isEmpty()
     }
 
@@ -190,6 +198,13 @@ class UserDataRepositoryTest {
         prescriptions.append(prescription())
         val saved = activities.saveImportedActivity(activity()) as SaveActivityResult.Saved
         database.importJobDao().insert(com.meucoach.core.data.db.testJob(saved.id))
+        SessionExecutionRepository(database, clock).recordActivityExecution(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = saved.id,
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
     }
 
     private fun profile() = AthleteProfile(
@@ -214,7 +229,7 @@ class UserDataRepositoryTest {
     private fun activity() = ImportedActivity(
         source = ActivitySource.FIT,
         sport = Sport.RUNNING,
-        startTime = Instant.parse("2023-11-14T10:00:00Z"),
+        startTime = Instant.parse("2026-11-02T10:00:00Z"),
         durationSec = 1_800,
         distanceM = 5_000.0,
         averageHeartRate = 150,
@@ -251,7 +266,6 @@ class UserDataRepositoryTest {
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
-                status = SessionStatus.DONE,
             ),
             PlannedSession(
                 date = monday.plusDays(5),

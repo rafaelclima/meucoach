@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.model.CompletionEvidence
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.Assertions.within
@@ -24,7 +25,7 @@ class PlanCompletionCalculatorTest {
             weekStart = weekStart.minusWeeks(1),
             sessions = listOf(
                 session(weekStart.minusWeeks(1), SessionStatus.DONE),
-                session(weekStart.minusWeeks(1).plusDays(2), SessionStatus.SKIPPED),
+                session(weekStart.minusWeeks(1).plusDays(2), SessionStatus.CLOSED),
                 session(weekStart.minusWeeks(1).plusDays(4), SessionStatus.PLANNED),
             ),
         )
@@ -88,6 +89,45 @@ class PlanCompletionCalculatorTest {
     }
 
     @Test
+    fun `separates verified, manual and legacy completions`() {
+        val plan = plan(
+            weekStart = weekStart,
+            sessions = listOf(
+                session(weekStart, SessionStatus.DONE).copy(
+                    completionEvidence = CompletionEvidence.ACTIVITY,
+                    activityId = "activity-1",
+                ),
+                session(weekStart.plusDays(1), SessionStatus.DONE).copy(
+                    completionEvidence = CompletionEvidence.MANUAL,
+                ),
+                session(weekStart.plusDays(2), SessionStatus.DONE),
+                session(
+                    weekStart.plusDays(3),
+                    SessionStatus.CLOSED,
+                ).copy(closureReason = SessionClosureReason.USER_SKIPPED),
+                session(
+                    weekStart.plusDays(4),
+                    SessionStatus.CLOSED,
+                ).copy(closureReason = SessionClosureReason.ILLNESS_OR_INJURY),
+                session(
+                    weekStart.plusDays(5),
+                    SessionStatus.CLOSED,
+                ).copy(closureReason = SessionClosureReason.REST_PRESCRIBED),
+                session(weekStart.plusDays(6), SessionStatus.PLANNED),
+            ),
+        )
+
+        val week = calculator.calculate(listOf(plan), today = weekStart.plusDays(6), weeks = 1).weeks.single()
+
+        assertThat(week.planned).isEqualTo(5)
+        assertThat(week.done).isEqualTo(3)
+        assertThat(week.verified).isEqualTo(1)
+        assertThat(week.manual).isEqualTo(1)
+        assertThat(week.legacy).isEqualTo(1)
+        assertThat(week.skipped).isEqualTo(1)
+    }
+
+    @Test
     fun `rejects invalid windows`() {
         assertThatThrownBy { calculator.calculate(emptyList(), today, weeks = 0) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -103,7 +143,7 @@ class PlanCompletionCalculatorTest {
             createdOn = createdOn,
             sessions = listOf(
                 session(weekStart, SessionStatus.DONE),
-                session(weekStart.plusDays(1), SessionStatus.SKIPPED),
+                session(weekStart.plusDays(1), SessionStatus.CLOSED),
                 session(createdOn, SessionStatus.DONE),
             ),
         )
@@ -139,5 +179,12 @@ class PlanCompletionCalculatorTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
         status = status,
+        completionEvidence = if (status == SessionStatus.DONE) {
+            CompletionEvidence.LEGACY_UNVERIFIED
+        } else {
+            null
+        },
+        closureReason = if (status == SessionStatus.CLOSED) SessionClosureReason.USER_SKIPPED else null,
+        closedAt = if (status == SessionStatus.CLOSED) java.time.Instant.EPOCH else null,
     )
 }

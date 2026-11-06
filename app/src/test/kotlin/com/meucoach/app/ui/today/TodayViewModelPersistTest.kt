@@ -4,14 +4,17 @@ import android.content.Context
 import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
@@ -98,16 +101,7 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
 
-        val viewModel =
-            TodayViewModel(
-                checkIns,
-                metrics,
-                profiles,
-                activities,
-                plans,
-                FakeTimeProvider(),
-                GetTodayPrescription(prescriptions),
-            )
+        val viewModel = createViewModel()
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
@@ -139,16 +133,7 @@ class TodayViewModelPersistTest {
         plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
         seedLoad(today)
 
-        val viewModel =
-            TodayViewModel(
-                checkIns,
-                metrics,
-                profiles,
-                activities,
-                plans,
-                timeProvider,
-                GetTodayPrescription(prescriptions),
-            )
+        val viewModel = createViewModel(timeProvider)
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.qualityCount == 2 }
         }
@@ -171,16 +156,7 @@ class TodayViewModelPersistTest {
             plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
         }
 
-        val viewModel =
-            TodayViewModel(
-                checkIns,
-                metrics,
-                profiles,
-                activities,
-                plans,
-                FakeTimeProvider(),
-                GetTodayPrescription(prescriptions),
-            )
+        val viewModel = createViewModel()
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
@@ -227,16 +203,7 @@ class TodayViewModelPersistTest {
             ),
         )
 
-        val viewModel =
-            TodayViewModel(
-                checkIns,
-                metrics,
-                profiles,
-                activities,
-                plans,
-                FakeTimeProvider(),
-                GetTodayPrescription(prescriptions),
-            )
+        val viewModel = createViewModel()
         viewModel.swapSession(weekStart, weekStart.plusDays(1), today = weekStart)
         withTimeout(5_000) {
             while (
@@ -254,6 +221,21 @@ class TodayViewModelPersistTest {
             .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
     }
 
+    private fun createViewModel(timeProvider: TimeProvider = FakeTimeProvider()): TodayViewModel {
+        val executions = SessionExecutionRepository(database)
+        return TodayViewModel(
+            checkIns,
+            metrics,
+            profiles,
+            activities,
+            plans,
+            executions,
+            CompleteSession(plans, activities, executions),
+            timeProvider,
+            GetTodayPrescription(prescriptions),
+        )
+    }
+
     private fun previousWeek(weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
@@ -266,6 +248,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-0",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(1),
@@ -276,6 +260,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-1",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(2),
@@ -286,6 +272,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-2",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(3),
@@ -296,6 +284,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-3",
             ),
         ),
         weeklyMinutes = 120,

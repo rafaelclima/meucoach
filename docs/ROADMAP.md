@@ -225,6 +225,7 @@
 - [x] Cards compactos: prontidão em duas linhas por sinal e plano sem pill de tipo redundante.
 - [x] Plano em uma linha por sessão, rationale recolhível e carga vazia sem zeros.
 - [x] Um card principal; plano como contexto com selo “Ajustado hoje” e sem CTA de conclusão próprio (C1-03).
+- [x] Conclusão com evidência (corrida vinculada ou “fiz sem registro”) e vínculo 1:1; descanso/doença encerram o dia (C1-04).
 - [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências
@@ -345,7 +346,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ## Ciclo 1 — Correções críticas (planejado, sem autorização de início)
 
-**Status:** em andamento em 06/11/2026 — C1-01, C1-02, C1-03 e C1-05 implementados; C1-04 e C1-06 pendentes.
+**Status:** em andamento em 06/11/2026 — C1-01, C1-02, C1-03, C1-04 e C1-05 implementados; C1-06 pendente.
 **Plano técnico:** [`docs/PLANO_TECNICO_CICLO_1.md`](PLANO_TECNICO_CICLO_1.md) · **ADRs:** 0022–0026.
 
 | Ordem | ID | Iniciativa | Depende de | Gate |
@@ -357,7 +358,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 | 5 | **C1-05** | Lixeira de 7 dias, reset efetivo e época de dados | C1-01 | Reset sem ressurreição; expurgo por clock |
 | 6 | **C1-06** | Verdade documental, ADRs e regressões finais | C1-01..C1-05 | Docs = código; suíte e goldens verdes |
 
-**Entregas:** C1-01 (tempo), C1-02 (carga/qualidade), C1-03 (prescrição única + N-01/N-02) e C1-05 (lixeira/reset) implementados em 06/11/2026. C1-04 (evidência) e C1-06 (verdade documental) seguem pendentes.
+**Entregas:** C1-01 (tempo), C1-02 (carga/qualidade), C1-03 (prescrição única + N-01/N-02), C1-04 (conclusão com evidência e vínculo) e C1-05 (lixeira/reset) implementados em 06/11/2026. C1-06 (verdade documental) segue pendente.
 
 **Regras do ciclo:**
 

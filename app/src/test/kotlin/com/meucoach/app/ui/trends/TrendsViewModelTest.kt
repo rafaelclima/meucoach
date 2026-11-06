@@ -164,7 +164,7 @@ class TrendsViewModelTest {
                 weekStart = weekStart,
                 sessions = listOf(
                     session(weekStart, SessionStatus.DONE),
-                    session(weekStart.plusDays(2), SessionStatus.SKIPPED),
+                    session(weekStart.plusDays(2), SessionStatus.CLOSED),
                 ),
                 weeklyMinutes = 60,
                 longRunMinutes = null,
@@ -213,6 +213,17 @@ class TrendsViewModelTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
         status = status,
+        completionEvidence = if (status == SessionStatus.DONE) {
+            com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED
+        } else {
+            null
+        },
+        closureReason = if (status == SessionStatus.CLOSED) {
+            com.meucoach.core.domain.prescription.SessionClosureReason.USER_SKIPPED
+        } else {
+            null
+        },
+        closedAt = if (status == SessionStatus.CLOSED) Instant.EPOCH else null,
     )
 
     private fun profile() = AthleteProfile(

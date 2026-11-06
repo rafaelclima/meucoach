@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 30/10/2026
+**Versão:** 1.2 · **Data:** 06/11/2026
 
 ## 1. Convenções
 
@@ -10,7 +10,7 @@
 - **Dinheiro/medidas:** `Double` para métricas fisiológicas; `Long` para contadores; nunca `Float` em persistência.
 - **Nulos:** ausência de dado é `null`, nunca `0`. `0` é um valor medido.
 - **Proveniência:** toda entidade importada tem `source`, `sourceId`, `importedAt`, `parserVersion`.
-- **Soft delete:** `deletedAt` em atividades e métricas diárias; exportação inclui lixeira por 30 dias.
+- **Soft delete:** `deletedAt` em atividades e métricas diárias; a lixeira de atividades dura 7 dias (`ADR 0025`).
 - **Versionamento:** `schemaVersion` em `Room`; `engineVersion` em recomendações; `evidenceVersion` no registro de evidências.
 
 ## 2. Diagrama
@@ -26,6 +26,7 @@ erDiagram
     ACTIVITY ||--o{ SESSION_FEEDBACK : has
     PLAN ||--o{ PLANNED_SESSION : contains
     PLANNED_SESSION ||--o| ACTIVITY : completed_by
+    PLANNED_SESSION ||--o| SESSION_EXECUTION : proved_by
     DAILY_METRICS ||--o| READINESS : produces
     CHECK_IN ||--o| READINESS : informs
     READINESS ||--o| RECOMMENDATION : constrains
@@ -170,7 +171,33 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 
 `Plan`: `id`, `startDate`, `endDate`, `goalType`, `targetRaceDate`, `status`, `engineVersion`, `createdAt`.
 
-`PlannedSession`: `id`, `planId`, `date`, `type` (`EASY`, `LONG`, `TEMPO`, `INTERVALS`, `RECOVERY`, `RACE`, `REST`), `purpose`, `durationMin`, `distanceM`, `targetZone`, `targetPaceMin/Max`, `targetHrMin/Max`, `structure` (JSON: warm-up, main, cooldown, reps), `status` (`PLANNED`, `COMPLETED`, `SKIPPED`, `MOVED`), `linkedActivityId`, `rationale` (JSON: rule IDs + confidence).
+`PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale` e IDs de regra/evidência.
+
+Regras do `ADR 0024`:
+
+- `DONE` só existe com evidência; o modelo rejeita a construção sem ela.
+- `CLOSED` só existe com motivo; descanso, doença e plano substituído não contam como falha de adesão.
+- Uma atividade e uma sessão são 1:1: índices únicos em `planned_sessions.activityId` e `session_executions.activityId`/`plannedSessionId`.
+- Atividade na lixeira suspende a evidência (`LEGACY_UNVERIFIED`); restaurar devolve `ACTIVITY`; expurgar remove o vínculo e mantém o histórico não verificado.
+
+### 3.8.1 `SessionExecution`
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | PK |
+| `plannedSessionId` | String? | 1:1 com a sessão |
+| `activityId` | String? | 1:1 com a atividade; nulo em `MANUAL`/`GUIDED` |
+| `startedAt` / `endedAt` | Instant? | nulos em `MANUAL` |
+| `pausesJson` | JSON | pausas da execução guiada; vazio neste ciclo |
+| `durationSec` | Int | positivo |
+| `distanceM` | Double? | nulo em `MANUAL` |
+| `rpe` | Int? | obrigatório em `MANUAL` (1–10) |
+| `source` | enum | `ACTIVITY`, `GUIDED`, `MANUAL` |
+| `createdAt` | Instant | |
+
+`MANUAL` é uma declaração explícita de execução, não uma atividade: não cria
+volume, carga, zonas, distância ou pace. `GUIDED` tem contrato definido, mas
+nenhuma execução nova é produzida até a sessão guiada persistente do ciclo 3.
 
 ### 3.9 `SessionFeedback`
 
@@ -219,8 +246,10 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`; r
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco v2; `MIGRATION_1_2` adiciona `activities.deletedAt`.
-- Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; schemas 1 e 2 são assets de teste.
+- Estado atual: banco **v12**; migrações 1→2 até 11→12 testadas em Robolectric.
+- `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
+- `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
+- Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.
 
@@ -243,6 +272,6 @@ O usuário pode exportar:
 - CSV de métricas diárias.
 - ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
 
-Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões, atividades (inclusive lixeira), laps, contagem de samples, jobs de importação e o objeto local `firstRun` (timeline do tutorial, primeira ação e checklist). Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
+Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões (com evidência e encerramento), prescrições diárias, execuções, atividades, laps, contagem de samples, jobs de importação e o objeto local `firstRun`. A lixeira fica fora por padrão e só entra com `includeTrash = true`; execuções ligadas a atividades na lixeira também ficam fora. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
 
-Excluir tudo remove banco, arquivos e blobs, mantendo apenas um recibo anônimo de exclusão por 30 dias.
+Excluir tudo remove banco, arquivos, blobs, staging, cache, avatar e preferências de dados; a época de dados é o único metadado preservado, sem recibo de exclusão (`ADR 0025`).

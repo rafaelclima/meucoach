@@ -459,6 +459,8 @@ class DailyPrescriptionEngineTest {
             easySession(30).copy(
                 date = previousMonday.plusDays(index.toLong()),
                 status = SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-$index",
             )
         }
         return WeeklyPlan(

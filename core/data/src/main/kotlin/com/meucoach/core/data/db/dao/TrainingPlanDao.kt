@@ -18,8 +18,17 @@ interface TrainingPlanDao {
     @Query("SELECT * FROM weekly_plans WHERE weekStart = :weekStart")
     fun observePlan(weekStart: String): Flow<WeeklyPlanEntity?>
 
+    @Query("SELECT * FROM planned_sessions WHERE id = :id")
+    suspend fun getSession(id: String): PlannedSessionEntity?
+
     @Query("SELECT * FROM planned_sessions WHERE weekStart = :weekStart ORDER BY date")
     suspend fun getSessions(weekStart: String): List<PlannedSessionEntity>
+
+    @Query("SELECT * FROM planned_sessions WHERE activityId = :activityId LIMIT 1")
+    suspend fun getSessionByActivityId(activityId: String): PlannedSessionEntity?
+
+    @Query("SELECT activityId FROM planned_sessions WHERE activityId IS NOT NULL")
+    fun observeLinkedActivityIds(): Flow<List<String>>
 
     @Query("SELECT * FROM planned_sessions WHERE weekStart = :weekStart ORDER BY date")
     fun observeSessions(weekStart: String): Flow<List<PlannedSessionEntity>>
@@ -68,8 +77,46 @@ interface TrainingPlanDao {
     suspend fun deleteAllPlans(): Int
 
     @Query(
-        "UPDATE planned_sessions SET status = :status, skipReason = :skipReason, " +
-            "completedAt = :completedAt WHERE id = :id",
+        "UPDATE planned_sessions SET status = 'DONE', completionEvidence = :evidence, " +
+            "executionId = :executionId, activityId = :activityId, completedAt = :completedAt, " +
+            "closureReason = NULL, closedAt = NULL, skipReason = NULL " +
+            "WHERE id = :id AND status != 'DONE'",
     )
-    suspend fun updateStatus(id: String, status: String, skipReason: String?, completedAt: Long?): Int
+    suspend fun markDone(
+        id: String,
+        evidence: String,
+        executionId: String?,
+        activityId: String?,
+        completedAt: Long,
+    ): Int
+
+    @Query(
+        "UPDATE planned_sessions SET status = 'CLOSED', closureReason = :reason, " +
+            "skipReason = :note, closedAt = :closedAt, completedAt = NULL, " +
+            "completionEvidence = NULL, executionId = NULL, activityId = NULL " +
+            "WHERE id = :id AND status = 'PLANNED'",
+    )
+    suspend fun close(id: String, reason: String, note: String?, closedAt: Long): Int
+
+    /** ADR 0025: a trashed activity cannot keep proving a session. */
+    @Query(
+        "UPDATE planned_sessions SET completionEvidence = 'LEGACY_UNVERIFIED' " +
+            "WHERE activityId = :activityId AND status = 'DONE' AND completionEvidence = 'ACTIVITY'",
+    )
+    suspend fun suspendActivityEvidence(activityId: String): Int
+
+    @Query(
+        "UPDATE planned_sessions SET completionEvidence = 'ACTIVITY' " +
+            "WHERE activityId = :activityId AND status = 'DONE' " +
+            "AND completionEvidence = 'LEGACY_UNVERIFIED'",
+    )
+    suspend fun restoreActivityEvidence(activityId: String): Int
+
+    /** Purge removes the link but keeps an honest, unverified historical record. */
+    @Query(
+        "UPDATE planned_sessions SET activityId = NULL, executionId = NULL, " +
+            "completionEvidence = 'LEGACY_UNVERIFIED' " +
+            "WHERE activityId = :activityId AND status = 'DONE'",
+    )
+    suspend fun purgeActivityLink(activityId: String): Int
 }

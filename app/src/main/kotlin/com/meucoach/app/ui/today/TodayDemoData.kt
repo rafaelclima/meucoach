@@ -42,6 +42,15 @@ data class RecentActivityUi(
     val zone: String,
 )
 
+/** An imported run that may correspond to today's planned session. */
+data class ActivitySuggestionUi(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val distance: String,
+    val duration: String,
+)
+
 data class TodayUiState(
     val today: LocalDate,
     val athleteName: String,
@@ -73,6 +82,12 @@ data class TodayUiState(
     /** Explains why load/ACWR are missing or outdated; null when no load snapshot exists. */
     val loadDataState: LoadDataState? = null,
     val avatarPath: String? = null,
+    /** Imported runs compatible with today's planned session; never auto-linked. */
+    val activitySuggestions: List<ActivitySuggestionUi> = emptyList(),
+    /** Result of the last completion attempt, shown as passive copy in the card. */
+    val completionMessage: String? = null,
+    /** Blocks completion and explains why the day is a rest/illness day. */
+    val illnessOrInjury: Boolean = false,
 )
 
 fun demoTodayUiState(today: LocalDate, now: LocalTime = LocalTime.NOON): TodayUiState {

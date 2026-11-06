@@ -68,8 +68,31 @@ class ReminderContentTest {
             evidenceIds = listOf("EV-SEILER-2010"),
         )
 
-        assertThat(ReminderContent.workout(today, plan(session.copy(status = SessionStatus.DONE)))).isNull()
-        assertThat(ReminderContent.workout(today, plan(session.copy(status = SessionStatus.SKIPPED)))).isNull()
+        assertThat(
+            ReminderContent.workout(
+                today,
+                plan(
+                    session.copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                        activityId = "activity-1",
+                    ),
+                ),
+            ),
+        ).isNull()
+        assertThat(
+            ReminderContent.workout(
+                today,
+                plan(
+                    session.copy(
+                        status = SessionStatus.CLOSED,
+                        closureReason =
+                        com.meucoach.core.domain.prescription.SessionClosureReason.USER_SKIPPED,
+                        closedAt = java.time.Instant.EPOCH,
+                    ),
+                ),
+            ),
+        ).isNull()
         assertThat(
             ReminderContent.workout(today, plan(session.copy(type = WorkoutType.REST))),
         ).isNull()

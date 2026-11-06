@@ -6,12 +6,14 @@ import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.domain.zones.PaceZoneCalculator
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.PaceZone
 import com.meucoach.core.model.ReadinessLevel
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
@@ -20,7 +22,7 @@ import kotlin.math.roundToInt
 enum class SessionStatus {
     PLANNED,
     DONE,
-    SKIPPED,
+    CLOSED,
 }
 
 data class PlannedSession(
@@ -35,11 +37,42 @@ data class PlannedSession(
     val targets: PrescriptionTargets = PrescriptionTargets(),
     val status: SessionStatus = SessionStatus.PLANNED,
     val skipReason: String? = null,
+    /** Present only on [SessionStatus.DONE]; see ADR 0024. */
+    val completionEvidence: CompletionEvidence? = null,
+    /** Persisted execution that proves the completion. */
+    val executionId: String? = null,
+    /** Imported activity linked to this session, when the evidence is ACTIVITY. */
+    val activityId: String? = null,
+    /** Present only on [SessionStatus.CLOSED]. */
+    val closureReason: SessionClosureReason? = null,
+    val closedAt: Instant? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Session title must not be blank" }
         require(ruleIds.isNotEmpty()) { "Session must cite at least one rule" }
         require(evidenceIds.isNotEmpty()) { "Session must cite at least one evidence" }
+        require(status != SessionStatus.DONE || completionEvidence != null) {
+            "A done session requires completion evidence"
+        }
+        require(status != SessionStatus.CLOSED || closureReason != null) {
+            "A closed session requires a closure reason"
+        }
+        require(completionEvidence == null || status == SessionStatus.DONE) {
+            "Only a done session carries completion evidence"
+        }
+        require(closureReason == null || status == SessionStatus.CLOSED) {
+            "Only a closed session carries a closure reason"
+        }
+        require(
+            activityId == null ||
+                completionEvidence == CompletionEvidence.ACTIVITY ||
+                completionEvidence == CompletionEvidence.LEGACY_UNVERIFIED,
+        ) {
+            "An activity link requires ACTIVITY or suspended LEGACY_UNVERIFIED evidence"
+        }
+        require(completionEvidence != CompletionEvidence.ACTIVITY || activityId != null) {
+            "ACTIVITY evidence requires a linked activity"
+        }
     }
 }
 
@@ -337,9 +370,14 @@ class WeeklyPlanGenerator {
     }
 
     private fun WeeklyPlan.completionRatio(): Double {
-        val planned = sessions.filter { it.type != WorkoutType.REST }
+        val planned = sessions
+            .filter { it.type != WorkoutType.REST }
+            .filterNot { it.status == SessionStatus.CLOSED && it.closureReason?.isNonTrainable == true }
         if (planned.isEmpty()) return 0.0
-        return planned.count { it.status == SessionStatus.DONE }.toDouble() / planned.size
+        // Only strong evidence unlocks progression (ADR 0024): a click cannot.
+        return planned.count {
+            it.status == SessionStatus.DONE && it.completionEvidence?.isStrong == true
+        }.toDouble() / planned.size
     }
 
     private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek, maxQualities: Int): Set<DayOfWeek> {

@@ -220,3 +220,11 @@ Separar adesão de execução comprovada impede que uma declaração de baixa co
 - `docs/adr/0023-weekly-plan-vs-daily-prescription.md`
 - `docs/adr/0025-deletion-retention-reset.md`
 - `docs/PLANO_TECNICO_CICLO_1.md` §6.4 e §7
+
+## 11. Status da implementação (06/11/2026)
+
+- `ACTIVITY` e `MANUAL` implementados; `GUIDED` existe como contrato, sem produção de novas execuções até o ciclo 3.
+- `session_executions` e as colunas de evidência/vínculo/encerramento estão no schema v12 (migração 11→12 testada).
+- O modelo rejeita `DONE` sem evidência e `CLOSED` sem motivo; o vínculo atividade ↔ sessão é 1:1 por índice único e transação.
+- A lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo mantendo `LEGACY_UNVERIFIED`.
+- Adesão e execução comprovada aparecem separadas em Tendências; só `ACTIVITY`/`GUIDED` liberam progressão.

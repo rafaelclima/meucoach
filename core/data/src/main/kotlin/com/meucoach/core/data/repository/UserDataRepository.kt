@@ -12,6 +12,7 @@ import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
+import com.meucoach.core.data.db.entity.SessionExecutionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 import com.meucoach.core.data.health.HealthSyncStore
 import org.json.JSONArray
@@ -27,10 +28,11 @@ data class UserDataDeletion(
     val plans: Int,
     val profileDeleted: Boolean,
     val prescriptions: Int = 0,
+    val executions: Int = 0,
 ) {
     val removedAnything: Boolean
         get() = activities > 0 || checkIns > 0 || metrics > 0 || plans > 0 ||
-            prescriptions > 0 || profileDeleted
+            prescriptions > 0 || executions > 0 || profileDeleted
 }
 
 /**
@@ -55,6 +57,7 @@ class UserDataRepository(
                 .put("dailyMetrics", database.dailyMetricsDao().getAll().toJsonArray { it.toJson() })
                 .put("weeklyPlans", exportPlans())
                 .put("dailyPrescriptions", exportPrescriptions())
+                .put("sessionExecutions", exportExecutions(trashedIds))
                 .put("activities", exportActivities(includeTrash))
                 .put(
                     "importJobs",
@@ -74,6 +77,7 @@ class UserDataRepository(
             val checkIns = database.dailyCheckInDao().deleteAll()
             val metrics = database.dailyMetricsDao().deleteAll()
             // Sessions are deleted explicitly instead of relying on the cascade.
+            val executions = database.sessionExecutionDao().deleteAll()
             database.trainingPlanDao().deleteAllSessions()
             val plans = database.trainingPlanDao().deleteAllPlans()
             val prescriptions = database.dailyPrescriptionDao().deleteAll()
@@ -85,6 +89,7 @@ class UserDataRepository(
                 plans = plans,
                 profileDeleted = profileDeleted,
                 prescriptions = prescriptions,
+                executions = executions,
             )
         }
         // A fresh profile must read the full initial Health Connect window again.
@@ -126,6 +131,12 @@ class UserDataRepository(
     private suspend fun exportPrescriptions(): JSONArray = database
         .dailyPrescriptionDao()
         .getAll()
+        .toJsonArray { it.toJson() }
+
+    private suspend fun exportExecutions(excludedActivityIds: Set<String>): JSONArray = database
+        .sessionExecutionDao()
+        .getAll()
+        .filterNot { it.activityId in excludedActivityIds }
         .toJsonArray { it.toJson() }
 }
 
@@ -209,6 +220,25 @@ private fun PlannedSessionEntity.toJson(): JSONObject = JSONObject().apply {
     put("status", status.name)
     putNullable("skipReason", skipReason)
     putNullable("completedAt", completedAt?.let { Instant.ofEpochMilli(it).toString() })
+    putNullable("completionEvidence", completionEvidence?.name)
+    putNullable("executionId", executionId)
+    putNullable("activityId", activityId)
+    putNullable("closureReason", closureReason?.name)
+    putNullable("closedAt", closedAt?.let { Instant.ofEpochMilli(it).toString() })
+}
+
+private fun SessionExecutionEntity.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    putNullable("plannedSessionId", plannedSessionId)
+    putNullable("activityId", activityId)
+    putNullable("startedAt", startedAt?.let { Instant.ofEpochMilli(it).toString() })
+    putNullable("endedAt", endedAt?.let { Instant.ofEpochMilli(it).toString() })
+    put("pauses", runCatching { JSONArray(pausesJson) }.getOrElse { JSONArray() })
+    put("durationSec", durationSec)
+    putNullable("distanceM", distanceM)
+    putNullable("rpe", rpe)
+    put("source", source.name)
+    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
 }
 
 private fun DailyPrescriptionEntity.toJson(): JSONObject = JSONObject().apply {

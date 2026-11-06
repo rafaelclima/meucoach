@@ -96,24 +96,18 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                     status = session.status,
                     skipReason = session.skipReason,
                     completedAt = if (session.status == SessionStatus.DONE) clock.millis() else null,
+                    completionEvidence = session.completionEvidence,
+                    executionId = session.executionId,
+                    activityId = session.activityId,
+                    closureReason = session.closureReason,
+                    closedAt = session.closedAt?.toEpochMilli(),
                 )
             },
         )
     }
 
-    suspend fun updateStatus(
-        weekStart: LocalDate,
-        date: LocalDate,
-        status: SessionStatus,
-        skipReason: String? = null,
-    ): Boolean = dao.updateStatus(
-        id = plannedSessionId(weekStart, date),
-        status = status.name,
-        skipReason = skipReason,
-        completedAt = if (status == SessionStatus.DONE) clock.millis() else null,
-    ) > 0
-
     suspend fun deleteWeek(weekStart: LocalDate): Int = database.withTransaction {
+        database.sessionExecutionDao().deleteForWeek(weekStart.toString())
         dao.deleteSessions(weekStart.toString())
         dao.deletePlan(weekStart.toString())
     }
@@ -142,6 +136,11 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         targets = PrescriptionJson.targetsFromJson(targetsJson),
         status = status,
         skipReason = skipReason,
+        completionEvidence = completionEvidence,
+        executionId = executionId,
+        activityId = activityId,
+        closureReason = closureReason,
+        closedAt = closedAt?.let(java.time.Instant::ofEpochMilli),
     )
 
     private fun List<String>.toJson(): String = JSONArray(this).toString()

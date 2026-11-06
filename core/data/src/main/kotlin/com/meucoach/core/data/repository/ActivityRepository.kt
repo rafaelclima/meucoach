@@ -66,6 +66,13 @@ class ActivityRepository(
             .map { it.toSummary(sourcesByActivity[it.id].orEmpty()) }
     }
 
+    /** One canonical activity, without trashed rows. */
+    suspend fun getActivitySummary(id: String): ActivitySummary? = database.withTransaction {
+        val entity = database.activityDao().findById(id) ?: return@withTransaction null
+        val alternates = database.activityAlternateDao().getForActivity(id).map { it.source }
+        entity.toSummary(alternates)
+    }
+
     /** Last time an activity was imported, used to decide whether load data is fresh. */
     fun observeLastImportedAt(): Flow<Instant?> = database
         .activityDao()
@@ -326,10 +333,23 @@ class ActivityRepository(
         .getTrash()
         .map { it.toTrashed() }
 
-    suspend fun restoreActivity(id: String): Boolean = database.activityDao().restore(id) > 0
+    suspend fun restoreActivity(id: String): Boolean = database.withTransaction {
+        val restored = database.activityDao().restore(id) > 0
+        if (restored) {
+            // ADR 0025: restoring the activity restores its evidence too.
+            database.trainingPlanDao().restoreActivityEvidence(id)
+        }
+        restored
+    }
 
-    suspend fun deleteActivity(id: String, deletedAt: Instant = clock.instant()): Boolean =
-        database.activityDao().softDelete(id, deletedAt.toEpochMilli()) > 0
+    suspend fun deleteActivity(id: String, deletedAt: Instant = clock.instant()): Boolean = database.withTransaction {
+        val deleted = database.activityDao().softDelete(id, deletedAt.toEpochMilli()) > 0
+        if (deleted) {
+            // The session keeps its history but stops counting as evidence.
+            database.trainingPlanDao().suspendActivityEvidence(id)
+        }
+        deleted
+    }
 
     suspend fun permanentlyDeleteActivity(id: String): Boolean = purgeActivity(id) != null
 
@@ -337,6 +357,7 @@ class ActivityRepository(
     suspend fun purgeActivity(id: String): PurgedActivity? = database.withTransaction {
         val entity = database.activityDao().findByIdIncludingDeleted(id) ?: return@withTransaction null
         if (entity.deletedAt == null) return@withTransaction null
+        unlinkFromSession(id)
         database.importJobDao().deleteForActivity(id)
         val removed = database.activityDao().hardDelete(id) > 0
         if (removed) PurgedActivity(id = id, rawFilePath = entity.rawFilePath) else null
@@ -348,10 +369,17 @@ class ActivityRepository(
         val expired = database.activityDao().getDeletedBefore(cutoff.toEpochMilli())
         if (expired.isEmpty()) return@withTransaction emptyList()
         expired.forEach { activity ->
+            unlinkFromSession(activity.id)
             database.importJobDao().deleteForActivity(activity.id)
         }
         database.activityDao().hardDeleteBefore(cutoff.toEpochMilli())
         expired.map { PurgedActivity(id = it.id, rawFilePath = it.rawFilePath) }
+    }
+
+    /** ADR 0024/0025: the session keeps an honest, unverified record. */
+    private suspend fun unlinkFromSession(activityId: String) {
+        database.sessionExecutionDao().deleteForActivity(activityId)
+        database.trainingPlanDao().purgeActivityLink(activityId)
     }
 
     private fun ImportedActivity.toEntity(

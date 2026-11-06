@@ -37,7 +37,15 @@ class GetTodayPrescription @Inject constructor(private val repository: DailyPres
         val plan = request.plan
         val planned = plan
             ?.sessions
-            ?.firstOrNull { it.date == request.date && it.status != SessionStatus.SKIPPED }
+            ?.firstOrNull { session ->
+                session.date == request.date && when (session.status) {
+                    SessionStatus.PLANNED, SessionStatus.DONE -> true
+
+                    // Rest/illness/replaced closures keep the day snapshot; a
+                    // user skip means the day no longer has a plan to follow.
+                    SessionStatus.CLOSED -> session.closureReason?.isNonTrainable == true
+                }
+            }
         val input = DailyPrescriptionInput(
             date = request.date,
             profile = request.profile,

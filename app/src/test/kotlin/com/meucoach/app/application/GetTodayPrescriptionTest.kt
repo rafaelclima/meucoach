@@ -99,18 +99,45 @@ class GetTodayPrescriptionTest {
     }
 
     @Test
-    fun `a skipped session is treated as no plan`(): Unit = runBlocking {
-        val skipped = plan().let { current ->
+    fun `a closed session is treated as no plan`(): Unit = runBlocking {
+        val closed = plan().let { current ->
             current.copy(
-                sessions = current.sessions.map { it.copy(status = SessionStatus.SKIPPED) },
+                sessions = current.sessions.map {
+                    it.copy(
+                        status = SessionStatus.CLOSED,
+                        closureReason = com.meucoach.core.domain.prescription.SessionClosureReason.USER_SKIPPED,
+                        closedAt = java.time.Instant.EPOCH,
+                    )
+                },
             )
         }
 
-        val prescription = useCase(request(plan = skipped))
+        val prescription = useCase(request(plan = closed))
 
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.NO_PLAN)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
         assertThat(prescription.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `a rest closure keeps the day prescription as rest`(): Unit = runBlocking {
+        val closed = plan().let { current ->
+            current.copy(
+                sessions = current.sessions.map {
+                    it.copy(
+                        status = SessionStatus.CLOSED,
+                        closureReason = com.meucoach.core.domain.prescription.SessionClosureReason.REST_PRESCRIBED,
+                        closedAt = java.time.Instant.EPOCH,
+                    )
+                },
+            )
+        }
+
+        val prescription = useCase(request(plan = closed, readiness = readiness(ReadinessLevel.RED)))
+
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.REST)
+        assertThat(prescription.plannedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.REST)
     }
 
     @Test

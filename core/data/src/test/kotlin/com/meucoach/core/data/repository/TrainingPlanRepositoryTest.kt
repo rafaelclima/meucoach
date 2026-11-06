@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -25,6 +26,7 @@ import java.time.LocalDate
 class TrainingPlanRepositoryTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: TrainingPlanRepository
+    private lateinit var executions: SessionExecutionRepository
     private val monday = LocalDate.of(2026, 11, 2)
 
     @Before
@@ -36,6 +38,7 @@ class TrainingPlanRepositoryTest {
                 .allowMainThreadQueries()
                 .build()
         repository = TrainingPlanRepository(database)
+        executions = SessionExecutionRepository(database)
     }
 
     @After
@@ -69,22 +72,24 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
-    fun `updates session status and skip reason`(): Unit = runBlocking {
+    fun `completes a session only through an execution with evidence`(): Unit = runBlocking {
         repository.saveWeek(plan())
 
-        assertThat(repository.updateStatus(monday, monday, SessionStatus.DONE)).isTrue()
-        assertThat(repository.getWeek(monday)?.sessions?.first()?.status).isEqualTo(SessionStatus.DONE)
+        val outcome = executions.recordManualExecution("2026-11-02-2026-11-02", durationMin = 40, rpe = 5)
+        assertThat(outcome).isInstanceOf(CompletionOutcome.Recorded::class.java)
+        val done = repository.getWeek(monday)?.sessions?.first()
+        assertThat(done?.status).isEqualTo(SessionStatus.DONE)
+        assertThat(done?.completionEvidence?.name).isEqualTo("MANUAL")
 
-        assertThat(
-            repository.updateStatus(
-                monday,
-                monday.plusDays(5),
-                SessionStatus.SKIPPED,
-                skipReason = "dor no joelho",
-            ),
-        ).isTrue()
+        val closed = executions.closeSession(
+            "2026-11-02-2026-11-07",
+            SessionClosureReason.USER_SKIPPED,
+            note = "dor no joelho",
+        )
+        assertThat(closed).isTrue()
         val skipped = repository.getWeek(monday)?.sessions?.last()
-        assertThat(skipped?.status).isEqualTo(SessionStatus.SKIPPED)
+        assertThat(skipped?.status).isEqualTo(SessionStatus.CLOSED)
+        assertThat(skipped?.closureReason).isEqualTo(SessionClosureReason.USER_SKIPPED)
         assertThat(skipped?.skipReason).isEqualTo("dor no joelho")
     }
 
@@ -100,7 +105,7 @@ class TrainingPlanRepositoryTest {
     @Test
     fun `updates session content without touching status`(): Unit = runBlocking {
         repository.saveWeek(plan())
-        repository.updateStatus(monday, monday, SessionStatus.DONE)
+        executions.recordManualExecution("2026-11-02-2026-11-02", durationMin = 40, rpe = 5)
         val updated = repository.getWeek(monday)!!.sessions.map { session ->
             if (session.date == monday) {
                 session.copy(

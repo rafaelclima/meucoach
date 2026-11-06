@@ -103,11 +103,12 @@ class MetricsImportViewModel @Inject constructor(
             )
             val parsed = runCatching {
                 val text = withContext(ioDispatcher) { read(uri) }
-                parser.parse(text)
+                val result = parser.parse(text)
+                repository.saveAll(result.metrics)
+                result
             }
             parsed.fold(
                 onSuccess = { result ->
-                    repository.saveAll(result.metrics)
                     _uiState.value = _uiState.value.copy(
                         isImporting = false,
                         importedDays = result.metrics.size,

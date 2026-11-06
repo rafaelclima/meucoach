@@ -2,6 +2,7 @@ package com.meucoach.app.ui.today
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.prescription.PlannedSession
@@ -144,15 +146,15 @@ class TodayPlanTest {
     }
 
     @Test
-    fun `completes today's session`() {
+    fun `completes today's session with manual evidence`() {
         val today = LocalDate.now()
-        var completed: LocalDate? = null
+        var completed: Triple<LocalDate, Int, Int>? = null
         compose.setContent {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
                     state = demoTodayUiState(today).copy(plan = planWith(today)),
-                    onCompleteSession = { completed = it },
+                    onCompleteManually = { date, minutes, rpe -> completed = Triple(date, minutes, rpe) },
                 )
             }
         }
@@ -161,7 +163,48 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("Concluir treino"))
         compose.onNodeWithTag("complete-today").performClick()
 
-        assertThat(completed).isEqualTo(today)
+        compose.onNodeWithTag("completion-dialog").assertIsDisplayed()
+        compose.onNodeWithTag("manual-save").assertIsNotEnabled()
+        compose.onNodeWithTag("manual-duration").performScrollTo().performTextInput("40")
+        compose.onNodeWithTag("rpe-6").performScrollTo().performClick()
+        compose.onNodeWithTag("manual-save").performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag("manual-save").performClick()
+
+        assertThat(completed).isEqualTo(Triple(today, 40, 6))
+    }
+
+    @Test
+    fun `links a suggested activity as evidence`() {
+        val today = LocalDate.now()
+        var linked: Pair<LocalDate, String>? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today),
+                        activitySuggestions = listOf(
+                            ActivitySuggestionUi(
+                                id = "activity-1",
+                                title = "Corrida de rua",
+                                subtitle = "hoje · 07:00",
+                                distance = "6,1 km",
+                                duration = "40:00",
+                            ),
+                        ),
+                    ),
+                    onCompleteWithActivity = { date, activityId -> linked = date to activityId },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").performClick()
+        compose.onNodeWithTag("suggestion-activity-1").performClick()
+        compose.onNodeWithTag("link-activity").performClick()
+
+        assertThat(linked).isEqualTo(today to "activity-1")
     }
 
     @Test
@@ -320,15 +363,13 @@ class TodayPlanTest {
     }
 
     @Test
-    fun `finishes the guided session`() {
+    fun `the guided preview asks for evidence before completing`() {
         val today = LocalDate.of(2026, 11, 2)
-        var completed: LocalDate? = null
         compose.setContent {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
                     state = demoTodayUiState(today).copy(plan = planWith(today)),
-                    onCompleteSession = { completed = it },
                 )
             }
         }
@@ -336,10 +377,10 @@ class TodayPlanTest {
         val list = compose.onNodeWithTag("today-list")
         list.performScrollToNode(hasText("Iniciar"))
         compose.onNodeWithText("Iniciar").performClick()
-        compose.onNodeWithText("Sessão guiada").assertIsDisplayed()
+        compose.onNodeWithText("Prévia da sessão").assertIsDisplayed()
         compose.onNodeWithText("Encerrar treino").performClick()
 
-        assertThat(completed).isEqualTo(today)
+        compose.onNodeWithTag("completion-dialog").assertIsDisplayed()
     }
 
     @Test
@@ -413,7 +454,12 @@ class TodayPlanTest {
                         plan = planWith(today).let { plan ->
                             plan.copy(
                                 sessions = plan.sessions.map {
-                                    it.copy(status = SessionStatus.DONE)
+                                    it.copy(
+                                        status = SessionStatus.DONE,
+                                        completionEvidence =
+                                        com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                                        activityId = "activity-1",
+                                    )
                                 },
                             )
                         },
@@ -423,8 +469,49 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Feito"))
-        compose.onNodeWithText("Feito").assertIsDisplayed()
+        list.performScrollToNode(hasText("Feito · verificado"))
+        compose.onNodeWithText("Feito · verificado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows evidence and closure labels without calling a click verified`() {
+        val today = LocalDate.of(2026, 11, 4)
+        val plan = planWith(today).copy(
+            sessions = listOf(
+                planWith(today).sessions.single().copy(
+                    status = SessionStatus.DONE,
+                    completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+                ),
+                planWith(today).sessions.single().copy(
+                    date = today.minusDays(1),
+                    status = SessionStatus.DONE,
+                    completionEvidence = com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED,
+                ),
+                planWith(today).sessions.single().copy(
+                    date = today.plusDays(1),
+                    status = SessionStatus.CLOSED,
+                    closureReason =
+                    com.meucoach.core.domain.prescription.SessionClosureReason.USER_SKIPPED,
+                    closedAt = java.time.Instant.EPOCH,
+                ),
+            ),
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Feito · sem registro"))
+        compose.onNodeWithText("Feito · sem registro").assertIsDisplayed()
+        list.performScrollToNode(hasText("Feito · não verificado"))
+        compose.onNodeWithText("Feito · não verificado").assertIsDisplayed()
+        list.performScrollToNode(hasText("Pulado"))
+        compose.onNodeWithText("Pulado").assertIsDisplayed()
     }
 
     @Test

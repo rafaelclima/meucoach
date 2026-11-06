@@ -193,6 +193,9 @@ class TrendsFullScreenshotTest {
                 weekStart = LocalDate.of(2026, 9, 14).plusWeeks(index.toLong()),
                 planned = 3,
                 done = if (index % 3 == 0) 3 else 2,
+                verified = if (index % 3 == 0) 3 else 2,
+                manual = 0,
+                legacy = 0,
                 skipped = if (index % 4 == 0) 1 else 0,
             )
         },

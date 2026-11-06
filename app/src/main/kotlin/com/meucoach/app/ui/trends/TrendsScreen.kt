@@ -581,7 +581,8 @@ private fun PlanCompletionCard(completion: PlanCompletion) {
             height = 132.dp,
             contentDescription = "Conclusão do plano nas últimas " +
                 "${completion.windowWeeks} semanas: ${completion.done} de " +
-                "${completion.planned} sessões concluídas e ${completion.skipped} puladas",
+                "${completion.planned} sessões concluídas, ${completion.verified} com evidência, " +
+                "e ${completion.skipped} puladas",
         )
         Spacer(modifier = Modifier.height(10.dp))
         val skipped = when (completion.skipped) {
@@ -594,6 +595,21 @@ private fun PlanCompletionCard(completion: PlanCompletion) {
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
+        val verified = "${completion.verified} com evidência"
+        val manual = if (completion.manual > 0) " · ${completion.manual} sem registro" else ""
+        val legacy = if (completion.legacy > 0) " · ${completion.legacy} não verificadas" else ""
+        Text(
+            text = "$verified$manual$legacy",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        if (completion.legacy > 0) {
+            Text(
+                text = "Conclusões antigas não têm comprovação e não liberam progressão.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+        }
         Text(
             text = "Semanas sem plano ficam vazias; a semana atual conta só até hoje.",
             style = McTextStyles.caption,

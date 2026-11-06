@@ -1,18 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 06/11/2026 (C1-01, C1-02, C1-03 e C1-05 implementados; C1-04 e C1-06 não iniciados)
+**Atualizado:** 06/11/2026 (C1-01, C1-02, C1-03, C1-04 e C1-05 implementados; C1-06 pendente)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 961 testes no total (487 em `:app`, 117 em `core:data`, 330 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,91% de linhas (3.285/3.355), 82,45% de branches (2.443/2.963), 96,54% de instruções (23.211/24.043)
+- **Testes:** 999 testes no total (497 em `:app`, 124 em `core:data`, 351 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,69% de linhas (3.380/3.460), 82,09% de branches (2.544/3.099), 96,04% de instruções (23.890/24.876)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 38 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
+- **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v11 (prescrição diária, criação do plano e alvos das sessões), migrações 1→2 até 10→11 testadas.
+- **Persistência:** Room 2.8.5, schema v12 (prescrição diária, execução/evidência de sessão e vínculo com atividade), migrações 1→2 até 11→12 testadas.
 - **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador.
+- **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
+- **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
@@ -39,7 +41,7 @@
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
 - **Tendências de atividades:** volume semanal, consistência com heatmap, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
-- **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
+- **Ações do plano:** concluir com evidência (corrida vinculada ou registro manual) ou pular sessão com motivo, persistido por sessão; prévia de cronômetro que não substitui a evidência; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 com mapa vetorial (`MapLibre` + `OpenFreeMap`, dados OSM) e frame final de 3 s (distância, tempo, ritmo médio, FC média, kcal e logo), export MP4 1080×1920 via MediaCodec, com galeria e compartilhamento; validado em aparelho real (mapa vetorial pendente de validação).
 - **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) filtrado em tempo de execução (POIs, transporte e aeroportos ocultos) e labels ampliados; fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, halo de foco na rota, ticks por km, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; snapshot em 2,25× (2430×4320), vídeo 1080p a 10 Mbps e 30 fps.
@@ -49,7 +51,7 @@
 - **Perfil com nome e foto:** `AthleteProfile.name`/`avatarPath` (Room v10), nome obrigatório no onboarding, foto importada pelo seletor do Android e copiada para `filesDir/profile` (512 px); avatar no lugar do “M” na Home, no Perfil e como pin do story.
 - **Story com a foto:** o pin do percurso é a foto do perfil (desenhada fora da câmera, sempre em pé, ~114 px de diâmetro em 1080p); a leitura do coach saiu da prévia e virou card privado na tela da atividade.
 - **Story v2 — câmera:** flyover que segue o corredor (overview 1,18×/8° → follow 1,72×/32°), rotação de até 22° pela direção da rota, zoom extra no card e pullback no encerramento; homografia aplicada ao mapa **e** à rota, com espessura da rota compensada pela escala.
-- **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
+- **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas, planos, prescrições e execuções em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Prontidão legível sem cor:** níveis aparecem como **Alta/Moderada/Baixa** no gauge e no histórico, com a cor como reforço; a foto do cabeçalho abre o Perfil.
@@ -58,6 +60,52 @@
 - **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-06 — C1-04: conclusão com evidência e vínculo atividade ↔ sessão
+
+**Objetivo:** tornar `DONE` consequência de uma execução/atividade, não de um clique, e fechar o vínculo planejado × executado com migração testada.
+
+### Concluído
+
+- **Modelo (`core:model`):** `CompletionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `ExecutionSource` e `SessionExecution` (início/fim, pausas, duração, distância, RPE). `MANUAL` não aceita `activityId` nem distância e exige RPE 1–10.
+- **Domínio:** `SessionStatus` passou a `PLANNED`/`DONE`/`CLOSED`; `PlannedSession` ganhou evidência, `executionId`, `activityId`, `closureReason` e `closedAt`. O construtor rejeita `DONE` sem evidência e `CLOSED` sem motivo.
+  - `SessionCompletionRules` bloqueia futuro, semana anterior, sessão já concluída/encerrada, descanso prescrito e doença; dia anterior da mesma semana é permitido com aviso.
+  - `SessionMatcher` sugere corridas compatíveis por data local, esporte e tolerâncias explícitas (duração ±20% ou ±10 min; distância ±15% ou ±1 km). A sugestão nunca vincula sozinha.
+  - `PlanCompletionCalculator` separa adesão (`done`) de execução comprovada (`verified`), conta `MANUAL` e `LEGACY_UNVERIFIED` à parte e remove descanso/doença/plano substituído do denominador.
+  - A progressão do `WeeklyPlanGenerator` só considera evidência forte (`ACTIVITY`/`GUIDED`); `LEGACY_UNVERIFIED` e `MANUAL` não liberam progressão.
+- **Dados:** `session_executions` (Room 12), colunas de evidência/vínculo/encerramento em `planned_sessions`, índices únicos para as regras 1:1 e `SessionExecutionRepository` transacional (`recordActivityExecution`, `recordManualExecution`, `closeSession`, consultas por sessão/atividade).
+- **Migração 11→12:** cria `session_executions`, adiciona as colunas e faz backfill explícito (`DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED`), preservando status, `completedAt` e planos.
+- **Caso de uso (`CompleteSession`):** valida sessão/data/prescrição, exige evidência, bloqueia `REST`/doença e encerra a sessão como `CLOSED`; `GUIDED` novo continua indisponível até o ciclo 3, sem botão falso.
+- **App/UI:** “Concluir treino” abre um diálogo com sugestões de corrida e “fiz sem registro” (duração + RPE); o aviso diz que o registro manual não entra em volume, carga ou zonas. O plano mostra “Feito · verificado”, “Feito · sem registro”, “Feito · não verificado”, “Descanso prescrito”, “Doença/lesão” ou “Pulado”. Descanso/doença fecham a sessão automaticamente e desabilitam início/conclusão.
+- **Tendências:** adesão e “feito com evidência” aparecem separados, com nota de que conclusões antigas não liberam progressão.
+- **Lixeira (C1-05):** apagar uma atividade vinculada suspende a evidência, restaurar devolve e expurgar remove o vínculo mantendo `LEGACY_UNVERIFIED`.
+- **Export/reset:** execuções entram no JSON; execuções de atividades na lixeira ficam fora do export padrão; o reset apaga a tabela e conta as execuções removidas.
+- **Testes:** +11 no domínio (`SessionCompletionRulesTest`, matcher, adesão/progressão e gate de `DONE` sem evidência), +7 em `core:data` (repositório 1:1, manual, encerramento, lixeira/restauração/expurgo e migração 11→12) e +9 em `:app` (caso de uso, diálogo de evidência, vínculo, manual e status do plano).
+
+### Evidências
+
+- `./gradlew check` — verde (testes, Spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:recordRoborazziDebug` e `:app:verifyRoborazziDebug` — verdes após regravar `trends-efficiency-dark` e `trends-readiness-dark` com a linha de execução comprovada.
+- **999 testes**, 0 falhas (497 `:app`, 124 `core:data`, 351 `core:domain`, 27 `core:model`); 0 `@Ignore`.
+- `core:domain`: 97,69% de linhas, 82,09% de branches, 96,04% de instruções; parser FIT 93,01% de branches.
+- Schema `12.json` exportado; migração 11→12 coberta com banco v11 e backfill de `DONE`/`SKIPPED`.
+
+### Decisões e observações
+
+- **`DONE` não é clique:** a validação existe no modelo e no caso de uso, e o banco reforça o vínculo 1:1 com índices únicos.
+- **Descanso/doença não ficam pendentes:** o dia é encerrado com motivo; a prescrição continua sendo a autoridade do dia e não é reescrita ao concluir.
+- **`MANUAL` é honesto:** conta adesão com confiança baixa, mas não inventa distância, pace, FC, zonas ou carga.
+- **`LEGACY_UNVERIFIED` é leitura:** o passado não é promovido a verdade; a UI explica por que não conta para progressão.
+- **Doença não impede registrar a verdade:** a corrida continua registrada como treino livre; o vínculo com a sessão do dia não é automático.
+- **GUÍDADO continua contrato:** nenhuma execução `GUIDED` nova é produzida neste ciclo; “Iniciar” é uma prévia e exige evidência para concluir.
+- **Flaky observado:** `MetricsImportViewModelTest` estourou timeout uma vez em execução completa, passou isolado e na execução seguinte; nenhum assert foi reduzido.
+
+### Próximo passo
+
+1. Revisar C1-04 com o usuário 0, especialmente as tolerâncias de vínculo e a copy de `LEGACY_UNVERIFIED`.
+2. Seguir para **C1-06**: verdade documental, ADRs e regressões finais.
+3. Reconciliar `DATA_MODEL.md`, `ARCHITECTURE.md`, `TESTING.md`, `PRODUCT.md`, `ROADMAP.md` e `PRD` com o schema v12 e as regras de evidência.
 
 ## Sessão 2026-11-06 — C1-03: plano como intenção + prescrição única do dia (N-01/N-02)
 

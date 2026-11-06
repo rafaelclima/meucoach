@@ -4,8 +4,10 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import java.time.LocalDate
 
@@ -33,7 +35,12 @@ data class WeeklyPlanEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("weekStart"), Index("date")],
+    indices = [
+        Index("weekStart"),
+        Index("date"),
+        // ADR 0024: one activity can be linked to at most one session.
+        Index(value = ["activityId"], unique = true),
+    ],
 )
 data class PlannedSessionEntity(
     @PrimaryKey val id: String,
@@ -49,6 +56,11 @@ data class PlannedSessionEntity(
     val status: SessionStatus,
     val skipReason: String?,
     val completedAt: Long?,
+    val completionEvidence: CompletionEvidence? = null,
+    val executionId: String? = null,
+    val activityId: String? = null,
+    val closureReason: SessionClosureReason? = null,
+    val closedAt: Long? = null,
 )
 
 fun plannedSessionId(weekStart: LocalDate, date: LocalDate): String = "$weekStart-$date"

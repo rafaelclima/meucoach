@@ -8,6 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.application.CompleteSession
+import com.meucoach.app.application.CompleteSessionRequest
+import com.meucoach.app.application.CompleteSessionResult
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.TodayPrescriptionRequest
 import com.meucoach.app.time.TimeProvider
@@ -17,10 +20,12 @@ import com.meucoach.app.ui.activities.formatDistance
 import com.meucoach.app.ui.activities.formatDuration
 import com.meucoach.app.ui.activities.paceLabel
 import com.meucoach.app.ui.activities.sportLabel
+import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadActivity
@@ -29,6 +34,9 @@ import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
+import com.meucoach.core.domain.prescription.SessionClosureReason
+import com.meucoach.core.domain.prescription.SessionCompletionRules
+import com.meucoach.core.domain.prescription.SessionMatcher
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
@@ -40,6 +48,7 @@ import com.meucoach.core.domain.readiness.ReadinessCalculator
 import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.HeatLevel
@@ -68,12 +77,16 @@ class TodayViewModel @Inject constructor(
     checkInRepository: CheckInRepository,
     metricsRepository: DailyMetricsRepository,
     profileRepository: ProfileRepository,
-    activityRepository: ActivityRepository,
+    private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
+    private val executionRepository: SessionExecutionRepository,
+    private val completeSession: CompleteSession,
     private val timeProvider: TimeProvider,
     private val getTodayPrescription: GetTodayPrescription,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
+    private val matcher = SessionMatcher()
+    private val completionMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private data class PlanHistory(
         val previousWeek: WeeklyPlan?,
         val weekNumberInBlock: Int,
@@ -93,6 +106,8 @@ class TodayViewModel @Inject constructor(
         val lastActivityImportAt: java.time.Instant?,
         val kmByDay: Map<LocalDate, Double>,
         val recentActivity: RecentActivityUi?,
+        val activities: List<ActivitySummary>,
+        val linkedActivityIds: Set<String>,
     )
 
     private val planHistory = timeProvider.today
@@ -111,17 +126,37 @@ class TodayViewModel @Inject constructor(
             }
         }
 
+    private data class ContextInputs(
+        val checkIn: DailyCheckIn?,
+        val metrics: List<DailyMetrics>,
+        val profile: AthleteProfile?,
+        val activities: List<ActivitySummary>,
+        val lastImportedAt: java.time.Instant?,
+    )
+
     private val context = timeProvider.today
         .flatMapLatest { today ->
             val checkedAt = timeProvider.now()
-            combine(
+            val inputs = combine(
                 checkInRepository.observe(today),
                 metricsRepository.observeAll(),
                 profileRepository.observeProfile(),
                 activityRepository.observeActivitySummaries(),
                 activityRepository.observeLastImportedAt(),
             ) { checkIn, metrics, profile, activities, lastImportedAt ->
-                buildContext(today, checkIn, metrics, profile, activities, lastImportedAt, checkedAt)
+                ContextInputs(checkIn, metrics, profile, activities, lastImportedAt)
+            }
+            combine(inputs, executionRepository.observeLinkedActivityIds()) { base, linkedActivityIds ->
+                buildContext(
+                    today = today,
+                    checkIn = base.checkIn,
+                    metrics = base.metrics,
+                    profile = base.profile,
+                    activities = base.activities,
+                    lastImportedAt = base.lastImportedAt,
+                    linkedActivityIds = linkedActivityIds,
+                    checkedAt = checkedAt,
+                )
             }
         }
 
@@ -153,7 +188,7 @@ class TodayViewModel @Inject constructor(
         ResolvedDay(context = context, plan = planned)
     }
 
-    val uiState: StateFlow<TodayUiState> = resolvedDay
+    private val dayState = resolvedDay
         .mapLatest { resolved ->
             val context = resolved.context
             val plan = resolved.plan?.let { generated ->
@@ -172,6 +207,19 @@ class TodayViewModel @Inject constructor(
                     ),
                 )
             }
+            closeBlockedSessionIfNeeded(
+                plan = plan,
+                prescription = prescription,
+                today = context.today,
+                illnessOrInjury = context.checkIn?.illnessOrInjury == true ||
+                    com.meucoach.core.domain.readiness.ReadinessFlag.ILLNESS_OR_INJURY in readiness.flags,
+            )
+            val suggestions = suggestionsFor(
+                plan = plan,
+                prescription = prescription,
+                context = context,
+                zone = timeProvider.zoneId.value,
+            )
             todayState(
                 checkIn = context.checkIn,
                 metrics = context.metrics,
@@ -184,17 +232,65 @@ class TodayViewModel @Inject constructor(
                 kmByDay = context.kmByDay,
                 weeklyLoadKm = context.weeklyLoadKm,
                 recentActivity = context.recentActivity,
+                activitySuggestions = suggestions,
+                completionMessage = null,
             )
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = todayState(
-                checkIn = null,
-                today = timeProvider.currentDate(),
-                now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
-            ),
+
+    val uiState: StateFlow<TodayUiState> = combine(dayState, completionMessage) { state, message ->
+        state.copy(completionMessage = message)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+        initialValue = todayState(
+            checkIn = null,
+            today = timeProvider.currentDate(),
+            now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
+        ),
+    )
+
+    private suspend fun closeBlockedSessionIfNeeded(
+        plan: WeeklyPlan?,
+        prescription: DailyPrescription?,
+        today: LocalDate,
+        illnessOrInjury: Boolean,
+    ) {
+        if (plan == null || prescription?.isRest != true) return
+        val session = plan.sessions.firstOrNull { it.date == today } ?: return
+        if (session.status != SessionStatus.PLANNED) return
+        executionRepository.closeSession(
+            plannedSessionId = plannedSessionId(plan.weekStart, session.date),
+            reason = SessionCompletionRules.closureForRest(illnessOrInjury),
         )
+    }
+
+    private fun suggestionsFor(
+        plan: WeeklyPlan?,
+        prescription: DailyPrescription?,
+        context: TodayContext,
+        zone: java.time.ZoneId,
+    ): List<ActivitySuggestionUi> {
+        val session = plan?.sessions?.firstOrNull {
+            it.date == context.today && it.status == SessionStatus.PLANNED
+        } ?: return emptyList()
+        val intended = session.copy(
+            durationMin = prescription?.prescribedDurationMin ?: session.durationMin,
+        )
+        return matcher.suggest(
+            session = intended,
+            activities = context.activities,
+            zoneId = zone,
+            excludedActivityIds = context.linkedActivityIds,
+        ).map { activity ->
+            ActivitySuggestionUi(
+                id = activity.id,
+                title = sportLabel(activity.sport),
+                subtitle = formatDateTime(activity.startTime, zone),
+                distance = "${formatDistance(activity.distance)} km",
+                duration = formatDuration(activity.durationSec),
+            )
+        }
+    }
 
     private fun buildContext(
         today: LocalDate,
@@ -203,6 +299,7 @@ class TodayViewModel @Inject constructor(
         profile: AthleteProfile?,
         activities: List<ActivitySummary>,
         lastImportedAt: java.time.Instant?,
+        linkedActivityIds: Set<String>,
         checkedAt: java.time.Instant,
     ): TodayContext {
         val load = profile?.let {
@@ -244,22 +341,80 @@ class TodayViewModel @Inject constructor(
             lastActivityImportAt = lastImportedAt,
             kmByDay = kmByDay,
             recentActivity = recent,
+            activities = activities,
+            linkedActivityIds = linkedActivityIds,
         )
     }
 
-    fun completeSession(date: LocalDate) {
+    fun completeWithActivity(date: LocalDate, activityId: String) {
+        val state = uiState.value
+        complete(
+            date = date,
+            evidence = CompletionEvidence.ACTIVITY,
+            activityId = activityId,
+            prescription = state.prescription,
+            illnessOrInjury = state.illnessOrInjury,
+        )
+    }
+
+    fun completeManually(date: LocalDate, durationMin: Int, rpe: Int) {
+        val state = uiState.value
+        complete(
+            date = date,
+            evidence = CompletionEvidence.MANUAL,
+            durationMin = durationMin,
+            rpe = rpe,
+            prescription = state.prescription,
+            illnessOrInjury = state.illnessOrInjury,
+        )
+    }
+
+    private fun complete(
+        date: LocalDate,
+        evidence: CompletionEvidence,
+        activityId: String? = null,
+        durationMin: Int? = null,
+        rpe: Int? = null,
+        prescription: DailyPrescription?,
+        illnessOrInjury: Boolean,
+    ) {
         viewModelScope.launch {
-            planRepository.updateStatus(date.weekStart(), date, SessionStatus.DONE)
+            val today = timeProvider.currentDate()
+            val result = completeSession(
+                CompleteSessionRequest(
+                    date = date,
+                    today = today,
+                    evidence = evidence,
+                    activityId = activityId,
+                    durationMin = durationMin,
+                    rpe = rpe,
+                    prescription = prescription,
+                    illnessOrInjury = illnessOrInjury,
+                    zoneId = timeProvider.zoneId.value,
+                ),
+            )
+            completionMessage.value = when (result) {
+                is CompleteSessionResult.Completed ->
+                    result.warning ?: "Treino concluído com evidência."
+
+                is CompleteSessionResult.Closed -> result.message
+
+                is CompleteSessionResult.Rejected -> result.message
+            }
         }
+    }
+
+    fun consumeCompletionMessage() {
+        completionMessage.value = null
     }
 
     fun skipSession(date: LocalDate, reason: String) {
         viewModelScope.launch {
-            planRepository.updateStatus(
-                weekStart = date.weekStart(),
-                date = date,
-                status = SessionStatus.SKIPPED,
-                skipReason = reason.trim().ifBlank { null },
+            val weekStart = date.weekStart()
+            executionRepository.closeSession(
+                plannedSessionId = plannedSessionId(weekStart, date),
+                reason = SessionClosureReason.USER_SKIPPED,
+                note = reason,
             )
         }
     }
@@ -352,9 +507,11 @@ fun TodayRoute(
         onHealthClick = onHealthClick,
         checklistState = checklistState,
         onChecklistDismiss = checklistViewModel::dismiss,
-        onCompleteSession = viewModel::completeSession,
+        onCompleteWithActivity = viewModel::completeWithActivity,
+        onCompleteManually = viewModel::completeManually,
         onSkipSession = viewModel::skipSession,
         onSwapSession = { first, second -> viewModel.swapSession(first, second, state.today) },
+        onConsumeCompletionMessage = viewModel::consumeCompletionMessage,
     )
 }
 
@@ -372,6 +529,8 @@ internal fun todayState(
     kmByDay: Map<LocalDate, Double> = emptyMap(),
     weeklyLoadKm: Double? = null,
     recentActivity: RecentActivityUi? = null,
+    activitySuggestions: List<ActivitySuggestionUi> = emptyList(),
+    completionMessage: String? = null,
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
     val signals = inputs.signals.copy(
@@ -443,6 +602,9 @@ internal fun todayState(
         athleteName = profile?.name.orEmpty(),
         avatarPath = profile?.avatarPath,
         weather = profile?.city ?: "",
+        activitySuggestions = activitySuggestions,
+        completionMessage = completionMessage,
+        illnessOrInjury = signals.illnessOrInjury,
     )
 }
 

@@ -6,6 +6,7 @@ import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
@@ -694,6 +695,7 @@ class WeeklyPlanGeneratorTest {
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
+            val done = index < completed
             PlannedSession(
                 date = previousMonday.plusDays(index.toLong()),
                 type = WorkoutType.EASY,
@@ -702,7 +704,9 @@ class WeeklyPlanGeneratorTest {
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
-                status = if (index < completed) SessionStatus.DONE else SessionStatus.SKIPPED,
+                status = if (done) SessionStatus.DONE else SessionStatus.PLANNED,
+                completionEvidence = if (done) CompletionEvidence.ACTIVITY else null,
+                activityId = if (done) "previous-$index" else null,
             )
         }
         return WeeklyPlan(

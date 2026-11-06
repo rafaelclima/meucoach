@@ -85,12 +85,12 @@ Para cada formato:
 
 O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX reais sanitizados em `fixtures/tcx/` cobrem laps, trackpoints, FC, cadência e resumo; posição, múltiplos laps e XML inválido são cobertos por fixtures sintéticas. Nenhum teste pode depender de rede.
 
-Evidência atual (30/10/2026):
+Evidência atual (06/11/2026):
 
-- 494 testes no repositório, 0 falhas (27 em `core:model`, 211 em `core:domain`, 73 em `core:data`, 183 em `:app`).
+- 999 testes no repositório, 0 falhas e 0 `@Ignore` (27 em `core:model`, 351 em `core:domain`, 124 em `core:data`, 497 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 98,82% de linhas, 85,90% de branches, 96,88% de instruções.
+- `core:domain`: 97,69% de linhas, 82,09% de branches, 96,04% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -98,7 +98,7 @@ Evidência atual (30/10/2026):
 ## 5.1 Testes de persistência
 
 - `MeuCoachDatabaseTest` (Robolectric): CRUD do agregado, lista observável, soft delete, cascata de laps/samples, `SET NULL` em import jobs e unicidade de `sourceFileSha256`.
-- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): banco v1 com dados migra para v2, preserva a atividade e adiciona `deletedAt`.
+- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 11→12, incluindo backfill de `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`.
 - `SampleBlobCodecTest`: round-trip de todas as colunas e developer fields, compressão, timestamps reconstruídos, gzip inválido, truncamento, versão desconhecida, contagem absurda, bytes extras e ordem dos samples.
 - `ActivityRepositoryTest`: salvar/listar/abrir, dedup por SHA-256, blob corrompido e encoding desconhecido com `sampleWarning`, soft delete, exclusão permanente e export JSON.
 - `UuidV7Test`: versão 7, variante RFC e determinismo com clock/random fixos.

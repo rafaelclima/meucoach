@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_1.md — Formalização arquitetural e preparação dos testes
 
 **Versão:** 1.1 · **Data:** 06/11/2026
-**Status:** C1-01, C1-02, C1-03 e C1-05 implementados em 06/11/2026; C1-04 e C1-06 não iniciados.
+**Status:** C1-01, C1-02, C1-03, C1-04 e C1-05 implementados em 06/11/2026; C1-06 não iniciado.
 **Escopo:** C1-01 a C1-06, ADRs 0022–0026, estratégia de testes e ordem de execução.
 **Documentos de referência:** `docs/PRD_COACH_CORRIDA.md`, `docs/REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C), `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SPORTS_SCIENCE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`.
 
@@ -21,7 +21,7 @@ Este plano transforma as decisões aprovadas em uma sequência executável, sem 
 
 **Fora:** sessão guiada persistente completa, captura de `ExerciseSession` do Health Connect, backup/restauração versionado, revisão semanal, periodização, semana de prova/recovery, Tier B, GPS nativo, LLM, novos módulos, refatoração ampla, redesenho visual.
 
-**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01, C1-02 e C1-03 foram implementados conforme §6.2, §6.3 e §6.4; C1-04..C1-06 continuam sem implementação. `Cycle1RegressionTest` não tem mais cenários `@Ignore`.
+**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01, C1-02, C1-03, C1-04 e C1-05 foram implementados conforme §6.2 a §6.6; C1-06 continua sem implementação. `Cycle1RegressionTest` não tem mais cenários `@Ignore`.
 
 ---
 
@@ -366,6 +366,16 @@ flowchart TB
 
 **Risco:** alto (schema + semântica de adesão + dados antigos). Mitigação: backfill explícito, leitura tolerante, migração com banco v11 real sanitizado, testes de concorrência.
 
+**Status da execução (06/11/2026):** implementado.
+
+- `core:model`: `CompletionEvidence`, `ExecutionSource`, `ExecutionPause` e `SessionExecution`; `MANUAL` não carrega atividade/distância e exige RPE.
+- `core:domain`: `SessionStatus` com `CLOSED`, `SessionClosureReason`, `SessionCompletionRules`, `SessionMatcher` e `PlanCompletionCalculator` separando adesão de execução comprovada. `PlannedSession` rejeita `DONE` sem evidência.
+- `core:data`: `session_executions`, colunas de evidência/vínculo/encerramento, índices únicos 1:1, `SessionExecutionRepository` transacional e migração `11 → 12` com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`.
+- `:app`: `CompleteSession` valida data/estado/evidência e encerra descanso/doença; o Hoje ganhou o diálogo de vínculo/manual, rótulos de evidência e o bloqueio de ações em dia encerrado. Tendências mostra “feito” e “com evidência”.
+- Lixeira: suspende/restaura/remove o vínculo conforme `ADR 0025`; export padrão exclui execuções de atividades na lixeira.
+- Testes novos: `SessionCompletionRulesTest`, `SessionMatcherTest`, `SessionExecutionRepositoryTest`, `CompleteSessionTest`, migração 11→12 e UI do diálogo/status; `Cycle1RegressionTest` ganhou `DONE` sem evidência e progressão bloqueada por legado.
+- Validação: `./gradlew check`, `:app:assembleDebug`, `:app:recordRoborazziDebug` e `:app:verifyRoborazziDebug` verdes; 999 testes (497 `:app`, 124 `core:data`, 351 `core:domain`, 27 `core:model`), 0 `@Ignore`; `core:domain` 97,69% de linhas e parser FIT 93,01% de branches.
+
 ### 6.6 C1-05 — Lixeira de 7 dias, reset efetivo e época de dados
 
 **Objetivo:** “apagar” significa apagar; “apagar tudo” não pode ser desfeito por workers.
@@ -530,18 +540,18 @@ flowchart TB
 | U-PRESC-07 | Sem calibração | RPE + `null`; sem número | 03 | Implementado (`DailyPrescriptionEngineTest`) |
 | U-PRESC-08 | Calor | Pace mais lento/RPE maior; duração não sobe | 03 | Implementado (`DailyPrescriptionEngineTest`) |
 | U-PRESC-09 | Check-in editado | Nova versão, não sobrescreve | 03 | Implementado (`DailyPrescriptionEngineTest`) |
-| U-EVID-01 | `DONE` sem evidência | Rejeitado | 04 | Pendente de contrato |
-| U-EVID-02 | `ACTIVITY` compatível | `DONE` + vínculo | 04 | Pendente de contrato |
-| U-EVID-03 | `GUIDED` (contrato) | Execução persistida/recuperável | 04/3 | Pendente de contrato |
-| U-EVID-04 | `MANUAL` duração 0/RPE 11 | Rejeitado | 04 | Pendente de contrato |
-| U-EVID-05 | `MANUAL` válido | Execução; sem volume/carga/zonas | 04 | Pendente de contrato |
-| U-EVID-06 | REST/doença | Conclusão/início bloqueados | 04 | Pendente de contrato |
-| U-EVID-07 | Doença + corrida importada | Registro fiel como treino livre; sem estímulo | 04 | Pendente de contrato |
-| U-EVID-08 | Match: tolerância, esporte errado, ambíguo | Sugestão correta/ausente | 04 | Pendente de contrato |
-| U-EVID-09 | Duplicidade atividade/sessão | Bloqueada | 04 | Pendente de contrato |
-| U-EVID-10 | Sessão futura | Bloqueada | 04 | Pendente de contrato |
-| U-EVID-11 | Sessão de ontem da mesma semana | Permitida com aviso | 04 | Pendente de contrato |
-| U-EVID-12 | Legado `DONE` | `LEGACY_UNVERIFIED`; não progressão | 04 | Pendente de contrato |
+| U-EVID-01 | `DONE` sem evidência | Rejeitado | 04 | Implementado (`PlannedSession`, `CompleteSessionTest`) |
+| U-EVID-02 | `ACTIVITY` compatível | `DONE` + vínculo | 04 | Implementado (`CompleteSessionTest`, `SessionExecutionRepositoryTest`) |
+| U-EVID-03 | `GUIDED` (contrato) | Execução persistida/recuperável | 04/3 | Contrato implementado; produção de `GUIDED` no ciclo 3 |
+| U-EVID-04 | `MANUAL` duração 0/RPE 11 | Rejeitado | 04 | Implementado (`SessionCompletionRulesTest`, `CompleteSessionTest`) |
+| U-EVID-05 | `MANUAL` válido | Execução; sem volume/carga/zonas | 04 | Implementado (`CompleteSessionTest`, `SessionExecutionRepositoryTest`) |
+| U-EVID-06 | REST/doença | Conclusão/início bloqueados | 04 | Implementado (`SessionCompletionRulesTest`, `CompleteSessionTest`) |
+| U-EVID-07 | Doença + corrida importada | Registro fiel como treino livre; sem estímulo | 04 | Implementado de forma conservadora: a corrida fica livre e não é vinculada automaticamente |
+| U-EVID-08 | Match: tolerância, esporte errado, ambíguo | Sugestão correta/ausente | 04 | Implementado (`SessionMatcherTest`) |
+| U-EVID-09 | Duplicidade atividade/sessão | Bloqueada | 04 | Implementado (`SessionExecutionRepositoryTest`) |
+| U-EVID-10 | Sessão futura | Bloqueada | 04 | Implementado (`SessionCompletionRulesTest`, `CompleteSessionTest`) |
+| U-EVID-11 | Sessão de ontem da mesma semana | Permitida com aviso | 04 | Implementado (`SessionCompletionRulesTest`, `CompleteSessionTest`) |
+| U-EVID-12 | Legado `DONE` | `LEGACY_UNVERIFIED`; não progressão | 04 | Implementado (migração 11→12, `PlanCompletionCalculatorTest`, `Cycle1RegressionTest`) |
 | U-DEL-01 | Expurgo 6d23h / 7d / 7d1h | Não / sim / sim | 05 | Pendente de contrato |
 | U-DEL-02 | Export padrão com lixeira | Exclui lixeira | 05 | Pendente de contrato |
 | U-DEL-03 | Reset com dados | Tabelas vazias; onboarding | 05 | Parcial existente |
@@ -890,7 +900,7 @@ C1-06 Verdade documental + regressões finais
 - [ ] C1-01: tempo/fuso determinísticos; nenhum `now()` em UI/ViewModel.
 - [x] C1-02: ACWR desconhecido/cobertura/frescor bloqueiam qualidade.
 - [x] C1-03: um card; prescrição versionada; plano sem passado; migração 10→11.
-- [ ] C1-04: `DONE` só com evidência; vínculo 1:1; migração 11→12.
+- [x] C1-04: `DONE` só com evidência; vínculo 1:1; migração 11→12.
 - [ ] C1-05: lixeira 7 dias; reset sem ressurreição; HC intacto.
 - [ ] C1-06: docs = código; suíte/goldens verdes.
 - [ ] Nenhum dado real no diff.

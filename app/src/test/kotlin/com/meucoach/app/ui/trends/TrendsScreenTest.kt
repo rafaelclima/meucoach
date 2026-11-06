@@ -288,6 +288,13 @@ class TrendsScreenTest {
                     else -> 0
                 },
                 skipped = if (index == 0) 1 else 0,
+                verified = when (index) {
+                    0 -> 0
+                    1 -> 2
+                    else -> 0
+                },
+                manual = if (index == 0) 1 else 0,
+                legacy = 0,
             )
         }
         setContent(

@@ -677,6 +677,8 @@ class ActivityDetailViewModelTest {
                         ruleIds = listOf("R-ZONE-01"),
                         evidenceIds = listOf("EV-FRIEL-2018"),
                         status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                        activityId = "activity-1",
                     ),
                 ),
                 weeklyMinutes = 40,

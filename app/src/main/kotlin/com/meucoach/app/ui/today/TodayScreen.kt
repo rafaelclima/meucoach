@@ -94,13 +94,16 @@ fun TodayScreen(
     onHealthClick: () -> Unit = {},
     checklistState: FirstRunChecklistState = FirstRunChecklistState(isLoading = false, dismissed = true),
     onChecklistDismiss: () -> Unit = {},
-    onCompleteSession: (LocalDate) -> Unit = {},
+    onCompleteWithActivity: (LocalDate, String) -> Unit = { _, _ -> },
+    onCompleteManually: (LocalDate, Int, Int) -> Unit = { _, _, _ -> },
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
+    onConsumeCompletionMessage: () -> Unit = {},
 ) {
     val today = state.today
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
+    var completionOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
     val planExplanation = remember(state.plan) { state.plan?.let(::buildPlanExplanation) }
     val openExplanation: (ExplanationSource) -> Unit = { source ->
@@ -160,9 +163,11 @@ fun TodayScreen(
                 workout = state.workout,
                 prescription = state.prescription,
                 canComplete = hasPlannedSessionToday,
+                completionMessage = state.completionMessage,
                 onSwapClick = { swapOpen = true },
                 onStartClick = { startOpen = true },
-                onCompleteClick = { onCompleteSession(today) },
+                onCompleteClick = { completionOpen = true },
+                onConsumeMessage = onConsumeCompletionMessage,
                 onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
             )
         }
@@ -211,8 +216,24 @@ fun TodayScreen(
             hasPlannedSession = hasPlannedSession,
             onDismiss = { startOpen = false },
             onFinish = {
-                onCompleteSession(today)
                 startOpen = false
+                completionOpen = true
+            },
+        )
+    }
+    if (completionOpen) {
+        CompleteSessionDialog(
+            date = today,
+            suggestions = state.activitySuggestions,
+            prescribedDurationMin = state.prescription?.prescribedDurationMin,
+            onDismiss = { completionOpen = false },
+            onLinkActivity = { activityId ->
+                onCompleteWithActivity(today, activityId)
+                completionOpen = false
+            },
+            onManual = { durationMin, rpe ->
+                onCompleteManually(today, durationMin, rpe)
+                completionOpen = false
             },
         )
     }
@@ -406,9 +427,11 @@ private fun NextWorkoutCard(
     workout: WorkoutUi,
     prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
     canComplete: Boolean,
+    completionMessage: String?,
     onSwapClick: () -> Unit,
     onStartClick: () -> Unit,
     onCompleteClick: () -> Unit,
+    onConsumeMessage: () -> Unit,
     onWhyClick: () -> Unit,
 ) {
     val colors = McTheme.colors
@@ -535,7 +558,7 @@ private fun NextWorkoutCard(
             McPrimaryButton(
                 text = "Iniciar",
                 onClick = onStartClick,
-                enabled = workout.canTrain,
+                enabled = workout.canTrain && canComplete,
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Outlined.PlayArrow,
             )
@@ -547,6 +570,20 @@ private fun NextWorkoutCard(
                 trailingArrow = false,
                 enabled = workout.canTrain && canComplete,
                 modifier = Modifier.testTag("complete-today"),
+            )
+        }
+        completionMessage?.let { message ->
+            Text(
+                text = message,
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("completion-message"),
+            )
+            McTextButton(
+                text = "Entendi",
+                onClick = onConsumeMessage,
+                trailingArrow = false,
+                enabled = true,
             )
         }
     }
@@ -868,11 +905,7 @@ private fun PlanWeekCard(
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
-                val statusLabel = when (session.status) {
-                    SessionStatus.DONE -> "Feito"
-                    SessionStatus.SKIPPED -> "Pulado"
-                    SessionStatus.PLANNED -> null
-                }
+                val statusLabel = sessionStatusLabel(session)
                 if (statusLabel != null) {
                     Spacer(modifier = Modifier.width(8.dp))
                     val statusColor = if (session.status == SessionStatus.DONE) colors.success else colors.warning
@@ -1194,6 +1227,168 @@ private fun SwapSessionDialog(
 }
 
 @Composable
+private fun CompleteSessionDialog(
+    date: LocalDate,
+    suggestions: List<ActivitySuggestionUi>,
+    prescribedDurationMin: Int?,
+    onDismiss: () -> Unit,
+    onLinkActivity: (String) -> Unit,
+    onManual: (Int, Int) -> Unit,
+) {
+    val colors = McTheme.colors
+    var selectedActivityId by remember { mutableStateOf<String?>(null) }
+    var durationInput by remember {
+        mutableStateOf(prescribedDurationMin?.toString().orEmpty())
+    }
+    var rpe by remember { mutableStateOf<Int?>(null) }
+    val duration = durationInput.toIntOrNull()
+    val manualValid = duration != null && duration > 0 && rpe != null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("completion-dialog"),
+        title = { Text(text = "Concluir treino") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "Concluir exige evidência. Vincule a corrida importada ou registre " +
+                        "sem registro.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "CORRIDA IMPORTADA · ${formatPlanDay(date)}",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                if (suggestions.isEmpty()) {
+                    Text(
+                        text = "Nenhuma corrida compatível com este treino foi encontrada hoje. " +
+                            "Importe a corrida ou use o registro manual abaixo.",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                    )
+                } else {
+                    suggestions.forEach { suggestion ->
+                        val selected = selectedActivityId == suggestion.id
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("suggestion-${suggestion.id}")
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(
+                                    width = if (selected) 1.dp else 0.dp,
+                                    color = if (selected) colors.accent else Color.Transparent,
+                                    shape = RoundedCornerShape(8.dp),
+                                )
+                                .clickable { selectedActivityId = suggestion.id }
+                                .padding(vertical = 8.dp, horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = suggestion.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = colors.textPrimary,
+                                )
+                                Text(
+                                    text = "${suggestion.subtitle} · ${suggestion.duration} · " +
+                                        suggestion.distance,
+                                    style = McTextStyles.caption,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                            Text(
+                                text = if (selected) "Selecionada" else "Selecionar",
+                                style = McTextStyles.caption,
+                                color = if (selected) colors.accentText else colors.textTertiary,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    McTextButton(
+                        text = "Vincular corrida",
+                        onClick = { selectedActivityId?.let(onLinkActivity) },
+                        trailingArrow = false,
+                        enabled = selectedActivityId != null,
+                        modifier = Modifier.testTag("link-activity"),
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                McDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "FIZ SEM REGISTRO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = durationInput,
+                    onValueChange = { value -> durationInput = value.filter(Char::isDigit) },
+                    label = { Text(text = "Duração (min)") },
+                    singleLine = true,
+                    modifier = Modifier.testTag("manual-duration"),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Esforço percebido (RPE)",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                (1..10).chunked(5).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        row.forEach { value ->
+                            val selected = rpe == value
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .testTag("rpe-$value")
+                                    .clip(CircleShape)
+                                    .background(if (selected) colors.accent else colors.surfaceInset)
+                                    .clickable { rpe = value },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = value.toString(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (selected) colors.onAccent else colors.textSecondary,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+                Text(
+                    text = "Sem registro não entra em volume, carga ou zonas — só conta a adesão.",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                McTextButton(
+                    text = "Salvar sem registro",
+                    onClick = { if (manualValid) onManual(requireNotNull(duration), requireNotNull(rpe)) },
+                    trailingArrow = false,
+                    enabled = manualValid,
+                    modifier = Modifier.testTag("manual-save"),
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            McTextButton(
+                text = "Cancelar",
+                onClick = onDismiss,
+                trailingArrow = false,
+            )
+        },
+    )
+}
+
+@Composable
 private fun WorkoutSessionDialog(
     workout: WorkoutUi,
     hasPlannedSession: Boolean,
@@ -1215,7 +1410,7 @@ private fun WorkoutSessionDialog(
         text = {
             Column {
                 Text(
-                    text = if (hasPlannedSession) "Sessão guiada" else "Sem sessão planejada hoje",
+                    text = if (hasPlannedSession) "Prévia da sessão" else "Sem sessão planejada hoje",
                     style = McTextStyles.caption,
                     color = colors.textTertiary,
                 )
@@ -1225,6 +1420,15 @@ private fun WorkoutSessionDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
+                if (hasPlannedSession) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "O cronômetro é uma prévia e não fica salvo. " +
+                            "Para concluir, vincule a corrida ou registre sem registro.",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "${workout.duration} min · ${workout.pace} /km · ${workout.heartRate} bpm",
@@ -1302,6 +1506,33 @@ private fun formatPlanDay(date: LocalDate): String {
     val label = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, PLAN_LOCALE)
     return label.replaceFirstChar { it.uppercaseChar() }.trimEnd('.')
 }
+
+/** Evidence is part of the label; a click from the past is never shown as verified. */
+private fun sessionStatusLabel(session: com.meucoach.core.domain.prescription.PlannedSession): String? =
+    when (session.status) {
+        SessionStatus.DONE -> when (session.completionEvidence) {
+            com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+            com.meucoach.core.model.CompletionEvidence.GUIDED,
+            -> "Feito · verificado"
+
+            com.meucoach.core.model.CompletionEvidence.MANUAL -> "Feito · sem registro"
+
+            com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED -> "Feito · não verificado"
+
+            null -> "Feito · não verificado"
+        }
+
+        SessionStatus.CLOSED -> when (session.closureReason) {
+            com.meucoach.core.domain.prescription.SessionClosureReason.REST_PRESCRIBED -> "Descanso prescrito"
+            com.meucoach.core.domain.prescription.SessionClosureReason.ILLNESS_OR_INJURY -> "Doença/lesão"
+            com.meucoach.core.domain.prescription.SessionClosureReason.USER_SKIPPED -> "Pulado"
+            com.meucoach.core.domain.prescription.SessionClosureReason.MISSED -> "Não feito"
+            com.meucoach.core.domain.prescription.SessionClosureReason.PLAN_REPLACED -> "Substituído"
+            null -> "Encerrado"
+        }
+
+        SessionStatus.PLANNED -> null
+    }
 
 @Composable
 private fun RecentActivityCard(activity: RecentActivityUi, onClick: () -> Unit) {

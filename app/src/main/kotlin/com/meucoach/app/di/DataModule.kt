@@ -18,6 +18,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.data.repository.UserDataRepository
 import dagger.Module
@@ -109,6 +110,11 @@ object DataModule {
     @Singleton
     fun provideDailyPrescriptionRepository(database: MeuCoachDatabase, clock: Clock): DailyPrescriptionRepository =
         DailyPrescriptionRepository(database, clock)
+
+    @Provides
+    @Singleton
+    fun provideSessionExecutionRepository(database: MeuCoachDatabase, clock: Clock): SessionExecutionRepository =
+        SessionExecutionRepository(database, clock)
 
     @Provides
     @Singleton

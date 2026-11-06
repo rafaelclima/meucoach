@@ -6,6 +6,7 @@ import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
@@ -13,12 +14,13 @@ import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
 
 /**
- * Regression scenarios prepared for cycle 1 (C1-02/C1-03).
+ * Regression scenarios prepared for cycle 1 (C1-02/C1-03/C1-04).
  *
  * The executable tests lock invariants that must survive the prescription
  * pipeline. Each scenario is enabled with the corresponding C1 gate, so the
@@ -197,6 +199,46 @@ class Cycle1RegressionTest {
         assertThat(plan.createdOn).isEqualTo(thursday)
     }
 
+    @Test
+    fun `a done session cannot exist without evidence`() {
+        assertThatThrownBy {
+            PlannedSession(
+                date = monday,
+                type = WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = SessionStatus.DONE,
+            )
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("evidence")
+    }
+
+    @Test
+    fun `legacy completion does not unlock progression`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                previousWeek = previousWeek(completed = 4, total = 4, strong = false),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("Sem progressão")
+    }
+
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
@@ -279,12 +321,13 @@ class Cycle1RegressionTest {
         )
     }
 
-    private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
+    private fun previousWeek(completed: Int, total: Int, strong: Boolean = true): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
             session(
                 date = previousMonday.plusDays(index.toLong()),
-                status = if (index < completed) SessionStatus.DONE else SessionStatus.SKIPPED,
+                status = if (index < completed) SessionStatus.DONE else SessionStatus.PLANNED,
+                activityId = if (index < completed && strong) "previous-$index" else null,
             )
         }
         return WeeklyPlan(
@@ -300,7 +343,12 @@ class Cycle1RegressionTest {
         )
     }
 
-    private fun session(date: LocalDate, status: SessionStatus, type: WorkoutType = WorkoutType.EASY) = PlannedSession(
+    private fun session(
+        date: LocalDate,
+        status: SessionStatus,
+        type: WorkoutType = WorkoutType.EASY,
+        activityId: String? = null,
+    ) = PlannedSession(
         date = date,
         type = type,
         title = if (type == WorkoutType.REST) "Descanso" else "Fácil",
@@ -309,6 +357,14 @@ class Cycle1RegressionTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
         status = status,
+        completionEvidence = when {
+            status != SessionStatus.DONE -> null
+            activityId != null -> CompletionEvidence.ACTIVITY
+            else -> CompletionEvidence.LEGACY_UNVERIFIED
+        },
+        activityId = activityId,
+        closureReason = if (status == SessionStatus.CLOSED) SessionClosureReason.USER_SKIPPED else null,
+        closedAt = if (status == SessionStatus.CLOSED) java.time.Instant.EPOCH else null,
     )
 
     private fun adjacent(first: DayOfWeek, second: DayOfWeek): Boolean {

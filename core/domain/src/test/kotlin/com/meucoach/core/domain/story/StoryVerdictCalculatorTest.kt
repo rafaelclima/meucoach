@@ -247,6 +247,7 @@ class StoryVerdictCalculatorTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-FRIEL-2018"),
         status = SessionStatus.DONE,
+        completionEvidence = com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED,
     )
 
     /** Allocates the remainder to Z1 so the distribution always adds up. */
