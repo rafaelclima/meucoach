@@ -1,6 +1,6 @@
 # TUTORIAL_V2.md — Ativação pós-perfil
 
-**Status:** proposta para revisão
+**Status:** Fases A e B implementadas em 05/11/2026; Fases C–D propostas
 **Data:** 05/11/2026
 **Substitui:** tour de 4 telas em `app/src/main/kotlin/com/meucoach/app/ui/tutorial/`
 **Importante:** este documento é um plano. Nenhum código foi alterado nesta sessão.
@@ -158,9 +158,9 @@ Onboarding (3 passos, já existe)
         ▼
 Cena 1 — “Seu plano está pronto”        ← revelação personalizada
         │
-        ├── “Ver meu treino de hoje” ──────────────► Hoje
+        ├── “Pular” ────────────────────────────────► Hoje
         │
-        └── “Como o coach pensa” ──► Cena 2 ──► Cena 3
+        └── “Continuar” ──► Cena 2 ──► “Entendi” ──► Cena 3
                                                    │
                                                    ├── Check-in agora ──► CheckIn
                                                    ├── Importar corrida ─► Corridas/import
@@ -229,8 +229,7 @@ Dicas contextuais (uma vez por tela)
 │  treino vem com o porquê — e muda se │
 │  o seu descanso pedir.               │
 │                                      │
-│  [ Ver meu treino de hoje ]          │
-│  Como o coach pensa                  │
+│  [ Continuar ]                       │
 │                                      │
 │  🔒 Tudo calculado no seu aparelho.  │
 └──────────────────────────────────────┘
@@ -247,10 +246,10 @@ Dicas contextuais (uma vez por tela)
 - Overline: `SEU PLANO`
 - Título: `Rafael, sua semana está pronta.`
 - Corpo: `Montei 3 dias para o seu 5 km. Cada treino vem com o porquê — e muda se o seu descanso pedir.`
-- CTA primário: `Ver meu treino de hoje`
-- CTA secundário: `Como o coach pensa`
+- CTA primário: `Continuar`
 - Rodapé de confiança: `Tudo calculado no seu aparelho. Nada é enviado.`
-- Sair: `Agora não`
+- Sair: `Pular` (topo)
+- **Ajuste pós-teste no aparelho:** o CTA primário não encerra mais o tour. `Ver meu treino de hoje` saiu da cena 1 para o usuário não pular as cenas 2 e 3 sem querer.
 
 **Estados:**
 - **Carregando:** skeleton do card + `Montando sua semana…` (sem números falsos).
@@ -259,8 +258,8 @@ Dicas contextuais (uma vez por tela)
 - **Erro:** `Não consegui montar sua semana agora.` CTA `Ir para Hoje`.
 
 **Ação:**
-- `Ver meu treino de hoje` → marca o tutorial como visto e vai para Hoje.
-- `Como o coach pensa` → Cena 2.
+- `Continuar` → Cena 2.
+- `Pular` → marca o tutorial como visto e vai para Hoje.
 
 ---
 
@@ -289,7 +288,6 @@ Dicas contextuais (uma vez por tela)
 │  eu fico conservador — não invento.  │
 │                                      │
 │  [ Entendi ]                         │
-│  Voltar                              │
 └──────────────────────────────────────┘
 ```
 
@@ -307,7 +305,7 @@ Se usar dados reais de prontidão, mostrar o gauge real e o treino real. Se não
 - Título: `Você corre. Eu ajusto.`
 - Corpo: `Sono, carga e check-in mudam a recomendação. Sem dados suficientes, eu fico conservador — não invento.`
 - CTA: `Entendi`
-- Voltar: `Voltar`
+- Voltar: ícone `←` no topo
 
 **Regra:** nada de jargão (`TRIMP`, `ACWR`, `TSB`, `LTHR`). Se precisar citar, traduzir na hora: “carga de treino”, “aumento recente”, “limite de esforço”.
 
@@ -554,8 +552,7 @@ Respeitar `Settings.Global.ANIMATOR_DURATION_SCALE` e redução de movimento. Se
 | Cena 1 overline | `SEU PLANO` |
 | Cena 1 título | `{Nome}, sua semana está pronta.` |
 | Cena 1 corpo | `Montei {N} dias para o seu {objetivo}. Cada treino vem com o porquê — e muda se o seu descanso pedir.` |
-| Cena 1 CTA | `Ver meu treino de hoje` |
-| Cena 1 secundário | `Como o coach pensa` |
+| Cena 1 CTA | `Continuar` |
 | Cena 1 confiança | `Tudo calculado no seu aparelho. Nada é enviado.` |
 | Cena 2 overline | `O PORQUÊ` |
 | Cena 2 título | `Você corre. Eu ajusto.` |
@@ -565,7 +562,7 @@ Respeitar `Settings.Global.ANIMATOR_DURATION_SCALE` e redução de movimento. Se
 | Cena 3 título | `Comece com 30 segundos.` |
 | Cena 3 corpo | `Um check-in rápido já melhora a prontidão de hoje. Importar uma corrida e conectar o Health Connect deixam o coach mais preciso.` |
 | Cena 3 CTA | `Fazer check-in agora` |
-| Cena 3 secundário | `Depois` |
+| Cena 3 secundário | `Depois` (botão secundário) |
 | Checklist título | `Complete seu setup` |
 | Checklist subtítulo | `3 passos para o coach ficar mais preciso.` |
 | Checklist dismiss | `Agora não` |
@@ -715,46 +712,53 @@ app/src/main/res/values/strings.xml
 
 Objetivo: parar de parecer rascunho sem reescrever a narrativa.
 
-- [ ] `BackHandler` no tutorial (marca como visto ou confirma).
-- [ ] Remover permissão de notificação do `MainActivity`.
-- [ ] “Pular” em `textSecondary`, não lima.
-- [ ] CTA primário de largura fixa; “Voltar” como ícone no topo.
-- [ ] Barra de progresso segmentada com semântica.
-- [ ] Largura máxima 640 dp e padding responsivo.
-- [ ] Strings em `strings.xml`.
-- [ ] Screenshots de todas as páginas em dark/light.
-- [ ] Teste de fonte 200% e TalkBack.
-- [ ] Corrigir o vazio: ancorar conteúdo e reservar área para o visual.
+- [x] `BackHandler` no tutorial: volta uma página ou marca como visto na primeira.
+- [x] Remover permissão de notificação do `MainActivity`; a ativação foi para Perfil → Ajuda, com pré-permissão.
+- [x] “Pular” em `textSecondary`, não lima.
+- [x] CTA primário de largura fixa; “Voltar” como ícone no topo.
+- [x] Barra de progresso segmentada com semântica (`Passo X de Y`).
+- [x] Largura máxima 640 dp e padding responsivo.
+- [x] Strings em `strings.xml`.
+- [x] Screenshots de todas as páginas em dark/light.
+- [x] Teste de fonte 200% e TalkBack.
+- [x] Corrigir o vazio: visual com peso próprio e texto ancorado.
 
 **Aceite:** o tour atual fica apresentável e sem bugs de plataforma, mas ainda é o carrossel antigo.
+
+**Implementação (05/11/2026):** `TutorialProgress` em `core:designsystem`; `NotificationReminderCard` em Perfil → Ajuda; goldens `tutorial-2/3-{dark,light}.png`; capturas de gráficos Vico estabilizadas com espera explícita (sem mudança de produto).
 
 ### Fase B — Redesenho da narrativa (esforço M, impacto alto)
 
 Objetivo: trocar 4 slides por 3 cenas com produto real.
 
-- [ ] Cena 1 “Seu plano está pronto” com nome, objetivo e plano real.
-- [ ] Cena 2 “Como o coach pensa” com loop visual.
-- [ ] Cena 3 “Comece com 30 segundos” com 3 ações.
-- [ ] `TutorialScaffold`, `TutorialProgress`, `TutorialActionCard`, `TutorialScene`.
-- [ ] Movimento e haptics.
-- [ ] Fallbacks honestos (sem plano, sem calibração, erro).
-- [ ] Checklist no Hoje.
-- [ ] Dicas contextuais nas telas vazias.
-- [ ] Goldens de todas as cenas.
+- [x] Cena 1 “Seu plano está pronto” com nome, objetivo e plano real.
+- [x] Cena 2 “Como o coach pensa” com loop visual.
+- [x] Cena 3 “Comece com 30 segundos” com 3 ações.
+- [x] `TutorialProgress`, `TutorialActionCard` e scaffold em `TutorialContent`.
+- [x] Movimento e haptics leves na troca de cena.
+- [x] Fallbacks honestos (sem plano, sem calibração, carregando, erro).
+- [x] Checklist “Complete seu setup” no Hoje.
+- [ ] Dicas contextuais nas telas vazias — adiado para a Fase C.
+- [x] Goldens de todas as cenas (3 páginas × dark/light).
 
 **Aceite:** um usuário novo entende o valor, vê o plano real e chega ao check-in em ≤ 2 toques.
 
+**Implementação (05/11/2026):** o tutorial virou uma camada sobre o Hoje (`MainContent`), com `TutorialViewModel` lendo perfil, plano, prontidão, check-in, atividades e Health Connect. A cena 1 mostra a semana real, a cena 2 usa a prontidão/treino reais e a cena 3 prioriza check-in → importar → Health Connect. O checklist do Hoje observa os mesmos repositórios, persiste o dismiss por 7 dias e desaparece quando os 3 passos terminam. Goldens: `tutorial-{dark,light}`, `tutorial-2-{dark,light}`, `tutorial-3-{dark,light}` e `today-checklist-dark`.
+
 ### Fase C — Ativação e permissões (esforço M, impacto alto)
 
-- [ ] Pré-permissão de notificação contextual.
-- [ ] Checklist persistente com deep links e dismiss.
-- [ ] Primeira vitória: mensagem após check-in/import.
-- [ ] Medição local (timestamps/contadores) + export no JSON.
-- [ ] Versionamento do tutorial e revisão no Perfil.
+- [x] Pré-permissão de notificação contextual em Perfil → Ajuda (Fase A).
+- [x] Checklist persistente com deep links e dismiss de 7 dias.
+- [x] Primeira vitória: “Prontidão atualizada” após o check-in e “Corrida importada” na lista, já apontando para o story de compartilhamento.
+- [x] Medição local (timestamps/contadores) + export no JSON em `firstRun`.
+- [x] Versionamento do tutorial (`introVersion = 2`) e revisão no Perfil.
+- [x] Dicas contextuais únicas em Corridas e Tendências.
 - [ ] Teste com 5 usuários (incluindo o usuário 0).
 - [ ] Ajustes de copy e ordem com base no teste.
 
 **Aceite:** ASI em 24 h ≥ 40% na primeira coorte; negativa de notificação não piora.
+
+**Implementação (05/11/2026):** `FirstRunMetricsStore` registra início/fim/pulo do tutorial, maior passo, primeira ação, dismiss e conclusão do checklist. O JSON de backup ganhou o objeto `firstRun`. `FirstRunTipCard` cobre “Prontidão atualizada”, “Corrida importada”, o estado vazio de Corridas e o de Tendências, com dismiss permanente por dica. O tutorial passou a gravar `introVersion = 2` sem forçar usuários antigos a revê-lo.
 
 ### Fase D — Experimentos (contínuo)
 

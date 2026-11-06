@@ -97,6 +97,23 @@ class ActivityRepositoryTest {
     }
 
     @Test
+    fun `reports the last activity import for load freshness`() {
+        runBlocking {
+            assertThat(repository.lastImportedAt()).isNull()
+            assertThat(repository.observeLastImportedAt().first()).isNull()
+
+            val saved = repository.saveImportedActivity(importedActivity(), "sha") as SaveActivityResult.Saved
+
+            assertThat(repository.lastImportedAt()).isEqualTo(fixedClock.instant())
+            assertThat(repository.observeLastImportedAt().first()).isEqualTo(fixedClock.instant())
+
+            repository.deleteActivity(saved.id)
+
+            assertThat(repository.lastImportedAt()).isNull()
+        }
+    }
+
+    @Test
     fun `duplicate file hash returns the existing activity`() {
         runBlocking {
             val imported = importedActivity()
@@ -218,17 +235,59 @@ class ActivityRepositoryTest {
     }
 
     @Test
-    fun `reimporting a soft deleted file restores it`() {
+    fun `reimporting a soft deleted file conflicts with the trash`() {
         runBlocking {
             val imported = importedActivity()
             val saved = repository.saveImportedActivity(imported, "sha") as SaveActivityResult.Saved
             assertThat(repository.deleteActivity(saved.id)).isTrue()
             assertThat(repository.listActivitySummaries()).isEmpty()
+            assertThat(repository.observeTrash().first().single().id).isEqualTo(saved.id)
 
             assertThat(repository.saveImportedActivity(imported, "sha"))
-                .isEqualTo(SaveActivityResult.Restored(saved.id))
+                .isEqualTo(SaveActivityResult.ConflictingTrash(saved.id))
+            assertThat(repository.listActivitySummaries()).isEmpty()
+
+            assertThat(repository.restoreActivity(saved.id)).isTrue()
             assertThat(repository.listActivitySummaries()).hasSize(1)
             assertThat(repository.openActivity(saved.id)?.sourceFileSha256).isEqualTo("sha")
+        }
+    }
+
+    @Test
+    fun `purges only trashed activities older than the cutoff`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
+            repository.deleteActivity(saved.id, Instant.parse("2026-11-01T12:00:00Z"))
+            assertThat(database.activityDao().findByIdIncludingDeleted(saved.id)?.deletedAt)
+                .isEqualTo(Instant.parse("2026-11-01T12:00:00Z").toEpochMilli())
+
+            val tooEarly = repository.purgeTrashBefore(Instant.parse("2026-11-08T11:59:59Z"))
+            assertThat(tooEarly).isEmpty()
+            assertThat(repository.openActivity(saved.id)).isNull()
+            assertThat(database.sampleBlobDao().getForActivity(saved.id)).isNotNull()
+
+            val purged = repository.purgeTrashBefore(Instant.parse("2026-11-08T12:00:00Z"))
+            assertThat(purged).hasSize(1)
+            assertThat(purged.single().id).isEqualTo(saved.id)
+            assertThat(database.activityDao().findByIdIncludingDeleted(saved.id)).isNull()
+            assertThat(database.lapDao().getForActivity(saved.id)).isEmpty()
+            assertThat(database.sampleBlobDao().getForActivity(saved.id)).isNull()
+        }
+    }
+
+    @Test
+    fun `permanent delete removes a trashed activity and its children`() {
+        runBlocking {
+            val saved = repository.saveImportedActivity(importedActivity()) as SaveActivityResult.Saved
+            repository.deleteActivity(saved.id)
+
+            val purged = repository.purgeActivity(saved.id)
+
+            assertThat(purged?.id).isEqualTo(saved.id)
+            assertThat(database.activityDao().findByIdIncludingDeleted(saved.id)).isNull()
+            assertThat(database.lapDao().getForActivity(saved.id)).isEmpty()
+            assertThat(database.sampleBlobDao().getForActivity(saved.id)).isNull()
+            assertThat(repository.purgeActivity(saved.id)).isNull()
         }
     }
 

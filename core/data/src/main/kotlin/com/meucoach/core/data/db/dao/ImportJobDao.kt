@@ -25,6 +25,9 @@ interface ImportJobDao {
     @Query("SELECT * FROM import_jobs ORDER BY createdAt DESC")
     suspend fun getAll(): List<ImportJobEntity>
 
+    @Query("DELETE FROM import_jobs WHERE activityId = :activityId")
+    suspend fun deleteForActivity(activityId: String): Int
+
     @Query("DELETE FROM import_jobs")
     suspend fun deleteAll(): Int
 }

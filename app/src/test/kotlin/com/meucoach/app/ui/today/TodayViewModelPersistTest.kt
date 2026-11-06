@@ -4,15 +4,25 @@ import android.content.Context
 import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.CompleteSession
+import com.meucoach.app.application.GetTodayPrescription
+import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
+import com.meucoach.core.model.ImportedActivity
+import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sex
+import com.meucoach.core.model.Sport
 import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,6 +58,8 @@ class TodayViewModelPersistTest {
     private lateinit var profiles: ProfileRepository
     private lateinit var activities: ActivityRepository
     private lateinit var plans: TrainingPlanRepository
+    private lateinit var prescriptions: DailyPrescriptionRepository
+    private var nextActivityId = 0
 
     @Before
     fun setUp() {
@@ -68,9 +80,10 @@ class TodayViewModelPersistTest {
                 database = database,
                 clock = clock,
                 zoneId = ZoneId.of("America/Sao_Paulo"),
-                idGenerator = { "activity-1" },
+                idGenerator = { "activity-${++nextActivityId}" },
             )
         plans = TrainingPlanRepository(database, clock)
+        prescriptions = DailyPrescriptionRepository(database, clock)
     }
 
     @After
@@ -88,7 +101,7 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = createViewModel()
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
@@ -96,11 +109,20 @@ class TodayViewModelPersistTest {
         val stored = plans.getWeek(state.plan!!.weekStart)
         assertThat(stored).isNotNull
         assertThat(stored?.sessions).hasSameSizeAs(state.plan.sessions)
+        val prescription = prescriptions.getLatest(today)
+        assertThat(prescription).isNotNull
+        assertThat(prescription?.date).isEqualTo(today)
+        assertThat(prescription?.plannedType).isNotNull
+        assertThat(state.prescription?.id).isEqualTo(prescription?.id)
     }
 
     @Test
     fun `uses completed previous week to add a second quality`(): Unit = runBlocking {
-        val today = LocalDate.now()
+        val timeProvider = FakeTimeProvider(
+            instant = Instant.parse("2026-10-26T12:00:00Z"),
+            zone = ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
         val weekStart = today.with(
             java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
         )
@@ -109,8 +131,9 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
         plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
+        seedLoad(today)
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = createViewModel(timeProvider)
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.qualityCount == 2 }
         }
@@ -133,7 +156,7 @@ class TodayViewModelPersistTest {
             plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
         }
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = createViewModel()
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
@@ -180,7 +203,7 @@ class TodayViewModelPersistTest {
             ),
         )
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = createViewModel()
         viewModel.swapSession(weekStart, weekStart.plusDays(1), today = weekStart)
         withTimeout(5_000) {
             while (
@@ -198,6 +221,21 @@ class TodayViewModelPersistTest {
             .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
     }
 
+    private fun createViewModel(timeProvider: TimeProvider = FakeTimeProvider()): TodayViewModel {
+        val executions = SessionExecutionRepository(database)
+        return TodayViewModel(
+            checkIns,
+            metrics,
+            profiles,
+            activities,
+            plans,
+            executions,
+            CompleteSession(plans, activities, executions),
+            timeProvider,
+            GetTodayPrescription(prescriptions),
+        )
+    }
+
     private fun previousWeek(weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
@@ -210,6 +248,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-0",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(1),
@@ -220,6 +260,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-1",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(2),
@@ -230,6 +272,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-2",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(3),
@@ -240,6 +284,8 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
+                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                activityId = "previous-day-3",
             ),
         ),
         weeklyMinutes = 120,
@@ -250,6 +296,27 @@ class TodayViewModelPersistTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
     )
+
+    private suspend fun seedLoad(today: LocalDate) {
+        val zone = ZoneId.of("America/Sao_Paulo")
+        listOf(1L, 4L, 8L, 11L, 15L, 18L, 22L, 25L).forEach { daysAgo ->
+            activities.saveImportedActivity(
+                ImportedActivity(
+                    source = ActivitySource.FIT,
+                    sport = Sport.RUNNING,
+                    startTime = today
+                        .minusDays(daysAgo)
+                        .atStartOfDay(zone)
+                        .toInstant()
+                        .plusSeconds(12 * 3_600),
+                    durationSec = 1_800 + daysAgo.toInt() * 30,
+                    distanceM = 5_000.0,
+                    averageHeartRate = 150,
+                    averagePace = Pace.fromSecondsPerKm(360 + daysAgo.toInt() * 10),
+                ),
+            )
+        }
+    }
 
     private fun profile(
         today: LocalDate,

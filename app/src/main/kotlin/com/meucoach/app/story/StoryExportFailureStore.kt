@@ -27,6 +27,10 @@ class StoryExportFailureStore @Inject constructor(@ApplicationContext context: C
         prefs.edit { remove(activityId) }
     }
 
+    fun clearAll() {
+        prefs.edit().clear().apply()
+    }
+
     private companion object {
         const val PREFERENCES = "meucoach_story_export"
     }

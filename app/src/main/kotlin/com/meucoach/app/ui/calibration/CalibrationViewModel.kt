@@ -3,6 +3,7 @@ package com.meucoach.app.ui.calibration
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.calibration.CalibrationCalculator
@@ -38,6 +39,7 @@ data class CalibrationUiState(
 class CalibrationViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val activityRepository: ActivityRepository,
+    private val timeProvider: TimeProvider,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val activityId: String? = savedStateHandle[ARG_ACTIVITY_ID]
@@ -48,13 +50,12 @@ class CalibrationViewModel @Inject constructor(
         viewModelScope.launch {
             val profile = profileRepository.getProfile()
             val summaries = activityRepository.listActivitySummaries()
-            val zone = profile
-                ?.let { runCatching { ZoneId.of(it.timezone) }.getOrNull() }
-                ?: ZoneId.systemDefault()
-            val recent = recentEffortCount(summaries, zone, LocalDate.now())
+            val zone = timeProvider.zoneId.value
+            val today = timeProvider.currentDate()
+            val recent = recentEffortCount(summaries, zone, today)
             val candidate = activityId
                 ?.let { activityRepository.openActivity(it) }
-                ?.let { CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now()) }
+                ?.let { CalibrationCandidateDetector.detect(it.imported, it.localDate, today) }
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 profile = profile,
@@ -75,7 +76,7 @@ class CalibrationViewModel @Inject constructor(
 
     fun calculate() {
         val state = _uiState.value
-        val today = LocalDate.now()
+        val today = timeProvider.currentDate()
         val errors = CalibrationFormValidator.validate(state.form, today)
         if (!errors.isValid) {
             _uiState.value = state.copy(errors = errors, result = null)

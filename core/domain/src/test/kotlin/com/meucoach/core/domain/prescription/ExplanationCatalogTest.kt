@@ -14,11 +14,18 @@ class ExplanationCatalogTest {
             "R-READY-04",
             "R-LOAD-03",
             "R-PLAN-02",
+            "R-PLAN-03",
+            "R-PLAN-04",
+            "R-PLAN-05",
             "R-PLAN-06",
             "R-PLAN-07",
             "R-PLAN-08",
             "R-CAL-02",
             "R-SAFE-01",
+            "R-PLAN-01",
+            "R-PRESC-01",
+            "R-PRESC-02",
+            "R-PRESC-03",
         )
 
         ids.forEach { id ->
@@ -34,6 +41,7 @@ class ExplanationCatalogTest {
             "EV-DANIELS-2014",
             "EV-SAW-2016",
             "EV-GABBETT-2016",
+            "EV-IMPELLIZZERI-2020",
             "EV-ELY-2007",
             "EV-FRIEL-2018",
             "EV-PLEWS-2013",

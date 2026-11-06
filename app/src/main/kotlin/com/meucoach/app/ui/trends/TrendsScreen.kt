@@ -50,6 +50,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.ui.activities.formatDuration
 import com.meucoach.app.ui.common.readinessLabel
+import com.meucoach.app.ui.firstrun.FirstRunTipCard
 import com.meucoach.core.designsystem.component.McBarChart
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McChartSeries
@@ -78,6 +79,7 @@ import java.util.Locale
 @Composable
 fun TrendsScreen(
     modifier: Modifier = Modifier,
+    onCheckInClick: () -> Unit = {},
     viewModel: TrendsViewModel = hiltViewModel(),
     historyViewModel: ReadinessHistoryViewModel = hiltViewModel(),
 ) {
@@ -88,6 +90,7 @@ fun TrendsScreen(
         modifier = modifier,
         readinessHistory = history.days,
         onPeriodSelected = viewModel::selectPeriod,
+        onCheckInClick = onCheckInClick,
     )
 }
 
@@ -97,6 +100,7 @@ internal fun TrendsContent(
     modifier: Modifier = Modifier,
     readinessHistory: List<ReadinessHistoryDay> = emptyList(),
     onPeriodSelected: (TrendsPeriod) -> Unit = {},
+    onCheckInClick: () -> Unit = {},
 ) {
     val colors = McTheme.colors
     Box(
@@ -121,13 +125,27 @@ internal fun TrendsContent(
                 modifier = Modifier.align(Alignment.Center),
             )
 
-            state.snapshot == null || !state.snapshot.hasData -> McEmptyState(
-                icon = Icons.AutoMirrored.Outlined.ShowChart,
-                title = "Sem carga para mostrar",
-                description = "Importe corridas com FC ou ritmo e calibre seu limite. " +
-                    "Assim você vê carga e recuperação.",
-                modifier = Modifier.align(Alignment.Center),
-            )
+            state.snapshot == null || !state.snapshot.hasData -> Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                McEmptyState(
+                    icon = Icons.AutoMirrored.Outlined.ShowChart,
+                    title = "Sem carga para mostrar",
+                    description = "Importe corridas com FC ou ritmo e calibre seu limite. " +
+                        "Assim você vê carga e recuperação.",
+                )
+                FirstRunTipCard(
+                    tipId = "trends-empty",
+                    title = "A evolução aparece com o tempo",
+                    body = "Depois de 2 semanas de corridas, carga e tendências ficam mais claras. " +
+                        "Enquanto isso, o check-in de hoje já ajusta seu treino.",
+                    actionLabel = "Fazer check-in",
+                    onAction = onCheckInClick,
+                )
+            }
 
             else -> LoadDetails(
                 snapshot = state.snapshot,
@@ -563,7 +581,8 @@ private fun PlanCompletionCard(completion: PlanCompletion) {
             height = 132.dp,
             contentDescription = "Conclusão do plano nas últimas " +
                 "${completion.windowWeeks} semanas: ${completion.done} de " +
-                "${completion.planned} sessões concluídas e ${completion.skipped} puladas",
+                "${completion.planned} sessões concluídas, ${completion.verified} com evidência, " +
+                "e ${completion.skipped} puladas",
         )
         Spacer(modifier = Modifier.height(10.dp))
         val skipped = when (completion.skipped) {
@@ -576,6 +595,21 @@ private fun PlanCompletionCard(completion: PlanCompletion) {
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
+        val verified = "${completion.verified} com evidência"
+        val manual = if (completion.manual > 0) " · ${completion.manual} sem registro" else ""
+        val legacy = if (completion.legacy > 0) " · ${completion.legacy} não verificadas" else ""
+        Text(
+            text = "$verified$manual$legacy",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        if (completion.legacy > 0) {
+            Text(
+                text = "Conclusões antigas não têm comprovação e não liberam progressão.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+        }
         Text(
             text = "Semanas sem plano ficam vazias; a semana atual conta só até hoje.",
             style = McTextStyles.caption,
@@ -834,7 +868,7 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
                 ),
             ),
             xLabels = points.map { it.date.format(DAY_FORMAT) },
-            ySuffix = "",
+            ySuffix = " m/b",
             yDecimals = 2,
             yStep = 0.05,
             minY = axisMin,
@@ -842,7 +876,25 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
             labelSpacing = if (points.size > 8) 2 else 1,
             height = 168.dp,
             showLegend = false,
-            contentDescription = "Evolução da economia de corrida em ${points.size} corridas",
+            contentDescription = String.format(
+                PT_BR,
+                "Evolução da economia de corrida em %d corridas. " +
+                    "Escala ampliada de %.2f a %.2f metros por batimento.",
+                points.size,
+                axisMin,
+                axisMax,
+            ),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = String.format(
+                PT_BR,
+                "Escala ampliada (%.2f a %.2f m/batimento) para destacar diferenças pequenas entre corridas.",
+                axisMin,
+                axisMax,
+            ),
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
         )
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -865,16 +917,6 @@ private fun PaceHeartRateCard(points: List<PaceHeartRatePoint>) {
                 modifier = Modifier.weight(1f),
             )
         }
-        Text(
-            text = String.format(
-                PT_BR,
-                "Eixo de %.2f a %.2f m/batimento para mostrar a variação.",
-                axisMin,
-                axisMax,
-            ),
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
         McDivider(modifier = Modifier.padding(vertical = 10.dp))
         Text(
             text = "Últimas corridas",

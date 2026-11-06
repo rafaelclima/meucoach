@@ -6,9 +6,11 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ImportJobStatus
+import com.meucoach.core.data.epoch.DataEpochStore
 import com.meucoach.core.data.importer.ImportResult
 import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.ProfileRepository
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -20,6 +22,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 import java.io.IOException
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -74,6 +79,27 @@ class StagedImportProcessorTest {
             assertThat(result).isInstanceOf(ImportResult.Failed::class.java)
             assertThat(database.importJobDao().getAll().single().status).isEqualTo(ImportJobStatus.FAILED)
             assertThat(File(context.filesDir, staged.relativePath)).doesNotExist()
+        }
+    }
+
+    @Test
+    fun `skips and cleans staging when there is no profile`() {
+        runBlocking {
+            val clock = Clock.fixed(Instant.parse("2026-11-06T12:00:00Z"), ZoneOffset.UTC)
+            val guarded = StagedImportProcessor(
+                staging = staging,
+                importService = ImportService(database, repository),
+                profiles = ProfileRepository(database, clock),
+                epochStore = DataEpochStore(context, clock, prefsName = "import-epoch-${System.nanoTime()}"),
+            )
+            val staged = staging.stage(Uri.fromFile(sourceFile("corrida.gpx", gpx())))
+
+            val result = guarded.process(staged.relativePath, staged.displayName, staged.mime)
+
+            assertThat(result).isEqualTo(ImportResult.Skipped)
+            assertThat(File(context.filesDir, staged.relativePath)).doesNotExist()
+            assertThat(repository.listActivitySummaries()).isEmpty()
+            assertThat(database.importJobDao().getAll()).isEmpty()
         }
     }
 

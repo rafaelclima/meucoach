@@ -3,6 +3,7 @@ package com.meucoach.app.ui.checkin
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.model.DailyCheckIn
@@ -57,7 +58,7 @@ class CheckInViewModelTest {
 
     @Test
     fun `starts with neutral answers`(): Unit = runBlocking {
-        val state = CheckInViewModel(repository).uiState.first { !it.isLoading }
+        val state = CheckInViewModel(repository, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.existing).isFalse()
         assertThat(state.form.sleepQuality).isEqualTo(3)
@@ -71,7 +72,7 @@ class CheckInViewModelTest {
             DailyCheckIn(today, sleepQuality = 5, fatigue = 1, soreness = 2, stress = 2),
         )
 
-        val state = CheckInViewModel(repository).uiState.first { !it.isLoading }
+        val state = CheckInViewModel(repository, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.existing).isTrue()
         assertThat(state.form.sleepQuality).isEqualTo(5)
@@ -85,7 +86,7 @@ class CheckInViewModelTest {
         repository.save(DailyCheckIn(today.minusDays(2), sleepQuality = 3, fatigue = 3, soreness = 2, stress = 3))
         repository.save(DailyCheckIn(today, sleepQuality = 5, fatigue = 1, soreness = 1, stress = 1))
 
-        val state = CheckInViewModel(repository).uiState.first { it.history.size == 3 }
+        val state = CheckInViewModel(repository, FakeTimeProvider()).uiState.first { it.history.size == 3 }
 
         assertThat(state.history.map { it.date })
             .containsExactly(today, today.minusDays(1), today.minusDays(2))
@@ -94,7 +95,7 @@ class CheckInViewModelTest {
 
     @Test
     fun `history refreshes after saving`(): Unit = runBlocking {
-        val viewModel = CheckInViewModel(repository)
+        val viewModel = CheckInViewModel(repository, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
         viewModel.update { it.copy(fatigue = 5) }
 
@@ -108,7 +109,7 @@ class CheckInViewModelTest {
 
     @Test
     fun `saves the check-in`(): Unit = runBlocking {
-        val viewModel = CheckInViewModel(repository)
+        val viewModel = CheckInViewModel(repository, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
         viewModel.update { it.copy(fatigue = 4, illnessOrInjury = true) }
 

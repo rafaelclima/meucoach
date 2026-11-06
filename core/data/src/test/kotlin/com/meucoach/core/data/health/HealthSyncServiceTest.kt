@@ -4,12 +4,17 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.epoch.DataEpochStore
+import com.meucoach.core.data.epoch.DataWriteMutex
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DailyMetricsSource
 import com.meucoach.core.model.Sex
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
@@ -19,6 +24,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -31,6 +37,7 @@ class HealthSyncServiceTest {
     private lateinit var metrics: DailyMetricsRepository
     private lateinit var profiles: ProfileRepository
     private lateinit var store: HealthSyncStore
+    private lateinit var epochStore: DataEpochStore
     private val zone = ZoneId.of("UTC")
     private val today = LocalDate.now(zone)
 
@@ -46,6 +53,7 @@ class HealthSyncServiceTest {
         metrics = DailyMetricsRepository(database, clock)
         profiles = ProfileRepository(database, clock)
         store = HealthSyncStore(context, prefsName = "health-sync-${System.nanoTime()}")
+        epochStore = DataEpochStore(context, clock, prefsName = "health-epoch-${System.nanoTime()}")
     }
 
     @After
@@ -112,7 +120,7 @@ class HealthSyncServiceTest {
     @Test
     fun `later sync starts one day before the last success`(): Unit = runBlocking {
         profiles.saveProfile(profile())
-        store.markSynced(today)
+        store.markSynced(Instant.parse("2026-10-30T12:00:00Z"), today)
         val source = FakeSource()
 
         val result = service(source).sync()
@@ -166,11 +174,169 @@ class HealthSyncServiceTest {
         assertThat(store.lastSyncedDate()).isNull()
     }
 
-    private fun service(source: HealthDailySource) = HealthSyncService(
+    @Test
+    fun `skips a fresh success on resume`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        store.markSynced(now.minus(Duration.ofHours(1)), LocalDate.of(2026, 10, 30))
+        val source = FakeSource()
+
+        val result = service(source, Clock.fixed(now, ZoneOffset.UTC)).syncIfStale()
+
+        assertThat(result).isNull()
+        assertThat(source.reads).isZero()
+    }
+
+    @Test
+    fun `reads when the last success is older than six hours`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        val today = LocalDate.of(2026, 10, 30)
+        store.markSynced(now.minus(Duration.ofHours(7)), today)
+        val source = FakeSource()
+
+        val result = service(source, Clock.fixed(now, ZoneOffset.UTC)).syncIfStale()
+
+        assertThat(result).isNotNull
+        assertThat(source.lastFrom).isEqualTo(today.minusDays(1))
+        assertThat(source.reads).isEqualTo(1)
+        assertThat(store.lastSyncedAt()).isEqualTo(now)
+    }
+
+    @Test
+    fun `backs off after a read error`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        val clock = Clock.fixed(now, ZoneOffset.UTC)
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = emptySet(),
+                error = "Falha de leitura.",
+            ),
+        )
+
+        val first = service(source, clock).syncIfStale()
+        val second = service(source, clock).syncIfStale()
+
+        assertThat(first?.error).isEqualTo("Falha de leitura.")
+        assertThat(second).isNull()
+        assertThat(source.reads).isEqualTo(1)
+        assertThat(store.lastAttemptAt()).isEqualTo(now)
+    }
+
+    @Test
+    fun `retries after the error backoff`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = emptySet(),
+                error = "Falha de leitura.",
+            ),
+        )
+        service(source, Clock.fixed(now, ZoneOffset.UTC)).syncIfStale()
+
+        val later = service(source, Clock.fixed(now.plus(Duration.ofMinutes(16)), ZoneOffset.UTC)).syncIfStale()
+
+        assertThat(later?.error).isEqualTo("Falha de leitura.")
+        assertThat(source.reads).isEqualTo(2)
+    }
+
+    @Test
+    fun `manual sync ignores a fresh success`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        store.markSynced(now, LocalDate.of(2026, 10, 30))
+        val source = FakeSource()
+
+        service(source, Clock.fixed(now, ZoneOffset.UTC)).sync()
+
+        assertThat(source.reads).isEqualTo(1)
+    }
+
+    @Test
+    fun `missing permissions do not start an error backoff`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = setOf("sleep"),
+            ),
+        )
+
+        val result = service(source, Clock.fixed(now, ZoneOffset.UTC)).syncIfStale()
+
+        assertThat(result?.missingPermissions).contains("sleep")
+        assertThat(store.lastAttemptAt()).isNull()
+        assertThat(store.lastSyncedAt()).isNull()
+    }
+
+    @Test
+    fun `concurrent resume calls read only once`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val now = Instant.parse("2026-10-30T12:00:00Z")
+        val source = FakeSource()
+        val syncService = service(source, Clock.fixed(now, ZoneOffset.UTC))
+
+        val results = coroutineScope {
+            List(2) { async { syncService.syncIfStale() } }.awaitAll()
+        }
+
+        assertThat(results.count { it != null }).isEqualTo(1)
+        assertThat(source.reads).isEqualTo(1)
+    }
+
+    @Test
+    fun `does not read or write without a profile`(): Unit = runBlocking {
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(today)),
+                missingPermissions = emptySet(),
+            ),
+        )
+
+        val result = service(source, epochStore = epochStore).sync()
+
+        assertThat(result.skipped).isTrue()
+        assertThat(source.reads).isZero()
+        assertThat(metrics.getAll()).isEmpty()
+        assertThat(store.lastSyncedDate()).isNull()
+    }
+
+    @Test
+    fun `discards a read when the epoch changes during sync`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(today)),
+                missingPermissions = emptySet(),
+            ),
+            onRead = { epochStore.rotate() },
+        )
+
+        val result = service(source, epochStore = epochStore).sync()
+
+        assertThat(result.cancelledByReset).isTrue()
+        assertThat(result.importedDays).isZero()
+        assertThat(metrics.getAll()).isEmpty()
+        assertThat(store.lastSyncedDate()).isNull()
+    }
+
+    private fun service(
+        source: HealthDailySource,
+        clock: Clock = Clock.systemDefaultZone(),
+        epochStore: DataEpochStore? = null,
+    ) = HealthSyncService(
         source = source,
         metricsRepository = metrics,
         profileRepository = profiles,
         syncStore = store,
+        clock = clock,
+        epochStore = epochStore,
+        writeMutex = DataWriteMutex(),
     )
 
     private fun profile() = AthleteProfile(
@@ -195,9 +361,11 @@ class HealthSyncServiceTest {
             days = emptyList(),
             missingPermissions = emptySet(),
         ),
+        private val onRead: () -> Unit = {},
     ) : HealthDailySource {
         var lastFrom: LocalDate? = null
         var lastTo: LocalDate? = null
+        var reads: Int = 0
 
         override val requiredPermissions: Set<String> = setOf("sleep", "hr")
 
@@ -206,8 +374,10 @@ class HealthSyncServiceTest {
         override suspend fun grantedPermissions(): Set<String> = requiredPermissions
 
         override suspend fun read(from: LocalDate, to: LocalDate, zoneId: ZoneId): HealthConnectReadResult {
+            reads++
             lastFrom = from
             lastTo = to
+            onRead()
             return result
         }
     }

@@ -3,6 +3,7 @@ package com.meucoach.app.ui.calibration
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -166,6 +167,7 @@ class CalibrationViewModelTest {
     private fun viewModel(activityId: String? = null) = CalibrationViewModel(
         profileRepository = profiles,
         activityRepository = activities,
+        timeProvider = FakeTimeProvider(),
         savedStateHandle = androidx.lifecycle.SavedStateHandle(
             activityId?.let { mapOf(CalibrationViewModel.ARG_ACTIVITY_ID to it) }.orEmpty(),
         ),

@@ -16,6 +16,7 @@ class NotificationNavigationTest {
         assertThat(NotificationNavigation.routeFor("meucoach://activity/abc-123"))
             .isEqualTo("activity/abc-123")
         assertThat(NotificationNavigation.routeFor("meucoach://activity/")).isNull()
+        assertThat(NotificationNavigation.routeFor("meucoach://data")).isEqualTo("profile/data")
     }
 
     @Test

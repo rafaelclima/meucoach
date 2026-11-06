@@ -56,6 +56,7 @@ class TrendsScreenshotTest {
                     "Gráfico de carga de base e fadiga recente dos últimos 42 dias",
                 ),
             )
+        settle()
         compose.onRoot().captureRoboImage("src/test/screenshots/trends-charts-dark.png")
     }
 
@@ -72,7 +73,17 @@ class TrendsScreenshotTest {
             }
         }
 
+        settle()
         compose.onRoot().captureRoboImage(file)
+    }
+
+    /** Vico builds the model off the composition; give it a moment before capturing. */
+    private fun settle() {
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        Thread.sleep(300)
+        compose.waitForIdle()
     }
 
     private fun profile() = AthleteProfile(
@@ -105,6 +116,14 @@ class TrendsScreenshotTest {
             acwr = 1.2,
             monotony = 0.8,
             missingDays = 28,
+            coverage = com.meucoach.core.domain.load.LoadCoverage(
+                daysInWindow = 28,
+                daysWithLoad = 14,
+                daysWithoutActivity = 14,
+                daysWithoutData = 0,
+                lastActivityAt = null,
+                sourceFresh = true,
+            ),
         )
     }
 }

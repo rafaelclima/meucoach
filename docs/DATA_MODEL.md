@@ -1,17 +1,18 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 30/10/2026
+**Versão:** 1.3 · **Data:** 06/11/2026 · Reconcilia schema v12, `daily_prescriptions` e a distinção entre persistido e derivado (C1-06).
 
 ## 1. Convenções
 
 - **Unidades internas:** SI. Distância em metros, duração em segundos, pace em s/km, FC em bpm, massa em kg, altura em cm, potência em watts, temperatura em °C.
-- **Tempo:** persistir UTC (`Instant`) + `zoneId` + `localDate` derivada para agregações diárias.
+- **Tempo:** persistir UTC (`Instant`) + `zoneId` + `localDate` derivada para agregações diárias. No Room, `Instant` vira `INTEGER` (epoch ms) e `LocalDate` vira `TEXT` ISO; as tabelas usam o tipo lógico.
 - **IDs:** UUID v7 gerados no cliente (ordenáveis por tempo), exceto entidades derivadas que usam chave natural (`localDate`, `activityId + lapIndex`).
 - **Dinheiro/medidas:** `Double` para métricas fisiológicas; `Long` para contadores; nunca `Float` em persistência.
 - **Nulos:** ausência de dado é `null`, nunca `0`. `0` é um valor medido.
 - **Proveniência:** toda entidade importada tem `source`, `sourceId`, `importedAt`, `parserVersion`.
-- **Soft delete:** `deletedAt` em atividades e métricas diárias; exportação inclui lixeira por 30 dias.
-- **Versionamento:** `schemaVersion` em `Room`; `engineVersion` em recomendações; `evidenceVersion` no registro de evidências.
+- **Soft delete:** `deletedAt` apenas em atividades; a lixeira dura 7 dias (`ADR 0025`). Métricas, check-ins e planos não têm soft delete.
+- **Persistido × derivado:** o Room guarda perfil, atividades/laps/samples, jobs, check-in, métricas diárias, planos/sessões, prescrições e execuções. Prontidão, carga, recomendações e histórico são **calculados em memória** a partir desses dados e não têm tabela própria.
+- **Versionamento:** `schemaVersion` em `Room`; `engineVersion` em prescrições; `evidenceVersion`/IDs no registro de evidências textuais (não persistido em tabela).
 
 ## 2. Diagrama
 
@@ -20,19 +21,19 @@ erDiagram
     ATHLETE_PROFILE ||--o{ ACTIVITY : has
     ATHLETE_PROFILE ||--o{ DAILY_METRICS : has
     ATHLETE_PROFILE ||--o{ CHECK_IN : has
-    ATHLETE_PROFILE ||--o{ PLAN : follows
+    ATHLETE_PROFILE ||--o{ WEEKLY_PLAN : follows
     ACTIVITY ||--o{ LAP : contains
     ACTIVITY ||--o{ SAMPLE_BLOB : has
-    ACTIVITY ||--o{ SESSION_FEEDBACK : has
-    PLAN ||--o{ PLANNED_SESSION : contains
+    ACTIVITY ||--o{ ACTIVITY_ALTERNATE : has
+    WEEKLY_PLAN ||--o{ PLANNED_SESSION : contains
     PLANNED_SESSION ||--o| ACTIVITY : completed_by
-    DAILY_METRICS ||--o| READINESS : produces
-    CHECK_IN ||--o| READINESS : informs
-    READINESS ||--o| RECOMMENDATION : constrains
-    RECOMMENDATION ||--o{ RECOMMENDATION_RULE : cites
-    EVIDENCE ||--o{ RECOMMENDATION_RULE : supports
+    PLANNED_SESSION ||--o| SESSION_EXECUTION : proved_by
+    DAILY_PRESCRIPTION }o--o| PLANNED_SESSION : adjusts
+    DAILY_PRESCRIPTION }o--o| DAILY_PRESCRIPTION : supersedes
     IMPORT_JOB ||--o{ ACTIVITY : imports
 ```
+
+> `READINESS`, `RECOMMENDATION`, `EVIDENCE` e `SESSION_FEEDBACK` aparecem em versões antigas do diagrama, mas **não são tabelas**: prontidão/carga são calculadas por data e as evidências vivem em `docs/SPORTS_SCIENCE.md` + `ExplanationCatalog.kt`.
 
 ## 3. Entidades principais
 
@@ -41,6 +42,8 @@ erDiagram
 | Campo | Tipo | Notas |
 |---|---|---|
 | `id` | UUID | |
+| `name` | String? | nome exibido no onboarding/avatar |
+| `avatarPath` | String? | cópia local em `filesDir/profile` |
 | `birthDate` | LocalDate | idade derivada |
 | `sex` | enum | `FEMALE`, `MALE`, `OTHER`, `UNSPECIFIED` |
 | `heightCm` | Double? | |
@@ -51,6 +54,7 @@ erDiagram
 | `thresholdPaceSecPerKm` | Int? | pace de limiar |
 | `vdot` | Double? | Daniels |
 | `experience` | enum | `BEGINNER`, `INTERMEDIATE`, `ADVANCED` |
+| `treadmillAccess` | Boolean | alternativa de qualidade por velocidade/inclinação |
 | `weeklyAvailability` | JSON | dias + minutos por dia |
 | `goal` | JSON | tipo, prova, data, distância, tempo alvo |
 | `timezone` | String | IANA |
@@ -70,6 +74,7 @@ erDiagram
 | `subSport` | String? | `street`, `treadmill`, `trail` |
 | `startTimeUtc` | Instant | |
 | `zoneId` | String | |
+| `localDate` | LocalDate | derivada do fuso do perfil na importação |
 | `durationSec` | Int | elapsed |
 | `movingTimeSec` | Int? | |
 | `distanceM` | Double | |
@@ -83,6 +88,7 @@ erDiagram
 | `calories` | Int? | |
 | `trainingEffectAerobic` / `Anaerobic` | Double? | do Zepp, apenas referência |
 | `trainingLoadPeak` | Double? | do Zepp, apenas referência |
+| `deviceName` | String? | proveniência do dispositivo |
 | `rawFilePath` | String? | arquivo original |
 | `parserVersion` | String | |
 | `importedAt` | Instant | |
@@ -90,13 +96,29 @@ erDiagram
 
 **Índices:** `startTimeUtc`, `(sport, startTimeUtc)`, `sourceFileSha256` (unique quando não nulo).
 
+### 3.2.1 `ActivityAlternate`
+
+| Campo | Tipo |
+|---|---|
+| `id` | UUID (PK) |
+| `activityId` | UUID (FK, cascade) |
+| `source` | enum (`FIT`, `TCX`, `GPX`, `HEALTH_CONNECT`, `MANUAL`) |
+| `sourceId` / `sourceFileSha256` | String? |
+| `rawFilePath` | String? |
+| `parserVersion` | String |
+| `importedAt` | Long |
+| `sampleCount` / `durationSec` | Int |
+| `distanceM` | Double |
+
+Guarda os formatos que descrevem uma atividade já canônica. `sourceFileSha256` é único quando presente; a atividade principal é escolhida por riqueza (FIT > TCX > GPX) e os demais viram alternates.
+
 ### 3.3 `Lap`
 
 | Campo | Tipo |
 |---|---|
 | `activityId` | UUID (FK) |
-| `index` | Int |
-| `startTimeUtc` | Instant |
+| `lapIndex` | Int |
+| `startTimeUtc` | Instant? |
 | `durationSec` | Int |
 | `distanceM` | Double |
 | `avgHr` / `maxHr` | Int? |
@@ -105,7 +127,7 @@ erDiagram
 | `avgPowerW` | Int? |
 | `elevationGainM` | Double? |
 
-Chave: `(activityId, index)`.
+Chave: `(activityId, lapIndex)`.
 
 ### 3.4 `SampleBlob` — séries temporais
 
@@ -142,50 +164,104 @@ guarda a fonte dominante (`MANUAL` > `HEALTH_CONNECT` > `CSV`).
 | Campo | Tipo | Escala |
 |---|---|---|
 | `date` | LocalDate | PK |
-| `sleepHours` | Double? | |
 | `sleepQuality` | Int | 1–5 |
 | `fatigue` | Int | 1–5 |
 | `soreness` | Int | 1–5 |
 | `stress` | Int | 1–5 |
-| `mood` | Int? | 1–5 |
-| `notes` | String? | |
-| `createdAt` | Instant | |
+| `illnessOrInjury` | Boolean | sinal de alerta |
+| `heatLevel` | enum | `NONE`, `MILD`, `MODERATE`, `SEVERE` (autorreporte) |
+| `createdAt` / `updatedAt` | Long (epoch ms) | escrita local |
 
-O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearable.
+O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearable. `sleepHours`, `mood` e `notes` aparecem em versões antigas do documento, mas **não são persistidos**; sono em horas vem de `DailyMetrics`/Health Connect.
 
-### 3.7 `Readiness`
+### 3.7 `Readiness` — **derivado, sem tabela**
 
 | Campo | Tipo |
 |---|---|
-| `date` | LocalDate (PK) |
 | `score` | Int 0–100 |
 | `level` | `GREEN`, `AMBER`, `RED` |
 | `confidence` | `HIGH`, `MEDIUM`, `LOW` |
-| `components` | JSON (sono, HRV, RHR, carga, subjetivo) |
-| `missingInputs` | JSON |
-| `modelVersion` | String |
-| `computedAt` | Instant |
+| `components` | `Map<ReadinessComponent, Int>` (subjetivo, sono, HRV, RHR) |
+| `missing` | `Set<ReadinessComponent>` |
+| `flags` | `Set<ReadinessFlag>` (`ILLNESS_OR_INJURY`, `SHORT_SLEEP`, `RESTING_HEART_RATE_ELEVATED`, `NO_QUALITY`, `INSUFFICIENT_DATA`) |
 
-### 3.8 `Plan` / `PlannedSession`
+`ReadinessResult` é calculado em memória a partir de `daily_check_ins` + `daily_metrics` e do histórico de carga. O histórico de 14 dias é reconstruído por data (`ReadinessHistoryCalculator`); não existe entidade `Readiness`, `Recommendation` nem `RecommendationRule` no Room. A decisão auditável do dia fica em `daily_prescriptions` (§3.8.2).
 
-`Plan`: `id`, `startDate`, `endDate`, `goalType`, `targetRaceDate`, `status`, `engineVersion`, `createdAt`.
+### 3.8 `WeeklyPlan` / `PlannedSession`
 
-`PlannedSession`: `id`, `planId`, `date`, `type` (`EASY`, `LONG`, `TEMPO`, `INTERVALS`, `RECOVERY`, `RACE`, `REST`), `purpose`, `durationMin`, `distanceM`, `targetZone`, `targetPaceMin/Max`, `targetHrMin/Max`, `structure` (JSON: warm-up, main, cooldown, reps), `status` (`PLANNED`, `COMPLETED`, `SKIPPED`, `MOVED`), `linkedActivityId`, `rationale` (JSON: rule IDs + confidence).
+`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`. Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil.
 
-### 3.9 `SessionFeedback`
+`PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale` e IDs de regra/evidência.
 
-`activityId`, `rpe` (1–10), `feeling` (1–5), `notes`, `createdAt`. O RPE alimenta sRPE e o modelo de carga quando a FC é duvidosa.
+Regras do `ADR 0024`:
+
+- `DONE` só existe com evidência; o modelo rejeita a construção sem ela.
+- `CLOSED` só existe com motivo; descanso, doença e plano substituído não contam como falha de adesão.
+- Uma atividade e uma sessão são 1:1: índices únicos em `planned_sessions.activityId` e `session_executions.activityId`/`plannedSessionId`.
+- Atividade na lixeira suspende a evidência (`LEGACY_UNVERIFIED`); restaurar devolve `ACTIVITY`; expurgar remove o vínculo e mantém o histórico não verificado.
+
+### 3.8.1 `SessionExecution`
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | PK |
+| `plannedSessionId` | String? | 1:1 com a sessão |
+| `activityId` | String? | 1:1 com a atividade; nulo em `MANUAL`/`GUIDED` |
+| `startedAt` / `endedAt` | Instant? | nulos em `MANUAL` |
+| `pausesJson` | JSON | pausas da execução guiada; vazio neste ciclo |
+| `durationSec` | Int | positivo |
+| `distanceM` | Double? | nulo em `MANUAL` |
+| `rpe` | Int? | obrigatório em `MANUAL` (1–10) |
+| `source` | enum | `ACTIVITY`, `GUIDED`, `MANUAL` |
+| `createdAt` | Instant | |
+
+`MANUAL` é uma declaração explícita de execução, não uma atividade: não cria
+volume, carga, zonas, distância ou pace. `GUIDED` tem contrato definido, mas
+nenhuma execução nova é produzida até a sessão guiada persistente do ciclo 3.
+
+### 3.8.2 `DailyPrescription`
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | PK |
+| `date` | LocalDate | dia local da decisão |
+| `plannedSessionId` / `plannedType` / `plannedTitle` / `plannedDurationMin` | | intenção de origem |
+| `prescribedType` / `title` / `prescribedDurationMin` | | decisão efetiva do dia |
+| `targetsJson` | JSON | zona, pace, FC, distância e RPE |
+| `adjustment` | enum | `KEEP`, `REDUCE`, `DOWNGRADE`, `REST`, `NO_PLAN` |
+| `rationale` | String | explicação em pt-BR |
+| `ruleIdsJson` / `evidenceIdsJson` | JSON | auditoria |
+| `confidence` | enum | `HIGH`, `MEDIUM`, `LOW` |
+| `engineVersion` / `inputsHash` | String | determinismo |
+| `supersedesId` | UUID? | versão anterior; nada é sobrescrito |
+| `createdAt` | Long | epoch ms |
+
+A versão vigente é a última linha da data (`createdAt DESC, rowid DESC`). O
+repositório grava em transação e ignora uma decisão idêntica (mesma data,
+`inputsHash` e `engineVersion`); **não existe índice único composto** no schema —
+a proteção contra duplicata é lógica, dentro da transação. Editar o check-in
+acrescenta uma versão com `supersedesId` (`ADR 0023`).
+
+### 3.9 `SessionFeedback` — **planejado, não implementado**
+
+`activityId`, `rpe` (1–10), `feeling` (1–5), `notes`, `createdAt`. Não existe
+tabela no schema v12; o RPE coletado hoje é o de `SessionExecution` (`MANUAL`) e
+o RPE pós-treino por atividade segue no roadmap (FR-013). sRPE não é usado como
+fonte de carga neste ciclo.
 
 ### 3.10 Evidências e regras
 
-- `Evidence`: `id`, `citation`, `doi/url`, `claim`, `strength` (`STRONG`, `MODERATE`, `LIMITED`), `appliesTo`.
-- `Rule`: `id`, `version`, `description`, `inputs`, `logic`, `evidenceIds`, `confidence`.
-- `RecommendationRule`: liga uma recomendação às regras/evidências usadas.
-- O registro canônico fica em `core/domain/src/main/resources/evidence.json` (versionado); o banco guarda apenas IDs e snapshots.
+- `Evidence` e `Rule` são **catálogo documental**, não tabela: a fonte canônica
+  é `docs/SPORTS_SCIENCE.md` §13 (IDs, citação, força e aplicação), espelhada em
+  `ExplanationCatalog.kt` para rótulos legíveis.
+- A `DailyPrescription` guarda apenas `ruleIdsJson`/`evidenceIdsJson` da decisão;
+  não há snapshot de evidência em tabela nem diretório `resources/evidence.json`.
+- `RecommendationRule` e `Recommendation` também não existem no Room; a decisão
+  auditável é a prescrição diária versionada.
 
 ### 3.11 `ImportJob`
 
-`id`, `fileName`, `sha256`, `mime`, `sizeBytes`, `status` (`QUEUED`, `PARSING`, `DONE`, `FAILED`, `DUPLICATE`), `parserVersion`, `activityId`, `errorCode`, `errorMessage`, `createdAt`, `finishedAt`.
+`id`, `fileName`, `sha256`, `mime`, `sizeBytes`, `status` (`QUEUED`, `PARSING`, `DONE`, `FAILED`, `DUPLICATE`, `TRASH_CONFLICT`), `parserVersion`, `activityId`, `errorCode`, `errorMessage`, `createdAt`, `finishedAt`.
 
 ## 4. Deduplicação e merge
 
@@ -197,30 +273,33 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 
 ## 5. Timezone e dia local
 
-- Atividades: `startTimeUtc` + `zoneId` do dispositivo no momento da importação.
+- Atividades: `startTimeUtc` + `zoneId` vigente do perfil no momento da importação + `localDate` derivada.
 - Métricas diárias: `localDate` no fuso do perfil.
 - Treinos que cruzam meia-noite pertencem ao dia de início.
 - Export do Zepp usa UTC nos arquivos e hora local no nome; **ignorar o nome** e usar o timestamp interno.
 
 ## 6. Mapeamento Health Connect
 
-| Health Connect | Destino |
-|---|---|
-| `SleepSessionRecord` + stages | `DailyMetrics` (sono) |
-| `RestingHeartRateRecord` | `DailyMetrics.restingHr` |
-| `HeartRateVariabilityRmssdRecord` | `DailyMetrics.hrvRmssdMs` |
-| `OxygenSaturationRecord` | `DailyMetrics.spo2Avg` |
-| `ExerciseSessionRecord` | `Activity` (se não houver arquivo melhor) |
-| `StepsRecord` | `DailyMetrics.steps` |
-| `WeightRecord` | `BodyMeasurement` |
+| Health Connect | Destino | Estado |
+|---|---|---|
+| `SleepSessionRecord` + stages | `DailyMetrics` (sono) | Implementado |
+| `RestingHeartRateRecord` | `DailyMetrics.restingHeartRate` | Implementado |
+| `HeartRateVariabilityRmssdRecord` | `DailyMetrics.hrvRmssdMs` | Implementado |
+| `OxygenSaturationRecord` | `DailyMetrics.spo2Avg` | Implementado |
+| `ExerciseSessionRecord` | `Activity` (se não houver arquivo melhor) | **Planejado** (FR-007, ciclo 2) |
+| `StepsRecord` | `DailyMetrics.steps` | Planejado (campo não existe no schema) |
+| `WeightRecord` | `BodyMeasurement` | Planejado (tabela não existe) |
 
-Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`; registrar a fonte (`dataOrigin`) para diagnóstico. Se o mesmo dia vier de CSV e Health Connect, os campos são mesclados: Health Connect tem precedência sobre CSV e o CSV só preenche lacunas (`ADR-0016`).
+Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`dataOrigin` para diagnóstico. Se o mesmo dia vier de CSV e Health Connect, os campos são mesclados: Health Connect tem precedência sobre CSV e o CSV só preenche lacunas (`ADR-0016`). `ExerciseSession` e as tabelas de passos/peso **não** existem hoje.
 
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco v2; `MIGRATION_1_2` adiciona `activities.deletedAt`.
-- Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; schemas 1 e 2 são assets de teste.
+- Estado atual: banco **v12**; migrações 1→2 até 11→12 testadas em Robolectric.
+- `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
+- `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
+- `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
+- Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.
 
@@ -236,13 +315,12 @@ Exibir a confiança no UI, não esconder. Uma prontidão "LOW" não deve gerar m
 
 ## 9. Exportação
 
-O usuário pode exportar:
+O usuário pode exportar hoje:
 
-- JSON completo (perfil, atividades, laps, métricas, check-ins, planos, recomendações).
-- Arquivos originais (FIT/TCX/GPX).
-- CSV de métricas diárias.
-- ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
+- JSON completo (perfil, atividades, laps, métricas, check-ins, planos, prescrições e execuções).
 
-Estado atual (P0-07): `ActivityRepository.exportJson()` exporta atividades (inclusive lixeira), laps, contagem de samples e jobs de importação. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
+Planejado (não implementado): arquivos originais FIT/TCX/GPX, CSV de métricas diárias e ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
 
-Excluir tudo remove banco, arquivos e blobs, mantendo apenas um recibo anônimo de exclusão por 30 dias.
+Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões (com evidência e encerramento), prescrições diárias, execuções, atividades, laps, contagem de samples, jobs de importação e o objeto local `firstRun`. A lixeira fica fora por padrão e só entra com `includeTrash = true`; execuções ligadas a atividades na lixeira também ficam fora. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
+
+Excluir tudo remove banco, arquivos, blobs, staging, cache, avatar e preferências de dados; a época de dados é o único metadado preservado, sem recibo de exclusão (`ADR 0025`).

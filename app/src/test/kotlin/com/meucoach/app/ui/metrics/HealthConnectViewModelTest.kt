@@ -3,6 +3,8 @@ package com.meucoach.app.ui.metrics
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.health.HealthSyncCoordinator
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
 import com.meucoach.core.data.health.HealthConnectStatus
@@ -11,10 +13,14 @@ import com.meucoach.core.data.health.HealthSyncService
 import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DailyMetricsSource
+import com.meucoach.core.model.Sex
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -56,6 +62,16 @@ class HealthConnectViewModelTest {
         val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
         metrics = DailyMetricsRepository(database, clock)
         profiles = ProfileRepository(database, clock)
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    timezone = "UTC",
+                ),
+            )
+        }
         syncStore = HealthSyncStore(context, prefsName = "health-view-model-${System.nanoTime()}")
     }
 
@@ -68,7 +84,9 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports missing permissions after refresh`(): Unit = runBlocking {
         val source = FakeSource(granted = emptySet())
-        val state = HealthConnectViewModel(source, service(source), syncStore).uiState.first { !it.isLoading }
+        val state = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider()).uiState.first {
+            !it.isLoading
+        }
 
         assertThat(state.status).isEqualTo(HealthConnectStatus.AVAILABLE)
         assertThat(state.hasPermissions).isFalse()
@@ -86,7 +104,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = emptySet(),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -106,7 +124,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = setOf("sleep", "hr"),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -119,7 +137,7 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports an unavailable client`(): Unit = runBlocking {
         val source = FakeSource(status = HealthConnectStatus.UNAVAILABLE)
-        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -137,7 +155,7 @@ class HealthConnectViewModelTest {
                 error = "Falha de leitura.",
             ),
         )
-        val viewModel = HealthConnectViewModel(source, service(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -151,6 +169,13 @@ class HealthConnectViewModelTest {
         metricsRepository = metrics,
         profileRepository = profiles,
         syncStore = syncStore,
+    )
+
+    private fun coordinator(source: HealthDailySource) = HealthSyncCoordinator(
+        source = source,
+        service = service(source),
+        store = syncStore,
+        scope = CoroutineScope(SupervisorJob() + dispatcher),
     )
 
     private fun metrics(date: LocalDate) = DailyMetrics(

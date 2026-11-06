@@ -153,6 +153,14 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("Economia · Ritmo vs FC"))
         list.performScrollToNode(hasText("Metros por batimento"))
         compose.onNodeWithText("Metros por batimento").assertIsDisplayed()
+        list.performScrollToNode(hasText("Escala ampliada", substring = true))
+        compose
+            .onNodeWithText("Escala ampliada", substring = true)
+            .assertIsDisplayed()
+        compose
+            .onNodeWithText("para destacar diferenças pequenas entre corridas", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("Eixo de", substring = true).assertDoesNotExist()
         list.performScrollToNode(hasText("6:00 /km"))
         compose.onNodeWithText("6:00 /km").assertIsDisplayed()
     }
@@ -280,6 +288,13 @@ class TrendsScreenTest {
                     else -> 0
                 },
                 skipped = if (index == 0) 1 else 0,
+                verified = when (index) {
+                    0 -> 0
+                    1 -> 2
+                    else -> 0
+                },
+                manual = if (index == 0) 1 else 0,
+                legacy = 0,
             )
         }
         setContent(
@@ -433,6 +448,14 @@ class TrendsScreenTest {
             acwr = if (hasData) 1.1 else null,
             monotony = if (hasData) 0.8 else null,
             missingDays = if (hasData) 35 else 42,
+            coverage = com.meucoach.core.domain.load.LoadCoverage(
+                daysInWindow = 28,
+                daysWithLoad = if (hasData) 12 else 0,
+                daysWithoutActivity = if (hasData) 16 else 28,
+                daysWithoutData = 0,
+                lastActivityAt = null,
+                sourceFresh = true,
+            ),
         )
     }
 }

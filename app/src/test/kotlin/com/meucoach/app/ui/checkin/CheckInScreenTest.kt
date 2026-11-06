@@ -112,7 +112,7 @@ class CheckInScreenTest {
 
     @Test
     fun `hides the form while loading`() {
-        setContent(CheckInUiState())
+        setContent(CheckInUiState(date = LocalDate.of(2026, 11, 6)))
 
         compose.onNodeWithText("Como você está hoje?").assertDoesNotExist()
     }
@@ -132,6 +132,7 @@ class CheckInScreenTest {
 
     private fun loadedState() = CheckInUiState(
         isLoading = false,
+        date = LocalDate.of(2026, 11, 6),
         form = CheckInForm(),
     )
 }

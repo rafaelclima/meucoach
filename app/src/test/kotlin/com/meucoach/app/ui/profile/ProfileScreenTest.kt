@@ -22,6 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
@@ -45,7 +46,14 @@ class ProfileScreenTest {
     @Test
     fun `shows the profile summary and opens editing`() {
         var edit = false
-        setContent(state = ProfileUiState(isLoading = false, profile = profile()), onEdit = { edit = true })
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile(),
+                today = LocalDate.of(2026, 11, 6),
+            ),
+            onEdit = { edit = true },
+        )
 
         compose.onNodeWithText("Seu perfil").assertIsDisplayed()
         compose.onNodeWithText("38 anos").assertIsDisplayed()
@@ -63,10 +71,14 @@ class ProfileScreenTest {
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = { manageData = true },
                     onShowTutorial = {},
                 )
@@ -81,24 +93,25 @@ class ProfileScreenTest {
     }
 
     @Test
-    fun `explains health connect and opens the data screen`() {
-        var importMetrics = false
+    fun `shows the compact health summary and opens the health tab`() {
+        var openedHealth = false
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
                     state = ProfileUiState(
                         isLoading = false,
                         profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
                         health = ProfileHealthSummary(
                             status = HealthConnectStatus.AVAILABLE,
                             hasPermissions = true,
                             storedDays = 47,
-                            lastSyncDate = LocalDate.now(),
+                            lastSyncedAt = Instant.now(),
                         ),
                     ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = { importMetrics = true },
+                    onOpenHealth = { openedHealth = true },
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -106,14 +119,12 @@ class ProfileScreenTest {
         }
 
         val list = compose.onNodeWithTag("profile-list")
-        list.performScrollToNode(hasText("Alimente o coach com seu descanso"))
-        compose.onNodeWithText("Alimente o coach com seu descanso").assertIsDisplayed()
+        list.performScrollToNode(hasText("Sono, recuperação e oxigenação"))
+        compose.onNodeWithText("Sono, recuperação e oxigenação").assertIsDisplayed()
         compose.onNodeWithText("Conectado · 47 dias").assertIsDisplayed()
-        compose.onNodeWithText("Health Connect é o app de saúde do Android", substring = true)
-            .assertIsDisplayed()
-        compose.onNodeWithText("Ver meus dados de saúde").performClick()
+        compose.onNodeWithTag("profile-open-health").performClick()
 
-        assertThat(importMetrics).isTrue()
+        assertThat(openedHealth).isTrue()
     }
 
     @Test
@@ -124,6 +135,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(
                         isLoading = false,
                         profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
                         health = ProfileHealthSummary(
                             status = HealthConnectStatus.AVAILABLE,
                             hasPermissions = false,
@@ -131,7 +143,7 @@ class ProfileScreenTest {
                     ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -139,9 +151,26 @@ class ProfileScreenTest {
         }
 
         compose.onNodeWithTag("profile-list")
-            .performScrollToNode(hasText("Conectar Health Connect"))
+            .performScrollToNode(hasText("Ainda não conectado"))
         compose.onNodeWithText("Ainda não conectado").assertIsDisplayed()
-        compose.onNodeWithText("Conectar Health Connect").assertIsDisplayed()
+        compose.onNodeWithTag("profile-open-health").assertIsDisplayed()
+    }
+
+    @Test
+    fun `offers notification priming in the help section`() {
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile(),
+                today = LocalDate.of(2026, 11, 6),
+            ),
+            onEdit = {},
+        )
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("Lembretes"))
+        compose.onNodeWithText("Lembretes").assertIsDisplayed()
+        compose.onNodeWithText("Um lembrete por dia", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -150,10 +179,14 @@ class ProfileScreenTest {
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = { showTutorial = true },
                 )
@@ -172,10 +205,14 @@ class ProfileScreenTest {
         compose.setContent {
             McTheme(darkTheme = false) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )
@@ -192,7 +229,7 @@ class ProfileScreenTest {
                     state = state,
                     onEdit = onEdit,
                     onCalibrate = {},
-                    onImportMetrics = {},
+                    onOpenHealth = {},
                     onManageData = {},
                     onShowTutorial = {},
                 )

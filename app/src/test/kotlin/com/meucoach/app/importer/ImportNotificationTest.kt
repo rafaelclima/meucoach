@@ -68,6 +68,18 @@ class ImportNotificationTest {
     }
 
     @Test
+    fun `trash conflicts send the user to data`() {
+        val message = ImportNotification.message(
+            ImportResult.TrashConflict(jobId = "job-1", activityId = "activity-1"),
+            fileName = "corrida.fit",
+        )
+
+        assertThat(message.title).isEqualTo("Atividade na lixeira")
+        assertThat(message.body).contains("Restaure")
+        assertThat(message.deepLink).isEqualTo("meucoach://data")
+    }
+
+    @Test
     fun `failures explain the reason and open the list`() {
         val message = ImportNotification.message(
             ImportResult.Failed(

@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.today
 
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ReadinessLevel
 import java.time.LocalDate
@@ -23,6 +24,10 @@ data class WorkoutUi(
     val pace: String,
     val heartRate: String,
     val rationale: String,
+    /** Perceived effort fallback when pace/HR are not calibrated. */
+    val rpe: Int? = null,
+    /** False for a rest prescription; start/complete actions must stay disabled. */
+    val canTrain: Boolean = true,
 )
 
 data class DayLoadUi(val label: String, val loadKm: Double, val isToday: Boolean)
@@ -37,7 +42,17 @@ data class RecentActivityUi(
     val zone: String,
 )
 
+/** An imported run that may correspond to today's planned session. */
+data class ActivitySuggestionUi(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val distance: String,
+    val duration: String,
+)
+
 data class TodayUiState(
+    val today: LocalDate,
     val athleteName: String,
     val greeting: String,
     val dateLine: String,
@@ -58,14 +73,24 @@ data class TodayUiState(
     val recentActivity: RecentActivityUi? = null,
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
+    /** Single authority of the day; null only before a profile exists. */
+    val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
     val explanation: TodayExplanationUi? = null,
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */
     val acwr: Double? = null,
+    /** Explains why load/ACWR are missing or outdated; null when no load snapshot exists. */
+    val loadDataState: LoadDataState? = null,
     val avatarPath: String? = null,
+    /** Imported runs compatible with today's planned session; never auto-linked. */
+    val activitySuggestions: List<ActivitySuggestionUi> = emptyList(),
+    /** Result of the last completion attempt, shown as passive copy in the card. */
+    val completionMessage: String? = null,
+    /** Blocks completion and explains why the day is a rest/illness day. */
+    val illnessOrInjury: Boolean = false,
 )
 
-fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalTime.now()): TodayUiState {
+fun demoTodayUiState(today: LocalDate, now: LocalTime = LocalTime.NOON): TodayUiState {
     val labels = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
     val loads = listOf(0.0, 4.2, 0.0, 5.6, 0.0, 8.1, 0.0)
     val todayIndex = today.dayOfWeek.value - 1
@@ -75,6 +100,7 @@ fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalT
         }
 
     return TodayUiState(
+        today = today,
         athleteName = "Rafael",
         greeting = greetingFor(now),
         dateLine = formatDateLine(today),

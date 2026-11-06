@@ -3,6 +3,7 @@ package com.meucoach.app.ui.metrics
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -20,7 +21,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class MetricsImportScreenTest {
+class HealthScreenTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -44,6 +45,18 @@ class MetricsImportScreenTest {
         compose.onNodeWithText("Escolher CSV").performClick()
 
         assertThat(picked).isTrue()
+    }
+
+    @Test
+    fun `top-level health screen has no back arrow`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                HealthContent(state = MetricsImportUiState(), onPick = {})
+            }
+        }
+
+        compose.onNodeWithText("SAÚDE").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Voltar").assertDoesNotExist()
     }
 
     @Test
@@ -71,7 +84,7 @@ class MetricsImportScreenTest {
     private fun setContent(state: MetricsImportUiState, onPick: () -> Unit = {}) {
         compose.setContent {
             McTheme(darkTheme = true) {
-                MetricsImportContent(state = state, onPick = onPick, onBack = {})
+                HealthContent(state = state, onPick = onPick, onBack = {})
             }
         }
     }

@@ -34,6 +34,10 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # The legacy `tools` package was removed from the SDK repository.
+          # Install only platform-tools here; the step below adds the build target.
+          packages: "platform-tools"
 
       - name: Install Android SDK 37
         run: |

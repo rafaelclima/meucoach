@@ -12,6 +12,7 @@ import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.samples.SampleBlobCodec
 import com.meucoach.core.data.samples.SampleBlobException
 import com.meucoach.core.domain.importer.ActivityDeduplicator
+import com.meucoach.core.domain.retention.TrashPolicy
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -19,10 +20,12 @@ import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.Distance
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.Sport
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -41,6 +44,8 @@ class ActivityRepository(
     private val idGenerator: () -> String = { UuidV7.generate(clock) },
     private val alternateIdGenerator: () -> String = { UuidV7.generate(clock) },
     private val deduplicator: ActivityDeduplicator = ActivityDeduplicator(),
+    /** Resolved at save time so imports follow the current profile timezone. */
+    private val currentZone: () -> ZoneId = { zoneId },
 ) {
     fun observeActivitySummaries(): Flow<List<ActivitySummary>> = combine(
         database.activityDao().observeAll(),
@@ -61,6 +66,24 @@ class ActivityRepository(
             .map { it.toSummary(sourcesByActivity[it.id].orEmpty()) }
     }
 
+    /** One canonical activity, without trashed rows. */
+    suspend fun getActivitySummary(id: String): ActivitySummary? = database.withTransaction {
+        val entity = database.activityDao().findById(id) ?: return@withTransaction null
+        val alternates = database.activityAlternateDao().getForActivity(id).map { it.source }
+        entity.toSummary(alternates)
+    }
+
+    /** Last time an activity was imported, used to decide whether load data is fresh. */
+    fun observeLastImportedAt(): Flow<Instant?> = database
+        .activityDao()
+        .observeLastImportedAt()
+        .map { millis -> millis?.let(Instant::ofEpochMilli) }
+
+    suspend fun lastImportedAt(): Instant? = database
+        .activityDao()
+        .lastImportedAt()
+        ?.let(Instant::ofEpochMilli)
+
     fun observeImportJobs(): Flow<List<ImportJobSummary>> = database
         .importJobDao()
         .observeAll()
@@ -80,12 +103,15 @@ class ActivityRepository(
         if (sha != null) {
             database.activityDao().findBySha256IncludingDeleted(sha)?.let { existing ->
                 if (existing.deletedAt != null) {
-                    database.activityDao().restore(existing.id)
-                    return@withTransaction SaveActivityResult.Restored(existing.id)
+                    return@withTransaction SaveActivityResult.ConflictingTrash(existing.id)
                 }
                 return@withTransaction SaveActivityResult.Duplicate(existing.id)
             }
             database.activityAlternateDao().findBySha256(sha)?.let { alternate ->
+                val parent = database.activityDao().findByIdIncludingDeleted(alternate.activityId)
+                if (parent?.deletedAt != null) {
+                    return@withTransaction SaveActivityResult.ConflictingTrash(alternate.activityId)
+                }
                 return@withTransaction SaveActivityResult.Duplicate(alternate.activityId)
             }
         }
@@ -297,50 +323,107 @@ class ActivityRepository(
         )
     }
 
-    suspend fun deleteActivity(id: String, deletedAt: Instant = clock.instant()): Boolean =
-        database.activityDao().softDelete(id, deletedAt.toEpochMilli()) > 0
+    fun observeTrash(): Flow<List<TrashedActivity>> = database
+        .activityDao()
+        .observeTrash()
+        .map { activities -> activities.map { it.toTrashed() } }
 
-    suspend fun permanentlyDeleteActivity(id: String): Boolean = database.activityDao().hardDelete(id) > 0
+    suspend fun listTrash(): List<TrashedActivity> = database
+        .activityDao()
+        .getTrash()
+        .map { it.toTrashed() }
+
+    suspend fun restoreActivity(id: String): Boolean = database.withTransaction {
+        val restored = database.activityDao().restore(id) > 0
+        if (restored) {
+            // ADR 0025: restoring the activity restores its evidence too.
+            database.trainingPlanDao().restoreActivityEvidence(id)
+        }
+        restored
+    }
+
+    suspend fun deleteActivity(id: String, deletedAt: Instant = clock.instant()): Boolean = database.withTransaction {
+        val deleted = database.activityDao().softDelete(id, deletedAt.toEpochMilli()) > 0
+        if (deleted) {
+            // The session keeps its history but stops counting as evidence.
+            database.trainingPlanDao().suspendActivityEvidence(id)
+        }
+        deleted
+    }
+
+    suspend fun permanentlyDeleteActivity(id: String): Boolean = purgeActivity(id) != null
+
+    /** Removes one trashed activity and its children/jobs; returns the raw file to clean. */
+    suspend fun purgeActivity(id: String): PurgedActivity? = database.withTransaction {
+        val entity = database.activityDao().findByIdIncludingDeleted(id) ?: return@withTransaction null
+        if (entity.deletedAt == null) return@withTransaction null
+        unlinkFromSession(id)
+        database.importJobDao().deleteForActivity(id)
+        val removed = database.activityDao().hardDelete(id) > 0
+        if (removed) PurgedActivity(id = id, rawFilePath = entity.rawFilePath) else null
+    }
+
+    /** Purges every activity whose seven-day trash window expired before [now]. */
+    suspend fun purgeTrashBefore(now: Instant): List<PurgedActivity> = database.withTransaction {
+        val cutoff = now.minus(Duration.ofDays(TrashPolicy.RETENTION_DAYS))
+        val expired = database.activityDao().getDeletedBefore(cutoff.toEpochMilli())
+        if (expired.isEmpty()) return@withTransaction emptyList()
+        expired.forEach { activity ->
+            unlinkFromSession(activity.id)
+            database.importJobDao().deleteForActivity(activity.id)
+        }
+        database.activityDao().hardDeleteBefore(cutoff.toEpochMilli())
+        expired.map { PurgedActivity(id = it.id, rawFilePath = it.rawFilePath) }
+    }
+
+    /** ADR 0024/0025: the session keeps an honest, unverified record. */
+    private suspend fun unlinkFromSession(activityId: String) {
+        database.sessionExecutionDao().deleteForActivity(activityId)
+        database.trainingPlanDao().purgeActivityLink(activityId)
+    }
 
     private fun ImportedActivity.toEntity(
         id: String,
         importedAt: Instant,
         sourceFileSha256: String?,
         rawFilePath: String?,
-    ) = ActivityEntity(
-        id = id,
-        source = source,
-        sourceId = sourceId,
-        sourceFileSha256 = sourceFileSha256,
-        sport = sport,
-        subSport = subSport,
-        startTimeUtc = startTime.toEpochMilli(),
-        zoneId = zoneId.id,
-        localDate = startTime.atZone(zoneId).toLocalDate().toString(),
-        durationSec = durationSec,
-        movingTimeSec = movingTimeSec,
-        distanceM = distanceM,
-        averagePaceSecPerKm = averagePace?.secondsPerKm?.toDouble(),
-        bestPaceSecPerKm = null,
-        averageHeartRate = averageHeartRate,
-        maxHeartRate = maxHeartRate,
-        averageCadenceSpm = averageCadenceSpm,
-        maxCadenceSpm = maxCadenceSpm,
-        averagePowerW = averagePowerW,
-        maxPowerW = maxPowerW,
-        averageStepLengthM = averageStepLengthM,
-        elevationGainM = elevationGainM,
-        elevationLossM = elevationLossM,
-        calories = calories,
-        trainingEffectAerobic = null,
-        trainingEffectAnaerobic = null,
-        trainingLoadPeak = null,
-        deviceName = deviceName,
-        rawFilePath = rawFilePath,
-        parserVersion = parserVersion,
-        importedAt = importedAt.toEpochMilli(),
-        deletedAt = null,
-    )
+    ): ActivityEntity {
+        val zone = currentZone()
+        return ActivityEntity(
+            id = id,
+            source = source,
+            sourceId = sourceId,
+            sourceFileSha256 = sourceFileSha256,
+            sport = sport,
+            subSport = subSport,
+            startTimeUtc = startTime.toEpochMilli(),
+            zoneId = zone.id,
+            localDate = startTime.atZone(zone).toLocalDate().toString(),
+            durationSec = durationSec,
+            movingTimeSec = movingTimeSec,
+            distanceM = distanceM,
+            averagePaceSecPerKm = averagePace?.secondsPerKm?.toDouble(),
+            bestPaceSecPerKm = null,
+            averageHeartRate = averageHeartRate,
+            maxHeartRate = maxHeartRate,
+            averageCadenceSpm = averageCadenceSpm,
+            maxCadenceSpm = maxCadenceSpm,
+            averagePowerW = averagePowerW,
+            maxPowerW = maxPowerW,
+            averageStepLengthM = averageStepLengthM,
+            elevationGainM = elevationGainM,
+            elevationLossM = elevationLossM,
+            calories = calories,
+            trainingEffectAerobic = null,
+            trainingEffectAnaerobic = null,
+            trainingLoadPeak = null,
+            deviceName = deviceName,
+            rawFilePath = rawFilePath,
+            parserVersion = parserVersion,
+            importedAt = importedAt.toEpochMilli(),
+            deletedAt = null,
+        )
+    }
 
     private fun ActivityLap.toEntity(activityId: String) = LapEntity(
         activityId = activityId,
@@ -446,6 +529,8 @@ sealed interface SaveActivityResult {
     data class Replaced(val id: String, val previousSource: ActivitySource) : SaveActivityResult
 
     data class Restored(val id: String) : SaveActivityResult
+
+    data class ConflictingTrash(val id: String) : SaveActivityResult
 }
 
 data class ImportJobSummary(
@@ -478,6 +563,26 @@ data class StoredActivity(
     val localDate: LocalDate,
     val sampleWarning: String? = null,
     val alternates: List<StoredAlternate> = emptyList(),
+)
+
+data class TrashedActivity(
+    val id: String,
+    val sport: Sport,
+    val startTime: Instant,
+    val durationSec: Int,
+    val distance: Distance,
+    val deletedAt: Instant,
+)
+
+data class PurgedActivity(val id: String, val rawFilePath: String?)
+
+private fun ActivityEntity.toTrashed() = TrashedActivity(
+    id = id,
+    sport = sport,
+    startTime = Instant.ofEpochMilli(startTimeUtc),
+    durationSec = durationSec,
+    distance = Distance(distanceM),
+    deletedAt = Instant.ofEpochMilli(requireNotNull(deletedAt) { "Trash item must have deletedAt" }),
 )
 
 private const val DEDUP_START_TOLERANCE_MS = 1_000L

@@ -2,6 +2,8 @@ package com.meucoach.app.ui.today
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -12,7 +14,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -90,24 +94,193 @@ class TodayPlanTest {
     }
 
     @Test
-    fun `completes today's session`() {
-        val today = LocalDate.now()
-        var completed: LocalDate? = null
+    fun `explains insufficient load data instead of inventing a ratio`() {
+        val today = LocalDate.of(2026, 11, 2)
         compose.setContent {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(today).copy(plan = planWith(today)),
-                    onCompleteSession = { completed = it },
+                    state = demoTodayUiState(today).copy(
+                        weeklyLoadKm = null,
+                        days = emptyList(),
+                        ctl = null,
+                        atl = null,
+                        tsb = null,
+                        acwr = null,
+                        loadDataState = LoadDataState.INSUFFICIENT,
+                    ),
                 )
             }
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Concluir"))
-        compose.onNodeWithText("Concluir").performClick()
+        list.performScrollToNode(hasText("Dados de carga insuficientes"))
+        compose.onNodeWithText("Dados de carga insuficientes").assertIsDisplayed()
+        compose.onNodeWithText("8 dias com carga em 28", substring = true).assertExists()
+    }
 
-        assertThat(completed).isEqualTo(today)
+    @Test
+    fun `explains stale load data instead of treating it as rest`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        weeklyLoadKm = null,
+                        days = emptyList(),
+                        ctl = null,
+                        atl = null,
+                        tsb = null,
+                        acwr = null,
+                        loadDataState = LoadDataState.STALE,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Dados de carga desatualizados"))
+        compose.onNodeWithText("Dados de carga desatualizados").assertIsDisplayed()
+        compose.onNodeWithText("atividades recentes", substring = true).assertExists()
+    }
+
+    @Test
+    fun `completes today's session with manual evidence`() {
+        val today = LocalDate.now()
+        var completed: Triple<LocalDate, Int, Int>? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = planWith(today)),
+                    onCompleteManually = { date, minutes, rpe -> completed = Triple(date, minutes, rpe) },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").performClick()
+
+        compose.onNodeWithTag("completion-dialog").assertIsDisplayed()
+        compose.onNodeWithTag("manual-save").assertIsNotEnabled()
+        compose.onNodeWithTag("manual-duration").performScrollTo().performTextInput("40")
+        compose.onNodeWithTag("rpe-6").performScrollTo().performClick()
+        compose.onNodeWithTag("manual-save").performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag("manual-save").performClick()
+
+        assertThat(completed).isEqualTo(Triple(today, 40, 6))
+    }
+
+    @Test
+    fun `links a suggested activity as evidence`() {
+        val today = LocalDate.now()
+        var linked: Pair<LocalDate, String>? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today),
+                        activitySuggestions = listOf(
+                            ActivitySuggestionUi(
+                                id = "activity-1",
+                                title = "Corrida de rua",
+                                subtitle = "hoje · 07:00",
+                                distance = "6,1 km",
+                                duration = "40:00",
+                            ),
+                        ),
+                    ),
+                    onCompleteWithActivity = { date, activityId -> linked = date to activityId },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").performClick()
+        compose.onNodeWithTag("suggestion-activity-1").performClick()
+        compose.onNodeWithTag("link-activity").performClick()
+
+        assertThat(linked).isEqualTo(today to "activity-1")
+    }
+
+    @Test
+    fun `explains the weekly plan and its confidence`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val plan = planWith(today, confidence = DataConfidence.LOW)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Por que este plano?"))
+        compose.onNodeWithTag("plan-explanation-link").performClick()
+
+        compose.onNodeWithTag("explanation-title").assertTextEquals("Por que este plano?")
+        compose.onNodeWithText("Confiança baixa").assertIsDisplayed()
+        compose
+            .onNodeWithText("A confiança é calculada quando a semana é montada", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("O QUE USEI").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText("Sua disponibilidade semanal", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithText("O QUE FALTOU").performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText("Dados objetivos de recuperação", substring = true)
+            .assertIsDisplayed()
+        compose
+            .onNodeWithText("Zonas pelo limite de esforço", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText("R-ZONE-01", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows a partial-data note only for a low-confidence plan`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today, confidence = DataConfidence.LOW),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Dados de recuperação parciais: a semana segue conservadora."))
+        compose
+            .onNodeWithText("Dados de recuperação parciais: a semana segue conservadora.")
+            .assertIsDisplayed()
+        compose.onNodeWithTag("plan-low-confidence-note").assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the partial-data note for a medium-confidence plan`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today, confidence = DataConfidence.MEDIUM),
+                    ),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("plan-low-confidence-note").assertDoesNotExist()
     }
 
     @Test
@@ -131,7 +304,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(explanation = explanation),
                 )
             }
@@ -176,7 +348,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(readinessExplanation = explanation),
                 )
             }
@@ -192,16 +363,13 @@ class TodayPlanTest {
     }
 
     @Test
-    fun `finishes the guided session`() {
+    fun `the guided preview asks for evidence before completing`() {
         val today = LocalDate.of(2026, 11, 2)
-        var completed: LocalDate? = null
         compose.setContent {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = planWith(today)),
-                    onCompleteSession = { completed = it },
                 )
             }
         }
@@ -209,10 +377,10 @@ class TodayPlanTest {
         val list = compose.onNodeWithTag("today-list")
         list.performScrollToNode(hasText("Iniciar"))
         compose.onNodeWithText("Iniciar").performClick()
-        compose.onNodeWithText("Sessão guiada").assertIsDisplayed()
-        compose.onNodeWithText("Concluir treino").performClick()
+        compose.onNodeWithText("Prévia da sessão").assertIsDisplayed()
+        compose.onNodeWithText("Encerrar treino").performClick()
 
-        assertThat(completed).isEqualTo(today)
+        compose.onNodeWithTag("completion-dialog").assertIsDisplayed()
     }
 
     @Test
@@ -238,7 +406,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = plan),
                     onSwapSession = { first, second -> swapped = first to second },
                 )
@@ -265,7 +432,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = plan),
                 )
             }
@@ -288,7 +454,12 @@ class TodayPlanTest {
                         plan = planWith(today).let { plan ->
                             plan.copy(
                                 sessions = plan.sessions.map {
-                                    it.copy(status = SessionStatus.DONE)
+                                    it.copy(
+                                        status = SessionStatus.DONE,
+                                        completionEvidence =
+                                        com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                                        activityId = "activity-1",
+                                    )
                                 },
                             )
                         },
@@ -298,8 +469,49 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Feito"))
-        compose.onNodeWithText("Feito").assertIsDisplayed()
+        list.performScrollToNode(hasText("Feito · verificado"))
+        compose.onNodeWithText("Feito · verificado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows evidence and closure labels without calling a click verified`() {
+        val today = LocalDate.of(2026, 11, 4)
+        val plan = planWith(today).copy(
+            sessions = listOf(
+                planWith(today).sessions.single().copy(
+                    status = SessionStatus.DONE,
+                    completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+                ),
+                planWith(today).sessions.single().copy(
+                    date = today.minusDays(1),
+                    status = SessionStatus.DONE,
+                    completionEvidence = com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED,
+                ),
+                planWith(today).sessions.single().copy(
+                    date = today.plusDays(1),
+                    status = SessionStatus.CLOSED,
+                    closureReason =
+                    com.meucoach.core.domain.prescription.SessionClosureReason.USER_SKIPPED,
+                    closedAt = java.time.Instant.EPOCH,
+                ),
+            ),
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Feito · sem registro"))
+        compose.onNodeWithText("Feito · sem registro").assertIsDisplayed()
+        list.performScrollToNode(hasText("Feito · não verificado"))
+        compose.onNodeWithText("Feito · não verificado").assertIsDisplayed()
+        list.performScrollToNode(hasText("Pulado"))
+        compose.onNodeWithText("Pulado").assertIsDisplayed()
     }
 
     @Test
@@ -308,7 +520,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState().copy(acwr = 1.42),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)).copy(acwr = 1.42),
                 )
             }
         }
@@ -339,7 +551,7 @@ class TodayPlanTest {
     fun `does not invent a load ratio without history`() {
         compose.setContent {
             McTheme(darkTheme = true) {
-                TodayScreen(onDemoAction = {}, state = demoTodayUiState())
+                TodayScreen(onDemoAction = {}, state = demoTodayUiState(LocalDate.of(2026, 11, 2)))
             }
         }
 
@@ -354,7 +566,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
                     onTrendsClick = { trends = true },
                     onActivityClick = { openedActivity = it },
                 )
@@ -372,6 +584,51 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows the first-run checklist above the readiness card`() {
+        var imported = false
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
+                    checklistState = FirstRunChecklistState(
+                        isLoading = false,
+                        hasCheckedIn = true,
+                        hasActivities = false,
+                        healthConnected = false,
+                    ),
+                    onImportClick = { imported = true },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("first-run-checklist").assertIsDisplayed()
+        compose.onNodeWithTag("checklist-import").performClick()
+
+        assertThat(imported).isTrue()
+    }
+
+    @Test
+    fun `opens the health tab from the readiness card`() {
+        var health = false
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
+                    onHealthClick = { health = true },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("readiness-health-link").performClick()
+
+        assertThat(health).isTrue()
+    }
+
+    @Test
     fun `opens the profile when tapping the avatar`() {
         var profile = false
 
@@ -379,7 +636,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
                     onProfileClick = { profile = true },
                 )
             }
@@ -389,7 +646,148 @@ class TodayPlanTest {
         assertThat(profile).isTrue()
     }
 
-    private fun planWith(date: LocalDate) = WeeklyPlan(
+    @Test
+    fun `shows one primary card and the plan as context without its own completion`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = profile(today),
+                        today = today,
+                        plan = planWith(today),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("PLANO DA SEMANA"))
+        compose.onAllNodesWithText("Concluir").assertCountEquals(0)
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the planned intent and an adjusted badge when the day differs`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val tempo = tempoPlan(today)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(illnessOrInjury = true),
+                        profile = profile(today),
+                        today = today,
+                        plan = tempo,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("TREINO DE HOJE"))
+        compose.onNodeWithTag("prescription-adjusted").assertIsDisplayed()
+        list.performScrollToNode(hasText("Planejado:", substring = true))
+        compose.onNodeWithTag("planned-intent").assertIsDisplayed()
+        compose.onNodeWithText("Iniciar").assertIsNotEnabled()
+        compose.onNodeWithTag("complete-today").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `explains planned versus adjusted in one sentence`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val tempo = tempoPlan(today)
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile(today),
+            today = today,
+            plan = tempo,
+        )
+        assertThat(state.explanation?.planComparison).isNotNull
+        assertThat(state.explanation?.rationale).isNotNull
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(onDemoAction = {}, state = state)
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver explicação"))
+        compose.onNodeWithText("Ver explicação").performClick()
+
+        compose.onNodeWithTag("explanation-title").assertTextEquals("Por que este treino?")
+        compose.onNodeWithTag("explanation-plan-comparison").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows perceived effort instead of inventing pace without calibration`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val uncalibrated = profile(today).copy(
+            thresholdPace = null,
+            lactateThresholdHeartRate = null,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = uncalibrated,
+                        today = today,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("ESFORÇO"))
+        compose.onNodeWithText("ESFORÇO").assertIsDisplayed()
+        compose.onNodeWithText("RITMO").assertDoesNotExist()
+    }
+
+    private fun tempoPlan(date: LocalDate) = planWith(date).let { plan ->
+        plan.copy(
+            sessions = plan.sessions.map { session ->
+                session.copy(
+                    type = WorkoutType.QUALITY,
+                    title = "Tempo",
+                    durationMin = 40,
+                    rationale = "20 min contínuos em esforço moderado a forte.",
+                    ruleIds = listOf("R-PLAN-02", "R-PLAN-06"),
+                )
+            },
+            qualityCount = 1,
+        )
+    }
+
+    private fun checkIn(illnessOrInjury: Boolean = false) = com.meucoach.core.model.DailyCheckIn(
+        date = LocalDate.of(2026, 11, 2),
+        sleepQuality = 4,
+        fatigue = 2,
+        soreness = 1,
+        stress = 2,
+        illnessOrInjury = illnessOrInjury,
+    )
+
+    private fun profile(today: LocalDate) = com.meucoach.core.model.AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = com.meucoach.core.model.Sex.MALE,
+        restingHeartRate = 58,
+        maxHeartRateObserved = 187,
+        lactateThresholdHeartRate = 180,
+        thresholdPace = com.meucoach.core.model.Pace.fromSecondsPerKm(360),
+        timezone = "America/Sao_Paulo",
+        weeklyAvailability = com.meucoach.core.model.WeeklyAvailability(
+            mapOf(today.dayOfWeek to 45),
+        ),
+    )
+
+    private fun planWith(date: LocalDate, confidence: DataConfidence = DataConfidence.MEDIUM) = WeeklyPlan(
         weekStart = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)),
         sessions = listOf(
             PlannedSession(
@@ -405,8 +803,8 @@ class TodayPlanTest {
         weeklyMinutes = 40,
         longRunMinutes = null,
         qualityCount = 0,
-        rationale = "Sem progressão.",
-        confidence = DataConfidence.MEDIUM,
+        rationale = "Sem progressão até existir histórico.",
+        confidence = confidence,
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
     )

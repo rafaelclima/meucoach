@@ -53,6 +53,7 @@ internal fun HealthMetricsOverview(
     windowDays: Int,
     onWindowSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    showTodayHint: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (!trends.hasData) {
@@ -60,6 +61,9 @@ internal fun HealthMetricsOverview(
             return@Column
         }
         RecoveryHeroCard(trends = trends)
+        if (showTodayHint) {
+            TodayDataHint()
+        }
         WindowSelector(windowDays = windowDays, onSelect = onWindowSelected)
         HealthMetricCard(
             trend = trends.trend(HealthMetric.SLEEP),
@@ -94,6 +98,25 @@ private fun HealthMetricsEmptyCard() {
             text = "Conecte o Health Connect ou importe um CSV abaixo. Assim que houver sono, " +
                 "FC de repouso, HRV ou SpO₂, os gráficos aparecem aqui e passam a explicar sua " +
                 "prontidão.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun TodayDataHint() {
+    val colors = McTheme.colors
+    McCard(variant = McCardVariant.INSET) {
+        Text(
+            text = "Os dados de hoje ainda não chegaram",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "O app já atualiza sozinho ao abrir. Se o relógio ainda não sincronizou com o " +
+                "Health Connect, os dados aparecem na próxima atualização.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -286,7 +309,7 @@ private fun HealthMetricCard(trend: HealthMetricTrend?, trends: DailyMetricsTren
         }
     }
 
-    McCard {
+    McCard(modifier = Modifier.testTag("health-card-${trend.metric.name.lowercase()}")) {
         Row(verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(

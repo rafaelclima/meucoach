@@ -1,8 +1,10 @@
 {
   "scenarioId": "G-LOAD-02",
-  "description": "28-day load engine with one TRIMP day and two rTSS days.",
+  "description": "28-day load engine with alternating TRIMP and rTSS days and full coverage.",
   "today": "2026-10-30",
   "days": 28,
+  "lastImportedAt": "2026-10-29T10:00:00Z",
+  "checkedAt": "2026-10-30T10:00:00Z",
   "profile": {
     "dateOfBirth": "1988-01-01",
     "sex": "MALE",
@@ -12,7 +14,16 @@
   },
   "activities": [
     { "date": "2026-10-29", "durationSec": 3600, "averagePaceSecPerKm": 360 },
-    { "date": "2026-10-27", "durationSec": 1800, "averageHeartRate": 150 },
-    { "date": "2026-10-20", "durationSec": 2400, "averagePaceSecPerKm": 400 }
+    { "date": "2026-10-27", "durationSec": 2700, "averageHeartRate": 150 },
+    { "date": "2026-10-25", "durationSec": 3000, "averagePaceSecPerKm": 380 },
+    { "date": "2026-10-23", "durationSec": 2400, "averageHeartRate": 145 },
+    { "date": "2026-10-21", "durationSec": 3300, "averagePaceSecPerKm": 370 },
+    { "date": "2026-10-19", "durationSec": 3600, "averageHeartRate": 155 },
+    { "date": "2026-10-17", "durationSec": 2700, "averagePaceSecPerKm": 390 },
+    { "date": "2026-10-15", "durationSec": 3000, "averageHeartRate": 148 },
+    { "date": "2026-10-13", "durationSec": 3600, "averagePaceSecPerKm": 365 },
+    { "date": "2026-10-11", "durationSec": 2400, "averageHeartRate": 140 },
+    { "date": "2026-10-09", "durationSec": 3000, "averagePaceSecPerKm": 400 },
+    { "date": "2026-10-07", "durationSec": 2700, "averageHeartRate": 152 }
   ]
 }

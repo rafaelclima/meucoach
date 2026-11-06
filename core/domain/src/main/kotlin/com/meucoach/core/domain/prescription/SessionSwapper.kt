@@ -82,6 +82,7 @@ private data class SessionContent(
     val rationale: String,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    val targets: PrescriptionTargets,
 )
 
 private val PlannedSession.content: SessionContent
@@ -92,6 +93,7 @@ private val PlannedSession.content: SessionContent
         rationale = rationale,
         ruleIds = ruleIds,
         evidenceIds = evidenceIds,
+        targets = targets,
     )
 
 private fun PlannedSession.copy(content: SessionContent): PlannedSession = copy(
@@ -101,4 +103,5 @@ private fun PlannedSession.copy(content: SessionContent): PlannedSession = copy(
     rationale = content.rationale,
     ruleIds = content.ruleIds,
     evidenceIds = content.evidenceIds,
+    targets = content.targets,
 )

@@ -1,16 +1,19 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.domain.zones.PaceZoneCalculator
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.PaceZone
 import com.meucoach.core.model.ReadinessLevel
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
@@ -19,7 +22,7 @@ import kotlin.math.roundToInt
 enum class SessionStatus {
     PLANNED,
     DONE,
-    SKIPPED,
+    CLOSED,
 }
 
 data class PlannedSession(
@@ -30,13 +33,46 @@ data class PlannedSession(
     val rationale: String,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    /** Objective/subjective targets of the session; empty when not applicable. */
+    val targets: PrescriptionTargets = PrescriptionTargets(),
     val status: SessionStatus = SessionStatus.PLANNED,
     val skipReason: String? = null,
+    /** Present only on [SessionStatus.DONE]; see ADR 0024. */
+    val completionEvidence: CompletionEvidence? = null,
+    /** Persisted execution that proves the completion. */
+    val executionId: String? = null,
+    /** Imported activity linked to this session, when the evidence is ACTIVITY. */
+    val activityId: String? = null,
+    /** Present only on [SessionStatus.CLOSED]. */
+    val closureReason: SessionClosureReason? = null,
+    val closedAt: Instant? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Session title must not be blank" }
         require(ruleIds.isNotEmpty()) { "Session must cite at least one rule" }
         require(evidenceIds.isNotEmpty()) { "Session must cite at least one evidence" }
+        require(status != SessionStatus.DONE || completionEvidence != null) {
+            "A done session requires completion evidence"
+        }
+        require(status != SessionStatus.CLOSED || closureReason != null) {
+            "A closed session requires a closure reason"
+        }
+        require(completionEvidence == null || status == SessionStatus.DONE) {
+            "Only a done session carries completion evidence"
+        }
+        require(closureReason == null || status == SessionStatus.CLOSED) {
+            "Only a closed session carries a closure reason"
+        }
+        require(
+            activityId == null ||
+                completionEvidence == CompletionEvidence.ACTIVITY ||
+                completionEvidence == CompletionEvidence.LEGACY_UNVERIFIED,
+        ) {
+            "An activity link requires ACTIVITY or suspended LEGACY_UNVERIFIED evidence"
+        }
+        require(completionEvidence != CompletionEvidence.ACTIVITY || activityId != null) {
+            "ACTIVITY evidence requires a linked activity"
+        }
     }
 }
 
@@ -50,6 +86,11 @@ data class WeeklyPlan(
     val confidence: DataConfidence,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    /**
+     * Local date when this version was created. Adherence never counts days
+     * before it, so a plan created midweek does not punish the past (N-02).
+     */
+    val createdOn: LocalDate = weekStart,
 ) {
     init {
         require(weekStart.dayOfWeek == DayOfWeek.MONDAY) { "Week must start on Monday" }
@@ -61,7 +102,9 @@ data class WeeklyPlanInput(
     val profile: AthleteProfile,
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
-    val weekStart: LocalDate = LocalDate.now(),
+    val weekStart: LocalDate,
+    /** Local date of generation; only days from here to Sunday enter the plan. */
+    val today: LocalDate,
     val previousWeek: WeeklyPlan? = null,
     /** 1-based position in the current block; every 4th week is a deload. */
     val weekNumberInBlock: Int = 1,
@@ -95,6 +138,7 @@ class WeeklyPlanGenerator {
             confidence = DataConfidence.LOW,
             ruleIds = listOf("R-DATA-01"),
             evidenceIds = listOf("EV-SEILER-2010"),
+            createdOn = input.today,
         )
         if (availability.isEmpty()) {
             return base.copy(
@@ -103,15 +147,30 @@ class WeeklyPlanGenerator {
             )
         }
 
-        val days = availability.keys.toList()
+        val allDays = availability.keys.toList()
+        // N-02: a plan created midweek only contains today and the remaining days.
+        val days = allDays.filter { day ->
+            !weekStart.plusDays((day.value - 1).toLong()).isBefore(input.today)
+        }
+        if (days.isEmpty()) {
+            return base.copy(
+                rationale = "Não há dias de treino restantes nesta semana. " +
+                    "O próximo plano começa na segunda-feira.",
+            )
+        }
+        val dayTrimmed = days.size < allDays.size
         val longDay = days.maxBy { day -> availability.getValue(day) }
         val safetyBlock = input.readiness.flags.any {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
         } || input.readiness.level != ReadinessLevel.GREEN
+        val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
+        val loadTrusted = loadState == LoadDataState.KNOWN
         val acwr = input.load?.acwr
+        val acwrInRange = acwr != null && acwr in ACWR_MIN..ACWR_MAX
         val qualityAllowed = !safetyBlock &&
             input.profile.experience != Experience.BEGINNER &&
-            (acwr == null || acwr in ACWR_MIN..ACWR_MAX) &&
+            loadTrusted &&
+            acwrInRange &&
             days.size >= 3
         val completionRatio = input.previousWeek?.completionRatio() ?: 0.0
         val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
@@ -130,43 +189,67 @@ class WeeklyPlanGenerator {
             val date = weekStart.plusDays((day.value - 1).toLong())
             val available = availability.getValue(day)
             when {
-                day in qualityDays -> PlannedSession(
-                    date = date,
-                    type = WorkoutType.QUALITY,
-                    title = qualityTitle(input.profile.experience),
-                    durationMin = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN),
-                    rationale = qualityRationale(input.profile),
-                    ruleIds = buildList {
-                        add("R-PLAN-02")
-                        add("R-PLAN-06")
-                        if (input.profile.treadmillAccess) add("R-PLAN-08")
-                    },
-                    evidenceIds = buildList {
-                        add("EV-SEILER-2010")
-                        add("EV-DANIELS-2014")
-                        if (input.profile.treadmillAccess) add("EV-ELY-2007")
-                    },
-                )
+                day in qualityDays -> {
+                    val duration = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.QUALITY,
+                        title = qualityTitle(input.profile.experience),
+                        durationMin = duration,
+                        rationale = qualityRationale(input.profile),
+                        ruleIds = buildList {
+                            add("R-PLAN-02")
+                            add("R-PLAN-06")
+                            if (input.profile.treadmillAccess) add("R-PLAN-08")
+                        },
+                        evidenceIds = buildList {
+                            add("EV-SEILER-2010")
+                            add("EV-DANIELS-2014")
+                            if (input.profile.treadmillAccess) add("EV-ELY-2007")
+                        },
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.QUALITY,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
 
-                day == longDay -> PlannedSession(
-                    date = date,
-                    type = WorkoutType.LONG,
-                    title = "Longão",
-                    durationMin = initialLongMinutes(available, input.profile.experience),
-                    rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
-                    ruleIds = listOf("R-PLAN-03"),
-                    evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
-                )
+                day == longDay -> {
+                    val duration = initialLongMinutes(available, input.profile.experience)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.LONG,
+                        title = "Longão",
+                        durationMin = duration,
+                        rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
+                        ruleIds = listOf("R-PLAN-03"),
+                        evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.LONG,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
 
-                else -> PlannedSession(
-                    date = date,
-                    type = WorkoutType.EASY,
-                    title = "Fácil e conversável",
-                    durationMin = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN),
-                    rationale = "Base aeróbica conversável; sem treino forte neste dia.",
-                    ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
-                    evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
-                )
+                else -> {
+                    val duration = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.EASY,
+                        title = "Fácil e conversável",
+                        durationMin = duration,
+                        rationale = "Base aeróbica conversável; sem treino forte neste dia.",
+                        ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
+                        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.EASY,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
             }
         }
 
@@ -204,7 +287,8 @@ class WeeklyPlanGenerator {
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
         val qualityCount = adjusted.count { it.type == WorkoutType.QUALITY }
-        val confidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
+        val baseConfidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
+        val confidence = if (loadTrusted) baseConfidence else downgrade(baseConfidence)
         val rationale = buildString {
             if (taper != null) {
                 append("Semana de prova em ${taper.daysToRace} dias: volume reduzido. ")
@@ -214,15 +298,31 @@ class WeeklyPlanGenerator {
                         "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
                 )
             }
+            if (dayTrimmed) {
+                append("Plano criado hoje: dias anteriores não entram nesta semana. ")
+            }
             append("${adjusted.size} dias, $weeklyMinutes min no total. ")
             if (qualityCount == 0) {
                 append("Sem treino forte: ")
                 append(
                     when {
                         safetyBlock -> "prontidão não está alta."
+
                         input.profile.experience == Experience.BEGINNER -> "iniciante prioriza base."
-                        (acwr ?: 0.0) > ACWR_MAX -> "sua carga subiu rápido."
+
+                        loadState == LoadDataState.STALE ->
+                            "seus dados de carga estão desatualizados; importe atividades recentes."
+
+                        loadState == LoadDataState.INSUFFICIENT ->
+                            "faltam dados de carga: são necessários ${LoadSnapshot.MIN_DAYS_WITH_LOAD} " +
+                                "dias com carga em 28."
+
+                        acwr != null && acwr > ACWR_MAX -> "sua carga subiu rápido."
+
+                        acwr != null && acwr < ACWR_MIN -> "sua carga recente está baixa."
+
                         days.size < 3 -> "menos de 3 dias disponíveis."
+
                         else -> "sem dia seguro separado do longão."
                     },
                 )
@@ -247,6 +347,8 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-02")
                 add("R-PLAN-03")
                 add("R-PLAN-06")
+                if (!loadTrusted) add("R-DATA-01")
+                if (loadTrusted && !acwrInRange) add("R-LOAD-03")
                 if (taper != null) add("R-PLAN-05")
                 if (deload && taper == null) add("R-PLAN-04")
             },
@@ -254,19 +356,28 @@ class WeeklyPlanGenerator {
                 add("EV-SEILER-2010")
                 add("EV-DANIELS-2014")
                 add("EV-PFITZINGER-2008")
+                if (!loadTrusted || (loadTrusted && !acwrInRange)) {
+                    add("EV-IMPELLIZZERI-2020")
+                }
                 if (taper != null) {
                     add("EV-BOSQUET-2007")
                     add("EV-MUJIKA-2003")
                 }
                 if (deload && taper == null) add("EV-ISSURIN-2010")
             },
+            createdOn = input.today,
         )
     }
 
     private fun WeeklyPlan.completionRatio(): Double {
-        val planned = sessions.filter { it.type != WorkoutType.REST }
+        val planned = sessions
+            .filter { it.type != WorkoutType.REST }
+            .filterNot { it.status == SessionStatus.CLOSED && it.closureReason?.isNonTrainable == true }
         if (planned.isEmpty()) return 0.0
-        return planned.count { it.status == SessionStatus.DONE }.toDouble() / planned.size
+        // Only strong evidence unlocks progression (ADR 0024): a click cannot.
+        return planned.count {
+            it.status == SessionStatus.DONE && it.completionEvidence?.isStrong == true
+        }.toDouble() / planned.size
     }
 
     private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek, maxQualities: Int): Set<DayOfWeek> {
@@ -347,6 +458,11 @@ class WeeklyPlanGenerator {
     private fun cappedConfidence(confidence: DataConfidence, cap: DataConfidence): DataConfidence {
         val rank = mapOf(DataConfidence.LOW to 0, DataConfidence.MEDIUM to 1, DataConfidence.HIGH to 2)
         return if (rank.getValue(confidence) <= rank.getValue(cap)) confidence else cap
+    }
+
+    private fun downgrade(confidence: DataConfidence): DataConfidence = when (confidence) {
+        DataConfidence.HIGH -> DataConfidence.MEDIUM
+        DataConfidence.MEDIUM, DataConfidence.LOW -> DataConfidence.LOW
     }
 
     private companion object {

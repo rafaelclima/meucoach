@@ -15,13 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -128,7 +132,9 @@ fun McLineChart(
     }
 
     val modelProducer = remember { CartesianChartModelProducer() }
+    var isReady by remember { mutableStateOf(false) }
     LaunchedEffect(lineSpecs) {
+        isReady = false
         modelProducer.runTransaction {
             lineModel {
                 lineSpecs.forEach { spec ->
@@ -136,6 +142,7 @@ fun McLineChart(
                 }
             }
         }
+        isReady = true
     }
 
     val lines = lineSpecs.map { spec ->
@@ -208,6 +215,7 @@ fun McLineChart(
     val chartModifier = modifier
         .fillMaxWidth()
         .height(height)
+        .testTag(if (isReady) "mc-chart-ready" else "mc-chart-loading")
         .then(
             if (contentDescription == null) {
                 Modifier
@@ -316,7 +324,9 @@ fun McBarChart(
     }
 
     val modelProducer = remember { CartesianChartModelProducer() }
+    var isReady by remember { mutableStateOf(false) }
     LaunchedEffect(columns) {
+        isReady = false
         modelProducer.runTransaction {
             columnModel {
                 series(
@@ -325,6 +335,7 @@ fun McBarChart(
                 )
             }
         }
+        isReady = true
     }
 
     val highlightColumn = rememberLineComponent(
@@ -386,6 +397,7 @@ fun McBarChart(
     val chartModifier = modifier
         .fillMaxWidth()
         .height(height)
+        .testTag(if (isReady) "mc-chart-ready" else "mc-chart-loading")
         .then(
             if (contentDescription == null) {
                 Modifier

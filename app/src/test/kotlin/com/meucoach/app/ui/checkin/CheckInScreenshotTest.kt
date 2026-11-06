@@ -34,6 +34,7 @@ class CheckInScreenshotTest {
                 CheckInContent(
                     state = CheckInUiState(
                         isLoading = false,
+                        date = java.time.LocalDate.of(2026, 11, 6),
                         form = CheckInForm(sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
                     ),
                     onUpdate = {},

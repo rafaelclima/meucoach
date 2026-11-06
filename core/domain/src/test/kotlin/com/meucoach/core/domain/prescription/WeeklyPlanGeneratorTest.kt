@@ -1,10 +1,12 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
@@ -40,7 +42,25 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.longRunMinutes).isEqualTo(34)
         assertThat(plan.weeklyMinutes).isEqualTo(114)
         assertThat(plan.rationale).contains("iniciante")
-        assertThat(plan.confidence).isEqualTo(DataConfidence.MEDIUM)
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `keeps low confidence when recovery data is partial`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40),
+                ),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    confidence = DataConfidence.LOW,
+                ),
+            ),
+        )
+
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
     }
 
     @Test
@@ -103,6 +123,96 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(plan.qualityCount).isZero()
         assertThat(plan.rationale).contains("sua carga subiu rápido")
+    }
+
+    @Test
+    fun `blocks quality when load data is stale`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, sourceFresh = false),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("dados de carga estão desatualizados")
+        assertThat(plan.ruleIds).contains("R-DATA-01")
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `blocks quality when coverage is below eight days`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = null, daysWithLoad = 7),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("faltam dados de carga", "8 dias")
+        assertThat(plan.ruleIds).contains("R-DATA-01")
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `blocks quality when ACWR is below the safe range`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 0.79),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("carga recente está baixa")
+        assertThat(plan.ruleIds).contains("R-LOAD-03")
+    }
+
+    @Test
+    fun `accepts quality at the exact ACWR bounds`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val lower = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 0.8),
+            ),
+        )
+        val upper = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.3),
+            ),
+        )
+        val above = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.31),
+            ),
+        )
+
+        assertThat(lower.qualityCount).isEqualTo(1)
+        assertThat(upper.qualityCount).isEqualTo(1)
+        assertThat(above.qualityCount).isZero()
     }
 
     @Test
@@ -493,9 +603,99 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-04")
     }
 
+    @Test
+    fun `a plan created midweek starts today and records its creation date`() {
+        val thursday = monday.plusDays(3)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.THURSDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                weekStart = monday,
+                today = thursday,
+            ),
+        )
+
+        assertThat(plan.weekStart).isEqualTo(monday)
+        assertThat(plan.createdOn).isEqualTo(thursday)
+        assertThat(plan.sessions.map { it.date })
+            .containsExactly(thursday, monday.plusDays(5))
+        assertThat(plan.sessions).noneMatch { it.date.isBefore(thursday) }
+        assertThat(plan.rationale).contains("Plano criado hoje")
+    }
+
+    @Test
+    fun `planned sessions carry zone and calibrated targets`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                previousWeek = previousWeek(completed = 4, total = 4),
+            ),
+        )
+
+        val easy = plan.sessions.first { it.type == WorkoutType.EASY }
+        assertThat(easy.targets.zone).isEqualTo("Z2")
+        assertThat(easy.targets.pace).isNotNull
+        assertThat(easy.targets.heartRate).isNotNull
+        assertThat(easy.targets.distanceKm).isNotNull
+        assertThat(easy.targets.rpe).isNull()
+
+        val longRun = plan.sessions.first { it.type == WorkoutType.LONG }
+        assertThat(longRun.targets.zone).isEqualTo("Z2")
+        assertThat(longRun.targets.pace).isNotNull
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.targets.zone).isEqualTo("Z3–Z4")
+        assertThat(quality.targets.pace).isNotNull
+        assertThat(quality.targets.heartRate).isNotNull
+    }
+
+    @Test
+    fun `planned sessions keep RPE when the profile is not calibrated`() {
+        val uncalibrated = profile(
+            experience = Experience.INTERMEDIATE,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.SATURDAY to 90,
+            ),
+        ).copy(thresholdPace = null, lactateThresholdHeartRate = null)
+
+        val plan = generator.generate(
+            input(
+                profile = uncalibrated,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        val easy = plan.sessions.first { it.type == WorkoutType.EASY }
+        assertThat(easy.targets.pace).isNull()
+        assertThat(easy.targets.heartRate).isNull()
+        assertThat(easy.targets.rpe).isEqualTo(4)
+        assertThat(easy.targets.distanceKm).isNull()
+    }
+
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
+            val done = index < completed
             PlannedSession(
                 date = previousMonday.plusDays(index.toLong()),
                 type = WorkoutType.EASY,
@@ -504,7 +704,9 @@ class WeeklyPlanGeneratorTest {
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
-                status = if (index < completed) SessionStatus.DONE else SessionStatus.SKIPPED,
+                status = if (done) SessionStatus.DONE else SessionStatus.PLANNED,
+                completionEvidence = if (done) CompletionEvidence.ACTIVITY else null,
+                activityId = if (done) "previous-$index" else null,
             )
         }
         return WeeklyPlan(
@@ -530,6 +732,7 @@ class WeeklyPlanGeneratorTest {
         readiness: ReadinessResult,
         load: LoadSnapshot? = null,
         weekStart: LocalDate = monday,
+        today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
         weekNumberInBlock: Int = 1,
     ) = WeeklyPlanInput(
@@ -537,18 +740,23 @@ class WeeklyPlanGeneratorTest {
         readiness = readiness,
         load = load,
         weekStart = weekStart,
+        today = today,
         previousWeek = previousWeek,
         weekNumberInBlock = weekNumberInBlock,
     )
 
-    private fun readiness(level: ReadinessLevel, flags: Set<ReadinessFlag> = emptySet()) = ReadinessResult(
+    private fun readiness(
+        level: ReadinessLevel,
+        flags: Set<ReadinessFlag> = emptySet(),
+        confidence: DataConfidence = DataConfidence.HIGH,
+    ) = ReadinessResult(
         score = when (level) {
             ReadinessLevel.GREEN -> 80
             ReadinessLevel.AMBER -> 55
             ReadinessLevel.RED -> 20
         },
         level = level,
-        confidence = DataConfidence.HIGH,
+        confidence = confidence,
         components = mapOf(ReadinessComponent.SUBJECTIVE to 80),
         missing = emptySet(),
         flags = flags,
@@ -572,7 +780,7 @@ class WeeklyPlanGeneratorTest {
         treadmillAccess = treadmillAccess,
     )
 
-    private fun load(acwr: Double) = LoadSnapshot(
+    private fun load(acwr: Double?, daysWithLoad: Int = 12, sourceFresh: Boolean = true) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
         atlSeries = emptyList(),
@@ -583,6 +791,21 @@ class WeeklyPlanGeneratorTest {
         chronicAverage28d = 0.0,
         acwr = acwr,
         monotony = null,
-        missingDays = 0,
+        missingDays = 28 - daysWithLoad,
+        coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
     )
+
+    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {
+        val daysInWindow = 28
+        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad else 0
+        val daysWithoutData = if (sourceFresh) 0 else daysInWindow - daysWithLoad
+        return LoadCoverage(
+            daysInWindow = daysInWindow,
+            daysWithLoad = daysWithLoad,
+            daysWithoutActivity = daysWithoutActivity,
+            daysWithoutData = daysWithoutData,
+            lastActivityAt = if (daysWithLoad > 0) java.time.Instant.parse("2026-10-30T10:00:00Z") else null,
+            sourceFresh = sourceFresh,
+        )
+    }
 }

@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.golden
 
+import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadMetric
 import com.meucoach.core.domain.load.TrainingLoadEngine
@@ -10,6 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.json.JSONObject
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
 
 class LoadEngineGoldenTest {
@@ -51,6 +53,10 @@ class LoadEngineGoldenTest {
             activities = activities,
             profile = profile,
             today = today,
+            sourceStatus = ActivitySourceStatus(
+                lastImportedAt = Instant.parse(input.getString("lastImportedAt")),
+                checkedAt = Instant.parse(input.getString("checkedAt")),
+            ),
             days = input.getInt("days"),
         )
 

@@ -2,6 +2,7 @@ package com.meucoach.app.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.model.AthleteProfile
@@ -29,6 +30,7 @@ data class OnboardingUiState(
 class OnboardingViewModel @Inject constructor(
     private val repository: ProfileRepository,
     private val photoStore: com.meucoach.app.profile.ProfilePhotoStore,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -87,7 +89,7 @@ class OnboardingViewModel @Inject constructor(
     fun next() {
         val state = _uiState.value
         if (state.step >= LAST_STEP) return
-        val validation = OnboardingValidator.validateStep(state.step, state.form)
+        val validation = OnboardingValidator.validateStep(state.step, state.form, timeProvider.currentDate())
         if (!validation.isValid) {
             _uiState.value = state.copy(errors = validation.errors)
             return
@@ -103,7 +105,8 @@ class OnboardingViewModel @Inject constructor(
 
     fun save() {
         val state = _uiState.value
-        val validation = OnboardingValidator.validateAll(state.form)
+        val today = timeProvider.currentDate()
+        val validation = OnboardingValidator.validateAll(state.form, today)
         if (!validation.isValid) {
             _uiState.value = state.copy(
                 step = stepFor(validation.errors.keys),
@@ -119,6 +122,7 @@ class OnboardingViewModel @Inject constructor(
                 form = state.form,
                 id = state.existingProfile?.id ?: UuidV7.generate(),
                 existing = state.existingProfile,
+                today = today,
             )
             repository.saveProfile(profile)
             _uiState.value = _uiState.value.copy(

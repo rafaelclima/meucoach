@@ -42,7 +42,15 @@ class SessionSwapperTest {
 
         val completed = plan.copy(
             sessions = plan.sessions.map {
-                if (it.date == monday) it.copy(status = SessionStatus.DONE) else it
+                if (it.date == monday) {
+                    it.copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                        activityId = "activity-1",
+                    )
+                } else {
+                    it
+                }
             },
         )
         val rejected = SessionSwapper.swap(completed, monday, wednesday, today = monday)

@@ -88,6 +88,12 @@ class StoryNotifier @Inject constructor(@ApplicationContext context: Context) {
         notify(activityId, title = "Não foi possível gerar o story", body = StoryNotification.failed(message))
     }
 
+    fun cancelAll() {
+        val manager = NotificationManagerCompat.from(appContext)
+        manager.cancel(StoryNotification.ID)
+        manager.cancel(StoryNotification.PROGRESS_ID)
+    }
+
     @SuppressLint("MissingPermission") // canNotify() checks POST_NOTIFICATIONS first.
     private fun notify(activityId: String, title: String, body: String) {
         ensureChannel()

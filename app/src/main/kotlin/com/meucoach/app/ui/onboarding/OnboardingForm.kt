@@ -69,25 +69,23 @@ object OnboardingValidator {
         .ofPattern("ddMMuuuu")
         .withResolverStyle(java.time.format.ResolverStyle.STRICT)
 
-    fun validateStep(step: Int, form: OnboardingForm, today: LocalDate = LocalDate.now()): OnboardingValidation =
-        when (step) {
-            0 -> validateAbout(form, today)
-            1 -> validateGoal(form, today)
-            else -> validateRoutine(form)
-        }
+    fun validateStep(step: Int, form: OnboardingForm, today: LocalDate): OnboardingValidation = when (step) {
+        0 -> validateAbout(form, today)
+        1 -> validateGoal(form, today)
+        else -> validateRoutine(form)
+    }
 
-    fun validateAll(form: OnboardingForm, today: LocalDate = LocalDate.now()): OnboardingValidation =
-        OnboardingValidation(
-            validateStep(0, form, today).errors +
-                validateStep(1, form, today).errors +
-                validateStep(2, form, today).errors,
-        )
+    fun validateAll(form: OnboardingForm, today: LocalDate): OnboardingValidation = OnboardingValidation(
+        validateStep(0, form, today).errors +
+            validateStep(1, form, today).errors +
+            validateStep(2, form, today).errors,
+    )
 
     fun toProfile(
         form: OnboardingForm,
         id: String,
         existing: AthleteProfile? = null,
-        today: LocalDate = LocalDate.now(),
+        today: LocalDate,
     ): AthleteProfile {
         val validation = validateAll(form, today)
         require(validation.isValid) { "Profile form has invalid fields: ${validation.errors.keys}" }

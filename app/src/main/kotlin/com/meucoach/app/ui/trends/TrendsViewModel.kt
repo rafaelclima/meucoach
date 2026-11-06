@@ -2,9 +2,11 @@ package com.meucoach.app.ui.trends
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
@@ -49,6 +51,7 @@ class TrendsViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val engine = TrainingLoadEngine()
     private val trendsCalculator = ActivityTrendsCalculator()
@@ -59,16 +62,20 @@ class TrendsViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
-        load(TrendsPeriod.WEEKS_6)
+        viewModelScope.launch {
+            timeProvider.today.collect { today ->
+                load(_uiState.value.period, today)
+            }
+        }
     }
 
     fun selectPeriod(period: TrendsPeriod) {
         if (period == _uiState.value.period) return
         _uiState.value = _uiState.value.copy(period = period)
-        load(period)
+        load(period, timeProvider.currentDate())
     }
 
-    private fun load(period: TrendsPeriod) {
+    private fun load(period: TrendsPeriod, today: LocalDate) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val profile = profileRepository.getProfile()
@@ -76,15 +83,19 @@ class TrendsViewModel @Inject constructor(
                 _uiState.value = TrendsUiState(isLoading = false, period = period)
                 return@launch
             }
-            val zone = runCatching { ZoneId.of(profile.timezone) }.getOrNull() ?: ZoneId.systemDefault()
-            val today = LocalDate.now()
+            val zone = timeProvider.zoneId.value
             val summaries = activityRepository.listActivitySummaries()
+            val sourceStatus = ActivitySourceStatus(
+                lastImportedAt = activityRepository.lastImportedAt(),
+                checkedAt = timeProvider.now(),
+            )
             val activities = summaries.map { summary ->
                 LoadActivity(
                     date = summary.startTime.atZone(zone).toLocalDate(),
                     durationSec = summary.durationSec,
                     averageHeartRate = summary.averageHeartRate,
                     averagePace = summary.averagePace,
+                    startTime = summary.startTime,
                 )
             }
             _uiState.value = TrendsUiState(
@@ -94,6 +105,7 @@ class TrendsViewModel @Inject constructor(
                     activities = activities,
                     profile = profile,
                     today = today,
+                    sourceStatus = sourceStatus,
                 ),
                 activityTrends = trendsCalculator.calculate(
                     activities = summaries,

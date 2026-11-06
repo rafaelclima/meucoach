@@ -174,6 +174,15 @@ Regras:
 - Ícones de zona/FC podem ser preenchidos para reforço.
 - Usar Material Symbols (outlined) no MVP; ícones customizados só com necessidade.
 
+### 6.1 App icon
+
+- **Conceito:** um cronômetro grande é a moldura; dentro do mostrador, o M vira uma rota de GPS e o corredor corre sobre o topo do M. Leitura: tempo (aro) → percurso (M) → ação (corredor).
+- **Cores:** fundo `#08090B`; aro, rota, botão lateral e pontilhado direito em `#F4F6F7`; aro esquerdo, coroa, pontilhado esquerdo e corredor em `#D8FF3E`. Um único accent.
+- **Master:** `design/icon/icon_meucoach_gemini-color.svg`; previews em `design/icon/meucoach-icon-color-1024.png` e `meucoach-icon-playstore-512.png`.
+- **Adaptive icon:** foreground transparente em `design/icon/meucoach-icon-adaptive-foreground.svg` (escalado a 65% para caber no safe zone); background `@color/ic_launcher_background` (`#08090B`); monochrome separado em `design/icon/meucoach-icon-monochrome.svg`.
+- **Regras:** sem cantos arredondados no asset (o launcher aplica a máscara); sem sombra, gradiente, 3D ou texto; o foreground nunca inclui o fundo; o monochrome não é uma cópia colorida do foreground.
+- **Testes:** 24, 48, 192 e 512 px; máscaras circular, squircle, quadrado arredondado e teardrop; silhueta em uma cor e escala de cinza.
+
 ## 7. Componentes
 
 ### 7.1 Estrutura
@@ -203,6 +212,10 @@ Regras:
 | `McEmptyState` | ícone, título, descrição, CTA opcional |
 | `McErrorState` | causa, ação, detalhes técnicos colapsáveis |
 | `McSkeleton` | shimmer sutil, respeita reduced motion |
+| `TutorialProgress` | barra segmentada 4 dp com `progressBarRangeInfo` e “Passo X de Y” |
+| `TutorialActionCard` | ação de primeiro uso: ícone, título, meta, descrição e chevron; alvo 48 dp |
+| `FirstRunChecklistCard` | checklist de 3 passos no Hoje, com progresso, deep links e dismiss |
+| `FirstRunTipCard` | dica contextual única, dismissível, com ação opcional |
 | `McBottomBar` | 4 destinos + ação central circular lima |
 
 ### 7.2 Estados
@@ -225,7 +238,9 @@ Todo componente interativo define: default, pressed, focused, disabled, loading,
 10. **Sem 3D, sem gradientes enganosos, sem eixos truncados sem aviso.**
 11. **Lacuna é lacuna.** Dia sem medição não vira zero nem linha reta entre pontos; a série quebra.
 12. **Eixo dinâmico pede aviso.** Quando o eixo começa perto dos dados para mostrar a variação
-    (FC de repouso, HRV, economia), uma nota diz o intervalo; sono e SpO₂ usam faixas fixas com alvo.
+    (FC de repouso, HRV, economia), uma nota **logo abaixo do gráfico** diz “Escala ampliada (X a Y
+    unidade) para destacar diferenças pequenas”; o eixo carrega a unidade. Sono e SpO₂ usam faixas
+    fixas com alvo.
 
 ### 8.2 Gráficos por tela
 
@@ -279,6 +294,10 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 
 ## 11. Blueprints de tela
 
+Barra inferior: **Hoje · Corridas · Tendências · Saúde · Perfil**. Os quatro
+primeiros são destinos de conteúdo; o Perfil concentra identidade, calibração,
+backup e ajuda.
+
 ### Hoje
 
 ```
@@ -288,6 +307,7 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 [ HeroCard: Prontidão 72 · Alta · confiança média ]
 [ Gauge 220° ]  Sono 9h13 / Variabilidade média · 7 noites / FC estável
 [ "Por que esta prontidão?" ]
+[ "Ver recuperação" → aba Saúde ]
 
 [ Próximo treino ]
 [ Fácil Z2 · 40 min · 6,5 km ]
@@ -331,6 +351,26 @@ No plano da semana, cada sessão ocupa uma linha (dia · título · duração); 
 [ Consistência (heatmap) ]
 [ Recordes ]
 ```
+
+### Saúde
+
+```
+[ SAÚDE ]
+[ Seus dados de saúde ]
+[ Hero: "Como seu corpo chegou" · N dias com dados ]
+[ Sono | FC de repouso | HRV | SpO₂ · média de 7 dias ]
+[ "Os dados de hoje ainda não chegaram" · quando o dia atual falta ]
+[ Período 7 / 30 / 60 dias ]
+[ Gráficos por métrica: por dia + média móvel ]
+[ Fontes: Health Connect / CSV + última leitura ]
+[ "Abrir Health Connect" · diagnóstico ]
+```
+
+A aba Saúde é destino principal, sem seta de voltar. O status do Health Connect
+e a última leitura ficam no card de fontes; o Perfil só tem um link compacto.
+A ausência de um dia continua sendo lacuna, nunca zero. O aviso de frescor é
+informativo e desaparece sozinho quando o dado do dia chega; “Abrir Health
+Connect” é secundário e não compete com “Atualizar agora”.
 
 ### Importar
 

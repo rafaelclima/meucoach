@@ -1,9 +1,13 @@
 package com.meucoach.app.ui.today
 
 import com.meucoach.app.ui.common.readinessLabelLowercase
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.ExplanationCatalog
-import com.meucoach.core.domain.prescription.WorkoutRecommendation
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.HrvMetrics
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
@@ -29,14 +33,17 @@ data class TodayExplanationUi(
     val missingData: List<String>,
     val rules: List<ExplanationRuleUi>,
     val evidence: List<ExplanationEvidenceUi>,
+    /** "Planejado → Hoje → por quê" in a single sentence when the plan had a session. */
+    val planComparison: String? = null,
+    /** Explains where the confidence comes from and why it does not change during the week. */
+    val confidenceNote: String? = null,
 )
 
 internal fun buildExplanation(
-    profile: AthleteProfile,
     checkIn: DailyCheckIn?,
     inputs: ReadinessInputs,
     result: ReadinessResult,
-    recommendation: WorkoutRecommendation,
+    prescription: DailyPrescription,
     load: LoadSnapshot?,
 ): TodayExplanationUi {
     val used = buildList {
@@ -44,33 +51,122 @@ internal fun buildExplanation(
         if (inputs.sleep != null) add("Sono recente")
         if (inputs.hrv != null) add("Variabilidade cardíaca")
         if (inputs.restingHeartRate != null) add("FC de repouso")
-        if (load?.acwr != null) add("Carga das últimas semanas")
-        if (profile.thresholdPace != null) add("Ritmo no limite calibrado")
-        if (profile.lactateThresholdHeartRate != null) add("FC no limite calibrada")
-        if ("R-PLAN-08" in recommendation.ruleIds) add("Acesso a esteira")
+        if (load?.dataState == LoadDataState.KNOWN) add("Carga das últimas semanas")
+        if (prescription.targets.pace != null) add("Ritmo no limite calibrado")
+        if (prescription.targets.heartRate != null) add("FC no limite calibrada")
+        if ("R-PLAN-08" in prescription.ruleIds) add("Acesso a esteira")
         if (checkIn?.heatLevel == HeatLevel.HOT) add("Calor informado")
+        if (prescription.plannedType != null) add("Plano da semana")
     }.distinct()
     val missing = buildList {
         result.missing.forEach { add(it.label()) }
-        if (recommendation.pace == null) add("Ritmo no limite (sem calibração)")
-        if (recommendation.heartRate == null) add("FC no limite (sem calibração)")
-        if (load?.acwr == null) add("Histórico de carga das últimas 4 semanas")
+        if (!prescription.isRest && prescription.targets.pace == null) {
+            add("Ritmo no limite (sem calibração)")
+        }
+        if (!prescription.isRest && prescription.targets.heartRate == null) {
+            add("FC no limite (sem calibração)")
+        }
+        when (load?.dataState) {
+            LoadDataState.STALE -> add("Atividades recentes (fonte desatualizada)")
+            LoadDataState.INSUFFICIENT, null -> add("Histórico de carga das últimas 4 semanas")
+            LoadDataState.KNOWN -> Unit
+        }
     }.distinct()
 
     return TodayExplanationUi(
-        rationale = recommendation.rationale,
-        confidence = recommendation.confidence,
+        rationale = prescription.rationale,
+        confidence = prescription.confidence,
         usedData = used,
         missingData = missing,
-        rules = recommendation.ruleIds.distinct().map { id ->
+        rules = prescription.ruleIds.distinct().map { id ->
             val rule = ExplanationCatalog.rule(id)
             ExplanationRuleUi(id = rule.id, title = rule.title)
         },
-        evidence = recommendation.evidenceIds.distinct().map { id ->
+        evidence = prescription.evidenceIds.distinct().map { id ->
             val item = ExplanationCatalog.evidence(id)
             ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
         },
+        planComparison = planComparison(prescription),
     )
+}
+
+private fun planComparison(prescription: DailyPrescription): String? {
+    val plannedType = prescription.plannedType ?: return null
+    val planned = "${prescription.plannedTitle ?: plannedType.label()} · " +
+        "${prescription.plannedDurationMin?.let { "$it min" } ?: "—"}"
+    val today = "${prescription.title} · " +
+        "${prescription.prescribedDurationMin?.let { "$it min" } ?: "—"}"
+    val verb = when (prescription.adjustment) {
+        PrescriptionAdjustment.KEEP -> "mantido"
+        PrescriptionAdjustment.REDUCE -> "reduzido"
+        PrescriptionAdjustment.DOWNGRADE -> "rebaixado"
+        PrescriptionAdjustment.REST -> "trocado por descanso"
+        PrescriptionAdjustment.NO_PLAN -> "sem plano"
+    }
+    return "Planejado: $planned → Hoje: $today (plano $verb)."
+}
+
+private fun WorkoutType.label(): String = when (this) {
+    WorkoutType.REST -> "descanso"
+    WorkoutType.EASY -> "fácil"
+    WorkoutType.LONG -> "longão"
+    WorkoutType.QUALITY -> "treino forte"
+}
+
+/**
+ * Explains a persisted weekly plan. The confidence is the readiness confidence captured when the
+ * week was built, capped at medium; it is not recomputed as the week goes by.
+ */
+internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
+    val used = buildList {
+        add("Sua disponibilidade semanal")
+        add("Sua prontidão quando a semana foi montada")
+        if (plan.qualityCount >= 2) add("Histórico de conclusão da semana anterior")
+        if ("R-PLAN-04" in plan.ruleIds || "R-PLAN-05" in plan.ruleIds) {
+            add("Semanas anteriores do bloco")
+        }
+        if ("R-PLAN-08" in plan.ruleIds) add("Acesso a esteira")
+    }.distinct()
+    val missing = buildList {
+        if (plan.confidence == DataConfidence.LOW) {
+            add("Dados objetivos de recuperação (sono, FC de repouso ou HRV)")
+        }
+        if ("R-DATA-01" in plan.ruleIds && plan.sessions.isNotEmpty()) {
+            add("Carga recente para liberar treino forte")
+        }
+    }.distinct()
+
+    return TodayExplanationUi(
+        rationale = plan.rationale,
+        confidence = plan.confidence,
+        usedData = used,
+        missingData = missing,
+        rules = plan.ruleIds.distinct().map { id ->
+            val rule = ExplanationCatalog.rule(id)
+            ExplanationRuleUi(id = rule.id, title = rule.title)
+        },
+        evidence = plan.evidenceIds.distinct().map { id ->
+            val item = ExplanationCatalog.evidence(id)
+            ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
+        },
+        confidenceNote = planConfidenceNote(plan.confidence),
+    )
+}
+
+private fun planConfidenceNote(confidence: DataConfidence): String = when (confidence) {
+    DataConfidence.LOW ->
+        "A confiança é calculada quando a semana é montada. Com dados parciais, o plano segue " +
+            "conservador e não libera progressão. Ela não muda durante esta semana; novos dados " +
+            "entram no plano da próxima."
+
+    DataConfidence.MEDIUM ->
+        "A confiança é calculada quando a semana é montada e fica no máximo média: a semana é uma " +
+            "estimativa conservadora. Ela não muda durante esta semana; novos dados entram no plano " +
+            "da próxima."
+
+    DataConfidence.HIGH ->
+        "A confiança é calculada quando a semana é montada. Ela não muda durante esta semana; " +
+            "novos dados entram no plano da próxima."
 }
 
 private fun ReadinessComponent.label(): String = when (this) {

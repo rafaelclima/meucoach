@@ -41,6 +41,27 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY startTimeUtc DESC")
     suspend fun getAll(): List<ActivityEntity>
 
+    @Query("SELECT MAX(importedAt) FROM activities WHERE deletedAt IS NULL")
+    fun observeLastImportedAt(): Flow<Long?>
+
+    @Query("SELECT MAX(importedAt) FROM activities WHERE deletedAt IS NULL")
+    suspend fun lastImportedAt(): Long?
+
+    @Query("SELECT * FROM activities WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
+    fun observeTrash(): Flow<List<ActivityEntity>>
+
+    @Query("SELECT * FROM activities WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
+    suspend fun getTrash(): List<ActivityEntity>
+
+    @Query("SELECT id FROM activities WHERE deletedAt IS NOT NULL")
+    suspend fun getDeletedIds(): List<String>
+
+    @Query("SELECT * FROM activities WHERE deletedAt IS NOT NULL AND deletedAt <= :cutoff")
+    suspend fun getDeletedBefore(cutoff: Long): List<ActivityEntity>
+
+    @Query("DELETE FROM activities WHERE deletedAt IS NOT NULL AND deletedAt <= :cutoff")
+    suspend fun hardDeleteBefore(cutoff: Long): Int
+
     @Query("SELECT * FROM activities ORDER BY startTimeUtc DESC")
     suspend fun getAllIncludingDeleted(): List<ActivityEntity>
 

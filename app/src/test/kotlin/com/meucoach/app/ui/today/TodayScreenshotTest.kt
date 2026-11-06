@@ -1,8 +1,11 @@
 package com.meucoach.app.ui.today
 
+import android.content.Context
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlannedSession
@@ -17,6 +20,7 @@ import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,6 +36,15 @@ import java.time.LocalTime
 class TodayScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Before
+    fun clearTips() {
+        ApplicationProvider.getApplicationContext<Context>()
+            .getSharedPreferences(FirstRunTipStore.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
+    }
 
     @Test
     fun todayDark() {
@@ -49,7 +62,28 @@ class TodayScreenshotTest {
         capture(darkTheme = true, file = "src/test/screenshots/today-narrow-dark.png")
     }
 
-    private fun capture(darkTheme: Boolean, file: String) {
+    @Test
+    fun todayChecklistDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-checklist-dark.png",
+            checklistState = FirstRunChecklistState(
+                isLoading = false,
+                hasCheckedIn = true,
+                hasActivities = false,
+                healthConnected = false,
+            ),
+        )
+    }
+
+    private fun capture(
+        darkTheme: Boolean,
+        file: String,
+        checklistState: FirstRunChecklistState = FirstRunChecklistState(
+            isLoading = false,
+            dismissed = true,
+        ),
+    ) {
         val today = LocalDate.of(2026, 10, 30)
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
@@ -67,6 +101,7 @@ class TodayScreenshotTest {
                         kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
                         weeklyLoadKm = 11.31,
                     ),
+                    checklistState = checklistState,
                 )
             }
         }
@@ -86,6 +121,16 @@ class TodayScreenshotTest {
         acwr = 1.29,
         monotony = 1.4,
         missingDays = 2,
+        coverage = coverage(),
+    )
+
+    private fun coverage() = com.meucoach.core.domain.load.LoadCoverage(
+        daysInWindow = 28,
+        daysWithLoad = 12,
+        daysWithoutActivity = 16,
+        daysWithoutData = 0,
+        lastActivityAt = java.time.Instant.parse("2026-10-29T10:00:00Z"),
+        sourceFresh = true,
     )
 
     private fun plan(today: LocalDate): WeeklyPlan {
@@ -112,6 +157,15 @@ class TodayScreenshotTest {
                     evidenceIds = listOf("EV-DANIELS-2014"),
                 ),
                 PlannedSession(
+                    date = today,
+                    type = WorkoutType.EASY,
+                    title = "Fácil e conversável",
+                    durationMin = 45,
+                    rationale = "Base.",
+                    ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                PlannedSession(
                     date = monday.plusDays(5),
                     type = WorkoutType.LONG,
                     title = "Longão",
@@ -121,7 +175,7 @@ class TodayScreenshotTest {
                     evidenceIds = listOf("EV-PFITZINGER-2008"),
                 ),
             ),
-            weeklyMinutes = 135,
+            weeklyMinutes = 180,
             longRunMinutes = 60,
             qualityCount = 1,
             rationale = "Sem progressão até existir histórico de conclusão.",

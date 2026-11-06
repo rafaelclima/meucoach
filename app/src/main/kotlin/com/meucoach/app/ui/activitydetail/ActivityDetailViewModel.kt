@@ -17,6 +17,7 @@ import com.meucoach.app.story.StoryPlanCalculator
 import com.meucoach.app.story.StoryPlanLoader
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
@@ -46,6 +47,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
     private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
         "Activity detail requires an activityId"
@@ -97,7 +99,7 @@ class ActivityDetailViewModel @Inject constructor(
                     },
                     lthr = lthr,
                     calibrationCandidate = activity?.let {
-                        CalibrationCandidateDetector.detect(it.imported, it.localDate, LocalDate.now())
+                        CalibrationCandidateDetector.detect(it.imported, it.localDate, timeProvider.currentDate())
                     },
                     storyIntroSeen = storyIntro.seen(),
                     avatar = avatar,
@@ -295,6 +297,10 @@ class ActivityDetailViewModel @Inject constructor(
                     if (error is CancellationException) throw error
                     false
                 }
+            if (deleted) {
+                storyCoordinator.cancel(activityId)
+                storyFailures.clear(activityId)
+            }
             _uiState.update {
                 if (deleted) {
                     it.copy(isDeleting = false, deleted = true)

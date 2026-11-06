@@ -1,17 +1,21 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 04/11/2026 (gráficos Vico em Tendências e painel de saúde)
+**Atualizado:** 06/11/2026 (C1-01 a C1-06 concluídos; documentação reconciliada com o schema v12)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
-- **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug koverVerify`)
-- **Testes:** 805 testes, 0 falhas (27 em `core:model`, 287 em `core:domain`, 89 em `core:data`, 402 em `:app`)
-- **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
+- **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
+- **Testes:** 999 testes no total (497 em `:app`, 124 em `core:data`, 351 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,69% de linhas (3.380/3.460), 82,09% de branches (2.544/3.099), 96,04% de instruções (23.890/24.876)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
-- **Lint:** 0 erros; 31 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
+- **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
+- **Persistência:** Room 2.8.5, schema v12 (prescrição diária, execução/evidência de sessão e vínculo com atividade), migrações 1→2 até 11→12 testadas.
+- **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador.
+- **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
+- **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
+- **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -21,7 +25,7 @@
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
-- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade.
+- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Métricas diárias:** CSV e Health Connect são mesclados por campo, com precedência `MANUAL` > `Health Connect` > `CSV`; um sync não apaga mais o que só o CSV tinha (ADR 0016).
@@ -37,7 +41,7 @@
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
 - **Tendências de atividades:** volume semanal, consistência com heatmap, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
-- **Ações do plano:** concluir ou pular sessão com motivo, persistido por sessão (Room v8); iniciar sessão guiada com alvos e cronômetro; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
+- **Ações do plano:** concluir com evidência (corrida vinculada ou registro manual) ou pular sessão com motivo, persistido por sessão; prévia de cronômetro que não substitui a evidência; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 com mapa vetorial (`MapLibre` + `OpenFreeMap`, dados OSM) e frame final de 3 s (distância, tempo, ritmo médio, FC média, kcal e logo), export MP4 1080×1920 via MediaCodec, com galeria e compartilhamento; validado em aparelho real (mapa vetorial pendente de validação).
 - **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) filtrado em tempo de execução (POIs, transporte e aeroportos ocultos) e labels ampliados; fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, halo de foco na rota, ticks por km, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; snapshot em 2,25× (2430×4320), vídeo 1080p a 10 Mbps e 30 fps.
@@ -47,14 +51,542 @@
 - **Perfil com nome e foto:** `AthleteProfile.name`/`avatarPath` (Room v10), nome obrigatório no onboarding, foto importada pelo seletor do Android e copiada para `filesDir/profile` (512 px); avatar no lugar do “M” na Home, no Perfil e como pin do story.
 - **Story com a foto:** o pin do percurso é a foto do perfil (desenhada fora da câmera, sempre em pé, ~114 px de diâmetro em 1080p); a leitura do coach saiu da prévia e virou card privado na tela da atividade.
 - **Story v2 — câmera:** flyover que segue o corredor (overview 1,18×/8° → follow 1,72×/32°), rotação de até 22° pela direção da rota, zoom extra no card e pullback no encerramento; homografia aplicada ao mapa **e** à rota, com espessura da rota compensada pela escala.
-- **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas e planos em uma transação, com confirmação.
+- **Backup e reset:** tela Dados exporta todo o conteúdo em JSON e apaga perfil, corridas, check-ins, métricas, planos, prescrições e execuções em uma transação, com confirmação.
 - **Notificações locais:** lembrete de check-in às 18h e do treino às 7h, com deep link para Hoje/check-in e permissão no Android 13+; importação concluída (sucesso, duplicado ou falha) em canal próprio, sem som, com atalho para o treino.
 - **Tela Hoje:** prontidão, treino recomendado, plano da semana, carga e atividade recente puxados do banco; sem nome/weather falsos e sem números de demonstração quando falta carga.
 - **Prontidão legível sem cor:** níveis aparecem como **Alta/Moderada/Baixa** no gauge e no histórico, com a cor como reforço; a foto do cabeçalho abre o Perfil.
 - **Share intent:** `ACTION_SEND`/`SEND_MULTIPLE` no manifest e no `MainActivity`; `ImportMessages` unifica o texto de fila.
 - **Comunicação:** IDs de regra/evidência fora das telas comuns; fontes sob demanda em `Ver fontes e detalhes técnicos`; jargão traduzido em Hoje, Tendências, Atividade, Calibração, Check-in, Perfil e onboarding.
-- **Perfil → Saúde e dados:** o card explica o Health Connect em linguagem de produto, mostra o estado real (conectado, dias salvos, última leitura) e separa “Saúde” de “Backup e privacidade”.
-- **Tutorial de boas-vindas:** tour de 4 telas na primeira abertura com perfil criado, explicando as telas/cards, o que manter em dia (check-in, corridas importadas, Health Connect, calibração) e a privacidade; revisível em Perfil → Ajuda → “Rever tutorial”; flag em SharedPreferences (`meucoach_tutorial`), sem migração de Room.
+- **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
+- **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
+- **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-06 — C1-06: verdade documental, ADRs e regressões finais
+
+**Objetivo:** impedir que a documentação descreva um app que não existe, reconciliando arquitetura, dados, testes, produto, PRD e roadmap com o schema v12 e as regras de evidência.
+
+### Concluído
+
+- **`ARCHITECTURE.md` 1.4:** módulos reais (5) separados dos planejados (`:core:testing`, features); fluxo `plano → prescrição → execução`; `TimeProvider`, prescrição/evidência, lixeira/época; persistência no schema v12 com as 12 entidades e migrações 1→12; export padrão sem lixeira; ADRs 0022–0026 linkados.
+- **`DATA_MODEL.md` 1.3:** seção explícita de persistido × derivado; `DailyPrescription` documentada; campos reais de perfil (`name`/`avatarPath`/`treadmillAccess`) e check-in (`illnessOrInjury`/`heatLevel`); `Readiness`, `Recommendation`, `RecommendationRule`, `SessionFeedback` e `evidence.json` deixaram de ser descritos como existentes; status `TRASH_CONFLICT`; 9→10 documentada.
+- **`TESTING.md` 1.4:** 46 goldens reais agrupados, ausência de instrumentados/E2E automatizado, gates reais de cobertura (só `core:domain` e parser FIT), Kotest/MockK/Turbine removidos da stack, 9 cenários de `Cycle1RegressionTest` e subseção dos testes do ciclo 1.
+- **`PRODUCT.md` 1.2:** revisão registrada, escopo com conclusão por evidência e lixeira de 7 dias, correção de “4 módulos” e da nota de reconciliação.
+- **`ROADMAP.md` 1.3:** ciclo 1 concluído com status por entrega, até 2 qualidades no plano, “Iniciar” como prévia (não sessão guiada persistente) e critérios de MVP separando capacidade entregue de aceitação (P1-12).
+- **`PRD_COACH_CORRIDA.md`:** §0.4 “Reconciliação pós-auditoria” mapeia BUG-01/02, SEC-01/02, BUG-09, N-04 e ARCH-01/04 para as entregas; FR-001/003/009 marcados como implementados; FR-009 passa de 30 para 7 dias; FR-004/005 registram o que ainda não foi feito.
+- **`DECISIONS.md` 1.2:** status de implementação dos ADRs 0022–0026; 0026 permanece “aceito parcialmente”.
+- **`README.md`:** 999 testes, Room v12, módulos reais, stack de testes sem dependências inexistentes, Detekt como planejado.
+- **`SPORTS_SCIENCE.md`:** §8.11 formaliza a prescrição do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`) e a evidência de conclusão; `R-PRESC-01/02/03` entraram no catálogo de regras.
+- **`PLANO_TECNICO_CICLO_1.md` 1.2:** C1-06 executado, matriz U-TIME/U-DEL atualizada para implementado, 9 cenários, checklist do ciclo fechado.
+- **Correção factual:** o índice único de `daily_prescriptions` (`date + inputsHash + engineVersion`) **não existe** no schema; a deduplicação é transacional no repositório. A afirmação foi corrigida em `PROGRESS.md`, `DATA_MODEL.md`, `ARCHITECTURE.md` e no plano técnico.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- **999 testes**, 0 falhas e 0 `@Ignore` (497 `:app`, 124 `core:data`, 351 `core:domain`, 27 `core:model`), conferidos pelos XML de resultado.
+- `core:domain`: 97,69% de linhas (3.380/3.460), 82,09% de branches (2.544/3.099), 96,04% de instruções (23.890/24.876).
+- Parser FIT: 93,01% de branches (572/615); os 46 goldens de `app/src/test/screenshots/` passam.
+- Lint sem erros; `spotlessCheck` verde.
+- Nenhum dado real no diff; nenhuma alteração de código de produção, schema, dependência ou migração.
+
+### Decisões e observações
+
+- **Doc = código, não doc = intenção:** o que ainda não existe (GUIDED persistente, progressão por volume, iniciante, backfill, backup versionado) aparece como pendente, não como capacidade.
+- **Histórico preservado:** `PROGRESS.md` mantém as sessões anteriores; a única correção retroativa foi factual (índice único), registrada aqui.
+- **ADR 0026 segue parcial:** o gate de C1-02 está implementado; os limiares de iniciante/cobertura continuam propostos e precisam de validação com dados reais.
+- **Gate documental é manual:** um teste que compare prosa a banco seria frágil; a revisão usa `MeuCoachDatabase.VERSION`, a lista de entidades do schema 12 e o grafo de módulos.
+- **Sem código novo:** o C1-06 não muda comportamento; qualquer divergência restante vira tarefa, não “ajuste silencioso”.
+
+### Próximo passo
+
+1. Revisão humana da copy de `LEGACY_UNVERIFIED`, das tolerâncias de vínculo e dos limiares do ADR 0026.
+2. **P1-12:** validação E2E com 4 semanas de uso real e ajuste de pesos/paces.
+3. Ciclo seguinte: `GUIDED` persistente, N-03 (semana de prova/recuperação), N-05 (backfill Health Connect), backup versionado e progressão de volume (ADR próprio).
+
+## Sessão 2026-11-06 — C1-04: conclusão com evidência e vínculo atividade ↔ sessão
+
+**Objetivo:** tornar `DONE` consequência de uma execução/atividade, não de um clique, e fechar o vínculo planejado × executado com migração testada.
+
+### Concluído
+
+- **Modelo (`core:model`):** `CompletionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `ExecutionSource` e `SessionExecution` (início/fim, pausas, duração, distância, RPE). `MANUAL` não aceita `activityId` nem distância e exige RPE 1–10.
+- **Domínio:** `SessionStatus` passou a `PLANNED`/`DONE`/`CLOSED`; `PlannedSession` ganhou evidência, `executionId`, `activityId`, `closureReason` e `closedAt`. O construtor rejeita `DONE` sem evidência e `CLOSED` sem motivo.
+  - `SessionCompletionRules` bloqueia futuro, semana anterior, sessão já concluída/encerrada, descanso prescrito e doença; dia anterior da mesma semana é permitido com aviso.
+  - `SessionMatcher` sugere corridas compatíveis por data local, esporte e tolerâncias explícitas (duração ±20% ou ±10 min; distância ±15% ou ±1 km). A sugestão nunca vincula sozinha.
+  - `PlanCompletionCalculator` separa adesão (`done`) de execução comprovada (`verified`), conta `MANUAL` e `LEGACY_UNVERIFIED` à parte e remove descanso/doença/plano substituído do denominador.
+  - A progressão do `WeeklyPlanGenerator` só considera evidência forte (`ACTIVITY`/`GUIDED`); `LEGACY_UNVERIFIED` e `MANUAL` não liberam progressão.
+- **Dados:** `session_executions` (Room 12), colunas de evidência/vínculo/encerramento em `planned_sessions`, índices únicos para as regras 1:1 e `SessionExecutionRepository` transacional (`recordActivityExecution`, `recordManualExecution`, `closeSession`, consultas por sessão/atividade).
+- **Migração 11→12:** cria `session_executions`, adiciona as colunas e faz backfill explícito (`DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED`), preservando status, `completedAt` e planos.
+- **Caso de uso (`CompleteSession`):** valida sessão/data/prescrição, exige evidência, bloqueia `REST`/doença e encerra a sessão como `CLOSED`; `GUIDED` novo continua indisponível até o ciclo 3, sem botão falso.
+- **App/UI:** “Concluir treino” abre um diálogo com sugestões de corrida e “fiz sem registro” (duração + RPE); o aviso diz que o registro manual não entra em volume, carga ou zonas. O plano mostra “Feito · verificado”, “Feito · sem registro”, “Feito · não verificado”, “Descanso prescrito”, “Doença/lesão” ou “Pulado”. Descanso/doença fecham a sessão automaticamente e desabilitam início/conclusão.
+- **Tendências:** adesão e “feito com evidência” aparecem separados, com nota de que conclusões antigas não liberam progressão.
+- **Lixeira (C1-05):** apagar uma atividade vinculada suspende a evidência, restaurar devolve e expurgar remove o vínculo mantendo `LEGACY_UNVERIFIED`.
+- **Export/reset:** execuções entram no JSON; execuções de atividades na lixeira ficam fora do export padrão; o reset apaga a tabela e conta as execuções removidas.
+- **Testes:** +11 no domínio (`SessionCompletionRulesTest`, matcher, adesão/progressão e gate de `DONE` sem evidência), +7 em `core:data` (repositório 1:1, manual, encerramento, lixeira/restauração/expurgo e migração 11→12) e +9 em `:app` (caso de uso, diálogo de evidência, vínculo, manual e status do plano).
+
+### Evidências
+
+- `./gradlew check` — verde (testes, Spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:recordRoborazziDebug` e `:app:verifyRoborazziDebug` — verdes após regravar `trends-efficiency-dark` e `trends-readiness-dark` com a linha de execução comprovada.
+- **999 testes**, 0 falhas (497 `:app`, 124 `core:data`, 351 `core:domain`, 27 `core:model`); 0 `@Ignore`.
+- `core:domain`: 97,69% de linhas, 82,09% de branches, 96,04% de instruções; parser FIT 93,01% de branches.
+- Schema `12.json` exportado; migração 11→12 coberta com banco v11 e backfill de `DONE`/`SKIPPED`.
+
+### Decisões e observações
+
+- **`DONE` não é clique:** a validação existe no modelo e no caso de uso, e o banco reforça o vínculo 1:1 com índices únicos.
+- **Descanso/doença não ficam pendentes:** o dia é encerrado com motivo; a prescrição continua sendo a autoridade do dia e não é reescrita ao concluir.
+- **`MANUAL` é honesto:** conta adesão com confiança baixa, mas não inventa distância, pace, FC, zonas ou carga.
+- **`LEGACY_UNVERIFIED` é leitura:** o passado não é promovido a verdade; a UI explica por que não conta para progressão.
+- **Doença não impede registrar a verdade:** a corrida continua registrada como treino livre; o vínculo com a sessão do dia não é automático.
+- **GUÍDADO continua contrato:** nenhuma execução `GUIDED` nova é produzida neste ciclo; “Iniciar” é uma prévia e exige evidência para concluir.
+- **Flaky observado:** `MetricsImportViewModelTest` estourou timeout uma vez em execução completa, passou isolado e na execução seguinte; nenhum assert foi reduzido.
+
+### Próximo passo
+
+1. Revisar C1-04 com o usuário 0, especialmente as tolerâncias de vínculo e a copy de `LEGACY_UNVERIFIED`.
+2. Seguir para **C1-06**: verdade documental, ADRs e regressões finais.
+3. Reconciliar `DATA_MODEL.md`, `ARCHITECTURE.md`, `TESTING.md`, `PRODUCT.md`, `ROADMAP.md` e `PRD` com o schema v12 e as regras de evidência.
+
+## Sessão 2026-11-06 — C1-03: plano como intenção + prescrição única do dia (N-01/N-02)
+
+**Objetivo:** ter uma única decisão diária, derivada da sessão planejada, persistida e auditável; o plano deixa de competir com o card do Hoje.
+
+### Concluído
+
+- **Domínio (`DailyPrescriptionEngine`):** contrato `DailyPrescription` com `PrescriptionAdjustment` (`KEEP`, `REDUCE`, `DOWNGRADE`, `REST`, `NO_PLAN`), `PrescriptionTargets` (pace, FC, zona, distância e RPE), `engineVersion` e `inputsHash` determinístico.
+  - Doença/lesão ou prontidão vermelha → `REST`; plano `REST` → `REST`; semanas sem plano → `NO_PLAN` conservador com confiança baixa.
+  - Qualidade só é mantida com carga `KNOWN`, ACWR 0,8–1,3, prontidão verde e espaçamento; caso contrário, `DOWNGRADE` para fácil reduzido.
+  - Nenhuma decisão aumenta tipo, duração ou intensidade; sem calibração, pace/FC ficam `null` e o alvo vira RPE de 4 (fácil) ou 7 (forte). Calor desacelera o pace em 3% ou aumenta o RPE em 1, sem aumentar a duração.
+  - Explicação sempre cita ≥ 1 regra e ≥ 1 evidência; novas regras `R-PRESC-01/02/03` entraram no catálogo.
+- **Plano (`WeeklyPlanGenerator`/`PlanCompletionCalculator`):** `WeeklyPlanInput.today` sem default; sessões anteriores a hoje não entram (N-02); `WeeklyPlan.createdOn` é persistido e a adesão ignora dias anteriores à criação.
+- **Sessão planejada (N-01):** `PlannedSession.targets` guarda zona/pace/FC/distância/RPE; a prescrição de um “Tempo” em dia verde usa exatamente os alvos do plano.
+- **Dados:** `DailyPrescriptionEntity`, `DailyPrescriptionDao` e `DailyPrescriptionRepository` (`observeLatest`, `getVersions`, `append`); a versão vigente é a última do dia e uma edição acrescenta `supersedesId`, sem sobrescrever. A duplicata da mesma `date + inputsHash + engineVersion` é ignorada dentro da transação (não há índice único composto; correção documental do C1-06).
+- **Migração 10→11:** cria `daily_prescriptions`, adiciona `weekly_plans.createdOn` (backfill legado = `weekStart`) e `planned_sessions.targetsJson`; planos, sessões e status preservados.
+- **Caso de uso (`GetTodayPrescription`):** lê a última versão e só persiste quando o hash/versão mudam; ignora sessão `SKIPPED` como plano do dia.
+- **UI:** `TodayViewModel` consome a prescrição persistida; o card “Treino de hoje” é o único com iniciar/concluir. O plano da semana vira contexto, ganha o selo “Ajustado hoje” quando a decisão difere da intenção e não tem mais o CTA de conclusão. A explicação mostra “planejado → hoje → por quê” e mantém regra/evidência/confiança auditáveis. Ações de iniciar/concluir ficam desabilitadas em `REST`.
+- **Export/reset:** prescrições entram no JSON de backup; o reset apaga a tabela e a contagem.
+- **Testes:** +20 no domínio (tabela de decisão, N-01/N-02, calor, sem calibração, dados ausentes, descanso planejado, hash e catálogo), +8 em `core:data` (repositório e migração 10→11) e +9 em `:app` (5 do caso de uso e 4 de UI). `Cycle1RegressionTest` perdeu o último `@Ignore`.
+
+### Evidências
+
+- `./gradlew check` — verde (testes, Spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:recordRoborazziDebug` e `:app:verifyRoborazziDebug` — verdes após regravar `today-dark`, `today-light` e `today-narrow-dark` com o card único.
+- **961 testes**, 0 falhas (487 `:app`, 117 `core:data`, 330 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,91% de linhas, 82,45% de branches, 96,54% de instruções; parser FIT 93,01% de branches.
+- Schema `11.json` exportado; migração 10→11 coberta com banco v10 e status `DONE` preservado.
+
+### Decisões e observações
+
+- **Uma decisão por dia:** `TodayViewModel` não chama mais `WorkoutRecommender`; o recomendador continua apenas como fallback conservador de `NO_PLAN` e tem cobertura própria.
+- **Versão não é reescrita:** editar o check-in gera nova linha; a anterior permanece auditável. O hash inclui perfil, prontidão, carga, calor, confiança do plano e conteúdo da sessão.
+- **N-02 é conservador:** plano criado na quinta não inventa segunda–quarta; a semana pode ter menos dias e a progressão não é liberada sem histórico suficiente.
+- **Alvos compartilhados:** plano e prescrição usam o mesmo `PrescriptionPolicy`, então não divergem por construção.
+- **Sem migration destrutiva, sem dependência nova.**
+- **Flaky observado:** `TutorialSystemBackTest` falhou uma vez em execução completa por exceção de banco de outro teste (`no such table: athlete_profile`), passou isolado e nas execuções seguintes; `MetricsImportViewModelTest` estourou timeout uma vez e passou isolado. Nenhum foi mascarado, removido ou teve assert reduzido.
+
+### Próximo passo
+
+1. Revisar C1-03 com o usuário 0, especialmente o `DOWNGRADE` de longão/qualidade em âmbar e o piso de 20 min.
+2. Seguir para **C1-04**: conclusão com evidência e vínculo atividade ↔ sessão (migração 11→12).
+3. Manter `docs/PLANO_TECNICO_CICLO_1.md` e o ADR 0023 atualizados a cada gate.
+
+## Sessão 2026-11-06 — C1-02: cobertura de carga, ACWR desconhecido e gate de qualidade
+
+**Objetivo:** impedir que ausência ou desatualização de dados vire permissão para treino forte ou progressão.
+
+### Concluído
+
+- **Domínio (`TrainingLoadEngine`):**
+  - `ActivitySourceStatus` com última importação e limite de 14 dias.
+  - `LoadCoverage` dos últimos 28 dias: dias com carga, dias de descanso observado e dias sem dado.
+  - `LoadDataState` (`KNOWN`, `INSUFFICIENT`, `STALE`) no `LoadSnapshot`.
+  - `acwr` só é exposto com fonte fresca e ≥ 8 dias com carga; dias sem atividade só são descanso com fonte fresca.
+- **Plano (`WeeklyPlanGenerator`):**
+  - Qualidade exige `KNOWN`, ACWR 0,8–1,3, prontidão verde e espaçamento; desconhecido, insuficiente ou velho bloqueia.
+  - Rationale diferencia “faltam dados de carga”, “dados desatualizados”, ACWR alto e ACWR baixo.
+  - Confiança cai um nível quando a carga não é confiável; `R-DATA-01`/`EV-IMPELLIZZERI-2020` entram no plano.
+- **Recomendador (`WorkoutRecommender`):** removeu `acwr ?: 0.0`; carga desconhecida/velha mantém o dia fácil, reduz a confiança e explica a lacuna.
+- **Dados:** `ActivityRepository.lastImportedAt()`/`observeLastImportedAt()` via `MAX(importedAt)`; sem migração de Room.
+- **App:** Hoje e Tendências passam a frescor da fonte; card de carga mostra “dados de carga insuficientes/desatualizados”; explicação lista a lacuna; catálogo ganhou `EV-IMPELLIZZERI-2020`.
+- **Testes:** os dois gates de C1-02 em `Cycle1RegressionTest` saíram de `@Ignore`; novos casos de cobertura, frescor, 7/8 dias, limites 0,79/0,8/1,3/1,31, carga constante, ausência no recomendador, repositório e UI.
+- **Flaky:** o golden `health-light.png` variava 3 pixels na borda inferior entre execuções; o teste de screenshot de Saúde ganhou tolerância de 0,001% com justificativa, sem alterar a imagem.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- **924 testes**, 0 falhas (478 `:app`, 109 `core:data`, 310 `core:domain`, 27 `core:model`); 1 `@Ignore` de C1-03.
+- `core:domain`: 98,05% de linhas, 83,35% de branches, 96,87% de instruções.
+- Parser FIT: 93,01% de branches (572/615).
+- Golden `G-LOAD-02` atualizado para 12 dias com carga, TRIMP + rTSS e cobertura suficiente; valores conferidos por implementação independente em Python.
+
+### Decisões e observações
+
+- ACWR continua sendo **flag**, nunca meta ou diagnóstico; `EV-IMPELLIZZERI-2020` documenta as limitações.
+- O gate usa `dataState`, não `missingDays`; `missingDays` segue como contagem bruta para a série do PMC.
+- Fonte fresca = última importação de atividade em até 14 dias; um período sem corrida planejado pode ser descanso, mas ausência de dados não é.
+- A elegibilidade de iniciante (4 semanas, 80% com evidência, 3 corridas/semana, volume mínimo) continua proposta e depende de C1-04.
+- Sem migração de schema e sem dependência nova.
+
+### Próximo passo
+
+1. Revisar C1-02 com o usuário 0, especialmente os limiares de 8 dias/14 dias.
+2. Seguir para **C1-03**: plano como intenção + prescrição única do dia (N-01/N-02).
+3. Manter o `@Ignore` de C1-03 até o gate correspondente.
+
+## Sessão 2026-11-06 — C1-05: lixeira, reset efetivo e época de dados
+
+**Objetivo:** fazer “apagar” significar apagar de verdade, com lixeira curta, expurgo determinístico, reset completo e proteção contra workers que recriam dados.
+
+### Concluído
+
+- **Lixeira de 7 dias:** `TrashPolicy` (domínio puro), `observeTrash`, `restoreActivity`, `purgeActivity`, `purgeTrashBefore` e `TrashedActivity`/`PurgedActivity` no repositório. O expurgo recebe `now` e calcula o corte internamente.
+- **UI:** a tela Dados lista a lixeira com data, tempo restante, restaurar e “apagar definitivamente” com confirmação. O backup tem opção explícita “incluir itens da lixeira”, desmarcada por padrão.
+- **Expurgo:** `TrashPurgeWorker` diário, agendado apenas com perfil; sem perfil é no-op. Remove a atividade, filhos, jobs de importação e arquivo bruto.
+- **Reimportação:** um arquivo cuja atividade está na lixeira retorna `ImportResult.TrashConflict` e job `TRASH_CONFLICT`; a UI/notificação aponta para Dados e não restaura silenciosamente.
+- **Export:** padrão exclui atividades com `deletedAt` e os jobs de importação ligados a elas; `includeTrash = true` é explícito.
+- **Época de dados:** `DataEpochStore` em `SharedPreferences` próprio, preservado pelo reset; `DataWriteMutex` compartilha a janela crítica entre reset, importação e Health Connect.
+- **Reset:** `DataResetCoordinator` rotaciona a época, cancela trabalhos de importação, saúde, lembretes, story e expurgo, limpa Room, staging, avatar, cache de story, preferências de tutorial/first-run/story, notificações e estado do Health Connect. Health Connect externo não é tocado.
+- **Workers:** `HealthSyncService` não lê nem grava sem perfil e descarta a leitura se a época mudar; `ImportService`/`StagedImportProcessor` fazem o mesmo e limpam o staging. `MeuCoachApplication` só agenda trabalho quando existe perfil.
+- **Testes:** política de 7 dias, 6d23h/7d/7d1h, lixeira/restauração/expurgo, export com e sem lixeira, conflito de reimportação, época, reset de banco/arquivos/preferências, sync sem perfil e época invalidada, além dos testes existentes atualizados.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde.
+- `./gradlew :app:verifyRoborazziDebug` — verde (goldens de Dados regravados para a opção de lixeira).
+- Suíte total: **909 testes**, 0 falhas (476 `:app`, 108 `core:data`, 298 `core:domain`, 27 `core:model`); 3 `@Ignore` esperados de C1-02/C1-03.
+- Nenhuma migração de Room, dependência nova ou alteração de schema.
+
+### Decisões e observações
+
+- **Sem migration:** a coluna `deletedAt` já existia; o expurgo usa índice implícito e não exigiu schema novo.
+- **Evento de evidência:** o aceite 8 do plano depende de C1-04 (`session_executions`/`completionEvidence`), que ainda não existe. A lixeira já remove a atividade de todo uso normal; o vínculo será suspenso/removido quando C1-04 entrar.
+- **Epoch é a barreira durável:** o cancelamento do WorkManager é melhor esforço; importação e saúde releem a época antes de gravar.
+- **Health Connect:** o reset só limpa a cópia local e a marca d’água; nenhuma API de exclusão externa é chamada.
+
+### Próximo passo
+
+1. Revisão humana de C1-05 e dos goldens de Dados.
+2. Após aprovação, seguir para C1-02 ou C1-03 conforme prioridade.
+3. Implementar o vínculo de evidência de C1-05/C1-04 quando a sessão executada existir.
+
+## Sessão 2026-11-06 — C1-01: tempo determinístico, fuso e virada de dia/semana
+
+**Objetivo:** consolidar uma única noção de “hoje” e “semana”, derivada do fuso do perfil, observável na virada de dia e no resume, sem `now()` nas regras de negócio ou ViewModels.
+
+### Concluído
+
+- **`TimeProvider`:** criado em `app/time` com `today`, `zoneId`, `now()`, `currentDate()`, `currentWeekStart()`, `atStartOfDay()`, `nextMidnight()` e `refresh()`.
+- **Implementações:** `SystemTimeProvider` (relógio + sinal de meia-noite) e `ProfileTimeProvider` (fuso do perfil com fallback explícito para o fuso do sistema antes do onboarding). Hilt fornece um único `Clock` e o `TimeProvider`; o mesmo relógio é injetado nos repositórios, `HealthSyncService`, `TutorialStore` e `FirstRunMetricsStore`.
+- **Virada observável:** `today` emite na meia-noite calculada por `ZonedDateTime`, na troca de fuso do perfil e em `MainActivity.onResume()` via `TimeProvider.refresh()`. A troca de fuso também reagenda os lembretes.
+- **ViewModels:** `Today`, `CheckIn`, `Trends`, `ReadinessHistory`, `MetricsImport`, `HealthConnect`, `Profile`, `FirstRunChecklist`, `Tutorial`, `Calibration`, `ActivityDetail`, `Onboarding` e `DataManagement` deixaram de chamar o relógio do sistema. `TodayViewModel` passou a recriar o plano quando a semana muda; `CheckInViewModel` conserva a data capturada às 23:59 e recarrega o formulário no novo dia.
+- **Telas/formatters:** `TodayScreen`, `CheckInScreen`, `HealthContent`, `ProfileDetails` e `DataManagementScreen` recebem a data do estado/provider. `OnboardingValidator`, `ProfileLabels` e `HealthConnectCopy` não têm mais defaults de data/hora.
+- **Planejamento:** `WeeklyPlanInput.weekStart` não tem mais default; `ReminderScheduler`/`ReminderWorker` usam fuso e dia do perfil. Atividades importadas gravam `zoneId`/`localDate` com o fuso vigente do perfil, preservando o instante absoluto.
+- **Testes novos:** `TimeProviderTest` (relógio fixo, 23:59→00:01, domingo→segunda, mês/ano, fuso e DST) e `TimeDrivenStateTest` (save às 23:59, recarga às 00:01, fuso do perfil como fonte única, virada de semana no `TodayViewModel` e consistência plano × data local). Testes existentes de ViewModels receberam `FakeTimeProvider`.
+
+### Evidências
+
+- `./gradlew check` — verde (testes, Spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:testDebugUnitTest` — 467 testes, 0 falhas.
+- Nenhuma migração de Room, dependência nova ou alteração de schema.
+
+### Decisões e observações
+
+- **Domínio continua puro:** o `TimeProvider` vive no `:app`; `core:domain` recebe `today`/`weekStart` explícitos. Nenhuma data default no gerador semanal.
+- **Instante × data local:** atividades continuam persistidas com instante UTC + `zoneId` + `localDate`; o instante não é reinterpretado. A data local do planejamento vem do fuso do perfil.
+- **Fallback documentado:** antes do onboarding, o fuso do sistema é usado; ao salvar/editar o perfil, o fluxo muda para o fuso informado.
+- **Pendência fora do escopo:** `StoryVideoExporter` ainda usa `System.currentTimeMillis()` apenas no nome do arquivo de vídeo; não participa de planejamento, carga, check-in ou virada de dia.
+
+### Próximo passo
+
+1. Revisão humana de C1-01 e do diff.
+2. Após aprovação, iniciar C1-02 (cobertura de carga e gate de qualidade).
+3. Manter os `@Ignore` de C1-02/C1-03 até o gate correspondente.
+
+## Sessão 2026-11-06 — Etapa 3: formalização arquitetural e preparação dos testes
+
+**Objetivo:** transformar as decisões aprovadas (D2, D3, D6 e direcionamentos do MVP) em ADRs, plano técnico e estratégia de regressão, sem implementar produção.
+
+### Concluído
+
+- **ADRs 0022–0026:** tempo/fuso (0022), plano × prescrição (0023), evidência de conclusão (0024), exclusão/retenção (0025) e cobertura de carga/qualidade (0026). 0022–0025 **Accepted**; 0026 **Proposed** (limiares de iniciante/cobertura ainda a validar). Nenhum ADR anterior foi alterado.
+- **Plano técnico:** `docs/PLANO_TECNICO_CICLO_1.md` com arquitetura alvo, modelo planejado, N-01..N-05, sequência C1-01..C1-06, matriz de testes por tipo, dependências, riscos, rastreabilidade PRD → ADR → C1 e roteiro manual.
+- **Testes preparados:** `Cycle1RegressionTest` em `core:domain` com 7 cenários: 4 verdes (disponibilidade, espaçamento de qualidade, vermelho sem qualidade, adesão ignora futuro/REST) e 3 **falhas esperadas** (`@Ignore`) para C1-02/C1-03 (ACWR nulo libera qualidade, cobertura insuficiente não bloqueia, plano no meio da semana inclui passado).
+- **Documentos atualizados:** `DECISIONS.md` (índice e decisões menores), `REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C de aprovação, preservando o histórico), `PRODUCT.md` (escopo aprovado, revisão 1.1), `ROADMAP.md` (Ciclo 1 planejado, N-03 e N-05 no backlog), `PROGRESS.md`.
+
+### Evidências
+
+- `./gradlew :core:domain:test --tests "*Cycle1RegressionTest"` — verde; 7 cenários, 4 executados, 3 ignorados (falhas esperadas), 0 falhas.
+- `./gradlew check` — verde (testes, Spotless, lint e Kover; parser FIT 93,01% de branches).
+- `./gradlew :app:assembleDebug` — verde.
+- Nenhuma alteração de código de produção, schema, dependência, migração ou refatoração nesta etapa.
+
+### Decisões e observações
+
+- **D2/D3/D6 aprovadas com condições** e formalizadas; o detalhamento de implementação fica no plano, não no ADR.
+- **0026 proposto:** a direção (dado ausente não libera qualidade; ACWR é flag) está aprovada, mas os limiares (8 dias/28, frescor 14 dias, 4 semanas/80%, 15–20 km/120 min) precisam de validação científica e de C1-04.
+- **N-01/N-02 entram em C1-03**; **N-03** vai para o ciclo 2; **N-04** entra em C1-02; **N-05** fica no ciclo de integração Health Connect.
+- **`GUIDED`** tem contrato no ADR 0024, mas a sessão guiada persistente completa continua no ciclo 3; nenhum botão falso será criado.
+- **Sem teste artificial:** cenários que dependem de classes inexistentes ficaram documentados na matriz; não foram criadas estruturas de produção só para compilar testes antecipados.
+
+### Próximo passo
+
+1. Aguardar autorização explícita para iniciar **C1-01** (tempo determinístico).
+2. Manter os `@Ignore` de C1-02/C1-03 até que cada correção entre; no commit do gate correspondente, removê-los e habilitar o teste.
+3. Revisar os limiares do ADR 0026 com dados reais antes de promover o status para Accepted.
+
+## Sessão 2026-11-05 — Ícone do app: cronômetro + M + corredor
+
+**Objetivo:** substituir o ícone de corredor + arco por uma marca mais lúdica e reconhecível, mantendo a linguagem escura e precisa do app.
+
+### Concluído
+
+- **Direção aprovada:** cronômetro como moldura, M/rota dentro do mostrador e corredor sobre o topo do M. O SVG do Gemini foi preservado; a camada lima foi separada da máscara de lima do JPG para não vazar na rota, nos pontilhados brancos ou na coroa.
+- **Correções de cor:** coroa inteira lima; pontilhado direito branco; rota branca sem halo; corredor com a silhueta exata do JPG.
+- **Assets de design:** `design/icon/icon_meucoach_gemini-color.svg`, `meucoach-icon-color-1024.png`, `meucoach-icon-playstore-512.png`, `meucoach-icon-adaptive-foreground.svg` e `meucoach-icon-monochrome.svg`.
+- **Android:** `ic_launcher_foreground` regenerado em todas as densidades com fundo transparente e escala de 65%; `ic_launcher_monochrome` separado; `ic_launcher.xml` e `ic_launcher_round.xml` passaram a apontar o monochrome para o asset correto.
+- **Design system:** seção 6.1 documenta conceito, cores, arquivos, safe zone e testes do ícone.
+
+### Evidências
+
+- `./gradlew check spotlessCheck :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Foreground/monochrome conferidos como RGBA transparente; Play Store 512 com fundo `#08090B`.
+- Preview em máscara circular, squircle e quadrado arredondado sem corte do aro.
+
+### Decisões e observações
+
+- **Não redesenhar o SVG aprovado:** a base branca usa as formas do SVG do Gemini; a lima vem da separação de cor do JPG. O corredor não usa recorte retangular.
+- **Safe zone:** o foreground do adaptive icon é escalado a 65%; o ícone de 512 continua full-bleed.
+- **Monochrome separado:** corrige o ícone temático que antes reutilizava o foreground colorido.
+
+### Próximo passo
+
+1. Validar no aparelho o ícone no launcher, a máscara circular e o ícone temático do Android 13+.
+2. Publicar o PNG 512 na ficha da Play Store quando a ficha existir.
+3. Revisar o ícone em 24/48 px no aparelho; se o corredor sumir, preparar variante óptica simplificada.
+
+## Sessão 2026-11-05 — Clareza de confiança e escala
+
+**Objetivo:** tirar duas informações órfãs da UI: a confiança do plano da semana e a nota do eixo de economia em Tendências.
+
+### Concluído
+
+- **“Por que este plano?”:** o badge solto de confiança saiu do cabeçalho do plano. O card mantém só um aviso curto quando os dados são parciais (“Dados de recuperação parciais: a semana segue conservadora.”) e ganhou o botão que abre um sheet com rationale, confiança, dados usados/ausentes, regras e evidências.
+- **Confiança explicada:** o sheet diz que a confiança é capturada quando a semana é montada, fica no máximo média e não muda durante a semana; novos dados entram no plano seguinte.
+- **Economia com escala clara:** a nota do eixo mudou para “Escala ampliada (X a Y m/batimento) para destacar diferenças pequenas entre corridas” e passou para logo abaixo do gráfico, antes das estatísticas. O eixo agora carrega a unidade (`m/b`) e o `contentDescription` inclui o intervalo.
+- **Catálogo:** `R-PLAN-03`, `R-PLAN-04` e `R-PLAN-05` ganharam títulos legíveis, evitando IDs brutos no sheet do plano.
+- **Testes:** +1 em `core:domain` (confiança baixa preservada) e +3 em `:app` (sheet do plano, aviso de dados parciais e ausência do aviso com confiança média). Total: **872 testes**.
+- **Goldens:** `today-*` e `trends-efficiency-dark` regravados; `trends-readiness-dark` mudou apenas pelo deslocamento causado pela nota acima.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Lint: 0 erros; 38 avisos não bloqueantes.
+- Nenhuma mudança de schema, dependência ou regra de treino.
+
+### Decisões e observações
+
+- **Confiança não é decisão:** como no sheet do treino, a referência fica a um toque e não compete com o plano.
+- **Valor histórico:** a confiança do plano continua sendo a da criação da semana; a UI agora diz isso em vez de sugerir que ela acompanha os dados de hoje.
+- **Escala honesta:** o aviso continua existindo, mas agora explica o efeito (diferenças pequenas ficam visíveis) e fica junto do gráfico que ele descreve.
+
+### Próximo passo
+
+1. Validar o sheet do plano e a nota do eixo em aparelho, incluindo fonte 200%.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
+3. Avaliar no futuro uma confiança de plano baseada em disponibilidade/calibração/histórico, separada da prontidão (exige ADR).
+
+## Sessão 2026-11-05 — Saúde Fase 3: frescor e fontes
+
+**Objetivo:** fechar a leitura de “os dados de hoje ainda não chegaram” e dar um caminho de diagnóstico para o Health Connect.
+
+### Concluído
+
+- **Aviso de frescor:** quando o Health Connect está conectado, existe histórico e a última métrica é anterior a hoje, a aba Saúde mostra “Os dados de hoje ainda não chegaram”, explicando que o app já tenta atualizar sozinho e que o relógio pode não ter sincronizado ainda. O card desaparece sozinho quando o dado do dia chega.
+- **Abrir Health Connect:** o card de fontes ganhou o link “Abrir Health Connect”, que usa `HealthConnectClient.getHealthConnectManageDataIntent` e cai para a loja se o provedor não estiver disponível.
+- **Testes:** +5 em `:app` (hint presente/ausente, link de configurações e dois goldens novos). Total: **868 testes**.
+- **Goldens:** `health-today-hint-dark` e `health-sources-dark`; `health-dark/light/narrow` passaram a 760 dp para não cortar gráfico e os goldens de gráficos viraram capturas focadas/mais altas para evitar a corrida do Vico no Robolectric.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Lint: 0 erros; 38 avisos não bloqueantes.
+- Nenhuma dependência nova, nenhuma migração de Room.
+
+### Decisões e observações
+
+- **Sem resumo extra no Hoje:** o link “Ver recuperação” já resolve a ponte; um card de métricas duplicaria a prontidão e competiria com “Iniciar”.
+- **Hint honesto:** ele não afirma que houve falha de sync; só diz que o dado do dia não está no Health Connect ainda.
+- **Screenshot estável:** a captura do card de fontes usa o nó do card, e a de HRV usa o card da métrica, evitando gráficos parcialmente visíveis que o Vico às vezes não desenha no Robolectric.
+- **Proveniência por campo:** continua como decisão futura; a `source` do dia é a dominante.
+
+### Próximo passo
+
+1. Validar no aparelho o hint após um dia sem sync e o link “Abrir Health Connect”.
+2. `P1-12`: validação E2E com 4 semanas de uso real.
+3. Avaliar proveniência por campo só se o usuário precisar auditar cada métrica.
+
+## Sessão 2026-11-05 — Saúde na barra e sync automático (implementação)
+
+**Objetivo:** executar as Fases 1 e 2 do plano, tirando a Saúde do Perfil e eliminando a dependência do botão manual de sync.
+
+### Concluído
+
+- **5ª aba Saúde:** `AppDestination.Health` (`health`) entrou na barra inferior entre Tendências e Perfil; a rota `profile/metrics-import` saiu. A tela virou `HealthScreen`/`HealthContent`, sem seta de voltar.
+- **Hoje:** o card de prontidão ganhou “Ver recuperação”, que abre a aba; o CTA principal do treino continua intacto.
+- **Perfil:** o card grande de Health Connect virou um resumo compacto com pill de estado, última leitura e “Abrir”; o card de backup/privacidade ficou separado.
+- **Deep links:** checklist e tutorial agora navegam para a aba Saúde pelo mesmo caminho da barra, preservando estado.
+- **Store:** `HealthSyncStore` ganhou `lastSyncedAt`/`lastAttemptAt` e `reset()` limpa as três chaves; a data incremental continua compatível com instalações antigas.
+- **Serviço:** `HealthSyncService` ganhou `Clock`, `Mutex`, `syncIfStale()` (frescor de 6 h) e backoff de 15 min; erro grava `lastAttemptAt`, falta de permissão não grava.
+- **Coordinator:** `HealthSyncCoordinator` singleton dispara o sync no `LifecycleResumeEffect` do `MainContent`, sem abrir diálogo de permissão; `HealthConnectViewModel` passou a observar o estado compartilhado.
+- **Worker:** `HealthSyncWorker` continua como fallback diário; `ExistingPeriodicWorkPolicy.KEEP` preserva o ciclo.
+- **UI:** “Atualizado há X” (agora/min/h/ontem/data), “Sincronizando…” no botão e erro automático como caption passiva; a explicação passou a dizer que o app sincroniza ao abrir e uma vez por dia.
+- **Testes:** +11 em `core:data` (store e serviço) e +12 em `:app` (coordinator, tela sem seta, link do Hoje, erro passivo e dois goldens do card de saúde no Perfil). Total: **863 testes**.
+- **Goldens:** `health-*`, `today-*` e `profile-health-dark/light` regravados; o Perfil acima da dobra não mudou.
+
+### Evidências
+
+- `./gradlew check` — verde (testes, spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:verifyRoborazziDebug` — verde.
+- Lint: 0 erros; 38 avisos não bloqueantes.
+- Nenhuma dependência nova, nenhuma migração de Room; tudo em `SharedPreferences`.
+
+### Decisões e observações
+
+- **5 abas é o limite:** “Tendências” é o rótulo mais longo. Os goldens cobrem 393/360 dp; falta a validação em aparelho com fonte 200%.
+- **Saúde não duplica o Hoje:** o painel completo mora na aba; o Hoje só linka. Isso preserva “uma decisão por tela”.
+- **Frescura de 6 h:** leitura local e barata; o worker cobre quem não abre o app. O sync manual ignora o frescor de propósito.
+- **Erro passivo:** falha automática não vira toast/dialog; o app tenta de novo após o backoff.
+- **Limite do Health Connect:** o app só lê o que o app de origem já escreveu. Se o relógio ainda não sincronizou, não há dado novo; a UI não inventa sucesso.
+- **Screenshot de gráficos:** a captura de recuperação passou a esperar os gráficos visíveis (`mc-chart-ready` + ausência de `mc-chart-loading`) e a avançar frame a frame; o FC de repouso não sai mais em branco por corrida de composição.
+
+### Próximo passo
+
+1. Validar no aparelho: 5 abas em fonte 200%, link do Hoje, permissão revogada e sync após 6 h.
+2. Fase 3 opcional: caption “os dados de hoje ainda não chegaram”, link para abrir o Health Connect e resumo compacto no Hoje.
+3. `P1-12`: validação E2E com 4 semanas de uso real.
+
+## Sessão 2026-11-05 — Planejamento: Saúde no topo e sync automático
+
+**Objetivo:** tirar a tela de Saúde do Perfil e reduzir a dependência do botão manual de sync.
+
+### Decidido
+
+- **ADR 0020:** Saúde vira a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), com rota top-level `health` e sem seta de voltar. O Hoje ganha “Ver recuperação” no card de prontidão; o Perfil mantém só link compacto + backup.
+- **ADR 0021:** o app sincroniza o Health Connect no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro e worker diário como fallback. `HealthSyncStore` passa a guardar `lastSyncedAt`/`lastAttemptAt`; o botão manual continua sendo override.
+- **Plano:** `docs/HEALTH_TOP_LEVEL_PLAN.md` com fases, arquivos, testes, goldens e aceite.
+- **Fora desta sessão:** nenhuma alteração de código, nenhuma migração de Room e nenhuma dependência nova.
+
+### Próximo passo
+
+1. Implementar Fase 1 (IA/navegação) e regravar os goldens de Hoje, Perfil e Saúde.
+2. Implementar Fase 2 (coordinator, timestamps e sync no resume).
+3. Validar no aparelho: 5 abas em 360 dp/fonte 200%, sync após 6 h, permissão revogada e worker fallback.
+
+## Sessão 2026-11-05 — Tutorial Fase C: ativação mensurável
+
+**Objetivo:** fechar o ciclo do primeiro uso com primeira vitória, dicas contextuais, medição local exportável e versionamento.
+
+### Concluído
+
+- **Primeira vitória:** depois do primeiro check-in, o Hoje mostra “Prontidão atualizada — o treino de hoje já considera este check-in”. Depois da primeira importação, a lista de Corridas mostra “Corrida importada — toque para ver zonas, splits, o porquê do esforço e o story para compartilhar”.
+- **Dicas contextuais únicas:** `FirstRunTipCard` + `FirstRunTipStore` mostram uma dica por tela, uma única vez: Corridas vazia, Tendências sem carga, primeira importação e primeiro check-in. O dismiss é permanente por dica.
+- **Medição local:** `FirstRunMetricsStore` registra início, conclusão, pulo, maior passo, primeira ação, dismiss e conclusão do checklist. Nada sai do aparelho; os dados entram no JSON de backup como `firstRun`.
+- **Versionamento:** `TutorialStore` grava `introVersion = 2` sem forçar quem já viu a v1 a repetir o tour; a revisão continua em Perfil → Ajuda.
+- **Export:** `UserDataRepository.exportJson(firstRun)` aceita o objeto local e o inclui no backup; `DataManagementViewModel` injeta o store.
+- **Testes:** +6 em `:app` (store de métricas, store de dicas e card de dica), além dos testes de tutorial/checklist já existentes. Total: **840 testes**.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- `today-checklist-dark.png` regravado com o card de primeira vitória.
+- Nenhuma dependência nova; nenhum dado sai do aparelho.
+
+### Decisões e observações
+
+- **Métrica local, não analytics:** o app não adiciona SDK nem envia eventos. O usuário vê e exporta os próprios dados.
+- **Primeira vitória acoplada ao primeiro uso:** o card de check-in só aparece enquanto o checklist de setup está ativo; depois disso, o Hoje fica limpo.
+- **Dica única, sem insistência:** cada dica é dismissível e não volta. Não há streak, prazo ou cobrança.
+- **Versão sem retrabalho:** usuários antigos não são forçados a rever o tour; a versão fica registrada para futuras migrações de conteúdo.
+- **Ajuste pós-teste no aparelho:** o CTA primário da cena 1 virou `Continuar`; `Ver meu treino de hoje` saiu dali para o usuário não pular as cenas 2 e 3 sem querer. A cena 2 perdeu o `Voltar` duplicado (o ícone do topo resolve) e o `Depois` da cena 3 virou botão secundário.
+- **Screenshot de gráfico:** `McLineChart`/`McBarChart` expõem `mc-chart-ready` quando o modelo Vico foi aplicado; os testes de screenshot esperam essa tag em vez de tempo fixo.
+
+### Próximo passo
+
+1. Validação no aparelho real dos cards, do checklist e do export `firstRun`.
+2. Teste moderado com 5 usuários para ajustar copy/ordem.
+3. Fase D: experimentos de ordem/CTA e spotlight opcional no Hoje.
+
+## Sessão 2026-11-05 — Tutorial Fase B: 3 cenas com dados reais e checklist
+
+**Objetivo:** trocar o carrossel de 4 páginas por uma revelação personalizada, explicar o motor em uma cena e levar o usuário a uma primeira ação sem sair do produto.
+
+### Concluído
+
+- **Camada sobre o Hoje:** o tutorial deixou de ser um gate antes do app. `MainContent` mostra o Hoje e, na primeira execução, uma camada em tela cheia por cima; ao terminar ou pular, o usuário já está no lugar certo.
+- **Cena 1 — plano real:** `TutorialViewModel` lê perfil, check-in, métricas, atividades e plano; se a semana ainda não existe, gera com o mesmo `WeeklyPlanGenerator` e salva. A cena mostra nome, objetivo, disponibilidade, 3 sessões reais e o próximo treino. Sem plano, mostra fallback honesto; com erro, oferece “Tentar de novo”.
+- **Cena 2 — como o coach pensa:** loop “Você corre → Eu leio esforço e descanso → Você recebe o próximo treino”, com prontidão real e o título do treino recomendado.
+- **Cena 3 — primeiro passo:** três ações (check-in 30 s, importar corrida, Health Connect). O CTA primário é dinâmico: check-in → importar → saúde → “Ver meu treino de hoje”, conforme o que já foi feito.
+- **Checklist no Hoje:** `FirstRunChecklistViewModel` + `FirstRunChecklistCard` mostram 3 passos com progresso, deep links e “Agora não”. O dismiss persiste por 7 dias; o card desaparece quando os 3 passos terminam. Sem streak, prazo ou cobrança.
+- **Design system:** `TutorialActionCard` e `TutorialProgress`; painel visual com rota/glow; haptic leve na troca de cena; largura máxima 640 dp.
+- **Testes:** +19 em `:app` (cenas, CTAs dinâmicos, fallbacks, fonte 200%, back, ViewModel com plano real, checklist/ViewModel, store e goldens). Total: **834 testes**.
+- **Goldens:** `tutorial-{dark,light}`, `tutorial-2-{dark,light}`, `tutorial-3-{dark,light}` e `today-checklist-dark`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Nenhuma dependência nova; nenhum dado real em fixtures/goldens.
+- O teste de importação CSV e as capturas de gráficos Vico voltaram a ser estáveis após ajuste de espera.
+
+### Decisões e observações
+
+- **Dados reais, não mock:** a cena 1 usa o plano que o motor já gera. Se não há dados, o tutorial não inventa números; mostra o que falta.
+- **Checklist como continuação do tutorial:** a cena 3 apresenta as ações; o card no Hoje mantém o caminho visível sem prender o usuário.
+- **Dicas contextuais adiadas:** as telas vazias já têm CTAs claros; a dica contextual única entra na Fase C junto com a primeira vitória e a medição local.
+- **Tutorial revisível:** a rota de Perfil → Ajuda agora executa as ações da cena 3 e volta para o fluxo normal.
+
+### Próximo passo
+
+1. Validar no aparelho real o overlay sobre o Hoje, o back, a fonte 200% e o checklist.
+2. Fase C: mensagem de primeira vitória, dicas contextuais e medição local.
+3. Teste moderado com 5 usuários para ajustar copy/ordem.
+
+## Sessão 2026-11-05 — Tutorial Fase A: base de produto, não rascunho
+
+**Objetivo:** corrigir os problemas de plataforma e de composição do tour de 4 telas antes de reescrever a narrativa (Fase B).
+
+### Concluído
+
+- **Back nativo:** `BackHandler` volta uma página; na primeira, marca o tutorial como visto e sai. O tour não reaparece na próxima abertura.
+- **Progresso legível:** dots de 8 dp viraram `TutorialProgress`, uma barra segmentada em `core:designsystem` com `progressBarRangeInfo` e descrição “Passo X de 4” para TalkBack.
+- **Ação estável:** o CTA primário ocupa a largura toda em todas as páginas; “Voltar” virou ícone de 48 dp no topo, eliminando o salto de layout. “Pular” passou para `textSecondary`.
+- **Composição:** o visual ganhou peso próprio (`weight`) com painel, rota da marca, glow sutil e pill de contexto; o texto fica ancorado logo abaixo, sem o vazio central da versão anterior.
+- **Responsivo:** conteúdo limitado a 640 dp e centralizado em tablets; o texto rola quando a fonte cresce.
+- **Strings:** todo o texto do tutorial saiu do Kotlin para `strings.xml`, com `tutorial_step_a11y` para leitura por voz.
+- **Permissão no contexto:** `MainActivity` não pede mais `POST_NOTIFICATIONS` no primeiro frame. Perfil → Ajuda ganhou `NotificationReminderCard`, que explica frequência e só abre o diálogo do sistema quando o usuário toca em “Ativar lembretes”; negativa mantém o caminho para as configurações.
+- **Testes:** +2 no `TutorialScreenTest` (progresso e fonte 200%), +1 `TutorialSystemBackTest`, +6 goldens (páginas 2–4 dark/light) e +1 no `ProfileScreenTest` (pré-permissão). Total: **815 testes**.
+- **Estabilidade de screenshots:** as capturas de gráficos Vico passaram a esperar o modelo/layout antes do `captureRoboImage`; `MetricsImportViewModelTest` voltou a esperar o primeiro estado com `message != null` via Flow, eliminando timeout intermitente.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Goldens novos: `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light`, `tutorial-4-dark`, `tutorial-4-light`; `tutorial-dark`/`tutorial-light` regravados.
+- Nenhuma dependência nova; nenhum dado real em fixtures/goldens.
+
+### Decisões e observações
+
+- **Fase A sem reescrever a narrativa:** o conteúdo ainda é o tour de 4 telas; a Fase B troca por 3 cenas com plano real.
+- **Pré-permissão em Perfil → Ajuda:** é o caminho durável; a Fase C leva o convite para o momento pós-check-in/checklist.
+- **Espera explícita em screenshot:** o Vico desenha depois do primeiro layout; `waitForIdle` sozinho não garantia o frame. A espera é só de teste, não de produção.
+
+### Próximo passo
+
+1. Validar no aparelho real: back, fonte 200%, TalkBack e leitura do painel em dark/light.
+2. Iniciar a Fase B: cena 1 com nome/objetivo/plano real, cena 2 “como o coach pensa” e cena 3 “primeiro passo”.
+3. Levar o checklist “Complete seu setup” para o Hoje e as dicas contextuais.
 
 ## Sessão 2026-11-04 — Gráficos de verdade: Vico, Tendências e painel de saúde
 **Objetivo:** elevar a leitura dos gráficos e transformar a tela de saúde em um painel de recuperação, sem tirar o motor determinístico do centro.
@@ -65,7 +597,7 @@
 - **Tendências redesenhada:** volume com eixos em km e destaque da semana atual; conclusão do plano em %; PMC com **CTL/ATL/TSB** na mesma escala e eixo em pontos; prontidão em barras coloridas por nível (Baixa/Moderada/Alta); economia com média de 7 dias, variação e eixo ampliado com aviso explícito; heatmap com células inativas visíveis.
 - **Saúde diária (nova visão):** a tela `profile/metrics-import` virou um painel antes das fontes: hero com sono, FC de repouso, HRV e SpO₂, cobertura de dias e seleção 7/30/60 dias. Cada métrica tem gráfico de linha com média móvel de 7 dias, base individual ou faixa-alvo, resumo numérico e “Ver tabela” com os últimos 7 dias.
 - **Domínio puro:** `DailyMetricsTrendsCalculator` (core:domain/health) filtra a janela, preserva lacunas, calcula média móvel de 7 dias, base do período, variação, cobertura e faixas de sono (7–9 h) e SpO₂ (95–100%). RHR e HRV usam a base individual, nunca um alvo inventado.
-- **Sem zero inventado:** dia sem medição continua ausente; a linha quebra em vez de ligar dois pontos distantes. O eixo dinâmico de RHR/HRV/economia vem acompanhado da nota “Eixo de X a Y…”.
+- **Sem zero inventado:** dia sem medição continua ausente; a linha quebra em vez de ligar dois pontos distantes. O eixo dinâmico de RHR/HRV/economia vem acompanhado da nota de escala ampliada.
 - **Acessibilidade:** todo gráfico novo tem `contentDescription` com resumo e fonte; a tabela por métrica é a alternativa textual; cores de prontidão continuam acompanhadas do rótulo.
 - **Testes:** 8 do calculador de tendências, 4 da visão de saúde, 5 goldens (saúde dark/light/estreito, gráficos de saúde e recuperação), 3 goldens de Tendências com dados completos e 1 teste de ViewModel para janela/trends. Total: **805 testes**.
 - **Docs:** `DESIGN_SYSTEM` §7/§8/§13, `TESTING` §3/§4, `ROADMAP` P1-07/P1-09 e addendum do `ADR-0007` com Vico 3.3.1 e alternativas rejeitadas.
@@ -1957,3 +2489,4 @@
 | 04/11/2026 | Perfil com nome/foto (Room v10), avatar na Home/Perfil e pin do story; leitura do coach na tela da atividade; 775 testes |
 | 04/11/2026 | Story com câmera 3D real: projeção do MapLibre portada para Kotlin, snapshot inclinado e rota alinhada (ADR 0019); 778 testes |
 | 04/11/2026 | Story: abertura com overview 32° → follow 42° sob fade-in de 0,6 s (sem corte visível); 778 testes |
+| 06/11/2026 | C1-02 concluído: cobertura/frescor de carga, ACWR desconhecido não libera qualidade, gate no plano/recomendador e UI explícita; 924 testes |

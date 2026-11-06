@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
+import com.meucoach.app.time.FakeTimeProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Before
 import org.junit.Test
@@ -25,7 +26,7 @@ class ReminderSchedulerTest {
 
     @Test
     fun `schedules check-in and workout reminders`() {
-        WorkManagerReminderScheduler(workManager).schedule()
+        WorkManagerReminderScheduler(workManager, FakeTimeProvider()).schedule()
 
         val checkIn = workManager
             .getWorkInfosForUniqueWork("meucoach-reminder-check_in")

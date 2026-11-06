@@ -11,19 +11,23 @@ import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.AthleteProfileDao
 import com.meucoach.core.data.db.dao.DailyCheckInDao
 import com.meucoach.core.data.db.dao.DailyMetricsDao
+import com.meucoach.core.data.db.dao.DailyPrescriptionDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
+import com.meucoach.core.data.db.dao.SessionExecutionDao
 import com.meucoach.core.data.db.dao.TrainingPlanDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
+import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
+import com.meucoach.core.data.db.entity.SessionExecutionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 
 @Database(
@@ -38,6 +42,8 @@ import com.meucoach.core.data.db.entity.WeeklyPlanEntity
         DailyMetricsEntity::class,
         WeeklyPlanEntity::class,
         PlannedSessionEntity::class,
+        DailyPrescriptionEntity::class,
+        SessionExecutionEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -61,8 +67,12 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun trainingPlanDao(): TrainingPlanDao
 
+    abstract fun dailyPrescriptionDao(): DailyPrescriptionDao
+
+    abstract fun sessionExecutionDao(): SessionExecutionDao
+
     companion object {
-        const val VERSION = 10
+        const val VERSION = 12
         const val NAME = "meucoach.db"
 
         /**
@@ -277,6 +287,110 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 11 adds the single daily prescription (ADR 0023), the plan
+         * creation date used to cut adherence (N-02) and objective targets on
+         * planned sessions (N-01). Legacy plans fall back to their week start,
+         * which never hides a session that already existed.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `daily_prescriptions` (
+                        `id` TEXT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `plannedSessionId` TEXT,
+                        `plannedType` TEXT,
+                        `plannedTitle` TEXT,
+                        `plannedDurationMin` INTEGER,
+                        `prescribedType` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `prescribedDurationMin` INTEGER,
+                        `targetsJson` TEXT NOT NULL,
+                        `adjustment` TEXT NOT NULL,
+                        `rationale` TEXT NOT NULL,
+                        `ruleIdsJson` TEXT NOT NULL,
+                        `evidenceIdsJson` TEXT NOT NULL,
+                        `confidence` TEXT NOT NULL,
+                        `engineVersion` TEXT NOT NULL,
+                        `inputsHash` TEXT NOT NULL,
+                        `supersedesId` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_daily_prescriptions_date` " +
+                        "ON `daily_prescriptions` (`date`)",
+                )
+                db.execSQL(
+                    "ALTER TABLE `weekly_plans` ADD COLUMN `createdOn` TEXT NOT NULL DEFAULT ''",
+                )
+                db.execSQL("UPDATE `weekly_plans` SET `createdOn` = `weekStart` WHERE `createdOn` = ''")
+                db.execSQL(
+                    "ALTER TABLE `planned_sessions` ADD COLUMN `targetsJson` TEXT NOT NULL DEFAULT '{}'",
+                )
+            }
+        }
+
+        /**
+         * Version 12 introduces session executions and completion evidence
+         * (ADR 0024). Historical `DONE` rows are not rewritten as truth: they
+         * become `LEGACY_UNVERIFIED`. `SKIPPED` becomes `CLOSED/USER_SKIPPED`.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `session_executions` (
+                        `id` TEXT NOT NULL,
+                        `plannedSessionId` TEXT,
+                        `activityId` TEXT,
+                        `startedAt` INTEGER,
+                        `endedAt` INTEGER,
+                        `pausesJson` TEXT NOT NULL,
+                        `durationSec` INTEGER NOT NULL,
+                        `distanceM` REAL,
+                        `rpe` INTEGER,
+                        `source` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_session_executions_plannedSessionId` " +
+                        "ON `session_executions` (`plannedSessionId`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_session_executions_activityId` " +
+                        "ON `session_executions` (`activityId`)",
+                )
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `completionEvidence` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `executionId` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `activityId` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `closureReason` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `closedAt` INTEGER")
+                db.execSQL(
+                    "UPDATE `planned_sessions` SET `completionEvidence` = 'LEGACY_UNVERIFIED' " +
+                        "WHERE `status` = 'DONE'",
+                )
+                db.execSQL(
+                    "UPDATE `planned_sessions` SET `status` = 'CLOSED', " +
+                        "`closureReason` = 'USER_SKIPPED', " +
+                        "`closedAt` = COALESCE(`completedAt`, " +
+                        "CAST(strftime('%s', 'now') AS INTEGER) * 1000) " +
+                        "WHERE `status` = 'SKIPPED'",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_planned_sessions_activityId` " +
+                        "ON `planned_sessions` (`activityId`)",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -289,6 +403,8 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
+                MIGRATION_10_11,
+                MIGRATION_11_12,
             )
             .build()
     }

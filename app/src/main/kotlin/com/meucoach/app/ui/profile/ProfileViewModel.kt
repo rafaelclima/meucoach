@@ -2,6 +2,7 @@ package com.meucoach.app.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
 import com.meucoach.core.data.health.HealthSyncStore
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -47,13 +49,16 @@ data class ProfileHealthSummary(
     val hasPermissions: Boolean = false,
     val storedDays: Int = 0,
     val latestMetricDate: LocalDate? = null,
-    val lastSyncDate: LocalDate? = null,
+    val lastSyncedAt: Instant? = null,
 )
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
     val profile: AthleteProfile? = null,
     val health: ProfileHealthSummary = ProfileHealthSummary(),
+    val today: LocalDate? = null,
+    val now: Instant? = null,
+    val zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
 )
 
 @HiltViewModel
@@ -62,11 +67,12 @@ class ProfileViewModel @Inject constructor(
     private val metricsRepository: DailyMetricsRepository,
     private val healthSource: HealthDailySource,
     private val syncStore: HealthSyncStore,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private data class HealthAccess(
         val status: HealthConnectStatus = HealthConnectStatus.UNAVAILABLE,
         val hasPermissions: Boolean = false,
-        val lastSyncDate: LocalDate? = null,
+        val lastSyncedAt: Instant? = null,
     )
 
     private val access = MutableStateFlow(HealthAccess())
@@ -75,7 +81,8 @@ class ProfileViewModel @Inject constructor(
         repository.observeProfile(),
         metricsRepository.observeAll(),
         access,
-    ) { profile, metrics, access ->
+        timeProvider.today,
+    ) { profile, metrics, access, today ->
         ProfileUiState(
             isLoading = false,
             profile = profile,
@@ -84,8 +91,11 @@ class ProfileViewModel @Inject constructor(
                 hasPermissions = access.hasPermissions,
                 storedDays = metrics.size,
                 latestMetricDate = metrics.lastOrNull()?.date,
-                lastSyncDate = access.lastSyncDate,
+                lastSyncedAt = access.lastSyncedAt,
             ),
+            today = today,
+            now = timeProvider.now(),
+            zone = timeProvider.zoneId.value,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -106,7 +116,7 @@ class ProfileViewModel @Inject constructor(
             access.value = HealthAccess(
                 status = status,
                 hasPermissions = hasPermissions,
-                lastSyncDate = syncStore.lastSyncedDate(),
+                lastSyncedAt = syncStore.lastSyncedAt(),
             )
         }
     }

@@ -51,7 +51,10 @@ class TrendsFullScreenshotTest {
     @Test
     fun efficiencyDark() {
         capture(
-            scrollTo = hasContentDescription("Evolução da economia de corrida em 6 corridas"),
+            scrollTo = hasContentDescription(
+                "Evolução da economia de corrida em 6 corridas",
+                substring = true,
+            ),
             file = "src/test/screenshots/trends-efficiency-dark.png",
         )
     }
@@ -81,7 +84,17 @@ class TrendsFullScreenshotTest {
             }
         }
         compose.onNodeWithTag("trends-list").performScrollToNode(scrollTo)
+        settle()
         compose.onRoot().captureRoboImage(file)
+    }
+
+    /** Vico builds the model off the composition; give it a moment before capturing. */
+    private fun settle() {
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        Thread.sleep(300)
+        compose.waitForIdle()
     }
 
     private fun profile() = AthleteProfile(
@@ -114,6 +127,14 @@ class TrendsFullScreenshotTest {
             acwr = 1.2,
             monotony = 0.8,
             missingDays = 28,
+            coverage = com.meucoach.core.domain.load.LoadCoverage(
+                daysInWindow = 28,
+                daysWithLoad = 14,
+                daysWithoutActivity = 14,
+                daysWithoutData = 0,
+                lastActivityAt = null,
+                sourceFresh = true,
+            ),
         )
     }
 
@@ -172,6 +193,9 @@ class TrendsFullScreenshotTest {
                 weekStart = LocalDate.of(2026, 9, 14).plusWeeks(index.toLong()),
                 planned = 3,
                 done = if (index % 3 == 0) 3 else 2,
+                verified = if (index % 3 == 0) 3 else 2,
+                manual = 0,
+                legacy = 0,
                 skipped = if (index % 4 == 0) 1 else 0,
             )
         },

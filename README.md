@@ -9,8 +9,8 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 | Item | Estado |
 |---|---|
 | Planejamento de produto, ciência, dados e design | Concluído em 27/10/2026 |
-| Fundação técnica | `check` verde, 628 testes, parsers FIT/TCX/GPX/CSV, dedup, Room v9 + perfil/check-in/métricas/plano/status, Health Connect, recomendações, plano semanal com taper/progressão/deload, Hoje com dados/ações/notificações, histórico de prontidão e check-ins, tendências de volume/consistência/pace×FC/80-20, importação real com notificação, detalhe com zonas, onboarding, calibração, carga/PMC, explicabilidade, story de treino, backup/apagar dados, goldens e screenshots (03/11/2026) |
-| Fase atual | **Fase 1 — Coach** (em andamento) |
+| Fundação técnica | `check` verde, 999 testes, parsers FIT/TCX/GPX/CSV, dedup, Room v12 (perfil/check-in/métricas/planos/prescrições/execuções), Health Connect, prescrição única do dia, plano semanal com taper/progressão/deload, Hoje com evidência de conclusão, histórico de prontidão e check-ins, tendências, importação real, detalhe com zonas, onboarding, calibração, carga/PMC, explicabilidade, story de treino, backup/lixeira/reset com época, goldens e screenshots (06/11/2026) |
+| Fase atual | **Fase 1 — Coach** (em andamento; ciclo 1 concluído) |
 | App | Android nativo — Kotlin + Jetpack Compose + Material 3 |
 | Backend | Fase 2 — Kotlin/Ktor + PostgreSQL + Dokploy |
 | Dados diários | Health Connect (sono já validado) + check-in + CSV |
@@ -32,8 +32,8 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 - Compose BOM 2026.09.00 · Material 3 · Activity 1.13.0 · Lifecycle 2.11.0
 - Room 2.8.5 · Hilt 2.60.1 · DataStore 1.3.0 · WorkManager 2.12.0
 - Health Connect 1.1.0 · Vico 3.3.1
-- Testes: JUnit 4.13.2 · AssertJ 3.27.7 · MockK 1.14.11 · Turbine 1.2.1 · Kotest 6.2.6 · Robolectric 4.17 · Roborazzi 1.77.0
-- Qualidade: Detekt 1.23.8 · Spotless 8.10.4 · Kover 0.9.9
+- Testes: JUnit 4.13.2 · AssertJ 3.27.7 · Robolectric 4.17 · Roborazzi 1.77.0 · Compose UI Test
+- Qualidade: Spotless 8.10.4 · Kover 0.9.9 (gate em `core:domain` + parser FIT); Detekt planejado (T-02)
 
 Versões ficam em `gradle/libs.versions.toml`. Consulte a documentação oficial via Context7 antes de atualizar APIs.
 
@@ -56,20 +56,20 @@ No Android Studio: abra a raiz do repositório e rode a configuração `app`.
 
 ```
 .
-├── app/                     # entry point, navegação, DI
+├── app/                     # entry point, navegação, DI, ViewModels, casos de uso e telas
 ├── core/
-│   ├── model/               # tipos puros (distância, pace, FC, atividade)
+│   ├── model/               # tipos puros (distância, pace, FC, atividade, execução)
 │   ├── domain/              # motores: zonas, carga, prontidão, prescrição, parsers
-│   ├── data/                # Room, repositórios, import, Health Connect
-│   ├── designsystem/        # tokens, tema, componentes, gráficos
-│   └── testing/             # fixtures, fakes, regras de teste
-├── feature/                 # telas por feature (a partir da Fase 1)
+│   ├── data/                # Room v12, repositórios, import, Health Connect, época
+│   └── designsystem/        # tokens, tema, componentes, gráficos
 ├── docs/                    # produto, arquitetura, ciência, design, testes, roadmap
 ├── design/tokens/           # tokens DTCG
 ├── fixtures/                # fixtures sanitizadas (nunca dados reais)
 ├── infra/                   # Docker Compose e Dokploy (Fase 2)
 └── .github/workflows/       # CI
 ```
+
+`core:testing` e módulos `feature:*` são planejados; hoje a UI vive em `:app`.
 
 ## Documentação
 

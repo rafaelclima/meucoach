@@ -66,6 +66,12 @@ class ReminderNotifier @Inject constructor(@ApplicationContext context: Context)
         NotificationManagerCompat.from(appContext).notify(message.id, notification)
     }
 
+    fun cancelAll() {
+        val manager = NotificationManagerCompat.from(appContext)
+        manager.cancel(ReminderContent.CHECK_IN_ID)
+        manager.cancel(ReminderContent.WORKOUT_ID)
+    }
+
     companion object {
         const val CHANNEL_ID = "meucoach-reminders"
     }

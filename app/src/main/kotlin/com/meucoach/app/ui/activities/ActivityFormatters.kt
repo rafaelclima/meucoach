@@ -58,6 +58,7 @@ fun importStatusLabel(status: ImportJobStatus): String = when (status) {
     ImportJobStatus.PARSING -> "Lendo"
     ImportJobStatus.DONE -> "Importado"
     ImportJobStatus.DUPLICATE -> "Duplicado"
+    ImportJobStatus.TRASH_CONFLICT -> "Na lixeira"
     ImportJobStatus.FAILED -> "Falhou"
 }
 
@@ -66,6 +67,7 @@ fun importJobDetail(job: ImportJobSummary): String = when (job.status) {
     ImportJobStatus.PARSING -> "Lendo o arquivo"
     ImportJobStatus.DONE -> "Adicionado à biblioteca"
     ImportJobStatus.DUPLICATE -> "Já fazia parte da biblioteca"
+    ImportJobStatus.TRASH_CONFLICT -> "Restaure a atividade em Dados antes de importar de novo"
     ImportJobStatus.FAILED -> job.errorMessage ?: "Não foi possível importar"
 }
 

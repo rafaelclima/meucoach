@@ -54,6 +54,9 @@ class ProfilePhotoStore @Inject constructor(@ApplicationContext context: Context
         if (file.parentFile == directory) runCatching { file.delete() }
     }
 
+    /** Removes the private profile image directory on a full local reset. */
+    fun clear(): Boolean = directory.deleteRecursively()
+
     private fun decodeUri(uri: Uri, maxSize: Int): Bitmap? = runCatching {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }

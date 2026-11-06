@@ -1,6 +1,14 @@
 # PRODUCT.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026 · **Status:** aprovado para a Fase 0
+**Versão:** 1.2 · **Data:** 06/11/2026 · **Status:** aprovado para a Fase 0; revisão 1.1 registrou as decisões da Etapa 3; revisão 1.2 reconcilia o escopo com o ciclo 1 implementado (C1-06).
+
+**Histórico de revisão**
+
+| Versão | Data | Mudança |
+|---|---|---|
+| 1.0 | 27/10/2026 | Visão, usuário 0, escopo do MVP e princípios iniciais. |
+| 1.1 | 06/11/2026 | Registro das decisões aprovadas de captura, perfil, objetivo, backend, backup e determinismo. |
+| 1.2 | 06/11/2026 | C1-01..C1-05 implementados; lixeira de 7 dias e conclusão com evidência refletidas no escopo; divergências do PRD reconciliadas. |
 
 ## 1. Visão
 
@@ -54,11 +62,13 @@ A promessa central:
 - Calibração por prova/TT recente (Tier A/B) ou teste guiado (Tier C).
 - Motor de zonas (LTHR + pace), carga (TRIMP, rTSS, CTL/ATL/TSB, ACWR), prontidão e prescrição.
 - Check-in diário de 15 s (sono, fadiga, dor, stress).
-- Leitura de **Health Connect** (sono, RHR, HRV, SpO2, exercícios) com diagnóstico de sincronização.
-- Tela **Hoje** com prontidão, treino prescrito e "por quê".
+- Leitura de **Health Connect** (sono, RHR, HRV, SpO2) com diagnóstico de sincronização e atualização automática ao abrir o app. `ExerciseSession`/corridas do Health Connect ficam para o ciclo 2 (FR-007).
+- Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto.
+- Conclusão com evidência: corrida vinculada, execução guiada (contrato) ou “fiz sem registro” com duração e RPE; descanso/doença encerram o dia com motivo.
+- Tela **Saúde** como destino principal: painel de sono, FC de repouso, HRV e SpO₂, com período, fontes e aviso quando o dia atual ainda não chegou.
 - Tela **Tendências** com gráficos de evolução.
 - Notificações locais: treino do dia, lembrete de check-in, import pendente.
-- Exportar/apagar todos os dados.
+- Exportar/apagar todos os dados, com lixeira de 7 dias para atividades e reset imediato.
 - Funcionar offline — exceto o mapa do story, que baixa tiles do `OpenStreetMap` no momento da geração (`ADR-0015`).
 
 ### Fora (explícito)
@@ -103,7 +113,7 @@ A promessa central:
 | Dados de wearables imprecisos | Proveniência, validação cruzada, confiança explícita, nunca decisão crítica isolada |
 | Overtraining / lesão | Guardrails, ACWR como sinal, sono, RPE, sinais vermelhos, disclaimer |
 | Excesso de escopo | Fora de escopo explícito; fases com critérios de aceite |
-| Complexidade de modularização | Começar com 4 módulos e crescer por feature |
+| Complexidade de modularização | Começar com 5 módulos reais (`:app` + 4 `core`) e só extrair features quando houver gatilho (ADR/arquitetura) |
 | LGPD / dados nos EUA | Local-first; sync só na Fase 2 com consentimento e região documentada |
 | "Mais um app de corrida" | Diferencial: explicabilidade + ciência + dados reais + design premium |
 
@@ -113,7 +123,7 @@ A promessa central:
 - Sync futuro é opt-in, com TLS, conta e possibilidade de apagar tudo.
 - A VPS de produção está nos EUA (IONOS/Dokploy). Isso será declarado no app e no consentimento antes do sync.
 - Sem venda de dados, sem ads, sem SDK de analytics por padrão.
-- Exportação completa em formato aberto (JSON + arquivos originais).
+- Exportação em formato aberto (JSON completo de perfil, atividades, laps, métricas, check-ins, planos, prescrições e execuções). Arquivos originais e séries completas ficam para o ciclo de backup versionado.
 - Dados de saúde nunca entram no repositório git.
 
 ## 9. Glossário
@@ -129,3 +139,22 @@ A promessa central:
 | **Z2** | Zona 2 de FC, intensidade fácil/conversável |
 | **RPE** | Esforço percebido (1–10) |
 | **Tier A/B/C** | Níveis de calibração por dados disponíveis |
+
+## 10. Decisões aprovadas do MVP (06/11/2026)
+
+Estas decisões complementam o escopo acima e orientam o primeiro ciclo. O detalhamento técnico está em `docs/PLANO_TECNICO_CICLO_1.md`.
+
+| Tema | Decisão aprovada |
+|---|---|
+| Captura | **Import-first**: FIT/TCX/GPX + Health Connect + entrada manual; sem GPS nativo no MVP. |
+| Perfil | **Um perfil por instalação**; sem `profileId` especulativo nem multi-perfil nesta fase. |
+| Objetivo | **Um objetivo ativo por vez**; objetivo geral ou prova (5K/10K/meia/maratona). |
+| Backend | **Sem backend obrigatório**; o app é útil offline e sem conta. Integração externa futura não é antecipada. |
+| Backup | **Versionado e restaurável** como funcionalidade de ciclo posterior; não bloqueia o ciclo 1. |
+| Motor | **Determinístico**; regra, evidência e confiança em toda recomendação. LLM não decide treino. |
+| Conclusão | `ACTIVITY` > `GUIDED` > `MANUAL`; descanso, doença e não realizado têm estados próprios (ADR 0024). |
+| Plano × prescrição | Plano é intenção; prescrição diária persistida é a única autoridade do dia (ADR 0023). |
+| Exclusão | Lixeira de 7 dias para atividade; reset imediato, com época de dados e sem apagar Health Connect (ADR 0025). |
+| Carga | ACWR desconhecido/cobertura insuficiente bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR 0026). |
+
+> O prazo de 30 dias de lixeira citado no PRD original (FR-009) foi substituído por **7 dias** na decisão aprovada; o PRD foi anotado na revisão do C1-06 e mantém o registro histórico da auditoria.

@@ -3,6 +3,7 @@ package com.meucoach.app.ui.onboarding
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.model.AthleteProfile
@@ -175,6 +176,7 @@ class OnboardingViewModelTest {
         com.meucoach.app.profile.ProfilePhotoStore(
             ApplicationProvider.getApplicationContext(),
         ),
+        FakeTimeProvider(),
     )
 
     private fun fillValidForm(viewModel: OnboardingViewModel) {

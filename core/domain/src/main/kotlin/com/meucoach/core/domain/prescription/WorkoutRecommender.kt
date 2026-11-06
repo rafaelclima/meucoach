@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
@@ -94,10 +95,13 @@ class WorkoutRecommender {
             )
         }
 
-        val acwrHigh = (input.load?.acwr ?: 0.0) > ACWR_ALERT
+        val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
+        val loadTrusted = loadState == LoadDataState.KNOWN
+        val acwrHigh = loadTrusted && (input.load?.acwr ?: 0.0) > ACWR_ALERT
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         val noQuality = ReadinessFlag.NO_QUALITY in readiness.flags
-        val conservative = readiness.level != ReadinessLevel.GREEN || noQuality || shortSleep || acwrHigh
+        val conservative =
+            readiness.level != ReadinessLevel.GREEN || noQuality || shortSleep || acwrHigh || !loadTrusted
 
         val duration = minutes.takeIf { it > 0 }?.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN) ?: DEFAULT_EASY_MIN
         val availabilityMissing = available.minutesByDay.isEmpty()
@@ -114,10 +118,12 @@ class WorkoutRecommender {
         val confidence = combine(readiness.confidence, calibrationConfidence)
             .let { base -> if (availabilityMissing) downgrade(base) else base }
             .let { base -> if (heat) downgrade(base) else base }
+            .let { base -> if (loadTrusted) base else downgrade(base) }
 
         val rules = buildList {
             add("R-ZONE-01")
             if (availabilityMissing) add("R-DATA-01")
+            if (!loadTrusted) add("R-DATA-01")
             if (readiness.level == ReadinessLevel.AMBER || noQuality) add("R-READY-03")
             if (shortSleep) add("R-READY-04")
             if (acwrHigh) add("R-LOAD-03")
@@ -130,6 +136,7 @@ class WorkoutRecommender {
             add("EV-DANIELS-2014")
             if (shortSleep || readiness.level == ReadinessLevel.AMBER) add("EV-SAW-2016")
             if (acwrHigh) add("EV-GABBETT-2016")
+            if (!loadTrusted) add("EV-IMPELLIZZERI-2020")
             if (heat) add("EV-ELY-2007")
             if (paceTarget == null && heartRateTarget == null) add("EV-FRIEL-2018")
         }
@@ -144,6 +151,16 @@ class WorkoutRecommender {
 
             readiness.level == ReadinessLevel.AMBER || noQuality ->
                 "Prontidão moderada: hoje é fácil, sem treino forte. " + easyHint(paceTarget, heartRateTarget)
+
+            loadState == LoadDataState.STALE ->
+                "Seus dados de carga estão desatualizados: hoje fica no fácil e sem aumento. " +
+                    "Importe atividades recentes para liberar treino forte. " +
+                    easyHint(paceTarget, heartRateTarget)
+
+            loadState == LoadDataState.INSUFFICIENT ->
+                "Ainda não há carga suficiente nas últimas 4 semanas " +
+                    "(mínimo ${LoadSnapshot.MIN_DAYS_WITH_LOAD} dias com carga): hoje fica no fácil e " +
+                    "sem aumento. " + easyHint(paceTarget, heartRateTarget)
 
             else ->
                 "Base aeróbica em ritmo fácil, conversável do início ao fim. " +

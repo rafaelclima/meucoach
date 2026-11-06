@@ -46,6 +46,7 @@ class UserDataRepositoryTest {
     private lateinit var checkIns: CheckInRepository
     private lateinit var metrics: DailyMetricsRepository
     private lateinit var plans: TrainingPlanRepository
+    private lateinit var prescriptions: DailyPrescriptionRepository
     private val clock = Clock.fixed(Instant.parse("2026-11-02T13:00:00Z"), ZoneOffset.UTC)
     private val monday = LocalDate.of(2026, 11, 2)
 
@@ -69,6 +70,7 @@ class UserDataRepositoryTest {
         checkIns = CheckInRepository(database, clock)
         metrics = DailyMetricsRepository(database, clock)
         plans = TrainingPlanRepository(database, clock)
+        prescriptions = DailyPrescriptionRepository(database, clock)
     }
 
     @After
@@ -100,6 +102,30 @@ class UserDataRepositoryTest {
         assertThat(activity.getDouble("distanceM")).isEqualTo(5_000.0)
         assertThat(activity.getInt("sampleCount")).isEqualTo(0)
         assertThat(export.getJSONArray("importJobs").length()).isEqualTo(1)
+        val prescription = export.getJSONArray("dailyPrescriptions").getJSONObject(0)
+        assertThat(prescription.getString("date")).isEqualTo(monday.toString())
+        assertThat(prescription.getString("adjustment")).isEqualTo("KEEP")
+        val execution = export.getJSONArray("sessionExecutions").getJSONObject(0)
+        assertThat(execution.getString("plannedSessionId")).isEqualTo("2026-11-02-2026-11-02")
+        assertThat(execution.getString("source")).isEqualTo("ACTIVITY")
+        val doneSession = plan.getJSONArray("sessions").getJSONObject(0)
+        assertThat(doneSession.getString("status")).isEqualTo("DONE")
+        assertThat(doneSession.getString("completionEvidence")).isEqualTo("ACTIVITY")
+    }
+
+    @Test
+    fun `default export excludes the trash and its import jobs`(): Unit = runBlocking {
+        seedEverything()
+        val saved = database.activityDao().getAll().single()
+        activities.deleteActivity(saved.id)
+
+        val default = JSONObject(userData.exportJson())
+        val complete = JSONObject(userData.exportJson(includeTrash = true))
+
+        assertThat(default.getJSONArray("activities").length()).isZero()
+        assertThat(default.getJSONArray("importJobs").length()).isZero()
+        assertThat(complete.getJSONArray("activities").length()).isEqualTo(1)
+        assertThat(complete.getJSONArray("importJobs").length()).isEqualTo(1)
     }
 
     @Test
@@ -112,6 +138,8 @@ class UserDataRepositoryTest {
         assertThat(deletion.checkIns).isEqualTo(1)
         assertThat(deletion.metrics).isEqualTo(1)
         assertThat(deletion.plans).isEqualTo(1)
+        assertThat(deletion.prescriptions).isEqualTo(1)
+        assertThat(deletion.executions).isEqualTo(1)
         assertThat(deletion.profileDeleted).isTrue()
         assertThat(deletion.removedAnything).isTrue()
         assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
@@ -121,11 +149,13 @@ class UserDataRepositoryTest {
         assertThat(database.dailyMetricsDao().getAll()).isEmpty()
         assertThat(database.trainingPlanDao().getAllPlans()).isEmpty()
         assertThat(database.trainingPlanDao().getAllSessions()).isEmpty()
+        assertThat(database.sessionExecutionDao().getAll()).isEmpty()
+        assertThat(database.dailyPrescriptionDao().getAll()).isEmpty()
     }
 
     @Test
     fun `resets the health connect watermark when deleting everything`(): Unit = runBlocking {
-        healthStore.markSynced(LocalDate.of(2026, 11, 2))
+        healthStore.markSynced(Instant.parse("2026-11-02T12:00:00Z"), LocalDate.of(2026, 11, 2))
         seedEverything()
 
         userData.deleteAllData()
@@ -165,8 +195,16 @@ class UserDataRepositoryTest {
             ),
         )
         plans.saveWeek(plan())
+        prescriptions.append(prescription())
         val saved = activities.saveImportedActivity(activity()) as SaveActivityResult.Saved
         database.importJobDao().insert(com.meucoach.core.data.db.testJob(saved.id))
+        SessionExecutionRepository(database, clock).recordActivityExecution(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = saved.id,
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
     }
 
     private fun profile() = AthleteProfile(
@@ -191,11 +229,30 @@ class UserDataRepositoryTest {
     private fun activity() = ImportedActivity(
         source = ActivitySource.FIT,
         sport = Sport.RUNNING,
-        startTime = Instant.parse("2023-11-14T10:00:00Z"),
+        startTime = Instant.parse("2026-11-02T10:00:00Z"),
         durationSec = 1_800,
         distanceM = 5_000.0,
         averageHeartRate = 150,
         averagePace = Pace.fromSecondsPerKm(360),
+    )
+
+    private fun prescription() = com.meucoach.core.domain.prescription.DailyPrescription(
+        date = monday,
+        plannedSessionId = "2026-11-02-2026-11-02",
+        plannedType = WorkoutType.EASY,
+        plannedTitle = "Fácil e conversável",
+        plannedDurationMin = 40,
+        prescribedType = WorkoutType.EASY,
+        title = "Fácil e conversável",
+        prescribedDurationMin = 40,
+        targets = com.meucoach.core.domain.prescription.PrescriptionTargets(zone = "Z2", rpe = 4),
+        adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.KEEP,
+        rationale = "Plano mantido.",
+        ruleIds = listOf("R-ZONE-01", "R-PRESC-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        confidence = DataConfidence.MEDIUM,
+        engineVersion = "daily-prescription-v1",
+        inputsHash = "hash-1",
     )
 
     private fun plan() = WeeklyPlan(
@@ -209,7 +266,6 @@ class UserDataRepositoryTest {
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
-                status = SessionStatus.DONE,
             ),
             PlannedSession(
                 date = monday.plusDays(5),

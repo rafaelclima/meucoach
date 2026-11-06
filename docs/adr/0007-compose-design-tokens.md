@@ -41,7 +41,7 @@ implementação fixou a versão e o escopo:
 - **Eixos com unidade**, `yStep`/`yLabelCount` para rótulos redondos, marcador de toque, legenda e
   `contentDescription`. Lacunas (`null`) quebram a linha em vez de inventar continuidade.
 - **Eixos dinâmicos** (FC de repouso, HRV, economia) vêm acompanhados de uma nota explícita
-  (“Eixo de X a Y…”) para não enganar; sono e SpO₂ usam faixas fixas com alvo visível.
+  (“Escala ampliada (X a Y unidade)…”) para não enganar; sono e SpO₂ usam faixas fixas com alvo visível.
 - **Alternativas rejeitadas:** Compose Charts (menos controle de eixos/tooltip), KoalaPlot (API
   mais pesada), YCharts (sem manutenção desde 2023) e MPAndroidChart (baseado em View, não Compose).
   Canvas puro foi mantido só nos gráficos de marca.

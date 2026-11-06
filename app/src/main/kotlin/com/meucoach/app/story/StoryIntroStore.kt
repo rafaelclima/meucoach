@@ -18,6 +18,10 @@ class StoryIntroStore @Inject constructor(@ApplicationContext context: Context) 
         prefs.edit { putBoolean(KEY_SEEN, true) }
     }
 
+    fun reset() {
+        prefs.edit().clear().apply()
+    }
+
     private companion object {
         const val PREFERENCES = "meucoach_story_intro"
         const val KEY_SEEN = "map_notice_seen"

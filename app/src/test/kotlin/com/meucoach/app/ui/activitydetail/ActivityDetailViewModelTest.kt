@@ -18,6 +18,7 @@ import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -188,7 +189,8 @@ class ActivityDetailViewModelTest {
     fun `deletes the activity and hides it from the history`() {
         runBlocking {
             repository.saveImportedActivity(importedActivity(), "sha")
-            val viewModel = viewModel("activity-1")
+            val coordinator = FakeStoryExportCoordinator()
+            val viewModel = viewModel("activity-1", coordinator = coordinator)
             viewModel.uiState.first { !it.isLoading }
 
             viewModel.deleteActivity()
@@ -197,6 +199,7 @@ class ActivityDetailViewModelTest {
             assertThat(state.isDeleting).isFalse()
             assertThat(state.deleteError).isNull()
             assertThat(repository.openActivity("activity-1")).isNull()
+            assertThat(coordinator.cancelledActivityId).isEqualTo("activity-1")
         }
     }
 
@@ -215,6 +218,7 @@ class ActivityDetailViewModelTest {
                 com.meucoach.app.profile.ProfilePhotoStore(
                     ApplicationProvider.getApplicationContext(),
                 ),
+                FakeTimeProvider(),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
@@ -242,6 +246,7 @@ class ActivityDetailViewModelTest {
         profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
             ApplicationProvider.getApplicationContext(),
         ),
+        timeProvider = FakeTimeProvider(),
     )
 
     @Test
@@ -672,6 +677,8 @@ class ActivityDetailViewModelTest {
                         ruleIds = listOf("R-ZONE-01"),
                         evidenceIds = listOf("EV-FRIEL-2018"),
                         status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                        activityId = "activity-1",
                     ),
                 ),
                 weeklyMinutes = 40,

@@ -1,11 +1,17 @@
 package com.meucoach.app.ui.metrics
 
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
+import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.health.DailyMetricsTrendsCalculator
 import com.meucoach.core.model.DailyMetrics
@@ -25,65 +31,161 @@ class HealthMetricsScreenshotTest {
     val compose = createComposeRule()
 
     @Test
+    @Config(sdk = [35], qualifiers = "w393dp-h760dp-xxhdpi")
     fun healthDark() {
         capture(darkTheme = true, file = "src/test/screenshots/health-dark.png")
     }
 
     @Test
+    @Config(sdk = [35], qualifiers = "w393dp-h760dp-xxhdpi")
     fun healthLight() {
         capture(darkTheme = false, file = "src/test/screenshots/health-light.png")
     }
 
     @Test
-    @Config(sdk = [35], qualifiers = "w360dp-h852dp-xxhdpi")
+    @Config(sdk = [35], qualifiers = "w360dp-h760dp-xxhdpi")
     fun healthNarrowDark() {
         capture(darkTheme = true, file = "src/test/screenshots/health-narrow-dark.png")
     }
 
     @Test
+    @Config(sdk = [35], qualifiers = "w393dp-h1500dp-xxhdpi")
     fun healthChartsDark() {
         compose.setContent {
             McTheme(darkTheme = true) {
-                MetricsImportContent(
+                HealthContent(
                     state = state(),
                     onPick = {},
-                    onBack = {},
                 )
             }
         }
-        compose.onNodeWithTag("metrics-import-list")
-            .performScrollToNode(hasTestTag("health-table-sleep"))
-        compose.onRoot().captureRoboImage("src/test/screenshots/health-charts-dark.png")
+        awaitChartsReady(
+            "Sono nos últimos 30 dias",
+            "FC de repouso nos últimos 30 dias",
+        )
+        settle()
+        compose.onRoot().captureScreenshot("src/test/screenshots/health-charts-dark.png")
     }
 
     @Test
     fun healthRecoveryChartsDark() {
         compose.setContent {
             McTheme(darkTheme = true) {
-                MetricsImportContent(
+                HealthContent(
                     state = state(),
                     onPick = {},
-                    onBack = {},
                 )
             }
         }
         compose.onNodeWithTag("metrics-import-list")
-            .performScrollToNode(hasTestTag("health-table-hrv"))
-        compose.onRoot().captureRoboImage("src/test/screenshots/health-recovery-dark.png")
+            .performScrollToNode(hasTestTag("health-card-hrv"))
+        awaitChart("HRV nos últimos 30 dias")
+        settle()
+        compose.onNodeWithTag("health-card-hrv")
+            .captureScreenshot("src/test/screenshots/health-recovery-dark.png")
     }
 
-    private fun capture(darkTheme: Boolean, file: String) {
+    @Test
+    fun healthTodayHintDark() {
         compose.setContent {
-            McTheme(darkTheme = darkTheme) {
-                MetricsImportContent(
+            McTheme(darkTheme = true) {
+                HealthContent(
                     state = state(),
+                    healthState = connectedHealth(),
                     onPick = {},
-                    onBack = {},
+                    today = LocalDate.of(2026, 11, 5),
                 )
             }
         }
 
-        compose.onRoot().captureRoboImage(file)
+        compose.onNodeWithTag("metrics-import-list")
+            .performScrollToNode(hasText("Os dados de hoje ainda não chegaram"))
+        settle()
+        compose.onRoot().captureScreenshot("src/test/screenshots/health-today-hint-dark.png")
+    }
+
+    @Test
+    fun healthSourcesDark() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                HealthContent(
+                    state = state(),
+                    healthState = connectedHealth(),
+                    onPick = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("metrics-import-list")
+            .performScrollToNode(hasText("Abrir Health Connect"))
+        settle()
+        compose.onNodeWithTag("health-connect-card")
+            .captureScreenshot("src/test/screenshots/health-sources-dark.png")
+    }
+
+    private fun connectedHealth() = HealthConnectUiState(
+        isLoading = false,
+        status = HealthConnectStatus.AVAILABLE,
+        missingPermissions = emptySet(),
+    )
+
+    private fun capture(darkTheme: Boolean, file: String) {
+        compose.setContent {
+            McTheme(darkTheme = darkTheme) {
+                HealthContent(
+                    state = state(),
+                    onPick = {},
+                )
+            }
+        }
+
+        settle()
+        compose.onRoot().captureScreenshot(file)
+    }
+
+    /**
+     * The chart surfaces render a few edge pixels differently across Robolectric
+     * runs. Keep a tiny tolerance so the golden guards the layout without
+     * failing on anti-aliasing noise.
+     */
+    private fun SemanticsNodeInteraction.captureScreenshot(file: String) {
+        captureRoboImage(
+            filePath = file,
+            roborazziOptions = RoborazziOptions(
+                compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.00001f),
+            ),
+        )
+    }
+
+    private fun awaitChartsReady(vararg descriptions: String) {
+        compose.waitUntil(5_000) {
+            descriptions.all { description ->
+                compose.onAllNodes(
+                    hasTestTag("mc-chart-ready") and hasContentDescription(description, substring = true),
+                ).fetchSemanticsNodes().isNotEmpty()
+            } &&
+                compose.onAllNodesWithTag("mc-chart-loading").fetchSemanticsNodes().isEmpty()
+        }
+        compose.waitForIdle()
+    }
+
+    private fun awaitChart(description: String) {
+        compose.waitUntil(5_000) {
+            compose.onAllNodes(
+                hasTestTag("mc-chart-ready") and hasContentDescription(description, substring = true),
+            ).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.waitForIdle()
+    }
+
+    private fun settle() {
+        compose.waitForIdle()
+        repeat(4) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+        }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
     }
 
     private fun state(): MetricsImportUiState {

@@ -160,6 +160,12 @@ Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pont
 - A literatura recente questiona a validade teórica e estatística do ACWR (Impellizzeri et al., 2020).
 - Uso no app: **flag** para revisar carga, nunca para liberar aumento.
 - Faixa de atenção: < 0,8 ou > 1,3. > 1,5 = alerta; não aumentar volume.
+- ACWR só é exposto quando a fonte de atividades está fresca (última importação
+  em até 14 dias) e há pelo menos 8 dias com carga nos últimos 28. Caso
+  contrário, o valor é `null` e o estado é `INSUFFICIENT` ou `STALE`; `null`
+  nunca significa “sem restrição” (`R-DATA-01`, ADR 0026).
+- Dia sem atividade só conta como descanso quando a fonte está fresca. Com
+  fonte desatualizada, o dia é “sem dado”, não um zero fisiológico.
 
 ### 6.4 Distribuição semanal
 
@@ -299,6 +305,10 @@ Precedência determinística do `WorkoutRecommender`:
 4. ACWR > 1,5 ⇒ **fácil**, sem aumento de carga (`R-LOAD-03`).
 5. Dia verde ⇒ **fácil em Z2**, com pace E e FC Z2 quando houver calibração (`R-ZONE-01`).
 6. Sem LTHR/pace de limiar ⇒ fácil por RPE, confiança baixa (`R-CAL-02`).
+7. Carga desconhecida (`INSUFFICIENT`) ou desatualizada (`STALE`) ⇒ **fácil**,
+   sem aumento e com confiança reduzida (`R-DATA-01`, `EV-IMPELLIZZERI-2020`).
+   O texto explica “dados de carga insuficientes/desatualizados”; nunca diz que
+   o atleta descansou.
 
 Sem disponibilidade configurada, usar 30 min como base e reduzir a confiança
 (`R-DATA-01`). Nenhuma recomendação aumenta volume sem os guardrails do P1-05.
@@ -311,13 +321,18 @@ segunda→domingo:
 - Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
 - No máximo **2 qualidades** por semana; a segunda só com progressão e nunca consecutiva/adjacente ao longão.
 - Qualidade só em dia verde, não iniciante, com ACWR entre 0,8 e 1,3.
+- A qualidade exige `LoadDataState.KNOWN`: pelo menos 8 dias com carga nos
+  últimos 28 e última importação de atividades em até 14 dias. Sem cobertura
+  ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
+  explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
+  ADR 0026). ACWR desconhecido nunca libera progressão.
 - Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
 - Fácil entre 20–60 min; qualidade entre 25–45 min, como "Tempo" (intermediário) ou "Intervalos" (avançado).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
 - Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão (ADR 0013, `R-PLAN-02`, `R-PLAN-03`).
-- Confiança do plano é limitada a média até existir histórico.
+- Confiança do plano é capturada quando a semana é montada e fica no máximo média; ela não muda durante a semana. Novos dados entram no plano seguinte. A UI explica isso em “Por que este plano?” e lista os dados usados e ausentes (`R-DATA-01`).
 
 ### 8.9 Calor e umidade
 
@@ -335,6 +350,36 @@ segunda→domingo:
 - Riegel: `t2 = t1 × (d2/d1)^1,06` — usar como referência, não garantia.
 - Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
 - Recuperação: 1 dia fácil por 3 km de prova (heurística), mínimo 3 dias sem qualidade após 5k/10k.
+
+### 8.11 Prescrição do dia e evidência de conclusão
+
+O plano decide a **intenção** da semana; a `DailyPrescription` decide o **dia**. A
+prescrição parte da sessão planejada e só pode manter ou reduzir:
+
+- `KEEP` quando o dia está verde e a sessão planejada cabe nos guardrails;
+- `REDUCE` quando prontidão/carga pedem menos duração;
+- `DOWNGRADE` quando qualidade/longão precisa virar fácil;
+- `REST` em doença/lesão ou prontidão vermelha;
+- `NO_PLAN` quando não há semana, com fácil conservador e confiança baixa.
+
+Nenhuma decisão aumenta tipo, duração ou intensidade. Sem calibração, pace/FC ficam
+`null` e o alvo é RPE. Calor desacelera o pace ou sobe o RPE, sem alongar a sessão.
+As regras são `R-PRESC-01` (mantém o plano), `R-PRESC-02` (reduz, nunca aumenta) e
+`R-PRESC-03` (uma decisão por dia, a mesma em todas as telas); a decisão é
+persistida e versionada (`ADR 0023`).
+
+Conclusão não é clique (`ADR 0024`):
+
+- `ACTIVITY` — corrida importada e vinculada; conta adesão e execução comprovada.
+- `GUIDED` — contrato para a sessão guiada persistente (ciclo 3).
+- `MANUAL` — “fiz sem registro”, exige duração > 0 e RPE 1–10; conta adesão com
+  confiança baixa, mas **não** cria volume, carga, zonas, distância ou pace.
+- `LEGACY_UNVERIFIED` — histórico anterior ao vínculo, preservado sem promoção a
+  verdade; não libera progressão.
+
+Descanso, doença e plano substituído encerram a sessão como `CLOSED` com motivo;
+não contam como falha de adesão. Doença não impede registrar uma corrida real — ela
+fica como treino livre, sem estímulo e sem crédito de progressão.
 
 ## 9. Segurança e guardrails
 
@@ -460,7 +505,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
-| `R-LOAD-03` | ACWR é flag, nunca meta; >1,5 bloqueia aumento | GABBETT, IMPELLIZZERI | LIMITED |
+| `R-LOAD-03` | ACWR é flag, nunca meta; fora de 0,8–1,3 bloqueia qualidade/progressão; >1,5 é alerta | GABBETT, IMPELLIZZERI | LIMITED |
 | `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
 | `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
@@ -478,7 +523,10 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-SAFE-02` | Sem diagnóstico; app não é dispositivo médico | Regulatório | STRONG |
 | `R-SAFE-03` | Sem prescrição de peso/nutrição | Escopo | STRONG |
 | `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
-| `R-DATA-01` | Dado ausente não preenche valor neutro silencioso | Produto | STRONG |
+| `R-DATA-01` | Dado ausente não preenche valor neutro silencioso; cobertura/frescor de carga são declaradas | Produto | STRONG |
+| `R-PRESC-01` | A prescrição do dia parte da sessão planejada e a mantém quando os guardrails permitem | ADR 0023; R-PLAN/R-READY | MODERATE |
+| `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade); nunca aumenta | ADR 0023; R-READY/R-DATA | STRONG |
+| `R-PRESC-03` | Uma decisão por dia, versionada e a mesma em todas as telas | ADR 0023; Produto | STRONG |
 
 ## 15. Limitações conhecidas
 

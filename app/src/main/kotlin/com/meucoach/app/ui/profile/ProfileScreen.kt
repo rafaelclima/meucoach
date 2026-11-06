@@ -40,16 +40,20 @@ import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McSectionHeader
+import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 
 @Composable
 fun ProfileScreen(
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
-    onImportMetrics: () -> Unit,
+    onOpenHealth: () -> Unit,
     onManageData: () -> Unit,
     onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
@@ -65,7 +69,7 @@ fun ProfileScreen(
         state = state,
         onEdit = onEdit,
         onCalibrate = onCalibrate,
-        onImportMetrics = onImportMetrics,
+        onOpenHealth = onOpenHealth,
         onManageData = onManageData,
         onShowTutorial = onShowTutorial,
         modifier = modifier,
@@ -77,7 +81,7 @@ internal fun ProfileContent(
     state: ProfileUiState,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
-    onImportMetrics: () -> Unit,
+    onOpenHealth: () -> Unit,
     onManageData: () -> Unit,
     onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
@@ -111,9 +115,12 @@ internal fun ProfileContent(
             else -> ProfileDetails(
                 profile = state.profile,
                 health = state.health,
+                today = state.today,
+                now = state.now,
+                zone = state.zone,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
-                onImportMetrics = onImportMetrics,
+                onOpenHealth = onOpenHealth,
                 onManageData = onManageData,
                 onShowTutorial = onShowTutorial,
             )
@@ -125,9 +132,12 @@ internal fun ProfileContent(
 private fun ProfileDetails(
     profile: AthleteProfile,
     health: ProfileHealthSummary,
+    today: LocalDate?,
+    now: Instant?,
+    zone: ZoneId,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
-    onImportMetrics: () -> Unit,
+    onOpenHealth: () -> Unit,
     onManageData: () -> Unit,
     onShowTutorial: () -> Unit,
 ) {
@@ -171,7 +181,7 @@ private fun ProfileDetails(
         }
         item {
             McCard {
-                SummaryRow("Idade", ageLabel(profile))
+                SummaryRow("Idade", today?.let { ageLabel(profile, it) } ?: "—")
                 SummaryRow("Sexo", sexLabel(profile.sex))
                 SummaryRow("Experiência", experienceLabel(profile.experience))
                 profile.heightCm?.let { SummaryRow("Altura", formatMeasure(it, "cm")) }
@@ -236,19 +246,32 @@ private fun ProfileDetails(
         item {
             val connected = isHealthConnectConnected(health.status, health.hasPermissions)
             McCard(variant = McCardVariant.INSET) {
-                Text(
-                    text = "Alimente o coach com seu descanso",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.textPrimary,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Sono, FC de repouso, variabilidade cardíaca e oxigenação deixam a " +
-                        "prontidão mais precisa e o treino do dia mais certo.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = "Sono, recuperação e oxigenação",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            text = "Seu painel de recuperação, com o que o coach usa na prontidão.",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    McTextButton(
+                        text = "Abrir",
+                        onClick = onOpenHealth,
+                        modifier = Modifier.testTag("profile-open-health"),
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
                 McPill(
                     text = healthConnectStatusLabel(
                         status = health.status,
@@ -259,30 +282,16 @@ private fun ProfileDetails(
                     contentColor = if (connected) colors.accentText else colors.textSecondary,
                     modifier = Modifier.testTag("profile-health-status"),
                 )
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Health Connect é o app de saúde do Android: ele reúne o que seu " +
-                        "relógio e outros apps registram. O MeuCoach só lê o que você autorizar — " +
-                        "nunca escreve.",
-                    style = McTextStyles.caption,
-                    color = colors.textSecondary,
-                )
-                healthConnectLastSyncLabel(health.lastSyncDate)?.let { label ->
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = label,
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                    )
+                now?.let { current ->
+                    healthConnectLastSyncLabel(health.lastSyncedAt, current, zone)?.let { label ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = label,
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                McSecondaryButton(
-                    text = if (connected) "Ver meus dados de saúde" else "Conectar Health Connect",
-                    onClick = onImportMetrics,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("profile-import-metrics"),
-                )
             }
         }
         item {
@@ -334,6 +343,7 @@ private fun ProfileDetails(
                 )
             }
         }
+        item { NotificationReminderCard() }
         item {
             McPrimaryButton(
                 text = "Editar perfil",

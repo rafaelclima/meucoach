@@ -79,6 +79,11 @@ class ImportStaging internal constructor(
         resolve(relativePath).delete()
     }
 
+    /** Removes every staged file and partial copy after a full reset. */
+    suspend fun clear(): Boolean = withContext(dispatcher) {
+        importsDir.deleteRecursively()
+    }
+
     private fun copyLimited(input: InputStream, output: OutputStream): Long {
         val buffer = ByteArray(COPY_BUFFER_BYTES)
         var total = 0L

@@ -2,6 +2,7 @@ package com.meucoach.app.ui.checkin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.HeatLevel
@@ -47,7 +48,7 @@ data class CheckInForm(
 
 data class CheckInUiState(
     val isLoading: Boolean = true,
-    val date: LocalDate = LocalDate.now(),
+    val date: LocalDate,
     val form: CheckInForm = CheckInForm(),
     val existing: Boolean = false,
     val isSaving: Boolean = false,
@@ -56,12 +57,23 @@ data class CheckInUiState(
 )
 
 @HiltViewModel
-class CheckInViewModel @Inject constructor(private val repository: CheckInRepository) : ViewModel() {
-    private val today = LocalDate.now()
-    private val _uiState = MutableStateFlow(CheckInUiState(date = today))
+class CheckInViewModel @Inject constructor(
+    private val repository: CheckInRepository,
+    private val timeProvider: TimeProvider,
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(CheckInUiState(date = timeProvider.currentDate()))
     val uiState: StateFlow<CheckInUiState> = _uiState.asStateFlow()
 
     init {
+        // Re-loads the form when the local day changes (including while the screen is open).
+        viewModelScope.launch {
+            timeProvider.today.collect { date ->
+                val current = _uiState.value
+                if (current.isLoading || current.date != date) {
+                    load(date)
+                }
+            }
+        }
         viewModelScope.launch {
             repository.observeAll().collect { all ->
                 _uiState.update { state ->
@@ -69,12 +81,17 @@ class CheckInViewModel @Inject constructor(private val repository: CheckInReposi
                 }
             }
         }
-        viewModelScope.launch {
-            val existing = repository.get(today)
-            _uiState.value = _uiState.value.copy(
+    }
+
+    private suspend fun load(date: LocalDate) {
+        val existing = repository.get(date)
+        _uiState.update {
+            it.copy(
+                date = date,
                 isLoading = false,
                 form = existing?.let(CheckInForm::from) ?: CheckInForm(),
                 existing = existing != null,
+                isSaved = false,
             )
         }
     }
@@ -86,10 +103,19 @@ class CheckInViewModel @Inject constructor(private val repository: CheckInReposi
     fun save() {
         val state = _uiState.value
         if (state.isSaving) return
+        val savedDate = state.date
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true)
-            repository.save(state.form.toCheckIn(state.date))
-            _uiState.value = _uiState.value.copy(isSaving = false, isSaved = true, existing = true)
+            // Uses the date captured by the screen, never the clock at save time:
+            // a check-in confirmed at 23:59 belongs to the day it was confirmed.
+            repository.save(state.form.toCheckIn(savedDate))
+            _uiState.update { current ->
+                current.copy(
+                    isSaving = false,
+                    isSaved = current.date == savedDate,
+                    existing = current.existing || current.date == savedDate,
+                )
+            }
         }
     }
 

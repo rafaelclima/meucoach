@@ -1,5 +1,7 @@
 package com.meucoach.app.ui.today
 
+import com.meucoach.core.domain.load.LoadCoverage
+import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DailyMetricsSource
@@ -82,6 +84,7 @@ class TodayViewModelTest {
         val state = todayState(
             checkIn = checkIn(),
             profile = profile(),
+            load = knownLoad(),
             today = today,
         )
 
@@ -223,6 +226,7 @@ class TodayViewModelTest {
                 profile = profile,
                 readiness = readiness,
                 weekStart = today,
+                today = today,
             ),
         )
 
@@ -249,6 +253,28 @@ class TodayViewModelTest {
         timezone = "America/Sao_Paulo",
         weeklyAvailability = com.meucoach.core.model.WeeklyAvailability(
             mapOf(today.dayOfWeek to 45),
+        ),
+    )
+
+    private fun knownLoad() = LoadSnapshot(
+        daily = emptyList(),
+        ctlSeries = emptyList(),
+        atlSeries = emptyList(),
+        ctl = 10.0,
+        atl = 12.0,
+        tsb = -2.0,
+        acuteAverage7d = 10.0,
+        chronicAverage28d = 10.0,
+        acwr = 1.0,
+        monotony = null,
+        missingDays = 16,
+        coverage = LoadCoverage(
+            daysInWindow = 28,
+            daysWithLoad = 12,
+            daysWithoutActivity = 16,
+            daysWithoutData = 0,
+            lastActivityAt = null,
+            sourceFresh = true,
         ),
     )
 

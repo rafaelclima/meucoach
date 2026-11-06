@@ -21,11 +21,18 @@ object ExplanationCatalog {
         "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
         "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
         "R-PLAN-02" to RuleExplanation("R-PLAN-02", "No máximo 2 treinos fortes por semana"),
+        "R-PLAN-03" to RuleExplanation("R-PLAN-03", "Longão entre 25–30% do volume semanal"),
+        "R-PLAN-04" to RuleExplanation("R-PLAN-04", "Semana de descarga a cada 4 semanas"),
+        "R-PLAN-05" to RuleExplanation("R-PLAN-05", "Redução de volume antes da prova"),
         "R-PLAN-06" to RuleExplanation("R-PLAN-06", "80% do tempo em ritmo fácil"),
         "R-PLAN-07" to RuleExplanation("R-PLAN-07", "Calor pede ajuste conservador"),
         "R-PLAN-08" to RuleExplanation("R-PLAN-08", "Esteira vale como opção no calor"),
         "R-CAL-02" to RuleExplanation("R-CAL-02", "Sem calibração, prescrever pelo esforço percebido"),
         "R-SAFE-01" to RuleExplanation("R-SAFE-01", "Sinal de alerta interrompe o treino"),
+        "R-PLAN-01" to RuleExplanation("R-PLAN-01", "Disponibilidade define os dias de treino"),
+        "R-PRESC-01" to RuleExplanation("R-PRESC-01", "A prescrição do dia mantém o plano"),
+        "R-PRESC-02" to RuleExplanation("R-PRESC-02", "Ajuste do dia reduz, nunca aumenta"),
+        "R-PRESC-03" to RuleExplanation("R-PRESC-03", "Uma decisão por dia, a mesma em todas as telas"),
     )
 
     private val evidence = mapOf(
@@ -48,6 +55,11 @@ object ExplanationCatalog {
             "EV-GABBETT-2016",
             "Carga recente vs. acumulada",
             "Gabbett, BJSM 2016",
+        ),
+        "EV-IMPELLIZZERI-2020" to EvidenceExplanation(
+            "EV-IMPELLIZZERI-2020",
+            "Limitações do ACWR",
+            "Impellizzeri et al., Sports Med 2020",
         ),
         "EV-ELY-2007" to EvidenceExplanation(
             "EV-ELY-2007",

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 30/10/2026
+**Versão:** 1.3 · **Data:** 06/11/2026 · **Mudança:** ciclo 1 concluído (C1-06) e escopo reconciliado com o código.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -9,7 +9,7 @@
 | Fase | Objetivo | Status |
 |---|---|---|
 | **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Concluída em 30/10/2026** |
-| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento** |
+| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclo 1 concluído** |
 | **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada |
 | **3 — Experimental** | Social, conector Zepp, explicações com LLM | Planejada |
 
@@ -200,13 +200,14 @@
 - [x] Guardrails: doença/vermelho, sono curto/âmbar, ACWR > 1,5.
 - [x] Fácil Z2 com pace E e FC Z2 quando calibrado; RPE sem calibração.
 - [x] Recomendação na tela Hoje com regra/evidência/confiança.
-- [x] Plano semanal conservador por disponibilidade, no máximo 1 qualidade.
+- [x] Plano semanal conservador por disponibilidade, com até 2 qualidades (a segunda só com progressão).
 - [x] Plano persistido por semana (Room v7), sem reescrever com check-ins.
 - [x] Taper por prova-alvo e qualidade nomeada por experiência.
 - [x] Progressão por dose de qualidade, com disponibilidade como teto (ADR 0010).
 - [ ] Blocos/periodização.
 - [x] Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida).
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
+- [x] Prescrição única do dia persistida e versionada; plano como intenção (C1-03, ADR 0023).
 - [ ] Exibir no plano o limite de 2 treinos fortes por semana (regra implementada; o histórico de conclusão já está em Tendências).
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.
@@ -219,10 +220,12 @@
 - [x] Carga (CTL/ATL/TSB), km por dia e última atividade do banco.
 - [x] Ações de concluir/pular sessão com motivo persistido.
 - [x] Notificações locais de check-in e treino com deep link.
-- [x] Iniciar/trocar treino (sessão guiada e troca de dia com guardrails).
+- [x] Iniciar (prévia de cronômetro) e trocar treino (com guardrails); a sessão guiada persistente fica no ciclo 3.
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
 - [x] Cards compactos: prontidão em duas linhas por sinal e plano sem pill de tipo redundante.
 - [x] Plano em uma linha por sessão, rationale recolhível e carga vazia sem zeros.
+- [x] Um card principal; plano como contexto com selo “Ajustado hoje” e sem CTA de conclusão próprio (C1-03).
+- [x] Conclusão com evidência (corrida vinculada ou “fiz sem registro”) e vínculo 1:1; descanso/doença encerram o dia (C1-04).
 - [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências
@@ -259,7 +262,8 @@
 - [x] Diagnóstico de status, autorização, base local e fallback para check-in/CSV.
 - [x] Sync incremental: primeira execução lê 30 dias; depois parte do último sucesso menos 1 dia.
 - [x] Sync periódico diário via WorkManager, com retry exponencial em erro de leitura.
-- [x] O mesmo `HealthSyncService` atende a tela de perfil e o worker.
+- [x] Sync automático no resume quando a última leitura tem mais de 6 h, com backoff de 15 min e worker como fallback (`ADR-0021`).
+- [x] O mesmo `HealthSyncService` atende o resume, a aba Saúde e o worker.
 - [x] Mescla por campo entre CSV e Health Connect, sem apagar dados do dia (`ADR-0016`).
 - [x] Tela de métricas com um primário (sync), CSV secundário e formato sob demanda.
 - [x] Painel de saúde com sono, FC de repouso, HRV e SpO₂: média móvel de 7 dias, base individual, faixa-alvo, janela 7/30/60 dias e tabela por métrica.
@@ -297,6 +301,96 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Proporção de carga vinda do motor (nunca hardcoded).
 - [x] Onboarding com máscara de data, data de prova opcional e chips legíveis.
 - [x] Perfil com card “Métricas diárias” e ação “Gerenciar métricas”.
+- [x] Plano da semana explica a confiança em “Por que este plano?” e avisa quando os dados são parciais.
+- [x] Economia mostra a escala ampliada abaixo do gráfico e a unidade no eixo.
+
+### P1-14 · Saúde como destino principal
+
+**Status:** concluído em 05/11/2026 — validação em aparelho pendente
+
+- [x] 5ª aba `Saúde` (`Hoje · Corridas · Tendências · Saúde · Perfil`), rota top-level `health`, sem seta de voltar.
+- [x] Hoje com link “Ver recuperação” no card de prontidão, sem duplicar gráficos.
+- [x] Perfil sem o card grande de Health Connect; link compacto + backup/privacidade.
+- [x] Checklist e tutorial apontam para a aba Saúde.
+- [x] Testes e goldens em 393/360 dp; falta validar fonte 200% no aparelho.
+
+**Aceite:** a Saúde é descoberta sem passar pelo Perfil e o Hoje continua decidindo o treino.
+
+### P1-15 · Sync automático do Health Connect
+
+**Status:** concluído em 05/11/2026 — validação em aparelho pendente
+
+- [x] `HealthSyncStore` com `lastSyncedAt`/`lastAttemptAt` além da data incremental.
+- [x] `HealthSyncService.syncIfStale()` com frescor de 6 h, backoff de 15 min e `Mutex`.
+- [x] `HealthSyncCoordinator` + `LifecycleResumeEffect` no `MainContent`.
+- [x] Worker diário como fallback (`ExistingPeriodicWorkPolicy.KEEP`).
+- [x] UI com “Sincronizando…”/“Atualizado há X” e erro passivo; manual continua override.
+- [x] Testes de store, serviço, coordenador e cópia.
+- [ ] Validar no aparelho: sync após 6 h, permissão revogada e worker fallback.
+
+**Aceite:** abrir o app após 6 h atualiza o Health Connect sem tocar em botão; sem permissão, nenhum diálogo automático.
+
+### P1-16 · Polimento da aba Saúde
+
+**Status:** concluído em 05/11/2026 — validação em aparelho pendente
+
+- [x] Aviso “Os dados de hoje ainda não chegaram” quando há histórico, HC conectado e a última métrica é anterior a hoje.
+- [x] Link “Abrir Health Connect” para diagnóstico, com fallback para a loja.
+- [x] Testes e goldens do aviso e do card de fontes.
+- [ ] Resumo compacto no Hoje — avaliado e adiado; o link “Ver recuperação” já resolve.
+- [ ] Proveniência por campo — decisão futura, se houver necessidade de auditoria por métrica.
+
+**Aceite:** o usuário entende por que o dia atual ainda não aparece e consegue abrir o Health Connect sem sair da aba.
+
+---
+
+## Ciclo 1 — Correções críticas (concluído em 06/11/2026)
+
+**Status:** concluído — C1-01 a C1-06 implementados e documentados.
+**Plano técnico:** [`docs/PLANO_TECNICO_CICLO_1.md`](PLANO_TECNICO_CICLO_1.md) · **ADRs:** 0022–0026.
+
+| Ordem | ID | Iniciativa | Depende de | Gate | Status |
+|---|---|---|---|---|---|
+| 1 | **C1-01** | Tempo determinístico e virada de dia/semana | — | Clock fixo 23:59/00:01, segunda-feira, fuso e DST | Concluído |
+| 2 | **C1-02** | Cobertura de carga, ACWR desconhecido e gate de qualidade | C1-01 | Sem dado/sem frescor ⇒ sem qualidade e explicação | Concluído |
+| 3 | **C1-03** | Plano como intenção + prescrição única do dia (N-01/N-02) | C1-01, C1-02 | Um card; prescrição versionada; plano no meio da semana sem passado | Concluído |
+| 4 | **C1-04** | Conclusão com evidência e vínculo atividade ↔ sessão | C1-03 | Impossível `DONE` sem evidência; migração testada | Concluído |
+| 5 | **C1-05** | Lixeira de 7 dias, reset efetivo e época de dados | C1-01 | Reset sem ressurreição; expurgo por clock | Concluído |
+| 6 | **C1-06** | Verdade documental, ADRs e regressões finais | C1-01..C1-05 | Docs = código; suíte e goldens verdes | Concluído |
+
+**Entregas:** C1-01 (tempo), C1-02 (carga/qualidade), C1-03 (prescrição única + N-01/N-02), C1-04 (conclusão com evidência e vínculo), C1-05 (lixeira/reset) e C1-06 (documentação reconciliada com o schema v12 e as regras de evidência) implementados em 06/11/2026.
+
+**Pendências herdadas do ciclo (não bloqueiam o fechamento):**
+
+- Revisão humana das tolerâncias de vínculo e da copy de `LEGACY_UNVERIFIED`.
+- Validação dos limiares do ADR 0026 (8 dias/28, frescor de 14 dias, critérios de iniciante) com dados reais.
+- `GUIDED` persistente, N-03 (semana de prova) e N-05 (backfill Health Connect) seguem para ciclos posteriores.
+
+**Regras do ciclo:**
+
+- Cada entrega termina com gate próprio; a próxima só começa com o gate anterior verde.
+- Nenhuma superfície nova além de execução/evidência (parte da correção).
+- Sem refatoração abrangente, sem novos módulos e sem mudança de stack.
+- Toda regra nova cita `ruleId`, `evidenceId` e confiança.
+- Dados reais nunca entram no diff.
+
+### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
+
+**Status:** registrado em 06/11/2026; fora do ciclo 1.
+
+- Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão.
+- Tratar a prova como evento explícito (dia sem treino depois).
+- Adicionar recuperação pós-prova (1–2 semanas, sem qualidade, conforme distância).
+- Rever a relação entre taper e deload.
+- Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
+
+### N-05 — Backfill do Health Connect (backlog de integração)
+
+**Status:** registrado em 06/11/2026; fora do ciclo 1.
+
+- A primeira sincronização continua lendo 30 dias.
+- Avaliar backfill de histórico anterior quando `ExerciseSession` e importação de exercícios entrarem (ciclo 2), após validar o comportamento do Zepp no aparelho.
+- Não prometer histórico “desde sempre” antes de medir o que o Health Connect realmente entrega.
 
 ---
 
@@ -406,6 +500,9 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | U-07 | Voltar para Hoje depois de Tendências (inclusive entrando pelo card) sem reabrir a aba anterior. | Concluído em 04/11/2026 |
 | U-08 | Foto do cabeçalho da Hoje abre o Perfil. | Concluído em 04/11/2026 |
 | U-09 | Explicar a carga de treino (Base, Fadiga, Balanço, Carga, Aumento e Variedade) e corrigir o TRIMP para minutos. | Concluído em 04/11/2026 |
+| U-10 | Tutorial Fase A: back nativo, progresso acessível, CTA estável, layout ancorado, strings e permissão de notificação contextual. | Concluído em 05/11/2026 |
+| U-11 | Tutorial Fase B: 3 cenas com plano/prontidão reais, primeiro passo dinâmico e checklist “Complete seu setup” no Hoje. | Concluído em 05/11/2026 |
+| U-12 | Tutorial Fase C: primeira vitória, dicas contextuais únicas, medição local exportável e versionamento do tutorial. | Concluído em 05/11/2026 |
 
 ## Backlog técnico
 
@@ -423,11 +520,14 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 
 ## Critérios de saída do MVP
 
-- [ ] Importa FIT/TCX/GPX e deduplica.
-- [ ] Abre detalhe com gráficos e splits.
-- [ ] Calcula carga e prontidão com confiança.
-- [ ] Prescreve a semana e o treino do dia com rationale.
-- [ ] Funciona offline e sem conta.
-- [x] Exporta e apaga todos os dados (T-06, 03/11/2026).
-- [ ] Testes verdes, cobertura ≥ 85% no domínio.
-- [ ] Nenhum dado real no repositório.
+Capacidade entregue; a aceitação final depende de P1-12 (4 semanas de uso real) e da validação em aparelho.
+
+- [x] Importa FIT/TCX/GPX e deduplica.
+- [x] Abre detalhe com gráficos e splits.
+- [x] Calcula carga e prontidão com confiança.
+- [x] Prescreve a semana e o treino do dia com rationale.
+- [x] Funciona offline e sem conta (exceto tiles do mapa do story, opt-in).
+- [x] Exporta e apaga todos os dados (T-06; lixeira de 7 dias e reset com época).
+- [x] Testes verdes, cobertura ≥ 85% no domínio (97,69% de linhas).
+- [x] Nenhum dado real no repositório (fixtures sanitizadas/sintéticas).
+- [ ] P1-12: validação E2E com 4 semanas de uso real.
