@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.2 · **Data:** 30/10/2026
+**Versão:** 1.3 · **Data:** 06/11/2026
 
 ## 1. Princípios
 
@@ -243,6 +243,26 @@ verde, HRV baixa, taper, dados ausentes e calor.
 
 Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra
 no expected quando o motor completo existir.
+
+### 7.1 Regressões preparadas para o ciclo 1
+
+A estratégia completa de C1-01 a C1-06 está em
+[`docs/PLANO_TECNICO_CICLO_1.md`](PLANO_TECNICO_CICLO_1.md) §7, com matriz por
+tipo (unitário, integração, migração, concorrência, WorkManager, data/fuso,
+exclusão, decisão diária, vínculo e indicadores).
+
+`core/domain/src/test/kotlin/com/meucoach/core/domain/prescription/Cycle1RegressionTest.kt`
+contém os primeiros cenários executáveis:
+
+- 4 verdes (disponibilidade, espaçamento de qualidade, prontidão vermelha e
+  adesão ignorando futuro/REST);
+- 3 **falhas esperadas** anotadas com `@Ignore` e motivo `C1-02`/`C1-03`
+  (ACWR desconhecido liberando qualidade, cobertura insuficiente e plano no meio
+  da semana incluindo o passado).
+
+Regra: o `@Ignore` não é dívida permanente. Quando a correção entra, o teste é
+habilitado no mesmo commit e passa a ser gate. Cenários que dependem de classes
+inexistentes ficam documentados na matriz, não em estruturas artificiais.
 
 ## 8. Testes de UI
 

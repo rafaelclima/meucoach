@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
+import com.meucoach.app.time.weekStart
 import com.meucoach.app.ui.activities.formatDateTime
 import com.meucoach.app.ui.activities.formatDistance
 import com.meucoach.app.ui.activities.formatDuration
@@ -39,10 +41,13 @@ import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.HeatLevel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -61,23 +66,15 @@ class TodayViewModel @Inject constructor(
     profileRepository: ProfileRepository,
     activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
-    private val recommender = WorkoutRecommender()
     private val planGenerator = WeeklyPlanGenerator()
-    private val currentWeekStart = LocalDate.now()
-        .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-    private data class PlanHistory(val previousWeek: WeeklyPlan?, val weekNumberInBlock: Int, val isReady: Boolean)
-    private val planHistory = MutableStateFlow(PlanHistory(null, 1, isReady = false))
-
-    init {
-        viewModelScope.launch {
-            planHistory.value = PlanHistory(
-                previousWeek = planRepository.getWeek(currentWeekStart.minusWeeks(1)),
-                weekNumberInBlock = planRepository.consecutiveWeeksBefore(currentWeekStart) + 1,
-                isReady = true,
-            )
-        }
-    }
+    private data class PlanHistory(
+        val previousWeek: WeeklyPlan?,
+        val weekNumberInBlock: Int,
+        val isReady: Boolean,
+        val weekStart: LocalDate,
+    )
 
     private data class TodayContext(
         val checkIn: DailyCheckIn?,
@@ -90,32 +87,57 @@ class TodayViewModel @Inject constructor(
         val recentActivity: RecentActivityUi?,
     )
 
-    val uiState: StateFlow<TodayUiState> = combine(
-        combine(
-            checkInRepository.observe(LocalDate.now()),
-            metricsRepository.observeAll(),
-            profileRepository.observeProfile(),
-            activityRepository.observeActivitySummaries(),
-        ) { checkIn, metrics, profile, activities ->
-            buildContext(checkIn, metrics, profile, activities)
-        },
-        planRepository.observeWeek(currentWeekStart),
-        planHistory,
-    ) { context, storedPlan, history ->
+    private val planHistory = timeProvider.today
+        .map { it.weekStart() }
+        .distinctUntilChanged()
+        .flatMapLatest { weekStart ->
+            flow {
+                emit(
+                    PlanHistory(
+                        previousWeek = planRepository.getWeek(weekStart.minusWeeks(1)),
+                        weekNumberInBlock = planRepository.consecutiveWeeksBefore(weekStart) + 1,
+                        isReady = true,
+                        weekStart = weekStart,
+                    ),
+                )
+            }
+        }
+
+    private val context = timeProvider.today
+        .flatMapLatest { today ->
+            combine(
+                checkInRepository.observe(today),
+                metricsRepository.observeAll(),
+                profileRepository.observeProfile(),
+                activityRepository.observeActivitySummaries(),
+            ) { checkIn, metrics, profile, activities ->
+                buildContext(today, checkIn, metrics, profile, activities)
+            }
+        }
+
+    private val storedPlan = timeProvider.today
+        .map { it.weekStart() }
+        .distinctUntilChanged()
+        .flatMapLatest { weekStart -> planRepository.observeWeek(weekStart) }
+
+    val uiState: StateFlow<TodayUiState> = combine(context, storedPlan, planHistory) { context, plan, history ->
+        val weekStart = context.today.weekStart()
+        val historyReady = history.isReady && history.weekStart == weekStart
         todayState(
             checkIn = context.checkIn,
             metrics = context.metrics,
             profile = context.profile,
             load = context.load,
             today = context.today,
-            plan = storedPlan ?: if (history.isReady) {
+            now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
+            plan = plan ?: if (historyReady) {
                 context.profile?.let {
                     planGenerator.generate(
                         WeeklyPlanInput(
                             profile = it,
                             readiness = readinessResult(context.checkIn, context.metrics, context.today),
                             load = context.load,
-                            weekStart = context.today,
+                            weekStart = weekStart,
                             previousWeek = history.previousWeek,
                             weekNumberInBlock = history.weekNumberInBlock,
                         ),
@@ -142,20 +164,23 @@ class TodayViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            initialValue = todayState(null, emptyList()),
+            initialValue = todayState(
+                checkIn = null,
+                today = timeProvider.currentDate(),
+                now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
+            ),
         )
 
     private fun buildContext(
+        today: LocalDate,
         checkIn: DailyCheckIn?,
         metrics: List<DailyMetrics>,
         profile: AthleteProfile?,
         activities: List<ActivitySummary>,
     ): TodayContext {
-        val today = LocalDate.now()
         val load = profile?.let { buildLoadSnapshot(activities, it, today) }
-        val zone = profile?.let { runCatching { java.time.ZoneId.of(it.timezone) }.getOrNull() }
-            ?: java.time.ZoneId.systemDefault()
-        val weekStart = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        val zone = timeProvider.zoneId.value
+        val weekStart = today.weekStart()
         val weekKm = activities
             .filter {
                 val date = it.startTime.atZone(zone).toLocalDate()
@@ -189,14 +214,14 @@ class TodayViewModel @Inject constructor(
 
     fun completeSession(date: LocalDate) {
         viewModelScope.launch {
-            planRepository.updateStatus(currentWeekStart, date, SessionStatus.DONE)
+            planRepository.updateStatus(date.weekStart(), date, SessionStatus.DONE)
         }
     }
 
     fun skipSession(date: LocalDate, reason: String) {
         viewModelScope.launch {
             planRepository.updateStatus(
-                weekStart = currentWeekStart,
+                weekStart = date.weekStart(),
                 date = date,
                 status = SessionStatus.SKIPPED,
                 skipReason = reason.trim().ifBlank { null },
@@ -204,9 +229,9 @@ class TodayViewModel @Inject constructor(
         }
     }
 
-    fun swapSession(firstDate: LocalDate, secondDate: LocalDate, today: LocalDate = LocalDate.now()) {
+    fun swapSession(firstDate: LocalDate, secondDate: LocalDate, today: LocalDate) {
         viewModelScope.launch {
-            val plan = planRepository.getWeek(currentWeekStart) ?: return@launch
+            val plan = planRepository.getWeek(firstDate.weekStart()) ?: return@launch
             val result = SessionSwapper.swap(plan, firstDate, secondDate, today)
             if (result is SwapResult.Applied) {
                 planRepository.updateSessions(result.plan.weekStart, result.plan.sessions)
@@ -291,7 +316,7 @@ fun TodayRoute(
         onChecklistDismiss = checklistViewModel::dismiss,
         onCompleteSession = viewModel::completeSession,
         onSkipSession = viewModel::skipSession,
-        onSwapSession = viewModel::swapSession,
+        onSwapSession = { first, second -> viewModel.swapSession(first, second, state.today) },
     )
 }
 
@@ -302,8 +327,8 @@ internal fun todayState(
     profile: AthleteProfile? = null,
     activities: List<ActivitySummary> = emptyList(),
     load: LoadSnapshot? = null,
-    today: LocalDate = LocalDate.now(),
-    now: LocalTime = LocalTime.now(),
+    today: LocalDate,
+    now: LocalTime = LocalTime.NOON,
     plan: WeeklyPlan? = null,
     kmByDay: Map<LocalDate, Double> = emptyMap(),
     weeklyLoadKm: Double? = null,

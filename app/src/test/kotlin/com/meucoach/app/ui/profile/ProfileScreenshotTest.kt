@@ -89,6 +89,8 @@ class ProfileScreenshotTest {
     private fun state() = ProfileUiState(
         isLoading = false,
         profile = profile(),
+        today = LocalDate.of(2026, 11, 6),
+        now = Instant.now(),
         health = ProfileHealthSummary(
             status = HealthConnectStatus.AVAILABLE,
             hasPermissions = true,

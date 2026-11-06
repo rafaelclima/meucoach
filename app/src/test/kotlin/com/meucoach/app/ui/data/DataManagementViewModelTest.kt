@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.ActivityRepository
@@ -75,6 +76,7 @@ class DataManagementViewModelTest {
             photos = com.meucoach.app.profile.ProfilePhotoStore(context),
             firstRunMetrics = firstRunMetrics,
             context = context,
+            timeProvider = FakeTimeProvider(),
         )
     }
 

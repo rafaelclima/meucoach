@@ -3,6 +3,7 @@ package com.meucoach.app.ui.trends
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -81,7 +82,7 @@ class TrendsViewModelTest {
         profiles.saveProfile(profile())
         activities.saveImportedActivity(activity(), "sha")
 
-        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.snapshot).isNotNull
         assertThat(state.snapshot?.hasData).isTrue()
@@ -92,7 +93,7 @@ class TrendsViewModelTest {
 
     @Test
     fun `returns no snapshot without a profile`(): Unit = runBlocking {
-        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.profile).isNull()
         assertThat(state.snapshot).isNull()
@@ -102,7 +103,7 @@ class TrendsViewModelTest {
     fun `reports missing load without activities`(): Unit = runBlocking {
         profiles.saveProfile(profile())
 
-        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.snapshot?.hasData).isFalse()
         assertThat(state.snapshot?.acwr).isNull()
@@ -122,7 +123,7 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.intensity).isNotNull
         assertThat(state.intensity?.easySec).isEqualTo(600)
@@ -143,7 +144,7 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.intensity).isNull()
     }
@@ -175,7 +176,7 @@ class TrendsViewModelTest {
             ),
         )
 
-        val state = TrendsViewModel(profiles, activities, plans).uiState.first { !it.isLoading }
+        val state = TrendsViewModel(profiles, activities, plans, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.planCompletion?.planned).isEqualTo(2)
         assertThat(state.planCompletion?.done).isEqualTo(1)
@@ -186,7 +187,7 @@ class TrendsViewModelTest {
     @Test
     fun `reloads activity trends with the selected period`(): Unit = runBlocking {
         profiles.saveProfile(profile())
-        val viewModel = TrendsViewModel(profiles, activities, plans)
+        val viewModel = TrendsViewModel(profiles, activities, plans, FakeTimeProvider())
         val initial = viewModel.uiState.first { !it.isLoading }
 
         assertThat(initial.period).isEqualTo(TrendsPeriod.WEEKS_6)

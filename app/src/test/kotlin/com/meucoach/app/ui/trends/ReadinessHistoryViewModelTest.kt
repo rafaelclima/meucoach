@@ -3,6 +3,7 @@ package com.meucoach.app.ui.trends
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
@@ -60,7 +61,7 @@ class ReadinessHistoryViewModelTest {
         val today = LocalDate.now()
         checkIns.save(DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2))
 
-        val state = ReadinessHistoryViewModel(checkIns, metrics).uiState.first { !it.isLoading }
+        val state = ReadinessHistoryViewModel(checkIns, metrics, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.days).hasSize(1)
         assertThat(state.days.single().date).isEqualTo(today)
@@ -69,7 +70,7 @@ class ReadinessHistoryViewModelTest {
 
     @Test
     fun `starts with an empty history`(): Unit = runBlocking {
-        val state = ReadinessHistoryViewModel(checkIns, metrics).uiState.first { !it.isLoading }
+        val state = ReadinessHistoryViewModel(checkIns, metrics, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.days).isEmpty()
     }

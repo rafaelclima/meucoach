@@ -44,6 +44,9 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 
 @Composable
@@ -112,6 +115,9 @@ internal fun ProfileContent(
             else -> ProfileDetails(
                 profile = state.profile,
                 health = state.health,
+                today = state.today,
+                now = state.now,
+                zone = state.zone,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
                 onOpenHealth = onOpenHealth,
@@ -126,6 +132,9 @@ internal fun ProfileContent(
 private fun ProfileDetails(
     profile: AthleteProfile,
     health: ProfileHealthSummary,
+    today: LocalDate?,
+    now: Instant?,
+    zone: ZoneId,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onOpenHealth: () -> Unit,
@@ -172,7 +181,7 @@ private fun ProfileDetails(
         }
         item {
             McCard {
-                SummaryRow("Idade", ageLabel(profile))
+                SummaryRow("Idade", today?.let { ageLabel(profile, it) } ?: "—")
                 SummaryRow("Sexo", sexLabel(profile.sex))
                 SummaryRow("Experiência", experienceLabel(profile.experience))
                 profile.heightCm?.let { SummaryRow("Altura", formatMeasure(it, "cm")) }
@@ -273,13 +282,15 @@ private fun ProfileDetails(
                     contentColor = if (connected) colors.accentText else colors.textSecondary,
                     modifier = Modifier.testTag("profile-health-status"),
                 )
-                healthConnectLastSyncLabel(health.lastSyncedAt)?.let { label ->
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = label,
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                    )
+                now?.let { current ->
+                    healthConnectLastSyncLabel(health.lastSyncedAt, current, zone)?.let { label ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = label,
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                    }
                 }
             }
         }

@@ -18,6 +18,7 @@ import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -215,6 +216,7 @@ class ActivityDetailViewModelTest {
                 com.meucoach.app.profile.ProfilePhotoStore(
                     ApplicationProvider.getApplicationContext(),
                 ),
+                FakeTimeProvider(),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
@@ -242,6 +244,7 @@ class ActivityDetailViewModelTest {
         profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
             ApplicationProvider.getApplicationContext(),
         ),
+        timeProvider = FakeTimeProvider(),
     )
 
     @Test

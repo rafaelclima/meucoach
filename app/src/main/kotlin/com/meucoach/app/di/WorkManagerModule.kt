@@ -28,8 +28,10 @@ object WorkManagerModule {
 
     @Provides
     @Singleton
-    fun provideReminderScheduler(workManager: WorkManager): ReminderScheduler =
-        WorkManagerReminderScheduler(workManager)
+    fun provideReminderScheduler(
+        workManager: WorkManager,
+        timeProvider: com.meucoach.app.time.TimeProvider,
+    ): ReminderScheduler = WorkManagerReminderScheduler(workManager, timeProvider)
 
     @Provides
     @Singleton

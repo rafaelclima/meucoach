@@ -263,7 +263,7 @@ internal fun CheckInContent(
                             )
                         }
                     }
-                    item { CheckInHistoryCard(state.history) }
+                    item { CheckInHistoryCard(state.history, state.date) }
                 }
             }
 
@@ -285,7 +285,7 @@ internal fun CheckInContent(
 }
 
 @Composable
-private fun CheckInHistoryCard(history: List<DailyCheckIn>) {
+private fun CheckInHistoryCard(history: List<DailyCheckIn>, today: LocalDate) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.INSET) {
         history.forEachIndexed { index, entry ->
@@ -298,7 +298,7 @@ private fun CheckInHistoryCard(history: List<DailyCheckIn>) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = formatCheckInDate(entry.date),
+                        text = formatCheckInDate(entry.date, today),
                         style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
                     )
@@ -396,7 +396,7 @@ private fun QuestionDivider() {
     Spacer(modifier = Modifier.height(16.dp))
 }
 
-private fun formatCheckInDate(date: LocalDate): String =
-    if (date == LocalDate.now()) "Hoje" else date.format(HISTORY_DATE)
+private fun formatCheckInDate(date: LocalDate, today: LocalDate): String =
+    if (date == today) "Hoje" else date.format(HISTORY_DATE)
 
 private val HISTORY_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")

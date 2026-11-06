@@ -2,6 +2,7 @@ package com.meucoach.app.di
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -9,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Clock
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -22,7 +24,7 @@ class DataModuleTest {
         try {
             assertThat(database.openHelper.readableDatabase.version)
                 .isEqualTo(MeuCoachDatabase.VERSION)
-            assertThat(DataModule.provideActivityRepository(database))
+            assertThat(DataModule.provideActivityRepository(database, Clock.systemUTC(), FakeTimeProvider()))
                 .isInstanceOf(ActivityRepository::class.java)
         } finally {
             database.close()

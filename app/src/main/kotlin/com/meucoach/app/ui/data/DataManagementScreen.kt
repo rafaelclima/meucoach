@@ -59,7 +59,7 @@ fun DataManagementScreen(
 
     DataManagementContent(
         state = state,
-        onExport = { createDocument.launch(exportFileName(LocalDate.now())) },
+        onExport = { createDocument.launch(exportFileName(viewModel.currentDate())) },
         onDeleteAll = viewModel::deleteAllData,
         onBack = onBack,
         modifier = modifier,

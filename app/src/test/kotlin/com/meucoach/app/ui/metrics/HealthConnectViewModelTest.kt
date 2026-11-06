@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.health.HealthSyncCoordinator
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
 import com.meucoach.core.data.health.HealthConnectStatus
@@ -71,7 +72,9 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports missing permissions after refresh`(): Unit = runBlocking {
         val source = FakeSource(granted = emptySet())
-        val state = HealthConnectViewModel(source, coordinator(source), syncStore).uiState.first { !it.isLoading }
+        val state = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider()).uiState.first {
+            !it.isLoading
+        }
 
         assertThat(state.status).isEqualTo(HealthConnectStatus.AVAILABLE)
         assertThat(state.hasPermissions).isFalse()
@@ -89,7 +92,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = emptySet(),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -109,7 +112,7 @@ class HealthConnectViewModelTest {
                 missingPermissions = setOf("sleep", "hr"),
             ),
         )
-        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -122,7 +125,7 @@ class HealthConnectViewModelTest {
     @Test
     fun `reports an unavailable client`(): Unit = runBlocking {
         val source = FakeSource(status = HealthConnectStatus.UNAVAILABLE)
-        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()
@@ -140,7 +143,7 @@ class HealthConnectViewModelTest {
                 error = "Falha de leitura.",
             ),
         )
-        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore)
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
 
         viewModel.sync()

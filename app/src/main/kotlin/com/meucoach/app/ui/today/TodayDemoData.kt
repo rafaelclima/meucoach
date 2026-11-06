@@ -38,6 +38,7 @@ data class RecentActivityUi(
 )
 
 data class TodayUiState(
+    val today: LocalDate,
     val athleteName: String,
     val greeting: String,
     val dateLine: String,
@@ -65,7 +66,7 @@ data class TodayUiState(
     val avatarPath: String? = null,
 )
 
-fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalTime.now()): TodayUiState {
+fun demoTodayUiState(today: LocalDate, now: LocalTime = LocalTime.NOON): TodayUiState {
     val labels = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
     val loads = listOf(0.0, 4.2, 0.0, 5.6, 0.0, 8.1, 0.0)
     val todayIndex = today.dayOfWeek.value - 1
@@ -75,6 +76,7 @@ fun demoTodayUiState(today: LocalDate = LocalDate.now(), now: LocalTime = LocalT
         }
 
     return TodayUiState(
+        today = today,
         athleteName = "Rafael",
         greeting = greetingFor(now),
         dateLine = formatDateLine(today),

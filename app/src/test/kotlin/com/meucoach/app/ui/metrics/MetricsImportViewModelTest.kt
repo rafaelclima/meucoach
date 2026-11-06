@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +148,7 @@ class MetricsImportViewModelTest {
         assertThat(viewModel.uiState.value.trends.hasData).isTrue()
     }
 
-    private fun viewModel(): MetricsImportViewModel = MetricsImportViewModel(context, repository)
+    private fun viewModel(): MetricsImportViewModel = MetricsImportViewModel(context, repository, FakeTimeProvider())
         .also { it.ioDispatcher = dispatcher }
         .also { currentViewModel = it }
 

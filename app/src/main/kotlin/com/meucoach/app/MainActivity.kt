@@ -11,6 +11,7 @@ import com.meucoach.app.importer.ImportCoordinator
 import com.meucoach.app.importer.ShareIntentReader
 import com.meucoach.app.importer.importEnqueueMessage
 import com.meucoach.app.reminder.NotificationNavigation
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.designsystem.theme.McTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -20,6 +21,9 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var importCoordinator: ImportCoordinator
+
+    @Inject
+    lateinit var timeProvider: TimeProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +43,13 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         handleNavigationIntent(intent)
         handleShareIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-evaluates the local day and the pre-onboarding system-zone fallback
+        // after the app returns from background or the user travels.
+        timeProvider.refresh()
     }
 
     private fun handleNavigationIntent(intent: Intent?) {

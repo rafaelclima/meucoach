@@ -2,6 +2,7 @@ package com.meucoach.app.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
 import com.meucoach.core.data.health.HealthSyncStore
@@ -55,6 +56,9 @@ data class ProfileUiState(
     val isLoading: Boolean = true,
     val profile: AthleteProfile? = null,
     val health: ProfileHealthSummary = ProfileHealthSummary(),
+    val today: LocalDate? = null,
+    val now: Instant? = null,
+    val zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
 )
 
 @HiltViewModel
@@ -63,6 +67,7 @@ class ProfileViewModel @Inject constructor(
     private val metricsRepository: DailyMetricsRepository,
     private val healthSource: HealthDailySource,
     private val syncStore: HealthSyncStore,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private data class HealthAccess(
         val status: HealthConnectStatus = HealthConnectStatus.UNAVAILABLE,
@@ -76,7 +81,8 @@ class ProfileViewModel @Inject constructor(
         repository.observeProfile(),
         metricsRepository.observeAll(),
         access,
-    ) { profile, metrics, access ->
+        timeProvider.today,
+    ) { profile, metrics, access, today ->
         ProfileUiState(
             isLoading = false,
             profile = profile,
@@ -87,6 +93,9 @@ class ProfileViewModel @Inject constructor(
                 latestMetricDate = metrics.lastOrNull()?.date,
                 lastSyncedAt = access.lastSyncedAt,
             ),
+            today = today,
+            now = timeProvider.now(),
+            zone = timeProvider.zoneId.value,
         )
     }.stateIn(
         scope = viewModelScope,

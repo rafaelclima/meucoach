@@ -36,7 +36,7 @@ fun goalLabel(goal: GoalType): String = when (goal) {
     GoalType.CUSTOM -> "Outro"
 }
 
-fun ageLabel(profile: AthleteProfile, today: LocalDate = LocalDate.now()): String {
+fun ageLabel(profile: AthleteProfile, today: LocalDate): String {
     val years = Period.between(profile.birthDate, today).years
     return "$years anos"
 }

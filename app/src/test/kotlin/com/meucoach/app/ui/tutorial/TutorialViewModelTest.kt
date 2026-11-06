@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
 import com.meucoach.core.data.health.HealthConnectStatus
@@ -164,6 +165,7 @@ class TutorialViewModelTest {
         activityRepository = activityRepository,
         planRepository = planRepository,
         healthSource = FakeHealthSource(healthConnected),
+        timeProvider = FakeTimeProvider(),
     )
 
     private fun profile() = AthleteProfile(

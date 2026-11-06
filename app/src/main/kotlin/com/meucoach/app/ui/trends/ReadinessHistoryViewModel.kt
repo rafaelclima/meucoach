@@ -2,6 +2,7 @@ package com.meucoach.app.ui.trends
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.domain.readiness.ReadinessHistoryCalculator
@@ -20,19 +21,21 @@ data class ReadinessHistoryUiState(val isLoading: Boolean = true, val days: List
 class ReadinessHistoryViewModel @Inject constructor(
     checkInRepository: CheckInRepository,
     metricsRepository: DailyMetricsRepository,
+    timeProvider: TimeProvider,
 ) : ViewModel() {
     private val calculator = ReadinessHistoryCalculator()
 
     val uiState: StateFlow<ReadinessHistoryUiState> = combine(
         checkInRepository.observeAll(),
         metricsRepository.observeAll(),
-    ) { checkIns, metrics ->
+        timeProvider.today,
+    ) { checkIns, metrics, today ->
         ReadinessHistoryUiState(
             isLoading = false,
             days = calculator.calculate(
                 checkIns = checkIns,
                 metrics = metrics,
-                today = LocalDate.now(),
+                today = today,
                 days = HISTORY_DAYS,
             ),
         )

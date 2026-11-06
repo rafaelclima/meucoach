@@ -46,7 +46,14 @@ class ProfileScreenTest {
     @Test
     fun `shows the profile summary and opens editing`() {
         var edit = false
-        setContent(state = ProfileUiState(isLoading = false, profile = profile()), onEdit = { edit = true })
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile(),
+                today = LocalDate.of(2026, 11, 6),
+            ),
+            onEdit = { edit = true },
+        )
 
         compose.onNodeWithText("Seu perfil").assertIsDisplayed()
         compose.onNodeWithText("38 anos").assertIsDisplayed()
@@ -64,7 +71,11 @@ class ProfileScreenTest {
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
                     onOpenHealth = {},
@@ -90,6 +101,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(
                         isLoading = false,
                         profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
                         health = ProfileHealthSummary(
                             status = HealthConnectStatus.AVAILABLE,
                             hasPermissions = true,
@@ -123,6 +135,7 @@ class ProfileScreenTest {
                     state = ProfileUiState(
                         isLoading = false,
                         profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
                         health = ProfileHealthSummary(
                             status = HealthConnectStatus.AVAILABLE,
                             hasPermissions = false,
@@ -145,7 +158,14 @@ class ProfileScreenTest {
 
     @Test
     fun `offers notification priming in the help section`() {
-        setContent(state = ProfileUiState(isLoading = false, profile = profile()), onEdit = {})
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile(),
+                today = LocalDate.of(2026, 11, 6),
+            ),
+            onEdit = {},
+        )
 
         val list = compose.onNodeWithTag("profile-list")
         list.performScrollToNode(hasText("Lembretes"))
@@ -159,7 +179,11 @@ class ProfileScreenTest {
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
                     onOpenHealth = {},
@@ -181,7 +205,11 @@ class ProfileScreenTest {
         compose.setContent {
             McTheme(darkTheme = false) {
                 ProfileContent(
-                    state = ProfileUiState(isLoading = false, profile = profile()),
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
                     onOpenHealth = {},

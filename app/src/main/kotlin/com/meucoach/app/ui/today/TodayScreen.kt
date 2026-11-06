@@ -84,8 +84,7 @@ import java.util.Locale
 fun TodayScreen(
     onDemoAction: (String) -> Unit,
     modifier: Modifier = Modifier,
-    state: TodayUiState = demoTodayUiState(),
-    today: LocalDate = LocalDate.now(),
+    state: TodayUiState,
     onCheckInClick: () -> Unit = {},
     onTrendsClick: () -> Unit = {},
     onActivityClick: (String) -> Unit = {},
@@ -98,6 +97,7 @@ fun TodayScreen(
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
 ) {
+    val today = state.today
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }

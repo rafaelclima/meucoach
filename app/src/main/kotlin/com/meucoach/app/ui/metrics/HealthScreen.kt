@@ -68,6 +68,7 @@ fun HealthScreen(
     val healthViewModel: HealthConnectViewModel = hiltViewModel()
     val healthState by healthViewModel.uiState.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) {
+        viewModel.refreshToday()
         healthViewModel.refresh()
         onPauseOrDispose { }
     }
@@ -91,6 +92,7 @@ fun HealthScreen(
         onOpenHealthConnect = { openHealthConnectSettings(context) },
         onWindowSelected = viewModel::selectWindow,
         onBack = onBack,
+        today = state.today,
         modifier = modifier,
     )
 }
@@ -107,11 +109,12 @@ internal fun HealthContent(
     onInstallHealthConnect: () -> Unit = {},
     onOpenHealthConnect: () -> Unit = {},
     onWindowSelected: (Int) -> Unit = {},
-    today: LocalDate = LocalDate.now(),
+    today: LocalDate? = null,
 ) {
     val colors = McTheme.colors
     var showCsvFormat by remember { mutableStateOf(false) }
-    val showTodayHint = isHealthConnectConnected(healthState.status, healthState.hasPermissions) &&
+    val showTodayHint = today != null &&
+        isHealthConnectConnected(healthState.status, healthState.hasPermissions) &&
         state.storedDays > 0 &&
         state.latestMetricDate?.isBefore(today) == true
     Box(
@@ -407,9 +410,12 @@ internal fun HealthConnectContent(
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
-        healthConnectLastSyncLabel(state.lastSyncedAt)?.let { label ->
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = label, style = McTextStyles.caption, color = colors.textTertiary)
+        val now = state.now
+        if (now != null) {
+            healthConnectLastSyncLabel(state.lastSyncedAt, now, state.zone)?.let { label ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = label, style = McTextStyles.caption, color = colors.textTertiary)
+            }
         }
         if (state.message == null) {
             state.lastError?.let { error ->

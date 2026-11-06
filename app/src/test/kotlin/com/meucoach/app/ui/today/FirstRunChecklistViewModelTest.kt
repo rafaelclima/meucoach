@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthConnectReadResult
@@ -140,6 +141,7 @@ class FirstRunChecklistViewModelTest {
         healthSource = FakeChecklistHealthSource(healthConnected),
         store = store,
         metrics = metrics,
+        timeProvider = FakeTimeProvider(),
     ).also { currentViewModel = it }
 }
 

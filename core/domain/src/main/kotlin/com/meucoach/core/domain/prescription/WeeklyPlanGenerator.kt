@@ -61,7 +61,7 @@ data class WeeklyPlanInput(
     val profile: AthleteProfile,
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
-    val weekStart: LocalDate = LocalDate.now(),
+    val weekStart: LocalDate,
     val previousWeek: WeeklyPlan? = null,
     /** 1-based position in the current block; every 4th week is a deload. */
     val weekNumberInBlock: Int = 1,

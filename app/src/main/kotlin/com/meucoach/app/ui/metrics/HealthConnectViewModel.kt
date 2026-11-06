@@ -3,6 +3,7 @@ package com.meucoach.app.ui.metrics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.health.HealthSyncCoordinator
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
 import com.meucoach.core.data.health.HealthSyncStore
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 data class HealthConnectUiState(
@@ -26,6 +29,9 @@ data class HealthConnectUiState(
     val lastSyncedAt: Instant? = null,
     val lastError: String? = null,
     val message: String? = null,
+    val today: LocalDate? = null,
+    val now: Instant? = null,
+    val zone: ZoneId = ZoneId.systemDefault(),
 ) {
     val hasPermissions: Boolean get() = missingPermissions.isEmpty()
 }
@@ -35,6 +41,7 @@ class HealthConnectViewModel @Inject constructor(
     private val source: HealthDailySource,
     private val coordinator: HealthSyncCoordinator,
     private val syncStore: HealthSyncStore,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private data class Access(
         val isLoading: Boolean = true,
@@ -51,7 +58,8 @@ class HealthConnectViewModel @Inject constructor(
         coordinator.state,
         manualMessage,
         importedDays,
-    ) { access, sync, message, days ->
+        timeProvider.today,
+    ) { access, sync, message, days, today ->
         HealthConnectUiState(
             isLoading = access.isLoading,
             status = access.status,
@@ -62,6 +70,9 @@ class HealthConnectViewModel @Inject constructor(
             lastSyncedAt = syncStore.lastSyncedAt() ?: sync.lastSyncedAt,
             lastError = sync.lastError,
             message = message,
+            today = today,
+            now = timeProvider.now(),
+            zone = timeProvider.zoneId.value,
         )
     }.stateIn(
         scope = viewModelScope,

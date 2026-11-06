@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.firstrun.FirstActionType
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.time.TimeProvider
+import com.meucoach.app.time.weekStart
 import com.meucoach.app.ui.common.readinessLabel
 import com.meucoach.app.ui.profile.availabilityLabel
 import com.meucoach.app.ui.profile.goalLabel
@@ -93,6 +95,7 @@ class TutorialViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
     private val healthSource: HealthDailySource,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
     private val _uiState = MutableStateFlow(TutorialUiState(seen = store.isIntroDone()))
@@ -171,13 +174,13 @@ class TutorialViewModel @Inject constructor(
 
     private suspend fun buildState(): LoadedState {
         val profile = profileRepository.getProfile() ?: error("Perfil não encontrado.")
-        val today = LocalDate.now()
+        val today = timeProvider.currentDate()
         val checkIn = checkInRepository.get(today)
         val metrics = metricsRepository.getAll()
         val activities = activityRepository.listActivitySummaries()
         val readiness = readinessResult(checkIn, metrics, today)
         val load = buildLoadSnapshot(activities, profile, today)
-        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val weekStart = today.weekStart()
         val previousWeek = planRepository.getWeek(weekStart.minusWeeks(1))
         val weekNumber = planRepository.consecutiveWeeksBefore(weekStart) + 1
         val plan = planRepository.getWeek(weekStart) ?: planGenerator.generate(
@@ -197,6 +200,7 @@ class TutorialViewModel @Inject constructor(
             activities = activities,
             load = load,
             today = today,
+            now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
             plan = plan,
         )
         return LoadedState(

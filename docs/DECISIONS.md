@@ -1,6 +1,8 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.0 · **Data:** 27/10/2026
+**Versão:** 1.1 · **Data:** 06/11/2026
+
+> Revisão 1.1 (06/11/2026): ADRs 0022–0026 e decisões aprovadas da Etapa 3. O histórico anterior permanece.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -26,6 +28,11 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0019](adr/0019-story-camera-projection.md) | Câmera 3D real no snapshot do story (port da projeção do MapLibre) | Aceito — implementado | 04/11/2026 |
 | [0020](adr/0020-health-top-level-destination.md) | Saúde como 5ª aba e destino principal; Perfil sem o card grande | Aceito — implementado | 05/11/2026 |
 | [0021](adr/0021-health-sync-on-resume.md) | Sync automático do Health Connect ao abrir o app (6 h) + worker diário | Aceito — implementado | 05/11/2026 |
+| [0022](adr/0022-deterministic-time-and-week.md) | Tempo determinístico, fuso do perfil e virada de dia/semana | Aceito — implementado em C1-01 | 06/11/2026 |
+| [0023](adr/0023-weekly-plan-vs-daily-prescription.md) | Plano semanal como intenção e prescrição diária como autoridade | Aceito — planejado para C1-03 | 06/11/2026 |
+| [0024](adr/0024-completion-evidence.md) | Conclusão com evidência (`ACTIVITY`/`GUIDED`/`MANUAL`) e estados próprios | Aceito — C1-04; `GUIDED` no ciclo 3 | 06/11/2026 |
+| [0025](adr/0025-deletion-retention-reset.md) | Lixeira de 7 dias, reset imediato e época de dados | Aceito — planejado para C1-05 | 06/11/2026 |
+| [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Proposto — direção aprovada; limiares a validar | 06/11/2026 |
 
 ## Decisões menores (registro rápido)
 
@@ -39,6 +46,11 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Permissões:** notificação só no contexto (Perfil → Ajuda/checklist), nunca no launch; o app segue utilizável se o usuário recusar.
 - **Saúde:** 5ª aba principal (`Hoje · Corridas · Tendências · Saúde · Perfil`); o Hoje só linka “Ver recuperação” e o Perfil mantém link compacto + backup (ADR-0020).
 - **Health Connect:** sync incremental no resume se a última leitura tem mais de 6 h; worker diário como fallback; o botão manual continua sendo override (ADR-0021).
+- **Tempo:** dia e semana derivam do fuso do perfil, com `TimeProvider`/`Clock` injetável e virada observável (ADR-0022).
+- **Plano × prescrição:** o plano é intenção; a prescrição diária persistida é a única autoridade do dia; adaptações são versionadas e auditáveis (ADR-0023).
+- **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).
+- **Exclusão:** lixeira de 7 dias para atividade; “apagar tudo” imediato, sem recibo, com época de dados que invalida workers em voo; Health Connect não é apagado (ADR-0025).
+- **Carga/qualidade:** ACWR desconhecido, cobertura insuficiente ou fonte desatualizada bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR-0026, proposto).
 - **Saúde (polimento):** aviso “os dados de hoje ainda não chegaram” quando há histórico e o dia atual falta, mais o link secundário “Abrir Health Connect”; resumo extra no Hoje adiado para não competir com “Iniciar”.
 - **Tutorial:** camada sobre o Hoje, 3 cenas com dados reais e checklist dismissível; sem streak, sem dados inventados.
 - **Ativação:** métricas locais (timestamps/contadores) no JSON de backup, sem SDK de analytics; dicas contextuais únicas e dismissíveis.

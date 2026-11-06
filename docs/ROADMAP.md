@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 30/10/2026
+**Versão:** 1.2 · **Data:** 06/11/2026
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -338,6 +338,48 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [ ] Proveniência por campo — decisão futura, se houver necessidade de auditoria por métrica.
 
 **Aceite:** o usuário entende por que o dia atual ainda não aparece e consegue abrir o Health Connect sem sair da aba.
+
+---
+
+## Ciclo 1 — Correções críticas (planejado, sem autorização de início)
+
+**Status:** planejamento concluído em 06/11/2026; nenhuma implementação iniciada.
+**Plano técnico:** [`docs/PLANO_TECNICO_CICLO_1.md`](PLANO_TECNICO_CICLO_1.md) · **ADRs:** 0022–0026.
+
+| Ordem | ID | Iniciativa | Depende de | Gate |
+|---|---|---|---|---|
+| 1 | **C1-01** | Tempo determinístico e virada de dia/semana | — | Clock fixo 23:59/00:01, segunda-feira, fuso e DST |
+| 2 | **C1-02** | Cobertura de carga, ACWR desconhecido e gate de qualidade | C1-01 | Sem dado/sem frescor ⇒ sem qualidade e explicação |
+| 3 | **C1-03** | Plano como intenção + prescrição única do dia (N-01/N-02) | C1-01, C1-02 | Um card; prescrição versionada; plano no meio da semana sem passado |
+| 4 | **C1-04** | Conclusão com evidência e vínculo atividade ↔ sessão | C1-03 | Impossível `DONE` sem evidência; migração testada |
+| 5 | **C1-05** | Lixeira de 7 dias, reset efetivo e época de dados | C1-01 | Reset sem ressurreição; expurgo por clock |
+| 6 | **C1-06** | Verdade documental, ADRs e regressões finais | C1-01..C1-05 | Docs = código; suíte e goldens verdes |
+
+**Regras do ciclo:**
+
+- Cada entrega termina com gate próprio; a próxima só começa com o gate anterior verde.
+- Nenhuma superfície nova além de execução/evidência (parte da correção).
+- Sem refatoração abrangente, sem novos módulos e sem mudança de stack.
+- Toda regra nova cita `ruleId`, `evidenceId` e confiança.
+- Dados reais nunca entram no diff.
+
+### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
+
+**Status:** registrado em 06/11/2026; fora do ciclo 1.
+
+- Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão.
+- Tratar a prova como evento explícito (dia sem treino depois).
+- Adicionar recuperação pós-prova (1–2 semanas, sem qualidade, conforme distância).
+- Rever a relação entre taper e deload.
+- Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
+
+### N-05 — Backfill do Health Connect (backlog de integração)
+
+**Status:** registrado em 06/11/2026; fora do ciclo 1.
+
+- A primeira sincronização continua lendo 30 dias.
+- Avaliar backfill de histórico anterior quando `ExerciseSession` e importação de exercícios entrarem (ciclo 2), após validar o comportamento do Zepp no aparelho.
+- Não prometer histórico “desde sempre” antes de medir o que o Health Connect realmente entrega.
 
 ---
 

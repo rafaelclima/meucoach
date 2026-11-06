@@ -118,7 +118,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = plan),
                 )
             }
@@ -155,7 +154,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(
                         plan = planWith(today, confidence = DataConfidence.LOW),
                     ),
@@ -178,7 +176,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(
                         plan = planWith(today, confidence = DataConfidence.MEDIUM),
                     ),
@@ -210,7 +207,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(explanation = explanation),
                 )
             }
@@ -255,7 +251,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(readinessExplanation = explanation),
                 )
             }
@@ -278,7 +273,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = planWith(today)),
                     onCompleteSession = { completed = it },
                 )
@@ -317,7 +311,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = plan),
                     onSwapSession = { first, second -> swapped = first to second },
                 )
@@ -344,7 +337,6 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    today = today,
                     state = demoTodayUiState(today).copy(plan = plan),
                 )
             }
@@ -387,7 +379,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState().copy(acwr = 1.42),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)).copy(acwr = 1.42),
                 )
             }
         }
@@ -418,7 +410,7 @@ class TodayPlanTest {
     fun `does not invent a load ratio without history`() {
         compose.setContent {
             McTheme(darkTheme = true) {
-                TodayScreen(onDemoAction = {}, state = demoTodayUiState())
+                TodayScreen(onDemoAction = {}, state = demoTodayUiState(LocalDate.of(2026, 11, 2)))
             }
         }
 
@@ -433,7 +425,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
                     onTrendsClick = { trends = true },
                     onActivityClick = { openedActivity = it },
                 )
@@ -458,7 +450,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
                     checklistState = FirstRunChecklistState(
                         isLoading = false,
                         hasCheckedIn = true,
@@ -484,7 +476,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
                     onHealthClick = { health = true },
                 )
             }
@@ -503,7 +495,7 @@ class TodayPlanTest {
             McTheme(darkTheme = true) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = demoTodayUiState(),
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
                     onProfileClick = { profile = true },
                 )
             }

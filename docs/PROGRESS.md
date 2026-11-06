@@ -1,17 +1,17 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 05/11/2026 (tutorial Fases A–C; Saúde na barra, sync automático, clareza de confiança e escala)
+**Atualizado:** 06/11/2026 (C1-01 — tempo determinístico implementado; C1-02 a C1-06 não iniciados)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 872 testes, 0 falhas (27 em `core:model`, 288 em `core:domain`, 100 em `core:data`, 457 em `:app`)
+- **Testes:** 889 testes no total (467 em `:app`, 100 em `core:data`, 295 em `core:domain`, 27 em `core:model`), 0 falhas; 3 falhas esperadas de C1-02/C1-03 permanecem `@Ignore` em `Cycle1RegressionTest`.
 - **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 38 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v9 (`heatLevel` no check-in e `treadmillAccess` no perfil), migrações 1→2 até 8→9 testadas.
+- **Persistência:** Room 2.8.5, schema v10 (avatar/perfil), migrações 1→2 até 9→10 testadas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -56,6 +56,72 @@
 - **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-06 — C1-01: tempo determinístico, fuso e virada de dia/semana
+
+**Objetivo:** consolidar uma única noção de “hoje” e “semana”, derivada do fuso do perfil, observável na virada de dia e no resume, sem `now()` nas regras de negócio ou ViewModels.
+
+### Concluído
+
+- **`TimeProvider`:** criado em `app/time` com `today`, `zoneId`, `now()`, `currentDate()`, `currentWeekStart()`, `atStartOfDay()`, `nextMidnight()` e `refresh()`.
+- **Implementações:** `SystemTimeProvider` (relógio + sinal de meia-noite) e `ProfileTimeProvider` (fuso do perfil com fallback explícito para o fuso do sistema antes do onboarding). Hilt fornece um único `Clock` e o `TimeProvider`; o mesmo relógio é injetado nos repositórios, `HealthSyncService`, `TutorialStore` e `FirstRunMetricsStore`.
+- **Virada observável:** `today` emite na meia-noite calculada por `ZonedDateTime`, na troca de fuso do perfil e em `MainActivity.onResume()` via `TimeProvider.refresh()`. A troca de fuso também reagenda os lembretes.
+- **ViewModels:** `Today`, `CheckIn`, `Trends`, `ReadinessHistory`, `MetricsImport`, `HealthConnect`, `Profile`, `FirstRunChecklist`, `Tutorial`, `Calibration`, `ActivityDetail`, `Onboarding` e `DataManagement` deixaram de chamar o relógio do sistema. `TodayViewModel` passou a recriar o plano quando a semana muda; `CheckInViewModel` conserva a data capturada às 23:59 e recarrega o formulário no novo dia.
+- **Telas/formatters:** `TodayScreen`, `CheckInScreen`, `HealthContent`, `ProfileDetails` e `DataManagementScreen` recebem a data do estado/provider. `OnboardingValidator`, `ProfileLabels` e `HealthConnectCopy` não têm mais defaults de data/hora.
+- **Planejamento:** `WeeklyPlanInput.weekStart` não tem mais default; `ReminderScheduler`/`ReminderWorker` usam fuso e dia do perfil. Atividades importadas gravam `zoneId`/`localDate` com o fuso vigente do perfil, preservando o instante absoluto.
+- **Testes novos:** `TimeProviderTest` (relógio fixo, 23:59→00:01, domingo→segunda, mês/ano, fuso e DST) e `TimeDrivenStateTest` (save às 23:59, recarga às 00:01, fuso do perfil como fonte única, virada de semana no `TodayViewModel` e consistência plano × data local). Testes existentes de ViewModels receberam `FakeTimeProvider`.
+
+### Evidências
+
+- `./gradlew check` — verde (testes, Spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:testDebugUnitTest` — 467 testes, 0 falhas.
+- Nenhuma migração de Room, dependência nova ou alteração de schema.
+
+### Decisões e observações
+
+- **Domínio continua puro:** o `TimeProvider` vive no `:app`; `core:domain` recebe `today`/`weekStart` explícitos. Nenhuma data default no gerador semanal.
+- **Instante × data local:** atividades continuam persistidas com instante UTC + `zoneId` + `localDate`; o instante não é reinterpretado. A data local do planejamento vem do fuso do perfil.
+- **Fallback documentado:** antes do onboarding, o fuso do sistema é usado; ao salvar/editar o perfil, o fluxo muda para o fuso informado.
+- **Pendência fora do escopo:** `StoryVideoExporter` ainda usa `System.currentTimeMillis()` apenas no nome do arquivo de vídeo; não participa de planejamento, carga, check-in ou virada de dia.
+
+### Próximo passo
+
+1. Revisão humana de C1-01 e do diff.
+2. Após aprovação, iniciar C1-02 (cobertura de carga e gate de qualidade).
+3. Manter os `@Ignore` de C1-02/C1-03 até o gate correspondente.
+
+## Sessão 2026-11-06 — Etapa 3: formalização arquitetural e preparação dos testes
+
+**Objetivo:** transformar as decisões aprovadas (D2, D3, D6 e direcionamentos do MVP) em ADRs, plano técnico e estratégia de regressão, sem implementar produção.
+
+### Concluído
+
+- **ADRs 0022–0026:** tempo/fuso (0022), plano × prescrição (0023), evidência de conclusão (0024), exclusão/retenção (0025) e cobertura de carga/qualidade (0026). 0022–0025 **Accepted**; 0026 **Proposed** (limiares de iniciante/cobertura ainda a validar). Nenhum ADR anterior foi alterado.
+- **Plano técnico:** `docs/PLANO_TECNICO_CICLO_1.md` com arquitetura alvo, modelo planejado, N-01..N-05, sequência C1-01..C1-06, matriz de testes por tipo, dependências, riscos, rastreabilidade PRD → ADR → C1 e roteiro manual.
+- **Testes preparados:** `Cycle1RegressionTest` em `core:domain` com 7 cenários: 4 verdes (disponibilidade, espaçamento de qualidade, vermelho sem qualidade, adesão ignora futuro/REST) e 3 **falhas esperadas** (`@Ignore`) para C1-02/C1-03 (ACWR nulo libera qualidade, cobertura insuficiente não bloqueia, plano no meio da semana inclui passado).
+- **Documentos atualizados:** `DECISIONS.md` (índice e decisões menores), `REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C de aprovação, preservando o histórico), `PRODUCT.md` (escopo aprovado, revisão 1.1), `ROADMAP.md` (Ciclo 1 planejado, N-03 e N-05 no backlog), `PROGRESS.md`.
+
+### Evidências
+
+- `./gradlew :core:domain:test --tests "*Cycle1RegressionTest"` — verde; 7 cenários, 4 executados, 3 ignorados (falhas esperadas), 0 falhas.
+- `./gradlew check` — verde (testes, Spotless, lint e Kover; parser FIT 93,01% de branches).
+- `./gradlew :app:assembleDebug` — verde.
+- Nenhuma alteração de código de produção, schema, dependência, migração ou refatoração nesta etapa.
+
+### Decisões e observações
+
+- **D2/D3/D6 aprovadas com condições** e formalizadas; o detalhamento de implementação fica no plano, não no ADR.
+- **0026 proposto:** a direção (dado ausente não libera qualidade; ACWR é flag) está aprovada, mas os limiares (8 dias/28, frescor 14 dias, 4 semanas/80%, 15–20 km/120 min) precisam de validação científica e de C1-04.
+- **N-01/N-02 entram em C1-03**; **N-03** vai para o ciclo 2; **N-04** entra em C1-02; **N-05** fica no ciclo de integração Health Connect.
+- **`GUIDED`** tem contrato no ADR 0024, mas a sessão guiada persistente completa continua no ciclo 3; nenhum botão falso será criado.
+- **Sem teste artificial:** cenários que dependem de classes inexistentes ficaram documentados na matriz; não foram criadas estruturas de produção só para compilar testes antecipados.
+
+### Próximo passo
+
+1. Aguardar autorização explícita para iniciar **C1-01** (tempo determinístico).
+2. Manter os `@Ignore` de C1-02/C1-03 até que cada correção entre; no commit do gate correspondente, removê-los e habilitar o teste.
+3. Revisar os limiares do ADR 0026 com dados reais antes de promover o status para Accepted.
 
 ## Sessão 2026-11-05 — Ícone do app: cronômetro + M + corredor
 

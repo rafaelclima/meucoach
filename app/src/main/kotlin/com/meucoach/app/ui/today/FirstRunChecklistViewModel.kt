@@ -3,6 +3,7 @@ package com.meucoach.app.ui.today
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
@@ -13,9 +14,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import javax.inject.Inject
 
 data class FirstRunChecklistState(
@@ -31,6 +32,7 @@ data class FirstRunChecklistState(
 }
 
 /** Tracks the three first-run setup steps shown on Today. It never blocks the app. */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class FirstRunChecklistViewModel @Inject constructor(
     checkInRepository: CheckInRepository,
@@ -38,8 +40,8 @@ class FirstRunChecklistViewModel @Inject constructor(
     private val healthSource: HealthDailySource,
     private val store: TutorialStore,
     private val metrics: FirstRunMetricsStore,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
-    private val today = LocalDate.now()
     private var completedMarked = false
     private val _uiState = MutableStateFlow(
         FirstRunChecklistState(dismissed = store.isChecklistDismissed()),
@@ -49,7 +51,7 @@ class FirstRunChecklistViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             combine(
-                checkInRepository.observe(today),
+                timeProvider.today.flatMapLatest { checkInRepository.observe(it) },
                 activityRepository.observeActivitySummaries(),
             ) { checkIn, activities ->
                 Pair(checkIn != null, activities.isNotEmpty())

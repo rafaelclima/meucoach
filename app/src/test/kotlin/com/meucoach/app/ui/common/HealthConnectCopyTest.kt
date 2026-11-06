@@ -62,12 +62,12 @@ class HealthConnectCopyTest {
     fun `formats the last read relative to now`() {
         val now = Instant.parse("2026-11-03T18:00:00Z")
 
-        assertThat(healthConnectLastSyncLabel(now.minusSeconds(10), now)).isEqualTo("Atualizado agora")
-        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofMinutes(12)), now))
+        assertThat(healthConnectLastSyncLabel(now.minusSeconds(10), now, ZoneOffset.UTC)).isEqualTo("Atualizado agora")
+        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofMinutes(12)), now, ZoneOffset.UTC))
             .isEqualTo("Atualizado há 12 min")
-        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofHours(3)), now))
+        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofHours(3)), now, ZoneOffset.UTC))
             .isEqualTo("Atualizado há 3 h")
-        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofDays(1)), now))
+        assertThat(healthConnectLastSyncLabel(now.minus(Duration.ofDays(1)), now, ZoneOffset.UTC))
             .isEqualTo("Atualizado ontem")
         assertThat(
             healthConnectLastSyncLabel(
@@ -76,7 +76,7 @@ class HealthConnectCopyTest {
                 zone = ZoneOffset.UTC,
             ),
         ).isEqualTo("Atualizado em 26/10")
-        assertThat(healthConnectLastSyncLabel(null, now)).isNull()
+        assertThat(healthConnectLastSyncLabel(null, now, ZoneOffset.UTC)).isNull()
     }
 
     @Test

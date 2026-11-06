@@ -1,6 +1,13 @@
 # PRODUCT.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026 · **Status:** aprovado para a Fase 0
+**Versão:** 1.1 · **Data:** 06/11/2026 · **Status:** aprovado para a Fase 0; revisão 1.1 registra as decisões aprovadas da Etapa 3
+
+**Histórico de revisão**
+
+| Versão | Data | Mudança |
+|---|---|---|
+| 1.0 | 27/10/2026 | Visão, usuário 0, escopo do MVP e princípios iniciais. |
+| 1.1 | 06/11/2026 | Registro das decisões aprovadas de captura, perfil, objetivo, backend, backup e determinismo. |
 
 ## 1. Visão
 
@@ -130,3 +137,22 @@ A promessa central:
 | **Z2** | Zona 2 de FC, intensidade fácil/conversável |
 | **RPE** | Esforço percebido (1–10) |
 | **Tier A/B/C** | Níveis de calibração por dados disponíveis |
+
+## 10. Decisões aprovadas do MVP (06/11/2026)
+
+Estas decisões complementam o escopo acima e orientam o primeiro ciclo. O detalhamento técnico está em `docs/PLANO_TECNICO_CICLO_1.md`.
+
+| Tema | Decisão aprovada |
+|---|---|
+| Captura | **Import-first**: FIT/TCX/GPX + Health Connect + entrada manual; sem GPS nativo no MVP. |
+| Perfil | **Um perfil por instalação**; sem `profileId` especulativo nem multi-perfil nesta fase. |
+| Objetivo | **Um objetivo ativo por vez**; objetivo geral ou prova (5K/10K/meia/maratona). |
+| Backend | **Sem backend obrigatório**; o app é útil offline e sem conta. Integração externa futura não é antecipada. |
+| Backup | **Versionado e restaurável** como funcionalidade de ciclo posterior; não bloqueia o ciclo 1. |
+| Motor | **Determinístico**; regra, evidência e confiança em toda recomendação. LLM não decide treino. |
+| Conclusão | `ACTIVITY` > `GUIDED` > `MANUAL`; descanso, doença e não realizado têm estados próprios (ADR 0024). |
+| Plano × prescrição | Plano é intenção; prescrição diária persistida é a única autoridade do dia (ADR 0023). |
+| Exclusão | Lixeira de 7 dias para atividade; reset imediato, com época de dados e sem apagar Health Connect (ADR 0025). |
+| Carga | ACWR desconhecido/cobertura insuficiente bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR 0026). |
+
+> O prazo de 30 dias de lixeira citado no PRD original (FR-009) foi substituído por **7 dias** na decisão aprovada; a reconciliação dos documentos entra no C1-06.

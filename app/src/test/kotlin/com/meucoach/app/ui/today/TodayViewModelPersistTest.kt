@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
@@ -88,7 +89,7 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
@@ -110,7 +111,7 @@ class TodayViewModelPersistTest {
         )
         plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.qualityCount == 2 }
         }
@@ -133,7 +134,7 @@ class TodayViewModelPersistTest {
             plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
         }
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
@@ -180,7 +181,7 @@ class TodayViewModelPersistTest {
             ),
         )
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans)
+        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
         viewModel.swapSession(weekStart, weekStart.plusDays(1), today = weekStart)
         withTimeout(5_000) {
             while (

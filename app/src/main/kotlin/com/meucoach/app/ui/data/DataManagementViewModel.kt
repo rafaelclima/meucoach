@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.UserDataDeletion
 import com.meucoach.core.data.repository.UserDataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,9 +35,12 @@ class DataManagementViewModel @Inject constructor(
     private val photos: com.meucoach.app.profile.ProfilePhotoStore,
     private val firstRunMetrics: FirstRunMetricsStore,
     @ApplicationContext private val context: Context,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DataManagementUiState())
     val uiState: StateFlow<DataManagementUiState> = _uiState.asStateFlow()
+
+    fun currentDate(): java.time.LocalDate = timeProvider.currentDate()
 
     fun export(uri: Uri) {
         if (_uiState.value.isBusy) return
