@@ -351,6 +351,36 @@ segunda→domingo:
 - Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
 - Recuperação: 1 dia fácil por 3 km de prova (heurística), mínimo 3 dias sem qualidade após 5k/10k.
 
+### 8.11 Prescrição do dia e evidência de conclusão
+
+O plano decide a **intenção** da semana; a `DailyPrescription` decide o **dia**. A
+prescrição parte da sessão planejada e só pode manter ou reduzir:
+
+- `KEEP` quando o dia está verde e a sessão planejada cabe nos guardrails;
+- `REDUCE` quando prontidão/carga pedem menos duração;
+- `DOWNGRADE` quando qualidade/longão precisa virar fácil;
+- `REST` em doença/lesão ou prontidão vermelha;
+- `NO_PLAN` quando não há semana, com fácil conservador e confiança baixa.
+
+Nenhuma decisão aumenta tipo, duração ou intensidade. Sem calibração, pace/FC ficam
+`null` e o alvo é RPE. Calor desacelera o pace ou sobe o RPE, sem alongar a sessão.
+As regras são `R-PRESC-01` (mantém o plano), `R-PRESC-02` (reduz, nunca aumenta) e
+`R-PRESC-03` (uma decisão por dia, a mesma em todas as telas); a decisão é
+persistida e versionada (`ADR 0023`).
+
+Conclusão não é clique (`ADR 0024`):
+
+- `ACTIVITY` — corrida importada e vinculada; conta adesão e execução comprovada.
+- `GUIDED` — contrato para a sessão guiada persistente (ciclo 3).
+- `MANUAL` — “fiz sem registro”, exige duração > 0 e RPE 1–10; conta adesão com
+  confiança baixa, mas **não** cria volume, carga, zonas, distância ou pace.
+- `LEGACY_UNVERIFIED` — histórico anterior ao vínculo, preservado sem promoção a
+  verdade; não libera progressão.
+
+Descanso, doença e plano substituído encerram a sessão como `CLOSED` com motivo;
+não contam como falha de adesão. Doença não impede registrar uma corrida real — ela
+fica como treino livre, sem estímulo e sem crédito de progressão.
+
 ## 9. Segurança e guardrails
 
 ### 9.1 Sinais de parada
@@ -494,6 +524,9 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-SAFE-03` | Sem prescrição de peso/nutrição | Escopo | STRONG |
 | `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
 | `R-DATA-01` | Dado ausente não preenche valor neutro silencioso; cobertura/frescor de carga são declaradas | Produto | STRONG |
+| `R-PRESC-01` | A prescrição do dia parte da sessão planejada e a mantém quando os guardrails permitem | ADR 0023; R-PLAN/R-READY | MODERATE |
+| `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade); nunca aumenta | ADR 0023; R-READY/R-DATA | STRONG |
+| `R-PRESC-03` | Uma decisão por dia, versionada e a mesma em todas as telas | ADR 0023; Produto | STRONG |
 
 ## 15. Limitações conhecidas
 

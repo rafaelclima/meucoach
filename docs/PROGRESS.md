@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 06/11/2026 (C1-01, C1-02, C1-03, C1-04 e C1-05 implementados; C1-06 pendente)
+**Atualizado:** 06/11/2026 (C1-01 a C1-06 concluídos; documentação reconciliada com o schema v12)
 
 ## Estado geral
 
@@ -61,6 +61,47 @@
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 
+## Sessão 2026-11-06 — C1-06: verdade documental, ADRs e regressões finais
+
+**Objetivo:** impedir que a documentação descreva um app que não existe, reconciliando arquitetura, dados, testes, produto, PRD e roadmap com o schema v12 e as regras de evidência.
+
+### Concluído
+
+- **`ARCHITECTURE.md` 1.4:** módulos reais (5) separados dos planejados (`:core:testing`, features); fluxo `plano → prescrição → execução`; `TimeProvider`, prescrição/evidência, lixeira/época; persistência no schema v12 com as 12 entidades e migrações 1→12; export padrão sem lixeira; ADRs 0022–0026 linkados.
+- **`DATA_MODEL.md` 1.3:** seção explícita de persistido × derivado; `DailyPrescription` documentada; campos reais de perfil (`name`/`avatarPath`/`treadmillAccess`) e check-in (`illnessOrInjury`/`heatLevel`); `Readiness`, `Recommendation`, `RecommendationRule`, `SessionFeedback` e `evidence.json` deixaram de ser descritos como existentes; status `TRASH_CONFLICT`; 9→10 documentada.
+- **`TESTING.md` 1.4:** 46 goldens reais agrupados, ausência de instrumentados/E2E automatizado, gates reais de cobertura (só `core:domain` e parser FIT), Kotest/MockK/Turbine removidos da stack, 9 cenários de `Cycle1RegressionTest` e subseção dos testes do ciclo 1.
+- **`PRODUCT.md` 1.2:** revisão registrada, escopo com conclusão por evidência e lixeira de 7 dias, correção de “4 módulos” e da nota de reconciliação.
+- **`ROADMAP.md` 1.3:** ciclo 1 concluído com status por entrega, até 2 qualidades no plano, “Iniciar” como prévia (não sessão guiada persistente) e critérios de MVP separando capacidade entregue de aceitação (P1-12).
+- **`PRD_COACH_CORRIDA.md`:** §0.4 “Reconciliação pós-auditoria” mapeia BUG-01/02, SEC-01/02, BUG-09, N-04 e ARCH-01/04 para as entregas; FR-001/003/009 marcados como implementados; FR-009 passa de 30 para 7 dias; FR-004/005 registram o que ainda não foi feito.
+- **`DECISIONS.md` 1.2:** status de implementação dos ADRs 0022–0026; 0026 permanece “aceito parcialmente”.
+- **`README.md`:** 999 testes, Room v12, módulos reais, stack de testes sem dependências inexistentes, Detekt como planejado.
+- **`SPORTS_SCIENCE.md`:** §8.11 formaliza a prescrição do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`) e a evidência de conclusão; `R-PRESC-01/02/03` entraram no catálogo de regras.
+- **`PLANO_TECNICO_CICLO_1.md` 1.2:** C1-06 executado, matriz U-TIME/U-DEL atualizada para implementado, 9 cenários, checklist do ciclo fechado.
+- **Correção factual:** o índice único de `daily_prescriptions` (`date + inputsHash + engineVersion`) **não existe** no schema; a deduplicação é transacional no repositório. A afirmação foi corrigida em `PROGRESS.md`, `DATA_MODEL.md`, `ARCHITECTURE.md` e no plano técnico.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- **999 testes**, 0 falhas e 0 `@Ignore` (497 `:app`, 124 `core:data`, 351 `core:domain`, 27 `core:model`), conferidos pelos XML de resultado.
+- `core:domain`: 97,69% de linhas (3.380/3.460), 82,09% de branches (2.544/3.099), 96,04% de instruções (23.890/24.876).
+- Parser FIT: 93,01% de branches (572/615); os 46 goldens de `app/src/test/screenshots/` passam.
+- Lint sem erros; `spotlessCheck` verde.
+- Nenhum dado real no diff; nenhuma alteração de código de produção, schema, dependência ou migração.
+
+### Decisões e observações
+
+- **Doc = código, não doc = intenção:** o que ainda não existe (GUIDED persistente, progressão por volume, iniciante, backfill, backup versionado) aparece como pendente, não como capacidade.
+- **Histórico preservado:** `PROGRESS.md` mantém as sessões anteriores; a única correção retroativa foi factual (índice único), registrada aqui.
+- **ADR 0026 segue parcial:** o gate de C1-02 está implementado; os limiares de iniciante/cobertura continuam propostos e precisam de validação com dados reais.
+- **Gate documental é manual:** um teste que compare prosa a banco seria frágil; a revisão usa `MeuCoachDatabase.VERSION`, a lista de entidades do schema 12 e o grafo de módulos.
+- **Sem código novo:** o C1-06 não muda comportamento; qualquer divergência restante vira tarefa, não “ajuste silencioso”.
+
+### Próximo passo
+
+1. Revisão humana da copy de `LEGACY_UNVERIFIED`, das tolerâncias de vínculo e dos limiares do ADR 0026.
+2. **P1-12:** validação E2E com 4 semanas de uso real e ajuste de pesos/paces.
+3. Ciclo seguinte: `GUIDED` persistente, N-03 (semana de prova/recuperação), N-05 (backfill Health Connect), backup versionado e progressão de volume (ADR próprio).
+
 ## Sessão 2026-11-06 — C1-04: conclusão com evidência e vínculo atividade ↔ sessão
 
 **Objetivo:** tornar `DONE` consequência de uma execução/atividade, não de um clique, e fechar o vínculo planejado × executado com migração testada.
@@ -120,7 +161,7 @@
   - Explicação sempre cita ≥ 1 regra e ≥ 1 evidência; novas regras `R-PRESC-01/02/03` entraram no catálogo.
 - **Plano (`WeeklyPlanGenerator`/`PlanCompletionCalculator`):** `WeeklyPlanInput.today` sem default; sessões anteriores a hoje não entram (N-02); `WeeklyPlan.createdOn` é persistido e a adesão ignora dias anteriores à criação.
 - **Sessão planejada (N-01):** `PlannedSession.targets` guarda zona/pace/FC/distância/RPE; a prescrição de um “Tempo” em dia verde usa exatamente os alvos do plano.
-- **Dados:** `DailyPrescriptionEntity`, `DailyPrescriptionDao` e `DailyPrescriptionRepository` (`observeLatest`, `getVersions`, `append`); a versão vigente é a última do dia e uma edição acrescenta `supersedesId`, sem sobrescrever. Índice único por `date + inputsHash + engineVersion` evita duplicata concorrente.
+- **Dados:** `DailyPrescriptionEntity`, `DailyPrescriptionDao` e `DailyPrescriptionRepository` (`observeLatest`, `getVersions`, `append`); a versão vigente é a última do dia e uma edição acrescenta `supersedesId`, sem sobrescrever. A duplicata da mesma `date + inputsHash + engineVersion` é ignorada dentro da transação (não há índice único composto; correção documental do C1-06).
 - **Migração 10→11:** cria `daily_prescriptions`, adiciona `weekly_plans.createdOn` (backfill legado = `weekStart`) e `planned_sessions.targetsJson`; planos, sessões e status preservados.
 - **Caso de uso (`GetTodayPrescription`):** lê a última versão e só persiste quando o hash/versão mudam; ignora sessão `SKIPPED` como plano do dia.
 - **UI:** `TodayViewModel` consome a prescrição persistida; o card “Treino de hoje” é o único com iniciar/concluir. O plano da semana vira contexto, ganha o selo “Ajustado hoje” quando a decisão difere da intenção e não tem mais o CTA de conclusão. A explicação mostra “planejado → hoje → por quê” e mantém regra/evidência/confiança auditáveis. Ações de iniciar/concluir ficam desabilitadas em `REST`.

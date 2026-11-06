@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 30/10/2026
+**Versão:** 1.4 · **Data:** 06/11/2026 · **Reconciliação:** C1-06 (documentação = código no schema v12)
 
 ## 1. Restrições e forças
 
@@ -16,12 +16,13 @@
 ```mermaid
 flowchart LR
     subgraph Android
-        UI[Compose UI\nToday · Activity · Trends]
+        UI[Compose UI\nHoje · Corridas · Tendências · Saúde · Perfil]
         VM[ViewModels / State]
         UC[Use cases]
-        DOM[core:domain\nzonas · carga · prontidão · prescrição]
+        DOM[core:domain\nzonas · carga · prontidão · prescrição · evidência]
+        TIME[TimeProvider\nfuso do perfil]
         REPO[Repositórios]
-        ROOM[(Room / SQLite)]
+        ROOM[(Room v12 / SQLite)]
         HC[Health Connect]
         IMP[Import\nFIT · TCX · GPX · CSV]
         FS[Arquivos originais]
@@ -33,6 +34,7 @@ flowchart LR
     DOM --> REPO
     REPO --> ROOM
     REPO --> FS
+    TIME --> VM
     REPO --> UC --> VM --> UI
     UC --> DOM
 
@@ -53,25 +55,31 @@ flowchart LR
 6. **Determinismo.** Mesmo perfil + mesmos dados + mesma versão do motor ⇒ mesma recomendação. Nada de aleatoriedade ou LLM no caminho crítico.
 7. **Degradação graciosa.** Sem HRV, sem GPS, sem potência, sem sono: o app continua e declara a confiança.
 8. **Offline é o caminho feliz.** Sync é uma camada opcional, com fila e resolução de conflito.
+9. **Tempo é uma dependência, não um detalhe.** Dia, semana e fuso vêm do `TimeProvider`/`Clock` injetado; regra de negócio não chama `now()` (`ADR 0022`).
+10. **Uma decisão por dia.** O plano é a intenção da semana; a prescrição diária persistida é a autoridade do dia; a execução registra o que aconteceu (`ADR 0023`, `ADR 0024`).
 
 ## 4. Módulos
 
+### 4.1 Módulos reais
+
 | Módulo | Tipo | Responsabilidade | Pode depender de |
 |---|---|---|---|
-| `:app` | Android app | Entry point, navegação, DI, tema raiz | todos |
-| `:core:model` | Kotlin JVM | Tipos e unidades (pace, distância, FC, atividade, zona) | nada |
-| `:core:domain` | Kotlin JVM | Parsers, zonas, carga, prontidão, prescrição, regras, evidências | `:core:model` |
-| `:core:data` | Android library | Room, repositórios, import, Health Connect, WorkManager | `:core:model`, `:core:domain` |
+| `:app` | Android app | Entry point, navegação, DI, tema raiz, ViewModels, casos de uso e telas | todos |
+| `:core:model` | Kotlin JVM | Tipos e unidades (pace, distância, FC, atividade, zona, execução) | nada |
+| `:core:domain` | Kotlin JVM | Parsers, zonas, carga, prontidão, prescrição, plano, evidência, regras | `:core:model` |
+| `:core:data` | Android library | Room, repositórios, import, Health Connect, WorkManager, época de dados | `:core:model`, `:core:domain` |
 | `:core:designsystem` | Android library | Tokens, tema, componentes, gráficos | Compose |
-| `:core:testing` | Android library | Fixtures, fakes, test rules | `:core:model`, `:core:domain` |
-| `:feature:today` | Android library | Tela Hoje | design system, data, domain |
-| `:feature:activity` | Android library | Detalhe da atividade | design system, data, domain |
-| `:feature:trends` | Android library | Tendências | design system, data, domain |
-| `:feature:import` | Android library | Importação | design system, data, domain |
-| `:feature:onboarding` | Android library | Perfil e calibração | design system, data, domain |
-| `:feature:settings` | Android library | Dados, privacidade, fontes | design system, data |
 
-**Regra de dependência:** features nunca dependem umas das outras; compartilham `core`. `domain` não importa `android.*`, Room, Compose ou Hilt.
+O grafo é validado por `./gradlew -q projects` e por `settings.gradle.kts`. **Não existem** `:core:testing` nem módulos `:feature:*` hoje.
+
+### 4.2 Módulos planejados (não criados)
+
+| Módulo | Quando | Gatilho |
+|---|---|---|
+| `:core:testing` | Quando houver mais de um consumidor de fixtures/fakes | duplicação real de harness |
+| `:feature:today`, `:feature:activity`, `:feature:trends`, `:feature:health`, `:feature:profile` | Fase 2 ou antes se o `:app` passar de ~8 min de build | build > 8 min, mais de 2 desenvolvedores ou isolamento necessário |
+
+**Regra de dependência:** features, quando existirem, nunca dependem umas das outras; compartilham `core`. `domain` não importa `android.*`, Room, Compose ou Hilt. Extrair módulo não é pré-requisito do MVP: o `:app` monolítico é aceitável enquanto o gargalo for ausência de casos de uso, não de módulos.
 
 ## 5. Fluxo de importação
 
@@ -79,7 +87,7 @@ flowchart LR
 sequenceDiagram
     participant U as Usuário
     participant P as File picker / Share
-    participant I as ImportManager
+    participant I as ImportCoordinator / ImportWorker
     participant A as Adapter (FIT/TCX/GPX)
     participant D as Dedup
     participant R as Repository
@@ -87,15 +95,16 @@ sequenceDiagram
 
     U->>P: seleciona arquivo(s)
     P->>I: Uri(s) + metadados
-    I->>I: copia para storage privado + SHA-256
+    I->>I: staging privado + SHA-256
     I->>A: bytes
     A->>A: parse + validação
     A-->>I: ImportedActivity + warnings
     I->>D: chave de deduplicação
     D-->>I: nova / duplicada / substituir
     I->>R: salva atividade + samples + origem
-    R->>E: recalcula carga e prontidão
-    E-->>U: "3 atividades importadas · 1 substituída (FIT > GPX)"
+    R-->>U: "3 atividades importadas · 1 substituída (FIT > GPX)"
+    R->>E: carga e prontidão recalculadas sob demanda
+    E-->>U: card do Hoje atualizado
 ```
 
 ### 5.1 Parsers
@@ -106,7 +115,7 @@ sequenceDiagram
 | **TCX** | XML DOM (`javax.xml`) | Activity, Lap, Trackpoint, HR, cadência, posição, altitude, velocidade, potência por extensão | Cadência de corrida normalizada; lap inferido quando ausente |
 | **GPX** | XML DOM | trkpt, ele, time, extensões `hr`, `cad`, `speed`, `power` | Sem laps nem esporte explícito; usar como último recurso |
 | **CSV diário** | Parser de cabeçalho validado | sono, RHR, HRV, SpO2 | Implementado em `DailyMetricsCsvParser`; template do app |
-| **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2, ExerciseSession | Implementado read-only com `HealthDailySource`; sync incremental via `HealthSyncService`, agregação em `HealthMetricsAggregator` |
+| **Health Connect** | `androidx.health.connect` | SleepSession, RestingHeartRate, HRV rMSSD, SpO2 | Implementado read-only com `HealthConnectDailySource`; `ExerciseSession` **não** é lido (FR-007, ciclo 2); sync incremental via `HealthSyncService`, agregação em `HealthMetricsAggregator` |
 
 O parser FIT é o componente de maior risco. Estratégia: implementar o subconjunto usado pelo Amazfit Balance, validar contra os arquivos reais e contra o `fitdecode` (Python) em testes de referência. Fixtures reais são sanitizadas antes de entrar no repo.
 
@@ -123,65 +132,71 @@ TCX e GPX foram implementados em `core/domain/.../parser/tcx/` e `.../parser/gpx
 - A dedup por chave de atividade anexa `alternates`; `ActivitySummary.sources` expõe todos os formatos que contribuíram.
 - Se a mesma atividade vier em FIT + TCX + GPX, manter **FIT** (maior riqueza) e anexar os demais como `alternates`.
 - Se um arquivo já importado for reprocessado com parser mais novo, permitir `reparse` sem perder IDs de referência.
+- Arquivo cuja atividade está na lixeira retorna `ImportResult.TrashConflict` e job `TRASH_CONFLICT`; a restauração é uma decisão explícita na tela Dados (`ADR 0025`).
 
 ## 6. Motor de domínio
 
-O motor é uma biblioteca pura, sem I/O, com entradas e saídas explícitas:
+O motor é uma biblioteca pura, sem I/O, com entradas e saídas explícitas. O fluxo real do dia é:
 
-```kotlin
-data class EngineInput(
-    val profile: AthleteProfile,
-    val activities: List<Activity>,
-    val dailyMetrics: List<DailyMetrics>,
-    val checkIns: List<CheckIn>,
-    val plan: Plan?,
-    val today: LocalDate,
-    val environment: Environment?,
-)
-
-data class EngineOutput(
-    val load: LoadSnapshot,
-    val readiness: Readiness,
-    val recommendation: Recommendation,
-    val plan: Plan,
-)
+```text
+Perfil + objetivos + disponibilidade
+        ↓
+WeeklyPlanGenerator(weekStart, today) ──► WeeklyPlan + PlannedSession (intenção)
+        ↓
+DailyPrescriptionEngine(plano, sessão, prontidão, carga, calor, perfil)
+        ↓
+DailyPrescription (autoridade do dia, versionada)
+        ↓
+Hoje (um card) ──► CompleteSession ──► SessionExecution + completionEvidence
 ```
 
 ### 6.1 Componentes
 
 | Componente | Entrada | Saída |
 |---|---|---|
-| `CalibrationEngine` | prova/TT, treinos, perfil | VDOT, LTHR, paces, confiança |
-| `ZoneEngine` | LTHR, pace de limiar | 5 zonas de FC, 5 de pace, 3 zonas polarizadas |
-| `LoadEngine` | atividades + RPE | TRIMP, rTSS, CTL, ATL, TSB, ACWR, monotonia |
-| `ReadinessEngine` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
-| `PrescriptionEngine` | perfil, objetivo, carga, prontidão, plano | sessão do dia + rationale + regras |
-| `WorkoutRecommender` | perfil, prontidão, carga | descanso/fácil com alvos, regras e confiança |
-| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga | semana conservadora com longão e no máximo 1 qualidade |
-| `PlanEngine` | objetivo, disponibilidade, histórico | plano semanal/bloco, taper |
-| `ExplanationEngine` | recomendação + evidências | texto pt-BR + regras citadas |
+| `CalibrationCalculator` | prova/TT, treinos, perfil | VDOT, LTHR, paces, confiança (Tier A/B/C) |
+| `HeartRateZoneCalculator` / `PaceZoneCalculator` | LTHR, pace de limiar | 5 zonas de FC, 5 de pace, 3 zonas polarizadas |
+| `TrainingLoadEngine` | atividades + frescor da fonte | TRIMP, rTSS, CTL, ATL, TSB, ACWR, monotonia, `LoadCoverage`/`LoadDataState` |
+| `ReadinessCalculator` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
+| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today` | semana conservadora (até 2 qualidades, longão, taper, deload) |
+| `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
+| `PlanCompletionCalculator` | plano, sessões, execuções | adesão, execução comprovada, pendências |
+| `SessionMatcher` | sessão planejada, atividades | sugestões de vínculo (nunca automático) |
+| `SessionCompletionRules` | sessão, data, prescrição | bloqueios de conclusão e encerramento |
+| `WorkoutRecommender` | perfil, prontidão, carga | fallback conservador de `NO_PLAN` |
+| `ExplanationCatalog` | `ruleId`/`evidenceId` | rótulo legível, preservando o ID bruto |
 | `ActivityInsightsCalculator` | laps da atividade | insights com `ruleId`, evidência, confiança e tom |
+
+`PrescriptionEngine`/`PlanEngine` foram nomes de planejamento; o código real usa os componentes acima. O catálogo canônico de regras e evidências é `docs/SPORTS_SCIENCE.md` §13, espelhado em `ExplanationCatalog.kt`; não há tabela de evidências no Room.
 
 ### 6.2 Versionamento do motor
 
-- `EngineVersion` semântica (ex.: `1.0.0`).
-- Toda recomendação persiste `engineVersion` + `rulesVersion` + `evidenceVersion`.
-- Mudou regra? Nova versão. Planos antigos permanecem auditáveis.
+- `engineVersion` semântica (ex.: `1.0.0`) e `inputsHash` determinístico por decisão.
+- A `DailyPrescription` persiste `engineVersion`, `inputsHash`, `ruleIds`/`evidenceIds` e confiança; a versão anterior permanece com `supersedesId`.
+- Mudou regra? Nova versão do motor e nova linha. Não há `rulesVersion`/`evidenceVersion` como colunas separadas.
+
+### 6.3 Tempo, prescrição e evidência
+
+- **Tempo:** `TimeProvider` (em `:app/time`) expõe `today`, `zoneId`, `now()`, `currentWeekStart()` e `refresh()`. `SystemTimeProvider` usa o relógio do sistema; `ProfileTimeProvider` usa o fuso IANA do perfil e cai para o fuso do sistema antes do onboarding. Hilt fornece um único `Clock`. `MainActivity.onResume()` e a meia-noite disparam `refresh()`; trocar o fuso reagenda lembretes. ViewModels e telas não chamam `LocalDate.now()`/`System.currentTimeMillis()` (`ADR 0022`).
+- **Prescrição do dia:** `GetTodayPrescription` lê a última versão de `daily_prescriptions` e só persiste quando `inputsHash`/`engineVersion` mudam. Editar o check-in cria uma nova linha com `supersedesId`; a anterior continua auditável. `TodayViewModel` não recalcula a decisão (`ADR 0023`).
+- **Conclusão:** `CompleteSession` valida data, estado e prescrição; `DONE` exige `completionEvidence` (`ACTIVITY`, `GUIDED` ou `MANUAL`). `SessionExecution` guarda a execução; índices únicos garantem 1:1 entre atividade e sessão. Descanso/doença encerram a sessão como `CLOSED` com motivo. `LEGACY_UNVERIFIED` preserva o histórico antigo sem promovê-lo a verdade (`ADR 0024`).
+- **Datas locais:** atividades persistem instante UTC + `zoneId` + `localDate`; a data local de planejamento vem do fuso do perfil. Treino que cruza meia-noite pertence ao dia de início.
 
 ## 7. Persistência
 
-- **Room/SQLite** como fonte de verdade local.
-- `:core:data` implementa:
-  - `MeuCoachDatabase` v9 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity` e `PlannedSessionEntity`.
-  - DAOs separados, `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository` e `TrainingPlanRepository` como fronteiras para o restante do app.
-  - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda.
-  - UUID v7 gerado no cliente para IDs ordenáveis.
-  - Importação por `ImportService` + fila `WorkManager`; arquivos são copiados para storage privado antes do processamento.
+- **Room/SQLite** como fonte de verdade local; versão atual **12** (`MeuCoachDatabase.VERSION`).
+- `:core:data` implementa `MeuCoachDatabase` v12 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `DailyPrescriptionEntity` e `SessionExecutionEntity`.
+- DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository` e `UserDataRepository`.
+- `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda (não há série downsampled persistida).
+- UUID v7 gerado no cliente para IDs ordenáveis.
+- Importação por `ImportCoordinator`/`ImportService` + fila `WorkManager` (`ImportWorker`, `@HiltWorker`); arquivos passam por `ImportStaging` e são copiados para storage privado antes do processamento.
 - Atividade, laps e blob são gravados na mesma transação; a lista usa `ActivitySummary` e o detalhe abre `StoredActivity`.
-- Exclusão padrão é lógica (`deletedAt`); exclusão permanente usa cascata e remove laps/blob. O export JSON básico inclui a lixeira.
-- Arquivos originais em storage privado do app, referenciados por hash.
-- `DataStore` apenas para preferências (tema, unidades, onboarding).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric; `MIGRATION_1_2` adiciona `deletedAt`, `MIGRATION_2_3` cria `activity_alternates`, `MIGRATION_3_4` cria `athlete_profile`, `MIGRATION_4_5` cria `daily_check_ins`, `MIGRATION_5_6` cria `daily_metrics`, `MIGRATION_6_7` cria `weekly_plans`/`planned_sessions`, `MIGRATION_7_8` adiciona status/motivo da sessão e `MIGRATION_8_9` adiciona calor no check-in e acesso a esteira no perfil.
+- Exclusão padrão é lógica (`deletedAt`); a lixeira dura 7 dias (`TrashPolicy`), o expurgo roda por clock + `TrashPurgeWorker` e remove linha, filhos, jobs e arquivo bruto. “Apagar definitivamente” está disponível na tela Dados.
+- O export JSON padrão **exclui** atividades na lixeira (e execuções ligadas a elas); `includeTrash = true` é opt-in.
+- “Apagar tudo” usa transação + `DataEpochStore` + `DataWriteMutex`: gira a época, cancela importação/saúde/lembretes/story/expurgo, limpa banco, staging, avatar, cache e preferências; Health Connect externo não é tocado (`ADR 0025`).
+- Arquivos originais em storage privado do app, referenciados por hash; o arquivo temporário de staging é limpo após o processamento.
+- `SharedPreferences`/DataStore apenas para preferências e marcas d'água (tema, unidades, onboarding, tutorial, `firstRun`, `HealthSyncStore`, `DataEpochStore`).
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`) e `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`).
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect
@@ -213,9 +228,10 @@ data class EngineOutput(
 - Monorepo Gradle, version catalog, wrapper 9.8.2.
 - JDK 17 (AGP exige mínimo 17; Gradle 9.8 suporta até 27).
 - `compileSdk 37`, `targetSdk 36`, `minSdk 26`.
-- Convenções: ktlint/Spotless, Detekt, Kover.
-- CI: `./gradlew check assembleDebug` + parser golden tests + screenshot verify (Fase 1).
-- Emulador noturno para testes instrumentados.
+- Convenções: Spotless (ktlint). Detekt está no roadmap técnico (T-02), não configurado.
+- Kover aplicado a `core:domain` (linhas/branches/instruções) e gate próprio de branches do parser FIT (`verifyParserBranchCoverage`, ≥ 90%).
+- CI: `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` + parser golden tests; lint sem erros.
+- Testes de UI/screenshot rodam em JVM com Robolectric/Roborazzi; não há `androidTest` nem emulador no CI hoje.
 - Releases: APK assinado em GitHub Releases (Fase 2).
 
 ## 11. Segurança e privacidade
@@ -229,10 +245,10 @@ data class EngineOutput(
 
 ## 12. Performance e confiabilidade
 
-- Import de arquivo ≤ 5 MB em < 2 s em device médio.
-- Samples decodificados sob demanda; gráficos usam série downsampled.
+- Import de arquivo ≤ 5 MB em < 2 s em device médio (meta; ainda não medida em instrumentado).
+- Samples decodificados sob demanda; o detalhe desenha direto da série decodificada. A série downsampled persistida é planejada, não implementada.
 - Listas com `LazyColumn` + chaves estáveis.
-- Cálculo de carga/prontidão em background (`WorkManager`) e cacheado por dia.
+- Carga e prontidão são derivadas sob demanda a partir do banco; não há worker nem cache persistido por dia (WorkManager cobre importação, lembretes, Health Connect, story e expurgo).
 - Sem trabalho de rede no caminho crítico.
 - Testes de regressão de performance com Macrobenchmark na Fase 2.
 
@@ -240,7 +256,7 @@ data class EngineOutput(
 
 | Falha | Comportamento |
 |---|---|
-| FIT corrompido | Erro claro, arquivo preservado, opção de reportar |
+| FIT corrompido | Erro claro; a importação falha sem criar atividade; o arquivo pode ser reimportado |
 | TCX sem laps | Infere 1 lap; a importação marca confiança baixa |
 | GPS ausente | Atividade válida para pace/FC; mapa indisponível |
 | Health Connect indisponível | Fallback para check-in/CSV; aviso não bloqueante |
@@ -248,6 +264,9 @@ data class EngineOutput(
 | Sem dados de HRV | Peso 0 no modelo; confiança menor |
 | Blob de samples corrompido | Atividade permanece; samples descartados com aviso |
 | App morto durante import | Job persistente; retoma ou marca como falho |
+| Carga desconhecida/desatualizada | Qualidade bloqueada; confiança reduzida; texto “dados insuficientes/desatualizados” (`R-DATA-01`) |
+| Sessão concluída sem atividade | Diálogo exige vínculo ou “fiz sem registro”; `DONE` sem evidência é rejeitado |
+| Reset com worker em voo | Época de dados invalida a leitura/importação; nada é recriado |
 
 ## 14. Decisões relacionadas
 
@@ -271,6 +290,13 @@ data class EngineOutput(
 - [ADR-0019](adr/0019-story-camera-projection.md) — câmera 3D no story
 - [ADR-0020](adr/0020-health-top-level-destination.md) — Saúde como destino principal
 - [ADR-0021](adr/0021-health-sync-on-resume.md) — sync automático no resume
+- [ADR-0022](adr/0022-deterministic-time-and-week.md) — tempo determinístico, fuso e virada de dia/semana
+- [ADR-0023](adr/0023-weekly-plan-vs-daily-prescription.md) — plano como intenção e prescrição diária como autoridade
+- [ADR-0024](adr/0024-completion-evidence.md) — conclusão com evidência e estados próprios
+- [ADR-0025](adr/0025-deletion-retention-reset.md) — lixeira de 7 dias, reset imediato e época de dados
+- [ADR-0026](adr/0026-load-coverage-quality-eligibility.md) — cobertura de carga, ACWR desconhecido e elegibilidade de qualidade
+
+> Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada.
 
 ## 15. Perguntas abertas
 

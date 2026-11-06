@@ -1,8 +1,8 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.1 · **Data:** 06/11/2026
+**Versão:** 1.2 · **Data:** 06/11/2026
 
-> Revisão 1.1 (06/11/2026): ADRs 0022–0026 e decisões aprovadas da Etapa 3. O histórico anterior permanece.
+> Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -29,8 +29,8 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0020](adr/0020-health-top-level-destination.md) | Saúde como 5ª aba e destino principal; Perfil sem o card grande | Aceito — implementado | 05/11/2026 |
 | [0021](adr/0021-health-sync-on-resume.md) | Sync automático do Health Connect ao abrir o app (6 h) + worker diário | Aceito — implementado | 05/11/2026 |
 | [0022](adr/0022-deterministic-time-and-week.md) | Tempo determinístico, fuso do perfil e virada de dia/semana | Aceito — implementado em C1-01 | 06/11/2026 |
-| [0023](adr/0023-weekly-plan-vs-daily-prescription.md) | Plano semanal como intenção e prescrição diária como autoridade | Aceito — planejado para C1-03 | 06/11/2026 |
-| [0024](adr/0024-completion-evidence.md) | Conclusão com evidência (`ACTIVITY`/`GUIDED`/`MANUAL`) e estados próprios | Aceito — C1-04; `GUIDED` no ciclo 3 | 06/11/2026 |
+| [0023](adr/0023-weekly-plan-vs-daily-prescription.md) | Plano semanal como intenção e prescrição diária como autoridade | Aceito — implementado em C1-03 | 06/11/2026 |
+| [0024](adr/0024-completion-evidence.md) | Conclusão com evidência (`ACTIVITY`/`GUIDED`/`MANUAL`) e estados próprios | Aceito — implementado em C1-04; `GUIDED` no ciclo 3 | 06/11/2026 |
 | [0025](adr/0025-deletion-retention-reset.md) | Lixeira de 7 dias, reset imediato e época de dados | Aceito — implementado em C1-05 | 06/11/2026 |
 | [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Aceito parcialmente — gate implementado em C1-02; limiares de iniciante a validar | 06/11/2026 |
 

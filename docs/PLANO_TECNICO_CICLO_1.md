@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_1.md — Formalização arquitetural e preparação dos testes
 
-**Versão:** 1.1 · **Data:** 06/11/2026
-**Status:** C1-01, C1-02, C1-03, C1-04 e C1-05 implementados em 06/11/2026; C1-06 não iniciado.
+**Versão:** 1.2 · **Data:** 06/11/2026
+**Status:** C1-01 a C1-06 concluídos em 06/11/2026; documentação reconciliada com o schema v12.
 **Escopo:** C1-01 a C1-06, ADRs 0022–0026, estratégia de testes e ordem de execução.
 **Documentos de referência:** `docs/PRD_COACH_CORRIDA.md`, `docs/REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C), `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SPORTS_SCIENCE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`.
 
@@ -21,7 +21,7 @@ Este plano transforma as decisões aprovadas em uma sequência executável, sem 
 
 **Fora:** sessão guiada persistente completa, captura de `ExerciseSession` do Health Connect, backup/restauração versionado, revisão semanal, periodização, semana de prova/recovery, Tier B, GPS nativo, LLM, novos módulos, refatoração ampla, redesenho visual.
 
-**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01, C1-02, C1-03, C1-04 e C1-05 foram implementados conforme §6.2 a §6.6; C1-06 continua sem implementação. `Cycle1RegressionTest` não tem mais cenários `@Ignore`.
+**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01 a C1-06 foram implementados conforme §6.2 a §6.8; `Cycle1RegressionTest` não tem mais cenários `@Ignore`. O C1-06 não alterou schema, dependência ou código de produção: apenas documentos e a verificação final.
 
 ---
 
@@ -325,7 +325,7 @@ flowchart TB
 - `DailyPrescription`, `PrescriptionTargets`, `PrescriptionAdjustment` e `DailyPrescriptionEngine` em `core:domain`; decisão `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, nunca aumentando tipo/duração/intensidade.
 - `PrescriptionPolicy` é a fonte única de alvos: plano e prescrição derivam zona/pace/FC/distância/RPE do mesmo lugar. Sem calibração, pace/FC ficam `null` e o alvo vira RPE; calor desacelera o pace ou sobe o RPE, sem aumentar a duração.
 - `WeeklyPlanInput.today` passou a ser obrigatório; o gerador corta dias anteriores e grava `WeeklyPlan.createdOn`. A adesão ignora sessões anteriores à criação (N-02). `PlannedSession.targets` guarda os alvos (N-01).
-- `daily_prescriptions` (Room 11), DAO e `DailyPrescriptionRepository` com `observeLatest`, `getVersions` e `append` (`supersedesId`, índice único por `date + inputsHash + engineVersion`). Migração `10 → 11` cobre a tabela, `weekly_plans.createdOn` e `planned_sessions.targetsJson`, preservando planos e status.
+- `daily_prescriptions` (Room 11), DAO e `DailyPrescriptionRepository` com `observeLatest`, `getVersions` e `append` (`supersedesId`; a duplicata da mesma `date + inputsHash + engineVersion` é ignorada dentro da transação — não há índice único composto). Migração `10 → 11` cobre a tabela, `weekly_plans.createdOn` e `planned_sessions.targetsJson`, preservando planos e status.
 - `GetTodayPrescription` (caso de uso) persiste uma vez por hash/versão e ignora sessão `SKIPPED` como plano do dia. `TodayViewModel` consome a prescrição; `WorkoutRecommender` ficou apenas como fallback de `NO_PLAN`.
 - UI com um card principal, selo “Ajustado hoje” no plano, sem CTA de conclusão no plano e ações desabilitadas em `REST`; explicação “planejado → hoje → por quê”. Export inclui prescrições e o reset as apaga.
 - Testes: novos casos de domínio, `DailyPrescriptionRepositoryTest`, migração 10→11, `GetTodayPrescriptionTest`, UI e goldens de Hoje.
@@ -446,6 +446,13 @@ flowchart TB
 
 **Teste:** não é código; é revisão de documentos + suíte completa. Um teste barato que compare a lista de entidades do `MeuCoachDatabase` com a documentada é recomendado se não gerar fragilidade; caso contrário, revisão manual no gate.
 
+**Status da execução (06/11/2026):** concluído.
+
+- **Documentos reconciliados:** `ARCHITECTURE.md` (5 módulos reais, planejados separados, `TimeProvider`, fluxo plano → prescrição → execução, schema v12, ADRs 0022–0026), `DATA_MODEL.md` (persistido × derivado, `DailyPrescription`, campos reais de perfil/check-in, ausência de `SessionFeedback`/`Readiness`/`Recommendation` no Room, evidências documentais fora de `resources/`), `TESTING.md` (contagens, 46 goldens, ausência de instrumentados, gates reais de cobertura), `README.md` (999 testes, Room v12, módulos reais), `PRODUCT.md` (revisão 1.2, escopo com evidência e lixeira de 7 dias), `ROADMAP.md` (ciclo 1 concluído, critérios de MVP), `DECISIONS.md` (status dos ADRs), `SPORTS_SCIENCE.md` (`R-PRESC-01/02/03` e §8.11) e `PRD_COACH_CORRIDA.md` (§0.4 e FR-001/003/004/005/009).
+- **Correção factual documentada:** o índice único de `daily_prescriptions` não existe; a deduplicação é transacional no repositório. `PROGRESS.md` e o plano foram corrigidos.
+- **Verificação:** `./gradlew check`, `:app:assembleDebug` e `:app:verifyRoborazziDebug` verdes; contagens e cobertura registradas em `PROGRESS.md`.
+- **Sem código de produção, schema, dependência ou migração nova.** O gate é manual porque um teste de documento × banco seria frágil e não cobriria a prosa.
+
 ---
 
 ## 7. Estratégia de testes
@@ -463,7 +470,7 @@ flowchart TB
 
 | Ativo | Estado | Uso no ciclo 1 |
 |---|---|---|
-| JUnit 4 + AssertJ | 145 arquivos de teste, ~872 `@Test` na revisão anterior | Base dos testes de domínio/dados |
+| JUnit 4 + AssertJ | 158 arquivos de teste, 999 `@Test`, 0 `@Ignore` | Base dos testes de domínio/dados |
 | `kotlinx-coroutines-test` | presente em `:app`; `runBlocking` em dados | Fluxos, concorrência, ViewModels |
 | Robolectric | presente | Room, WorkManager, UI Compose |
 | Roborazzi | 46 goldens | Hoje/plano/evidência/lixeira |
@@ -501,6 +508,8 @@ flowchart TB
 | `quality is blocked when acute chronic load is unknown` | **Verde** | C1-02: ACWR desconhecido bloqueia qualidade |
 | `quality is blocked when load coverage is insufficient` | **Verde** | C1-02: cobertura insuficiente bloqueia qualidade |
 | `plan created midweek does not include days before today` | **Verde** | C1-03/N-02: gerador começa em hoje e adesão corta o passado |
+| `a done session cannot exist without completion evidence` | **Verde** | C1-04: `DONE` sem evidência é rejeitado no modelo/caso de uso |
+| `legacy completion does not unlock quality progression` | **Verde** | C1-04: `LEGACY_UNVERIFIED` não libera progressão |
 
 **Política de falha esperada:**
 
@@ -518,11 +527,11 @@ flowchart TB
 
 | ID | Cenário | Resultado esperado | C1 | Status |
 |---|---|---|---|---|
-| U-TIME-01 | `TimeProvider` 23:59:59 → 00:00:01 | Emite novo dia; check-in usa a data do estado | 01 | Pendente de contrato |
-| U-TIME-02 | Domingo 23:59 → segunda 00:00 | `weekStart` muda; plano novo | 01 | Pendente de contrato |
-| U-TIME-03 | Fuso America/Sao_Paulo → America/New_York | `today`/`weekStart` recalculados | 01 | Pendente de contrato |
-| U-TIME-04 | DST (America/New_York) | Meia-noite e lembrete corretos | 01 | Pendente de contrato |
-| U-TIME-05 | `WeeklyPlanInput` sem `weekStart` | Não compila/não tem default | 01 | Pendente |
+| U-TIME-01 | `TimeProvider` 23:59:59 → 00:00:01 | Emite novo dia; check-in usa a data do estado | 01 | Implementado (`TimeProviderTest`) |
+| U-TIME-02 | Domingo 23:59 → segunda 00:00 | `weekStart` muda; plano novo | 01 | Implementado (`TimeProviderTest`, `TimeDrivenStateTest`) |
+| U-TIME-03 | Fuso America/Sao_Paulo → America/New_York | `today`/`weekStart` recalculados | 01 | Implementado (`TimeProviderTest`) |
+| U-TIME-04 | DST (America/New_York) | Meia-noite e lembrete corretos | 01 | Implementado (`TimeProviderTest`) |
+| U-TIME-05 | `WeeklyPlanInput` sem `weekStart` | Não compila/não tem default | 01 | Implementado (compilação impedida pelo construtor) |
 | U-LOAD-01 | Nenhuma atividade em 28 dias | `acwr == null`; `INSUFFICIENT` | 02 | Implementado (`TrainingLoadEngineTest`) |
 | U-LOAD-02 | 8 dias com carga, 20 sem dado | `KNOWN` se cobertura/frescor ok; senão `INSUFFICIENT` | 02 | Implementado (`TrainingLoadEngineTest`) |
 | U-LOAD-03 | 7 dias com carga | Bloqueia qualidade | 02 | Implementado (`TrainingLoadEngineTest`, `WeeklyPlanGeneratorTest`) |
@@ -552,13 +561,13 @@ flowchart TB
 | U-EVID-10 | Sessão futura | Bloqueada | 04 | Implementado (`SessionCompletionRulesTest`, `CompleteSessionTest`) |
 | U-EVID-11 | Sessão de ontem da mesma semana | Permitida com aviso | 04 | Implementado (`SessionCompletionRulesTest`, `CompleteSessionTest`) |
 | U-EVID-12 | Legado `DONE` | `LEGACY_UNVERIFIED`; não progressão | 04 | Implementado (migração 11→12, `PlanCompletionCalculatorTest`, `Cycle1RegressionTest`) |
-| U-DEL-01 | Expurgo 6d23h / 7d / 7d1h | Não / sim / sim | 05 | Pendente de contrato |
-| U-DEL-02 | Export padrão com lixeira | Exclui lixeira | 05 | Pendente de contrato |
-| U-DEL-03 | Reset com dados | Tabelas vazias; onboarding | 05 | Parcial existente |
-| U-DEL-04 | Reset limpa arquivos/prefs | Sem staging/cache/avatar/firstRun/tutorial | 05 | Pendente de contrato |
-| U-DEL-05 | Época muda | Worker antigo não grava | 05 | Pendente de contrato |
-| U-DEL-06 | Reset sem perfil | Health/import no-op; sem agendamento | 05 | Pendente de contrato |
-| U-DEL-07 | Reset e HC | HC não é apagado | 05 | Pendente de contrato |
+| U-DEL-01 | Expurgo 6d23h / 7d / 7d1h | Não / sim / sim | 05 | Implementado (`TrashPolicyTest`, `ActivityRepositoryTest`) |
+| U-DEL-02 | Export padrão com lixeira | Exclui lixeira | 05 | Implementado (`UserDataRepositoryTest`) |
+| U-DEL-03 | Reset com dados | Tabelas vazias; onboarding | 05 | Implementado (`DataResetCoordinatorTest`) |
+| U-DEL-04 | Reset limpa arquivos/prefs | Sem staging/cache/avatar/firstRun/tutorial | 05 | Implementado (`DataResetCoordinatorTest`) |
+| U-DEL-05 | Época muda | Worker antigo não grava | 05 | Implementado (`DataEpochStoreTest`, `HealthSyncServiceTest`) |
+| U-DEL-06 | Reset sem perfil | Health/import no-op; sem agendamento | 05 | Implementado (`HealthSyncServiceTest`, `MeuCoachApplication`) |
+| U-DEL-07 | Reset e HC | HC não é apagado | 05 | Implementado (apenas estado local é limpo) |
 
 #### 7.4.2 Integração (domínio + dados + caso de uso)
 
@@ -896,17 +905,17 @@ C1-06 Verdade documental + regressões finais
 
 ## Apêndice B — Checklist de aceite do ciclo
 
-- [ ] ADRs 0022–0026 revisados e linkados; 0026 com status correto.
-- [ ] C1-01: tempo/fuso determinísticos; nenhum `now()` em UI/ViewModel.
+- [x] ADRs 0022–0026 revisados e linkados; 0026 com status “aceito parcialmente”.
+- [x] C1-01: tempo/fuso determinísticos; nenhum `now()` em UI/ViewModel.
 - [x] C1-02: ACWR desconhecido/cobertura/frescor bloqueiam qualidade.
 - [x] C1-03: um card; prescrição versionada; plano sem passado; migração 10→11.
 - [x] C1-04: `DONE` só com evidência; vínculo 1:1; migração 11→12.
-- [ ] C1-05: lixeira 7 dias; reset sem ressurreição; HC intacto.
-- [ ] C1-06: docs = código; suíte/goldens verdes.
-- [ ] Nenhum dado real no diff.
-- [ ] Nenhum P0 novo escondido.
-- [ ] `PROGRESS.md` com sessão e próximo passo.
-- [ ] Autorização explícita para iniciar C1-01.
+- [x] C1-05: lixeira 7 dias; reset sem ressurreição; HC intacto.
+- [x] C1-06: docs = código; suíte/goldens verdes.
+- [x] Nenhum dado real no diff.
+- [x] Nenhum P0 novo escondido.
+- [x] `PROGRESS.md` com sessão e próximo passo.
+- [x] Autorização explícita para iniciar C1-01 (histórico; ciclo concluído).
 
 ---
 

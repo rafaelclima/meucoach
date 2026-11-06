@@ -1108,7 +1108,7 @@ Cada entrega só é aceita quando:
 - Época de dados (ou mecanismo equivalente) para impedir que workers antigos repovoem dados.
 - Cancelamento de tarefas pendentes e limpeza de arquivos, caches, preferências e demais armazenamentos do app.
 - Dados originais de plataformas externas (Health Connect) **não** são apagados sem autorização específica; o reset remove apenas a cópia local e a marca d’água.
-- O prazo de 30 dias do FR-009 original fica **substituído por 7 dias**; a reconciliação documental entra no C1-06.
+- O prazo de 30 dias do FR-009 original fica **substituído por 7 dias**; a reconciliação documental foi concluída no C1-06 (06/11/2026).
 
 ### C.5 Direcionamentos do MVP
 

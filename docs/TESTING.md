@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 06/11/2026
+**Versão:** 1.4 · **Data:** 06/11/2026 · Reconcilia contagens, goldens e ausência de instrumentados após C1-06.
 
 ## 1. Princípios
 
@@ -17,15 +17,17 @@
 | Camada | Ferramenta | O que cobre | Onde roda |
 |---|---|---|---|
 | Unitário | JUnit 4 + AssertJ | Fórmulas, zonas, parser, regras, validações | JVM, cada PR |
-| Property-based | Kotest Property (Fase 1) | Invariantes (monotonicidade, limites) | JVM, cada PR |
-| Golden | JUnit + JSON | Cenários completos de carga/prontidão/plano | JVM, cada PR |
+| Property-based | Kotest Property (planejado, não configurado) | Invariantes (monotonicidade, limites) | — |
+| Golden | JUnit + JSON | Cenários completos de carga/prontidão | JVM, cada PR |
 | Parser de referência | Python `fitdecode` (script) | Validação cruzada do parser FIT | Local/CI opcional |
-| Banco | Room `MigrationTestHelper` | Migrações e queries | JVM/instrumentado |
+| Banco | Room `MigrationTestHelper` | Migrações e queries | JVM (Robolectric) |
 | UI | Compose UI Test + Robolectric | Estados, acessibilidade básica | JVM, cada PR |
-| Screenshot | Roborazzi | Regressão visual dark/light | JVM, cada PR (Fase 1) |
+| Screenshot | Roborazzi | Regressão visual dark/light | JVM, cada PR |
 | Gráficos | Roborazzi + Vico | Eixos, unidades, lacunas e cores de nível nas telas Tendências e Saúde | JVM, cada PR |
-| Instrumentado | Compose UI Test + AndroidX Test | Fluxos reais, Health Connect fake | Emulador, nightly |
-| E2E | Fluxo import → hoje | Aceitação do MVP | Emulador, release |
+| Instrumentado | Compose UI Test + AndroidX Test | Fluxos reais, Health Connect fake | **0 hoje**; só se houver distribuição |
+| E2E | Fluxo import → hoje | Aceitação do MVP | Manual (P1-12); sem suíte automatizada |
+
+> Kotest, MockK e Turbine **não estão no version catalog**; a suíte usa JUnit 4, AssertJ, fakes próprios, Robolectric, Compose UI Test e Roborazzi. Property-based e instrumentados ficam no backlog técnico (T-04/TEST-01).
 
 ## 3. Estrutura de testes
 
@@ -33,14 +35,14 @@
 core/model/src/test/          # value objects (pace, distância)
 core/domain/src/test/
   zones/                      # FC, pace, distribuição
-  load/                       # TRIMP, rTSS, CTL/ATL/TSB, ACWR
+  load/                       # TRIMP, rTSS, CTL/ATL/TSB, ACWR, cobertura
   health/                     # séries diárias de sono, FC de repouso, HRV e SpO2
   readiness/                  # score, confiança, overrides
-  prescription/               # plano, progressão, taper, guardrails
+  prescription/               # plano, prescrição diária, evidência, conclusão
   parser/                     # FIT, TCX, GPX, CSV
   golden/                     # cenários JSON
-app/src/test/                 # ViewModels, formatadores, screenshots
-app/src/androidTest/          # navegação e fluxos com emulador
+core/data/src/test/           # Room, migrações, repositórios, export, época
+app/src/test/                 # ViewModels, casos de uso, workers, formatadores, screenshots
 fixtures/
   fit/                        # fixtures sanitizadas/sintéticas
   tcx/
@@ -49,6 +51,8 @@ fixtures/
   golden/                     # entradas e saídas esperadas
   private/                    # IGNORADO — dados reais
 ```
+
+Não existe `app/src/androidTest/` hoje. A cobertura de fluxo real é manual (`P1-12` e roteiro do §7.6 do plano do ciclo 1).
 
 ## 4. Fixtures e privacidade
 
@@ -177,6 +181,16 @@ Evidência atual (06/11/2026):
 - `DataManagementViewModelTest`: export inclui o objeto `firstRun`.
 - Goldens: 3 cenas × dark/light + `today-checklist-dark`.
 
+### 5.6 Testes do ciclo 1
+
+- `TimeProviderTest` / `TimeDrivenStateTest`: relógio fixo, 23:59→00:01, domingo→segunda, fuso, DST e plano semanal.
+- `TrainingLoadEngineTest`: `LoadCoverage`, `LoadDataState`, frescor, 7/8 dias e limites 0,79/0,8/1,3/1,31.
+- `DailyPrescriptionEngineTest`, `DailyPrescriptionRepositoryTest` e `GetTodayPrescriptionTest`: `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, N-01/N-02, calor, sem calibração, versão e hash.
+- `SessionMatcherTest`, `SessionCompletionRulesTest`, `SessionExecutionRepositoryTest` e `CompleteSessionTest`: vínculo 1:1, manual válido/inválido, futuro, ontem, descanso/doença e legado.
+- `TrashPolicyTest`, `DataEpochStoreTest`, `DataResetCoordinatorTest`, `HealthSyncServiceTest` e `ImportServiceTest`: lixeira de 7 dias, expurgo por clock, reset sem ressurreição e época.
+- `MeuCoachDatabaseMigrationTest`: 10→11 e 11→12 com banco antigo, backfill e preservação de status.
+- `Cycle1RegressionTest`: gates de disponibilidade, espaçamento, prontidão vermelha, ACWR desconhecido, cobertura insuficiente, plano no meio da semana, `DONE` sem evidência e progressão bloqueada por legado.
+
 ## 6. Testes de domínio
 
 ### 6.1 Zonas
@@ -237,12 +251,14 @@ Cenários implementados hoje:
 | `G-READY-03` | Sinal de doença/lesão suspende qualidade |
 | `G-READY-04` | Sono curto bloqueia qualidade |
 
-Cenários de plano/prescrição (`G-001`…`G-006`) entram quando
-`PrescriptionEngine`/`PlanEngine` existirem: baseline conservador, progressão
-verde, HRV baixa, taper, dados ausentes e calor.
+Cenários de plano/prescrição (`G-001`…`G-006`) **não existem**. Hoje, plano e
+prescrição são cobertos por testes unitários determinísticos
+(`WeeklyPlanGeneratorTest`, `DailyPrescriptionEngineTest`, `Cycle1RegressionTest`);
+um golden de plano/prescrição só entra se o cenário provar algo que os testes de
+contrato não provam.
 
 Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra
-no expected quando o motor completo existir.
+no expected quando o cenário for auditado.
 
 ### 7.1 Regressões preparadas para o ciclo 1
 
@@ -252,11 +268,12 @@ tipo (unitário, integração, migração, concorrência, WorkManager, data/fuso
 exclusão, decisão diária, vínculo e indicadores).
 
 `core/domain/src/test/kotlin/com/meucoach/core/domain/prescription/Cycle1RegressionTest.kt`
-contém os primeiros cenários executáveis:
+contém 9 cenários executáveis e verdes:
 
-- 7 verdes (disponibilidade, espaçamento de qualidade, prontidão vermelha,
-  adesão ignorando futuro/REST, ACWR desconhecido, cobertura insuficiente e
-  plano no meio da semana começando em hoje).
+- Disponibilidade configurada, espaçamento de qualidade, prontidão vermelha,
+  adesão ignorando futuro/REST, ACWR desconhecido, cobertura insuficiente,
+  plano no meio da semana começando em hoje, `DONE` sem evidência e progressão
+  bloqueada por legado.
 
 Regra: nenhum cenário do ciclo 1 permanece `@Ignore`. Quando uma correção entra,
 o teste é habilitado no mesmo commit e passa a ser gate. Cenários que dependem
@@ -270,49 +287,26 @@ artificiais.
 - **Formatação:** pace `7:40`, distância `5,11 km`, data pt-BR, unidade.
 - **Interação:** trocar treino, concluir check-in, abrir "por quê".
 - **Temas:** dark e light, fonte 100% e 200%.
-- **Screenshot:** 3 tamanhos (360×800, 393×852, 412×915) × 2 temas, apenas telas-chave.
+- **Screenshot:** tamanhos reais usados — 393×852 (principal), 360×760/800 (estreito) e capturas focadas de altura variável (ex.: 393×760, 393×1500) × 2 temas, apenas telas-chave.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (46 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
-- `app/src/test/screenshots/activity-detail-dark.png`
-- `app/src/test/screenshots/activity-detail-light.png`
-- `app/src/test/screenshots/onboarding-dark.png`
-- `app/src/test/screenshots/onboarding-light.png`
-- `app/src/test/screenshots/profile-dark.png`
-- `app/src/test/screenshots/profile-light.png`
-- `app/src/test/screenshots/calibration-dark.png`
-- `app/src/test/screenshots/calibration-light.png`
-- `app/src/test/screenshots/trends-dark.png`
-- `app/src/test/screenshots/trends-light.png`
-- `app/src/test/screenshots/trends-charts-dark.png`
-- `app/src/test/screenshots/trends-volume-dark.png`
-- `app/src/test/screenshots/trends-efficiency-dark.png`
-- `app/src/test/screenshots/trends-readiness-dark.png`
-- `app/src/test/screenshots/health-dark.png`
-- `app/src/test/screenshots/health-light.png`
-- `app/src/test/screenshots/health-narrow-dark.png`
-- `app/src/test/screenshots/health-charts-dark.png`
-- `app/src/test/screenshots/health-recovery-dark.png`
-- `app/src/test/screenshots/tutorial-dark.png`
-- `app/src/test/screenshots/tutorial-light.png`
-- `app/src/test/screenshots/tutorial-2-dark.png`
-- `app/src/test/screenshots/tutorial-2-light.png`
-- `app/src/test/screenshots/tutorial-3-dark.png`
-- `app/src/test/screenshots/tutorial-3-light.png`
-- `app/src/test/screenshots/today-checklist-dark.png`
-- `app/src/test/screenshots/checkin-dark.png`
-- `app/src/test/screenshots/checkin-light.png`
-- `app/src/test/screenshots/today-dark.png`
-- `app/src/test/screenshots/today-light.png`
-- `app/src/test/screenshots/story-frame-dark.png`
-- `app/src/test/screenshots/story-frame-logo-dark.png`
-- `app/src/test/screenshots/story-final-dark.png`
-- `app/src/test/screenshots/story-map-dark.png`
-- `app/src/test/screenshots/story-final-map-dark.png`
-- `app/src/test/screenshots/story-card-verdict-dark.png`
-- `app/src/test/screenshots/story-final-verdict-dark.png`
+| Grupo | Arquivos |
+|---|---|
+| Atividade | `activity-detail-dark`, `activity-detail-light` |
+| Calibração | `calibration-dark`, `calibration-light` |
+| Check-in | `checkin-dark`, `checkin-light` |
+| Dados | `data-management-dark`, `data-management-light` (lixeira e opção de backup) |
+| Saúde | `health-dark`, `health-light`, `health-narrow-dark`, `health-charts-dark`, `health-recovery-dark`, `health-sources-dark`, `health-today-hint-dark` |
+| Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-routine-dark` |
+| Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light` |
+| Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
+| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark` |
+| Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
+| Tutorial | `tutorial-dark`, `tutorial-light`, `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light` |
+
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 
@@ -331,29 +325,30 @@ evita capturar a área do gráfico vazia.
 ## 10. CI
 
 ```yaml
-- ./gradlew spotlessCheck
-- ./gradlew check
-- ./gradlew koverVerify
-- ./gradlew :app:assembleDebug
+- ./gradlew spotlessCheck check :core:domain:koverVerify :app:assembleDebug
+- ./gradlew :app:verifyRoborazziDebug
 ```
 
 - JDK 17, SDK 37, build-tools 37.
 - Cache Gradle.
-- Relatórios de teste, Kover e lint como artifacts em toda execução (`if: always()`).
-- Nightly: `connectedDebugAndroidTest` em emulador API 35/36 (quando estável).
+- Relatórios de teste, Kover e lint como artifacts em toda execução (`if: always()`); o diff do Roborazzi também é publicado.
+- **Não há** nightly de emulador nem `connectedDebugAndroidTest`; instrumentados dependem de decisão de distribuição (TEST-01).
 - Branch protection: CI verde obrigatório.
 
 ## 11. Cobertura
 
 | Módulo | Meta | Verificação |
 |---|---|---|
-| `core:domain` | ≥ 85% linhas | Kover `koverVerify` |
-| Pacote `parser.fit` | ≥ 90% branches | `verifyParserBranchCoverage` (XML do Kover) |
-| `core:model` | ≥ 90% | Kover |
-| `core:data` | ≥ 75% | Kover (meta a partir do P0-08) |
-| `app`/features | ≥ 60% | Kover + UI tests (Fase 1) |
+| `core:domain` | ≥ 85% linhas (atual 97,69%) | Kover `:core:domain:koverVerify` |
+| Pacote `parser.fit` | ≥ 90% branches (atual 93,01%) | `verifyParserBranchCoverage` (XML do Kover) |
+| `core:model` | ≥ 90% (**proposta**, sem gate) | Não configurado |
+| `core:data` | ≥ 75% (**proposta**, sem gate) | Não configurado |
+| `app`/features | ≥ 60% (**proposta**, sem gate) | Não configurado |
 
-Exclusões permitidas: código gerado, `data class` triviais, `MainActivity`, previews. Toda exclusão é justificada no build.
+Só `core:domain` e o pacote FIT têm gate bloqueante hoje. As demais metas são
+intenção de roadmap (T-03), não promessa cumprida. Exclusões permitidas: código
+gerado, `data class` triviais, `MainActivity`, previews. Toda exclusão é
+justificada no build.
 
 ## 11.1 Teste manual de notificações
 

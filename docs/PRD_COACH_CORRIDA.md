@@ -1,7 +1,7 @@
 # PRD — MeuCoach: do registro à decisão
 
 **Versão:** 1.0 (auditoria) · **Data:** 06/11/2026 · **Commit auditado:** `56085fc`
-**Status:** diagnóstico e planejamento concluídos; **nenhuma implementação realizada**.
+**Status:** diagnóstico e planejamento concluídos; **ciclo 1 implementado em 06/11/2026** (ver §0.4).
 **Produto:** MeuCoach — coach de corrida Android, local-first e determinístico.
 
 ---
@@ -41,13 +41,34 @@ Não foram executados builds, testes, lint, Kover, Roborazzi, emulador, disposit
 - **Confiança da estimativa:** alta, média ou baixa, considerando o código existente.
 - **Evidência:** caminho e faixa de linhas do commit auditado; quando a evidência for documental, o documento é citado.
 
+### 0.4 Reconciliação pós-auditoria (C1-06, 06/11/2026)
+
+Esta seção preserva a auditoria do commit `56085fc` e registra o que o ciclo 1 mudou.
+O PRD continua sendo um retrato datado; onde ele divergir do código, vale o código +
+`docs/ARCHITECTURE.md`/`docs/DATA_MODEL.md`.
+
+| Achado / requisito | Situação após o ciclo 1 |
+|---|---|
+| BUG-01 / FR-001 — duas prescrições concorrentes | Resolvido em C1-03: `DailyPrescriptionEngine` + `daily_prescriptions`; o Hoje tem um card e o plano é contexto (`ADR 0023`). |
+| BUG-02 / FR-003 — conclusão sem execução | Resolvido para `ACTIVITY`/`MANUAL`: `SessionExecution`, `completionEvidence` e vínculo 1:1; `DONE` sem evidência é rejeitado (`ADR 0024`). FR-002 (`GUIDED` persistente) segue no ciclo 3. |
+| SEC-01/SEC-02 / FR-009 — exclusão não efetiva | Resolvido em C1-05: lixeira de **7 dias**, expurgo por clock, reset com época e workers bloqueados (`ADR 0025`). O prazo de 30 dias desta auditoria foi substituído por 7. |
+| BUG-09 / NFR-005 — tempo congelado | Resolvido em C1-01: `TimeProvider`/`Clock` injetados, fuso do perfil e virada de dia/semana (`ADR 0022`). |
+| N-04 / FR-004/005 — carga ausente liberando qualidade | Gate implementado em C1-02: `LoadCoverage`/`LoadDataState`, frescor de 14 dias, mínimo de 8 dias com carga; iniciante ainda pendente (`ADR 0026`, parcial). |
+| ARCH-01/ARCH-04 / DEBT-04 — docs × código | Resolvido no C1-06: `ARCHITECTURE.md`, `DATA_MODEL.md`, `TESTING.md`, `README.md`, `PRODUCT.md`, `ROADMAP.md` e este PRD reconciliados com o schema v12. |
+| FR-004 (progressão por volume) | **Pendente**: o plano ainda parte da disponibilidade; `R-PLAN-01` promete 5–8% sem executar. Exige ADR próprio. |
+| FR-005 (qualidade para iniciante) | **Pendente**: depende de histórico de evidência forte e validação dos limiares do ADR 0026. |
+| FR-002/FR-007/FR-008/FR-010..FR-018 | **Pendentes**, conforme prioridade original. |
+
+Divergências documentais apontadas em §3.9 foram corrigidas na fonte; a tabela abaixo
+permanece como registro histórico da auditoria.
+
 ---
 
 ## 1. Visão executiva
 
 ### 1.1 Resumo do estado atual
 
-O MeuCoach já é tecnicamente mais maduro do que a média dos MVPs pessoais: tem domínio Kotlin/JVM puro, parsers próprios de FIT/TCX/GPX, deduplicação, Room com migrações testadas, importação em segundo plano, Health Connect read-only, motor determinístico de zonas/carga/prontidão/prescrição, plano semanal persistido, explicabilidade com `ruleId`/`evidenceId`/confiança, gráficos, notificações, backup/reset e um protótipo sofisticado de story em vídeo. A suíte tem 872 anotações `@Test` e a documentação registra `core:domain` acima de 98% de linhas.
+O MeuCoach já é tecnicamente mais maduro do que a média dos MVPs pessoais: tem domínio Kotlin/JVM puro, parsers próprios de FIT/TCX/GPX, deduplicação, Room com migrações testadas, importação em segundo plano, Health Connect read-only, motor determinístico de zonas/carga/prontidão/prescrição, plano semanal persistido, explicabilidade com `ruleId`/`evidenceId`/confiança, gráficos, notificações, backup/reset e um protótipo sofisticado de story em vídeo. A suíte tinha 872 anotações `@Test` na auditoria (999 após o ciclo 1) e a documentação registra `core:domain` acima de 98% de linhas.
 
 O problema central não é falta de código. É que **o ciclo de coaching ainda não está fechado**:
 
@@ -735,6 +756,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   4. Testes de contrato cobrem fácil, longão, qualidade, descanso, dia sem plano e dia com doença.
   5. A explicação cita ao menos uma regra e uma evidência.
 - **Prioridade:** P0 · **Dependências:** nenhuma (pode ser incremental) · **Evidência:** BUG-01.
+- **Status na reconciliação:** implementado em C1-03 (`ADR 0023`).
 
 ### FR-002 — Execução guiada persistente
 
@@ -762,6 +784,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   5. Dia de descanso/doença não permite conclusão.
   6. Testes cobrem match, rejeição, duplicidade, dia de descanso e atividade sem plano.
 - **Prioridade:** P0 · **Dependências:** FR-001; modelo de execução · **Evidência:** BUG-02, UX-06.
+- **Status na reconciliação:** implementado para `ACTIVITY`/`MANUAL` em C1-04 (`ADR 0024`); `GUIDED` persistente segue em FR-002.
 
 ### FR-004 — Progressão de volume com guardrails
 
@@ -775,6 +798,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   4. O plano cita `R-PLAN-01` e mostra a base usada.
   5. Testes cobrem progressão, manutenção, redução, ausência de histórico e disponibilidade como teto.
 - **Prioridade:** P1 · **Dependências:** FR-001; histórico de atividades; `PlanCompletionCalculator` · **Evidência:** `WeeklyPlanGenerator.kt:161-168`; `SPORTS_SCIENCE.md:250-265`.
+- **Reconciliação:** o gate de cobertura/frescor de carga entrou em C1-02 (`ADR 0026`); a progressão de volume a partir do histórico ainda **não** foi implementada e exige ADR próprio.
 
 ### FR-005 — Progressão de qualidade para iniciantes
 
@@ -788,6 +812,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   4. Perfil “intermediário” continua limitado a 2 qualidades, nunca consecutivas.
   5. Testes cobrem os limites e a recusa do usuário.
 - **Prioridade:** P1 · **Dependências:** FR-004; histórico de conclusão · **Evidência:** `WeeklyPlanGenerator.kt:112-127`.
+- **Reconciliação:** pendente. Depende de histórico com evidência forte (C1-04) e da validação dos limiares propostos no `ADR 0026`; não foi implementado no ciclo 1.
 
 ### FR-006 — Calibração Tier B e atualização de zonas
 
@@ -832,13 +857,14 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
 
 - **Descrição:** garantir que apagar dados seja uma operação completa, verificável e reversível apenas quando o usuário quiser.
 - **Problema:** SEC-01 e SEC-02.
-- **Comportamento esperado:** exclusão de atividade com lixeira de 30 dias (restaurar/apagar definitivamente) ou exclusão imediata configurável; expurgo automático; “apagar tudo” cancela trabalhos, limpa filas/staging/preferências/cache e não permite repovoamento; exportação não inclui lixeira por padrão.
+- **Comportamento esperado:** exclusão de atividade com lixeira de **7 dias** (restaurar/apagar definitivamente) — o prazo de 30 dias desta auditoria foi substituído pelo `ADR 0025`; expurgo automático; “apagar tudo” cancela trabalhos, limpa filas/staging/preferências/cache e não permite repovoamento; exportação não inclui lixeira por padrão.
 - **Critérios de aceitação:**
   1. Apagar atividade → sai da lista/uso; lixeira mostra e permite restaurar dentro do prazo.
-  2. Após 30 dias ou “apagar definitivamente” → linha e filhos removidos; export não contém.
+  2. Após **7 dias** ou “apagar definitivamente” → linha e filhos removidos; export não contém.
   3. “Apagar tudo” → nenhum worker/importação recria dados; Health Connect não repovoa; lembretes cancelados.
   4. Testes com clock fixo, worker simulado e export.
 - **Prioridade:** P0 · **Dependências:** nenhuma para exclusão; FR-008 para a política de exportação/restauração · **Evidência:** SEC-01, SEC-02.
+- **Status na reconciliação:** implementado em C1-05 com lixeira de 7 dias, expurgo por clock e época de dados (`ADR 0025`).
 
 ### FR-010 — Comparação planejado × executado
 
@@ -1418,13 +1444,13 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
 
 ### 15.2 Documentos
 
-- `README.md` — visão, stack, status (contagens desatualizadas).
+- `README.md` — visão, stack, status (contagens atualizadas no C1-06).
 - `AGENTS.md` — regras de arquitetura, privacidade, testes e estilo.
 - `docs/PRODUCT.md` — visão, escopo, métricas, riscos.
 - `docs/ARCHITECTURE.md` — módulos, fluxos, persistência, modos de falha.
-- `docs/DATA_MODEL.md` — modelo documentado (parcialmente não implementado).
+- `docs/DATA_MODEL.md` — modelo persistido e derivado (reconciliado no C1-06).
 - `docs/SPORTS_SCIENCE.md` — regras, evidências, prescrição, segurança.
-- `docs/TESTING.md` — pirâmide, fixtures, cobertura (contagens desatualizadas).
+- `docs/TESTING.md` — pirâmide, fixtures, cobertura (contagens reconciliadas no C1-06).
 - `docs/DESIGN_SYSTEM.md` — marca, tokens, componentes, acessibilidade.
 - `docs/ROADMAP.md` — fases e pendências.
 - `docs/PROGRESS.md` — diário e estado atual (872 testes).
