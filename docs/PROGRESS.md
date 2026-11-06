@@ -57,6 +57,36 @@
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 
+## Sessão 2026-11-05 — Ícone do app: cronômetro + M + corredor
+
+**Objetivo:** substituir o ícone de corredor + arco por uma marca mais lúdica e reconhecível, mantendo a linguagem escura e precisa do app.
+
+### Concluído
+
+- **Direção aprovada:** cronômetro como moldura, M/rota dentro do mostrador e corredor sobre o topo do M. O SVG do Gemini foi preservado; a camada lima foi separada da máscara de lima do JPG para não vazar na rota, nos pontilhados brancos ou na coroa.
+- **Correções de cor:** coroa inteira lima; pontilhado direito branco; rota branca sem halo; corredor com a silhueta exata do JPG.
+- **Assets de design:** `design/icon/icon_meucoach_gemini-color.svg`, `meucoach-icon-color-1024.png`, `meucoach-icon-playstore-512.png`, `meucoach-icon-adaptive-foreground.svg` e `meucoach-icon-monochrome.svg`.
+- **Android:** `ic_launcher_foreground` regenerado em todas as densidades com fundo transparente e escala de 65%; `ic_launcher_monochrome` separado; `ic_launcher.xml` e `ic_launcher_round.xml` passaram a apontar o monochrome para o asset correto.
+- **Design system:** seção 6.1 documenta conceito, cores, arquivos, safe zone e testes do ícone.
+
+### Evidências
+
+- `./gradlew check spotlessCheck :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- Foreground/monochrome conferidos como RGBA transparente; Play Store 512 com fundo `#08090B`.
+- Preview em máscara circular, squircle e quadrado arredondado sem corte do aro.
+
+### Decisões e observações
+
+- **Não redesenhar o SVG aprovado:** a base branca usa as formas do SVG do Gemini; a lima vem da separação de cor do JPG. O corredor não usa recorte retangular.
+- **Safe zone:** o foreground do adaptive icon é escalado a 65%; o ícone de 512 continua full-bleed.
+- **Monochrome separado:** corrige o ícone temático que antes reutilizava o foreground colorido.
+
+### Próximo passo
+
+1. Validar no aparelho o ícone no launcher, a máscara circular e o ícone temático do Android 13+.
+2. Publicar o PNG 512 na ficha da Play Store quando a ficha existir.
+3. Revisar o ícone em 24/48 px no aparelho; se o corredor sumir, preparar variante óptica simplificada.
+
 ## Sessão 2026-11-05 — Clareza de confiança e escala
 
 **Objetivo:** tirar duas informações órfãs da UI: a confiança do plano da semana e a nota do eixo de economia em Tendências.

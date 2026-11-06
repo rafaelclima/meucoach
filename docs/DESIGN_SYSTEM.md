@@ -174,6 +174,15 @@ Regras:
 - Ícones de zona/FC podem ser preenchidos para reforço.
 - Usar Material Symbols (outlined) no MVP; ícones customizados só com necessidade.
 
+### 6.1 App icon
+
+- **Conceito:** um cronômetro grande é a moldura; dentro do mostrador, o M vira uma rota de GPS e o corredor corre sobre o topo do M. Leitura: tempo (aro) → percurso (M) → ação (corredor).
+- **Cores:** fundo `#08090B`; aro, rota, botão lateral e pontilhado direito em `#F4F6F7`; aro esquerdo, coroa, pontilhado esquerdo e corredor em `#D8FF3E`. Um único accent.
+- **Master:** `design/icon/icon_meucoach_gemini-color.svg`; previews em `design/icon/meucoach-icon-color-1024.png` e `meucoach-icon-playstore-512.png`.
+- **Adaptive icon:** foreground transparente em `design/icon/meucoach-icon-adaptive-foreground.svg` (escalado a 65% para caber no safe zone); background `@color/ic_launcher_background` (`#08090B`); monochrome separado em `design/icon/meucoach-icon-monochrome.svg`.
+- **Regras:** sem cantos arredondados no asset (o launcher aplica a máscara); sem sombra, gradiente, 3D ou texto; o foreground nunca inclui o fundo; o monochrome não é uma cópia colorida do foreground.
+- **Testes:** 24, 48, 192 e 512 px; máscaras circular, squircle, quadrado arredondado e teardrop; silhueta em uma cor e escala de cinza.
+
 ## 7. Componentes
 
 ### 7.1 Estrutura
