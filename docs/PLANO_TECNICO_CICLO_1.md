@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_1.md — Formalização arquitetural e preparação dos testes
 
 **Versão:** 1.1 · **Data:** 06/11/2026
-**Status:** C1-01 implementado em 06/11/2026; C1-02 a C1-06 não iniciados.
+**Status:** C1-01 e C1-05 implementados em 06/11/2026; C1-02, C1-03, C1-04 e C1-06 não iniciados.
 **Escopo:** C1-01 a C1-06, ADRs 0022–0026, estratégia de testes e ordem de execução.
 **Documentos de referência:** `docs/PRD_COACH_CORRIDA.md`, `docs/REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C), `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SPORTS_SCIENCE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`.
 
@@ -367,6 +367,18 @@ flowchart TB
 10. Não há recibo de exclusão; a época é o único metadado preservado.
 
 **Risco:** médio. Exclusão errada é irreversível; cancelar trabalho pode afetar usuários ativos. Mitigação: testes com clock, transação, confirmação dupla, purge só após prazo, checklist de limpeza, logs locais sem dados sensíveis.
+
+**Status da execução (06/11/2026):** implementado.
+
+- **Lixeira:** `ActivityDao`/`ActivityRepository` expõem `observeTrash`, `restoreActivity`, `purgeActivity`, `purgeTrashBefore` e `PurgedActivity`; `TrashPolicy` em `core:domain` centraliza os 7 dias. `purgeTrashBefore` recebe `now` e calcula o corte internamente.
+- **UI:** a tela Dados ganhou lista da lixeira, dias restantes, restaurar, apagar definitivamente com confirmação e opção explícita de incluir a lixeira no backup. O detalhe da atividade continua fazendo soft delete.
+- **Export:** padrão exclui atividades com `deletedAt` e seus jobs de importação; `includeTrash = true` é opcional.
+- **Reimportação:** arquivo cuja atividade está na lixeira retorna `ImportResult.TrashConflict`, registra `ImportJobStatus.TRASH_CONFLICT` e notifica com link para Dados; não restaura silenciosamente.
+- **Expurgo:** `TrashPurgeWorker` diário, agendado apenas com perfil; sem perfil é no-op. Também remove o arquivo bruto associado.
+- **Reset:** `DataEpochStore` + `DataWriteMutex`; `DataResetCoordinator` gira a época antes da limpeza, cancela trabalhos de importação/saúde/lembretes/story/expurgo, limpa Room, staging, avatar, cache de story, preferências de tutorial/first-run/story e notificações, e reseta o estado do Health Connect. O arquivo da época não é apagado.
+- **Workers:** `HealthSyncService` não lê nem grava sem perfil e descarta a leitura se a época mudou; `ImportService`/`StagedImportProcessor` fazem o mesmo e limpam o staging. `MeuCoachApplication` só agenda trabalhos quando existe perfil.
+- **Fora do C1-05:** o vínculo de evidência de sessão (aceite 8) depende de C1-04, que ainda não existe no schema atual (não há `session_executions`/`completionEvidence`); a lixeira já suspende o uso da atividade porque todas as consultas normais filtram `deletedAt`.
+- **Validação:** testes de `TrashPolicy`, lixeira/expurgo/restauração, export com e sem lixeira, conflito de reimportação, época, reset de banco/arquivos/preferências e sync sem perfil/época.
 
 ### 6.7 C1-06 — Verdade documental, ADRs e regressões finais
 

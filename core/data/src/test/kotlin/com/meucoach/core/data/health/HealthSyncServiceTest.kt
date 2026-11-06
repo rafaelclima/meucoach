@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.epoch.DataEpochStore
+import com.meucoach.core.data.epoch.DataWriteMutex
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.model.AthleteProfile
@@ -35,6 +37,7 @@ class HealthSyncServiceTest {
     private lateinit var metrics: DailyMetricsRepository
     private lateinit var profiles: ProfileRepository
     private lateinit var store: HealthSyncStore
+    private lateinit var epochStore: DataEpochStore
     private val zone = ZoneId.of("UTC")
     private val today = LocalDate.now(zone)
 
@@ -50,6 +53,7 @@ class HealthSyncServiceTest {
         metrics = DailyMetricsRepository(database, clock)
         profiles = ProfileRepository(database, clock)
         store = HealthSyncStore(context, prefsName = "health-sync-${System.nanoTime()}")
+        epochStore = DataEpochStore(context, clock, prefsName = "health-epoch-${System.nanoTime()}")
     }
 
     @After
@@ -285,12 +289,54 @@ class HealthSyncServiceTest {
         assertThat(source.reads).isEqualTo(1)
     }
 
-    private fun service(source: HealthDailySource, clock: Clock = Clock.systemDefaultZone()) = HealthSyncService(
+    @Test
+    fun `does not read or write without a profile`(): Unit = runBlocking {
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(today)),
+                missingPermissions = emptySet(),
+            ),
+        )
+
+        val result = service(source, epochStore = epochStore).sync()
+
+        assertThat(result.skipped).isTrue()
+        assertThat(source.reads).isZero()
+        assertThat(metrics.getAll()).isEmpty()
+        assertThat(store.lastSyncedDate()).isNull()
+    }
+
+    @Test
+    fun `discards a read when the epoch changes during sync`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(today)),
+                missingPermissions = emptySet(),
+            ),
+            onRead = { epochStore.rotate() },
+        )
+
+        val result = service(source, epochStore = epochStore).sync()
+
+        assertThat(result.cancelledByReset).isTrue()
+        assertThat(result.importedDays).isZero()
+        assertThat(metrics.getAll()).isEmpty()
+        assertThat(store.lastSyncedDate()).isNull()
+    }
+
+    private fun service(
+        source: HealthDailySource,
+        clock: Clock = Clock.systemDefaultZone(),
+        epochStore: DataEpochStore? = null,
+    ) = HealthSyncService(
         source = source,
         metricsRepository = metrics,
         profileRepository = profiles,
         syncStore = store,
         clock = clock,
+        epochStore = epochStore,
+        writeMutex = DataWriteMutex(),
     )
 
     private fun profile() = AthleteProfile(
@@ -315,6 +361,7 @@ class HealthSyncServiceTest {
             days = emptyList(),
             missingPermissions = emptySet(),
         ),
+        private val onRead: () -> Unit = {},
     ) : HealthDailySource {
         var lastFrom: LocalDate? = null
         var lastTo: LocalDate? = null
@@ -330,6 +377,7 @@ class HealthSyncServiceTest {
             reads++
             lastFrom = from
             lastTo = to
+            onRead()
             return result
         }
     }

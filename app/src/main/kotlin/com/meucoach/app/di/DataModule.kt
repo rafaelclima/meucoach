@@ -2,9 +2,12 @@ package com.meucoach.app.di
 
 import android.content.Context
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.epoch.DataEpochStore
+import com.meucoach.core.data.epoch.DataWriteMutex
 import com.meucoach.core.data.health.HealthConnectDailySource
 import com.meucoach.core.data.health.HealthDailySource
 import com.meucoach.core.data.health.HealthSyncService
@@ -69,18 +72,31 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideDataEpochStore(@ApplicationContext context: Context, clock: Clock): DataEpochStore =
+        DataEpochStore(context, clock)
+
+    @Provides
+    @Singleton
+    fun provideDataWriteMutex(): DataWriteMutex = DataWriteMutex()
+
+    @Provides
+    @Singleton
     fun provideHealthSyncService(
         source: HealthDailySource,
         metricsRepository: DailyMetricsRepository,
         profileRepository: ProfileRepository,
         syncStore: HealthSyncStore,
         clock: Clock,
+        epochStore: DataEpochStore,
+        writeMutex: DataWriteMutex,
     ): HealthSyncService = HealthSyncService(
         source = source,
         metricsRepository = metricsRepository,
         profileRepository = profileRepository,
         syncStore = syncStore,
         clock = clock,
+        epochStore = epochStore,
+        writeMutex = writeMutex,
     )
 
     @Provides
@@ -108,6 +124,23 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideImportService(database: MeuCoachDatabase, repository: ActivityRepository, clock: Clock): ImportService =
-        ImportService(database, repository, clock = clock)
+    fun provideFirstRunTipStore(@ApplicationContext context: Context): FirstRunTipStore = FirstRunTipStore(context)
+
+    @Provides
+    @Singleton
+    fun provideImportService(
+        database: MeuCoachDatabase,
+        repository: ActivityRepository,
+        clock: Clock,
+        profileRepository: ProfileRepository,
+        epochStore: DataEpochStore,
+        writeMutex: DataWriteMutex,
+    ): ImportService = ImportService(
+        database = database,
+        repository = repository,
+        clock = clock,
+        profileRepository = profileRepository,
+        epochStore = epochStore,
+        writeMutex = writeMutex,
+    )
 }

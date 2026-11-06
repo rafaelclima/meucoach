@@ -80,11 +80,59 @@ class DataManagementScreenTest {
     }
 
     @Test
+    fun `shows the trash with restore and permanent delete actions`() {
+        var restored: String? = null
+        var deleted: String? = null
+        setContent(
+            state = DataManagementUiState(
+                trash = listOf(TrashItemUi("activity-1", "Corrida", "5,00 km", 3)),
+            ),
+            onExport = {},
+            onDeleteAll = {},
+            onRestoreTrash = { restored = it },
+            onDeleteTrash = { deleted = it },
+        )
+
+        val list = compose.onNodeWithTag("data-management-list")
+        list.performScrollToNode(hasText("Corrida"))
+        compose.onNodeWithTag("trash-restore-activity-1").performClick()
+        assertThat(restored).isEqualTo("activity-1")
+
+        compose.onNodeWithTag("trash-delete-activity-1").performClick()
+        compose.onNodeWithText("Apagar definitivamente?").assertIsDisplayed()
+        compose.onNodeWithTag("trash-delete-confirm").performClick()
+        assertThat(deleted).isEqualTo("activity-1")
+    }
+
+    @Test
+    fun `toggles the trash option for the backup`() {
+        var toggled = false
+        setContent(
+            state = DataManagementUiState(),
+            onExport = {},
+            onDeleteAll = {},
+            onToggleIncludeTrash = { toggled = true },
+        )
+
+        compose.onNodeWithTag("data-management-list").performScrollToNode(hasText("Incluir itens da lixeira"))
+        compose.onNodeWithTag("data-include-trash").performClick()
+
+        assertThat(toggled).isTrue()
+    }
+
+    @Test
     fun `names the backup after the day`() {
         assertThat(exportFileName(LocalDate.of(2026, 11, 3))).isEqualTo("meucoach-backup-2026-11-03.json")
     }
 
-    private fun setContent(state: DataManagementUiState, onExport: () -> Unit, onDeleteAll: () -> Unit) {
+    private fun setContent(
+        state: DataManagementUiState,
+        onExport: () -> Unit,
+        onDeleteAll: () -> Unit,
+        onRestoreTrash: (String) -> Unit = {},
+        onDeleteTrash: (String) -> Unit = {},
+        onToggleIncludeTrash: () -> Unit = {},
+    ) {
         compose.setContent {
             McTheme(darkTheme = true) {
                 DataManagementContent(
@@ -92,6 +140,9 @@ class DataManagementScreenTest {
                     onExport = onExport,
                     onDeleteAll = onDeleteAll,
                     onBack = {},
+                    onRestoreTrash = onRestoreTrash,
+                    onDeleteTrash = onDeleteTrash,
+                    onToggleIncludeTrash = onToggleIncludeTrash,
                 )
             }
         }

@@ -41,19 +41,27 @@ class UserDataRepository(
     private val healthSyncStore: HealthSyncStore,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    suspend fun exportJson(firstRun: JSONObject? = null): String = database.withTransaction {
-        val root = JSONObject()
-            .put("schemaVersion", MeuCoachDatabase.VERSION)
-            .put("exportedAt", clock.instant().toString())
-            .put("profile", database.profileDao().get()?.toJson() ?: JSONObject.NULL)
-            .put("checkIns", database.dailyCheckInDao().getAll().toJsonArray { it.toJson() })
-            .put("dailyMetrics", database.dailyMetricsDao().getAll().toJsonArray { it.toJson() })
-            .put("weeklyPlans", exportPlans())
-            .put("activities", exportActivities())
-            .put("importJobs", database.importJobDao().getAll().toJsonArray { it.toJson() })
-        firstRun?.let { root.put("firstRun", it) }
-        root.toString(2)
-    }
+    suspend fun exportJson(firstRun: JSONObject? = null, includeTrash: Boolean = false): String =
+        database.withTransaction {
+            val trashedIds = if (includeTrash) emptySet() else database.activityDao().getDeletedIds().toSet()
+            val root = JSONObject()
+                .put("schemaVersion", MeuCoachDatabase.VERSION)
+                .put("exportedAt", clock.instant().toString())
+                .put("profile", database.profileDao().get()?.toJson() ?: JSONObject.NULL)
+                .put("checkIns", database.dailyCheckInDao().getAll().toJsonArray { it.toJson() })
+                .put("dailyMetrics", database.dailyMetricsDao().getAll().toJsonArray { it.toJson() })
+                .put("weeklyPlans", exportPlans())
+                .put("activities", exportActivities(includeTrash))
+                .put(
+                    "importJobs",
+                    database.importJobDao()
+                        .getAll()
+                        .filterNot { it.activityId in trashedIds }
+                        .toJsonArray { it.toJson() },
+                )
+            firstRun?.let { root.put("firstRun", it) }
+            root.toString(2)
+        }
 
     suspend fun deleteAllData(): UserDataDeletion {
         val deletion = database.withTransaction {
@@ -78,9 +86,14 @@ class UserDataRepository(
         return deletion
     }
 
-    private suspend fun exportActivities(): JSONArray {
+    private suspend fun exportActivities(includeTrash: Boolean): JSONArray {
         val array = JSONArray()
-        database.activityDao().getAllIncludingDeleted().forEach { activity ->
+        val rows = if (includeTrash) {
+            database.activityDao().getAllIncludingDeleted()
+        } else {
+            database.activityDao().getAll()
+        }
+        rows.forEach { activity ->
             array.put(
                 activity.toJson(
                     laps = database.lapDao().getForActivity(activity.id),

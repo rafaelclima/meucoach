@@ -261,6 +261,7 @@ private fun ImportJobCard(job: ImportJobSummary) {
         ImportJobStatus.QUEUED, ImportJobStatus.PARSING -> colors.warning
         ImportJobStatus.DONE -> colors.success
         ImportJobStatus.DUPLICATE -> colors.textSecondary
+        ImportJobStatus.TRASH_CONFLICT -> colors.warning
         ImportJobStatus.FAILED -> colors.danger
     }
     McCard(variant = McCardVariant.INSET) {

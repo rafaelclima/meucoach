@@ -33,6 +33,11 @@ class TutorialStore(context: Context, private val clock: Clock = Clock.systemUTC
         }
     }
 
+    /** Full local reset: the next onboarding starts with the tutorial available again. */
+    fun reset() {
+        prefs.edit().clear().apply()
+    }
+
     companion object {
         const val PREFS_NAME = "meucoach_tutorial"
         private const val KEY_INTRO_DONE = "introDone"

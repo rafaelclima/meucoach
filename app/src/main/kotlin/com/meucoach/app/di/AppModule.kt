@@ -1,5 +1,7 @@
 package com.meucoach.app.di
 
+import com.meucoach.app.data.DataResetCoordinator
+import com.meucoach.app.data.DataResetter
 import com.meucoach.app.time.ProfileTimeProvider
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ProfileRepository
@@ -38,4 +40,8 @@ object AppModule {
         clock: Clock,
         @ApplicationScope scope: CoroutineScope,
     ): TimeProvider = ProfileTimeProvider(profileRepository, clock, scope)
+
+    @Provides
+    @Singleton
+    fun provideDataResetter(coordinator: DataResetCoordinator): DataResetter = coordinator
 }

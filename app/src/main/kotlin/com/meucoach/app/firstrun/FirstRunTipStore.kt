@@ -13,6 +13,10 @@ class FirstRunTipStore(context: Context, prefsName: String = PREFS_NAME) {
         prefs.edit { putBoolean(tipId, true) }
     }
 
+    fun reset() {
+        prefs.edit().clear().apply()
+    }
+
     companion object {
         const val PREFS_NAME = "meucoach_first_run_tips"
     }

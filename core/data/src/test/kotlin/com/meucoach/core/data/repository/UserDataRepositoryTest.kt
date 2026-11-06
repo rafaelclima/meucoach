@@ -103,6 +103,21 @@ class UserDataRepositoryTest {
     }
 
     @Test
+    fun `default export excludes the trash and its import jobs`(): Unit = runBlocking {
+        seedEverything()
+        val saved = database.activityDao().getAll().single()
+        activities.deleteActivity(saved.id)
+
+        val default = JSONObject(userData.exportJson())
+        val complete = JSONObject(userData.exportJson(includeTrash = true))
+
+        assertThat(default.getJSONArray("activities").length()).isZero()
+        assertThat(default.getJSONArray("importJobs").length()).isZero()
+        assertThat(complete.getJSONArray("activities").length()).isEqualTo(1)
+        assertThat(complete.getJSONArray("importJobs").length()).isEqualTo(1)
+    }
+
+    @Test
     fun `deletes activities, profile, check-ins, metrics and plans`(): Unit = runBlocking {
         seedEverything()
 

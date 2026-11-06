@@ -4,7 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.data.DataResetResult
+import com.meucoach.app.data.DataResetter
 import com.meucoach.app.firstrun.FirstRunMetricsStore
+import com.meucoach.app.importer.ImportStaging
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.health.HealthSyncStore
@@ -47,6 +50,8 @@ class DataManagementViewModelTest {
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var userData: UserDataRepository
+    private lateinit var activities: ActivityRepository
+    private lateinit var staging: ImportStaging
     private lateinit var firstRunMetrics: FirstRunMetricsStore
     private lateinit var viewModel: DataManagementViewModel
     private val clock = Clock.fixed(Instant.parse("2026-11-03T12:00:00Z"), ZoneOffset.UTC)
@@ -70,13 +75,26 @@ class DataManagementViewModelTest {
             clock,
             prefsName = "data-management-metrics-${System.nanoTime()}",
         )
+        activities = ActivityRepository(
+            database = database,
+            clock = clock,
+            zoneId = ZoneId.of("America/Sao_Paulo"),
+            idGenerator = { "activity-1" },
+        )
+        staging = ImportStaging(context)
         viewModel = DataManagementViewModel(
             userData = userData,
-            profiles = com.meucoach.core.data.repository.ProfileRepository(database, clock),
-            photos = com.meucoach.app.profile.ProfilePhotoStore(context),
+            activities = activities,
+            staging = staging,
+            resetCoordinator = object : DataResetter {
+                override suspend fun reset() = DataResetResult(
+                    deletion = userData.deleteAllData(),
+                    epoch = "epoch-test",
+                )
+            },
             firstRunMetrics = firstRunMetrics,
             context = context,
-            timeProvider = FakeTimeProvider(),
+            timeProvider = FakeTimeProvider(clock.instant(), ZoneOffset.UTC),
         )
     }
 
@@ -130,7 +148,46 @@ class DataManagementViewModelTest {
         assertThat(database.profileDao().get()).isNull()
     }
 
-    private suspend fun seedProfileAndActivity() {
+    @Test
+    fun `lists, restores and permanently deletes trash items`(): Unit = runBlocking {
+        val activityId = seedProfileAndActivity()
+        activities.deleteActivity(activityId)
+
+        val trash = viewModel.uiState.first { it.trash.isNotEmpty() }.trash.single()
+        assertThat(trash.id).isEqualTo(activityId)
+        assertThat(trash.daysRemaining).isEqualTo(7)
+
+        viewModel.restoreActivity(activityId)
+        viewModel.uiState.first { it.trash.isEmpty() }
+        assertThat(database.activityDao().findById(activityId)).isNotNull
+
+        activities.deleteActivity(activityId)
+        viewModel.uiState.first { it.trash.isNotEmpty() }
+        viewModel.deletePermanently(activityId)
+        viewModel.uiState.first { it.trash.isEmpty() }
+
+        assertThat(database.activityDao().findByIdIncludingDeleted(activityId)).isNull()
+    }
+
+    @Test
+    fun `default export excludes trash and the toggle includes it`(): Unit = runBlocking {
+        val activityId = seedProfileAndActivity()
+        activities.deleteActivity(activityId)
+        val file = File(context.cacheDir, "backup.json").apply { delete() }
+
+        viewModel.export(Uri.fromFile(file))
+        viewModel.uiState.first { !it.isExporting && it.message != null }
+        val default = JSONObject(file.readText())
+        assertThat(default.getJSONArray("activities").length()).isZero()
+
+        viewModel.toggleIncludeTrash()
+        viewModel.export(Uri.fromFile(file))
+        viewModel.uiState.first { !it.isExporting && it.message != null }
+        val complete = JSONObject(file.readText())
+        assertThat(complete.getJSONArray("activities").length()).isEqualTo(1)
+    }
+
+    private suspend fun seedProfileAndActivity(): String {
         ProfileRepository(database, clock).saveProfile(
             AthleteProfile(
                 id = "athlete-1",
@@ -154,5 +211,6 @@ class DataManagementViewModelTest {
                 averagePace = Pace.fromSecondsPerKm(360),
             ),
         )
+        return "activity-1"
     }
 }

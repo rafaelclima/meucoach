@@ -13,8 +13,10 @@ import com.meucoach.core.data.health.HealthSyncService
 import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DailyMetricsSource
+import com.meucoach.core.model.Sex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,6 +62,16 @@ class HealthConnectViewModelTest {
         val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
         metrics = DailyMetricsRepository(database, clock)
         profiles = ProfileRepository(database, clock)
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    timezone = "UTC",
+                ),
+            )
+        }
         syncStore = HealthSyncStore(context, prefsName = "health-view-model-${System.nanoTime()}")
     }
 

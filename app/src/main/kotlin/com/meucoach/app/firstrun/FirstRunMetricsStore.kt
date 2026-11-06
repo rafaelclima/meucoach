@@ -69,6 +69,11 @@ class FirstRunMetricsStore(
         putNullable(KEY_CHECKLIST_COMPLETED, prefs.getString(KEY_CHECKLIST_COMPLETED, null))
     }
 
+    /** Removes activation timestamps together with the rest of the local data. */
+    fun reset() {
+        prefs.edit().clear().apply()
+    }
+
     private fun putOnce(key: String, value: String) {
         if (prefs.contains(key)) return
         prefs.edit { putString(key, value) }

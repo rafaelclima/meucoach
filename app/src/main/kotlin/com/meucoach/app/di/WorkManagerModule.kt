@@ -2,6 +2,8 @@ package com.meucoach.app.di
 
 import android.content.Context
 import androidx.work.WorkManager
+import com.meucoach.app.data.TrashPurgeScheduler
+import com.meucoach.app.data.WorkManagerTrashPurgeScheduler
 import com.meucoach.app.health.HealthSyncScheduler
 import com.meucoach.app.health.WorkManagerHealthSyncScheduler
 import com.meucoach.app.importer.ImportWorkScheduler
@@ -37,4 +39,9 @@ object WorkManagerModule {
     @Singleton
     fun provideHealthSyncScheduler(workManager: WorkManager): HealthSyncScheduler =
         WorkManagerHealthSyncScheduler(workManager)
+
+    @Provides
+    @Singleton
+    fun provideTrashPurgeScheduler(workManager: WorkManager): TrashPurgeScheduler =
+        WorkManagerTrashPurgeScheduler(workManager)
 }

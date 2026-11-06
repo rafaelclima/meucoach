@@ -11,6 +11,7 @@ enum class ImportJobStatus {
     DONE,
     FAILED,
     DUPLICATE,
+    TRASH_CONFLICT,
 }
 
 @Entity(

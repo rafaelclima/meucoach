@@ -3,7 +3,7 @@
 **Status:** aceito
 **Data:** 2026-11-06
 **Responsável:** planejamento com Rafael (usuário 0)
-**Implementação:** planejada para C1-05; nenhuma linha de produção alterada nesta etapa.
+**Implementação:** C1-05 concluída em 06/11/2026.
 
 ---
 

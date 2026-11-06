@@ -1,5 +1,7 @@
 package com.meucoach.core.data.health
 
+import com.meucoach.core.data.epoch.DataEpochStore
+import com.meucoach.core.data.epoch.DataWriteMutex
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import kotlinx.coroutines.sync.Mutex
@@ -17,6 +19,9 @@ data class HealthSyncResult(
     val from: LocalDate,
     val to: LocalDate,
     val incremental: Boolean,
+    /** No profile or a reset happened; the caller must not retry. */
+    val skipped: Boolean = false,
+    val cancelledByReset: Boolean = false,
 )
 
 /**
@@ -31,6 +36,8 @@ class HealthSyncService(
     private val profileRepository: ProfileRepository,
     private val syncStore: HealthSyncStore,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val epochStore: DataEpochStore? = null,
+    private val writeMutex: DataWriteMutex? = null,
 ) {
     private val mutex = Mutex()
 
@@ -64,6 +71,19 @@ class HealthSyncService(
             ?.let { runCatching { ZoneId.of(it.timezone) }.getOrNull() }
             ?: ZoneId.systemDefault()
         val today = now.atZone(zone).toLocalDate()
+        // Without a profile there is nothing to attach metrics to and no reason
+        // to schedule a retry; this is also the state right after a reset.
+        if (profile == null) {
+            return HealthSyncResult(
+                importedDays = 0,
+                missingPermissions = emptySet(),
+                from = today,
+                to = today,
+                incremental = false,
+                skipped = true,
+            )
+        }
+        val epoch = epochStore?.current()
         if (source.status() != HealthConnectStatus.AVAILABLE) {
             return HealthSyncResult(
                 importedDays = 0,
@@ -79,23 +99,74 @@ class HealthSyncService(
         val from = lastSynced?.minusDays(1) ?: today.minusDays(WINDOW_DAYS - 1L)
         val safeFrom = if (from.isAfter(today)) today else from
         val result = source.read(from = safeFrom, to = today, zoneId = zone)
-        when {
-            result.error != null -> syncStore.markAttempt(now)
-
-            result.missingPermissions.isEmpty() -> {
-                if (result.days.isNotEmpty()) metricsRepository.saveAll(result.days)
-                syncStore.markSynced(now, today)
-            }
+        if (result.error != null) {
+            syncStore.markAttempt(now)
+            return HealthSyncResult(
+                importedDays = result.days.size,
+                missingPermissions = result.missingPermissions,
+                error = result.error,
+                from = safeFrom,
+                to = today,
+                incremental = lastSynced != null,
+            )
         }
+        if (result.missingPermissions.isNotEmpty()) {
+            return HealthSyncResult(
+                importedDays = result.days.size,
+                missingPermissions = result.missingPermissions,
+                from = safeFrom,
+                to = today,
+                incremental = lastSynced != null,
+            )
+        }
+
+        val cancelled = epochStore != null && epochStore.current() != epoch
+        if (cancelled) return cancelledByReset(safeFrom, today, lastSynced != null)
+
+        if (result.days.isNotEmpty()) {
+            val saved = writeMutex?.let { guard ->
+                guard.mutex.withLock {
+                    if (epochStore != null && epochStore.current() != epoch) {
+                        false
+                    } else {
+                        metricsRepository.saveAll(result.days)
+                        true
+                    }
+                }
+            } ?: run {
+                if (epochStore != null && epochStore.current() != epoch) {
+                    false
+                } else {
+                    metricsRepository.saveAll(result.days)
+                    true
+                }
+            }
+            if (!saved) return cancelledByReset(safeFrom, today, lastSynced != null)
+        }
+        if (epochStore != null && epochStore.current() != epoch) {
+            return cancelledByReset(safeFrom, today, lastSynced != null)
+        }
+        syncStore.markSynced(now, today)
         return HealthSyncResult(
             importedDays = result.days.size,
-            missingPermissions = result.missingPermissions,
-            error = result.error,
+            missingPermissions = emptySet(),
+            error = null,
             from = safeFrom,
             to = today,
             incremental = lastSynced != null,
         )
     }
+
+    private fun cancelledByReset(from: LocalDate, to: LocalDate, incremental: Boolean) = HealthSyncResult(
+        importedDays = 0,
+        missingPermissions = emptySet(),
+        error = null,
+        from = from,
+        to = to,
+        incremental = incremental,
+        skipped = true,
+        cancelledByReset = true,
+    )
 
     companion object {
         const val WINDOW_DAYS = 30L

@@ -11,6 +11,7 @@ import androidx.work.Data
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.meucoach.core.data.epoch.DataEpochStore
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -31,6 +32,7 @@ class StoryExportWorker @AssistedInject constructor(
     private val processor: StoryExportProcessor,
     private val notifier: StoryNotifier,
     private val failures: StoryExportFailureStore,
+    private val epochStore: DataEpochStore,
 ) : CoroutineWorker(appContext, params) {
     override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(
         activityId = inputData.getString(KEY_ACTIVITY_ID).orEmpty(),
@@ -43,6 +45,7 @@ class StoryExportWorker @AssistedInject constructor(
         val palette = StoryPaletteCodec.decode(inputData.getIntArray(StoryPaletteCodec.KEY))
             ?: return Result.failure()
         val mapPath = inputData.getString(KEY_MAP_PATH)
+        val epoch = epochStore.current()
         failures.clear(activityId)
         enterForeground(activityId)
 
@@ -54,6 +57,10 @@ class StoryExportWorker @AssistedInject constructor(
         } catch (error: Throwable) {
             StoryExportOutcome.Failed(error.message ?: StoryMessages.EXPORT_FAILED)
         }
+
+        // A reset happened while the story was rendering: do not notify or
+        // publish a result that belongs to the previous data generation.
+        if (epochStore.current() != epoch) return Result.success()
 
         return when (outcome) {
             is StoryExportOutcome.Completed -> {

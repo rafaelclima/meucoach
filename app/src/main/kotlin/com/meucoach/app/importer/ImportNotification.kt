@@ -5,6 +5,7 @@ import com.meucoach.core.data.importer.ImportResult
 /** Deep links consumed by [com.meucoach.app.reminder.NotificationNavigation]. */
 const val DEEP_LINK_ACTIVITY = "meucoach://activity"
 const val DEEP_LINK_ACTIVITIES = "meucoach://activities"
+const val DEEP_LINK_DATA = "meucoach://data"
 
 data class ImportNotificationMessage(val title: String, val body: String, val deepLink: String)
 
@@ -39,6 +40,18 @@ object ImportNotification {
         is ImportResult.Failed -> ImportNotificationMessage(
             title = "Não foi possível importar",
             body = "$fileName: ${result.message}",
+            deepLink = DEEP_LINK_ACTIVITIES,
+        )
+
+        is ImportResult.TrashConflict -> ImportNotificationMessage(
+            title = "Atividade na lixeira",
+            body = "$fileName já existe na lixeira. Restaure-a em Dados antes de importar de novo.",
+            deepLink = DEEP_LINK_DATA,
+        )
+
+        ImportResult.Skipped -> ImportNotificationMessage(
+            title = "Importação cancelada",
+            body = "O arquivo não foi importado porque os dados foram apagados ou não há perfil.",
             deepLink = DEEP_LINK_ACTIVITIES,
         )
     }

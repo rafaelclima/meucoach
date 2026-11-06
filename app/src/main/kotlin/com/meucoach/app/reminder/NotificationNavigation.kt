@@ -10,6 +10,7 @@ object NotificationNavigation {
     const val ROUTE_TODAY = "today"
     const val ROUTE_CHECK_IN = "check-in"
     const val ROUTE_ACTIVITIES = "activities"
+    const val ROUTE_DATA = "profile/data"
 
     private val _route = MutableStateFlow<String?>(null)
     val route: StateFlow<String?> = _route.asStateFlow()
@@ -32,6 +33,8 @@ object NotificationNavigation {
             "check-in" -> ROUTE_CHECK_IN
 
             "activities" -> ROUTE_ACTIVITIES
+
+            "data" -> ROUTE_DATA
 
             "activity" ->
                 uri.path

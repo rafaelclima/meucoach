@@ -3,8 +3,11 @@ package com.meucoach.core.data.importer
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.ImportJobStatus
+import com.meucoach.core.data.epoch.DataEpochStore
+import com.meucoach.core.data.epoch.DataWriteMutex
 import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.SaveActivityResult
 import com.meucoach.core.domain.parser.fit.FitParser
 import com.meucoach.core.domain.parser.gpx.GpxParser
@@ -12,6 +15,7 @@ import com.meucoach.core.domain.parser.tcx.TcxParser
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 
 /**
@@ -29,8 +33,15 @@ class ImportService(
     private val gpxParser: GpxParser = GpxParser(),
     private val clock: Clock = Clock.systemUTC(),
     private val jobIdGenerator: () -> String = { UuidV7.generate(clock) },
+    private val profileRepository: ProfileRepository? = null,
+    private val epochStore: DataEpochStore? = null,
+    private val writeMutex: DataWriteMutex? = null,
 ) {
     suspend fun import(request: ImportRequest): ImportResult {
+        if (profileRepository != null && profileRepository.getProfile() == null) {
+            return ImportResult.Skipped
+        }
+        val epoch = epochStore?.current()
         val sha256 = Sha256.hex(request.bytes)
         val jobId = jobIdGenerator()
         val createdAt = clock.instant()
@@ -48,14 +59,35 @@ class ImportService(
             createdAt = createdAt.toEpochMilli(),
             finishedAt = null,
         )
-        database.importJobDao().insert(initialJob)
-        database.importJobDao().update(initialJob.copy(status = ImportJobStatus.PARSING))
+        val started = if (epochStore != null && writeMutex != null) {
+            writeMutex.mutex.withLock {
+                if (epochStore.current() != epoch) {
+                    false
+                } else {
+                    insertInitialJob(initialJob)
+                    true
+                }
+            }
+        } else {
+            insertInitialJob(initialJob)
+            true
+        }
+        if (!started) return ImportResult.Skipped
 
-        database.activityDao().findBySha256(sha256)?.let { existing ->
+        database.activityDao().findBySha256IncludingDeleted(sha256)?.let { existing ->
+            if (existing.deletedAt != null) {
+                markTrashConflict(initialJob, existing.id)
+                return ImportResult.TrashConflict(jobId = jobId, activityId = existing.id)
+            }
             markDuplicate(initialJob, existing.id)
             return ImportResult.Duplicate(jobId = jobId, activityId = existing.id)
         }
         database.activityAlternateDao().findBySha256(sha256)?.let { alternate ->
+            val parent = database.activityDao().findByIdIncludingDeleted(alternate.activityId)
+            if (parent?.deletedAt != null) {
+                markTrashConflict(initialJob, alternate.activityId)
+                return ImportResult.TrashConflict(jobId = jobId, activityId = alternate.activityId)
+            }
             markDuplicate(initialJob, alternate.activityId)
             return ImportResult.Duplicate(jobId = jobId, activityId = alternate.activityId)
         }
@@ -81,7 +113,20 @@ class ImportService(
         }
 
         return try {
-            when (val saved = repository.saveImportedActivity(parsed.activity, sha256, request.rawFilePath)) {
+            val saved = if (epochStore != null && epochStore.current() != epoch) {
+                null
+            } else {
+                val save: suspend () -> SaveActivityResult? = {
+                    if (epochStore != null && epochStore.current() != epoch) {
+                        null
+                    } else {
+                        repository.saveImportedActivity(parsed.activity, sha256, request.rawFilePath)
+                    }
+                }
+                writeMutex?.let { guard -> guard.mutex.withLock { save() } } ?: save()
+            }
+            if (saved == null) return ImportResult.Skipped
+            when (saved) {
                 is SaveActivityResult.Saved -> {
                     markDone(initialJob, parsed.activity, saved.id)
                     ImportResult.Imported(
@@ -114,6 +159,11 @@ class ImportService(
                     )
                 }
 
+                is SaveActivityResult.ConflictingTrash -> {
+                    markTrashConflict(initialJob, saved.id)
+                    ImportResult.TrashConflict(jobId = jobId, activityId = saved.id)
+                }
+
                 is SaveActivityResult.Duplicate -> {
                     markDuplicate(initialJob, saved.id)
                     ImportResult.Duplicate(jobId = jobId, activityId = saved.id)
@@ -128,6 +178,11 @@ class ImportService(
                 "Não foi possível salvar a atividade. Tente importar o arquivo de novo.",
             )
         }
+    }
+
+    private suspend fun insertInitialJob(job: ImportJobEntity) {
+        database.importJobDao().insert(job)
+        database.importJobDao().update(job.copy(status = ImportJobStatus.PARSING))
     }
 
     private fun parse(format: ImportFormat, bytes: ByteArray): ParsedImport = when (format) {
@@ -159,6 +214,17 @@ class ImportService(
             job.copy(
                 status = ImportJobStatus.DUPLICATE,
                 activityId = activityId,
+                finishedAt = clock.instant().toEpochMilli(),
+            ),
+        )
+    }
+
+    private suspend fun markTrashConflict(job: ImportJobEntity, activityId: String) {
+        database.importJobDao().update(
+            job.copy(
+                status = ImportJobStatus.TRASH_CONFLICT,
+                activityId = activityId,
+                errorMessage = "Atividade na lixeira. Restaure-a em Dados antes de importar de novo.",
                 finishedAt = clock.instant().toEpochMilli(),
             ),
         )
@@ -255,5 +321,10 @@ sealed interface ImportResult {
 
     data class Duplicate(val jobId: String, val activityId: String) : ImportResult
 
+    data class TrashConflict(val jobId: String, val activityId: String) : ImportResult
+
     data class Failed(val jobId: String, val code: ImportErrorCode, val message: String) : ImportResult
+
+    /** Profile missing or a data reset happened while the file was being processed. */
+    data object Skipped : ImportResult
 }

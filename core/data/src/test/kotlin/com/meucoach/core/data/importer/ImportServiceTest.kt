@@ -250,6 +250,29 @@ class ImportServiceTest {
     }
 
     @Test
+    fun `reimporting a file in the trash returns a conflict without restoring`() {
+        runBlocking {
+            val bytes = fixture("/fit/Zepp20261022195619.fit")
+            val request = ImportRequest(
+                bytes = bytes,
+                fileName = "run.fit",
+                mime = "application/vnd.garmin.fit",
+                rawFilePath = "imports/run.fit",
+            )
+            val first = service.import(request) as ImportResult.Imported
+            repository.deleteActivity(first.activityId)
+
+            val second = service.import(request)
+
+            assertThat(second).isInstanceOf(ImportResult.TrashConflict::class.java)
+            assertThat((second as ImportResult.TrashConflict).activityId).isEqualTo(first.activityId)
+            assertThat(repository.listActivitySummaries()).isEmpty()
+            val job = database.importJobDao().findById(second.jobId)
+            assertThat(job?.status).isEqualTo(ImportJobStatus.TRASH_CONFLICT)
+        }
+    }
+
+    @Test
     fun `hashes bytes with sha256`() {
         assertThat(Sha256.hex("abc".toByteArray()))
             .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")

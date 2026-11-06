@@ -31,7 +31,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0022](adr/0022-deterministic-time-and-week.md) | Tempo determinístico, fuso do perfil e virada de dia/semana | Aceito — implementado em C1-01 | 06/11/2026 |
 | [0023](adr/0023-weekly-plan-vs-daily-prescription.md) | Plano semanal como intenção e prescrição diária como autoridade | Aceito — planejado para C1-03 | 06/11/2026 |
 | [0024](adr/0024-completion-evidence.md) | Conclusão com evidência (`ACTIVITY`/`GUIDED`/`MANUAL`) e estados próprios | Aceito — C1-04; `GUIDED` no ciclo 3 | 06/11/2026 |
-| [0025](adr/0025-deletion-retention-reset.md) | Lixeira de 7 dias, reset imediato e época de dados | Aceito — planejado para C1-05 | 06/11/2026 |
+| [0025](adr/0025-deletion-retention-reset.md) | Lixeira de 7 dias, reset imediato e época de dados | Aceito — implementado em C1-05 | 06/11/2026 |
 | [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Proposto — direção aprovada; limiares a validar | 06/11/2026 |
 
 ## Decisões menores (registro rápido)

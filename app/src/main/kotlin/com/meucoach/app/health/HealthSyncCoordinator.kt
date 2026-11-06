@@ -49,6 +49,11 @@ class HealthSyncCoordinator @Inject constructor(
     )
     val state: StateFlow<HealthSyncState> = _state.asStateFlow()
 
+    /** Clears in-memory freshness after a full local reset. */
+    fun resetState() {
+        _state.value = HealthSyncState()
+    }
+
     fun syncOnResume() {
         scope.launch {
             if (!autoMutex.tryLock()) return@launch

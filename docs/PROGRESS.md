@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 06/11/2026 (C1-01 — tempo determinístico implementado; C1-02 a C1-06 não iniciados)
+**Atualizado:** 06/11/2026 (C1-01 e C1-05 implementados; C1-02, C1-03, C1-04 e C1-06 não iniciados)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 889 testes no total (467 em `:app`, 100 em `core:data`, 295 em `core:domain`, 27 em `core:model`), 0 falhas; 3 falhas esperadas de C1-02/C1-03 permanecem `@Ignore` em `Cycle1RegressionTest`.
+- **Testes:** 909 testes no total (476 em `:app`, 108 em `core:data`, 298 em `core:domain`, 27 em `core:model`), 0 falhas; 3 falhas esperadas de C1-02/C1-03 permanecem `@Ignore` em `Cycle1RegressionTest`.
 - **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 38 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
@@ -56,6 +56,42 @@
 - **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-06 — C1-05: lixeira, reset efetivo e época de dados
+
+**Objetivo:** fazer “apagar” significar apagar de verdade, com lixeira curta, expurgo determinístico, reset completo e proteção contra workers que recriam dados.
+
+### Concluído
+
+- **Lixeira de 7 dias:** `TrashPolicy` (domínio puro), `observeTrash`, `restoreActivity`, `purgeActivity`, `purgeTrashBefore` e `TrashedActivity`/`PurgedActivity` no repositório. O expurgo recebe `now` e calcula o corte internamente.
+- **UI:** a tela Dados lista a lixeira com data, tempo restante, restaurar e “apagar definitivamente” com confirmação. O backup tem opção explícita “incluir itens da lixeira”, desmarcada por padrão.
+- **Expurgo:** `TrashPurgeWorker` diário, agendado apenas com perfil; sem perfil é no-op. Remove a atividade, filhos, jobs de importação e arquivo bruto.
+- **Reimportação:** um arquivo cuja atividade está na lixeira retorna `ImportResult.TrashConflict` e job `TRASH_CONFLICT`; a UI/notificação aponta para Dados e não restaura silenciosamente.
+- **Export:** padrão exclui atividades com `deletedAt` e os jobs de importação ligados a elas; `includeTrash = true` é explícito.
+- **Época de dados:** `DataEpochStore` em `SharedPreferences` próprio, preservado pelo reset; `DataWriteMutex` compartilha a janela crítica entre reset, importação e Health Connect.
+- **Reset:** `DataResetCoordinator` rotaciona a época, cancela trabalhos de importação, saúde, lembretes, story e expurgo, limpa Room, staging, avatar, cache de story, preferências de tutorial/first-run/story, notificações e estado do Health Connect. Health Connect externo não é tocado.
+- **Workers:** `HealthSyncService` não lê nem grava sem perfil e descarta a leitura se a época mudar; `ImportService`/`StagedImportProcessor` fazem o mesmo e limpam o staging. `MeuCoachApplication` só agenda trabalho quando existe perfil.
+- **Testes:** política de 7 dias, 6d23h/7d/7d1h, lixeira/restauração/expurgo, export com e sem lixeira, conflito de reimportação, época, reset de banco/arquivos/preferências, sync sem perfil e época invalidada, além dos testes existentes atualizados.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde.
+- `./gradlew :app:verifyRoborazziDebug` — verde (goldens de Dados regravados para a opção de lixeira).
+- Suíte total: **909 testes**, 0 falhas (476 `:app`, 108 `core:data`, 298 `core:domain`, 27 `core:model`); 3 `@Ignore` esperados de C1-02/C1-03.
+- Nenhuma migração de Room, dependência nova ou alteração de schema.
+
+### Decisões e observações
+
+- **Sem migration:** a coluna `deletedAt` já existia; o expurgo usa índice implícito e não exigiu schema novo.
+- **Evento de evidência:** o aceite 8 do plano depende de C1-04 (`session_executions`/`completionEvidence`), que ainda não existe. A lixeira já remove a atividade de todo uso normal; o vínculo será suspenso/removido quando C1-04 entrar.
+- **Epoch é a barreira durável:** o cancelamento do WorkManager é melhor esforço; importação e saúde releem a época antes de gravar.
+- **Health Connect:** o reset só limpa a cópia local e a marca d’água; nenhuma API de exclusão externa é chamada.
+
+### Próximo passo
+
+1. Revisão humana de C1-05 e dos goldens de Dados.
+2. Após aprovação, seguir para C1-02 ou C1-03 conforme prioridade.
+3. Implementar o vínculo de evidência de C1-05/C1-04 quando a sessão executada existir.
 
 ## Sessão 2026-11-06 — C1-01: tempo determinístico, fuso e virada de dia/semana
 

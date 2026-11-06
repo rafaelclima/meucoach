@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -66,11 +65,6 @@ class MetricsImportViewModel @Inject constructor(
                 storedMetrics = rows
                 refresh(rows)
             }
-        }
-        viewModelScope.launch {
-            // Only a real day change triggers a refresh; the initial value is
-            // already covered by the state initialized from the provider.
-            timeProvider.today.drop(1).collect { refreshToday() }
         }
     }
 

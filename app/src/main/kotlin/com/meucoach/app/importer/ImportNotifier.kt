@@ -42,6 +42,7 @@ class ImportNotifier @Inject constructor(@ApplicationContext context: Context) {
     }
 
     fun notify(result: ImportResult, fileName: String) {
+        if (result is ImportResult.Skipped) return
         ensureChannel()
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -73,6 +74,10 @@ class ImportNotifier @Inject constructor(@ApplicationContext context: Context) {
             .setOnlyAlertOnce(true)
             .build()
         NotificationManagerCompat.from(appContext).notify(ImportNotification.ID, notification)
+    }
+
+    fun cancel() {
+        NotificationManagerCompat.from(appContext).cancel(ImportNotification.ID)
     }
 
     companion object {

@@ -297,6 +297,10 @@ class ActivityDetailViewModel @Inject constructor(
                     if (error is CancellationException) throw error
                     false
                 }
+            if (deleted) {
+                storyCoordinator.cancel(activityId)
+                storyFailures.clear(activityId)
+            }
             _uiState.update {
                 if (deleted) {
                     it.copy(isDeleting = false, deleted = true)

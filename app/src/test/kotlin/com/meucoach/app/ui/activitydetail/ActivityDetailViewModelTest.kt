@@ -189,7 +189,8 @@ class ActivityDetailViewModelTest {
     fun `deletes the activity and hides it from the history`() {
         runBlocking {
             repository.saveImportedActivity(importedActivity(), "sha")
-            val viewModel = viewModel("activity-1")
+            val coordinator = FakeStoryExportCoordinator()
+            val viewModel = viewModel("activity-1", coordinator = coordinator)
             viewModel.uiState.first { !it.isLoading }
 
             viewModel.deleteActivity()
@@ -198,6 +199,7 @@ class ActivityDetailViewModelTest {
             assertThat(state.isDeleting).isFalse()
             assertThat(state.deleteError).isNull()
             assertThat(repository.openActivity("activity-1")).isNull()
+            assertThat(coordinator.cancelledActivityId).isEqualTo("activity-1")
         }
     }
 
