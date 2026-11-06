@@ -2,6 +2,7 @@ package com.meucoach.app.ui.today
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -157,8 +158,8 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Concluir"))
-        compose.onNodeWithText("Concluir").performClick()
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").performClick()
 
         assertThat(completed).isEqualTo(today)
     }
@@ -336,7 +337,7 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("Iniciar"))
         compose.onNodeWithText("Iniciar").performClick()
         compose.onNodeWithText("Sessão guiada").assertIsDisplayed()
-        compose.onNodeWithText("Concluir treino").performClick()
+        compose.onNodeWithText("Encerrar treino").performClick()
 
         assertThat(completed).isEqualTo(today)
     }
@@ -557,6 +558,147 @@ class TodayPlanTest {
         compose.onNodeWithContentDescription("Abrir perfil").performClick()
         assertThat(profile).isTrue()
     }
+
+    @Test
+    fun `shows one primary card and the plan as context without its own completion`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = profile(today),
+                        today = today,
+                        plan = planWith(today),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("PLANO DA SEMANA"))
+        compose.onAllNodesWithText("Concluir").assertCountEquals(0)
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the planned intent and an adjusted badge when the day differs`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val tempo = tempoPlan(today)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(illnessOrInjury = true),
+                        profile = profile(today),
+                        today = today,
+                        plan = tempo,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("TREINO DE HOJE"))
+        compose.onNodeWithTag("prescription-adjusted").assertIsDisplayed()
+        list.performScrollToNode(hasText("Planejado:", substring = true))
+        compose.onNodeWithTag("planned-intent").assertIsDisplayed()
+        compose.onNodeWithText("Iniciar").assertIsNotEnabled()
+        compose.onNodeWithTag("complete-today").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `explains planned versus adjusted in one sentence`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val tempo = tempoPlan(today)
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile(today),
+            today = today,
+            plan = tempo,
+        )
+        assertThat(state.explanation?.planComparison).isNotNull
+        assertThat(state.explanation?.rationale).isNotNull
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(onDemoAction = {}, state = state)
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver explicação"))
+        compose.onNodeWithText("Ver explicação").performClick()
+
+        compose.onNodeWithTag("explanation-title").assertTextEquals("Por que este treino?")
+        compose.onNodeWithTag("explanation-plan-comparison").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows perceived effort instead of inventing pace without calibration`() {
+        val today = LocalDate.of(2026, 11, 2)
+        val uncalibrated = profile(today).copy(
+            thresholdPace = null,
+            lactateThresholdHeartRate = null,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = uncalibrated,
+                        today = today,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("ESFORÇO"))
+        compose.onNodeWithText("ESFORÇO").assertIsDisplayed()
+        compose.onNodeWithText("RITMO").assertDoesNotExist()
+    }
+
+    private fun tempoPlan(date: LocalDate) = planWith(date).let { plan ->
+        plan.copy(
+            sessions = plan.sessions.map { session ->
+                session.copy(
+                    type = WorkoutType.QUALITY,
+                    title = "Tempo",
+                    durationMin = 40,
+                    rationale = "20 min contínuos em esforço moderado a forte.",
+                    ruleIds = listOf("R-PLAN-02", "R-PLAN-06"),
+                )
+            },
+            qualityCount = 1,
+        )
+    }
+
+    private fun checkIn(illnessOrInjury: Boolean = false) = com.meucoach.core.model.DailyCheckIn(
+        date = LocalDate.of(2026, 11, 2),
+        sleepQuality = 4,
+        fatigue = 2,
+        soreness = 1,
+        stress = 2,
+        illnessOrInjury = illnessOrInjury,
+    )
+
+    private fun profile(today: LocalDate) = com.meucoach.core.model.AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = com.meucoach.core.model.Sex.MALE,
+        restingHeartRate = 58,
+        maxHeartRateObserved = 187,
+        lactateThresholdHeartRate = 180,
+        thresholdPace = com.meucoach.core.model.Pace.fromSecondsPerKm(360),
+        timezone = "America/Sao_Paulo",
+        weeklyAvailability = com.meucoach.core.model.WeeklyAvailability(
+            mapOf(today.dayOfWeek to 45),
+        ),
+    )
 
     private fun planWith(date: LocalDate, confidence: DataConfidence = DataConfidence.MEDIUM) = WeeklyPlan(
         weekStart = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)),

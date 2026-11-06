@@ -3,12 +3,14 @@ package com.meucoach.app.time
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.ui.checkin.CheckInViewModel
 import com.meucoach.app.ui.today.TodayViewModel
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.model.AthleteProfile
@@ -125,12 +127,21 @@ class TimeDrivenStateTest {
             zoneId = ZoneId.of("America/Sao_Paulo"),
         )
         val plans = TrainingPlanRepository(database, clock)
+        val prescriptions = DailyPrescriptionRepository(database, clock)
         val sunday = LocalDate.of(2026, 11, 8)
         profiles.saveProfile(profile())
         checkIns.save(DailyCheckIn(sunday, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2))
 
         val time = FakeTimeProvider(Instant.parse("2026-11-08T12:00:00Z"), ZoneId.of("America/Sao_Paulo"))
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, time)
+        val viewModel = TodayViewModel(
+            checkIns,
+            metrics,
+            profiles,
+            activities,
+            plans,
+            time,
+            GetTodayPrescription(prescriptions),
+        )
 
         val sundayState = withTimeout(5_000) {
             viewModel.uiState.first { it.today == sunday && it.plan?.sessions?.isNotEmpty() == true }

@@ -41,8 +41,8 @@ interface TrainingPlanDao {
 
     @Query(
         "UPDATE planned_sessions SET type = :type, title = :title, durationMin = :durationMin, " +
-            "rationale = :rationale, ruleIdsJson = :ruleIdsJson, evidenceIdsJson = :evidenceIdsJson " +
-            "WHERE id = :id",
+            "rationale = :rationale, ruleIdsJson = :ruleIdsJson, evidenceIdsJson = :evidenceIdsJson, " +
+            "targetsJson = :targetsJson WHERE id = :id",
     )
     suspend fun updateSessionContent(
         id: String,
@@ -52,6 +52,7 @@ interface TrainingPlanDao {
         rationale: String,
         ruleIdsJson: String,
         evidenceIdsJson: String,
+        targetsJson: String,
     ): Int
 
     @Query("DELETE FROM planned_sessions WHERE weekStart = :weekStart")

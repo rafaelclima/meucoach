@@ -602,6 +602,95 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-04")
     }
 
+    @Test
+    fun `a plan created midweek starts today and records its creation date`() {
+        val thursday = monday.plusDays(3)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.THURSDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                weekStart = monday,
+                today = thursday,
+            ),
+        )
+
+        assertThat(plan.weekStart).isEqualTo(monday)
+        assertThat(plan.createdOn).isEqualTo(thursday)
+        assertThat(plan.sessions.map { it.date })
+            .containsExactly(thursday, monday.plusDays(5))
+        assertThat(plan.sessions).noneMatch { it.date.isBefore(thursday) }
+        assertThat(plan.rationale).contains("Plano criado hoje")
+    }
+
+    @Test
+    fun `planned sessions carry zone and calibrated targets`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                previousWeek = previousWeek(completed = 4, total = 4),
+            ),
+        )
+
+        val easy = plan.sessions.first { it.type == WorkoutType.EASY }
+        assertThat(easy.targets.zone).isEqualTo("Z2")
+        assertThat(easy.targets.pace).isNotNull
+        assertThat(easy.targets.heartRate).isNotNull
+        assertThat(easy.targets.distanceKm).isNotNull
+        assertThat(easy.targets.rpe).isNull()
+
+        val longRun = plan.sessions.first { it.type == WorkoutType.LONG }
+        assertThat(longRun.targets.zone).isEqualTo("Z2")
+        assertThat(longRun.targets.pace).isNotNull
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.targets.zone).isEqualTo("Z3–Z4")
+        assertThat(quality.targets.pace).isNotNull
+        assertThat(quality.targets.heartRate).isNotNull
+    }
+
+    @Test
+    fun `planned sessions keep RPE when the profile is not calibrated`() {
+        val uncalibrated = profile(
+            experience = Experience.INTERMEDIATE,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.SATURDAY to 90,
+            ),
+        ).copy(thresholdPace = null, lactateThresholdHeartRate = null)
+
+        val plan = generator.generate(
+            input(
+                profile = uncalibrated,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        val easy = plan.sessions.first { it.type == WorkoutType.EASY }
+        assertThat(easy.targets.pace).isNull()
+        assertThat(easy.targets.heartRate).isNull()
+        assertThat(easy.targets.rpe).isEqualTo(4)
+        assertThat(easy.targets.distanceKm).isNull()
+    }
+
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
@@ -639,6 +728,7 @@ class WeeklyPlanGeneratorTest {
         readiness: ReadinessResult,
         load: LoadSnapshot? = null,
         weekStart: LocalDate = monday,
+        today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
         weekNumberInBlock: Int = 1,
     ) = WeeklyPlanInput(
@@ -646,6 +736,7 @@ class WeeklyPlanGeneratorTest {
         readiness = readiness,
         load = load,
         weekStart = weekStart,
+        today = today,
         previousWeek = previousWeek,
         weekNumberInBlock = weekNumberInBlock,
     )

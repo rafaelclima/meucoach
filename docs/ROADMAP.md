@@ -207,6 +207,7 @@
 - [ ] Blocos/periodização.
 - [x] Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida).
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
+- [x] Prescrição única do dia persistida e versionada; plano como intenção (C1-03, ADR 0023).
 - [ ] Exibir no plano o limite de 2 treinos fortes por semana (regra implementada; o histórico de conclusão já está em Tendências).
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.
@@ -223,6 +224,7 @@
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
 - [x] Cards compactos: prontidão em duas linhas por sinal e plano sem pill de tipo redundante.
 - [x] Plano em uma linha por sessão, rationale recolhível e carga vazia sem zeros.
+- [x] Um card principal; plano como contexto com selo “Ajustado hoje” e sem CTA de conclusão próprio (C1-03).
 - [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências
@@ -343,7 +345,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ## Ciclo 1 — Correções críticas (planejado, sem autorização de início)
 
-**Status:** em andamento em 06/11/2026 — C1-01, C1-02 e C1-05 implementados; C1-03, C1-04 e C1-06 pendentes.
+**Status:** em andamento em 06/11/2026 — C1-01, C1-02, C1-03 e C1-05 implementados; C1-04 e C1-06 pendentes.
 **Plano técnico:** [`docs/PLANO_TECNICO_CICLO_1.md`](PLANO_TECNICO_CICLO_1.md) · **ADRs:** 0022–0026.
 
 | Ordem | ID | Iniciativa | Depende de | Gate |
@@ -355,7 +357,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 | 5 | **C1-05** | Lixeira de 7 dias, reset efetivo e época de dados | C1-01 | Reset sem ressurreição; expurgo por clock |
 | 6 | **C1-06** | Verdade documental, ADRs e regressões finais | C1-01..C1-05 | Docs = código; suíte e goldens verdes |
 
-**Entregas:** C1-01 (tempo), C1-02 (carga/qualidade) e C1-05 (lixeira/reset) implementados em 06/11/2026. C1-03 (prescrição única), C1-04 (evidência) e C1-06 (verdade documental) seguem pendentes.
+**Entregas:** C1-01 (tempo), C1-02 (carga/qualidade), C1-03 (prescrição única + N-01/N-02) e C1-05 (lixeira/reset) implementados em 06/11/2026. C1-04 (evidência) e C1-06 (verdade documental) seguem pendentes.
 
 **Regras do ciclo:**
 

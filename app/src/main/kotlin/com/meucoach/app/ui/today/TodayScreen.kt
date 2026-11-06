@@ -152,11 +152,17 @@ fun TodayScreen(
                 onHealthClick = onHealthClick,
             )
         }
+        val hasPlannedSessionToday = state.plan?.sessions?.any {
+            it.date == today && it.status == SessionStatus.PLANNED
+        } == true
         item {
             NextWorkoutCard(
                 workout = state.workout,
+                prescription = state.prescription,
+                canComplete = hasPlannedSessionToday,
                 onSwapClick = { swapOpen = true },
                 onStartClick = { startOpen = true },
+                onCompleteClick = { onCompleteSession(today) },
                 onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
             )
         }
@@ -165,7 +171,7 @@ fun TodayScreen(
                 PlanWeekCard(
                     plan = plan,
                     today = today,
-                    onComplete = onCompleteSession,
+                    prescription = state.prescription,
                     onSkip = onSkipSession,
                     onExplain = { openExplanation(ExplanationSource.PLAN) },
                 )
@@ -398,23 +404,48 @@ private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
 @Composable
 private fun NextWorkoutCard(
     workout: WorkoutUi,
+    prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
+    canComplete: Boolean,
     onSwapClick: () -> Unit,
     onStartClick: () -> Unit,
+    onCompleteClick: () -> Unit,
     onWhyClick: () -> Unit,
 ) {
     val colors = McTheme.colors
+    val adjusted = prescription?.differsFromPlan == true
     McCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "PRÓXIMO TREINO", style = McTextStyles.overline, color = colors.textTertiary)
-            McPill(
-                text = workout.zone,
-                containerColor = colors.zone2.copy(alpha = 0.10f),
-                contentColor = colors.zone2,
-            )
+            Text(text = "TREINO DE HOJE", style = McTextStyles.overline, color = colors.textTertiary)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (adjusted) {
+                    McPill(
+                        text = "Ajustado hoje",
+                        containerColor = colors.warning.copy(alpha = 0.12f),
+                        contentColor = colors.warning,
+                        modifier = Modifier.testTag("prescription-adjusted"),
+                    )
+                }
+                McPill(
+                    text = workout.zone,
+                    containerColor = colors.zone2.copy(alpha = 0.10f),
+                    contentColor = colors.zone2,
+                )
+            }
+        }
+        if (adjusted) {
+            prescription?.plannedTitle?.let { planned ->
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Planejado: $planned · ${prescription.plannedDurationMin?.let { "$it min" } ?: "—"}",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.testTag("planned-intent"),
+                )
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -439,18 +470,33 @@ private fun NextWorkoutCard(
         }
         Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            WorkoutMetric(
-                label = "RITMO",
-                value = workout.pace,
-                unit = "/km",
-                modifier = Modifier.weight(1f),
-            )
-            WorkoutMetric(
-                label = "FC-ALVO",
-                value = workout.heartRate,
-                unit = "bpm",
-                modifier = Modifier.weight(1f),
-            )
+            if (workout.rpe != null) {
+                WorkoutMetric(
+                    label = "ESFORÇO",
+                    value = workout.rpe.toString(),
+                    unit = "/10",
+                    modifier = Modifier.weight(1f),
+                )
+                WorkoutMetric(
+                    label = "ZONA",
+                    value = workout.zone.substringBefore(" ·"),
+                    unit = "esforço",
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                WorkoutMetric(
+                    label = "RITMO",
+                    value = workout.pace,
+                    unit = "/km",
+                    modifier = Modifier.weight(1f),
+                )
+                WorkoutMetric(
+                    label = "FC-ALVO",
+                    value = workout.heartRate,
+                    unit = "bpm",
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -483,13 +529,24 @@ private fun NextWorkoutCard(
             McSecondaryButton(
                 text = "Trocar",
                 onClick = onSwapClick,
+                enabled = workout.canTrain,
                 modifier = Modifier.weight(1f),
             )
             McPrimaryButton(
                 text = "Iniciar",
                 onClick = onStartClick,
+                enabled = workout.canTrain,
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Outlined.PlayArrow,
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            McTextButton(
+                text = "Concluir treino",
+                onClick = onCompleteClick,
+                trailingArrow = false,
+                enabled = workout.canTrain && canComplete,
+                modifier = Modifier.testTag("complete-today"),
             )
         }
     }
@@ -721,7 +778,7 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
 private fun PlanWeekCard(
     plan: com.meucoach.core.domain.prescription.WeeklyPlan,
     today: LocalDate,
-    onComplete: (LocalDate) -> Unit,
+    prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
     onSkip: (LocalDate, String) -> Unit,
     onExplain: () -> Unit,
 ) {
@@ -730,11 +787,25 @@ private fun PlanWeekCard(
     var skipReason by remember { mutableStateOf("") }
     var rationaleExpanded by remember { mutableStateOf(false) }
     McCard(variant = McCardVariant.INSET) {
-        Text(
-            text = "PLANO DA SEMANA",
-            style = McTextStyles.overline,
-            color = colors.textTertiary,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "PLANO DA SEMANA",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+            )
+            if (prescription?.differsFromPlan == true) {
+                McPill(
+                    text = "Ajustado hoje",
+                    containerColor = colors.warning.copy(alpha = 0.12f),
+                    contentColor = colors.warning,
+                    modifier = Modifier.testTag("plan-adjusted"),
+                )
+            }
+        }
         if (plan.confidence == DataConfidence.LOW) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -826,11 +897,7 @@ private fun PlanWeekCard(
                             skipReason = ""
                         },
                         trailingArrow = false,
-                    )
-                    McTextButton(
-                        text = "Concluir",
-                        onClick = { onComplete(session.date) },
-                        trailingArrow = false,
+                        enabled = prescription?.isRest != true,
                     )
                 }
             }
@@ -931,6 +998,15 @@ private fun ExplanationSheet(title: String, explanation: TodayExplanationUi, onD
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
+            explanation.planComparison?.let { comparison ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = comparison,
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.testTag("explanation-plan-comparison"),
+                )
+            }
             explanation.confidenceNote?.let { note ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -1185,7 +1261,7 @@ private fun WorkoutSessionDialog(
         confirmButton = {
             if (hasPlannedSession) {
                 McTextButton(
-                    text = "Concluir treino",
+                    text = "Encerrar treino",
                     onClick = onFinish,
                     trailingArrow = false,
                 )

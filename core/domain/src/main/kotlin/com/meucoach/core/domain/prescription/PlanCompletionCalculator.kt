@@ -28,9 +28,12 @@ class PlanCompletionCalculator {
         val weekStarts = (weeks - 1 downTo 0).map { currentWeekStart.minusWeeks(it.toLong()) }
         val byWeek = plans.associateBy { it.weekStart }
         val rows = weekStarts.map { weekStart ->
-            val sessions = byWeek[weekStart]
+            val plan = byWeek[weekStart]
+            val sessions = plan
                 ?.sessions
                 .orEmpty()
+                // N-02: a plan created midweek must not count days before its creation.
+                .filter { plan == null || !it.date.isBefore(plan.createdOn) }
                 .filter { it.type != WorkoutType.REST && !it.date.isAfter(today) }
             PlanCompletionWeek(
                 weekStart = weekStart,

@@ -7,6 +7,7 @@ import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
+import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
@@ -25,9 +26,11 @@ data class UserDataDeletion(
     val metrics: Int,
     val plans: Int,
     val profileDeleted: Boolean,
+    val prescriptions: Int = 0,
 ) {
     val removedAnything: Boolean
-        get() = activities > 0 || checkIns > 0 || metrics > 0 || plans > 0 || profileDeleted
+        get() = activities > 0 || checkIns > 0 || metrics > 0 || plans > 0 ||
+            prescriptions > 0 || profileDeleted
 }
 
 /**
@@ -51,6 +54,7 @@ class UserDataRepository(
                 .put("checkIns", database.dailyCheckInDao().getAll().toJsonArray { it.toJson() })
                 .put("dailyMetrics", database.dailyMetricsDao().getAll().toJsonArray { it.toJson() })
                 .put("weeklyPlans", exportPlans())
+                .put("dailyPrescriptions", exportPrescriptions())
                 .put("activities", exportActivities(includeTrash))
                 .put(
                     "importJobs",
@@ -72,6 +76,7 @@ class UserDataRepository(
             // Sessions are deleted explicitly instead of relying on the cascade.
             database.trainingPlanDao().deleteAllSessions()
             val plans = database.trainingPlanDao().deleteAllPlans()
+            val prescriptions = database.dailyPrescriptionDao().deleteAll()
             val profileDeleted = database.profileDao().deleteAll() > 0
             UserDataDeletion(
                 activities = activities,
@@ -79,6 +84,7 @@ class UserDataRepository(
                 metrics = metrics,
                 plans = plans,
                 profileDeleted = profileDeleted,
+                prescriptions = prescriptions,
             )
         }
         // A fresh profile must read the full initial Health Connect window again.
@@ -116,6 +122,11 @@ class UserDataRepository(
         }
         return array
     }
+
+    private suspend fun exportPrescriptions(): JSONArray = database
+        .dailyPrescriptionDao()
+        .getAll()
+        .toJsonArray { it.toJson() }
 }
 
 private inline fun <T> List<T>.toJsonArray(crossinline toJson: (T) -> JSONObject): JSONArray {
@@ -174,6 +185,7 @@ private fun DailyMetricsEntity.toJson(): JSONObject = JSONObject().apply {
 private fun WeeklyPlanEntity.toJson(sessions: List<PlannedSessionEntity>): JSONObject = JSONObject().apply {
     put("weekStart", weekStart)
     put("createdAt", Instant.ofEpochMilli(createdAt).toString())
+    put("createdOn", createdOn)
     put("confidence", confidence.name)
     put("rationale", rationale)
     put("weeklyMinutes", weeklyMinutes)
@@ -193,9 +205,32 @@ private fun PlannedSessionEntity.toJson(): JSONObject = JSONObject().apply {
     put("rationale", rationale)
     put("ruleIds", JSONArray(ruleIdsJson))
     put("evidenceIds", JSONArray(evidenceIdsJson))
+    put("targets", JSONObject(targetsJson))
     put("status", status.name)
     putNullable("skipReason", skipReason)
     putNullable("completedAt", completedAt?.let { Instant.ofEpochMilli(it).toString() })
+}
+
+private fun DailyPrescriptionEntity.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    put("date", date)
+    putNullable("plannedSessionId", plannedSessionId)
+    putNullable("plannedType", plannedType?.name)
+    putNullable("plannedTitle", plannedTitle)
+    putNullable("plannedDurationMin", plannedDurationMin)
+    put("prescribedType", prescribedType.name)
+    put("title", title)
+    putNullable("prescribedDurationMin", prescribedDurationMin)
+    put("targets", JSONObject(targetsJson))
+    put("adjustment", adjustment.name)
+    put("rationale", rationale)
+    put("ruleIds", JSONArray(ruleIdsJson))
+    put("evidenceIds", JSONArray(evidenceIdsJson))
+    put("confidence", confidence.name)
+    put("engineVersion", engineVersion)
+    put("inputsHash", inputsHash)
+    putNullable("supersedesId", supersedesId)
+    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
 }
 
 private fun ActivityEntity.toJson(

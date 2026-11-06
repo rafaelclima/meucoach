@@ -226,6 +226,7 @@ class TodayViewModelTest {
                 profile = profile,
                 readiness = readiness,
                 weekStart = today,
+                today = today,
             ),
         )
 

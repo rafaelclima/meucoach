@@ -13,6 +13,7 @@ import java.time.LocalDate
 data class WeeklyPlanEntity(
     @PrimaryKey val weekStart: String,
     val createdAt: Long,
+    val createdOn: String,
     val confidence: DataConfidence,
     val rationale: String,
     val weeklyMinutes: Int,
@@ -44,6 +45,7 @@ data class PlannedSessionEntity(
     val rationale: String,
     val ruleIdsJson: String,
     val evidenceIdsJson: String,
+    val targetsJson: String,
     val status: SessionStatus,
     val skipReason: String?,
     val completedAt: Long?,

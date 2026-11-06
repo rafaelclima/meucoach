@@ -198,6 +198,7 @@ class TutorialViewModel @Inject constructor(
                 readiness = readiness,
                 load = load,
                 weekStart = weekStart,
+                today = today,
                 previousWeek = previousWeek,
                 weekNumberInBlock = weekNumber,
             ),

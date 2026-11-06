@@ -1,9 +1,9 @@
 # ADR 0023 — Plano semanal como intenção e prescrição diária como autoridade
 
-**Status:** aceito
+**Status:** aceito e implementado (C1-03, 06/11/2026)
 **Data:** 2026-11-06
 **Responsável:** planejamento com Rafael (usuário 0)
-**Implementação:** planejada para C1-03; nenhuma linha de produção alterada nesta etapa.
+**Implementação:** `DailyPrescriptionEngine`, `daily_prescriptions` (Room 11), `GetTodayPrescription`, card único no Hoje e corte de adesão por `createdOn`.
 
 ---
 
@@ -93,14 +93,17 @@ data class PrescriptionTargets(
     val heartRate: HeartRateTarget? = null,
     val zone: String? = null,
     val distanceKm: Double? = null,
+    val rpe: Int? = null,
 )
 
 data class DailyPrescription(
     val date: LocalDate,
     val plannedSessionId: String?,
     val plannedType: WorkoutType?,
-    val prescribedType: WorkoutType,
+    val plannedTitle: String?,
     val plannedDurationMin: Int?,
+    val prescribedType: WorkoutType,
+    val title: String,
     val prescribedDurationMin: Int?,
     val targets: PrescriptionTargets,
     val adjustment: PrescriptionAdjustment,
@@ -110,6 +113,7 @@ data class DailyPrescription(
     val confidence: DataConfidence,
     val engineVersion: String,
     val inputsHash: String,
+    val id: String? = null,
     val supersedesId: String? = null,
 )
 

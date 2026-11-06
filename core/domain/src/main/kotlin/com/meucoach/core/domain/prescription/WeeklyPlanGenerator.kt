@@ -31,6 +31,8 @@ data class PlannedSession(
     val rationale: String,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    /** Objective/subjective targets of the session; empty when not applicable. */
+    val targets: PrescriptionTargets = PrescriptionTargets(),
     val status: SessionStatus = SessionStatus.PLANNED,
     val skipReason: String? = null,
 ) {
@@ -51,6 +53,11 @@ data class WeeklyPlan(
     val confidence: DataConfidence,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    /**
+     * Local date when this version was created. Adherence never counts days
+     * before it, so a plan created midweek does not punish the past (N-02).
+     */
+    val createdOn: LocalDate = weekStart,
 ) {
     init {
         require(weekStart.dayOfWeek == DayOfWeek.MONDAY) { "Week must start on Monday" }
@@ -63,6 +70,8 @@ data class WeeklyPlanInput(
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
     val weekStart: LocalDate,
+    /** Local date of generation; only days from here to Sunday enter the plan. */
+    val today: LocalDate,
     val previousWeek: WeeklyPlan? = null,
     /** 1-based position in the current block; every 4th week is a deload. */
     val weekNumberInBlock: Int = 1,
@@ -96,6 +105,7 @@ class WeeklyPlanGenerator {
             confidence = DataConfidence.LOW,
             ruleIds = listOf("R-DATA-01"),
             evidenceIds = listOf("EV-SEILER-2010"),
+            createdOn = input.today,
         )
         if (availability.isEmpty()) {
             return base.copy(
@@ -104,7 +114,18 @@ class WeeklyPlanGenerator {
             )
         }
 
-        val days = availability.keys.toList()
+        val allDays = availability.keys.toList()
+        // N-02: a plan created midweek only contains today and the remaining days.
+        val days = allDays.filter { day ->
+            !weekStart.plusDays((day.value - 1).toLong()).isBefore(input.today)
+        }
+        if (days.isEmpty()) {
+            return base.copy(
+                rationale = "Não há dias de treino restantes nesta semana. " +
+                    "O próximo plano começa na segunda-feira.",
+            )
+        }
+        val dayTrimmed = days.size < allDays.size
         val longDay = days.maxBy { day -> availability.getValue(day) }
         val safetyBlock = input.readiness.flags.any {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
@@ -135,43 +156,67 @@ class WeeklyPlanGenerator {
             val date = weekStart.plusDays((day.value - 1).toLong())
             val available = availability.getValue(day)
             when {
-                day in qualityDays -> PlannedSession(
-                    date = date,
-                    type = WorkoutType.QUALITY,
-                    title = qualityTitle(input.profile.experience),
-                    durationMin = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN),
-                    rationale = qualityRationale(input.profile),
-                    ruleIds = buildList {
-                        add("R-PLAN-02")
-                        add("R-PLAN-06")
-                        if (input.profile.treadmillAccess) add("R-PLAN-08")
-                    },
-                    evidenceIds = buildList {
-                        add("EV-SEILER-2010")
-                        add("EV-DANIELS-2014")
-                        if (input.profile.treadmillAccess) add("EV-ELY-2007")
-                    },
-                )
+                day in qualityDays -> {
+                    val duration = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.QUALITY,
+                        title = qualityTitle(input.profile.experience),
+                        durationMin = duration,
+                        rationale = qualityRationale(input.profile),
+                        ruleIds = buildList {
+                            add("R-PLAN-02")
+                            add("R-PLAN-06")
+                            if (input.profile.treadmillAccess) add("R-PLAN-08")
+                        },
+                        evidenceIds = buildList {
+                            add("EV-SEILER-2010")
+                            add("EV-DANIELS-2014")
+                            if (input.profile.treadmillAccess) add("EV-ELY-2007")
+                        },
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.QUALITY,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
 
-                day == longDay -> PlannedSession(
-                    date = date,
-                    type = WorkoutType.LONG,
-                    title = "Longão",
-                    durationMin = initialLongMinutes(available, input.profile.experience),
-                    rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
-                    ruleIds = listOf("R-PLAN-03"),
-                    evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
-                )
+                day == longDay -> {
+                    val duration = initialLongMinutes(available, input.profile.experience)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.LONG,
+                        title = "Longão",
+                        durationMin = duration,
+                        rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
+                        ruleIds = listOf("R-PLAN-03"),
+                        evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.LONG,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
 
-                else -> PlannedSession(
-                    date = date,
-                    type = WorkoutType.EASY,
-                    title = "Fácil e conversável",
-                    durationMin = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN),
-                    rationale = "Base aeróbica conversável; sem treino forte neste dia.",
-                    ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
-                    evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
-                )
+                else -> {
+                    val duration = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.EASY,
+                        title = "Fácil e conversável",
+                        durationMin = duration,
+                        rationale = "Base aeróbica conversável; sem treino forte neste dia.",
+                        ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
+                        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.EASY,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
             }
         }
 
@@ -219,6 +264,9 @@ class WeeklyPlanGenerator {
                     "Semana de descarga (${input.weekNumberInBlock} de 4 no bloco): volume −" +
                         "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
                 )
+            }
+            if (dayTrimmed) {
+                append("Plano criado hoje: dias anteriores não entram nesta semana. ")
             }
             append("${adjusted.size} dias, $weeklyMinutes min no total. ")
             if (qualityCount == 0) {
@@ -284,6 +332,7 @@ class WeeklyPlanGenerator {
                 }
                 if (deload && taper == null) add("EV-ISSURIN-2010")
             },
+            createdOn = input.today,
         )
     }
 

@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_1.md — Formalização arquitetural e preparação dos testes
 
 **Versão:** 1.1 · **Data:** 06/11/2026
-**Status:** C1-01, C1-02 e C1-05 implementados em 06/11/2026; C1-03, C1-04 e C1-06 não iniciados.
+**Status:** C1-01, C1-02, C1-03 e C1-05 implementados em 06/11/2026; C1-04 e C1-06 não iniciados.
 **Escopo:** C1-01 a C1-06, ADRs 0022–0026, estratégia de testes e ordem de execução.
 **Documentos de referência:** `docs/PRD_COACH_CORRIDA.md`, `docs/REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C), `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SPORTS_SCIENCE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`.
 
@@ -21,7 +21,7 @@ Este plano transforma as decisões aprovadas em uma sequência executável, sem 
 
 **Fora:** sessão guiada persistente completa, captura de `ExerciseSession` do Health Connect, backup/restauração versionado, revisão semanal, periodização, semana de prova/recovery, Tier B, GPS nativo, LLM, novos módulos, refatoração ampla, redesenho visual.
 
-**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01 e C1-02 foram implementados conforme §6.2 e §6.3; C1-03..C1-06 continuam sem implementação. `Cycle1RegressionTest.kt` mantém apenas o cenário de C1-03 como falha esperada.
+**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01, C1-02 e C1-03 foram implementados conforme §6.2, §6.3 e §6.4; C1-04..C1-06 continuam sem implementação. `Cycle1RegressionTest` não tem mais cenários `@Ignore`.
 
 ---
 
@@ -320,6 +320,17 @@ flowchart TB
 
 **Risco:** alto (coração do Hoje e goldens). Mitigação: contrato testado antes da UI; commits pequenos; comparar planos antigos/novos com dados sanitizados; manter fallback temporário durante a migração.
 
+**Status da execução (06/11/2026):** implementado.
+
+- `DailyPrescription`, `PrescriptionTargets`, `PrescriptionAdjustment` e `DailyPrescriptionEngine` em `core:domain`; decisão `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, nunca aumentando tipo/duração/intensidade.
+- `PrescriptionPolicy` é a fonte única de alvos: plano e prescrição derivam zona/pace/FC/distância/RPE do mesmo lugar. Sem calibração, pace/FC ficam `null` e o alvo vira RPE; calor desacelera o pace ou sobe o RPE, sem aumentar a duração.
+- `WeeklyPlanInput.today` passou a ser obrigatório; o gerador corta dias anteriores e grava `WeeklyPlan.createdOn`. A adesão ignora sessões anteriores à criação (N-02). `PlannedSession.targets` guarda os alvos (N-01).
+- `daily_prescriptions` (Room 11), DAO e `DailyPrescriptionRepository` com `observeLatest`, `getVersions` e `append` (`supersedesId`, índice único por `date + inputsHash + engineVersion`). Migração `10 → 11` cobre a tabela, `weekly_plans.createdOn` e `planned_sessions.targetsJson`, preservando planos e status.
+- `GetTodayPrescription` (caso de uso) persiste uma vez por hash/versão e ignora sessão `SKIPPED` como plano do dia. `TodayViewModel` consome a prescrição; `WorkoutRecommender` ficou apenas como fallback de `NO_PLAN`.
+- UI com um card principal, selo “Ajustado hoje” no plano, sem CTA de conclusão no plano e ações desabilitadas em `REST`; explicação “planejado → hoje → por quê”. Export inclui prescrições e o reset as apaga.
+- Testes: novos casos de domínio, `DailyPrescriptionRepositoryTest`, migração 10→11, `GetTodayPrescriptionTest`, UI e goldens de Hoje.
+- Validação: `./gradlew check`, `:app:assembleDebug`, `:app:recordRoborazziDebug` e `:app:verifyRoborazziDebug` verdes; 961 testes (487 `:app`, 117 `core:data`, 330 `core:domain`, 27 `core:model`), 0 `@Ignore`.
+
 ### 6.5 C1-04 — Conclusão com evidência e vínculo atividade ↔ sessão
 
 **Objetivo:** tornar `DONE` consequência de execução/atividade, não de clique.
@@ -479,11 +490,11 @@ flowchart TB
 | `completion ignores future sessions and rest days` | **Verde** | Base do corte de adesão de C1-03 |
 | `quality is blocked when acute chronic load is unknown` | **Verde** | C1-02: ACWR desconhecido bloqueia qualidade |
 | `quality is blocked when load coverage is insufficient` | **Verde** | C1-02: cobertura insuficiente bloqueia qualidade |
-| `plan created midweek does not include days before today` | **Falha esperada (`@Ignore`)** | C1-03/N-02: gerador ainda inclui passado |
+| `plan created midweek does not include days before today` | **Verde** | C1-03/N-02: gerador começa em hoje e adesão corta o passado |
 
 **Política de falha esperada:**
 
-- O teste leva `@Ignore("Falha esperada — C1-0x: ...")`, com a razão e o gate.
+- Nenhum cenário do ciclo 1 permanece ignorado: C1-02 e C1-03 habilitaram seus gates no mesmo commit da correção.
 - O teste **não** é removido nem tem assert reduzido.
 - Quando a correção entra, o `@Ignore` é removido no mesmo commit; o teste passa a ser gate.
 - O CI continua verde; a lista de `@Ignore` é revisada no gate de cada C1 para não virar dívida eterna.
@@ -510,15 +521,15 @@ flowchart TB
 | U-LOAD-06 | Carga constante | ACWR ~1,0; sem alerta falso | 02 | Implementado (`TrainingLoadEngineTest`) |
 | U-LOAD-07 | Carga zero vs. dia sem dado | Zero medido ≠ ausência | 02 | Implementado (`TrainingLoadEngineTest`) |
 | U-LOAD-08 | ACWR desconhecido no recomendador | Conservador; sem `?: 0.0` | 02 | Implementado (`WorkoutRecommenderTest`) |
-| U-PRESC-01 | Verde + Tempo | `KEEP`; tipo/duração/alvos | 03 | Pendente de contrato |
-| U-PRESC-02 | Vermelho/doença + Tempo | `REST`; sem CTA | 03 | Pendente de contrato |
-| U-PRESC-03 | Âmbar + Tempo | `REDUCE`/`DOWNGRADE` | 03 | Pendente de contrato |
-| U-PRESC-04 | Âmbar + Longão | Fácil reduzido | 03 | Pendente de contrato |
-| U-PRESC-05 | Sem plano | `NO_PLAN`, confiança baixa | 03 | Pendente de contrato |
-| U-PRESC-06 | Tentativa de aumentar | Nunca aumenta | 03 | Pendente de contrato |
-| U-PRESC-07 | Sem calibração | RPE + `null`; sem número | 03 | Pendente de contrato |
-| U-PRESC-08 | Calor | Pace mais lento/RPE maior; duração não sobe | 03 | Pendente de contrato |
-| U-PRESC-09 | Check-in editado | Nova versão, não sobrescreve | 03 | Pendente de contrato |
+| U-PRESC-01 | Verde + Tempo | `KEEP`; tipo/duração/alvos | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-02 | Vermelho/doença + Tempo | `REST`; sem CTA | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-03 | Âmbar + Tempo | `REDUCE`/`DOWNGRADE` | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-04 | Âmbar + Longão | Fácil reduzido | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-05 | Sem plano | `NO_PLAN`, confiança baixa | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-06 | Tentativa de aumentar | Nunca aumenta | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-07 | Sem calibração | RPE + `null`; sem número | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-08 | Calor | Pace mais lento/RPE maior; duração não sobe | 03 | Implementado (`DailyPrescriptionEngineTest`) |
+| U-PRESC-09 | Check-in editado | Nova versão, não sobrescreve | 03 | Implementado (`DailyPrescriptionEngineTest`) |
 | U-EVID-01 | `DONE` sem evidência | Rejeitado | 04 | Pendente de contrato |
 | U-EVID-02 | `ACTIVITY` compatível | `DONE` + vínculo | 04 | Pendente de contrato |
 | U-EVID-03 | `GUIDED` (contrato) | Execução persistida/recuperável | 04/3 | Pendente de contrato |
@@ -878,7 +889,7 @@ C1-06 Verdade documental + regressões finais
 - [ ] ADRs 0022–0026 revisados e linkados; 0026 com status correto.
 - [ ] C1-01: tempo/fuso determinísticos; nenhum `now()` em UI/ViewModel.
 - [x] C1-02: ACWR desconhecido/cobertura/frescor bloqueiam qualidade.
-- [ ] C1-03: um card; prescrição versionada; plano sem passado; migração 10→11.
+- [x] C1-03: um card; prescrição versionada; plano sem passado; migração 10→11.
 - [ ] C1-04: `DONE` só com evidência; vínculo 1:1; migração 11→12.
 - [ ] C1-05: lixeira 7 dias; reset sem ressurreição; HC intacto.
 - [ ] C1-06: docs = código; suíte/goldens verdes.

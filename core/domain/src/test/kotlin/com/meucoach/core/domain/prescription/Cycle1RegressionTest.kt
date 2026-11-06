@@ -13,7 +13,6 @@ import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.Ignore
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -21,11 +20,9 @@ import java.time.LocalDate
 /**
  * Regression scenarios prepared for cycle 1 (C1-02/C1-03).
  *
- * The executable tests lock invariants that must survive the new prescription
- * pipeline. Tests annotated with [Ignore] are **expected failures**: they
- * describe behavior that is not implemented yet and must be enabled as each
- * C1 gate is delivered. They are intentionally kept in the suite so the
- * expected contract does not depend on prose alone.
+ * The executable tests lock invariants that must survive the prescription
+ * pipeline. Each scenario is enabled with the corresponding C1 gate, so the
+ * contract never depends on prose alone.
  */
 class Cycle1RegressionTest {
     private val generator = WeeklyPlanGenerator()
@@ -175,7 +172,6 @@ class Cycle1RegressionTest {
         assertThat(plan.qualityCount).isZero()
     }
 
-    @Ignore("Falha esperada — C1-03/N-02: o gerador ainda normaliza para segunda e inclui dias passados.")
     @Test
     fun `plan created midweek does not include days before today`() {
         val plan = generator.generate(
@@ -191,10 +187,14 @@ class Cycle1RegressionTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
                 weekStart = thursday,
+                today = thursday,
             ),
         )
 
         assertThat(plan.sessions.map { it.date }).allMatch { !it.isBefore(thursday) }
+        assertThat(plan.sessions.map { it.date.dayOfWeek })
+            .doesNotContain(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)
+        assertThat(plan.createdOn).isEqualTo(thursday)
     }
 
     private fun input(
@@ -202,6 +202,7 @@ class Cycle1RegressionTest {
         readiness: ReadinessResult,
         load: LoadSnapshot? = null,
         weekStart: LocalDate = monday,
+        today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
         weekNumberInBlock: Int = 1,
     ) = WeeklyPlanInput(
@@ -209,6 +210,7 @@ class Cycle1RegressionTest {
         readiness = readiness,
         load = load,
         weekStart = weekStart,
+        today = today,
         previousWeek = previousWeek,
         weekNumberInBlock = weekNumberInBlock,
     )

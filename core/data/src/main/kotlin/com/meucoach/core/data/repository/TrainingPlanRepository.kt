@@ -5,6 +5,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 import com.meucoach.core.data.db.entity.plannedSessionId
+import com.meucoach.core.data.prescription.PrescriptionJson
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -42,6 +43,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                         rationale = session.rationale,
                         ruleIdsJson = session.ruleIds.toJson(),
                         evidenceIdsJson = session.evidenceIds.toJson(),
+                        targetsJson = PrescriptionJson.targetsToJson(session.targets),
                     )
                 }.all { it > 0 }
         }
@@ -67,6 +69,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
             WeeklyPlanEntity(
                 weekStart = weekStart,
                 createdAt = clock.millis(),
+                createdOn = plan.createdOn.toString(),
                 confidence = plan.confidence,
                 rationale = plan.rationale,
                 weeklyMinutes = plan.weeklyMinutes,
@@ -89,6 +92,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                     rationale = session.rationale,
                     ruleIdsJson = session.ruleIds.toJson(),
                     evidenceIdsJson = session.evidenceIds.toJson(),
+                    targetsJson = PrescriptionJson.targetsToJson(session.targets),
                     status = session.status,
                     skipReason = session.skipReason,
                     completedAt = if (session.status == SessionStatus.DONE) clock.millis() else null,
@@ -124,6 +128,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         confidence = confidence,
         ruleIds = ruleIdsJson.toList(),
         evidenceIds = evidenceIdsJson.toList(),
+        createdOn = LocalDate.parse(createdOn),
     )
 
     private fun PlannedSessionEntity.toModel() = PlannedSession(
@@ -134,6 +139,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         rationale = rationale,
         ruleIds = ruleIdsJson.toList(),
         evidenceIds = evidenceIdsJson.toList(),
+        targets = PrescriptionJson.targetsFromJson(targetsJson),
         status = status,
         skipReason = skipReason,
     )

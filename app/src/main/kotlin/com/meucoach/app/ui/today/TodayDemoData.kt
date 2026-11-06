@@ -24,6 +24,10 @@ data class WorkoutUi(
     val pace: String,
     val heartRate: String,
     val rationale: String,
+    /** Perceived effort fallback when pace/HR are not calibrated. */
+    val rpe: Int? = null,
+    /** False for a rest prescription; start/complete actions must stay disabled. */
+    val canTrain: Boolean = true,
 )
 
 data class DayLoadUi(val label: String, val loadKm: Double, val isToday: Boolean)
@@ -60,6 +64,8 @@ data class TodayUiState(
     val recentActivity: RecentActivityUi? = null,
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
+    /** Single authority of the day; null only before a profile exists. */
+    val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
     val explanation: TodayExplanationUi? = null,
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */

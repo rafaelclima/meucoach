@@ -16,6 +16,7 @@ import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.data.repository.UserDataRepository
@@ -103,6 +104,11 @@ object DataModule {
     @Singleton
     fun provideTrainingPlanRepository(database: MeuCoachDatabase, clock: Clock): TrainingPlanRepository =
         TrainingPlanRepository(database, clock)
+
+    @Provides
+    @Singleton
+    fun provideDailyPrescriptionRepository(database: MeuCoachDatabase, clock: Clock): DailyPrescriptionRepository =
+        DailyPrescriptionRepository(database, clock)
 
     @Provides
     @Singleton

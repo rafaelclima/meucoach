@@ -4,11 +4,13 @@ import android.content.Context
 import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.model.ActivitySource
@@ -53,6 +55,7 @@ class TodayViewModelPersistTest {
     private lateinit var profiles: ProfileRepository
     private lateinit var activities: ActivityRepository
     private lateinit var plans: TrainingPlanRepository
+    private lateinit var prescriptions: DailyPrescriptionRepository
     private var nextActivityId = 0
 
     @Before
@@ -77,6 +80,7 @@ class TodayViewModelPersistTest {
                 idGenerator = { "activity-${++nextActivityId}" },
             )
         plans = TrainingPlanRepository(database, clock)
+        prescriptions = DailyPrescriptionRepository(database, clock)
     }
 
     @After
@@ -94,7 +98,16 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
+        val viewModel =
+            TodayViewModel(
+                checkIns,
+                metrics,
+                profiles,
+                activities,
+                plans,
+                FakeTimeProvider(),
+                GetTodayPrescription(prescriptions),
+            )
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
@@ -102,12 +115,17 @@ class TodayViewModelPersistTest {
         val stored = plans.getWeek(state.plan!!.weekStart)
         assertThat(stored).isNotNull
         assertThat(stored?.sessions).hasSameSizeAs(state.plan.sessions)
+        val prescription = prescriptions.getLatest(today)
+        assertThat(prescription).isNotNull
+        assertThat(prescription?.date).isEqualTo(today)
+        assertThat(prescription?.plannedType).isNotNull
+        assertThat(state.prescription?.id).isEqualTo(prescription?.id)
     }
 
     @Test
     fun `uses completed previous week to add a second quality`(): Unit = runBlocking {
         val timeProvider = FakeTimeProvider(
-            instant = Instant.parse("2026-10-30T12:00:00Z"),
+            instant = Instant.parse("2026-10-26T12:00:00Z"),
             zone = ZoneId.of("America/Sao_Paulo"),
         )
         val today = timeProvider.currentDate()
@@ -121,7 +139,16 @@ class TodayViewModelPersistTest {
         plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
         seedLoad(today)
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, timeProvider)
+        val viewModel =
+            TodayViewModel(
+                checkIns,
+                metrics,
+                profiles,
+                activities,
+                plans,
+                timeProvider,
+                GetTodayPrescription(prescriptions),
+            )
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.qualityCount == 2 }
         }
@@ -144,7 +171,16 @@ class TodayViewModelPersistTest {
             plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
         }
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
+        val viewModel =
+            TodayViewModel(
+                checkIns,
+                metrics,
+                profiles,
+                activities,
+                plans,
+                FakeTimeProvider(),
+                GetTodayPrescription(prescriptions),
+            )
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
@@ -191,7 +227,16 @@ class TodayViewModelPersistTest {
             ),
         )
 
-        val viewModel = TodayViewModel(checkIns, metrics, profiles, activities, plans, FakeTimeProvider())
+        val viewModel =
+            TodayViewModel(
+                checkIns,
+                metrics,
+                profiles,
+                activities,
+                plans,
+                FakeTimeProvider(),
+                GetTodayPrescription(prescriptions),
+            )
         viewModel.swapSession(weekStart, weekStart.plusDays(1), today = weekStart)
         withTimeout(5_000) {
             while (

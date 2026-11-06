@@ -1,17 +1,19 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 06/11/2026 (C1-01, C1-02 e C1-05 implementados; C1-03, C1-04 e C1-06 não iniciados)
+**Atualizado:** 06/11/2026 (C1-01, C1-02, C1-03 e C1-05 implementados; C1-04 e C1-06 não iniciados)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 924 testes no total (478 em `:app`, 109 em `core:data`, 310 em `core:domain`, 27 em `core:model`), 0 falhas; 1 falha esperada de C1-03 permanece `@Ignore` em `Cycle1RegressionTest`.
-- **Cobertura `core:domain`:** 98,05% de linhas (2.823/2.879), 83,35% de branches (2.183/2.619), 96,87% de instruções (20.655/21.323)
+- **Testes:** 961 testes no total (487 em `:app`, 117 em `core:data`, 330 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,91% de linhas (3.285/3.355), 82,45% de branches (2.443/2.963), 96,54% de instruções (23.211/24.043)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 38 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v10 (avatar/perfil), migrações 1→2 até 9→10 testadas.
+- **Persistência:** Room 2.8.5, schema v11 (prescrição diária, criação do plano e alvos das sessões), migrações 1→2 até 10→11 testadas.
+- **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador.
+- **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -56,6 +58,50 @@
 - **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-06 — C1-03: plano como intenção + prescrição única do dia (N-01/N-02)
+
+**Objetivo:** ter uma única decisão diária, derivada da sessão planejada, persistida e auditável; o plano deixa de competir com o card do Hoje.
+
+### Concluído
+
+- **Domínio (`DailyPrescriptionEngine`):** contrato `DailyPrescription` com `PrescriptionAdjustment` (`KEEP`, `REDUCE`, `DOWNGRADE`, `REST`, `NO_PLAN`), `PrescriptionTargets` (pace, FC, zona, distância e RPE), `engineVersion` e `inputsHash` determinístico.
+  - Doença/lesão ou prontidão vermelha → `REST`; plano `REST` → `REST`; semanas sem plano → `NO_PLAN` conservador com confiança baixa.
+  - Qualidade só é mantida com carga `KNOWN`, ACWR 0,8–1,3, prontidão verde e espaçamento; caso contrário, `DOWNGRADE` para fácil reduzido.
+  - Nenhuma decisão aumenta tipo, duração ou intensidade; sem calibração, pace/FC ficam `null` e o alvo vira RPE de 4 (fácil) ou 7 (forte). Calor desacelera o pace em 3% ou aumenta o RPE em 1, sem aumentar a duração.
+  - Explicação sempre cita ≥ 1 regra e ≥ 1 evidência; novas regras `R-PRESC-01/02/03` entraram no catálogo.
+- **Plano (`WeeklyPlanGenerator`/`PlanCompletionCalculator`):** `WeeklyPlanInput.today` sem default; sessões anteriores a hoje não entram (N-02); `WeeklyPlan.createdOn` é persistido e a adesão ignora dias anteriores à criação.
+- **Sessão planejada (N-01):** `PlannedSession.targets` guarda zona/pace/FC/distância/RPE; a prescrição de um “Tempo” em dia verde usa exatamente os alvos do plano.
+- **Dados:** `DailyPrescriptionEntity`, `DailyPrescriptionDao` e `DailyPrescriptionRepository` (`observeLatest`, `getVersions`, `append`); a versão vigente é a última do dia e uma edição acrescenta `supersedesId`, sem sobrescrever. Índice único por `date + inputsHash + engineVersion` evita duplicata concorrente.
+- **Migração 10→11:** cria `daily_prescriptions`, adiciona `weekly_plans.createdOn` (backfill legado = `weekStart`) e `planned_sessions.targetsJson`; planos, sessões e status preservados.
+- **Caso de uso (`GetTodayPrescription`):** lê a última versão e só persiste quando o hash/versão mudam; ignora sessão `SKIPPED` como plano do dia.
+- **UI:** `TodayViewModel` consome a prescrição persistida; o card “Treino de hoje” é o único com iniciar/concluir. O plano da semana vira contexto, ganha o selo “Ajustado hoje” quando a decisão difere da intenção e não tem mais o CTA de conclusão. A explicação mostra “planejado → hoje → por quê” e mantém regra/evidência/confiança auditáveis. Ações de iniciar/concluir ficam desabilitadas em `REST`.
+- **Export/reset:** prescrições entram no JSON de backup; o reset apaga a tabela e a contagem.
+- **Testes:** +20 no domínio (tabela de decisão, N-01/N-02, calor, sem calibração, dados ausentes, descanso planejado, hash e catálogo), +8 em `core:data` (repositório e migração 10→11) e +9 em `:app` (5 do caso de uso e 4 de UI). `Cycle1RegressionTest` perdeu o último `@Ignore`.
+
+### Evidências
+
+- `./gradlew check` — verde (testes, Spotless, lint, Kover e parser FIT).
+- `./gradlew :app:assembleDebug` — verde.
+- `./gradlew :app:recordRoborazziDebug` e `:app:verifyRoborazziDebug` — verdes após regravar `today-dark`, `today-light` e `today-narrow-dark` com o card único.
+- **961 testes**, 0 falhas (487 `:app`, 117 `core:data`, 330 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,91% de linhas, 82,45% de branches, 96,54% de instruções; parser FIT 93,01% de branches.
+- Schema `11.json` exportado; migração 10→11 coberta com banco v10 e status `DONE` preservado.
+
+### Decisões e observações
+
+- **Uma decisão por dia:** `TodayViewModel` não chama mais `WorkoutRecommender`; o recomendador continua apenas como fallback conservador de `NO_PLAN` e tem cobertura própria.
+- **Versão não é reescrita:** editar o check-in gera nova linha; a anterior permanece auditável. O hash inclui perfil, prontidão, carga, calor, confiança do plano e conteúdo da sessão.
+- **N-02 é conservador:** plano criado na quinta não inventa segunda–quarta; a semana pode ter menos dias e a progressão não é liberada sem histórico suficiente.
+- **Alvos compartilhados:** plano e prescrição usam o mesmo `PrescriptionPolicy`, então não divergem por construção.
+- **Sem migration destrutiva, sem dependência nova.**
+- **Flaky observado:** `TutorialSystemBackTest` falhou uma vez em execução completa por exceção de banco de outro teste (`no such table: athlete_profile`), passou isolado e nas execuções seguintes; `MetricsImportViewModelTest` estourou timeout uma vez e passou isolado. Nenhum foi mascarado, removido ou teve assert reduzido.
+
+### Próximo passo
+
+1. Revisar C1-03 com o usuário 0, especialmente o `DOWNGRADE` de longão/qualidade em âmbar e o piso de 20 min.
+2. Seguir para **C1-04**: conclusão com evidência e vínculo atividade ↔ sessão (migração 11→12).
+3. Manter `docs/PLANO_TECNICO_CICLO_1.md` e o ADR 0023 atualizados a cada gate.
 
 ## Sessão 2026-11-06 — C1-02: cobertura de carga, ACWR desconhecido e gate de qualidade
 

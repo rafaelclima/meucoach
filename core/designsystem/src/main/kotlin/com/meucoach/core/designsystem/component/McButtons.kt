@@ -146,12 +146,17 @@ fun McTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailingArrow: Boolean = true,
+    enabled: Boolean = true,
     contentColor: Color = McTheme.colors.accentText,
 ) {
     TextButton(
         onClick = onClick,
         modifier = modifier,
-        colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
+        enabled = enabled,
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = contentColor,
+            disabledContentColor = McTheme.colors.textTertiary,
+        ),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Row(

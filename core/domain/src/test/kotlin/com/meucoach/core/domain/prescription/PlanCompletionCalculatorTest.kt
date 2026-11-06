@@ -95,17 +95,40 @@ class PlanCompletionCalculatorTest {
             .isInstanceOf(IllegalArgumentException::class.java)
     }
 
-    private fun plan(weekStart: LocalDate, sessions: List<PlannedSession>) = WeeklyPlan(
-        weekStart = weekStart,
-        sessions = sessions,
-        weeklyMinutes = sessions.sumOf { it.durationMin ?: 0 },
-        longRunMinutes = null,
-        qualityCount = sessions.count { it.type == WorkoutType.QUALITY },
-        rationale = "Plano.",
-        confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
-        ruleIds = listOf("R-ZONE-01"),
-        evidenceIds = listOf("EV-SEILER-2010"),
-    )
+    @Test
+    fun `a plan created midweek does not count the days before it`() {
+        val createdOn = weekStart.plusDays(3)
+        val midweek = plan(
+            weekStart = weekStart,
+            createdOn = createdOn,
+            sessions = listOf(
+                session(weekStart, SessionStatus.DONE),
+                session(weekStart.plusDays(1), SessionStatus.SKIPPED),
+                session(createdOn, SessionStatus.DONE),
+            ),
+        )
+
+        val completion = calculator.calculate(listOf(midweek), today = createdOn, weeks = 4)
+
+        assertThat(completion.weeks.last().planned).isEqualTo(1)
+        assertThat(completion.weeks.last().done).isEqualTo(1)
+        assertThat(completion.weeks.last().skipped).isZero()
+        assertThat(completion.completionRatio).isEqualTo(1.0)
+    }
+
+    private fun plan(weekStart: LocalDate, sessions: List<PlannedSession>, createdOn: LocalDate = weekStart) =
+        WeeklyPlan(
+            weekStart = weekStart,
+            sessions = sessions,
+            weeklyMinutes = sessions.sumOf { it.durationMin ?: 0 },
+            longRunMinutes = null,
+            qualityCount = sessions.count { it.type == WorkoutType.QUALITY },
+            rationale = "Plano.",
+            confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            createdOn = createdOn,
+        )
 
     private fun session(date: LocalDate, status: SessionStatus, type: WorkoutType = WorkoutType.EASY) = PlannedSession(
         date = date,

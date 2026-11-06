@@ -154,6 +154,30 @@ class TrainingPlanRepositoryTest {
         assertThat(repository.consecutiveWeeksBefore(monday)).isZero()
     }
 
+    @Test
+    fun `persists the plan creation date and session targets`(): Unit = runBlocking {
+        val createdOn = monday.plusDays(3)
+        val targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
+            pace = com.meucoach.core.domain.prescription.PaceTarget(
+                fast = com.meucoach.core.model.Pace.fromSecondsPerKm(360),
+                slow = com.meucoach.core.model.Pace.fromSecondsPerKm(370),
+            ),
+            heartRate = com.meucoach.core.domain.prescription.HeartRateTarget(146, 161),
+            zone = "Z2",
+            distanceKm = 6.4,
+        )
+        val withTargets = plan().copy(
+            createdOn = createdOn,
+            sessions = plan().sessions.map { it.copy(targets = targets) },
+        )
+
+        repository.saveWeek(withTargets)
+
+        val stored = repository.getWeek(monday)
+        assertThat(stored?.createdOn).isEqualTo(createdOn)
+        assertThat(stored?.sessions?.map { it.targets }).containsOnly(targets)
+    }
+
     private fun plan(weekStart: LocalDate = monday) = WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
