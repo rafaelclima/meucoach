@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 06/11/2026 (C1-01 e C1-05 implementados; C1-02, C1-03, C1-04 e C1-06 não iniciados)
+**Atualizado:** 06/11/2026 (C1-01, C1-02 e C1-05 implementados; C1-03, C1-04 e C1-06 não iniciados)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 909 testes no total (476 em `:app`, 108 em `core:data`, 298 em `core:domain`, 27 em `core:model`), 0 falhas; 3 falhas esperadas de C1-02/C1-03 permanecem `@Ignore` em `Cycle1RegressionTest`.
-- **Cobertura `core:domain`:** 98,16% de linhas (2.723/2.774), 83,39% de branches (2.098/2.516), 96,88% de instruções (20.088/20.736)
+- **Testes:** 924 testes no total (478 em `:app`, 109 em `core:data`, 310 em `core:domain`, 27 em `core:model`), 0 falhas; 1 falha esperada de C1-03 permanece `@Ignore` em `Cycle1RegressionTest`.
+- **Cobertura `core:domain`:** 98,05% de linhas (2.823/2.879), 83,35% de branches (2.183/2.619), 96,87% de instruções (20.655/21.323)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; 38 avisos não bloqueantes (versão, KTX, naming, ícone e dependências)
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -21,7 +21,7 @@
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
-- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade.
+- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Métricas diárias:** CSV e Health Connect são mesclados por campo, com precedência `MANUAL` > `Health Connect` > `CSV`; um sync não apaga mais o que só o CSV tinha (ADR 0016).
@@ -56,6 +56,49 @@
 - **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+
+## Sessão 2026-11-06 — C1-02: cobertura de carga, ACWR desconhecido e gate de qualidade
+
+**Objetivo:** impedir que ausência ou desatualização de dados vire permissão para treino forte ou progressão.
+
+### Concluído
+
+- **Domínio (`TrainingLoadEngine`):**
+  - `ActivitySourceStatus` com última importação e limite de 14 dias.
+  - `LoadCoverage` dos últimos 28 dias: dias com carga, dias de descanso observado e dias sem dado.
+  - `LoadDataState` (`KNOWN`, `INSUFFICIENT`, `STALE`) no `LoadSnapshot`.
+  - `acwr` só é exposto com fonte fresca e ≥ 8 dias com carga; dias sem atividade só são descanso com fonte fresca.
+- **Plano (`WeeklyPlanGenerator`):**
+  - Qualidade exige `KNOWN`, ACWR 0,8–1,3, prontidão verde e espaçamento; desconhecido, insuficiente ou velho bloqueia.
+  - Rationale diferencia “faltam dados de carga”, “dados desatualizados”, ACWR alto e ACWR baixo.
+  - Confiança cai um nível quando a carga não é confiável; `R-DATA-01`/`EV-IMPELLIZZERI-2020` entram no plano.
+- **Recomendador (`WorkoutRecommender`):** removeu `acwr ?: 0.0`; carga desconhecida/velha mantém o dia fácil, reduz a confiança e explica a lacuna.
+- **Dados:** `ActivityRepository.lastImportedAt()`/`observeLastImportedAt()` via `MAX(importedAt)`; sem migração de Room.
+- **App:** Hoje e Tendências passam a frescor da fonte; card de carga mostra “dados de carga insuficientes/desatualizados”; explicação lista a lacuna; catálogo ganhou `EV-IMPELLIZZERI-2020`.
+- **Testes:** os dois gates de C1-02 em `Cycle1RegressionTest` saíram de `@Ignore`; novos casos de cobertura, frescor, 7/8 dias, limites 0,79/0,8/1,3/1,31, carga constante, ausência no recomendador, repositório e UI.
+- **Flaky:** o golden `health-light.png` variava 3 pixels na borda inferior entre execuções; o teste de screenshot de Saúde ganhou tolerância de 0,001% com justificativa, sem alterar a imagem.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde.
+- **924 testes**, 0 falhas (478 `:app`, 109 `core:data`, 310 `core:domain`, 27 `core:model`); 1 `@Ignore` de C1-03.
+- `core:domain`: 98,05% de linhas, 83,35% de branches, 96,87% de instruções.
+- Parser FIT: 93,01% de branches (572/615).
+- Golden `G-LOAD-02` atualizado para 12 dias com carga, TRIMP + rTSS e cobertura suficiente; valores conferidos por implementação independente em Python.
+
+### Decisões e observações
+
+- ACWR continua sendo **flag**, nunca meta ou diagnóstico; `EV-IMPELLIZZERI-2020` documenta as limitações.
+- O gate usa `dataState`, não `missingDays`; `missingDays` segue como contagem bruta para a série do PMC.
+- Fonte fresca = última importação de atividade em até 14 dias; um período sem corrida planejado pode ser descanso, mas ausência de dados não é.
+- A elegibilidade de iniciante (4 semanas, 80% com evidência, 3 corridas/semana, volume mínimo) continua proposta e depende de C1-04.
+- Sem migração de schema e sem dependência nova.
+
+### Próximo passo
+
+1. Revisar C1-02 com o usuário 0, especialmente os limiares de 8 dias/14 dias.
+2. Seguir para **C1-03**: plano como intenção + prescrição única do dia (N-01/N-02).
+3. Manter o `@Ignore` de C1-03 até o gate correspondente.
 
 ## Sessão 2026-11-06 — C1-05: lixeira, reset efetivo e época de dados
 
@@ -2311,3 +2354,4 @@
 | 04/11/2026 | Perfil com nome/foto (Room v10), avatar na Home/Perfil e pin do story; leitura do coach na tela da atividade; 775 testes |
 | 04/11/2026 | Story com câmera 3D real: projeção do MapLibre portada para Kotlin, snapshot inclinado e rota alinhada (ADR 0019); 778 testes |
 | 04/11/2026 | Story: abertura com overview 32° → follow 42° sob fade-in de 0,6 s (sem corte visível); 778 testes |
+| 06/11/2026 | C1-02 concluído: cobertura/frescor de carga, ACWR desconhecido não libera qualidade, gate no plano/recomendador e UI explícita; 924 testes |

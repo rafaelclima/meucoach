@@ -121,6 +121,16 @@ class TodayScreenshotTest {
         acwr = 1.29,
         monotony = 1.4,
         missingDays = 2,
+        coverage = coverage(),
+    )
+
+    private fun coverage() = com.meucoach.core.domain.load.LoadCoverage(
+        daysInWindow = 28,
+        daysWithLoad = 12,
+        daysWithoutActivity = 16,
+        daysWithoutData = 0,
+        lastActivityAt = java.time.Instant.parse("2026-10-29T10:00:00Z"),
+        sourceFresh = true,
     )
 
     private fun plan(today: LocalDate): WeeklyPlan {

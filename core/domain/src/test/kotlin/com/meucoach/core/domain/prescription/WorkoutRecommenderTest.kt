@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
@@ -85,13 +86,47 @@ class WorkoutRecommenderTest {
         val recommendation = recommender.recommend(
             input(
                 readiness = readiness(level = ReadinessLevel.GREEN),
-                load = load(acwr = 1.6),
+                load = knownLoad(acwr = 1.6),
             ),
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
         assertThat(recommendation.ruleIds).contains("R-LOAD-03")
         assertThat(recommendation.rationale).contains("carga subiu rápido")
+    }
+
+    @Test
+    fun `unknown load keeps the day easy and explains the missing data`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH),
+                load = null,
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
+        assertThat(recommendation.ruleIds).contains("R-DATA-01")
+        assertThat(recommendation.evidenceIds).contains("EV-IMPELLIZZERI-2020")
+        assertThat(recommendation.rationale).contains("carga suficiente", "8 dias")
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.MEDIUM)
+    }
+
+    @Test
+    fun `stale load keeps the day easy and explains the outdated data`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH),
+                load = knownLoad(acwr = 1.0).copy(
+                    coverage = coverage(daysWithLoad = 12, sourceFresh = false),
+                ),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.ruleIds).contains("R-DATA-01")
+        assertThat(recommendation.rationale).contains("desatualizados", "atividades recentes")
+        assertThat(recommendation.confidence).isEqualTo(DataConfidence.MEDIUM)
     }
 
     @Test
@@ -256,7 +291,7 @@ class WorkoutRecommenderTest {
     private fun input(
         profile: AthleteProfile = profile(),
         readiness: ReadinessResult,
-        load: LoadSnapshot? = null,
+        load: LoadSnapshot? = knownLoad(acwr = 1.0),
         heatLevel: HeatLevel = HeatLevel.NONE,
     ) = PrescriptionInput(
         profile = profile,
@@ -302,7 +337,7 @@ class WorkoutRecommenderTest {
         treadmillAccess = treadmillAccess,
     )
 
-    private fun load(acwr: Double) = LoadSnapshot(
+    private fun knownLoad(acwr: Double) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
         atlSeries = emptyList(),
@@ -313,6 +348,21 @@ class WorkoutRecommenderTest {
         chronicAverage28d = 0.0,
         acwr = acwr,
         monotony = null,
-        missingDays = 0,
+        missingDays = 16,
+        coverage = coverage(daysWithLoad = 12),
     )
+
+    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {
+        val daysInWindow = 28
+        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad else 0
+        val daysWithoutData = if (sourceFresh) 0 else daysInWindow - daysWithLoad
+        return LoadCoverage(
+            daysInWindow = daysInWindow,
+            daysWithLoad = daysWithLoad,
+            daysWithoutActivity = daysWithoutActivity,
+            daysWithoutData = daysWithoutData,
+            lastActivityAt = if (daysWithLoad > 0) java.time.Instant.parse("2026-10-30T10:00:00Z") else null,
+            sourceFresh = sourceFresh,
+        )
+    }
 }

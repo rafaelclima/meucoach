@@ -41,6 +41,12 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY startTimeUtc DESC")
     suspend fun getAll(): List<ActivityEntity>
 
+    @Query("SELECT MAX(importedAt) FROM activities WHERE deletedAt IS NULL")
+    fun observeLastImportedAt(): Flow<Long?>
+
+    @Query("SELECT MAX(importedAt) FROM activities WHERE deletedAt IS NULL")
+    suspend fun lastImportedAt(): Long?
+
     @Query("SELECT * FROM activities WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
     fun observeTrash(): Flow<List<ActivityEntity>>
 

@@ -69,6 +69,7 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
@@ -522,14 +523,25 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
         Text(text = "CARGA DA SEMANA", style = McTextStyles.overline, color = colors.textTertiary)
         Spacer(modifier = Modifier.height(4.dp))
         if (!hasLoad && !hasDistance) {
+            val stale = state.loadDataState == LoadDataState.STALE
             Text(
-                text = "Nenhuma corrida nesta semana",
+                text = when (state.loadDataState) {
+                    LoadDataState.STALE -> "Dados de carga desatualizados"
+                    LoadDataState.INSUFFICIENT -> "Dados de carga insuficientes"
+                    else -> "Nenhuma corrida nesta semana"
+                },
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Importe uma corrida com FC ou ritmo para ver carga e recuperação.",
+                text = if (stale) {
+                    "Importe atividades recentes para atualizar a carga. " +
+                        "Sem isso, o app não libera treino forte."
+                } else {
+                    "Importe uma corrida com FC ou ritmo para ver carga e recuperação. " +
+                        "São necessários pelo menos 8 dias com carga em 28."
+                },
                 style = McTextStyles.caption,
                 color = colors.textSecondary,
             )

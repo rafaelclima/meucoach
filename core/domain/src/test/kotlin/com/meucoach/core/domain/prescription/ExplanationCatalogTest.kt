@@ -37,6 +37,7 @@ class ExplanationCatalogTest {
             "EV-DANIELS-2014",
             "EV-SAW-2016",
             "EV-GABBETT-2016",
+            "EV-IMPELLIZZERI-2020",
             "EV-ELY-2007",
             "EV-FRIEL-2018",
             "EV-PLEWS-2013",

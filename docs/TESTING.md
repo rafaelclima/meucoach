@@ -254,11 +254,10 @@ exclusão, decisão diária, vínculo e indicadores).
 `core/domain/src/test/kotlin/com/meucoach/core/domain/prescription/Cycle1RegressionTest.kt`
 contém os primeiros cenários executáveis:
 
-- 4 verdes (disponibilidade, espaçamento de qualidade, prontidão vermelha e
-  adesão ignorando futuro/REST);
-- 3 **falhas esperadas** anotadas com `@Ignore` e motivo `C1-02`/`C1-03`
-  (ACWR desconhecido liberando qualidade, cobertura insuficiente e plano no meio
-  da semana incluindo o passado).
+- 6 verdes (disponibilidade, espaçamento de qualidade, prontidão vermelha,
+  adesão ignorando futuro/REST, ACWR desconhecido e cobertura insuficiente);
+- 1 **falha esperada** anotada com `@Ignore` e motivo `C1-03` (plano no meio da
+  semana incluindo o passado).
 
 Regra: o `@Ignore` não é dívida permanente. Quando a correção entra, o teste é
 habilitado no mesmo commit e passa a ser gate. Cenários que dependem de classes

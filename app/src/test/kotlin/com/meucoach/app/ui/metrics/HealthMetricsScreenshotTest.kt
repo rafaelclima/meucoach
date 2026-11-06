@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.metrics
 
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
+import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
@@ -62,7 +64,7 @@ class HealthMetricsScreenshotTest {
             "FC de repouso nos últimos 30 dias",
         )
         settle()
-        compose.onRoot().captureRoboImage("src/test/screenshots/health-charts-dark.png")
+        compose.onRoot().captureScreenshot("src/test/screenshots/health-charts-dark.png")
     }
 
     @Test
@@ -80,7 +82,7 @@ class HealthMetricsScreenshotTest {
         awaitChart("HRV nos últimos 30 dias")
         settle()
         compose.onNodeWithTag("health-card-hrv")
-            .captureRoboImage("src/test/screenshots/health-recovery-dark.png")
+            .captureScreenshot("src/test/screenshots/health-recovery-dark.png")
     }
 
     @Test
@@ -99,7 +101,7 @@ class HealthMetricsScreenshotTest {
         compose.onNodeWithTag("metrics-import-list")
             .performScrollToNode(hasText("Os dados de hoje ainda não chegaram"))
         settle()
-        compose.onRoot().captureRoboImage("src/test/screenshots/health-today-hint-dark.png")
+        compose.onRoot().captureScreenshot("src/test/screenshots/health-today-hint-dark.png")
     }
 
     @Test
@@ -118,7 +120,7 @@ class HealthMetricsScreenshotTest {
             .performScrollToNode(hasText("Abrir Health Connect"))
         settle()
         compose.onNodeWithTag("health-connect-card")
-            .captureRoboImage("src/test/screenshots/health-sources-dark.png")
+            .captureScreenshot("src/test/screenshots/health-sources-dark.png")
     }
 
     private fun connectedHealth() = HealthConnectUiState(
@@ -138,7 +140,21 @@ class HealthMetricsScreenshotTest {
         }
 
         settle()
-        compose.onRoot().captureRoboImage(file)
+        compose.onRoot().captureScreenshot(file)
+    }
+
+    /**
+     * The chart surfaces render a few edge pixels differently across Robolectric
+     * runs. Keep a tiny tolerance so the golden guards the layout without
+     * failing on anti-aliasing noise.
+     */
+    private fun SemanticsNodeInteraction.captureScreenshot(file: String) {
+        captureRoboImage(
+            filePath = file,
+            roborazziOptions = RoborazziOptions(
+                compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.00001f),
+            ),
+        )
     }
 
     private fun awaitChartsReady(vararg descriptions: String) {

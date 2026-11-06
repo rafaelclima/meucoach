@@ -20,6 +20,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
@@ -83,6 +84,7 @@ class TodayViewModel @Inject constructor(
         val load: LoadSnapshot?,
         val today: LocalDate,
         val weeklyLoadKm: Double,
+        val lastActivityImportAt: java.time.Instant?,
         val kmByDay: Map<LocalDate, Double>,
         val recentActivity: RecentActivityUi?,
     )
@@ -105,13 +107,15 @@ class TodayViewModel @Inject constructor(
 
     private val context = timeProvider.today
         .flatMapLatest { today ->
+            val checkedAt = timeProvider.now()
             combine(
                 checkInRepository.observe(today),
                 metricsRepository.observeAll(),
                 profileRepository.observeProfile(),
                 activityRepository.observeActivitySummaries(),
-            ) { checkIn, metrics, profile, activities ->
-                buildContext(today, checkIn, metrics, profile, activities)
+                activityRepository.observeLastImportedAt(),
+            ) { checkIn, metrics, profile, activities, lastImportedAt ->
+                buildContext(today, checkIn, metrics, profile, activities, lastImportedAt, checkedAt)
             }
         }
 
@@ -177,8 +181,17 @@ class TodayViewModel @Inject constructor(
         metrics: List<DailyMetrics>,
         profile: AthleteProfile?,
         activities: List<ActivitySummary>,
+        lastImportedAt: java.time.Instant?,
+        checkedAt: java.time.Instant,
     ): TodayContext {
-        val load = profile?.let { buildLoadSnapshot(activities, it, today) }
+        val load = profile?.let {
+            buildLoadSnapshot(
+                activities = activities,
+                profile = it,
+                today = today,
+                sourceStatus = ActivitySourceStatus(lastImportedAt = lastImportedAt, checkedAt = checkedAt),
+            )
+        }
         val zone = timeProvider.zoneId.value
         val weekStart = today.weekStart()
         val weekKm = activities
@@ -207,6 +220,7 @@ class TodayViewModel @Inject constructor(
             load = load,
             today = today,
             weeklyLoadKm = weekKm,
+            lastActivityImportAt = lastImportedAt,
             kmByDay = kmByDay,
             recentActivity = recent,
         )
@@ -248,6 +262,7 @@ internal fun buildLoadSnapshot(
     activities: List<ActivitySummary>,
     profile: AthleteProfile,
     today: LocalDate,
+    sourceStatus: ActivitySourceStatus,
 ): LoadSnapshot {
     val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
         ?: java.time.ZoneId.systemDefault()
@@ -258,10 +273,12 @@ internal fun buildLoadSnapshot(
                 durationSec = summary.durationSec,
                 averageHeartRate = summary.averageHeartRate,
                 averagePace = summary.averagePace,
+                startTime = summary.startTime,
             )
         },
         profile = profile,
         today = today,
+        sourceStatus = sourceStatus,
     )
 }
 
@@ -402,6 +419,7 @@ internal fun todayState(
         atl = load?.atl?.roundToInt(),
         tsb = load?.tsb?.roundToInt(),
         acwr = load?.acwr,
+        loadDataState = load?.dataState,
         hasCheckedIn = checkIn != null,
         plan = plan,
         days = days,

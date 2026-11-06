@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -87,6 +88,58 @@ class TodayPlanTest {
         compose.onAllNodesWithText("Longão")[0].assertIsDisplayed()
         list.performScrollToNode(hasText("Sem progressão até existir histórico."))
         compose.onNodeWithText("Sem progressão até existir histórico.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `explains insufficient load data instead of inventing a ratio`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        weeklyLoadKm = null,
+                        days = emptyList(),
+                        ctl = null,
+                        atl = null,
+                        tsb = null,
+                        acwr = null,
+                        loadDataState = LoadDataState.INSUFFICIENT,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Dados de carga insuficientes"))
+        compose.onNodeWithText("Dados de carga insuficientes").assertIsDisplayed()
+        compose.onNodeWithText("8 dias com carga em 28", substring = true).assertExists()
+    }
+
+    @Test
+    fun `explains stale load data instead of treating it as rest`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        weeklyLoadKm = null,
+                        days = emptyList(),
+                        ctl = null,
+                        atl = null,
+                        tsb = null,
+                        acwr = null,
+                        loadDataState = LoadDataState.STALE,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Dados de carga desatualizados"))
+        compose.onNodeWithText("Dados de carga desatualizados").assertIsDisplayed()
+        compose.onNodeWithText("atividades recentes", substring = true).assertExists()
     }
 
     @Test

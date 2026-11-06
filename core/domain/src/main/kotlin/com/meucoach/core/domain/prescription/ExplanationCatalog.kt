@@ -52,6 +52,11 @@ object ExplanationCatalog {
             "Carga recente vs. acumulada",
             "Gabbett, BJSM 2016",
         ),
+        "EV-IMPELLIZZERI-2020" to EvidenceExplanation(
+            "EV-IMPELLIZZERI-2020",
+            "Limitações do ACWR",
+            "Impellizzeri et al., Sports Med 2020",
+        ),
         "EV-ELY-2007" to EvidenceExplanation(
             "EV-ELY-2007",
             "Impacto do clima",

@@ -343,7 +343,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ## Ciclo 1 — Correções críticas (planejado, sem autorização de início)
 
-**Status:** planejamento concluído em 06/11/2026; nenhuma implementação iniciada.
+**Status:** em andamento em 06/11/2026 — C1-01, C1-02 e C1-05 implementados; C1-03, C1-04 e C1-06 pendentes.
 **Plano técnico:** [`docs/PLANO_TECNICO_CICLO_1.md`](PLANO_TECNICO_CICLO_1.md) · **ADRs:** 0022–0026.
 
 | Ordem | ID | Iniciativa | Depende de | Gate |
@@ -354,6 +354,8 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 | 4 | **C1-04** | Conclusão com evidência e vínculo atividade ↔ sessão | C1-03 | Impossível `DONE` sem evidência; migração testada |
 | 5 | **C1-05** | Lixeira de 7 dias, reset efetivo e época de dados | C1-01 | Reset sem ressurreição; expurgo por clock |
 | 6 | **C1-06** | Verdade documental, ADRs e regressões finais | C1-01..C1-05 | Docs = código; suíte e goldens verdes |
+
+**Entregas:** C1-01 (tempo), C1-02 (carga/qualidade) e C1-05 (lixeira/reset) implementados em 06/11/2026. C1-03 (prescrição única), C1-04 (evidência) e C1-06 (verdade documental) seguem pendentes.
 
 **Regras do ciclo:**
 

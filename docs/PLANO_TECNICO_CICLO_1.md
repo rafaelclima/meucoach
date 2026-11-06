@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_1.md — Formalização arquitetural e preparação dos testes
 
 **Versão:** 1.1 · **Data:** 06/11/2026
-**Status:** C1-01 e C1-05 implementados em 06/11/2026; C1-02, C1-03, C1-04 e C1-06 não iniciados.
+**Status:** C1-01, C1-02 e C1-05 implementados em 06/11/2026; C1-03, C1-04 e C1-06 não iniciados.
 **Escopo:** C1-01 a C1-06, ADRs 0022–0026, estratégia de testes e ordem de execução.
 **Documentos de referência:** `docs/PRD_COACH_CORRIDA.md`, `docs/REVISAO_E_DIRECIONAMENTO_PRODUTO.md` (Anexo C), `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SPORTS_SCIENCE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`.
 
@@ -21,7 +21,7 @@ Este plano transforma as decisões aprovadas em uma sequência executável, sem 
 
 **Fora:** sessão guiada persistente completa, captura de `ExerciseSession` do Health Connect, backup/restauração versionado, revisão semanal, periodização, semana de prova/recovery, Tier B, GPS nativo, LLM, novos módulos, refatoração ampla, redesenho visual.
 
-**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01 foi implementado conforme §6.2; C1-02..C1-06 continuam sem implementação. `Cycle1RegressionTest.kt` permanece como teste preparatório de C1-02/C1-03.
+**Restrições desta etapa:** o plano original não alterou código de produção. Em 06/11/2026, C1-01 e C1-02 foram implementados conforme §6.2 e §6.3; C1-03..C1-06 continuam sem implementação. `Cycle1RegressionTest.kt` mantém apenas o cenário de C1-03 como falha esperada.
 
 ---
 
@@ -265,6 +265,27 @@ flowchart TB
 
 **Risco:** baixo/médio; pode reduzir qualidade para usuários com dados parciais. É o comportamento desejado; explicar na UI e atualizar goldens.
 
+**Status da execução (06/11/2026):** implementado.
+
+- `TrainingLoadEngine` ganhou `ActivitySourceStatus`, `LoadCoverage` e
+  `LoadDataState`; `acwr` só é exposto com fonte fresca e ≥ 8 dias com carga
+  em 28. Dias sem atividade só são descanso com fonte fresca.
+- `ActivityRepository` expõe `lastImportedAt()`/`observeLastImportedAt()` sem
+  migração de Room.
+- `WeeklyPlanGenerator` exige `KNOWN` + ACWR 0,8–1,3 para qualidade, reduz a
+  confiança quando a carga não é confiável e explica “dados insuficientes” ou
+  “desatualizados”.
+- `WorkoutRecommender` removeu `acwr ?: 0.0`; carga desconhecida/velha mantém o
+  dia fácil e reduz a confiança.
+- UI: card de carga e explicação declaram `INSUFFICIENT`/`STALE`; catálogo
+  ganhou `EV-IMPELLIZZERI-2020`.
+- Testes: `Cycle1RegressionTest` habilitou os dois gates de C1-02; novos casos
+  em `TrainingLoadEngineTest`, `WeeklyPlanGeneratorTest`,
+  `WorkoutRecommenderTest`, `ActivityRepositoryTest` e UI.
+- Validação: `./gradlew check` e `:app:verifyRoborazziDebug` verdes; 924 testes
+  (478 `:app`, 109 `core:data`, 310 `core:domain`, 27 `core:model`), 1 `@Ignore`
+  de C1-03.
+
 ### 6.4 C1-03 — Plano como intenção e prescrição única do dia
 
 **Objetivo:** uma única decisão diária que parte da sessão planejada e a ajusta por prontidão, carga, calor e execução.
@@ -456,8 +477,8 @@ flowchart TB
 | `never places quality on consecutive days or next to the long run` | **Verde** | Invariante de espaçamento que a prescrição deve preservar |
 | `does not create quality when readiness is red` | **Verde** | Guardrail de segurança que não pode regredir |
 | `completion ignores future sessions and rest days` | **Verde** | Base do corte de adesão de C1-03 |
-| `quality is blocked when acute chronic load is unknown` | **Falha esperada (`@Ignore`)** | C1-02: hoje `acwr == null` libera qualidade |
-| `quality is blocked when load coverage is insufficient` | **Falha esperada (`@Ignore`)** | C1-02: `missingDays` ainda não bloqueia |
+| `quality is blocked when acute chronic load is unknown` | **Verde** | C1-02: ACWR desconhecido bloqueia qualidade |
+| `quality is blocked when load coverage is insufficient` | **Verde** | C1-02: cobertura insuficiente bloqueia qualidade |
 | `plan created midweek does not include days before today` | **Falha esperada (`@Ignore`)** | C1-03/N-02: gerador ainda inclui passado |
 
 **Política de falha esperada:**
@@ -481,14 +502,14 @@ flowchart TB
 | U-TIME-03 | Fuso America/Sao_Paulo → America/New_York | `today`/`weekStart` recalculados | 01 | Pendente de contrato |
 | U-TIME-04 | DST (America/New_York) | Meia-noite e lembrete corretos | 01 | Pendente de contrato |
 | U-TIME-05 | `WeeklyPlanInput` sem `weekStart` | Não compila/não tem default | 01 | Pendente |
-| U-LOAD-01 | Nenhuma atividade em 28 dias | `acwr == null`; `INSUFFICIENT` | 02 | Pendente de contrato |
-| U-LOAD-02 | 8 dias com carga, 20 sem dado | `KNOWN` se cobertura/frescor ok; senão `INSUFFICIENT` | 02 | Pendente |
-| U-LOAD-03 | 7 dias com carga | Bloqueia qualidade | 02 | Pendente (mesmo gate) |
-| U-LOAD-04 | Fonte sem importação há 15 dias | `STALE`; bloqueia qualidade | 02 | Pendente |
-| U-LOAD-05 | ACWR 0,8 / 1,3 / 0,79 / 1,31 | Limites exatos | 02 | Parcial em `WeeklyPlanGeneratorTest` |
-| U-LOAD-06 | Carga constante | ACWR ~1,0; sem alerta falso | 02 | Existente; ampliar |
-| U-LOAD-07 | Carga zero vs. dia sem dado | Zero medido ≠ ausência | 02 | Pendente |
-| U-LOAD-08 | ACWR desconhecido no recomendador | Conservador; sem `?: 0.0` | 02 | Pendente |
+| U-LOAD-01 | Nenhuma atividade em 28 dias | `acwr == null`; `INSUFFICIENT` | 02 | Implementado (`TrainingLoadEngineTest`) |
+| U-LOAD-02 | 8 dias com carga, 20 sem dado | `KNOWN` se cobertura/frescor ok; senão `INSUFFICIENT` | 02 | Implementado (`TrainingLoadEngineTest`) |
+| U-LOAD-03 | 7 dias com carga | Bloqueia qualidade | 02 | Implementado (`TrainingLoadEngineTest`, `WeeklyPlanGeneratorTest`) |
+| U-LOAD-04 | Fonte sem importação há 15 dias | `STALE`; bloqueia qualidade | 02 | Implementado (`TrainingLoadEngineTest`, `WeeklyPlanGeneratorTest`) |
+| U-LOAD-05 | ACWR 0,8 / 1,3 / 0,79 / 1,31 | Limites exatos | 02 | Implementado (`WeeklyPlanGeneratorTest`) |
+| U-LOAD-06 | Carga constante | ACWR ~1,0; sem alerta falso | 02 | Implementado (`TrainingLoadEngineTest`) |
+| U-LOAD-07 | Carga zero vs. dia sem dado | Zero medido ≠ ausência | 02 | Implementado (`TrainingLoadEngineTest`) |
+| U-LOAD-08 | ACWR desconhecido no recomendador | Conservador; sem `?: 0.0` | 02 | Implementado (`WorkoutRecommenderTest`) |
 | U-PRESC-01 | Verde + Tempo | `KEEP`; tipo/duração/alvos | 03 | Pendente de contrato |
 | U-PRESC-02 | Vermelho/doença + Tempo | `REST`; sem CTA | 03 | Pendente de contrato |
 | U-PRESC-03 | Âmbar + Tempo | `REDUCE`/`DOWNGRADE` | 03 | Pendente de contrato |
@@ -856,7 +877,7 @@ C1-06 Verdade documental + regressões finais
 
 - [ ] ADRs 0022–0026 revisados e linkados; 0026 com status correto.
 - [ ] C1-01: tempo/fuso determinísticos; nenhum `now()` em UI/ViewModel.
-- [ ] C1-02: ACWR desconhecido/cobertura/frescor bloqueiam qualidade.
+- [x] C1-02: ACWR desconhecido/cobertura/frescor bloqueiam qualidade.
 - [ ] C1-03: um card; prescrição versionada; plano sem passado; migração 10→11.
 - [ ] C1-04: `DONE` só com evidência; vínculo 1:1; migração 11→12.
 - [ ] C1-05: lixeira 7 dias; reset sem ressurreição; HC intacto.

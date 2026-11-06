@@ -1,6 +1,7 @@
 package com.meucoach.app.ui.today
 
 import com.meucoach.app.ui.common.readinessLabelLowercase
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.ExplanationCatalog
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -47,7 +48,7 @@ internal fun buildExplanation(
         if (inputs.sleep != null) add("Sono recente")
         if (inputs.hrv != null) add("Variabilidade cardíaca")
         if (inputs.restingHeartRate != null) add("FC de repouso")
-        if (load?.acwr != null) add("Carga das últimas semanas")
+        if (load?.dataState == LoadDataState.KNOWN) add("Carga das últimas semanas")
         if (profile.thresholdPace != null) add("Ritmo no limite calibrado")
         if (profile.lactateThresholdHeartRate != null) add("FC no limite calibrada")
         if ("R-PLAN-08" in recommendation.ruleIds) add("Acesso a esteira")
@@ -57,7 +58,11 @@ internal fun buildExplanation(
         result.missing.forEach { add(it.label()) }
         if (recommendation.pace == null) add("Ritmo no limite (sem calibração)")
         if (recommendation.heartRate == null) add("FC no limite (sem calibração)")
-        if (load?.acwr == null) add("Histórico de carga das últimas 4 semanas")
+        when (load?.dataState) {
+            LoadDataState.STALE -> add("Atividades recentes (fonte desatualizada)")
+            LoadDataState.INSUFFICIENT, null -> add("Histórico de carga das últimas 4 semanas")
+            LoadDataState.KNOWN -> Unit
+        }
     }.distinct()
 
     return TodayExplanationUi(
@@ -93,6 +98,9 @@ internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
     val missing = buildList {
         if (plan.confidence == DataConfidence.LOW) {
             add("Dados objetivos de recuperação (sono, FC de repouso ou HRV)")
+        }
+        if ("R-DATA-01" in plan.ruleIds && plan.sessions.isNotEmpty()) {
+            add("Carga recente para liberar treino forte")
         }
     }.distinct()
 

@@ -1,9 +1,9 @@
 # ADR 0026 — Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade
 
-**Status:** proposto — decisão de direção aprovada; limiares ainda precisam de especificação e validação científica
+**Status:** aceito parcialmente — C1-02 implementa cobertura, frescor e o gate de qualidade; limiares de iniciante seguem propostos e dependem de C1-04
 **Data:** 2026-11-06
 **Responsável:** planejamento com Rafael (usuário 0)
-**Implementação:** parte de C1-02 (bloqueio por dados insuficientes/desatualizados); elegibilidade de iniciante depende de C1-04 e de validação no ciclo seguinte.
+**Implementação:** C1-02 (06/11/2026) implementou `LoadCoverage`/`LoadDataState`, frescor de 14 dias, mínimo de 8 dias com carga, gate de qualidade no plano/recomendador e copy de “dados insuficientes/desatualizados”. A elegibilidade de iniciante depende de C1-04 e de validação no ciclo seguinte.
 
 ---
 
@@ -204,7 +204,27 @@ Para iniciantes, a elegibilidade conquistada é o meio-termo entre “nunca” e
 | **N-07** | `R-PLAN-01` deixa de ser promessa não executada; a decisão de volume será formalizada em ADR futuro. |
 | **BL-004 / BL-005** | Base para progressão segura e qualidade de iniciante. |
 
-## 10. Referências
+## 10. Notas de implementação (C1-02, 06/11/2026)
+
+- `TrainingLoadEngine` calcula a cobertura dos últimos 28 dias e recebe
+  `ActivitySourceStatus(lastImportedAt, checkedAt)`. A fonte é fresca quando a
+  última importação ocorreu em até 14 dias.
+- `LoadSnapshot.acwr` só é exposto com fonte fresca e ≥ 8 dias com carga;
+  `dataState` distingue `KNOWN`, `INSUFFICIENT` e `STALE`.
+- `ActivityRepository.lastImportedAt()`/`observeLastImportedAt()` derivam o
+  frescor de `MAX(importedAt)` das atividades não excluídas; nenhuma migração
+  de Room foi necessária.
+- `WeeklyPlanGenerator` exige `KNOWN` e ACWR 0,8–1,3 para qualidade, reduz a
+  confiança quando a carga não é confiável e explica a lacuna no rationale.
+- `WorkoutRecommender` não usa mais `acwr ?: 0.0`; carga desconhecida ou velha
+  mantém o dia fácil, reduz a confiança e cita `R-DATA-01` e
+  `EV-IMPELLIZZERI-2020`.
+- A UI mostra “dados de carga insuficientes/desatualizados” no card de carga e
+  na explicação, sem tratar ausência como recuperação.
+- Limiares de iniciante (4 semanas, 80% com evidência, 3 corridas/semana,
+  volume mínimo) continuam **propostos** e não foram implementados neste gate.
+
+## 11. Referências
 
 - `docs/PRD_COACH_CORRIDA.md` §6 (FR-004, FR-005), §2.1 (BUG-03, BUG-04), §2.3 (N-04, N-07)
 - `docs/REVISAO_E_DIRECIONAMENTO_PRODUTO.md` §5.D4, §7.4, §7.9

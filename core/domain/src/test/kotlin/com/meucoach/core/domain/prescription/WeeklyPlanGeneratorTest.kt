@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
@@ -40,7 +41,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.longRunMinutes).isEqualTo(34)
         assertThat(plan.weeklyMinutes).isEqualTo(114)
         assertThat(plan.rationale).contains("iniciante")
-        assertThat(plan.confidence).isEqualTo(DataConfidence.MEDIUM)
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
     }
 
     @Test
@@ -121,6 +122,96 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(plan.qualityCount).isZero()
         assertThat(plan.rationale).contains("sua carga subiu rápido")
+    }
+
+    @Test
+    fun `blocks quality when load data is stale`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, sourceFresh = false),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("dados de carga estão desatualizados")
+        assertThat(plan.ruleIds).contains("R-DATA-01")
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `blocks quality when coverage is below eight days`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = null, daysWithLoad = 7),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("faltam dados de carga", "8 dias")
+        assertThat(plan.ruleIds).contains("R-DATA-01")
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `blocks quality when ACWR is below the safe range`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 0.79),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("carga recente está baixa")
+        assertThat(plan.ruleIds).contains("R-LOAD-03")
+    }
+
+    @Test
+    fun `accepts quality at the exact ACWR bounds`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val lower = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 0.8),
+            ),
+        )
+        val upper = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.3),
+            ),
+        )
+        val above = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.31),
+            ),
+        )
+
+        assertThat(lower.qualityCount).isEqualTo(1)
+        assertThat(upper.qualityCount).isEqualTo(1)
+        assertThat(above.qualityCount).isZero()
     }
 
     @Test
@@ -594,7 +685,7 @@ class WeeklyPlanGeneratorTest {
         treadmillAccess = treadmillAccess,
     )
 
-    private fun load(acwr: Double) = LoadSnapshot(
+    private fun load(acwr: Double?, daysWithLoad: Int = 12, sourceFresh: Boolean = true) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
         atlSeries = emptyList(),
@@ -605,6 +696,21 @@ class WeeklyPlanGeneratorTest {
         chronicAverage28d = 0.0,
         acwr = acwr,
         monotony = null,
-        missingDays = 0,
+        missingDays = 28 - daysWithLoad,
+        coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
     )
+
+    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {
+        val daysInWindow = 28
+        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad else 0
+        val daysWithoutData = if (sourceFresh) 0 else daysInWindow - daysWithLoad
+        return LoadCoverage(
+            daysInWindow = daysInWindow,
+            daysWithLoad = daysWithLoad,
+            daysWithoutActivity = daysWithoutActivity,
+            daysWithoutData = daysWithoutData,
+            lastActivityAt = if (daysWithLoad > 0) java.time.Instant.parse("2026-10-30T10:00:00Z") else null,
+            sourceFresh = sourceFresh,
+        )
+    }
 }

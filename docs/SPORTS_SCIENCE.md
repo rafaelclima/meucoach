@@ -160,6 +160,12 @@ Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pont
 - A literatura recente questiona a validade teórica e estatística do ACWR (Impellizzeri et al., 2020).
 - Uso no app: **flag** para revisar carga, nunca para liberar aumento.
 - Faixa de atenção: < 0,8 ou > 1,3. > 1,5 = alerta; não aumentar volume.
+- ACWR só é exposto quando a fonte de atividades está fresca (última importação
+  em até 14 dias) e há pelo menos 8 dias com carga nos últimos 28. Caso
+  contrário, o valor é `null` e o estado é `INSUFFICIENT` ou `STALE`; `null`
+  nunca significa “sem restrição” (`R-DATA-01`, ADR 0026).
+- Dia sem atividade só conta como descanso quando a fonte está fresca. Com
+  fonte desatualizada, o dia é “sem dado”, não um zero fisiológico.
 
 ### 6.4 Distribuição semanal
 
@@ -299,6 +305,10 @@ Precedência determinística do `WorkoutRecommender`:
 4. ACWR > 1,5 ⇒ **fácil**, sem aumento de carga (`R-LOAD-03`).
 5. Dia verde ⇒ **fácil em Z2**, com pace E e FC Z2 quando houver calibração (`R-ZONE-01`).
 6. Sem LTHR/pace de limiar ⇒ fácil por RPE, confiança baixa (`R-CAL-02`).
+7. Carga desconhecida (`INSUFFICIENT`) ou desatualizada (`STALE`) ⇒ **fácil**,
+   sem aumento e com confiança reduzida (`R-DATA-01`, `EV-IMPELLIZZERI-2020`).
+   O texto explica “dados de carga insuficientes/desatualizados”; nunca diz que
+   o atleta descansou.
 
 Sem disponibilidade configurada, usar 30 min como base e reduzir a confiança
 (`R-DATA-01`). Nenhuma recomendação aumenta volume sem os guardrails do P1-05.
@@ -311,6 +321,11 @@ segunda→domingo:
 - Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
 - No máximo **2 qualidades** por semana; a segunda só com progressão e nunca consecutiva/adjacente ao longão.
 - Qualidade só em dia verde, não iniciante, com ACWR entre 0,8 e 1,3.
+- A qualidade exige `LoadDataState.KNOWN`: pelo menos 8 dias com carga nos
+  últimos 28 e última importação de atividades em até 14 dias. Sem cobertura
+  ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
+  explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
+  ADR 0026). ACWR desconhecido nunca libera progressão.
 - Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
 - Fácil entre 20–60 min; qualidade entre 25–45 min, como "Tempo" (intermediário) ou "Intervalos" (avançado).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
@@ -460,7 +475,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
-| `R-LOAD-03` | ACWR é flag, nunca meta; >1,5 bloqueia aumento | GABBETT, IMPELLIZZERI | LIMITED |
+| `R-LOAD-03` | ACWR é flag, nunca meta; fora de 0,8–1,3 bloqueia qualidade/progressão; >1,5 é alerta | GABBETT, IMPELLIZZERI | LIMITED |
 | `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
 | `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
@@ -478,7 +493,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-SAFE-02` | Sem diagnóstico; app não é dispositivo médico | Regulatório | STRONG |
 | `R-SAFE-03` | Sem prescrição de peso/nutrição | Escopo | STRONG |
 | `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
-| `R-DATA-01` | Dado ausente não preenche valor neutro silencioso | Produto | STRONG |
+| `R-DATA-01` | Dado ausente não preenche valor neutro silencioso; cobertura/frescor de carga são declaradas | Produto | STRONG |
 
 ## 15. Limitações conhecidas
 

@@ -21,6 +21,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
@@ -179,7 +180,15 @@ class TutorialViewModel @Inject constructor(
         val metrics = metricsRepository.getAll()
         val activities = activityRepository.listActivitySummaries()
         val readiness = readinessResult(checkIn, metrics, today)
-        val load = buildLoadSnapshot(activities, profile, today)
+        val load = buildLoadSnapshot(
+            activities = activities,
+            profile = profile,
+            today = today,
+            sourceStatus = ActivitySourceStatus(
+                lastImportedAt = activityRepository.lastImportedAt(),
+                checkedAt = timeProvider.now(),
+            ),
+        )
         val weekStart = today.weekStart()
         val previousWeek = planRepository.getWeek(weekStart.minusWeeks(1))
         val weekNumber = planRepository.consecutiveWeeksBefore(weekStart) + 1

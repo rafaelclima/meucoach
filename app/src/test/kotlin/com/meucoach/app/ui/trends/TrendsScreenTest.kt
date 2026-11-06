@@ -441,6 +441,14 @@ class TrendsScreenTest {
             acwr = if (hasData) 1.1 else null,
             monotony = if (hasData) 0.8 else null,
             missingDays = if (hasData) 35 else 42,
+            coverage = com.meucoach.core.domain.load.LoadCoverage(
+                daysInWindow = 28,
+                daysWithLoad = if (hasData) 12 else 0,
+                daysWithoutActivity = if (hasData) 16 else 28,
+                daysWithoutData = 0,
+                lastActivityAt = null,
+                sourceFresh = true,
+            ),
         )
     }
 }

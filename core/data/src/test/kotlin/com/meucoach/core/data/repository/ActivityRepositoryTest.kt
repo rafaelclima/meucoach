@@ -97,6 +97,23 @@ class ActivityRepositoryTest {
     }
 
     @Test
+    fun `reports the last activity import for load freshness`() {
+        runBlocking {
+            assertThat(repository.lastImportedAt()).isNull()
+            assertThat(repository.observeLastImportedAt().first()).isNull()
+
+            val saved = repository.saveImportedActivity(importedActivity(), "sha") as SaveActivityResult.Saved
+
+            assertThat(repository.lastImportedAt()).isEqualTo(fixedClock.instant())
+            assertThat(repository.observeLastImportedAt().first()).isEqualTo(fixedClock.instant())
+
+            repository.deleteActivity(saved.id)
+
+            assertThat(repository.lastImportedAt()).isNull()
+        }
+    }
+
+    @Test
     fun `duplicate file hash returns the existing activity`() {
         runBlocking {
             val imported = importedActivity()

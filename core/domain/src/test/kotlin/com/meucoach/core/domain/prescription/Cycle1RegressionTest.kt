@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
@@ -132,7 +133,6 @@ class Cycle1RegressionTest {
         assertThat(completion.weeks.last().done).isEqualTo(1)
     }
 
-    @Ignore("Falha esperada — C1-02: hoje ACWR desconhecido (null) libera qualidade; o gate deve bloquear.")
     @Test
     fun `quality is blocked when acute chronic load is unknown`() {
         val plan = generator.generate(
@@ -154,7 +154,6 @@ class Cycle1RegressionTest {
         assertThat(plan.qualityCount).isZero()
     }
 
-    @Ignore("Falha esperada — C1-02: cobertura insuficiente ainda libera qualidade; LoadSnapshot ignora missingDays.")
     @Test
     fun `quality is blocked when load coverage is insufficient`() {
         val plan = generator.generate(
@@ -169,7 +168,7 @@ class Cycle1RegressionTest {
                     ),
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
-                load = load(acwr = 1.0, missingDays = 26),
+                load = load(acwr = null, daysWithLoad = 2, missingDays = 26),
             ),
         )
 
@@ -244,7 +243,12 @@ class Cycle1RegressionTest {
         weeklyAvailability = WeeklyAvailability(availability),
     )
 
-    private fun load(acwr: Double, missingDays: Int = 0) = LoadSnapshot(
+    private fun load(
+        acwr: Double?,
+        daysWithLoad: Int = 12,
+        missingDays: Int = 28 - daysWithLoad,
+        sourceFresh: Boolean = true,
+    ) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
         atlSeries = emptyList(),
@@ -256,7 +260,22 @@ class Cycle1RegressionTest {
         acwr = acwr,
         monotony = null,
         missingDays = missingDays,
+        coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
     )
+
+    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {
+        val daysInWindow = 28
+        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad else 0
+        val daysWithoutData = if (sourceFresh) 0 else daysInWindow - daysWithLoad
+        return LoadCoverage(
+            daysInWindow = daysInWindow,
+            daysWithLoad = daysWithLoad,
+            daysWithoutActivity = daysWithoutActivity,
+            daysWithoutData = daysWithoutData,
+            lastActivityAt = if (daysWithLoad > 0) java.time.Instant.parse("2026-10-30T10:00:00Z") else null,
+            sourceFresh = sourceFresh,
+        )
+    }
 
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)

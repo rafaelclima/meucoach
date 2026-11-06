@@ -66,6 +66,17 @@ class ActivityRepository(
             .map { it.toSummary(sourcesByActivity[it.id].orEmpty()) }
     }
 
+    /** Last time an activity was imported, used to decide whether load data is fresh. */
+    fun observeLastImportedAt(): Flow<Instant?> = database
+        .activityDao()
+        .observeLastImportedAt()
+        .map { millis -> millis?.let(Instant::ofEpochMilli) }
+
+    suspend fun lastImportedAt(): Instant? = database
+        .activityDao()
+        .lastImportedAt()
+        ?.let(Instant::ofEpochMilli)
+
     fun observeImportJobs(): Flow<List<ImportJobSummary>> = database
         .importJobDao()
         .observeAll()

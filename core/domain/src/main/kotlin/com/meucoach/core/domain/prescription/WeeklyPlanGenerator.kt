@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
@@ -108,10 +109,14 @@ class WeeklyPlanGenerator {
         val safetyBlock = input.readiness.flags.any {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
         } || input.readiness.level != ReadinessLevel.GREEN
+        val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
+        val loadTrusted = loadState == LoadDataState.KNOWN
         val acwr = input.load?.acwr
+        val acwrInRange = acwr != null && acwr in ACWR_MIN..ACWR_MAX
         val qualityAllowed = !safetyBlock &&
             input.profile.experience != Experience.BEGINNER &&
-            (acwr == null || acwr in ACWR_MIN..ACWR_MAX) &&
+            loadTrusted &&
+            acwrInRange &&
             days.size >= 3
         val completionRatio = input.previousWeek?.completionRatio() ?: 0.0
         val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
@@ -204,7 +209,8 @@ class WeeklyPlanGenerator {
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
         val qualityCount = adjusted.count { it.type == WorkoutType.QUALITY }
-        val confidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
+        val baseConfidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
+        val confidence = if (loadTrusted) baseConfidence else downgrade(baseConfidence)
         val rationale = buildString {
             if (taper != null) {
                 append("Semana de prova em ${taper.daysToRace} dias: volume reduzido. ")
@@ -220,9 +226,22 @@ class WeeklyPlanGenerator {
                 append(
                     when {
                         safetyBlock -> "prontidão não está alta."
+
                         input.profile.experience == Experience.BEGINNER -> "iniciante prioriza base."
-                        (acwr ?: 0.0) > ACWR_MAX -> "sua carga subiu rápido."
+
+                        loadState == LoadDataState.STALE ->
+                            "seus dados de carga estão desatualizados; importe atividades recentes."
+
+                        loadState == LoadDataState.INSUFFICIENT ->
+                            "faltam dados de carga: são necessários ${LoadSnapshot.MIN_DAYS_WITH_LOAD} " +
+                                "dias com carga em 28."
+
+                        acwr != null && acwr > ACWR_MAX -> "sua carga subiu rápido."
+
+                        acwr != null && acwr < ACWR_MIN -> "sua carga recente está baixa."
+
                         days.size < 3 -> "menos de 3 dias disponíveis."
+
                         else -> "sem dia seguro separado do longão."
                     },
                 )
@@ -247,6 +266,8 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-02")
                 add("R-PLAN-03")
                 add("R-PLAN-06")
+                if (!loadTrusted) add("R-DATA-01")
+                if (loadTrusted && !acwrInRange) add("R-LOAD-03")
                 if (taper != null) add("R-PLAN-05")
                 if (deload && taper == null) add("R-PLAN-04")
             },
@@ -254,6 +275,9 @@ class WeeklyPlanGenerator {
                 add("EV-SEILER-2010")
                 add("EV-DANIELS-2014")
                 add("EV-PFITZINGER-2008")
+                if (!loadTrusted || (loadTrusted && !acwrInRange)) {
+                    add("EV-IMPELLIZZERI-2020")
+                }
                 if (taper != null) {
                     add("EV-BOSQUET-2007")
                     add("EV-MUJIKA-2003")
@@ -347,6 +371,11 @@ class WeeklyPlanGenerator {
     private fun cappedConfidence(confidence: DataConfidence, cap: DataConfidence): DataConfidence {
         val rank = mapOf(DataConfidence.LOW to 0, DataConfidence.MEDIUM to 1, DataConfidence.HIGH to 2)
         return if (rank.getValue(confidence) <= rank.getValue(cap)) confidence else cap
+    }
+
+    private fun downgrade(confidence: DataConfidence): DataConfidence = when (confidence) {
+        DataConfidence.HIGH -> DataConfidence.MEDIUM
+        DataConfidence.MEDIUM, DataConfidence.LOW -> DataConfidence.LOW
     }
 
     private companion object {

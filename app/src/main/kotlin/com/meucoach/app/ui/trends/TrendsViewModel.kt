@@ -6,6 +6,7 @@ import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
@@ -84,12 +85,17 @@ class TrendsViewModel @Inject constructor(
             }
             val zone = timeProvider.zoneId.value
             val summaries = activityRepository.listActivitySummaries()
+            val sourceStatus = ActivitySourceStatus(
+                lastImportedAt = activityRepository.lastImportedAt(),
+                checkedAt = timeProvider.now(),
+            )
             val activities = summaries.map { summary ->
                 LoadActivity(
                     date = summary.startTime.atZone(zone).toLocalDate(),
                     durationSec = summary.durationSec,
                     averageHeartRate = summary.averageHeartRate,
                     averagePace = summary.averagePace,
+                    startTime = summary.startTime,
                 )
             }
             _uiState.value = TrendsUiState(
@@ -99,6 +105,7 @@ class TrendsViewModel @Inject constructor(
                     activities = activities,
                     profile = profile,
                     today = today,
+                    sourceStatus = sourceStatus,
                 ),
                 activityTrends = trendsCalculator.calculate(
                     activities = summaries,

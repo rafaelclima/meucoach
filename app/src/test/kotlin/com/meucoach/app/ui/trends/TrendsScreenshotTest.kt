@@ -116,6 +116,14 @@ class TrendsScreenshotTest {
             acwr = 1.2,
             monotony = 0.8,
             missingDays = 28,
+            coverage = com.meucoach.core.domain.load.LoadCoverage(
+                daysInWindow = 28,
+                daysWithLoad = 14,
+                daysWithoutActivity = 14,
+                daysWithoutData = 0,
+                lastActivityAt = null,
+                sourceFresh = true,
+            ),
         )
     }
 }

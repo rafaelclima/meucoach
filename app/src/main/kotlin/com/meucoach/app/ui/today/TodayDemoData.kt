@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.today
 
+import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ReadinessLevel
 import java.time.LocalDate
@@ -63,6 +64,8 @@ data class TodayUiState(
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */
     val acwr: Double? = null,
+    /** Explains why load/ACWR are missing or outdated; null when no load snapshot exists. */
+    val loadDataState: LoadDataState? = null,
     val avatarPath: String? = null,
 )
 
