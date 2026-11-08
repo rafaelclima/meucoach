@@ -1,11 +1,11 @@
 # PLANO_CICLO_2 — Sessão guiada (ADR 0027) e replanejamento da semana (ADR 0028)
 
-**Versão:** 0.6 · **Data:** 08/11/2026
-**Status:** **R-01 implementado em `core:domain`, R-02 em `core:data` e R-03 no app/UI em 08/11/2026** (evidências em `docs/PROGRESS.md`). A sessão guiada (G) permanece proposta e bloqueada pelas decisões de produto/plataforma indicadas em §10.4.
+**Versão:** 0.7 · **Data:** 08/11/2026
+**Status:** **R-01 implementado em `core:domain`, R-02 em `core:data` e R-03 no app/UI em 08/11/2026** (evidências em `docs/PROGRESS.md`). O **ADR 0028 foi extraído e aceito** em `docs/adr/0028-versioned-plan-replanning.md`. A sessão guiada (G) permanece proposta e bloqueada pelas decisões de produto/plataforma indicadas em §10.4; o ADR 0027 ainda não foi extraído.
 **Escopo:** Feature 1 (sessão guiada com áudio determinístico) e Feature 3 (replanejamento adaptativo/versionado da semana).
 **Fora do escopo desta peça:** Feature 2 (captura automática de atividades via Health Connect `ExerciseSession`) — adiada para outro momento por decisão do usuário 0.
 
-**Propósito:** este arquivo reúne os dois ADRs propostos, o plano técnico, o resultado da auditoria e as decisões aprovadas para R-01. A seção §10.6 registra o handoff que originou R-01 (já implementado); decisões de G continuam abertas.
+**Propósito:** este arquivo reúne o plano técnico, o resultado da auditoria e as decisões do ciclo 2. O ADR 0028 foi extraído e aceito; o ADR 0027 (sessão guiada) continua proposto neste documento até a aprovação de A3/A4/A7. A seção §10.6 registra o handoff que originou R-01 (já implementado); decisões de G continuam abertas.
 
 ---
 
@@ -22,7 +22,7 @@
 
 | | Feature 1 — Sessão guiada | Feature 3 — Replanejamento da semana |
 |---|---|---|
-| **ADR** | 0027 (proposto) | 0028 (proposto) |
+| **ADR** | 0027 (proposto) | [0028](adr/0028-versioned-plan-replanning.md) (aceito em 08/11/2026) |
 | **PRD** | FR-002 (P1, “execução guiada persistente”), BL-009 | ADR 0023 §3.6 (replanejamento previsto); FR-011/BL-020 são relacionados, mas o replanejamento não entrega a revisão semanal de FR-011 |
 | **Problema** | “Iniciar” é um `AlertDialog` com cronômetro em memória; `GUIDED` é rejeitado no código | O plano é gerado uma vez e fica obsoleto quando a semana real desvia (viagem, doença, treinos perdidos) |
 | **Núcleo da decisão** | Execução persistida + motor de cues determinístico + TTS nativo; evidência `GUIDED` passa a ser produzida | Regeneração conservadora do futuro da semana, versionada e sugerida ao usuário (nunca silenciosa) |
@@ -207,7 +207,7 @@ Persistir antes de falar é a ordem correta: o estado gravado é o que sobrevive
 
 ## 4. ADR 0028 — Replanejamento versionado e sugerido da semana
 
-**Status:** **proposto (auditoria técnica concluída; aguarda decisões/aprovação)**
+**Status:** **aceito e implementado (R-01/R-02/R-03); extraído para [`docs/adr/0028-versioned-plan-replanning.md`](adr/0028-versioned-plan-replanning.md)**
 **Data:** 2026-11-08
 **Responsável:** planejamento com Rafael (usuário 0)
 **Relação:** executa o que o ADR 0023 previu (“se houver replanejamento, o plano ganha `version`, `revisionReason` e `revisedAt`”). É relacionado/precursor de FR-011, mas não implementa os critérios de revisão semanal do PRD.
@@ -562,8 +562,8 @@ data class ReplanInput(
 
 | Documento | Quando | O quê |
 |---|---|---|
-| `docs/DECISIONS.md` | Após aprovação dos ADRs | Registrar 0027/0028 como “Aceito — implementação pendente”; atualizar para “Implementado” somente após os gates de código |
-| `docs/adr/` | Após aprovação | Extrair §3/§4 para `0027-guided-session-audio.md` e `0028-versioned-plan-replanning.md` |
+| `docs/DECISIONS.md` | Após aprovação dos ADRs | **0028 registrado como “Aceito — implementado”** (08/11/2026); 0027 continua proposto até a aprovação de A3/A4/A7 e a extração |
+| `docs/adr/` | Após aprovação | **`0028-versioned-plan-replanning.md` extraído** (08/11/2026); `0027-guided-session-audio.md` segue pendente de aprovação |
 | `docs/SPORTS_SCIENCE.md` | G-01/R-01 | §8.12 sessão guiada (cues temporais = entrega da prescrição; RPE coletado, sRPE fora do escopo) e §8.8 (replanejamento conservador) |
 | `docs/DATA_MODEL.md` | R-02/G-02 | `guided_sessions`, `weekly_plan_revisions`, colunas novas, persistido × derivado |
 | `docs/ARCHITECTURE.md` | G-03/R-03 | Componentes novos (serviço, replanner) no fluxo |

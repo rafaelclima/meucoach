@@ -1,9 +1,10 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.3 · **Data:** 08/11/2026
+**Versão:** 1.4 · **Data:** 08/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
-> Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03). Os ADRs 0027/0028 continuam propostos; nenhuma decisão histórica foi reescrita.
+> Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
+> Revisão 1.4 (08/11/2026): ADR 0028 extraído para `docs/adr/` e marcado como aceito/implementado. O ADR 0027 (sessão guiada) continua proposto. Nenhuma decisão histórica foi reescrita.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -34,6 +35,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0024](adr/0024-completion-evidence.md) | Conclusão com evidência (`ACTIVITY`/`GUIDED`/`MANUAL`) e estados próprios | Aceito — implementado em C1-04; `GUIDED` no ciclo 3 | 06/11/2026 |
 | [0025](adr/0025-deletion-retention-reset.md) | Lixeira de 7 dias, reset imediato e época de dados | Aceito — implementado em C1-05 | 06/11/2026 |
 | [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Aceito parcialmente — gate implementado em C1-02; limiares de iniciante a validar | 06/11/2026 |
+| [0028](adr/0028-versioned-plan-replanning.md) | Replanejamento versionado e sugerido da semana | Aceito — implementado em R-01/R-02/R-03 | 08/11/2026 |
 
 ## Decisões menores (registro rápido)
 
@@ -49,7 +51,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Health Connect:** sync incremental no resume se a última leitura tem mais de 6 h; worker diário como fallback; o botão manual continua sendo override (ADR-0021).
 - **Tempo:** dia e semana derivam do fuso do perfil, com `TimeProvider`/`Clock` injetável e virada observável (ADR-0022).
 - **Plano × prescrição:** o plano é intenção; a prescrição diária persistida é a única autoridade do dia; adaptações são versionadas e auditáveis (ADR-0023).
-- **Replanejamento:** regenera só o futuro da semana com o mesmo gerador, nunca aplica sozinho e versiona o aceite no Room; a recusa é por proposta (semana/versão/hashes) e a supressão vale até o fim do dia (ADR 0028 proposto, R-01..R-03).
+- **Replanejamento:** regenera só o futuro da semana com o mesmo gerador, nunca aplica sozinho e versiona o aceite no Room; a recusa é por proposta (semana/versão/hashes) e a supressão vale até o fim do dia (ADR 0028, implementado em R-01..R-03).
 - **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).
 - **Exclusão:** lixeira de 7 dias para atividade; “apagar tudo” imediato, sem recibo, com época de dados que invalida workers em voo; Health Connect não é apagado (ADR-0025).
 - **Carga/qualidade:** ACWR desconhecido, cobertura insuficiente ou fonte desatualizada bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR-0026, implementado em C1-02).

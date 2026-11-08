@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.6 · **Data:** 08/11/2026 · **Reconciliação:** R-03 do ciclo 2 (replanejamento no app/UI e diff da revisão)
+**Versão:** 1.7 · **Data:** 08/11/2026 · **Reconciliação:** ADR 0028 extraído e aceito (replanejamento versionado e sugerido da semana)
 
 ## 1. Restrições e forças
 
@@ -183,7 +183,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - **Conclusão:** `CompleteSession` valida data, estado e prescrição; `DONE` exige `completionEvidence` (`ACTIVITY`, `GUIDED` ou `MANUAL`). `SessionExecution` guarda a execução; índices únicos garantem 1:1 entre atividade e sessão. Descanso/doença encerram a sessão como `CLOSED` com motivo. `LEGACY_UNVERIFIED` preserva o histórico antigo sem promovê-lo a verdade (`ADR 0024`).
 - **Datas locais:** atividades persistem instante UTC + `zoneId` + `localDate`; a data local de planejamento vem do fuso do perfil. Treino que cruza meia-noite pertence ao dia de início.
 
-### 6.4 Replanejamento da semana
+### 6.4 Replanejamento da semana (ADR 0028)
 
 - **Fluxo:** `ReplanContextBuilder` lê o `StoredWeeklyPlan` (versão/hashes), perfil, prontidão, carga, semana anterior, bloco e check-ins de doença; captura o baseline de disponibilidade quando desconhecido. `EvaluateReplan` delega ao `PlanReplanner` puro e devolve `Suggestion` (candidato + diff), `NoChange` ou `Unavailable`.
 - **Proteções:** só sessões `date > today` e `PLANNED` entram no diff/substituição. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` são copiadas; a prescrição do dia não é recalculada pelo aceite.
@@ -304,8 +304,9 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0024](adr/0024-completion-evidence.md) — conclusão com evidência e estados próprios
 - [ADR-0025](adr/0025-deletion-retention-reset.md) — lixeira de 7 dias, reset imediato e época de dados
 - [ADR-0026](adr/0026-load-coverage-quality-eligibility.md) — cobertura de carga, ACWR desconhecido e elegibilidade de qualidade
+- [ADR-0028](adr/0028-versioned-plan-replanning.md) — replanejamento versionado e sugerido da semana
 
-> Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada.
+> Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
 
 ## 15. Perguntas abertas
 

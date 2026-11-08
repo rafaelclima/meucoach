@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.7 · **Data:** 08/11/2026 · **Mudança:** R-01, R-02 e R-03 do ciclo 2 implementados; sessão guiada permanece pendente.
+**Versão:** 1.8 · **Data:** 08/11/2026 · **Mudança:** R-01, R-02 e R-03 do ciclo 2 implementados; ADR 0028 extraído e aceito; sessão guiada permanece pendente.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -370,7 +370,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### Ciclo 2 — proposta auditada; R-01, R-02 e R-03 implementados (08/11/2026)
 
-**Plano:** [`docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md`](PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md) v0.6. A auditoria técnica foi incorporada; decisões do replanejamento foram registradas. R-01 foi implementado em `core:domain`, R-02 em `core:data` (schema v13) e R-03 no app/UI; ADRs 0027/0028 ainda não foram extraídos/aprovados e a sessão guiada (G) não foi iniciada.
+**Plano:** [`docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md`](PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md) v0.7. A auditoria técnica foi incorporada; decisões do replanejamento foram registradas. R-01 foi implementado em `core:domain`, R-02 em `core:data` (schema v13) e R-03 no app/UI. O [ADR 0028](adr/0028-versioned-plan-replanning.md) foi extraído e aceito; o ADR 0027 segue proposto e a sessão guiada (G) não foi iniciada.
 
 | Etapa proposta | Escopo | Gate antes de implementar | Estado |
 |---|---|---|---|

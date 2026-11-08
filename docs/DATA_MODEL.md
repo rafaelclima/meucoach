@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.4 · **Data:** 08/11/2026 · Reconcilia schema v13 (revisões versionadas do plano, ADR 0028) mantendo a distinção entre persistido e derivado.
+**Versão:** 1.5 · **Data:** 08/11/2026 · Reconcilia schema v13 (revisões versionadas do plano, [ADR 0028](adr/0028-versioned-plan-replanning.md)) mantendo a distinção entre persistido e derivado.
 
 ## 1. Convenções
 
@@ -202,7 +202,7 @@ Regras do `ADR 0024`:
 
 ### 3.8.1 `WeeklyPlanRevision`
 
-Tabela **append-only** (`weekly_plan_revisions`) que audita cada revisão aceita do plano da semana (ADR 0028):
+Tabela **append-only** (`weekly_plan_revisions`) que audita cada revisão aceita do plano da semana ([ADR 0028](adr/0028-versioned-plan-replanning.md)):
 
 | Campo | Tipo | Notas |
 |---|---|---|

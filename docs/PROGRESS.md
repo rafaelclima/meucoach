@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 08/11/2026 (R-01, R-02 e R-03 implementados; sessão guiada pendente)
+**Atualizado:** 08/11/2026 (R-01, R-02 e R-03 implementados; ADR 0028 aceito; sessão guiada pendente)
 
 ## Estado geral
 
@@ -63,6 +63,37 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-08 — ADR 0028 extraído e aceito
+
+**Objetivo:** formalizar a decisão do replanejamento versionado depois de R-01/R-02/R-03, sem alterar código ou comportamento.
+
+### Concluído
+
+- **Novo ADR:** `docs/adr/0028-versioned-plan-replanning.md` com contexto, problema, decisão (geração do futuro, proteção de hoje/passado/`DONE`/`CLOSED`, versionamento, gatilhos T1/T2/T3, sugestão, aceite transacional, `PLAN_REPLACED`), alternativas, justificativa, consequências, riscos, impactos, dependências, PRD e notas de implementação.
+- **Decisões registradas:** A1/A2/A5/A6 aplicadas; `inputsHash` é auditoria da versão vigente, não guarda de obsolescência; recusa por proposta (`semana + versão + hash`) e supressão até o fim do dia; prescrição de hoje intacta.
+- **`DECISIONS.md` 1.4:** ADR 0028 na tabela como “Aceito — implementado em R-01/R-02/R-03”; ADR 0027 continua proposto.
+- **`ARCHITECTURE.md` 1.7:** ADR 0028 na lista e §6.4 linkado; reconciliação atualizada.
+- **`ROADMAP.md` 1.8 e plano do ciclo 2 v0.7:** status e referências atualizados; 0028 extraído, 0027 pendente.
+- **Copy:** par `Agora não` × `Não sugerir hoje` registrado como decisão do usuário 0.
+
+### Evidências
+
+- Nenhuma alteração de código, schema, dependência ou teste; apenas documentação.
+- `./gradlew spotlessCheck` — verde.
+- Nenhum dado real no diff.
+
+### Decisões e observações
+
+- **ADR 0028 aceito, não reescrito:** o conteúdo do §4 do plano foi consolidado no arquivo definitivo; o plano permanece como registro histórico e aponta para o ADR.
+- **ADR 0027 segue proposto:** A3/A4/A7 continuam bloqueando G-03 e a extração do ADR da sessão guiada.
+- **Sem mudança de comportamento:** a extração não altera `PlanReplanner`, schema, UI ou prescrição.
+
+### Próximo passo
+
+1. Fechar A3/A4/A7 com o usuário 0.
+2. Iniciar G-01 (`GuidedCueEngine` puro) e G-02 (persistência) quando as decisões de G estiverem claras.
+3. Manter FR-011, N-03, N-05 e P1-12 no backlog.
 
 ## Sessão 2026-11-08 — R-03: replanejamento no app/UI
 
