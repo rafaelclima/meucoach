@@ -22,6 +22,7 @@ import com.meucoach.core.model.Sport
 import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Before
@@ -98,6 +99,15 @@ class UserDataRepositoryTest {
         assertThat(plan.getString("weekStart")).isEqualTo(monday.toString())
         assertThat(plan.getJSONArray("ruleIds").getString(0)).isEqualTo("R-PLAN-03")
         assertThat(plan.getJSONArray("sessions").length()).isEqualTo(2)
+        assertThat(plan.getInt("version")).isEqualTo(1)
+        assertThat(plan.isNull("inputsHash")).isTrue()
+        assertThat(plan.isNull("availabilityHash")).isTrue()
+        val revision = export.getJSONArray("weeklyPlanRevisions").getJSONObject(0)
+        assertThat(revision.getInt("fromVersion")).isEqualTo(1)
+        assertThat(revision.getInt("toVersion")).isEqualTo(2)
+        assertThat(revision.getString("trigger")).isEqualTo("USER_REQUEST")
+        assertThat(revision.getJSONObject("previousPlan").getInt("version")).isEqualTo(1)
+        assertThat(revision.getJSONArray("replacedSessions").length()).isEqualTo(2)
         val activity = export.getJSONArray("activities").getJSONObject(0)
         assertThat(activity.getDouble("distanceM")).isEqualTo(5_000.0)
         assertThat(activity.getInt("sampleCount")).isEqualTo(0)
@@ -140,6 +150,7 @@ class UserDataRepositoryTest {
         assertThat(deletion.plans).isEqualTo(1)
         assertThat(deletion.prescriptions).isEqualTo(1)
         assertThat(deletion.executions).isEqualTo(1)
+        assertThat(deletion.planRevisions).isEqualTo(1)
         assertThat(deletion.profileDeleted).isTrue()
         assertThat(deletion.removedAnything).isTrue()
         assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
@@ -149,6 +160,7 @@ class UserDataRepositoryTest {
         assertThat(database.dailyMetricsDao().getAll()).isEmpty()
         assertThat(database.trainingPlanDao().getAllPlans()).isEmpty()
         assertThat(database.trainingPlanDao().getAllSessions()).isEmpty()
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
         assertThat(database.sessionExecutionDao().getAll()).isEmpty()
         assertThat(database.dailyPrescriptionDao().getAll()).isEmpty()
     }
@@ -195,6 +207,7 @@ class UserDataRepositoryTest {
             ),
         )
         plans.saveWeek(plan())
+        database.weeklyPlanRevisionDao().insert(planRevision())
         prescriptions.append(prescription())
         val saved = activities.saveImportedActivity(activity()) as SaveActivityResult.Saved
         database.importJobDao().insert(com.meucoach.core.data.db.testJob(saved.id))
@@ -206,6 +219,26 @@ class UserDataRepositoryTest {
             distanceM = 5_000.0,
         )
     }
+
+    private fun planRevision() = com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity(
+        id = "2026-11-02-v2",
+        weekStart = monday.toString(),
+        fromVersion = 1,
+        toVersion = 2,
+        fromInputsHash = null,
+        toInputsHash = "inputs-2",
+        fromAvailabilityHash = null,
+        toAvailabilityHash = "availability-2",
+        generatorVersion = "weekly-plan-v1",
+        previousPlanJson = JSONObject().put("version", 1).toString(),
+        replacedSessionsJson = JSONArray().put(JSONObject()).put(JSONObject()).toString(),
+        trigger = "USER_REQUEST",
+        reason = "Revisão pedida por você.",
+        ruleIdsJson = "[\"R-PLAN-03\"]",
+        evidenceIdsJson = "[\"EV-PFITZINGER-2008\"]",
+        confidence = DataConfidence.MEDIUM,
+        createdAt = clock.millis(),
+    )
 
     private fun profile() = AthleteProfile(
         id = "athlete-1",

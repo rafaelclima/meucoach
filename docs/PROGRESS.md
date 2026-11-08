@@ -1,22 +1,22 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 08/11/2026 (R-01 implementado em `core:domain`; R-02/R-03 e sessão guiada pendentes)
+**Atualizado:** 08/11/2026 (R-01, R-02 e R-03 implementados; sessão guiada pendente)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
-- **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 1054 testes no total (521 em `:app`, 127 em `core:data`, 379 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,76% de linhas (3.668/3.752), 81,91% de branches (2.690/3.284), 96,09% de instruções (25.941/26.996)
+- **Build:** verde (`./gradlew check :app:assembleDebug`)
+- **Testes:** 1091 testes no total (548 em `:app`, 137 em `core:data`, 379 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,79% de linhas (3.668/3.751), 81,91% de branches (2.690/3.284), 96,10% de instruções (25.941/26.995)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v12 (prescrição diária, execução/evidência de sessão e vínculo com atividade), migrações 1→2 até 11→12 testadas.
+- **Persistência:** Room 2.8.5, schema v13 (prescrição diária, execução/evidência de sessão, vínculo com atividade e revisões versionadas do plano), migrações 1→2 até 12→13 testadas.
 - **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador.
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
-- **Replanejamento (R-01):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; nada é aplicado sem aceite (R-02/R-03 pendentes).
+- **Replanejamento (R-01/R-02/R-03):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; R-02 persiste o aceite de forma versionada e transacional em `weekly_plans` + `weekly_plan_revisions`. R-03 expõe `EvaluateReplan`/`ApplyReplan` no app, sugere por dia com aceitar/recusar/suprimir, reavalia se versão/hash mudarem, mostra selo de versão e diff “o que mudou” e mantém a prescrição de hoje e as sessões protegidas intactas.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -63,6 +63,84 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-08 — R-03: replanejamento no app/UI
+
+**Objetivo:** implementar R-03 do ciclo 2: casos de uso `EvaluateReplan`/`ApplyReplan` sem repetir a regra do `PlanReplanner`, sugestão por dia com aceitar/recusar/suprimir, reavaliação quando versão/hash mudam, selo de versão, diff “o que mudou”, botão explícito e copy sem culpa — sem tocar na prescrição de hoje nem em sessões passadas/hoje ou futuras `DONE`/`CLOSED`.
+
+### Concluído
+
+- **Contexto compartilhado:** `ReplanContextBuilder` lê o plano versionado, perfil, prontidão, carga, semana anterior, posição no bloco e datas de doença do check-in; captura o baseline de disponibilidade quando ele é desconhecido, sem inferir mudança histórica. `readinessResult`/`buildLoadSnapshot` saíram da UI para `:app/application`, para o caso de uso não depender de Compose.
+- **`EvaluateReplan`:** monta o `ReplanInput` e delega ao `PlanReplanner`; devolve `Suggestion` com o candidato mesclado e o diff, `NoChange` com o motivo ou `Unavailable` quando não há semana. Avaliação automática usa os gatilhos T1/T2; o pedido explícito usa T3.
+- **`ApplyReplan`:** relê o estado, exige a `expectedVersion`, recalcula o `inputsHash` e chama `applyReplan` transacional com esse hash. Versão, data ou inputs diferentes devolvem `Stale` com uma avaliação nova; conflito protegido/candidato inválido devolve `Rejected`. Nenhum candidato obsoleto é aplicado.
+- **Diff de apresentação:** `ReplanDiff` compara somente sessões estritamente futuras `PLANNED` (adicionada, removida ou alterada por tipo/título/duração/alvos/regras/evidências). É apresentação, não regra de treino.
+- **Sugestão por dia:** `ReplanSuggestionStore` guarda em SharedPreferences a recusa daquela proposta (semana + versão + hash dos inputs) e a supressão até o fim do dia. Recusar não impede uma proposta de versão/inputs diferentes; suprimir esconde só as automáticas, e o botão explícito continua funcionando. O reset limpa a preferência.
+- **`ReplanViewModel`:** avalia no resume do Hoje, oferece aceitar/recusar/suprimir, reavalia no aceite obsoleto e recarrega versão e último diff. Mensagens passivas explicam sucesso, obsolescência, `NoChange` e falha sem culpa.
+- **UI do Hoje:** o card do plano ganhou selo `v{n}`, “Ver o que mudou” (quando existe revisão) e “Replanejar minha semana” (quando há futuro). A sugestão aparece como card com versão `v1 → v2`, o que muda, confiança e ações; “Ver o que mudou” abre um sheet com a revisão aceita. A prescrição de hoje não é recalculada pelo aceite.
+- **Leitura da revisão:** `TrainingPlanRepository.getLatestRevision` + `PlanJson.sessionsFromJson` reconstroem as sessões substituídas do snapshot para o diff persistido, sem novo schema.
+- **Testes:** +27 em `:app` — 7 de `EvaluateReplan`, 4 de `ApplyReplan` (preservação de hoje/passado/`DONE`, prescrição intacta, versão obsoleta, inputs alterados e semana removida), 6 de `ReplanViewModel` (sugestão, supressão, recusa, aceite, stale e ausência de semana), 3 de `ReplanSuggestionStore`, 3 de UI do Hoje, 2 de screenshot do card de replanejamento e 2 capturas novas do card do plano no Hoje (`today-plan-dark`, `today-plan-light`), além de `replan-dark`/`replan-light`. `TrainingPlanRepositoryTest` ganhou asserções do snapshot reconstruído. Nenhum assert foi reduzido.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde após gravar os 4 goldens novos; os goldens existentes do Hoje não mudaram (o card do plano fica abaixo da dobra na captura principal).
+- **1091 testes**, 0 falhas e 0 `@Ignore` (548 `:app`, 137 `core:data`, 379 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,79% de linhas (3.668/3.751), 81,91% de branches (2.690/3.284), 96,10% de instruções (25.941/26.995); sem alteração de domínio nesta entrega.
+- Parser FIT: 93,01% de branches (572/615).
+- Nenhuma migração, dependência nova ou dado real no diff.
+
+### Decisões e observações
+
+- **Sem regra nova:** o app só coleta estado e apresenta; `PlanReplanner` e os guardrails existentes continuam sendo a única autoridade.
+- **Obsolescência em duas camadas:** a `expectedVersion` é checada antes da transação e o `currentInputsHash` é recalculado no aceite; o repositório repete a checagem dentro do `withTransaction`. Quando algo muda, a UI recebe uma sugestão nova em vez de aplicar a antiga.
+- **`inputsHash` continua auditoria:** não é comparado com a versão vigente; o aceite usa versão + inputs recalculados + baseline de disponibilidade, como registrado no R-02.
+- **Prescrição de hoje intacta:** a revisão só toca `date > today`; o teste chama `GetTodayPrescription` antes/depois e confirma o mesmo `id` e uma única versão persistida quando a confiança do plano não muda.
+- **Proteção preservada de ponta a ponta:** a UI nunca mostra sessões protegidas no diff, o `PlanReplanner` as copia e o repositório aborta se o conteúdo protegido mudar.
+- **Copy revisada:** “Dá para ajustar o resto da semana”, “Agora não” e “Não sugerir hoje” evitam culpa e prometem somente o futuro. O par `Agora não` × `Não sugerir hoje` foi fechado com o usuário 0 para distinguir “esta proposta” de “o resto do dia” sem o verbo ambíguo “mostrar”; o texto está em `docs/COMMUNICATION.md` §6.7.
+- **Flakiness observada:** `HealthMetricsScreenshotTest.healthRecoveryChartsDark` saiu com o gráfico em branco numa execução completa de `verifyRoborazziDebug` sob carga e passou isolado; é a mesma família de flakiness visual já tratada com frames/pausa, não tem relação com R-03 e nenhum assert foi alterado. `MetricsImportViewModelTest`/`TutorialSystemBackTest` seguem como item separado de estabilização sob concorrência com lint.
+
+### Próximo passo
+
+1. Copy de recusa revisada com o usuário 0: `Agora não` (esta proposta) × `Não sugerir hoje` (sugestões automáticas até amanhã). Validar em aparelho real a leitura dessa diferença.
+2. Validar em aparelho real o fluxo completo (sugestão automática, aceite, versão e diff) com dados locais privados.
+3. Manter A3/A4/A7 pendentes; G-03 continua bloqueado. Considerar um item separado para estabilizar a suíte `:app`/goldens sob concorrência com lint.
+
+## Sessão 2026-11-08 — R-02: persistência versionada do replanejamento (`core:data`)
+
+**Objetivo:** implementar R-02 do ciclo 2: migração `12→13`, snapshot append-only das revisões, aceite condicional e transacional do candidato do `PlanReplanner`, captura explícita do baseline de disponibilidade e inclusão no export/reset.
+
+### Concluído
+
+- **Schema 13:** `weekly_plans` ganhou `version` (default 1), `revisionReason`, `revisedAt`, `inputsHash` e `availabilityHash`; nova tabela append-only `weekly_plan_revisions` com FK `CASCADE` para a semana, versões/hashes anterior e novo, versão do gerador, snapshots JSON do plano e das sessões futuras substituídas, trigger, motivo, regras/evidências, confiança e `createdAt`. Migração `12→13` preserva planos/sessões campo a campo e deixa hashes legados `NULL` (desconhecidos), sem inventar histórico.
+- **Aceite transacional (`TrainingPlanRepository.applyReplan`):** valida `expectedVersion`, o baseline de disponibilidade e, quando fornecido, o `currentInputsHash` recalculado; insere o snapshot, apaga apenas sessões futuras `PLANNED`, insere candidatas com conflito `ABORT` (nunca `REPLACE`), recalcula os agregados a partir do candidato, incrementa `version` e mantém `createdOn`. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` são preservadas; qualquer conflito aborta e reverte a transação.
+- **Baseline de disponibilidade:** `captureAvailabilityBaseline` grava o hash apenas quando ele é desconhecido (planos migrados ou primeira versão), sem sobrescrever um baseline conhecido e sem criar revisão falsa.
+- **Leitura versionada:** `StoredWeeklyPlan` + `getWeekRecord` expõem plano, versão, motivo/data da revisão e hashes para o R-03 consumir sem recalcular nada.
+- **Export/reset:** o JSON ganhou `weeklyPlanRevisions` e os novos campos do plano; o reset apaga as revisões antes dos planos e reporta `planRevisions` em `UserDataDeletion`.
+- **Serialização compartilhada:** `PlanJson` unifica o formato do export e dos snapshots de revisão (plano, sessões e revisão), evitando duas representações divergentes.
+- **Versão do gerador:** `WeeklyPlanGenerator.ENGINE_VERSION = "weekly-plan-v1"` registrada em cada revisão.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde (nenhum golden de UI mudou).
+- **1064 testes**, 0 falhas e 0 `@Ignore` (521 `:app`, 137 `core:data`, 379 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,79% de linhas (3.668/3.751), 81,91% de branches (2.690/3.284), 96,10% de instruções (25.941/26.995).
+- `core:data`: +10 testes — migração `12→13` (campos novos, hashes nulos, FK/cascade) e 9 casos de `applyReplan`/baseline (aceite, versão obsoleta, inputs recalculados, disponibilidade obsoleta, nova revisão após mudança de inputs, `DONE`/`CLOSED` protegidos, rollback integral, recálculo de agregados e captura de baseline). As asserções de export/reset foram estendidas nos testes existentes de `UserDataRepository`.
+- Schema `13.json` exportado em `core/data/schemas/`; nenhum dado real no diff.
+
+### Decisões e observações
+
+- **`inputsHash` é auditoria, não guarda de obsolescência:** ele registra os inputs que produziram a versão vigente (o `expectedInputsHash` aceito). Comparar esse valor com uma sugestão nova rejeitaria revisões legítimas sempre que a prontidão/carga mudasse; por isso o aceite usa `expectedVersion` + baseline de disponibilidade + `currentInputsHash` recalculado (opcional, para o R-03). A decisão está registrada no plano do ciclo 2 (§5.4).
+- **Validação dentro da transação:** a checagem de versão/hash e a escrita acontecem no mesmo `withTransaction`; um caso de uso que lesse antes poderia aceitar um candidato obsoleto numa corrida.
+- **R-02 não toca em UI nem em regra de treino:** o `ApplyReplan` app-facing (reavaliar e chamar a transação) e a sugestão por dia ficam no R-03, junto com o selo de versão/diff.
+- **`saveWeek` preserva metadados de revisão** ao re-salvar a mesma semana, para não zerar versão/hashes silenciosamente; o caminho de revisão continua sendo `applyReplan`.
+- **Flakiness de `:app`** observada em execuções concorrentes com lint (`MetricsImportViewModelTest`/`TutorialSystemBackTest`) não se reproduziu nesta execução única de `check`; permanece como item separado de estabilização, sem relação com o diff de R-02.
+
+### Próximo passo
+
+1. R-03: `EvaluateReplan`/`ApplyReplan` app-facing, sugestão por dia com aceitar/recusar e invalidação se versão/hash mudar, selo de versão + diff, goldens e copy revisada.
+2. Manter A3/A4/A7 pendentes; G-03 continua bloqueado.
+3. Considerar um item separado para estabilizar a suíte `:app` sob concorrência com lint.
 
 ## Sessão 2026-11-08 — R-01: replanejamento puro da semana (`core:domain`)
 

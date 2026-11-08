@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.5 · **Data:** 08/11/2026 · **Mudança:** R-01 do ciclo 2 implementado em `core:domain`; R-02/R-03 e sessão guiada permanecem pendentes.
+**Versão:** 1.7 · **Data:** 08/11/2026 · **Mudança:** R-01, R-02 e R-03 do ciclo 2 implementados; sessão guiada permanece pendente.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -368,16 +368,16 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - Validação dos limiares do ADR 0026 (8 dias/28, frescor de 14 dias, critérios de iniciante) com dados reais.
 - Na conclusão do ciclo 1, `GUIDED` persistente, N-03 e N-05 ficaram para ciclos posteriores; `GUIDED` foi depois proposto para o ciclo 2 (ainda não aprovado). N-03 e N-05 permanecem pendências separadas.
 
-### Ciclo 2 — proposta auditada; R-01 implementado (08/11/2026)
+### Ciclo 2 — proposta auditada; R-01, R-02 e R-03 implementados (08/11/2026)
 
-**Plano:** [`docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md`](PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md) v0.4. A auditoria técnica foi incorporada; decisões do replanejamento foram registradas. R-01 foi implementado em `core:domain`; ADRs 0027/0028 ainda não foram extraídos/aprovados e R-02/R-03/G não foram iniciados.
+**Plano:** [`docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md`](PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md) v0.6. A auditoria técnica foi incorporada; decisões do replanejamento foram registradas. R-01 foi implementado em `core:domain`, R-02 em `core:data` (schema v13) e R-03 no app/UI; ADRs 0027/0028 ainda não foram extraídos/aprovados e a sessão guiada (G) não foi iniciada.
 
 | Etapa proposta | Escopo | Gate antes de implementar | Estado |
 |---|---|---|---|
-| **R — Replanejamento** | R-01: `PlanReplanner` puro; preservar sessões feitas e validar a semana mesclada | Testes primeiro em `core:domain`; R-02/R-03 dependem dos gates do plano | **R-01 concluído em 08/11/2026** (28 testes, `check` verde); R-02/R-03 pendentes |
+| **R — Replanejamento** | R-01: `PlanReplanner` puro; preservar sessões feitas e validar a semana mesclada. R-02: migração `12→13`, snapshots versionados e `applyReplan` transacional. R-03: casos de uso, sugestão por dia, invalidação por versão/hash, selo e diff | Testes primeiro em `core:domain`; R-03 depende dos gates do plano | **R-01 concluído em 08/11/2026** (28 testes); **R-02 concluído em 08/11/2026** (migração/revisões/export-reset); **R-03 concluído em 08/11/2026** (Evaluate/ApplyReplan, sugestão/recusa/supressão, versão e diff, goldens) |
 | **G — Sessão guiada** | Player persistente, cues temporais, TTS opcional e evidência `GUIDED`; RPE sem carga sRPE nesta etapa | Fechar tipo de FGS/distribuição e comportamento diante de doença durante execução; validar em aparelho | Proposto |
 
-FR-011 (revisão semanal com métricas e observações) continua pendente; replanejamento é relacionado, mas não o satisfaz. N-03 e N-05 permanecem pendências separadas. A sequência proposta é R antes de G; as migrações `12→13→14` não devem ser trabalhadas em paralelo sem plano de integração. A3/A4/A7 continuam bloqueando G-03.
+FR-011 (revisão semanal com métricas e observações) continua pendente; replanejamento é relacionado, mas não o satisfaz. N-03 e N-05 permanecem pendências separadas. R foi concluído antes de G; a migração `13→14` da sessão guiada continua isolada. A3/A4/A7 continuam bloqueando G-03.
 
 **Regras adotadas no ciclo 1:**
 

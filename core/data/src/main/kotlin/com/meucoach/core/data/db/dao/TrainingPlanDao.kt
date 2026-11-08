@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import androidx.room.Upsert
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
@@ -45,8 +46,25 @@ interface TrainingPlanDao {
     @Upsert
     suspend fun upsertPlan(plan: WeeklyPlanEntity)
 
+    @Update
+    suspend fun updatePlan(plan: WeeklyPlanEntity): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSessions(sessions: List<PlannedSessionEntity>)
+
+    /**
+     * Revision insert: a deterministic ID colliding with a protected row must
+     * abort the whole transaction instead of replacing it (ADR 0028).
+     */
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertRevisionSessions(sessions: List<PlannedSessionEntity>)
+
+    /** Only the strictly future `PLANNED` rows may be replaced by a revision. */
+    @Query(
+        "DELETE FROM planned_sessions WHERE weekStart = :weekStart " +
+            "AND date > :afterDate AND status = 'PLANNED'",
+    )
+    suspend fun deletePlannedSessionsAfter(weekStart: String, afterDate: String): Int
 
     @Query(
         "UPDATE planned_sessions SET type = :type, title = :title, durationMin = :durationMin, " +

@@ -1,7 +1,7 @@
 # PLANO_CICLO_2 — Sessão guiada (ADR 0027) e replanejamento da semana (ADR 0028)
 
-**Versão:** 0.4 · **Data:** 08/11/2026
-**Status:** **R-01 implementado em `core:domain` em 08/11/2026** (28 testes; evidências em `docs/PROGRESS.md`). R-02/R-03 ainda não iniciados. A sessão guiada (G) permanece proposta e bloqueada pelas decisões de produto/plataforma indicadas em §10.4.
+**Versão:** 0.6 · **Data:** 08/11/2026
+**Status:** **R-01 implementado em `core:domain`, R-02 em `core:data` e R-03 no app/UI em 08/11/2026** (evidências em `docs/PROGRESS.md`). A sessão guiada (G) permanece proposta e bloqueada pelas decisões de produto/plataforma indicadas em §10.4.
 **Escopo:** Feature 1 (sessão guiada com áudio determinístico) e Feature 3 (replanejamento adaptativo/versionado da semana).
 **Fora do escopo desta peça:** Feature 2 (captura automática de atividades via Health Connect `ExerciseSession`) — adiada para outro momento por decisão do usuário 0.
 
@@ -489,7 +489,13 @@ data class ReplanInput(
 | **R-02** | Persistência | Migração 12→13; snapshot versionado com hashes/metadados; `ApplyReplan` condicional e transacional (verificar versão → snapshot → alterar só futuras `PLANNED` → inserir sem `REPLACE` → recalcular agregados → `version++`); export/reset | Migração campo a campo, hashes legados desconhecidos, conflito protegido e rollback integral; export/reset incluem as tabelas novas | M |
 | **R-03** | App/UI | `EvaluateReplan`/`ApplyReplan`; sugestão por dia com invalidação/reavaliação se versão/hash mudar; selo de versão + diff; botão explícito; prescrição de hoje intacta; goldens e docs | `check` + `verifyRoborazzi`; sugestão recusada/suprimida, stale, aceite, `NoChange`, cópia sem culpa revisada com usuário 0 | M |
 
-**R-01 concluído em 08/11/2026:** contratos e `PlanReplanner` em `core:domain/replan`, com `PlanReplannerTest` (28 testes). R-02/R-03 permanecem pendentes.
+**R-01 concluído em 08/11/2026:** contratos e `PlanReplanner` em `core:domain/replan`, com `PlanReplannerTest` (28 testes).
+
+**R-02 concluído em 08/11/2026:** schema `13` com `weekly_plans.version/revisionReason/revisedAt/inputsHash/availabilityHash`, tabela append-only `weekly_plan_revisions` (FK `CASCADE`), `applyReplan` transacional no `TrainingPlanRepository` e export/reset das tabelas novas.
+
+**R-03 concluído em 08/11/2026:** `EvaluateReplan`/`ApplyReplan` no `:app/application` (sem repetir a regra do `PlanReplanner`), `ReplanContextBuilder`, `ReplanDiff`, `ReplanViewModel` e card do Hoje com aceitar/recusar/suprimir, selo de versão e “o que mudou”. A recusa é por proposta (semana/versão/hashes) e a supressão vale até o fim do dia; o botão explícito ignora ambas. O aceite recalcula os inputs e invalida candidato obsoleto. `getLatestRevision` reconstrói o snapshot para o diff sem novo schema.
+
+**Ajuste de mapeamento Room registrado (R-02):** `weekly_plans.inputsHash` passa a guardar o hash dos inputs que produziram a **versão vigente** (o `expectedInputsHash` da sugestão aceita). Ele é auditável e nunca é comparado à sugestão para decidir obsolescência, porque uma sugestão nova é gerada justamente quando os inputs mudaram; a checagem de obsolescência usa `expectedVersion`, o baseline de disponibilidade e, opcionalmente, `currentInputsHash` recalculado no aceite (`applyReplan(..., currentInputsHash)`). A validação condicional vive dentro da mesma transação, para não haver janela entre leitura e escrita.
 
 #### Etapa G — Sessão guiada (Feature 1)
 
@@ -666,4 +672,4 @@ data class ReplanInput(
 
 **Próximo passo:** abrir nova sessão com este documento e pedir ao modelo para executar a tarefa autorizada acima. Nenhum teste ou código de R-01 foi produzido nesta sessão.
 
-**Atualização (08/11/2026):** R-01 foi implementado na sessão seguinte, dentro deste escopo, com 28 testes em `PlanReplannerTest` e `./gradlew check` verde; evidências em `docs/PROGRESS.md`. R-02/R-03 seguem pendentes; A3/A4/A7 continuam bloqueando G-03.
+**Atualização (08/11/2026):** R-01 foi implementado na sessão seguinte, dentro deste escopo, com 28 testes em `PlanReplannerTest` e `./gradlew check` verde. R-02 foi implementado com migração `12→13`, revisão append-only, `applyReplan` transacional e export/reset. R-03 foi concluído no app/UI com sugestão por dia, recusa/supressão, invalidação por versão/hash, selo e diff, prescrição de hoje intacta e goldens. Evidências em `docs/PROGRESS.md`. A3/A4/A7 continuam bloqueando G-03.

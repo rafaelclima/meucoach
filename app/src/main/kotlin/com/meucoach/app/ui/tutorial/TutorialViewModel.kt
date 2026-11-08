@@ -2,6 +2,8 @@ package com.meucoach.app.ui.tutorial
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.application.buildLoadSnapshot
+import com.meucoach.app.application.readinessResult
 import com.meucoach.app.firstrun.FirstActionType
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.time.TimeProvider
@@ -11,8 +13,6 @@ import com.meucoach.app.ui.profile.availabilityLabel
 import com.meucoach.app.ui.profile.goalLabel
 import com.meucoach.app.ui.today.TodayUiState
 import com.meucoach.app.ui.today.WorkoutUi
-import com.meucoach.app.ui.today.buildLoadSnapshot
-import com.meucoach.app.ui.today.readinessResult
 import com.meucoach.app.ui.today.todayState
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource

@@ -9,7 +9,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 | Item | Estado |
 |---|---|
 | Planejamento de produto, ciência, dados e design | Concluído em 27/10/2026 |
-| Fundação técnica | `check` verde, 1026 testes, parsers FIT/TCX/GPX/CSV, dedup, Room v12 (perfil/check-in/métricas/planos/prescrições/execuções), Health Connect, prescrição única do dia, plano semanal com taper/progressão/deload, Hoje com evidência de conclusão e resumo do treino feito, histórico de prontidão e check-ins, tendências, importação real com oferta reativa de vínculo e correção de registro manual, detalhe com zonas, onboarding, calibração, carga/PMC, explicabilidade, story de treino, backup/lixeira/reset com época, goldens e screenshots (08/11/2026) |
+| Fundação técnica | `check` verde, 1091 testes, parsers FIT/TCX/GPX/CSV, dedup, Room v13 (perfil/check-in/métricas/planos/revisões versionadas/prescrições/execuções), Health Connect, prescrição única do dia, plano semanal com taper/progressão/deload, replanejamento versionado e sugerido do futuro da semana com aceitar/recusar/suprimir, selo e diff (R-01/R-02/R-03), Hoje com evidência de conclusão e resumo do treino feito, histórico de prontidão e check-ins, tendências, importação real com oferta reativa de vínculo e correção de registro manual, detalhe com zonas, onboarding, calibração, carga/PMC, explicabilidade, story de treino, backup/lixeira/reset com época, goldens e screenshots (08/11/2026) |
 | Fase atual | **Fase 1 — Coach** (em andamento; ciclo 1 concluído) |
 | App | Android nativo — Kotlin + Jetpack Compose + Material 3 |
 | Backend | Fase 2 — Kotlin/Ktor + PostgreSQL + Dokploy |
@@ -60,7 +60,7 @@ No Android Studio: abra a raiz do repositório e rode a configuração `app`.
 ├── core/
 │   ├── model/               # tipos puros (distância, pace, FC, atividade, execução)
 │   ├── domain/              # motores: zonas, carga, prontidão, prescrição, parsers
-│   ├── data/                # Room v12, repositórios, import, Health Connect, época
+│   ├── data/                # Room v13, repositórios, import, Health Connect, época
 │   └── designsystem/        # tokens, tema, componentes, gráficos
 ├── docs/                    # produto, arquitetura, ciência, design, testes, roadmap
 ├── design/tokens/           # tokens DTCG

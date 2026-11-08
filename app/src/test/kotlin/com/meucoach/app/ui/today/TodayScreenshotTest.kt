@@ -1,11 +1,18 @@
 package com.meucoach.app.ui.today
 
 import android.content.Context
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.application.ReplanChangeKind
 import com.meucoach.app.firstrun.FirstRunTipStore
+import com.meucoach.app.ui.replan.ReplanChangeUi
+import com.meucoach.app.ui.replan.ReplanUiState
+import com.meucoach.app.ui.replan.ReplanVersionChangeUi
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlannedSession
@@ -76,6 +83,26 @@ class TodayScreenshotTest {
         )
     }
 
+    @Test
+    fun todayPlanDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-plan-dark.png",
+            replan = revisedPlan(),
+            scrollTo = "PLANO DA SEMANA",
+        )
+    }
+
+    @Test
+    fun todayPlanLight() {
+        capture(
+            darkTheme = false,
+            file = "src/test/screenshots/today-plan-light.png",
+            replan = revisedPlan(),
+            scrollTo = "PLANO DA SEMANA",
+        )
+    }
+
     private fun capture(
         darkTheme: Boolean,
         file: String,
@@ -83,6 +110,8 @@ class TodayScreenshotTest {
             isLoading = false,
             dismissed = true,
         ),
+        replan: ReplanUiState = ReplanUiState(),
+        scrollTo: String? = null,
     ) {
         val today = LocalDate.of(2026, 10, 30)
         compose.setContent {
@@ -102,12 +131,34 @@ class TodayScreenshotTest {
                         weeklyLoadKm = 11.31,
                     ),
                     checklistState = checklistState,
+                    replan = replan,
                 )
             }
+        }
+        if (scrollTo != null) {
+            compose.onNodeWithTag("today-list").performScrollToNode(hasText(scrollTo))
         }
 
         compose.onRoot().captureRoboImage(file)
     }
+
+    private fun revisedPlan() = ReplanUiState(
+        planVersion = 2,
+        lastChange = ReplanVersionChangeUi(
+            fromVersion = 1,
+            toVersion = 2,
+            reason = "Revisão pedida por você.",
+            changes = listOf(
+                ReplanChangeUi(
+                    date = LocalDate.of(2026, 10, 31),
+                    kind = ReplanChangeKind.MODIFIED,
+                    kindLabel = "Muda",
+                    previousLabel = "Tempo · 30 min",
+                    nextLabel = "Fácil e conversável · 30 min",
+                ),
+            ),
+        ),
+    )
 
     private fun loadSnapshot() = LoadSnapshot(
         daily = emptyList(),

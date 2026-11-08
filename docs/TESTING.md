@@ -91,10 +91,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (08/11/2026):
 
-- 1026 testes no repositório, 0 falhas e 0 `@Ignore` (27 em `core:model`, 351 em `core:domain`, 127 em `core:data`, 521 em `:app`).
+- 1091 testes no repositório, 0 falhas e 0 `@Ignore` (27 em `core:model`, 379 em `core:domain`, 137 em `core:data`, 548 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,69% de linhas, 82,09% de branches, 96,04% de instruções.
+- `core:domain`: 97,79% de linhas, 81,91% de branches, 96,10% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -103,7 +103,7 @@ Evidência atual (08/11/2026):
 ## 5.1 Testes de persistência
 
 - `MeuCoachDatabaseTest` (Robolectric): CRUD do agregado, lista observável, soft delete, cascata de laps/samples, `SET NULL` em import jobs e unicidade de `sourceFileSha256`.
-- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 11→12, incluindo backfill de `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`.
+- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 12→13, incluindo backfill de `DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED` e hashes legados desconhecidos na 12→13.
 - `SampleBlobCodecTest`: round-trip de todas as colunas e developer fields, compressão, timestamps reconstruídos, gzip inválido, truncamento, versão desconhecida, contagem absurda, bytes extras e ordem dos samples.
 - `ActivityRepositoryTest`: salvar/listar/abrir, dedup por SHA-256, blob corrompido e encoding desconhecido com `sampleWarning`, soft delete, exclusão permanente e export JSON.
 - `UuidV7Test`: versão 7, variante RFC e determinismo com clock/random fixos.
@@ -157,7 +157,12 @@ Evidência atual (08/11/2026):
 - `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
-- `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino e plano.
+- `TodayReplanTest`: selo de versão, botão explícito, diff “o que mudou” e aceitar/recusar/suprimir na tela Hoje.
+- `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.
+- `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale e ausência de semana.
+- `ReplanSuggestionStoreTest`: recusa por semana/versão/hash, supressão por dia, clear e reset.
+- `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino e plano (inclui o card do plano com versão).
+- `ReplanScreenshotTest`: golden dark/light do card de sugestão de replanejamento.
 - `TrainingPlanRepositoryTest`: round-trip da semana, substituição de sessões, status/motivo, exclusão e semana vazia.
 - `MeuCoachDatabaseMigrationTest`: 7→8 adiciona status da sessão sem perder o plano.
 - `ReadinessHistoryCalculatorTest`: replay por data, doença, confiança e lacunas.
@@ -189,7 +194,7 @@ Evidência atual (08/11/2026):
 - `DailyPrescriptionEngineTest`, `DailyPrescriptionRepositoryTest` e `GetTodayPrescriptionTest`: `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, N-01/N-02, calor, sem calibração, versão e hash.
 - `SessionMatcherTest`, `SessionCompletionRulesTest`, `SessionExecutionRepositoryTest` e `CompleteSessionTest`: vínculo 1:1, manual válido/inválido, futuro, ontem, descanso/doença e legado.
 - `TrashPolicyTest`, `DataEpochStoreTest`, `DataResetCoordinatorTest`, `HealthSyncServiceTest` e `ImportServiceTest`: lixeira de 7 dias, expurgo por clock, reset sem ressurreição e época.
-- `MeuCoachDatabaseMigrationTest`: 10→11 e 11→12 com banco antigo, backfill e preservação de status.
+- `MeuCoachDatabaseMigrationTest`: 10→11, 11→12 e 12→13 com banco antigo, backfill e preservação de status/planos.
 - `Cycle1RegressionTest`: gates de disponibilidade, espaçamento, prontidão vermelha, ACWR desconhecido, cobertura insuficiente, plano no meio da semana, `DONE` sem evidência e progressão bloqueada por legado.
 
 ## 6. Testes de domínio
@@ -292,7 +297,7 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (46 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (50 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -304,7 +309,8 @@ Screenshots atuais (46 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 | Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-routine-dark` |
 | Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light` |
 | Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
-| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark` |
+| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light` |
+| Replanejamento | `replan-dark`, `replan-light` |
 | Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
 | Tutorial | `tutorial-dark`, `tutorial-light`, `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light` |
 

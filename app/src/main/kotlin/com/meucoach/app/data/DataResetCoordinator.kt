@@ -13,6 +13,7 @@ import com.meucoach.app.importer.ImportedRunPromptStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.reminder.ReminderWorker
+import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryIntroStore
@@ -59,6 +60,7 @@ class DataResetCoordinator @Inject constructor(
     private val staging: ImportStaging,
     private val photos: ProfilePhotoStore,
     private val importedRunPrompts: ImportedRunPromptStore,
+    private val replanSuggestions: ReplanSuggestionStore,
     private val tutorial: TutorialStore,
     private val firstRunMetrics: FirstRunMetricsStore,
     private val firstRunTips: FirstRunTipStore,
@@ -81,6 +83,7 @@ class DataResetCoordinator @Inject constructor(
             cleanup("avatar") { if (!photos.clear()) error("diretório não removido") }
                 ?.let(failures::add)
             cleanup("oferta de corrida importada") { importedRunPrompts.reset() }?.let(failures::add)
+            cleanup("sugestão de replanejamento") { replanSuggestions.reset() }?.let(failures::add)
             cleanup("cache de story") {
                 val directory = File(context.cacheDir, "stories")
                 if (directory.exists() && !directory.deleteRecursively()) error("cache não removido")

@@ -18,6 +18,7 @@ import com.meucoach.app.importer.ImportWorker
 import com.meucoach.app.importer.ImportedRunPromptStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
+import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryIntroStore
 import com.meucoach.app.story.StoryNotifier
@@ -87,6 +88,7 @@ class DataResetCoordinatorTest {
     private lateinit var storyFailures: StoryExportFailureStore
     private lateinit var storyIntro: StoryIntroStore
     private lateinit var importedRunPrompts: ImportedRunPromptStore
+    private lateinit var replanSuggestions: ReplanSuggestionStore
     private lateinit var healthSync: HealthSyncCoordinator
     private lateinit var coordinator: DataResetCoordinator
     private val clock = Clock.fixed(Instant.parse("2026-11-06T12:00:00Z"), ZoneOffset.UTC)
@@ -122,6 +124,7 @@ class DataResetCoordinatorTest {
         storyFailures = StoryExportFailureStore(context)
         storyIntro = StoryIntroStore(context)
         importedRunPrompts = ImportedRunPromptStore(context, "reset-import-prompts-${System.nanoTime()}")
+        replanSuggestions = ReplanSuggestionStore(context, "reset-replan-${System.nanoTime()}")
         userData = UserDataRepository(database, healthStore, clock)
         val source = FakeSource()
         healthSync = HealthSyncCoordinator(
@@ -147,6 +150,7 @@ class DataResetCoordinatorTest {
             staging = ImportStaging(context),
             photos = ProfilePhotoStore(context),
             importedRunPrompts = importedRunPrompts,
+            replanSuggestions = replanSuggestions,
             tutorial = tutorial,
             firstRunMetrics = firstRunMetrics,
             firstRunTips = firstRunTips,
@@ -186,6 +190,7 @@ class DataResetCoordinatorTest {
         assertThat(tutorial.isIntroDone()).isFalse()
         assertThat(firstRunTips.isShown("first-import")).isFalse()
         assertThat(importedRunPrompts.pending.value).isEmpty()
+        assertThat(replanSuggestions.isSuppressed(LocalDate.of(2026, 11, 6))).isFalse()
         assertThat(storyIntro.seen()).isFalse()
         assertThat(storyFailures.messageFor("activity-1")).isNull()
         assertThat(healthStore.lastSyncedDate()).isNull()
@@ -258,6 +263,7 @@ class DataResetCoordinatorTest {
         firstRunMetrics.markTutorialStarted()
         firstRunTips.markShown("first-import")
         importedRunPrompts.add("activity-1")
+        replanSuggestions.suppress(LocalDate.of(2026, 11, 6))
         storyFailures.save("activity-1", "erro")
         storyIntro.markSeen()
         healthStore.markSynced(Instant.parse("2026-11-06T10:00:00Z"), LocalDate.of(2026, 11, 6))
@@ -268,6 +274,7 @@ class DataResetCoordinatorTest {
         tutorial.reset()
         firstRunMetrics.reset()
         firstRunTips.reset()
+        replanSuggestions.reset()
         storyFailures.clearAll()
         storyIntro.reset()
         healthStore.reset()

@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 06/11/2026 · Reconcilia schema v12, `daily_prescriptions` e a distinção entre persistido e derivado (C1-06).
+**Versão:** 1.4 · **Data:** 08/11/2026 · Reconcilia schema v13 (revisões versionadas do plano, ADR 0028) mantendo a distinção entre persistido e derivado.
 
 ## 1. Convenções
 
@@ -185,11 +185,11 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 | `missing` | `Set<ReadinessComponent>` |
 | `flags` | `Set<ReadinessFlag>` (`ILLNESS_OR_INJURY`, `SHORT_SLEEP`, `RESTING_HEART_RATE_ELEVATED`, `NO_QUALITY`, `INSUFFICIENT_DATA`) |
 
-`ReadinessResult` é calculado em memória a partir de `daily_check_ins` + `daily_metrics` e do histórico de carga. O histórico de 14 dias é reconstruído por data (`ReadinessHistoryCalculator`); não existe entidade `Readiness`, `Recommendation` nem `RecommendationRule` no Room. A decisão auditável do dia fica em `daily_prescriptions` (§3.8.2).
+`ReadinessResult` é calculado em memória a partir de `daily_check_ins` + `daily_metrics` e do histórico de carga. O histórico de 14 dias é reconstruído por data (`ReadinessHistoryCalculator`); não existe entidade `Readiness`, `Recommendation` nem `RecommendationRule` no Room. A decisão auditável do dia fica em `daily_prescriptions` (§3.8.3).
 
 ### 3.8 `WeeklyPlan` / `PlannedSession`
 
-`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`. Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil.
+`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`, `version` (começa em 1), `revisionReason`, `revisedAt`, `inputsHash` e `availabilityHash`. Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil. `inputsHash`/`availabilityHash` nulos significam hash histórico desconhecido (planos migrados de v12), nunca hash inventado.
 
 `PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale` e IDs de regra/evidência.
 
@@ -200,7 +200,29 @@ Regras do `ADR 0024`:
 - Uma atividade e uma sessão são 1:1: índices únicos em `planned_sessions.activityId` e `session_executions.activityId`/`plannedSessionId`.
 - Atividade na lixeira suspende a evidência (`LEGACY_UNVERIFIED`); restaurar devolve `ACTIVITY`; expurgar remove o vínculo e mantém o histórico não verificado.
 
-### 3.8.1 `SessionExecution`
+### 3.8.1 `WeeklyPlanRevision`
+
+Tabela **append-only** (`weekly_plan_revisions`) que audita cada revisão aceita do plano da semana (ADR 0028):
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | String | PK determinística `weekStart-v{toVersion}` |
+| `weekStart` | String | FK → `weekly_plans.weekStart` com `CASCADE` |
+| `fromVersion` / `toVersion` | Int | versões anterior e resultante |
+| `fromInputsHash` / `toInputsHash` | String? / String | hashes de inputs antes e depois |
+| `fromAvailabilityHash` / `toAvailabilityHash` | String? / String | baseline de disponibilidade antes e depois |
+| `generatorVersion` | String | versão das regras do `WeeklyPlanGenerator` |
+| `previousPlanJson` | JSON | metadados da versão substituída (sem sessões) |
+| `replacedSessionsJson` | JSON | snapshot das sessões futuras `PLANNED` removidas |
+| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST` |
+| `reason` | String | rationale da revisão |
+| `ruleIdsJson` / `evidenceIdsJson` | JSON | regras/evidências emitidas pelo gerador |
+| `confidence` | enum | confiança da revisão |
+| `createdAt` | Long | epoch ms |
+
+O aceite é transacional: valida `expectedVersion`/baseline, insere o snapshot, apaga somente sessões futuras `PLANNED`, insere as candidatas sem `REPLACE` e incrementa a versão. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` nunca são tocadas; qualquer conflito aborta a transação inteira.
+
+### 3.8.2 `SessionExecution`
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -219,7 +241,7 @@ Regras do `ADR 0024`:
 volume, carga, zonas, distância ou pace. `GUIDED` tem contrato definido, mas
 nenhuma execução nova é produzida até a sessão guiada persistente do ciclo 3.
 
-### 3.8.2 `DailyPrescription`
+### 3.8.3 `DailyPrescription`
 
 | Campo | Tipo | Notas |
 |---|---|---|
@@ -245,7 +267,7 @@ acrescenta uma versão com `supersedesId` (`ADR 0023`).
 ### 3.9 `SessionFeedback` — **planejado, não implementado**
 
 `activityId`, `rpe` (1–10), `feeling` (1–5), `notes`, `createdAt`. Não existe
-tabela no schema v12; o RPE coletado hoje é o de `SessionExecution` (`MANUAL`) e
+tabela no schema v13; o RPE coletado hoje é o de `SessionExecution` (`MANUAL`) e
 o RPE pós-treino por atividade segue no roadmap (FR-013). sRPE não é usado como
 fonte de carga neste ciclo.
 
@@ -295,10 +317,11 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v12**; migrações 1→2 até 11→12 testadas em Robolectric.
+- Estado atual: banco **v13**; migrações 1→2 até 12→13 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
+- `12→13` adiciona `version` (default 1), `revisionReason`, `revisedAt`, `inputsHash` e `availabilityHash` a `weekly_plans` e cria `weekly_plan_revisions` com FK `CASCADE`. Planos e sessões existentes são preservados campo a campo; hashes legados ficam `NULL` (desconhecidos) e o baseline de disponibilidade é capturado só depois, de forma explícita.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.
@@ -321,6 +344,6 @@ O usuário pode exportar hoje:
 
 Planejado (não implementado): arquivos originais FIT/TCX/GPX, CSV de métricas diárias e ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
 
-Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões (com evidência e encerramento), prescrições diárias, execuções, atividades, laps, contagem de samples, jobs de importação e o objeto local `firstRun`. A lixeira fica fora por padrão e só entra com `includeTrash = true`; execuções ligadas a atividades na lixeira também ficam fora. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
+Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões (com evidência, encerramento e versão), revisões append-only do plano, prescrições diárias, execuções, atividades, laps, contagem de samples, jobs de importação e o objeto local `firstRun`. A lixeira fica fora por padrão e só entra com `includeTrash = true`; execuções ligadas a atividades na lixeira também ficam fora. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
 
 Excluir tudo remove banco, arquivos, blobs, staging, cache, avatar e preferências de dados; a época de dados é o único metadado preservado, sem recibo de exclusão (`ADR 0025`).

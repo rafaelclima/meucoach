@@ -16,6 +16,8 @@ import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.ReplaceManualCompletionRequest
 import com.meucoach.app.application.ReplaceManualCompletionResult
 import com.meucoach.app.application.TodayPrescriptionRequest
+import com.meucoach.app.application.buildLoadSnapshot
+import com.meucoach.app.application.readinessResult
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
 import com.meucoach.app.ui.activities.formatDateTime
@@ -31,9 +33,7 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
-import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
-import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
@@ -496,48 +496,6 @@ class TodayViewModel @Inject constructor(
     }
 }
 
-internal fun buildLoadSnapshot(
-    activities: List<ActivitySummary>,
-    profile: AthleteProfile,
-    today: LocalDate,
-    sourceStatus: ActivitySourceStatus,
-): LoadSnapshot {
-    val zone = runCatching { java.time.ZoneId.of(profile.timezone) }.getOrNull()
-        ?: java.time.ZoneId.systemDefault()
-    return TrainingLoadEngine().calculate(
-        activities = activities.map { summary ->
-            LoadActivity(
-                date = summary.startTime.atZone(zone).toLocalDate(),
-                durationSec = summary.durationSec,
-                averageHeartRate = summary.averageHeartRate,
-                averagePace = summary.averagePace,
-                startTime = summary.startTime,
-            )
-        },
-        profile = profile,
-        today = today,
-        sourceStatus = sourceStatus,
-    )
-}
-
-internal fun readinessResult(
-    checkIn: DailyCheckIn?,
-    metrics: List<DailyMetrics>,
-    today: LocalDate,
-): com.meucoach.core.domain.readiness.ReadinessResult {
-    val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
-    val signals = inputs.signals.copy(
-        illnessOrInjury = inputs.signals.illnessOrInjury || checkIn?.illnessOrInjury == true,
-    )
-    return ReadinessCalculator.calculate(
-        checkIn = checkIn?.toSubjectiveCheckIn(),
-        sleep = inputs.sleep,
-        hrv = inputs.hrv,
-        restingHeartRate = inputs.restingHeartRate,
-        signals = signals,
-    )
-}
-
 @Composable
 fun TodayRoute(
     onDemoAction: (String) -> Unit,
@@ -550,11 +508,14 @@ fun TodayRoute(
     modifier: Modifier = Modifier,
     viewModel: TodayViewModel = hiltViewModel(),
     checklistViewModel: FirstRunChecklistViewModel = hiltViewModel(),
+    replanViewModel: com.meucoach.app.ui.replan.ReplanViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val checklistState by checklistViewModel.uiState.collectAsStateWithLifecycle()
+    val replanState by replanViewModel.uiState.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) {
         checklistViewModel.refreshHealth()
+        replanViewModel.refresh()
         onPauseOrDispose { }
     }
     TodayScreen(
@@ -575,6 +536,12 @@ fun TodayRoute(
         onSkipSession = viewModel::skipSession,
         onSwapSession = { first, second -> viewModel.swapSession(first, second, state.today) },
         onConsumeCompletionMessage = viewModel::consumeCompletionMessage,
+        replan = replanState,
+        onReplanRequest = replanViewModel::replanNow,
+        onReplanAccept = replanViewModel::accept,
+        onReplanDecline = replanViewModel::decline,
+        onReplanSuppress = replanViewModel::suppress,
+        onReplanConsumeMessage = replanViewModel::consumeMessage,
     )
 }
 

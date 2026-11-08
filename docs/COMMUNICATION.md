@@ -164,3 +164,26 @@ O usuário 0 não sabia o que era o Health Connect e não entendia que a seção
 6. **Backup separado:** exportar/apagar ganha card próprio (“Seus dados, sob seu controle”), porque não é a mesma intenção de importar métricas.
 
 Termos padronizados: `variabilidade cardíaca (HRV)` e `oxigenação (SpO₂)` por extenso na primeira menção; “FC de repouso” em vez de RHR.
+
+### 6.7 Replanejamento da semana (08/11/2026)
+
+A revisão é um convite, não uma correção do usuário. O texto informa o que muda no futuro e promete explicitamente que hoje e o passado ficam intactos; não usa “falhou”, “perdeu” ou “atrasado”.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Card do plano | `Replanejar minha semana` | Ação explícita (T3), sempre disponível quando há dias futuros. |
+| Card do plano | `Ver o que mudou` | Diff persistido da última revisão aceita. |
+| Selo | `v1`, `v2`… | Versão vigente, sem prometer que a revisão é melhor. |
+| Título (T1) | `Dá para ajustar o resto da semana` | Convite, não cobrança. |
+| Corpo (T1) | `2 treinos desta semana não aconteceram. Posso reorganizar só os próximos dias, sem repor carga e sem mexer no que já passou.` | Fato + limite conservador + proteção do passado. |
+| Título (T2) | `Sua disponibilidade mudou` | Mudança de rotina não é falha. |
+| Título (T3) | `Reorganizar o resto da semana?` | Devolve a intenção ao usuário. |
+| Nota fixa | `O treino de hoje não muda. Sessões já feitas também ficam intactas.` | Preserva a autoridade do dia e a evidência já registrada. |
+| Ação primária | `Ajustar a semana` | Só o futuro muda. |
+| Ação secundária | `Agora não` | Recusa só esta proposta; uma nova versão/inputs pode reaparecer. |
+| Ação terciária | `Não sugerir hoje` | Silencia sugestões automáticas até amanhã; o botão explícito continua. |
+| Sucesso | `Semana ajustada. O que já passou e o treino de hoje não mudaram.` | Confirma o limite aplicado. |
+| Obsolescência | `Os dados mudaram enquanto você decidia. Atualizei a sugestão; confira o que mudou.` | Explica por que o plano mostrado não foi aplicado. |
+| `NoChange` | `O resto da semana já está como deveria; nada a sugerir.` | Evita revisão cosmética. |
+
+O par `Agora não` × `Não sugerir hoje` foi escolhido com o usuário 0: mantém a distinção temporal (esta proposta × o resto do dia) e evita “mostrar”, que poderia ser lido como esconder o plano. O diff usa rótulos `Novo`, `Sai` e `Muda`, com dia, título e duração. IDs de regra/evidência continuam fora da UI comum e ficam no snapshot auditável.

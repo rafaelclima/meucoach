@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.today
 
+import com.meucoach.app.application.readinessResult
 import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.model.DailyCheckIn

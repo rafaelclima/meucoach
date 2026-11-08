@@ -56,6 +56,10 @@ import androidx.compose.ui.unit.dp
 import com.meucoach.app.ui.common.ProfileAvatar
 import com.meucoach.app.ui.common.readinessLabel
 import com.meucoach.app.ui.firstrun.FirstRunTipCard
+import com.meucoach.app.ui.replan.ReplanChangesSheet
+import com.meucoach.app.ui.replan.ReplanMessageCard
+import com.meucoach.app.ui.replan.ReplanSuggestionCard
+import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McConfidenceBadge
@@ -100,12 +104,19 @@ fun TodayScreen(
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
     onConsumeCompletionMessage: () -> Unit = {},
+    replan: ReplanUiState = ReplanUiState(),
+    onReplanRequest: () -> Unit = {},
+    onReplanAccept: () -> Unit = {},
+    onReplanDecline: () -> Unit = {},
+    onReplanSuppress: () -> Unit = {},
+    onReplanConsumeMessage: () -> Unit = {},
 ) {
     val today = state.today
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
     var completionOpen by remember { mutableStateOf(false) }
     var correctionOpen by remember { mutableStateOf(false) }
+    var changesOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
     val planExplanation = remember(state.plan) { state.plan?.let(::buildPlanExplanation) }
     val openExplanation: (ExplanationSource) -> Unit = { source ->
@@ -186,9 +197,31 @@ fun TodayScreen(
                     plan = plan,
                     today = today,
                     prescription = state.prescription,
+                    replan = replan,
                     onSkip = onSkipSession,
                     onExplain = { openExplanation(ExplanationSource.PLAN) },
+                    onReplan = onReplanRequest,
+                    onShowChanges = { changesOpen = true },
                 )
+            }
+            if (replan.suggestion != null) {
+                item {
+                    ReplanSuggestionCard(
+                        state = replan,
+                        onAccept = onReplanAccept,
+                        onDecline = onReplanDecline,
+                        onSuppress = onReplanSuppress,
+                    )
+                }
+            } else {
+                replan.message?.let { message ->
+                    item {
+                        ReplanMessageCard(
+                            message = message,
+                            onDismiss = onReplanConsumeMessage,
+                        )
+                    }
+                }
             }
         }
         item {
@@ -272,6 +305,11 @@ fun TodayScreen(
                 explanation = it,
                 onDismiss = { explanationSource = null },
             )
+        }
+    }
+    if (changesOpen) {
+        replan.lastChange?.let { change ->
+            ReplanChangesSheet(change = change, onDismiss = { changesOpen = false })
         }
     }
 }
@@ -940,8 +978,11 @@ private fun PlanWeekCard(
     plan: com.meucoach.core.domain.prescription.WeeklyPlan,
     today: LocalDate,
     prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
+    replan: ReplanUiState,
     onSkip: (LocalDate, String) -> Unit,
     onExplain: () -> Unit,
+    onReplan: () -> Unit,
+    onShowChanges: () -> Unit,
 ) {
     val colors = McTheme.colors
     var skipTarget by remember { mutableStateOf<LocalDate?>(null) }
@@ -958,13 +999,24 @@ private fun PlanWeekCard(
                 style = McTextStyles.overline,
                 color = colors.textTertiary,
             )
-            if (prescription?.differsFromPlan == true) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 McPill(
-                    text = "Ajustado hoje",
-                    containerColor = colors.warning.copy(alpha = 0.12f),
-                    contentColor = colors.warning,
-                    modifier = Modifier.testTag("plan-adjusted"),
+                    text = "v${replan.planVersion}",
+                    containerColor = colors.surfaceInset,
+                    contentColor = colors.textSecondary,
+                    modifier = Modifier.testTag("plan-version"),
                 )
+                if (prescription?.differsFromPlan == true) {
+                    McPill(
+                        text = "Ajustado hoje",
+                        containerColor = colors.warning.copy(alpha = 0.12f),
+                        contentColor = colors.warning,
+                        modifier = Modifier.testTag("plan-adjusted"),
+                    )
+                }
             }
         }
         if (plan.confidence == DataConfidence.LOW) {
@@ -1096,6 +1148,23 @@ private fun PlanWeekCard(
             trailingArrow = false,
             modifier = Modifier.testTag("plan-explanation-link"),
         )
+        if (replan.lastChange != null) {
+            McTextButton(
+                text = "Ver o que mudou",
+                onClick = onShowChanges,
+                trailingArrow = false,
+                modifier = Modifier.testTag("plan-changes"),
+            )
+        }
+        if (plan.sessions.any { it.date.isAfter(today) }) {
+            McTextButton(
+                text = "Replanejar minha semana",
+                onClick = onReplan,
+                trailingArrow = false,
+                enabled = !replan.isLoading,
+                modifier = Modifier.testTag("plan-replan"),
+            )
+        }
     }
 
     skipTarget?.let { date ->

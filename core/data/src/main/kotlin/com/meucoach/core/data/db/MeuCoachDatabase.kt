@@ -17,6 +17,7 @@ import com.meucoach.core.data.db.dao.LapDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
 import com.meucoach.core.data.db.dao.SessionExecutionDao
 import com.meucoach.core.data.db.dao.TrainingPlanDao
+import com.meucoach.core.data.db.dao.WeeklyPlanRevisionDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
@@ -29,6 +30,7 @@ import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.db.entity.SessionExecutionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
+import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
 
 @Database(
     entities = [
@@ -44,6 +46,7 @@ import com.meucoach.core.data.db.entity.WeeklyPlanEntity
         PlannedSessionEntity::class,
         DailyPrescriptionEntity::class,
         SessionExecutionEntity::class,
+        WeeklyPlanRevisionEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -71,8 +74,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun sessionExecutionDao(): SessionExecutionDao
 
+    abstract fun weeklyPlanRevisionDao(): WeeklyPlanRevisionDao
+
     companion object {
-        const val VERSION = 12
+        const val VERSION = 13
         const val NAME = "meucoach.db"
 
         /**
@@ -391,6 +396,52 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 13 adds versioned plan revisions (ADR 0028). Legacy plans keep
+         * `version = 1` and unknown hashes; migration never invents a historical
+         * inputs or availability hash. The availability baseline is captured
+         * explicitly after the migration, when the current profile is known.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `version` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `revisionReason` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `revisedAt` INTEGER")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `inputsHash` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `availabilityHash` TEXT")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `weekly_plan_revisions` (
+                        `id` TEXT NOT NULL,
+                        `weekStart` TEXT NOT NULL,
+                        `fromVersion` INTEGER NOT NULL,
+                        `toVersion` INTEGER NOT NULL,
+                        `fromInputsHash` TEXT,
+                        `toInputsHash` TEXT NOT NULL,
+                        `fromAvailabilityHash` TEXT,
+                        `toAvailabilityHash` TEXT NOT NULL,
+                        `generatorVersion` TEXT NOT NULL,
+                        `previousPlanJson` TEXT NOT NULL,
+                        `replacedSessionsJson` TEXT NOT NULL,
+                        `trigger` TEXT NOT NULL,
+                        `reason` TEXT NOT NULL,
+                        `ruleIdsJson` TEXT NOT NULL,
+                        `evidenceIdsJson` TEXT NOT NULL,
+                        `confidence` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`weekStart`) REFERENCES `weekly_plans`(`weekStart`)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_weekly_plan_revisions_weekStart` " +
+                        "ON `weekly_plan_revisions` (`weekStart`)",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -405,6 +456,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_9_10,
                 MIGRATION_10_11,
                 MIGRATION_11_12,
+                MIGRATION_12_13,
             )
             .build()
     }

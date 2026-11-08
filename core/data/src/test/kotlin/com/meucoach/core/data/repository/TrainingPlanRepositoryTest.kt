@@ -9,17 +9,24 @@ import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.replan.ReplanSuggestion
+import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.DataConfidence
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -27,7 +34,9 @@ class TrainingPlanRepositoryTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: TrainingPlanRepository
     private lateinit var executions: SessionExecutionRepository
+    private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
     private val monday = LocalDate.of(2026, 11, 2)
+    private val today = LocalDate.of(2026, 11, 4)
 
     @Before
     fun setUp() {
@@ -37,8 +46,8 @@ class TrainingPlanRepositoryTest {
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        repository = TrainingPlanRepository(database)
-        executions = SessionExecutionRepository(database)
+        repository = TrainingPlanRepository(database, clock)
+        executions = SessionExecutionRepository(database, clock)
     }
 
     @After
@@ -182,6 +191,312 @@ class TrainingPlanRepositoryTest {
         assertThat(stored?.createdOn).isEqualTo(createdOn)
         assertThat(stored?.sessions?.map { it.targets }).containsOnly(targets)
     }
+
+    @Test
+    fun `applies a revision atomically and keeps an append-only snapshot`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+
+        assertThat(outcome).isInstanceOf(ReplanApplyOutcome.Applied::class.java)
+        assertThat((outcome as ReplanApplyOutcome.Applied).version).isEqualTo(2)
+
+        val stored = repository.getWeekRecord(monday)!!
+        assertThat(stored.version).isEqualTo(2)
+        assertThat(stored.revisionReason).isEqualTo(suggestion().rationale)
+        assertThat(stored.revisedAt).isEqualTo(clock.instant())
+        assertThat(stored.inputsHash).isEqualTo("inputs-2")
+        assertThat(stored.availabilityHash).isEqualTo("availability-2")
+        assertThat(stored.plan.createdOn).isEqualTo(monday)
+        assertThat(stored.plan.weeklyMinutes).isEqualTo(140)
+        assertThat(stored.plan.longRunMinutes).isEqualTo(45)
+
+        val sessions = stored.plan.sessions.associateBy { it.date }
+        assertThat(sessions[monday]?.durationMin).isEqualTo(40)
+        assertThat(sessions[today]?.title).isEqualTo("Qualidade de hoje")
+        assertThat(sessions[monday.plusDays(3)]?.durationMin).isEqualTo(25)
+        assertThat(sessions[monday.plusDays(4)]?.durationMin).isEqualTo(45)
+
+        val latest = repository.getLatestRevision(monday)!!
+        assertThat(latest.fromVersion).isEqualTo(1)
+        assertThat(latest.toVersion).isEqualTo(2)
+        assertThat(latest.replacedSessions.map { it.date })
+            .containsExactly(monday.plusDays(3), monday.plusDays(4))
+        assertThat(latest.replacedSessions.first { it.date == monday.plusDays(3) }.durationMin)
+            .isEqualTo(30)
+        assertThat(latest.replacedSessions.first { it.date == monday.plusDays(3) }.status)
+            .isEqualTo(SessionStatus.PLANNED)
+
+        val revision = database.weeklyPlanRevisionDao().get(monday.toString(), 2)!!
+        assertThat(revision.fromVersion).isEqualTo(1)
+        assertThat(revision.fromInputsHash).isNull()
+        assertThat(revision.toInputsHash).isEqualTo("inputs-2")
+        assertThat(revision.fromAvailabilityHash).isNull()
+        assertThat(revision.toAvailabilityHash).isEqualTo("availability-2")
+        assertThat(
+            revision.generatorVersion,
+        ).isEqualTo(com.meucoach.core.domain.prescription.WeeklyPlanGenerator.ENGINE_VERSION)
+        assertThat(revision.trigger).isEqualTo(ReplanTrigger.USER_REQUEST.name)
+        assertThat(revision.reason).isEqualTo(suggestion().rationale)
+        assertThat(JSONObject(revision.previousPlanJson).getInt("version")).isEqualTo(1)
+        assertThat(JSONArray(revision.replacedSessionsJson).length()).isEqualTo(2)
+    }
+
+    @Test
+    fun `recalculates weekly aggregates from the merged sessions`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        val inflated = candidateWeek().copy(
+            weeklyMinutes = 999,
+            longRunMinutes = 999,
+            qualityCount = 9,
+        )
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = inflated,
+            today = today,
+        )
+
+        assertThat(outcome).isInstanceOf(ReplanApplyOutcome.Applied::class.java)
+        val stored = repository.getWeek(monday)!!
+        assertThat(stored.weeklyMinutes).isEqualTo(140)
+        assertThat(stored.longRunMinutes).isEqualTo(45)
+        assertThat(stored.qualityCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `rejects a stale version without touching the plan`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(expectedVersion = 2),
+            candidate = candidateWeek(),
+            today = today,
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.STALE_VERSION,
+                "O plano mudou desde esta sugestão. Avalie novamente.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+        assertThat(repository.getWeek(monday)).isEqualTo(revisionWeek())
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `rejects inputs recomputed after the suggestion`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "other-inputs",
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.STALE_INPUTS,
+                "Os dados usados na sugestão mudaram. Avalie novamente.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `rejects a stale availability baseline without touching the plan`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        val first = repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+        assertThat(first).isInstanceOf(ReplanApplyOutcome.Applied::class.java)
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(expectedVersion = 2, expectedAvailabilityHash = "old-baseline"),
+            candidate = candidateWeek(),
+            today = today,
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.STALE_AVAILABILITY,
+                "Sua disponibilidade mudou desde esta sugestão. Avalie novamente.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(2)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).hasSize(1)
+    }
+
+    @Test
+    fun `a new revision is not blocked by the previous version input hash`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+
+        val second = repository.applyReplan(
+            suggestion = suggestion(expectedVersion = 2, expectedInputsHash = "inputs-3"),
+            candidate = candidateWeek().copy(rationale = "Revisão com novos dados."),
+            today = today,
+            currentInputsHash = "inputs-3",
+        )
+
+        assertThat(second).isInstanceOf(ReplanApplyOutcome.Applied::class.java)
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(3)
+        assertThat(repository.getWeekRecord(monday)?.inputsHash).isEqualTo("inputs-3")
+        assertThat(database.weeklyPlanRevisionDao().getAll()).hasSize(2)
+    }
+
+    @Test
+    fun `never replaces a future done or closed session`(): Unit = runBlocking {
+        val doneDate = monday.plusDays(3)
+        val closedDate = monday.plusDays(4)
+        repository.saveWeek(revisionWeek())
+        executions.recordManualExecution(
+            com.meucoach.core.data.db.entity.plannedSessionId(monday, doneDate),
+            durationMin = 30,
+            rpe = 5,
+        )
+        executions.closeSession(
+            com.meucoach.core.data.db.entity.plannedSessionId(monday, closedDate),
+            SessionClosureReason.USER_SKIPPED,
+        )
+        val before = repository.getWeek(monday)
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.PROTECTED_CONFLICT,
+                "Uma sessão já concluída ou encerrada seria alterada; nada foi aplicado.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+        assertThat(repository.getWeek(monday)).isEqualTo(before)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `rolls back the whole revision when a candidate insert conflicts`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        val duplicated = candidateWeek().copy(
+            sessions = listOf(
+                session(monday.plusDays(3), WorkoutType.EASY, 25, "Fácil A"),
+                session(monday.plusDays(3), WorkoutType.EASY, 26, "Fácil B"),
+                session(monday.plusDays(4), WorkoutType.LONG, 45, "Longão"),
+            ),
+            weeklyMinutes = 96,
+        )
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = duplicated,
+            today = today,
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.INVALID_CANDIDATE,
+                "A revisão conflitou com o estado atual; nada foi alterado.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+        assertThat(repository.getWeek(monday)).isEqualTo(revisionWeek())
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `captures a legacy availability baseline only while it is unknown`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        assertThat(repository.captureAvailabilityBaseline(monday, "availability-1")).isTrue()
+        assertThat(repository.captureAvailabilityBaseline(monday, "availability-2")).isFalse()
+
+        val stored = repository.getWeekRecord(monday)!!
+        assertThat(stored.version).isEqualTo(1)
+        assertThat(stored.availabilityHash).isEqualTo("availability-1")
+        assertThat(stored.revisionReason).isNull()
+    }
+
+    private fun revisionWeek() = WeeklyPlan(
+        weekStart = monday,
+        sessions = listOf(
+            session(monday, WorkoutType.EASY, 40, "Fácil de segunda"),
+            session(today, WorkoutType.QUALITY, 30, "Qualidade de hoje"),
+            session(monday.plusDays(3), WorkoutType.EASY, 30, "Fácil de sexta"),
+            session(monday.plusDays(4), WorkoutType.LONG, 50, "Longão"),
+        ),
+        weeklyMinutes = 150,
+        longRunMinutes = 50,
+        qualityCount = 1,
+        rationale = "Semana original.",
+        confidence = DataConfidence.MEDIUM,
+        ruleIds = listOf("R-PLAN-03"),
+        evidenceIds = listOf("EV-PFITZINGER-2008"),
+    )
+
+    private fun candidateWeek() = WeeklyPlan(
+        weekStart = monday,
+        sessions = listOf(
+            session(monday, WorkoutType.EASY, 40, "Fácil de segunda"),
+            session(today, WorkoutType.QUALITY, 30, "Qualidade de hoje"),
+            session(monday.plusDays(3), WorkoutType.EASY, 25, "Fácil curto"),
+            session(monday.plusDays(4), WorkoutType.LONG, 45, "Longão"),
+        ),
+        weeklyMinutes = 140,
+        longRunMinutes = 45,
+        qualityCount = 1,
+        rationale = "Semana revisada.",
+        confidence = DataConfidence.MEDIUM,
+        ruleIds = listOf("R-PLAN-03"),
+        evidenceIds = listOf("EV-PFITZINGER-2008"),
+    )
+
+    private fun suggestion(
+        expectedVersion: Int = 1,
+        expectedInputsHash: String = "inputs-2",
+        expectedAvailabilityHash: String? = null,
+    ) = ReplanSuggestion(
+        weekStart = monday,
+        trigger = ReplanTrigger.USER_REQUEST,
+        missedTrainableCount = 0,
+        expectedVersion = expectedVersion,
+        expectedInputsHash = expectedInputsHash,
+        expectedAvailabilityHash = expectedAvailabilityHash,
+        availabilityHash = "availability-2",
+        rationale = "Revisão pedida por você.",
+        ruleIds = listOf("R-PLAN-03"),
+        evidenceIds = listOf("EV-PFITZINGER-2008"),
+        confidence = DataConfidence.MEDIUM,
+    )
+
+    private fun session(date: LocalDate, type: WorkoutType, durationMin: Int, title: String) = PlannedSession(
+        date = date,
+        type = type,
+        title = title,
+        durationMin = durationMin,
+        rationale = "Base.",
+        ruleIds = listOf("R-PLAN-03"),
+        evidenceIds = listOf("EV-PFITZINGER-2008"),
+    )
 
     private fun plan(weekStart: LocalDate = monday) = WeeklyPlan(
         weekStart = weekStart,

@@ -1,5 +1,6 @@
 package com.meucoach.core.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -23,6 +24,16 @@ data class WeeklyPlanEntity(
     val qualityCount: Int,
     val ruleIdsJson: String,
     val evidenceIdsJson: String,
+    /** Monotonic plan version; every accepted revision increments it (ADR 0028). */
+    @ColumnInfo(defaultValue = "1") val version: Int = 1,
+    /** Reason of the last accepted revision; null for the original version. */
+    val revisionReason: String? = null,
+    /** Epoch millis of the last accepted revision; null for the original version. */
+    val revisedAt: Long? = null,
+    /** Hash of the inputs that produced this version; null when unknown (legacy v12). */
+    val inputsHash: String? = null,
+    /** Availability baseline of this version; null when unknown (legacy v12). */
+    val availabilityHash: String? = null,
 )
 
 @Entity(

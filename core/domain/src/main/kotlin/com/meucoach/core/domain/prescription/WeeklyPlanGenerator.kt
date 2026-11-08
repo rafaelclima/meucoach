@@ -465,18 +465,21 @@ class WeeklyPlanGenerator {
         DataConfidence.MEDIUM, DataConfidence.LOW -> DataConfidence.LOW
     }
 
-    private companion object {
-        const val MIN_EASY_MIN = 20
-        const val MAX_EASY_MIN = 60
-        const val MIN_QUALITY_MIN = 25
-        const val MAX_QUALITY_MIN = 45
-        const val MIN_LONG_MIN = 30
-        const val LONG_SHARE_RATIO = 3.0 / 7.0
-        const val PROGRESSION_COMPLETION = 0.80
-        const val ACWR_MIN = 0.8
-        const val ACWR_MAX = 1.3
-        const val DELOAD_EVERY_WEEKS = 4
-        const val DELOAD_FACTOR = 0.75
-        val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
+    companion object {
+        /** Version of the weekly generation rules; persisted with each plan revision. */
+        const val ENGINE_VERSION = "weekly-plan-v1"
+
+        private const val MIN_EASY_MIN = 20
+        private const val MAX_EASY_MIN = 60
+        private const val MIN_QUALITY_MIN = 25
+        private const val MAX_QUALITY_MIN = 45
+        private const val MIN_LONG_MIN = 30
+        private const val LONG_SHARE_RATIO = 3.0 / 7.0
+        private const val PROGRESSION_COMPLETION = 0.80
+        private const val ACWR_MIN = 0.8
+        private const val ACWR_MAX = 1.3
+        private const val DELOAD_EVERY_WEEKS = 4
+        private const val DELOAD_FACTOR = 0.75
+        private val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
     }
 }
