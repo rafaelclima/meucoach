@@ -180,11 +180,15 @@ class HealthMetricsScreenshotTest {
 
     private fun settle() {
         compose.waitForIdle()
-        repeat(4) {
+        repeat(8) {
             compose.mainClock.advanceTimeByFrame()
             compose.waitForIdle()
         }
         compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        // Vico draws on its own dispatcher; under a loaded suite the model can be
+        // ready while the canvas is still blank. Give the real thread a moment.
+        Thread.sleep(300)
         compose.waitForIdle()
     }
 

@@ -112,6 +112,7 @@
 - [x] Fila persistente (`WorkManager` 2.12.0, `HiltWorkerFactory`).
 - [x] Progresso, erro, dedup, substituição `FIT > TCX > GPX`, alternates, restauração.
 - [x] Tela `ActivitiesScreen`, `sourcesLabel` (`FIT · TCX · GPX`), histórico de import.
+- [x] Oferta reativa ao importar: corrida do dia com sessão pendente abre overlay para vincular ao treino; se o dia já foi concluído, aviso de que fica como treino livre; `MANUAL` pode ser corrigido pela corrida real (08/11/2026).
 - [x] Testes de `ViewModel`, `Staging`, `Coordinator`, `ShareIntentReader`.
 
 **Aceite verificado:** `./gradlew check :app:assembleDebug spotlessCheck` — 214 testes, 0 falhas; `core:domain` 98,91% / 86,12% branches; `core:data` 44 testes; share + picker funcionando.
@@ -226,6 +227,7 @@
 - [x] Plano em uma linha por sessão, rationale recolhível e carga vazia sem zeros.
 - [x] Um card principal; plano como contexto com selo “Ajustado hoje” e sem CTA de conclusão próprio (C1-03).
 - [x] Conclusão com evidência (corrida vinculada ou “fiz sem registro”) e vínculo 1:1; descanso/doença encerram o dia (C1-04).
+- [x] Treino concluído: selo “Concluído”, resumo do que foi feito, plano como contexto e ações escondidas; “feito sem registro” explicado no card e no plano (08/11/2026).
 - [x] Sem streak: dias sem check-in não geram punição nem cobrança (princípio "sem culpa").
 
 ### P1-07 · Tendências

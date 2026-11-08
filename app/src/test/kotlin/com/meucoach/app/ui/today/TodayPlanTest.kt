@@ -474,6 +474,150 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `marks today's workout as done and shows the execution summary`() {
+        val today = LocalDate.of(2026, 11, 4)
+        var openedActivity: String? = null
+        val plan = planWith(today).let { plan ->
+            plan.copy(
+                sessions = plan.sessions.map {
+                    it.copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                        activityId = "activity-1",
+                    )
+                },
+            )
+        }
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = plan,
+                        todayExecution = TodayExecutionUi(
+                            duration = "31:02",
+                            distance = "5,12 km",
+                            pace = "6:04 /km",
+                            rpe = null,
+                            activityId = "activity-1",
+                            withoutRunData = false,
+                        ),
+                    ),
+                    onActivityClick = { openedActivity = it },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("TREINO DE HOJE"))
+        compose.onNodeWithTag("today-done-badge").assertIsDisplayed()
+        list.performScrollToNode(hasText("Você já concluiu este treino com uma corrida vinculada."))
+        compose.onNodeWithText("Você já concluiu este treino com uma corrida vinculada.").assertIsDisplayed()
+        compose.onNodeWithTag("today-execution-summary").assertExists()
+        compose.onNodeWithText("Concluir treino").assertDoesNotExist()
+        compose.onNodeWithText("Iniciar").assertDoesNotExist()
+        list.performScrollToNode(hasText("Ver corrida"))
+        compose.onNodeWithTag("today-open-activity").performClick()
+
+        assertThat(openedActivity).isEqualTo("activity-1")
+    }
+
+    @Test
+    fun `offers to correct a manual record with a suggested run`() {
+        val today = LocalDate.of(2026, 11, 4)
+        var replaced: Pair<LocalDate, String>? = null
+        val plan = planWith(today).let { plan ->
+            plan.copy(
+                sessions = plan.sessions.map {
+                    it.copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+                    )
+                },
+            )
+        }
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = plan,
+                        todayExecution = TodayExecutionUi(
+                            duration = "40:00",
+                            distance = null,
+                            pace = null,
+                            rpe = 6,
+                            activityId = null,
+                            withoutRunData = true,
+                        ),
+                        activitySuggestions = listOf(
+                            ActivitySuggestionUi(
+                                id = "activity-1",
+                                title = "Corrida de rua",
+                                subtitle = "hoje · 07:00",
+                                distance = "6,00 km",
+                                duration = "40:00",
+                            ),
+                        ),
+                    ),
+                    onReplaceWithActivity = { date, activityId -> replaced = date to activityId },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Corrigir registro"))
+        compose.onNodeWithTag("correct-manual").performClick()
+        compose.onNodeWithTag("replace-dialog").assertIsDisplayed()
+        compose.onNodeWithTag("replace-suggestion-activity-1").performClick()
+        compose.onNodeWithTag("replace-activity").performClick()
+
+        assertThat(replaced).isEqualTo(today to "activity-1")
+    }
+
+    @Test
+    fun `explains a done session without run data in the card and in the plan`() {
+        val today = LocalDate.of(2026, 11, 4)
+        val plan = planWith(today).let { plan ->
+            plan.copy(
+                sessions = plan.sessions.map {
+                    it.copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+                    )
+                },
+            )
+        }
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = plan,
+                        todayExecution = TodayExecutionUi(
+                            duration = "40:00",
+                            distance = null,
+                            pace = null,
+                            rpe = 6,
+                            activityId = null,
+                            withoutRunData = true,
+                        ),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("sem vincular uma corrida", substring = true))
+        compose
+            .onNodeWithText("sem vincular uma corrida", substring = true)
+            .assertIsDisplayed()
+        list.performScrollToNode(hasText("PLANO DA SEMANA"))
+        list.performScrollToNode(hasText("“Feito · sem registro”", substring = true))
+        compose.onNodeWithTag("plan-manual-note").assertIsDisplayed()
+    }
+
+    @Test
     fun `shows evidence and closure labels without calling a click verified`() {
         val today = LocalDate.of(2026, 11, 4)
         val plan = planWith(today).copy(

@@ -96,6 +96,7 @@ fun TodayScreen(
     onChecklistDismiss: () -> Unit = {},
     onCompleteWithActivity: (LocalDate, String) -> Unit = { _, _ -> },
     onCompleteManually: (LocalDate, Int, Int) -> Unit = { _, _, _ -> },
+    onReplaceWithActivity: (LocalDate, String) -> Unit = { _, _ -> },
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
     onConsumeCompletionMessage: () -> Unit = {},
@@ -104,6 +105,7 @@ fun TodayScreen(
     var swapOpen by remember { mutableStateOf(false) }
     var startOpen by remember { mutableStateOf(false) }
     var completionOpen by remember { mutableStateOf(false) }
+    var correctionOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
     val planExplanation = remember(state.plan) { state.plan?.let(::buildPlanExplanation) }
     val openExplanation: (ExplanationSource) -> Unit = { source ->
@@ -155,20 +157,27 @@ fun TodayScreen(
                 onHealthClick = onHealthClick,
             )
         }
-        val hasPlannedSessionToday = state.plan?.sessions?.any {
-            it.date == today && it.status == SessionStatus.PLANNED
-        } == true
+        val todaySession = state.plan?.sessions?.firstOrNull { it.date == today }
+        val hasPlannedSessionToday = todaySession?.status == SessionStatus.PLANNED
+        val canCorrectManual = todaySession?.status == SessionStatus.DONE &&
+            todaySession.completionEvidence == com.meucoach.core.model.CompletionEvidence.MANUAL &&
+            state.activitySuggestions.isNotEmpty()
         item {
             NextWorkoutCard(
                 workout = state.workout,
                 prescription = state.prescription,
+                session = todaySession,
+                execution = state.todayExecution,
                 canComplete = hasPlannedSessionToday,
+                canCorrectManual = canCorrectManual,
                 completionMessage = state.completionMessage,
                 onSwapClick = { swapOpen = true },
                 onStartClick = { startOpen = true },
                 onCompleteClick = { completionOpen = true },
+                onCorrectClick = { correctionOpen = true },
                 onConsumeMessage = onConsumeCompletionMessage,
                 onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
+                onActivityClick = onActivityClick,
             )
         }
         state.plan?.let { plan ->
@@ -234,6 +243,16 @@ fun TodayScreen(
             onManual = { durationMin, rpe ->
                 onCompleteManually(today, durationMin, rpe)
                 completionOpen = false
+            },
+        )
+    }
+    if (correctionOpen) {
+        ReplaceSessionDialog(
+            suggestions = state.activitySuggestions,
+            onDismiss = { correctionOpen = false },
+            onReplace = { activityId ->
+                onReplaceWithActivity(today, activityId)
+                correctionOpen = false
             },
         )
     }
@@ -426,16 +445,23 @@ private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
 private fun NextWorkoutCard(
     workout: WorkoutUi,
     prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
+    session: com.meucoach.core.domain.prescription.PlannedSession?,
+    execution: TodayExecutionUi?,
     canComplete: Boolean,
+    canCorrectManual: Boolean,
     completionMessage: String?,
     onSwapClick: () -> Unit,
     onStartClick: () -> Unit,
     onCompleteClick: () -> Unit,
+    onCorrectClick: () -> Unit,
     onConsumeMessage: () -> Unit,
     onWhyClick: () -> Unit,
+    onActivityClick: (String) -> Unit,
 ) {
     val colors = McTheme.colors
-    val adjusted = prescription?.differsFromPlan == true
+    val done = session?.status == SessionStatus.DONE
+    val closed = session?.status == SessionStatus.CLOSED
+    val adjusted = prescription?.differsFromPlan == true && !done && !closed
     McCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -444,18 +470,57 @@ private fun NextWorkoutCard(
         ) {
             Text(text = "TREINO DE HOJE", style = McTextStyles.overline, color = colors.textTertiary)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (adjusted) {
-                    McPill(
-                        text = "Ajustado hoje",
+                when {
+                    done -> McPill(
+                        text = "Concluído",
+                        containerColor = colors.success.copy(alpha = 0.12f),
+                        contentColor = colors.success,
+                        modifier = Modifier.testTag("today-done-badge"),
+                    )
+
+                    closed -> McPill(
+                        text = session?.let(::sessionStatusLabel) ?: "Encerrado",
                         containerColor = colors.warning.copy(alpha = 0.12f),
                         contentColor = colors.warning,
-                        modifier = Modifier.testTag("prescription-adjusted"),
+                        modifier = Modifier.testTag("today-closed-badge"),
                     )
+
+                    else -> {
+                        if (adjusted) {
+                            McPill(
+                                text = "Ajustado hoje",
+                                containerColor = colors.warning.copy(alpha = 0.12f),
+                                contentColor = colors.warning,
+                                modifier = Modifier.testTag("prescription-adjusted"),
+                            )
+                        }
+                        McPill(
+                            text = workout.zone,
+                            containerColor = colors.zone2.copy(alpha = 0.10f),
+                            contentColor = colors.zone2,
+                        )
+                    }
                 }
-                McPill(
-                    text = workout.zone,
-                    containerColor = colors.zone2.copy(alpha = 0.10f),
-                    contentColor = colors.zone2,
+            }
+        }
+        when {
+            done -> {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = todayDoneNote(session),
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("today-done-note"),
+                )
+            }
+
+            closed -> {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Este dia foi encerrado. O card fica como registro do que estava planejado.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("today-closed-note"),
                 )
             }
         }
@@ -477,6 +542,19 @@ private fun NextWorkoutCard(
             color = colors.textPrimary,
         )
         Spacer(modifier = Modifier.height(16.dp))
+        if (done) {
+            Text(text = "FEITO", style = McTextStyles.overline, color = colors.success)
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = execution?.let(::executionSummary) ?: "Sessão concluída.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary,
+                modifier = Modifier.testTag("today-execution-summary"),
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(text = "PLANEJADO", style = McTextStyles.overline, color = colors.textTertiary)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             WorkoutMetric(
                 label = "DURAÇÃO",
@@ -547,30 +625,52 @@ private fun NextWorkoutCard(
             onClick = onWhyClick,
             trailingArrow = false,
         )
-        Spacer(modifier = Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            McSecondaryButton(
-                text = "Trocar",
-                onClick = onSwapClick,
-                enabled = workout.canTrain,
-                modifier = Modifier.weight(1f),
-            )
-            McPrimaryButton(
-                text = "Iniciar",
-                onClick = onStartClick,
-                enabled = workout.canTrain && canComplete,
-                modifier = Modifier.weight(1f),
-                leadingIcon = Icons.Outlined.PlayArrow,
-            )
+        if (!done && !closed) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                McSecondaryButton(
+                    text = "Trocar",
+                    onClick = onSwapClick,
+                    enabled = workout.canTrain,
+                    modifier = Modifier.weight(1f),
+                )
+                McPrimaryButton(
+                    text = "Iniciar",
+                    onClick = onStartClick,
+                    enabled = workout.canTrain && canComplete,
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = Icons.Outlined.PlayArrow,
+                )
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                McTextButton(
+                    text = "Concluir treino",
+                    onClick = onCompleteClick,
+                    trailingArrow = false,
+                    enabled = workout.canTrain && canComplete,
+                    modifier = Modifier.testTag("complete-today"),
+                )
+            }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            McTextButton(
-                text = "Concluir treino",
-                onClick = onCompleteClick,
-                trailingArrow = false,
-                enabled = workout.canTrain && canComplete,
-                modifier = Modifier.testTag("complete-today"),
-            )
+        if (done) {
+            execution?.activityId?.let { activityId ->
+                Spacer(modifier = Modifier.height(4.dp))
+                McTextButton(
+                    text = "Ver corrida",
+                    onClick = { onActivityClick(activityId) },
+                    trailingArrow = false,
+                    modifier = Modifier.testTag("today-open-activity"),
+                )
+            }
+            if (canCorrectManual) {
+                Spacer(modifier = Modifier.height(4.dp))
+                McTextButton(
+                    text = "Corrigir registro",
+                    onClick = onCorrectClick,
+                    trailingArrow = false,
+                    modifier = Modifier.testTag("correct-manual"),
+                )
+            }
         }
         completionMessage?.let { message ->
             Text(
@@ -588,6 +688,30 @@ private fun NextWorkoutCard(
         }
     }
 }
+
+/** Evidence is part of the note; a completed session never pretends to have run data. */
+private fun todayDoneNote(session: com.meucoach.core.domain.prescription.PlannedSession?): String =
+    when (session?.completionEvidence) {
+        com.meucoach.core.model.CompletionEvidence.ACTIVITY ->
+            "Você já concluiu este treino com uma corrida vinculada."
+
+        com.meucoach.core.model.CompletionEvidence.GUIDED ->
+            "Você já concluiu este treino com uma sessão guiada registrada."
+
+        com.meucoach.core.model.CompletionEvidence.MANUAL ->
+            "Você já concluiu este treino sem vincular uma corrida. Conta adesão, mas não entra " +
+                "em volume, carga ou zonas."
+
+        com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED, null ->
+            "Você já concluiu este treino, mas a evidência não foi verificada."
+    }
+
+private fun executionSummary(execution: TodayExecutionUi): String = listOfNotNull(
+    execution.duration,
+    execution.distance,
+    execution.pace,
+    execution.rpe?.let { "RPE $it" },
+).joinToString(" · ").ifBlank { "Sessão concluída." }
 
 @Composable
 private fun WorkoutMetric(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
@@ -935,6 +1059,21 @@ private fun PlanWeekCard(
                 }
             }
         }
+        val manualToday = plan.sessions.any { session ->
+            session.date == today &&
+                session.status == SessionStatus.DONE &&
+                session.completionEvidence == com.meucoach.core.model.CompletionEvidence.MANUAL
+        }
+        if (manualToday) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "“Feito · sem registro” significa que o treino foi marcado como feito sem " +
+                    "vincular uma corrida. Ele conta adesão, mas não entra em volume, carga ou zonas.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+                modifier = Modifier.testTag("plan-manual-note"),
+            )
+        }
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = plan.rationale,
@@ -1219,6 +1358,84 @@ private fun SwapSessionDialog(
         confirmButton = {
             McTextButton(
                 text = "Fechar",
+                onClick = onDismiss,
+                trailingArrow = false,
+            )
+        },
+    )
+}
+
+@Composable
+private fun ReplaceSessionDialog(
+    suggestions: List<ActivitySuggestionUi>,
+    onDismiss: () -> Unit,
+    onReplace: (String) -> Unit,
+) {
+    val colors = McTheme.colors
+    var selectedActivityId by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("replace-dialog"),
+        title = { Text(text = "Corrigir registro") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "Escolha a corrida que deve substituir o registro manual. A duração e o " +
+                        "RPE informados à mão serão descartados.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                suggestions.forEach { suggestion ->
+                    val selected = selectedActivityId == suggestion.id
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("replace-suggestion-${suggestion.id}")
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(
+                                width = if (selected) 1.dp else 0.dp,
+                                color = if (selected) colors.accent else Color.Transparent,
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                            .clickable { selectedActivityId = suggestion.id }
+                            .padding(vertical = 8.dp, horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = suggestion.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = colors.textPrimary,
+                            )
+                            Text(
+                                text = "${suggestion.subtitle} · ${suggestion.duration} · " +
+                                    suggestion.distance,
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                            )
+                        }
+                        Text(
+                            text = if (selected) "Selecionada" else "Selecionar",
+                            style = McTextStyles.caption,
+                            color = if (selected) colors.accentText else colors.textTertiary,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                McTextButton(
+                    text = "Usar esta corrida",
+                    onClick = { selectedActivityId?.let(onReplace) },
+                    trailingArrow = false,
+                    enabled = selectedActivityId != null,
+                    modifier = Modifier.testTag("replace-activity"),
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            McTextButton(
+                text = "Cancelar",
                 onClick = onDismiss,
                 trailingArrow = false,
             )

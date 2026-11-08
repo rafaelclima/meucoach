@@ -784,7 +784,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   5. Dia de descanso/doença não permite conclusão.
   6. Testes cobrem match, rejeição, duplicidade, dia de descanso e atividade sem plano.
 - **Prioridade:** P0 · **Dependências:** FR-001; modelo de execução · **Evidência:** BUG-02, UX-06.
-- **Status na reconciliação:** implementado para `ACTIVITY`/`MANUAL` em C1-04 (`ADR 0024`); `GUIDED` persistente segue em FR-002.
+- **Status na reconciliação:** implementado para `ACTIVITY`/`MANUAL` em C1-04 (`ADR 0024`); a oferta no momento da importação (incluindo aviso quando o dia já foi concluído e correção de `MANUAL` pela corrida real) entrou em 08/11/2026. `GUIDED` persistente segue em FR-002.
 
 ### FR-004 — Progressão de volume com guardrails
 

@@ -1,5 +1,6 @@
 package com.meucoach.app.importer
 
+import com.meucoach.app.application.OfferImportedRun
 import com.meucoach.core.data.epoch.DataEpochStore
 import com.meucoach.core.data.importer.ImportRequest
 import com.meucoach.core.data.importer.ImportResult
@@ -13,6 +14,7 @@ class StagedImportProcessor @Inject constructor(
     private val importService: ImportService,
     private val profiles: ProfileRepository? = null,
     private val epochStore: DataEpochStore? = null,
+    private val offerImportedRun: OfferImportedRun? = null,
 ) {
     suspend fun process(relativePath: String, displayName: String, mime: String?): ImportResult {
         // A reset may have removed the profile and the staging directory while
@@ -35,6 +37,14 @@ class StagedImportProcessor @Inject constructor(
                 rawFilePath = relativePath,
             ),
         )
+        // A prompt must never turn a successful import into a failed job.
+        runCatching {
+            when (result) {
+                is ImportResult.Imported -> offerImportedRun?.evaluate(result.activityId)
+                is ImportResult.Duplicate -> offerImportedRun?.evaluate(result.activityId)
+                else -> Unit
+            }
+        }
         // Cleanup must not turn a successful import into a failed job.
         runCatching { staging.delete(relativePath) }
         if (epochStore != null && epochStore.current() != epoch) return ImportResult.Skipped

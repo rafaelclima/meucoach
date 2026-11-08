@@ -175,6 +175,82 @@ class SessionExecutionRepository(
             }
         }
 
+    /**
+     * Replaces an explicit MANUAL completion with the real imported run.
+     *
+     * This is a correction, not a new completion: the manual declaration
+     * (duration/RPE) is discarded, the execution row is upgraded in place and
+     * the session keeps its completion date. The 1:1 indexes still guarantee
+     * that an activity never points to two sessions.
+     */
+    suspend fun replaceManualWithActivity(
+        plannedSessionId: String,
+        activityId: String,
+        startedAt: Instant,
+        durationSec: Int,
+        distanceM: Double?,
+    ): CompletionOutcome = runCatching {
+        database.withTransaction {
+            val session = sessions.getSession(plannedSessionId)
+                ?: return@withTransaction CompletionOutcome.Rejected("Sessão planejada não encontrada.")
+            if (session.status != SessionStatus.DONE ||
+                session.completionEvidence != CompletionEvidence.MANUAL
+            ) {
+                return@withTransaction CompletionOutcome.Rejected(
+                    "Este treino não tem um registro manual para substituir.",
+                )
+            }
+            val execution = executions.findBySession(plannedSessionId)
+                ?: return@withTransaction CompletionOutcome.Rejected(
+                    "Execução do registro manual não encontrada.",
+                )
+            if (execution.source != ExecutionSource.MANUAL) {
+                return@withTransaction CompletionOutcome.Rejected(
+                    "Este treino não tem um registro manual para substituir.",
+                )
+            }
+            if (sessions.getSessionByActivityId(activityId) != null ||
+                executions.findByActivity(activityId) != null
+            ) {
+                return@withTransaction CompletionOutcome.ActivityAlreadyLinked(
+                    "Esta corrida já está vinculada a outro treino.",
+                )
+            }
+            val updatedExecution = execution.copy(
+                activityId = activityId,
+                startedAt = startedAt.toEpochMilli(),
+                endedAt = startedAt.plusSeconds(durationSec.toLong()).toEpochMilli(),
+                durationSec = durationSec,
+                distanceM = distanceM,
+                // The manual RPE was tied to the discarded declaration.
+                rpe = null,
+                source = ExecutionSource.ACTIVITY,
+            )
+            if (executions.update(updatedExecution) != 1) throw SessionChangedException()
+            val updated = sessions.replaceManualEvidence(
+                id = plannedSessionId,
+                evidence = CompletionEvidence.ACTIVITY.name,
+                executionId = execution.id,
+                activityId = activityId,
+                completedAt = session.completedAt ?: clock.millis(),
+            )
+            if (updated != 1) throw SessionChangedException()
+            CompletionOutcome.Recorded(updatedExecution.toModel())
+        }
+    }.getOrElse { error ->
+        when (error) {
+            is SQLiteConstraintException -> CompletionOutcome.ActivityAlreadyLinked(
+                "Esta corrida já está vinculada a outro treino.",
+            )
+
+            is SessionChangedException -> CompletionOutcome.Rejected(
+                "Não foi possível substituir o registro. Tente novamente.",
+            )
+
+            else -> throw error
+        }
+    }
+
     /** Closes a day that will not be trained (rest, illness, skip, missed, replaced). */
     suspend fun closeSession(
         plannedSessionId: String,

@@ -3,6 +3,7 @@ package com.meucoach.core.data.db.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.meucoach.core.data.db.entity.SessionExecutionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -10,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 interface SessionExecutionDao {
     @Insert
     suspend fun insert(execution: SessionExecutionEntity)
+
+    @Update
+    suspend fun update(execution: SessionExecutionEntity): Int
 
     @Query("SELECT * FROM session_executions WHERE id = :id")
     suspend fun findById(id: String): SessionExecutionEntity?

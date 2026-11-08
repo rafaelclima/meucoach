@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayPrescription
+import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.ui.checkin.CheckInViewModel
 import com.meucoach.app.ui.today.TodayViewModel
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -144,6 +145,7 @@ class TimeDrivenStateTest {
             plans,
             executions,
             CompleteSession(plans, activities, executions),
+            ReplaceManualCompletion(plans, activities, executions),
             time,
             GetTodayPrescription(prescriptions),
         )

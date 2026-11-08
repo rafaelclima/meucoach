@@ -91,9 +91,13 @@ class TrendsFullScreenshotTest {
     /** Vico builds the model off the composition; give it a moment before capturing. */
     private fun settle() {
         compose.waitForIdle()
+        repeat(8) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+        }
         compose.mainClock.advanceTimeBy(1_000)
         compose.waitForIdle()
-        Thread.sleep(300)
+        Thread.sleep(500)
         compose.waitForIdle()
     }
 

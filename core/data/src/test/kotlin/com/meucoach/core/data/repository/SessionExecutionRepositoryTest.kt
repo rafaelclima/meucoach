@@ -116,6 +116,99 @@ class SessionExecutionRepositoryTest {
     }
 
     @Test
+    fun `replaces a manual record with the imported run`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+        val manual = executions.recordManualExecution(
+            "2026-11-02-2026-11-02",
+            durationMin = 35,
+            rpe = 6,
+        ) as CompletionOutcome.Recorded
+
+        val outcome = executions.replaceManualWithActivity(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = "activity-1",
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
+
+        assertThat(outcome).isInstanceOf(CompletionOutcome.Recorded::class.java)
+        val execution = (outcome as CompletionOutcome.Recorded).execution
+        assertThat(execution.id).isEqualTo(manual.execution.id)
+        assertThat(execution.source.name).isEqualTo("ACTIVITY")
+        assertThat(execution.activityId).isEqualTo("activity-1")
+        assertThat(execution.distanceM).isEqualTo(5_000.0)
+        assertThat(execution.rpe).isNull()
+        assertThat(executions.getForActivity("activity-1")?.id).isEqualTo(execution.id)
+        assertThat(executions.getForSession("2026-11-02-2026-11-02")?.id).isEqualTo(execution.id)
+
+        val session = plans.getWeek(monday)?.sessions?.first()
+        assertThat(session?.status).isEqualTo(SessionStatus.DONE)
+        assertThat(session?.completionEvidence).isEqualTo(CompletionEvidence.ACTIVITY)
+        assertThat(session?.activityId).isEqualTo("activity-1")
+        assertThat(session?.executionId).isEqualTo(execution.id)
+    }
+
+    @Test
+    fun `only a manual completion can be replaced`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+
+        val planned = executions.replaceManualWithActivity(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = "activity-1",
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
+        assertThat(planned).isInstanceOf(CompletionOutcome.Rejected::class.java)
+
+        executions.recordActivityExecution(
+            "2026-11-02-2026-11-03",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+        val verified = executions.replaceManualWithActivity(
+            plannedSessionId = "2026-11-02-2026-11-03",
+            activityId = "activity-1",
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
+        assertThat(verified).isInstanceOf(CompletionOutcome.Rejected::class.java)
+    }
+
+    @Test
+    fun `replacement rejects an activity already linked to another session`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+        executions.recordActivityExecution(
+            "2026-11-02-2026-11-03",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+        executions.recordManualExecution("2026-11-02-2026-11-02", durationMin = 35, rpe = 6)
+
+        val outcome = executions.replaceManualWithActivity(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = "activity-1",
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
+
+        assertThat(outcome).isInstanceOf(CompletionOutcome.ActivityAlreadyLinked::class.java)
+        val session = plans.getWeek(monday)?.sessions?.first()
+        assertThat(session?.completionEvidence).isEqualTo(CompletionEvidence.MANUAL)
+        assertThat(session?.activityId).isNull()
+    }
+
+    @Test
     fun `an activity cannot be linked to two sessions`(): Unit = runBlocking {
         plans.saveWeek(plan())
         activities.saveImportedActivity(activity())

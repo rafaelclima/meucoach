@@ -63,8 +63,9 @@ A promessa central:
 - Motor de zonas (LTHR + pace), carga (TRIMP, rTSS, CTL/ATL/TSB, ACWR), prontidão e prescrição.
 - Check-in diário de 15 s (sono, fadiga, dor, stress).
 - Leitura de **Health Connect** (sono, RHR, HRV, SpO2) com diagnóstico de sincronização e atualização automática ao abrir o app. `ExerciseSession`/corridas do Health Connect ficam para o ciclo 2 (FR-007).
-- Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto.
+- Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto. Quando o treino do dia já foi concluído, o card vira um resumo com selo “Concluído” e esconde as ações.
 - Conclusão com evidência: corrida vinculada, execução guiada (contrato) ou “fiz sem registro” com duração e RPE; descanso/doença encerram o dia com motivo.
+- Oferta reativa ao importar: uma corrida do próprio dia, em dia de treino ainda pendente, pergunta na hora se deve virar o treino de hoje; se o dia já foi concluído, o app avisa que ela fica apenas como treino livre. Um “fiz sem registro” pode ser corrigido pela corrida real, com confirmação explícita.
 - Tela **Saúde** como destino principal: painel de sono, FC de repouso, HRV e SpO₂, com período, fontes e aviso quando o dia atual ainda não chegou.
 - Tela **Tendências** com gráficos de evolução.
 - Notificações locais: treino do dia, lembrete de check-in, import pendente.

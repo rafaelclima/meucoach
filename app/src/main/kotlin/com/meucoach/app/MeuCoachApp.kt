@@ -41,6 +41,7 @@ import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
 import com.meucoach.app.ui.checkin.CheckInScreen
 import com.meucoach.app.ui.data.DataManagementScreen
+import com.meucoach.app.ui.importer.ImportedRunPromptHost
 import com.meucoach.app.ui.metrics.HealthScreen
 import com.meucoach.app.ui.onboarding.OnboardingScreen
 import com.meucoach.app.ui.profile.ProfileGateViewModel
@@ -284,5 +285,6 @@ private fun MainContent() {
                 viewModel = tutorialViewModel,
             )
         }
+        ImportedRunPromptHost()
     }
 }

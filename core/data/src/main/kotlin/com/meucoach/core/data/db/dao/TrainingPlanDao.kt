@@ -90,6 +90,23 @@ interface TrainingPlanDao {
         completedAt: Long,
     ): Int
 
+    /**
+     * Corrects an explicit manual declaration by attaching the real activity.
+     * Only a DONE/MANUAL row can be upgraded; status and completion time stay.
+     */
+    @Query(
+        "UPDATE planned_sessions SET completionEvidence = :evidence, executionId = :executionId, " +
+            "activityId = :activityId, completedAt = :completedAt " +
+            "WHERE id = :id AND status = 'DONE' AND completionEvidence = 'MANUAL'",
+    )
+    suspend fun replaceManualEvidence(
+        id: String,
+        evidence: String,
+        executionId: String?,
+        activityId: String?,
+        completedAt: Long,
+    ): Int
+
     @Query(
         "UPDATE planned_sessions SET status = 'CLOSED', closureReason = :reason, " +
             "skipReason = :note, closedAt = :closedAt, completedAt = NULL, " +

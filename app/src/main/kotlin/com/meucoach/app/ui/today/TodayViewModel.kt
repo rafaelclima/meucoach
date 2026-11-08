@@ -12,6 +12,9 @@ import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.CompleteSessionRequest
 import com.meucoach.app.application.CompleteSessionResult
 import com.meucoach.app.application.GetTodayPrescription
+import com.meucoach.app.application.ReplaceManualCompletion
+import com.meucoach.app.application.ReplaceManualCompletionRequest
+import com.meucoach.app.application.ReplaceManualCompletionResult
 import com.meucoach.app.application.TodayPrescriptionRequest
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
@@ -52,6 +55,7 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.HeatLevel
+import com.meucoach.core.model.Sport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -81,6 +85,7 @@ class TodayViewModel @Inject constructor(
     private val planRepository: TrainingPlanRepository,
     private val executionRepository: SessionExecutionRepository,
     private val completeSession: CompleteSession,
+    private val replaceManualCompletion: ReplaceManualCompletion,
     private val timeProvider: TimeProvider,
     private val getTodayPrescription: GetTodayPrescription,
 ) : ViewModel() {
@@ -220,6 +225,9 @@ class TodayViewModel @Inject constructor(
                 context = context,
                 zone = timeProvider.zoneId.value,
             )
+            val todayExecution = plan?.sessions
+                ?.firstOrNull { it.date == context.today }
+                ?.let { session -> executionUi(plan, session, context) }
             todayState(
                 checkIn = context.checkIn,
                 metrics = context.metrics,
@@ -233,6 +241,7 @@ class TodayViewModel @Inject constructor(
                 weeklyLoadKm = context.weeklyLoadKm,
                 recentActivity = context.recentActivity,
                 activitySuggestions = suggestions,
+                todayExecution = todayExecution,
                 completionMessage = null,
             )
         }
@@ -264,6 +273,25 @@ class TodayViewModel @Inject constructor(
         )
     }
 
+    private suspend fun executionUi(
+        plan: WeeklyPlan,
+        session: com.meucoach.core.domain.prescription.PlannedSession,
+        context: TodayContext,
+    ): TodayExecutionUi? {
+        if (session.status != SessionStatus.DONE) return null
+        val execution = session.executionId?.let { executionRepository.getExecution(it) }
+            ?: executionRepository.getForSession(plannedSessionId(plan.weekStart, session.date))
+        val activity = session.activityId?.let { id -> context.activities.firstOrNull { it.id == id } }
+        return TodayExecutionUi(
+            duration = (execution?.durationSec ?: activity?.durationSec)?.let(::formatDuration),
+            distance = activity?.distance?.let { "${formatDistance(it)} km" },
+            pace = activity?.averagePace?.let { "${paceLabel(it)} /km" },
+            rpe = execution?.rpe,
+            activityId = session.activityId,
+            withoutRunData = session.completionEvidence == CompletionEvidence.MANUAL,
+        )
+    }
+
     private fun suggestionsFor(
         plan: WeeklyPlan?,
         prescription: DailyPrescription?,
@@ -271,17 +299,31 @@ class TodayViewModel @Inject constructor(
         zone: java.time.ZoneId,
     ): List<ActivitySuggestionUi> {
         val session = plan?.sessions?.firstOrNull {
-            it.date == context.today && it.status == SessionStatus.PLANNED
+            it.date == context.today && (
+                it.status == SessionStatus.PLANNED ||
+                    (it.status == SessionStatus.DONE && it.completionEvidence == CompletionEvidence.MANUAL)
+                )
         } ?: return emptyList()
-        val intended = session.copy(
-            durationMin = prescription?.prescribedDurationMin ?: session.durationMin,
-        )
-        return matcher.suggest(
-            session = intended,
-            activities = context.activities,
-            zoneId = zone,
-            excludedActivityIds = context.linkedActivityIds,
-        ).map { activity ->
+        // A manual completion has no matcher baseline to compare against; offer
+        // every run of the day so the user can correct the mistake.
+        val candidates = if (session.status == SessionStatus.DONE) {
+            context.activities.filter { activity ->
+                (activity.sport == Sport.RUNNING || activity.sport == Sport.TREADMILL) &&
+                    activity.startTime.atZone(zone).toLocalDate() == context.today &&
+                    activity.id !in context.linkedActivityIds
+            }
+        } else {
+            val intended = session.copy(
+                durationMin = prescription?.prescribedDurationMin ?: session.durationMin,
+            )
+            matcher.suggest(
+                session = intended,
+                activities = context.activities,
+                zoneId = zone,
+                excludedActivityIds = context.linkedActivityIds,
+            )
+        }
+        return candidates.map { activity ->
             ActivitySuggestionUi(
                 id = activity.id,
                 title = sportLabel(activity.sport),
@@ -367,6 +409,26 @@ class TodayViewModel @Inject constructor(
             prescription = state.prescription,
             illnessOrInjury = state.illnessOrInjury,
         )
+    }
+
+    fun replaceManualWithActivity(date: LocalDate, activityId: String) {
+        viewModelScope.launch {
+            val result = replaceManualCompletion(
+                ReplaceManualCompletionRequest(
+                    date = date,
+                    today = timeProvider.currentDate(),
+                    activityId = activityId,
+                    zoneId = timeProvider.zoneId.value,
+                ),
+            )
+            completionMessage.value = when (result) {
+                is ReplaceManualCompletionResult.Replaced ->
+                    "Registro manual substituído pela corrida. " +
+                        "O treino agora entra em volume, carga e zonas."
+
+                is ReplaceManualCompletionResult.Rejected -> result.message
+            }
+        }
     }
 
     private fun complete(
@@ -509,6 +571,7 @@ fun TodayRoute(
         onChecklistDismiss = checklistViewModel::dismiss,
         onCompleteWithActivity = viewModel::completeWithActivity,
         onCompleteManually = viewModel::completeManually,
+        onReplaceWithActivity = viewModel::replaceManualWithActivity,
         onSkipSession = viewModel::skipSession,
         onSwapSession = { first, second -> viewModel.swapSession(first, second, state.today) },
         onConsumeCompletionMessage = viewModel::consumeCompletionMessage,
@@ -530,6 +593,7 @@ internal fun todayState(
     weeklyLoadKm: Double? = null,
     recentActivity: RecentActivityUi? = null,
     activitySuggestions: List<ActivitySuggestionUi> = emptyList(),
+    todayExecution: TodayExecutionUi? = null,
     completionMessage: String? = null,
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
@@ -603,6 +667,7 @@ internal fun todayState(
         avatarPath = profile?.avatarPath,
         weather = profile?.city ?: "",
         activitySuggestions = activitySuggestions,
+        todayExecution = todayExecution,
         completionMessage = completionMessage,
         illnessOrInjury = signals.illnessOrInjury,
     )

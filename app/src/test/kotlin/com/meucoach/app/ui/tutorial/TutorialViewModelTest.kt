@@ -43,6 +43,14 @@ import java.time.ZoneId
 @Config(sdk = [35])
 class TutorialViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
+
+    /** Fixed Monday so the weekly plan always has the Mon/Wed/Sat sessions. */
+    private val today = LocalDate.of(2026, 11, 2)
+    private val zone = ZoneId.of("America/Sao_Paulo")
+    private val timeProvider = FakeTimeProvider(
+        instant = today.atTime(12, 0).atZone(zone).toInstant(),
+        zone = zone,
+    )
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var store: TutorialStore
@@ -128,7 +136,7 @@ class TutorialViewModelTest {
         assertThat(
             runBlocking {
                 planRepository.getWeek(
-                    LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
                 )
             },
         ).isNotNull
@@ -165,7 +173,7 @@ class TutorialViewModelTest {
         activityRepository = activityRepository,
         planRepository = planRepository,
         healthSource = FakeHealthSource(healthConnected),
-        timeProvider = FakeTimeProvider(),
+        timeProvider = timeProvider,
     )
 
     private fun profile() = AthleteProfile(

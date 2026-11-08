@@ -55,6 +55,7 @@ Regras:
 3. `GUIDED` exige execução persistida e recuperável. O contrato é definido agora; a implementação completa da sessão guiada fica no ciclo 3. Até lá, o app não produz `GUIDED` novo.
 4. `MANUAL` exige duração e RPE; não pode gerar métricas fisiológicas fictícias. A UI diz claramente que a corrida **não** entrou no histórico/volume.
 5. `LEGACY_UNVERIFIED` é somente leitura e serve para não reescrever o passado como verdade.
+6. **Correção explícita de `MANUAL`:** um `DONE` + `MANUAL` pode ser substituído por uma atividade real do mesmo dia, com confirmação do usuário. A execução manual é atualizada no lugar (`source = ACTIVITY`, `activityId`, duração/distância reais; RPE descartado) e a sessão troca a evidência para `ACTIVITY`, mantendo data e vínculo 1:1. Somente `MANUAL` é corrigível: `ACTIVITY` já é verificado, `GUIDED` tem execução própria e `LEGACY_UNVERIFIED` não é promovido.
 
 ### 3.2 Estados próprios de descanso, doença e não realizado
 
@@ -228,3 +229,4 @@ Separar adesão de execução comprovada impede que uma declaração de baixa co
 - O modelo rejeita `DONE` sem evidência e `CLOSED` sem motivo; o vínculo atividade ↔ sessão é 1:1 por índice único e transação.
 - A lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo mantendo `LEGACY_UNVERIFIED`.
 - Adesão e execução comprovada aparecem separadas em Tendências; só `ACTIVITY`/`GUIDED` liberam progressão.
+- **08/11/2026 — correção de `MANUAL`:** `SessionExecutionRepository.replaceManualWithActivity` e `ReplaceManualCompletion` permitem trocar um “fiz sem registro” pela corrida importada do mesmo dia. A operação é transacional, atualiza a execução existente e troca a evidência para `ACTIVITY`; não há migração de schema. A oferta aparece no overlay do import e no card do Hoje (“Corrigir registro”).

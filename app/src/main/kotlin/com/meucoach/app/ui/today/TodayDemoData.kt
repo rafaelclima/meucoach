@@ -51,6 +51,17 @@ data class ActivitySuggestionUi(
     val duration: String,
 )
 
+/** What was actually executed today; null while the session is still planned. */
+data class TodayExecutionUi(
+    val duration: String?,
+    val distance: String?,
+    val pace: String?,
+    val rpe: Int?,
+    val activityId: String?,
+    /** True when the completion has no linked run (manual evidence). */
+    val withoutRunData: Boolean,
+)
+
 data class TodayUiState(
     val today: LocalDate,
     val athleteName: String,
@@ -84,6 +95,8 @@ data class TodayUiState(
     val avatarPath: String? = null,
     /** Imported runs compatible with today's planned session; never auto-linked. */
     val activitySuggestions: List<ActivitySuggestionUi> = emptyList(),
+    /** Summary of today's execution when the planned session is already done. */
+    val todayExecution: TodayExecutionUi? = null,
     /** Result of the last completion attempt, shown as passive copy in the card. */
     val completionMessage: String? = null,
     /** Blocks completion and explains why the day is a rest/illness day. */

@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 06/11/2026 (C1-01 a C1-06 concluídos; documentação reconciliada com o schema v12)
+**Atualizado:** 08/11/2026 (oferta reativa ao importar, card de treino concluído e explicação do “feito sem registro”)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 999 testes no total (497 em `:app`, 124 em `core:data`, 351 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1026 testes no total (521 em `:app`, 127 em `core:data`, 351 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,69% de linhas (3.380/3.460), 82,09% de branches (2.544/3.099), 96,04% de instruções (23.890/24.876)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -60,6 +60,44 @@
 - **Saúde como destino principal:** a tela “Saúde e dados” virou a 5ª aba (`Hoje · Corridas · Tendências · Saúde · Perfil`), sem seta de voltar. O Hoje ganhou “Ver recuperação” no card de prontidão; o Perfil mantém só um link compacto com estado e o card de backup. Checklist e tutorial apontam para a aba (ADR-0020). A aba avisa quando os dados de hoje ainda não chegaram e oferece “Abrir Health Connect” para diagnóstico.
 - **Sync automático do Health Connect:** o app sincroniza no resume quando a última leitura tem mais de 6 h, com backoff de 15 min em erro, `Mutex` contra concorrência e worker diário como fallback. `HealthSyncStore` guarda `lastSyncedAt`/`lastAttemptAt`; a UI mostra “Atualizado há X” e erro passivo; o botão manual continua sendo override (ADR-0021).
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
+- **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
+- **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-08 — Reatividade no import e clareza do treino concluído
+
+**Objetivo:** fazer o app guiar o usuário no momento em que ele importa uma corrida e deixar explícito, na tela Hoje, que o treino do dia já foi feito — incluindo o que significa “feito sem registro”.
+
+### Concluído
+
+- **Oferta reativa no import:** `ImportedRunPromptStore` (fila durável em SharedPreferences, `StateFlow` e `commit()` para sobreviver ao worker), `OfferImportedRun` (avalia corrida/esteira do dia local, plano existente, sessão `PLANNED` ou `DONE`, doença, vínculo existente) e gancho em `StagedImportProcessor` após `Imported`/`Duplicate`, sem transformar import bem-sucedido em job falho.
+- **Overlay global:** `ImportedRunPromptViewModel` + `ImportedRunPromptHost` no `MainContent`, com três modos — **oferta** (“Usar como treino de hoje” / “Só salvar no app”), **aviso** (sessão já concluída com evidência forte) e **correção** (sessão `MANUAL`: “Usar esta corrida” / “Manter sem registro”). O vínculo usa `CompleteSession` com evidência `ACTIVITY`; erros aparecem no próprio diálogo; o sucesso limpa a fila. O prompt aparece independentemente da aba e também no share intent.
+- **Correção do “fiz sem registro”:** `ReplaceManualCompletion` + `SessionExecutionRepository.replaceManualWithActivity` trocam um `DONE`/`MANUAL` pela corrida do mesmo dia, de forma transacional: a execução existente vira `ACTIVITY` com duração/distância reais (RPE manual descartado) e a sessão mantém data e vínculo 1:1. O card do Hoje ganhou “Corrigir registro” quando há corrida compatível; `ACTIVITY`, `GUIDED` e `LEGACY_UNVERIFIED` continuam somente aviso.
+- **Card do treino de hoje:** sessão `DONE` mostra selo “Concluído”, nota de evidência, bloco “FEITO” com duração/distância/pace/RPE reais e bloco “PLANEJADO” com os alvos; botões iniciar/trocar/concluir somem e “Ver corrida” abre o detalhe. Sessão `CLOSED` mostra o motivo e também não oferece ações.
+- **Explicação do “feito sem registro”:** o card do Hoje diz que o treino foi concluído sem vincular corrida e não entra em volume/carga/zonas; o plano da semana repete a explicação no dia com evidência `MANUAL`.
+- **Reset:** `DataResetCoordinator` limpa a fila de ofertas junto com as demais preferências de UI.
+- **Testes:** +24 em `:app` (avaliação da oferta, ViewModel/diálogo do overlay, correção de `MANUAL`, selo/resumo do Hoje, nota manual e resumo de execução no `TodayViewModel`) e +3 em `core:data` (substituição transacional, rejeição de sessão não manual e de corrida já vinculada). `TutorialViewModelTest` deixou de depender da data real (falhava aos domingos, quando a disponibilidade Mon/Wed/Sat não gera sessões) e os testes Robolectric passaram a usar `android.app.Application` (`robolectric.properties`), eliminando o vazamento de coletores do `MeuCoachApplication` entre testes.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde.
+- `./gradlew :app:verifyRoborazziDebug` — verde; goldens de Hoje sem alteração (o estado planejado não mudou).
+- **1026 testes**, 0 falhas e 0 `@Ignore` (521 `:app`, 127 `core:data`, 351 `core:domain`, 27 `core:model`).
+- Nenhuma migração de Room, dependência nova ou alteração de schema.
+
+### Decisões e observações
+
+- **Nunca vincular sozinho:** a oferta é uma pergunta; rejeitar mantém a sessão `PLANNED` e a corrida como treino livre.
+- **Convite só no dia:** corrida de outro dia, dia sem plano, dia de descanso, doença, sessão encerrada ou corrida já vinculada não geram prompt.
+- **Já concluído com evidência forte vira aviso:** `ACTIVITY`, `GUIDED` e `LEGACY_UNVERIFIED` não são reescritos; a corrida importada fica como treino livre. A exceção é `MANUAL`, que pode ser corrigido com confirmação explícita.
+- **Correção de “fiz sem registro”:** `ReplaceManualCompletion` + `replaceManualWithActivity` atualizam a execução no lugar e trocam a evidência para `ACTIVITY`, mantendo a data e o vínculo 1:1. O RPE manual é descartado junto com a declaração; a oferta aparece no overlay do import e no botão “Corrigir registro” do card concluído.
+- **Persistência de UI, não de treino:** a fila de ofertas é preferência de interface em SharedPreferences; nenhum dado de saúde novo é persistido.
+- **Flakiness tratado:** `MetricsImportViewModelTest` estourava timeout e `TutorialSystemBackTest` recebia exceção de banco de outro teste (`no such table: athlete_profile`) em execuções completas. A causa provável era o `MeuCoachApplication` real iniciando coletores de escopo de aplicação em cada teste Robolectric; os testes passaram a usar `android.app.Application` via `robolectric.properties`. Os goldens de gráficos (`HealthMetricsScreenshotTest` e `TrendsFullScreenshotTest`) ganharam mais frames e uma pausa real antes da captura, porque o Vico podia sair em branco sob carga. Nenhum assert foi reduzido.
+
+### Próximo passo
+
+1. Validar no aparelho o overlay após importação pelo seletor e pelo share intent, com o app aberto e após morte do processo.
+2. Revisar a copy do aviso de treino já concluído e da correção de “fiz sem registro” com o usuário 0.
+3. Cobrir também a correção pelo detalhe da atividade no futuro (hoje ela parte do overlay ou do card do Hoje).
 
 ## Sessão 2026-11-06 — C1-06: verdade documental, ADRs e regressões finais
 

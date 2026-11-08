@@ -3,6 +3,7 @@ package com.meucoach.app.di
 import android.content.Context
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
+import com.meucoach.app.importer.ImportedRunPromptStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -137,6 +138,11 @@ object DataModule {
     @Provides
     @Singleton
     fun provideFirstRunTipStore(@ApplicationContext context: Context): FirstRunTipStore = FirstRunTipStore(context)
+
+    @Provides
+    @Singleton
+    fun provideImportedRunPromptStore(@ApplicationContext context: Context): ImportedRunPromptStore =
+        ImportedRunPromptStore(context)
 
     @Provides
     @Singleton

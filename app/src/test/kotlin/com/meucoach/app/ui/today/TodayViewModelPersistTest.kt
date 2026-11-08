@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayPrescription
+import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -221,6 +222,150 @@ class TodayViewModelPersistTest {
             .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
     }
 
+    @Test
+    fun `summarizes a completed session with its linked run`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(weekWith(today, weekStart))
+        val zone = ZoneId.of("America/Sao_Paulo")
+        val saved = activities.saveImportedActivity(
+            ImportedActivity(
+                source = ActivitySource.FIT,
+                sport = Sport.RUNNING,
+                startTime = today.atTime(7, 0).atZone(zone).toInstant(),
+                durationSec = 2_400,
+                distanceM = 6_000.0,
+                averagePace = Pace.fromSecondsPerKm(400),
+            ),
+        ) as com.meucoach.core.data.repository.SaveActivityResult.Saved
+        val executions = SessionExecutionRepository(database)
+        executions.recordActivityExecution(
+            plannedSessionId = com.meucoach.core.data.db.entity.plannedSessionId(weekStart, today),
+            activityId = saved.id,
+            startedAt = today.atTime(7, 0).atZone(zone).toInstant(),
+            durationSec = 2_400,
+            distanceM = 6_000.0,
+        )
+
+        val viewModel = createViewModel()
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.todayExecution != null }
+        }
+
+        val execution = state.todayExecution!!
+        assertThat(execution.duration).isEqualTo("40:00")
+        assertThat(execution.distance).isEqualTo("6,00 km")
+        assertThat(execution.pace).isEqualTo("6:40 /km")
+        assertThat(execution.activityId).isEqualTo(saved.id)
+        assertThat(execution.withoutRunData).isFalse()
+    }
+
+    @Test
+    fun `summarizes a manual completion without inventing run data`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(weekWith(today, weekStart))
+        SessionExecutionRepository(database).recordManualExecution(
+            plannedSessionId = com.meucoach.core.data.db.entity.plannedSessionId(weekStart, today),
+            durationMin = 40,
+            rpe = 6,
+        )
+
+        val viewModel = createViewModel()
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.todayExecution != null }
+        }
+
+        val execution = state.todayExecution!!
+        assertThat(execution.duration).isEqualTo("40:00")
+        assertThat(execution.distance).isNull()
+        assertThat(execution.pace).isNull()
+        assertThat(execution.rpe).isEqualTo(6)
+        assertThat(execution.activityId).isNull()
+        assertThat(execution.withoutRunData).isTrue()
+    }
+
+    @Test
+    fun `replaces a manual completion with today's imported run`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(weekWith(today, weekStart))
+        val executionRepository = SessionExecutionRepository(database)
+        executionRepository.recordManualExecution(
+            plannedSessionId = com.meucoach.core.data.db.entity.plannedSessionId(weekStart, today),
+            durationMin = 40,
+            rpe = 6,
+        )
+        val zone = ZoneId.of("America/Sao_Paulo")
+        val saved = activities.saveImportedActivity(
+            ImportedActivity(
+                source = ActivitySource.FIT,
+                sport = Sport.RUNNING,
+                startTime = today.atTime(7, 0).atZone(zone).toInstant(),
+                durationSec = 2_400,
+                distanceM = 6_000.0,
+                averagePace = Pace.fromSecondsPerKm(400),
+            ),
+        ) as com.meucoach.core.data.repository.SaveActivityResult.Saved
+
+        val viewModel = createViewModel()
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.todayExecution?.withoutRunData == true }
+        }
+        assertThat(state.activitySuggestions.map { it.id }).contains(saved.id)
+
+        viewModel.replaceManualWithActivity(today, saved.id)
+
+        val updated = withTimeout(5_000) {
+            viewModel.uiState.first {
+                it.plan?.sessions?.single()?.completionEvidence ==
+                    com.meucoach.core.model.CompletionEvidence.ACTIVITY
+            }
+        }
+        assertThat(updated.todayExecution?.activityId).isEqualTo(saved.id)
+        assertThat(updated.completionMessage).contains("substituído")
+    }
+
+    private fun weekWith(today: LocalDate, weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
+        weekStart = weekStart,
+        sessions = listOf(
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = today,
+                type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                title = "Fácil e conversável",
+                durationMin = 40,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        ),
+        weeklyMinutes = 40,
+        longRunMinutes = null,
+        qualityCount = 0,
+        rationale = "Sem progressão.",
+        confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+    )
+
     private fun createViewModel(timeProvider: TimeProvider = FakeTimeProvider()): TodayViewModel {
         val executions = SessionExecutionRepository(database)
         return TodayViewModel(
@@ -231,6 +376,7 @@ class TodayViewModelPersistTest {
             plans,
             executions,
             CompleteSession(plans, activities, executions),
+            ReplaceManualCompletion(plans, activities, executions),
             timeProvider,
             GetTodayPrescription(prescriptions),
         )
