@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 08/11/2026 (oferta reativa ao importar, card de treino concluído e explicação do “feito sem registro”)
+**Atualizado:** 08/11/2026 (R-01 implementado em `core:domain`; R-02/R-03 e sessão guiada pendentes)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug :app:verifyRoborazziDebug`)
-- **Testes:** 1026 testes no total (521 em `:app`, 127 em `core:data`, 351 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,69% de linhas (3.380/3.460), 82,09% de branches (2.544/3.099), 96,04% de instruções (23.890/24.876)
+- **Testes:** 1054 testes no total (521 em `:app`, 127 em `core:data`, 379 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,76% de linhas (3.668/3.752), 81,91% de branches (2.690/3.284), 96,09% de instruções (25.941/26.996)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -16,6 +16,7 @@
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
+- **Replanejamento (R-01):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; nada é aplicado sem aceite (R-02/R-03 pendentes).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -62,6 +63,74 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-08 — R-01: replanejamento puro da semana (`core:domain`)
+
+**Objetivo:** implementar R-01 do ciclo 2 com testes primeiro, escopo restrito a `core:domain`: `PlanReplanner` determinístico que avalia desvios, regenera apenas o futuro da semana e devolve sugestão auditável ou `NoChange`.
+
+### Concluído
+
+- **Contratos:** `ReplanTrigger` (T1/T2/T3), `ReplanSuggestion`, `ReplanResult` (`Suggest`/`NoChange`) e `ReplanInput` em `core/domain/replan`.
+- **T1 (adesão):** conta sessões `PLANNED` passadas, a partir de `createdOn`, treináveis e fora de `nonTrainablePastDates`; não fecha sessões automaticamente (A5). O limiar é configurável, com default 2 como heurística de produto (A6), sem tratamento científico.
+- **T2 (disponibilidade):** hash SHA-256 determinístico e independente da ordem do mapa; hash igual não dispara. Baseline desconhecido (`null`) nunca é inferido como mudança: o resultado é `NoChange` com o hash atual para ser persistido como referência.
+- **T3 (pedido explícito):** força a avaliação mesmo sem T1/T2.
+- **Geração e merge:** `WeeklyPlanGenerator` recebe `today`, gera só o futuro, e o replanejador preserva hoje/passado e sessões futuras `DONE`/`CLOSED` campo a campo. `createdOn` original é mantido (A1).
+- **Validação da semana mesclada:** máximo de 2 qualidades, um único longão, espaçamento qualidade↔qualidade e qualidade↔longão, e disponibilidade dos dias futuros. Sessões concluídas contam para os limites.
+- **Teto conservador:** a revisão não pode aumentar volume/duração futura nem adicionar qualidade além da intenção futura vigente; quando não há como validar, retorna `NoChange` (nada é aplicado silenciosamente).
+- **`NoChange` semântico:** compara data, tipo, título, duração, alvos, regras e evidências — uma mudança só de alvos/regras já produz sugestão.
+- **Auditoria:** `expectedVersion`, `expectedInputsHash`, `expectedAvailabilityHash` e `availabilityHash` na sugestão; sem `R-PLAN-09` e sem citar `R-PLAN-01`; os IDs vêm do plano efetivamente regenerado.
+- **Testes:** 28 novos em `PlanReplannerTest`, cobrindo limiar 1/2, `createdOn`, REST/doença, T2 igual/diferente/desconhecido, T3, troca manual, teto de volume/qualidade, qualidade/longão já concluídos, estados protegidos, semana/futuro ausentes, disponibilidade vazia e determinismo/hashes.
+
+### Evidências
+
+- `./gradlew :core:domain:test --tests "*PlanReplannerTest"` — 28 testes, verde.
+- `./gradlew check` — verde (inclui `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `core:domain`: 379 testes, 0 falhas; 97,76% de linhas, 81,91% de branches e 96,09% de instruções.
+- Nenhuma migração, dependência, UI ou alteração de schema; nenhum dado real no diff.
+
+### Decisões e observações
+
+- **A1/A5/A6 aplicadas:** `createdOn` preservado na semana vigente, contagem sem fechamento e limiar 2 como produto. A2 descreve a persistência de R-02, ainda não implementada.
+- **Conservador por desenho:** os cenários em que a regeneração aumentaria carga, moveria uma qualidade perdida para o futuro ou violaria espaçamento retornam `NoChange`; a sugestão é sempre explícita.
+- **Escopo respeitado:** apenas `core:domain` foi alterado. R-02 (migração/snapshot/`ApplyReplan`), R-03 (UI/caso de uso) e toda a sessão guiada permanecem pendentes; A3/A4/A7 continuam bloqueando G-03.
+- **Observação de suíte:** em execuções de `check`/build concorrentes com lint, dois testes de `:app` falharam por timeout ou exceção vazada (`MetricsImportViewModelTest` e `TutorialSystemBackTest`); ambos passam isolados e na execução dedicada de `:app`, sem relação com este diff.
+
+### Próximo passo
+
+1. R-02: migração `12→13`, tabela append-only de revisões, `ApplyReplan` transacional com `expectedVersion`/hashes e inclusão no export/reset.
+2. R-03: caso de uso e UI da sugestão (aceitar/recusar), selo de versão e diff, com goldens.
+3. Fechar A3/A4/A7 antes de iniciar G-03.
+
+## Sessão 2026-11-08 — Auditoria técnica do plano do ciclo 2
+
+**Objetivo:** auditar a viabilidade do plano proposto para sessão guiada e replanejamento antes de qualquer código. A feature 2 (captura automática via Health Connect) permanece fora do escopo desta proposta.
+
+### Concluído
+
+- **Documento revisado:** `docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md` v0.3; decisões do replanejamento registradas e handoff de R-01 preparado. ADRs 0027/0028 ainda não foram extraídos nem aprovados.
+- **Decisões de replanejamento confirmadas por Rafael:** manter `createdOn` na semana vigente; uma linha vigente + snapshots completos append-only para persistência; contar sessões passadas `PLANNED` elegíveis sem fechá-las automaticamente; T1 = 2 sessões elegíveis (heurística de produto, não ciência).
+- **Base factual verificada no código** antes de escrever (§2 do documento): cronômetro em memória em `TodayScreen` (FR-002), rejeição de `GUIDED` em `CompleteSession`, ausência de `recordGuidedExecution`/TTS/foreground service para sessão, PK `weekStart` em `weekly_plans` sem colunas de versão, ID determinístico de sessão, `createdOn`/N-02, `srpe()` existente e não coletado, schema v12.
+- **Especificação R-01 (ainda não implementada):** o plano exige validar a semana mesclada com sessões concluídas, não repor carga perdida, recalcular agregados, preservar estados protegidos e rejeitar sugestões obsoletas. Snapshots devem guardar hashes/metadados; hashes legados ficam desconhecidos. FR-011 continua pendente.
+- **Proposta de sessão guiada (ainda não implementada):** cues temporais sem estrutura de intervalos; coleta de RPE sem sRPE na carga nesta entrega; pausas, reinício, TTS, notificação/FGS e reset com época têm gates documentados.
+- **Plano técnico:** migrações propostas 12→13 e 13→14; as etapas são sequenciais. As 7 entregas R-01..R-03/G-01..G-04 mantêm gates, testes e documentação.
+- **Checklist (§10):** 7 decisões (A1–A7), 8 verificações de código (V1–V8) e 4 verificações de documento/ciência (O1–O4). A1/A5/A6 governam R-01; A2 define a persistência de R-02. A3/A4/A7 e decisões de G seguem pendentes.
+
+### Evidências
+
+- Nenhuma alteração de código, schema, dependência ou teste; somente documentação.
+- Nenhum dado real no diff. Documentação Android atual consultada para tipos de foreground service, TTS e permissão de notificações.
+
+### Decisões e observações
+
+- **Sem implementação nesta sessão:** a aprovação do escopo R-01 não aprova os ADRs 0027/0028 por inteiro. R-01 pode avançar na próxima sessão; A3/A4/A7 continuam bloqueando G-03.
+- **Ordem proposta:** replanejamento primeiro, sessão guiada depois. Migrações 12→13→14 são sequenciais; o documento não propõe trabalho paralelo nelas.
+- **Guardas mantidas:** sem LLM, sem GPS/BLE, sem dependência nova; replanejamento não inventa regras fisiológicas e sessão guiada não produz sRPE nesta etapa.
+
+### Próximo passo
+
+1. Passar `docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md` v0.3 ao próximo modelo como instrução de handoff.
+2. O próximo modelo implementa R-01 com testes primeiro, limitado a `core:domain`; nenhuma implementação ou teste foi feito nesta sessão.
+3. Manter R-02/R-03 e G-01..G-04 sujeitos aos gates do plano; G-03 permanece bloqueada até fechar A3/A4/A7.
 
 ## Sessão 2026-11-08 — Reatividade no import e clareza do treino concluído
 

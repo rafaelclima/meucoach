@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 06/11/2026 · **Mudança:** ciclo 1 concluído (C1-06) e escopo reconciliado com o código.
+**Versão:** 1.5 · **Data:** 08/11/2026 · **Mudança:** R-01 do ciclo 2 implementado em `core:domain`; R-02/R-03 e sessão guiada permanecem pendentes.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -221,7 +221,7 @@
 - [x] Carga (CTL/ATL/TSB), km por dia e última atividade do banco.
 - [x] Ações de concluir/pular sessão com motivo persistido.
 - [x] Notificações locais de check-in e treino com deep link.
-- [x] Iniciar (prévia de cronômetro) e trocar treino (com guardrails); a sessão guiada persistente fica no ciclo 3.
+- [x] Iniciar (prévia de cronômetro) e trocar treino (com guardrails); sessão guiada persistente constava no ciclo 3 e foi proposta para o ciclo 2, ainda sem aprovação (`docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md` v0.2).
 - [x] Histórico de conclusão do plano em Tendências (8 semanas, sem streak).
 - [x] Cards compactos: prontidão em duas linhas por sinal e plano sem pill de tipo redundante.
 - [x] Plano em uma linha por sessão, rationale recolhível e carga vazia sem zeros.
@@ -366,9 +366,20 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 - Revisão humana das tolerâncias de vínculo e da copy de `LEGACY_UNVERIFIED`.
 - Validação dos limiares do ADR 0026 (8 dias/28, frescor de 14 dias, critérios de iniciante) com dados reais.
-- `GUIDED` persistente, N-03 (semana de prova) e N-05 (backfill Health Connect) seguem para ciclos posteriores.
+- Na conclusão do ciclo 1, `GUIDED` persistente, N-03 e N-05 ficaram para ciclos posteriores; `GUIDED` foi depois proposto para o ciclo 2 (ainda não aprovado). N-03 e N-05 permanecem pendências separadas.
 
-**Regras do ciclo:**
+### Ciclo 2 — proposta auditada; R-01 implementado (08/11/2026)
+
+**Plano:** [`docs/PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md`](PLANO_CICLO_2_GUIADO_E_REPLANEJAMENTO.md) v0.4. A auditoria técnica foi incorporada; decisões do replanejamento foram registradas. R-01 foi implementado em `core:domain`; ADRs 0027/0028 ainda não foram extraídos/aprovados e R-02/R-03/G não foram iniciados.
+
+| Etapa proposta | Escopo | Gate antes de implementar | Estado |
+|---|---|---|---|
+| **R — Replanejamento** | R-01: `PlanReplanner` puro; preservar sessões feitas e validar a semana mesclada | Testes primeiro em `core:domain`; R-02/R-03 dependem dos gates do plano | **R-01 concluído em 08/11/2026** (28 testes, `check` verde); R-02/R-03 pendentes |
+| **G — Sessão guiada** | Player persistente, cues temporais, TTS opcional e evidência `GUIDED`; RPE sem carga sRPE nesta etapa | Fechar tipo de FGS/distribuição e comportamento diante de doença durante execução; validar em aparelho | Proposto |
+
+FR-011 (revisão semanal com métricas e observações) continua pendente; replanejamento é relacionado, mas não o satisfaz. N-03 e N-05 permanecem pendências separadas. A sequência proposta é R antes de G; as migrações `12→13→14` não devem ser trabalhadas em paralelo sem plano de integração. A3/A4/A7 continuam bloqueando G-03.
+
+**Regras adotadas no ciclo 1:**
 
 - Cada entrega termina com gate próprio; a próxima só começa com o gate anterior verde.
 - Nenhuma superfície nova além de execução/evidência (parte da correção).
