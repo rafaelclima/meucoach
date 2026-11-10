@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.7 · **Data:** 08/11/2026 · **Reconciliação:** ADR 0028 extraído e aceito (replanejamento versionado e sugerido da semana)
+**Versão:** 1.8 · **Data:** 10/11/2026 · **Reconciliação:** ADRs 0030/0031 aceitos em princípios para o Ciclo 3; implementação ainda pendente.
 
 ## 1. Restrições e forças
 
@@ -191,6 +191,23 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - **UI:** `ReplanViewModel` avalia no resume, respeita recusa por proposta (`weekStart` + versão + hash) e supressão até o fim do dia em `ReplanSuggestionStore` (SharedPreferences), e oferece aceitar/recusar/suprimir. O card do plano mostra o selo `v{n}`, o botão explícito e “Ver o que mudou” a partir de `getLatestRevision` + `PlanJson`.
 - **Explicabilidade:** a revisão reutiliza as regras/evidências emitidas pelo gerador; `ReplanDiff` e a copy são apresentação, não regra fisiológica.
 
+### 6.5 Ciclo 3 — direção aprovada, não implementada
+
+- **Fingerprint de planejamento (ADR 0031):** fingerprint versionado/canônico dos
+  inputs que alteram plano/alvos; proveniência (`generatedFrom`) e checkpoint
+  (`lastEvaluated`) separados; `temporalContextHash` para o fuso que define
+  `today`/semana; aceite T4 revalida o fingerprint dentro da transação Room.
+- **Evento de prova (ADR 0030):** `RaceEvent` separado de `WorkoutType` e de
+  `PlannedSession`, com estados `PLANNED/COMPLETED/CANCELLED/NO_SHOW`; `TodayDecision`
+  discrimina treino e competição, sem duas instruções no Hoje.
+- **Briefing:** derivado da `DailyPrescription` persistida; v1 não inventa segmentos,
+  intervalos ou alvos e não é reconstruído para sessões concluídas.
+- **Nutrição (F4):** intenção de conteúdo geral aprovada, mas fontes/copy ainda
+  precisam de revisão; nada é exibido antes do gate.
+
+> Nenhum item desta seção altera o comportamento atual até a implementação e os
+> gates de migração/testes serem concluídos.
+
 ## 7. Persistência
 
 - **Room/SQLite** como fonte de verdade local; versão atual **13** (`MeuCoachDatabase.VERSION`).
@@ -305,6 +322,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0025](adr/0025-deletion-retention-reset.md) — lixeira de 7 dias, reset imediato e época de dados
 - [ADR-0026](adr/0026-load-coverage-quality-eligibility.md) — cobertura de carga, ACWR desconhecido e elegibilidade de qualidade
 - [ADR-0028](adr/0028-versioned-plan-replanning.md) — replanejamento versionado e sugerido da semana
+- [ADR-0030](adr/0030-race-event-and-weekly-taper.md) — evento de prova, autoridade diária e taper
+- [ADR-0031](adr/0031-profile-planning-fingerprint.md) — fingerprint de planejamento e aceite atômico
 
 > Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
 
