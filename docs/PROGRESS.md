@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-01B: fingerprint de planejamento, T4, migração 13→14 e compare-and-apply; C3-01A incluído)
+**Atualizado:** 10/11/2026 (C3-02: avaliação ao salvar Perfil/Calibração e card no Perfil; C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1122 testes no total (557 em `:app`, 142 em `core:data`, 396 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1127 testes no total (562 em `:app`, 142 em `core:data`, 396 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,77% de linhas (3.806/3.893), 81,82% de branches (2.764/3.378), 96,23% de instruções (26.709/27.756)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -17,6 +17,7 @@
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
 - **Replanejamento (R-01/R-02/R-03):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; R-02 persiste o aceite de forma versionada e transacional em `weekly_plans` + `weekly_plan_revisions`. R-03 expõe `EvaluateReplan`/`ApplyReplan` no app, sugere por dia com aceitar/recusar/suprimir, reavalia se versão/hash mudarem, mostra selo de versão e diff “o que mudou” e mantém a prescrição de hoje e as sessões protegidas intactas. C3-01B acrescenta T4 `PROFILE_CHANGED`, fingerprint/checkpoint e compare-and-apply do perfil dentro da transação.
+- **Perfil e plano (C3-02):** salvar Perfil/onboarding ou Calibração avalia T4 e publica o resultado; o Perfil mostra sugestão com aceitar/recusar/suprimir, `NoChange` ou limite seguro. O resultado é consumido uma vez; o Hoje continua avaliando e exibindo a sugestão, e o reset limpa o resultado pendente.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -64,7 +65,40 @@
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 
-## Sessão 2026-11-10 — C3-01B: fingerprint de planejamento, T4 e aceite atômico
+## Sessão 2026-11-10 — C3-02: avaliação ao salvar Perfil/Calibração
+
+**Objetivo:** fechar o ciclo entre edição de perfil/calibração e o plano: avaliar T4 depois de toda escrita relevante e mostrar sugestão, `NoChange` ou limite seguro no Perfil, mantendo o Hoje como superfície da sugestão.
+
+### Concluído
+
+- **Rotas de escrita cobertas:** `OnboardingViewModel` (onboarding e edição de perfil) e `CalibrationViewModel` chamam `EvaluateReplan` após `saveProfile`. Falha na avaliação não transforma um salvamento válido em erro; onboarding sem plano apenas limpa o resultado.
+- **Resultado compartilhado:** `ProfilePlanEvaluationStore` guarda em memória o resultado da avaliação disparada pelo salvamento. O `ReplanViewModel` o consome uma vez no Perfil, com validação de versão para descartar sugestão obsoleta, e cai numa avaliação automática quando não há resultado pendente.
+- **Perfil:** `ProfileScreen` ganhou o card de sugestão com aceitar/recusar/suprimir, o card de `NoChange`/limite e o botão de dispensar; a mensagem é apresentada uma vez, sem repetir o mesmo aviso a cada abertura.
+- **Hoje:** segue avaliando e exibindo a sugestão; o aceite no Perfil passa pelo mesmo `ApplyReplan` e revalida versão/inputs/fingerprint.
+- **Reset:** `DataResetCoordinator` limpa o resultado pendente junto das preferências de replanejamento.
+- **Testes:** +5 em `:app` (salvar perfil avalia e publica T4, salvar calibração avalia e publica, `refreshForProfile` mostra `NoChange` armazenado uma vez, card de sugestão no Perfil e mensagem dispensável). Nenhum assert existente foi reduzido.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `./gradlew :app:verifyRoborazziDebug --tests "*ProfileScreenshotTest" --tests "*ReplanScreenshotTest" --tests "*TodayScreenshotTest"` — verde; goldens de Perfil/Hoje/Replan sem alteração.
+- **1.127 testes**, 0 falhas e 0 `@Ignore` (562 `:app`, 142 `core:data`, 396 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,77% de linhas, 81,82% de branches, 96,23% de instruções; parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova ou dado real no diff.
+
+### Decisões e observações
+
+- **Resultado de UI não é decisão:** o store só transporta o resultado já calculado por `EvaluateReplan`; nenhuma regra de treino vive na tela.
+- **Um aviso, não um nag:** `NoChange`/limite aparece após o salvamento e é consumido; aberturas seguintes não repetem a mesma mensagem. Sugestões continuam disponíveis porque o checkpoint não avança em `Suggest`.
+- **Sugestão obsoleta é descartada:** se o plano já mudou de versão antes de o Perfil abrir, o resultado armazenado não é exibido; uma avaliação nova é feita.
+- **Escopo respeitado:** briefing (C3-03/04), evento de prova/F2 e F4 continuam pendentes.
+
+### Próximo passo
+
+1. Validar a copy do card de Perfil com o usuário 0 e em aparelho real, incluindo fontes 200% e TalkBack.
+2. Seguir para C3-03/C3-04 (briefing genérico e sheet) quando autorizado.
+
+
 
 **Objetivo:** implementar o segundo item do Ciclo 3 com testes primeiro: fingerprint canônico/versionado do perfil, proveniência × checkpoint, T4 `PROFILE_CHANGED`, migração `13→14` e compare-and-apply do perfil dentro da mesma transação Room que valida a versão e grava a revisão.
 

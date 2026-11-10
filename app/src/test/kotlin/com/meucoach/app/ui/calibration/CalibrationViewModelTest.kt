@@ -3,10 +3,22 @@ package com.meucoach.app.ui.calibration
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.EvaluateReplan
+import com.meucoach.app.application.EvaluateReplanResult
+import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.easySession
+import com.meucoach.app.application.qualitySession
+import com.meucoach.app.application.replanPlan
+import com.meucoach.app.application.replanProfile
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -45,6 +57,10 @@ class CalibrationViewModelTest {
     private lateinit var database: MeuCoachDatabase
     private lateinit var profiles: ProfileRepository
     private lateinit var activities: ActivityRepository
+    private lateinit var plans: TrainingPlanRepository
+    private lateinit var checkIns: CheckInRepository
+    private lateinit var metrics: DailyMetricsRepository
+    private val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
 
     @Before
     fun setUp() {
@@ -55,7 +71,6 @@ class CalibrationViewModelTest {
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
         profiles = ProfileRepository(database, clock)
         activities =
             ActivityRepository(
@@ -64,6 +79,9 @@ class CalibrationViewModelTest {
                 zoneId = ZoneId.of("America/Sao_Paulo"),
                 idGenerator = { "activity-${System.nanoTime()}" },
             )
+        plans = TrainingPlanRepository(database, clock)
+        checkIns = CheckInRepository(database, clock)
+        metrics = DailyMetricsRepository(database, clock)
     }
 
     @After
@@ -136,6 +154,45 @@ class CalibrationViewModelTest {
     }
 
     @Test
+    fun `saving calibration evaluates the plan and publishes the result`(): Unit = runBlocking {
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-04T12:00:00Z"),
+            ZoneOffset.UTC,
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = LocalDate.of(2026, 11, 2)
+        profiles.saveProfile(replanProfile())
+        plans.saveWeek(
+            replanPlan(
+                weekStart = weekStart,
+                createdOn = today,
+                sessions = listOf(
+                    easySession(today),
+                    qualitySession(weekStart.plusDays(4)),
+                ),
+            ),
+        )
+        val store = ProfilePlanEvaluationStore()
+        val viewModel = viewModel(timeProvider = timeProvider, planEvaluationStore = store)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.update {
+            it.copy(
+                distanceKm = "5",
+                time = "30:59",
+                date = today.format(DateTimeFormatter.ofPattern("dd/MM/uuuu")),
+                averageHeartRate = "181",
+            )
+        }
+        viewModel.calculate()
+
+        viewModel.save()
+        withTimeout(5_000) { viewModel.uiState.first { it.isSaved } }
+
+        assertThat(store.result.value).isInstanceOf(EvaluateReplanResult.NoChange::class.java)
+        assertThat(store.result.value).isNotNull()
+    }
+
+    @Test
     fun `prefills the form from an eligible run without calculating or saving`(): Unit = runBlocking {
         profiles.saveProfile(profile())
         activities.saveImportedActivity(effortActivity(), "sha-effort")
@@ -164,14 +221,30 @@ class CalibrationViewModelTest {
         assertThat(state.form.time).isEmpty()
     }
 
-    private fun viewModel(activityId: String? = null) = CalibrationViewModel(
-        profileRepository = profiles,
-        activityRepository = activities,
-        timeProvider = FakeTimeProvider(),
-        savedStateHandle = androidx.lifecycle.SavedStateHandle(
-            activityId?.let { mapOf(CalibrationViewModel.ARG_ACTIVITY_ID to it) }.orEmpty(),
-        ),
-    )
+    private fun viewModel(
+        activityId: String? = null,
+        timeProvider: TimeProvider = FakeTimeProvider(),
+        planEvaluationStore: ProfilePlanEvaluationStore = ProfilePlanEvaluationStore(),
+    ): CalibrationViewModel {
+        val contexts = ReplanContextBuilder(
+            plans = plans,
+            profiles = profiles,
+            checkIns = checkIns,
+            metrics = metrics,
+            activities = activities,
+            timeProvider = timeProvider,
+        )
+        return CalibrationViewModel(
+            profileRepository = profiles,
+            activityRepository = activities,
+            timeProvider = timeProvider,
+            evaluateReplan = EvaluateReplan(contexts, plans),
+            planEvaluationStore = planEvaluationStore,
+            savedStateHandle = androidx.lifecycle.SavedStateHandle(
+                activityId?.let { mapOf(CalibrationViewModel.ARG_ACTIVITY_ID to it) }.orEmpty(),
+            ),
+        )
+    }
 
     private fun fillRace(viewModel: CalibrationViewModel) {
         val date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/uuuu"))

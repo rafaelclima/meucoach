@@ -151,6 +151,7 @@ class DataResetCoordinatorTest {
             photos = ProfilePhotoStore(context),
             importedRunPrompts = importedRunPrompts,
             replanSuggestions = replanSuggestions,
+            profilePlanEvaluations = com.meucoach.app.replan.ProfilePlanEvaluationStore(),
             tutorial = tutorial,
             firstRunMetrics = firstRunMetrics,
             firstRunTips = firstRunTips,

@@ -33,6 +33,11 @@ import com.meucoach.app.ui.common.healthConnectLastSyncLabel
 import com.meucoach.app.ui.common.healthConnectStatusLabel
 import com.meucoach.app.ui.common.isHealthConnectConnected
 import com.meucoach.app.ui.common.timezoneLabel
+import com.meucoach.app.ui.replan.ReplanChangesSheet
+import com.meucoach.app.ui.replan.ReplanMessageCard
+import com.meucoach.app.ui.replan.ReplanSuggestionCard
+import com.meucoach.app.ui.replan.ReplanUiState
+import com.meucoach.app.ui.replan.ReplanViewModel
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McEmptyState
@@ -58,20 +63,28 @@ fun ProfileScreen(
     onShowTutorial: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
+    replanViewModel: ReplanViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val replan by replanViewModel.uiState.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) {
         viewModel.refreshHealth()
+        replanViewModel.refreshForProfile()
         onPauseOrDispose { }
     }
 
     ProfileContent(
         state = state,
+        replan = replan,
         onEdit = onEdit,
         onCalibrate = onCalibrate,
         onOpenHealth = onOpenHealth,
         onManageData = onManageData,
         onShowTutorial = onShowTutorial,
+        onReplanAccept = replanViewModel::accept,
+        onReplanDecline = replanViewModel::decline,
+        onReplanSuppress = replanViewModel::suppress,
+        onReplanConsumeMessage = replanViewModel::consumeMessage,
         modifier = modifier,
     )
 }
@@ -84,6 +97,11 @@ internal fun ProfileContent(
     onOpenHealth: () -> Unit,
     onManageData: () -> Unit,
     onShowTutorial: () -> Unit,
+    replan: ReplanUiState = ReplanUiState(),
+    onReplanAccept: () -> Unit = {},
+    onReplanDecline: () -> Unit = {},
+    onReplanSuppress: () -> Unit = {},
+    onReplanConsumeMessage: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
@@ -118,11 +136,16 @@ internal fun ProfileContent(
                 today = state.today,
                 now = state.now,
                 zone = state.zone,
+                replan = replan,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
                 onOpenHealth = onOpenHealth,
                 onManageData = onManageData,
                 onShowTutorial = onShowTutorial,
+                onReplanAccept = onReplanAccept,
+                onReplanDecline = onReplanDecline,
+                onReplanSuppress = onReplanSuppress,
+                onReplanConsumeMessage = onReplanConsumeMessage,
             )
         }
     }
@@ -135,11 +158,16 @@ private fun ProfileDetails(
     today: LocalDate?,
     now: Instant?,
     zone: ZoneId,
+    replan: ReplanUiState,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onOpenHealth: () -> Unit,
     onManageData: () -> Unit,
     onShowTutorial: () -> Unit,
+    onReplanAccept: () -> Unit,
+    onReplanDecline: () -> Unit,
+    onReplanSuppress: () -> Unit,
+    onReplanConsumeMessage: () -> Unit,
 ) {
     val colors = McTheme.colors
     LazyColumn(
@@ -176,6 +204,25 @@ private fun ProfileDetails(
                             color = colors.textSecondary,
                         )
                     }
+                }
+            }
+        }
+        if (replan.suggestion != null) {
+            item {
+                ReplanSuggestionCard(
+                    state = replan,
+                    onAccept = onReplanAccept,
+                    onDecline = onReplanDecline,
+                    onSuppress = onReplanSuppress,
+                )
+            }
+        } else {
+            replan.message?.let { message ->
+                item {
+                    ReplanMessageCard(
+                        message = message,
+                        onDismiss = onReplanConsumeMessage,
+                    )
                 }
             }
         }

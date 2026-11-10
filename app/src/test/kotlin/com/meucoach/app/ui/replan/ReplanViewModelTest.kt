@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.ApplyReplan
 import com.meucoach.app.application.EvaluateReplan
+import com.meucoach.app.application.EvaluateReplanResult
 import com.meucoach.app.application.REPLAN_TODAY
 import com.meucoach.app.application.REPLAN_WEEK_START
 import com.meucoach.app.application.ReplanContextBuilder
@@ -14,6 +15,7 @@ import com.meucoach.app.application.qualitySession
 import com.meucoach.app.application.replanCheckIn
 import com.meucoach.app.application.replanPlan
 import com.meucoach.app.application.replanProfile
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -54,6 +56,7 @@ class ReplanViewModelTest {
     private lateinit var plans: TrainingPlanRepository
     private lateinit var store: ReplanSuggestionStore
     private lateinit var viewModel: ReplanViewModel
+    private val profileResults = ProfilePlanEvaluationStore()
     private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
     private val timeProvider = FakeTimeProvider(clock.instant(), ZoneOffset.UTC)
 
@@ -86,6 +89,7 @@ class ReplanViewModelTest {
             evaluateReplan = evaluate,
             applyReplan = ApplyReplan(plans, contexts, evaluate),
             store = store,
+            profileResults = profileResults,
             timeProvider = timeProvider,
         )
     }
@@ -95,6 +99,22 @@ class ReplanViewModelTest {
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `profile refresh surfaces a stored no change reason once`(): Unit = runBlocking {
+        profileResults.publish(
+            EvaluateReplanResult.NoChange("Seu plano já está no limite seguro."),
+        )
+
+        viewModel.refreshForProfile()
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { !it.isLoading && it.message != null }
+        }
+
+        assertThat(state.suggestion).isNull()
+        assertThat(state.message).contains("limite seguro")
+        assertThat(profileResults.result.value).isNull()
     }
 
     @Test

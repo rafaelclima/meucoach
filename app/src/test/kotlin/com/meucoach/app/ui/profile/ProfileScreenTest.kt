@@ -7,9 +7,14 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.app.ui.replan.ReplanSuggestionUi
+import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.replan.ReplanCause
+import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.GoalType
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.TrainingGoal
@@ -220,6 +225,73 @@ class ProfileScreenTest {
         }
 
         compose.onNodeWithText("Seu perfil").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows a profile plan suggestion and accepts it from the profile`() {
+        var accepted = false
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
+                    replan = ReplanUiState(
+                        suggestion = ReplanSuggestionUi(
+                            versionFrom = 1,
+                            versionTo = 2,
+                            trigger = ReplanTrigger.PROFILE_CHANGED,
+                            causes = listOf(ReplanCause.PROFILE_CHANGED),
+                            headline = "Seu perfil mudou",
+                            body = "Posso reorganizar só os próximos dias.",
+                            changes = emptyList(),
+                            confidence = DataConfidence.MEDIUM,
+                        ),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                    onReplanAccept = { accepted = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Seu perfil mudou").assertIsDisplayed()
+        compose.onNodeWithTag("replan-accept").performClick()
+
+        assertThat(accepted).isTrue()
+    }
+
+    @Test
+    fun `shows a one-shot plan message on the profile`() {
+        var dismissed = false
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = ProfileUiState(
+                        isLoading = false,
+                        profile = profile(),
+                        today = LocalDate.of(2026, 11, 6),
+                    ),
+                    replan = ReplanUiState(message = "Seu plano já está no limite seguro."),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                    onReplanConsumeMessage = { dismissed = true },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Seu plano já está no limite seguro.").assertIsDisplayed()
+        compose.onNodeWithTag("replan-dismiss-message").performClick()
+
+        assertThat(dismissed).isTrue()
     }
 
     private fun setContent(state: ProfileUiState, onEdit: () -> Unit) {

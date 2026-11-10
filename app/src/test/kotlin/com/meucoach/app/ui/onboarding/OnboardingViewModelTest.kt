@@ -3,9 +3,25 @@ package com.meucoach.app.ui.onboarding
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.EvaluateReplan
+import com.meucoach.app.application.EvaluateReplanResult
+import com.meucoach.app.application.REPLAN_TODAY
+import com.meucoach.app.application.REPLAN_WEEK_START
+import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.easySession
+import com.meucoach.app.application.qualitySession
+import com.meucoach.app.application.replanPlan
+import com.meucoach.app.application.replanProfile
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.GoalType
@@ -40,6 +56,11 @@ class OnboardingViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: ProfileRepository
+    private lateinit var plans: TrainingPlanRepository
+    private lateinit var checkIns: CheckInRepository
+    private lateinit var metrics: DailyMetricsRepository
+    private lateinit var activities: ActivityRepository
+    private val clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC)
 
     @Before
     fun setUp() {
@@ -50,11 +71,11 @@ class OnboardingViewModelTest {
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        repository =
-            ProfileRepository(
-                database = database,
-                clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
-            )
+        repository = ProfileRepository(database = database, clock = clock)
+        plans = TrainingPlanRepository(database, clock)
+        checkIns = CheckInRepository(database, clock)
+        metrics = DailyMetricsRepository(database, clock)
+        activities = ActivityRepository(database = database, clock = clock, zoneId = ZoneOffset.UTC)
     }
 
     @After
@@ -171,13 +192,66 @@ class OnboardingViewModelTest {
         assertThat(viewModel.uiState.value.form.availabilityMinutes).isEmpty()
     }
 
-    private fun viewModel() = OnboardingViewModel(
-        repository,
-        com.meucoach.app.profile.ProfilePhotoStore(
-            ApplicationProvider.getApplicationContext(),
-        ),
-        FakeTimeProvider(),
-    )
+    @Test
+    fun `saving an edited profile evaluates T4 and publishes the suggestion`(): Unit = runBlocking {
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-04T12:00:00Z"),
+            ZoneOffset.UTC,
+        )
+        repository.saveProfile(replanProfile())
+        plans.saveWeek(
+            replanPlan(
+                createdOn = REPLAN_TODAY,
+                sessions = listOf(
+                    easySession(REPLAN_TODAY),
+                    qualitySession(REPLAN_WEEK_START.plusDays(4)),
+                ),
+            ),
+        )
+        val store = ProfilePlanEvaluationStore()
+        val viewModel = viewModel(timeProvider, store)
+        withTimeout(5_000) { viewModel.uiState.first { !it.isLoading } }
+        fillValidForm(viewModel)
+
+        // First save establishes the evaluated checkpoint for the original profile.
+        viewModel.save()
+        withTimeout(5_000) { viewModel.uiState.first { it.isSaved } }
+        store.consume()
+        viewModel.consumeSaved()
+
+        viewModel.update { it.copy(experience = Experience.BEGINNER) }
+        viewModel.save()
+        withTimeout(5_000) { viewModel.uiState.first { it.isSaved } }
+
+        val result = store.result.value
+        assertThat(result).isInstanceOf(EvaluateReplanResult.Suggestion::class.java)
+        assertThat((result as EvaluateReplanResult.Suggestion).suggestion.causes)
+            .contains(ReplanCause.PROFILE_CHANGED)
+        assertThat(repository.getProfile()?.experience).isEqualTo(Experience.BEGINNER)
+    }
+
+    private fun viewModel(
+        timeProvider: TimeProvider = FakeTimeProvider(),
+        planEvaluationStore: ProfilePlanEvaluationStore = ProfilePlanEvaluationStore(),
+    ): OnboardingViewModel {
+        val contexts = ReplanContextBuilder(
+            plans = plans,
+            profiles = repository,
+            checkIns = checkIns,
+            metrics = metrics,
+            activities = activities,
+            timeProvider = timeProvider,
+        )
+        return OnboardingViewModel(
+            repository,
+            com.meucoach.app.profile.ProfilePhotoStore(
+                ApplicationProvider.getApplicationContext(),
+            ),
+            timeProvider,
+            EvaluateReplan(contexts, plans),
+            planEvaluationStore,
+        )
+    }
 
     private fun fillValidForm(viewModel: OnboardingViewModel) {
         viewModel.update {

@@ -2,6 +2,9 @@ package com.meucoach.app.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.application.EvaluateReplan
+import com.meucoach.app.application.EvaluateReplanResult
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.repository.ProfileRepository
@@ -31,6 +34,8 @@ class OnboardingViewModel @Inject constructor(
     private val repository: ProfileRepository,
     private val photoStore: com.meucoach.app.profile.ProfilePhotoStore,
     private val timeProvider: TimeProvider,
+    private val evaluateReplan: EvaluateReplan,
+    private val planEvaluationStore: ProfilePlanEvaluationStore,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -125,6 +130,15 @@ class OnboardingViewModel @Inject constructor(
                 today = today,
             )
             repository.saveProfile(profile)
+            // Profile edits must evaluate T4 after the write. A first-run
+            // onboarding has no week yet, so the store is simply cleared.
+            runCatching { evaluateReplan(explicit = false) }
+                .onSuccess { result ->
+                    when (result) {
+                        is EvaluateReplanResult.Unavailable -> planEvaluationStore.clear()
+                        else -> planEvaluationStore.publish(result)
+                    }
+                }
             _uiState.value = _uiState.value.copy(
                 isSaving = false,
                 isSaved = true,

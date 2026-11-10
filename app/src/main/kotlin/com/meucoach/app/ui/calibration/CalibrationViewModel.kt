@@ -3,6 +3,9 @@ package com.meucoach.app.ui.calibration
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.application.EvaluateReplan
+import com.meucoach.app.application.EvaluateReplanResult
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -40,6 +43,8 @@ class CalibrationViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val activityRepository: ActivityRepository,
     private val timeProvider: TimeProvider,
+    private val evaluateReplan: EvaluateReplan,
+    private val planEvaluationStore: ProfilePlanEvaluationStore,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val activityId: String? = savedStateHandle[ARG_ACTIVITY_ID]
@@ -109,6 +114,14 @@ class CalibrationViewModel @Inject constructor(
                     vdot = result.vdot ?: profile.vdot,
                 ),
             )
+            // Calibration changes target inputs, so it participates in T4.
+            runCatching { evaluateReplan(explicit = false) }
+                .onSuccess { evaluation ->
+                    when (evaluation) {
+                        is EvaluateReplanResult.Unavailable -> planEvaluationStore.clear()
+                        else -> planEvaluationStore.publish(evaluation)
+                    }
+                }
             _uiState.value = _uiState.value.copy(isSaving = false, isSaved = true)
         }
     }

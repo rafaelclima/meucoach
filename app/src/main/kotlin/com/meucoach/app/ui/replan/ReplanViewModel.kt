@@ -8,6 +8,7 @@ import com.meucoach.app.application.ApplyReplanResult
 import com.meucoach.app.application.EvaluateReplan
 import com.meucoach.app.application.EvaluateReplanResult
 import com.meucoach.app.application.diffFuturePlannedSessions
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
@@ -37,6 +38,7 @@ class ReplanViewModel @Inject constructor(
     private val evaluateReplan: EvaluateReplan,
     private val applyReplan: ApplyReplan,
     private val store: ReplanSuggestionStore,
+    private val profileResults: ProfilePlanEvaluationStore,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(ReplanUiState())
@@ -48,6 +50,32 @@ class ReplanViewModel @Inject constructor(
 
     /** Called when Today becomes visible; never surfaces an explicit-only message. */
     fun refresh() = runEvaluation(explicit = false)
+
+    /**
+     * Called when Perfil becomes visible. It prefers the result produced right
+     * after a profile/calibration save (including a one-shot `NoChange`/limit
+     * reason) and falls back to a fresh automatic evaluation.
+     */
+    fun refreshForProfile() {
+        val stored = profileResults.consume()
+        val today = timeProvider.currentDate()
+        viewModelScope.launch {
+            val currentVersion = plans.getWeekRecord(today.weekStart())?.version
+            val stillCurrent = stored !is EvaluateReplanResult.Suggestion ||
+                currentVersion == stored.suggestion.expectedVersion
+            if (stored != null && stillCurrent) {
+                mutableState.update { it.copy(isLoading = true) }
+                present(
+                    result = stored,
+                    today = today,
+                    explicit = false,
+                    surfaceNoChange = true,
+                )
+            } else {
+                runEvaluation(explicit = false, surfaceNoChange = false)
+            }
+        }
+    }
 
     /** Explicit T3 request: ignores suppression and reports `NoChange` reasons. */
     fun replanNow() = runEvaluation(explicit = true)
@@ -158,12 +186,19 @@ class ReplanViewModel @Inject constructor(
         mutableState.update { it.copy(message = null) }
     }
 
-    private suspend fun evaluate(explicit: Boolean) {
+    private suspend fun evaluate(explicit: Boolean, surfaceNoChange: Boolean) {
         val today = timeProvider.currentDate()
-        val version = plans.getWeekRecord(today.weekStart())?.version ?: 1
-        mutableState.update { it.copy(planVersion = version) }
-
         val result = evaluateReplan(explicit)
+        present(result, today, explicit, surfaceNoChange)
+    }
+
+    private suspend fun present(
+        result: EvaluateReplanResult,
+        today: java.time.LocalDate,
+        explicit: Boolean,
+        surfaceNoChange: Boolean,
+    ) {
+        val version = plans.getWeekRecord(today.weekStart())?.version ?: 1
         val lastChange = loadLastChange(today)
         when (result) {
             is EvaluateReplanResult.Suggestion -> {
@@ -187,9 +222,10 @@ class ReplanViewModel @Inject constructor(
                 mutableState.update {
                     it.copy(
                         isLoading = false,
+                        planVersion = version,
                         suggestion = null,
                         lastChange = lastChange,
-                        message = if (explicit) result.reason else null,
+                        message = if (explicit || surfaceNoChange) result.reason else null,
                     )
                 }
             }
@@ -199,6 +235,7 @@ class ReplanViewModel @Inject constructor(
                 mutableState.update {
                     it.copy(
                         isLoading = false,
+                        planVersion = version,
                         suggestion = null,
                         lastChange = lastChange,
                         message = if (explicit) result.reason else null,
@@ -208,7 +245,7 @@ class ReplanViewModel @Inject constructor(
         }
     }
 
-    private fun runEvaluation(explicit: Boolean) {
+    private fun runEvaluation(explicit: Boolean, surfaceNoChange: Boolean = explicit) {
         if (mutableState.value.isApplying) return
         if (evaluating) {
             // An explicit request must never be dropped by an automatic evaluation
@@ -220,7 +257,7 @@ class ReplanViewModel @Inject constructor(
         mutableState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             try {
-                evaluate(explicit)
+                evaluate(explicit, surfaceNoChange)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {

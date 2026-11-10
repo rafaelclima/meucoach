@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.9 · **Data:** 10/11/2026 · **Reconciliação:** C3-01A/C3-01B implementados (guarda de iniciante e fingerprint/T4/schema 14); demais gates do Ciclo 3 pendentes.
+**Versão:** 1.10 · **Data:** 10/11/2026 · **Reconciliação:** C3-01A/B e C3-02 implementados (guarda de iniciante, fingerprint/T4/schema 14 e avaliação ao salvar Perfil/Calibração); demais gates do Ciclo 3 pendentes.
 
 ## 1. Restrições e forças
 
@@ -202,6 +202,10 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   para o fuso que define `today`/semana; T4 `PROFILE_CHANGED`; aceite revalida o
   fingerprint dentro da transação Room. Migração `13→14`, export/reset e
   `saveWeek` preservam os campos.
+- **Perfil e plano (C3-02):** salvar onboarding/perfil e calibração chamam
+  `EvaluateReplan`; o resultado é transportado por `ProfilePlanEvaluationStore` e
+  exibido no Perfil (sugestão com ações, `NoChange` ou limite). O Hoje continua
+  avaliando e mostrando a sugestão.
 - **Evento de prova (ADR 0030):** direção aceita, ainda não implementada.
   `RaceEvent` será separado de `WorkoutType`/`PlannedSession`; `TodayDecision`
   discriminará treino e competição.

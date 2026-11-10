@@ -172,6 +172,8 @@ A revisão é um convite, não uma correção do usuário. O texto informa o que
 | Onde | Texto | Intenção |
 |---|---|---|
 | Card do plano | `Replanejar minha semana` | Ação explícita (T3), sempre disponível quando há dias futuros. |
+| Tela Perfil | card `AJUSTE DA SEMANA` | Resultado da avaliação após salvar perfil ou calibrar; mesmas ações e limites do Hoje. |
+| Tela Perfil | `Seu plano já está no limite seguro.` | Explica upgrade sem carga extra; aparece uma vez após o salvamento. |
 | Card do plano | `Ver o que mudou` | Diff persistido da última revisão aceita. |
 | Selo | `v1`, `v2`… | Versão vigente, sem prometer que a revisão é melhor. |
 | Título (T1) | `Dá para ajustar o resto da semana` | Convite, não cobrança. |
