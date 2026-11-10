@@ -10,6 +10,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -64,6 +65,7 @@ class ApplyReplanTest {
             checkIns = checkIns,
             metrics = metrics,
             activities = activities,
+            raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )
         evaluate = EvaluateReplan(contexts, plans)

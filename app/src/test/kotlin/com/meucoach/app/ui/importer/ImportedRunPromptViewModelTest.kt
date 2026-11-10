@@ -11,6 +11,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SaveActivityResult
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
@@ -91,7 +92,7 @@ class ImportedRunPromptViewModelTest {
             prescriptions = prescriptions,
             checkIns = checkIns,
             executions = executions,
-            completeSession = CompleteSession(plans, activities, executions),
+            completeSession = CompleteSession(plans, activities, executions, RaceEventRepository(database, clock)),
             replaceManualCompletion = ReplaceManualCompletion(plans, activities, executions),
             store = store,
             timeProvider = timeProvider,

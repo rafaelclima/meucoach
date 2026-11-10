@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.CompleteSession
+import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.ui.checkin.CheckInViewModel
@@ -14,6 +15,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.model.AthleteProfile
@@ -137,6 +139,7 @@ class TimeDrivenStateTest {
 
         val time = FakeTimeProvider(Instant.parse("2026-11-08T12:00:00Z"), ZoneId.of("America/Sao_Paulo"))
         val executions = SessionExecutionRepository(database, clock)
+        val raceEvents = RaceEventRepository(database, clock)
         val viewModel = TodayViewModel(
             checkIns,
             metrics,
@@ -144,10 +147,11 @@ class TimeDrivenStateTest {
             activities,
             plans,
             executions,
-            CompleteSession(plans, activities, executions),
+            raceEvents,
+            CompleteSession(plans, activities, executions, raceEvents),
             ReplaceManualCompletion(plans, activities, executions),
             time,
-            GetTodayPrescription(prescriptions),
+            GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
         )
 
         val sundayState = withTimeout(5_000) {

@@ -70,6 +70,7 @@ class ReminderNotifier @Inject constructor(@ApplicationContext context: Context)
         val manager = NotificationManagerCompat.from(appContext)
         manager.cancel(ReminderContent.CHECK_IN_ID)
         manager.cancel(ReminderContent.WORKOUT_ID)
+        manager.cancel(ReminderContent.RACE_ID)
     }
 
     companion object {

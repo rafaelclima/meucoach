@@ -103,6 +103,9 @@ fun TodayScreen(
     onReplaceWithActivity: (LocalDate, String) -> Unit = { _, _ -> },
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
     onSwapSession: (LocalDate, LocalDate) -> Unit = { _, _ -> },
+    onCompleteRace: (String?) -> Unit = {},
+    onCancelRace: () -> Unit = {},
+    onNoShowRace: () -> Unit = {},
     onConsumeCompletionMessage: () -> Unit = {},
     replan: ReplanUiState = ReplanUiState(),
     onReplanRequest: () -> Unit = {},
@@ -174,25 +177,41 @@ fun TodayScreen(
         val canCorrectManual = todaySession?.status == SessionStatus.DONE &&
             todaySession.completionEvidence == com.meucoach.core.model.CompletionEvidence.MANUAL &&
             state.activitySuggestions.isNotEmpty()
-        item {
-            NextWorkoutCard(
-                workout = state.workout,
-                prescription = state.prescription,
-                briefing = state.briefing,
-                session = todaySession,
-                execution = state.todayExecution,
-                canComplete = hasPlannedSessionToday,
-                canCorrectManual = canCorrectManual,
-                completionMessage = state.completionMessage,
-                onSwapClick = { swapOpen = true },
-                onStartClick = { startOpen = true },
-                onCompleteClick = { completionOpen = true },
-                onCorrectClick = { correctionOpen = true },
-                onConsumeMessage = onConsumeCompletionMessage,
-                onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
-                onBriefingClick = { briefingOpen = true },
-                onActivityClick = onActivityClick,
-            )
+        val raceEvent = state.raceEvent
+        if (raceEvent != null) {
+            item {
+                RaceDayCard(
+                    event = raceEvent,
+                    suggestions = state.activitySuggestions,
+                    completionMessage = state.completionMessage,
+                    onComplete = onCompleteRace,
+                    onCancel = onCancelRace,
+                    onNoShow = onNoShowRace,
+                    onConsumeMessage = onConsumeCompletionMessage,
+                    onActivityClick = onActivityClick,
+                )
+            }
+        } else {
+            item {
+                NextWorkoutCard(
+                    workout = state.workout,
+                    prescription = state.prescription,
+                    briefing = state.briefing,
+                    session = todaySession,
+                    execution = state.todayExecution,
+                    canComplete = hasPlannedSessionToday,
+                    canCorrectManual = canCorrectManual,
+                    completionMessage = state.completionMessage,
+                    onSwapClick = { swapOpen = true },
+                    onStartClick = { startOpen = true },
+                    onCompleteClick = { completionOpen = true },
+                    onCorrectClick = { correctionOpen = true },
+                    onConsumeMessage = onConsumeCompletionMessage,
+                    onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
+                    onBriefingClick = { briefingOpen = true },
+                    onActivityClick = onActivityClick,
+                )
+            }
         }
         state.plan?.let { plan ->
             item {
@@ -201,6 +220,8 @@ fun TodayScreen(
                     today = today,
                     prescription = state.prescription,
                     replan = replan,
+                    raceEvent = raceEvent,
+                    eventDates = state.eventDates,
                     onSkip = onSkipSession,
                     onExplain = { openExplanation(ExplanationSource.PLAN) },
                     onReplan = onReplanRequest,
@@ -241,10 +262,11 @@ fun TodayScreen(
         }
     }
 
-    if (swapOpen) {
+    if (state.raceEvent == null && swapOpen) {
         SwapSessionDialog(
             plan = state.plan,
             today = today,
+            raceDates = state.eventDates,
             onDismiss = { swapOpen = false },
             onSwap = { first, second ->
                 onSwapSession(first, second)
@@ -252,7 +274,7 @@ fun TodayScreen(
             },
         )
     }
-    if (startOpen) {
+    if (state.raceEvent == null && startOpen) {
         val hasPlannedSession = state.plan?.sessions?.any {
             it.date == today && it.status == SessionStatus.PLANNED
         } == true
@@ -266,7 +288,7 @@ fun TodayScreen(
             },
         )
     }
-    if (completionOpen) {
+    if (state.raceEvent == null && completionOpen) {
         CompleteSessionDialog(
             date = today,
             suggestions = state.activitySuggestions,
@@ -282,7 +304,7 @@ fun TodayScreen(
             },
         )
     }
-    if (correctionOpen) {
+    if (state.raceEvent == null && correctionOpen) {
         ReplaceSessionDialog(
             suggestions = state.activitySuggestions,
             onDismiss = { correctionOpen = false },
@@ -315,7 +337,7 @@ fun TodayScreen(
             ReplanChangesSheet(change = change, onDismiss = { changesOpen = false })
         }
     }
-    if (briefingOpen) {
+    if (state.raceEvent == null && briefingOpen) {
         SessionBriefingSheet(
             state = state.briefing
                 ?.let { SessionBriefingSheetState.Ready(it) }
@@ -326,6 +348,12 @@ fun TodayScreen(
 }
 
 private enum class ExplanationSource { READINESS, WORKOUT, PLAN }
+
+private data class PlanDayEntry(
+    val date: LocalDate,
+    val session: com.meucoach.core.domain.prescription.PlannedSession?,
+    val event: com.meucoach.core.model.RaceEvent?,
+)
 
 @Composable
 private fun Greeting(state: TodayUiState, onProfileClick: () -> Unit) {
@@ -1002,6 +1030,8 @@ private fun PlanWeekCard(
     today: LocalDate,
     prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
     replan: ReplanUiState,
+    raceEvent: com.meucoach.core.model.RaceEvent?,
+    eventDates: Set<LocalDate>,
     onSkip: (LocalDate, String) -> Unit,
     onExplain: () -> Unit,
     onReplan: () -> Unit,
@@ -1052,7 +1082,10 @@ private fun PlanWeekCard(
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
-        if (plan.sessions.isEmpty()) {
+        val weekEnd = plan.weekStart.plusDays(6)
+        val weekEvents = eventDates.filter { !it.isBefore(plan.weekStart) && !it.isAfter(weekEnd) }
+        val visibleSessions = plan.sessions.filter { it.date !in eventDates }
+        if (visibleSessions.isEmpty() && weekEvents.isEmpty()) {
             Text(
                 text = plan.rationale,
                 style = MaterialTheme.typography.bodyMedium,
@@ -1067,9 +1100,59 @@ private fun PlanWeekCard(
             )
             return@McCard
         }
-        plan.sessions.forEachIndexed { index, session ->
+        val raceByDate = raceEvent
+            ?.takeIf { it.targetDate in plan.weekStart..weekEnd }
+            ?.let { mapOf(it.targetDate to it) }
+            .orEmpty()
+        val entries = buildList {
+            visibleSessions.forEach { session -> add(PlanDayEntry(session.date, session, null)) }
+            weekEvents.forEach { date -> add(PlanDayEntry(date, null, raceByDate[date])) }
+        }.sortedBy { it.date }
+        entries.forEachIndexed { index, entry ->
             if (index > 0) {
                 McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            val session = entry.session
+            if (session == null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("plan-race-${entry.date}"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = formatPlanDay(entry.date),
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                        modifier = Modifier.width(48.dp),
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text =
+                            entry.event?.let {
+                                "Prova · ${com.meucoach.app.ui.common.raceDistanceLabel(it.distance)}"
+                            }
+                                ?: "Prova",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "Sem treino neste dia",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    McPill(
+                        text = entry.event?.let {
+                            com.meucoach.app.ui.common.raceStatusLabel(it.status)
+                        } ?: "Evento",
+                        containerColor = colors.accentSoft,
+                        contentColor = colors.accentText,
+                    )
+                }
+                return@forEachIndexed
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1134,7 +1217,7 @@ private fun PlanWeekCard(
                 }
             }
         }
-        val manualToday = plan.sessions.any { session ->
+        val manualToday = visibleSessions.any { session ->
             session.date == today &&
                 session.status == SessionStatus.DONE &&
                 session.completionEvidence == com.meucoach.core.model.CompletionEvidence.MANUAL
@@ -1373,6 +1456,7 @@ private fun ExplanationList(title: String, items: List<String>, emptyText: Strin
 private fun SwapSessionDialog(
     plan: WeeklyPlan?,
     today: LocalDate,
+    raceDates: Set<LocalDate> = emptySet(),
     onDismiss: () -> Unit,
     onSwap: (LocalDate, LocalDate) -> Unit,
 ) {
@@ -1382,7 +1466,10 @@ private fun SwapSessionDialog(
         it.date == today && it.status == SessionStatus.PLANNED
     }
     val candidates = week?.sessions.orEmpty().filter {
-        it.date.isAfter(today) && it.status == SessionStatus.PLANNED && it.type != WorkoutType.REST
+        it.date.isAfter(today) &&
+            it.status == SessionStatus.PLANNED &&
+            it.type != WorkoutType.REST &&
+            it.date !in raceDates
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1400,8 +1487,8 @@ private fun SwapSessionDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     candidates.forEach { candidate ->
-                        val result = remember(week, today, candidate.date) {
-                            SessionSwapper.swap(week, today, candidate.date, today)
+                        val result = remember(week, today, candidate.date, raceDates) {
+                            SessionSwapper.swap(week, today, candidate.date, today, raceDates)
                         }
                         val enabled = result is SwapResult.Applied
                         Row(

@@ -5,6 +5,7 @@ import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -23,6 +24,7 @@ class OfferImportedRun @Inject constructor(
     private val plans: TrainingPlanRepository,
     private val checkIns: CheckInRepository,
     private val executions: SessionExecutionRepository,
+    private val raceEvents: RaceEventRepository,
     private val store: ImportedRunPromptStore,
     private val timeProvider: TimeProvider,
 ) {
@@ -33,6 +35,8 @@ class OfferImportedRun @Inject constructor(
         if (activity.sport != Sport.RUNNING && activity.sport != Sport.TREADMILL) return
         if (activity.startTime.atZone(zone).toLocalDate() != today) return
         if (checkIns.get(today)?.illnessOrInjury == true) return
+        // A race day has its own completion flow; never offer the legacy session.
+        if (raceEvents.getForDate(today) != null) return
         if (executions.getForActivity(activityId) != null) return
 
         val plan = plans.getWeek(today.weekStart()) ?: return

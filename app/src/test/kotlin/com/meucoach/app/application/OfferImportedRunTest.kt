@@ -8,6 +8,8 @@ import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.NewRaceEvent
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SaveActivityResult
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
@@ -22,6 +24,7 @@ import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.runBlocking
@@ -53,6 +56,7 @@ class OfferImportedRunTest {
     private lateinit var plans: TrainingPlanRepository
     private lateinit var checkIns: CheckInRepository
     private lateinit var executions: SessionExecutionRepository
+    private lateinit var raceEvents: RaceEventRepository
     private lateinit var store: ImportedRunPromptStore
     private lateinit var offer: OfferImportedRun
 
@@ -72,8 +76,9 @@ class OfferImportedRunTest {
         plans = TrainingPlanRepository(database, clock)
         checkIns = CheckInRepository(database, clock)
         executions = SessionExecutionRepository(database, clock)
+        raceEvents = RaceEventRepository(database, clock)
         store = ImportedRunPromptStore(context, "offer-import-${System.nanoTime()}")
-        offer = OfferImportedRun(activities, plans, checkIns, executions, store, timeProvider)
+        offer = OfferImportedRun(activities, plans, checkIns, executions, raceEvents, store, timeProvider)
     }
 
     @After
@@ -110,6 +115,17 @@ class OfferImportedRunTest {
         offer.evaluate(id)
 
         assertThat(store.pending.value).containsExactly(id)
+    }
+
+    @Test
+    fun `does not offer the legacy session on a race day`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, today))
+        val id = saveRun(today)
+
+        offer.evaluate(id)
+
+        assertThat(store.pending.value).isEmpty()
     }
 
     @Test

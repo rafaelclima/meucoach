@@ -857,6 +857,38 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
     }
 
+    @Test
+    fun `a persisted event stops the legacy goal from planning`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40),
+        ).copy(
+            goal = com.meucoach.core.model.TrainingGoal(
+                type = com.meucoach.core.model.GoalType.FIVE_K,
+                targetDate = monday.plusDays(10),
+                targetDistanceM = 5_000.0,
+            ),
+        )
+        val legacyPlan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+            ),
+        )
+        val eventPlan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                eventDates = setOf(monday.plusDays(2)),
+            ),
+        )
+
+        assertThat(legacyPlan.ruleIds).contains("R-PLAN-05")
+        assertThat(eventPlan.ruleIds).doesNotContain("R-PLAN-05")
+        assertThat(eventPlan.sessions.first { it.date == monday }.durationMin)
+            .isGreaterThan(legacyPlan.sessions.first { it.date == monday }.durationMin)
+    }
+
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,

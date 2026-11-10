@@ -88,6 +88,10 @@ data class TodayUiState(
     val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
     /** Briefing derived from the persisted prescription; null for done/closed days. */
     val briefing: com.meucoach.core.domain.briefing.SessionBriefing? = null,
+    /** Single daily authority resolved before rendering (ADR 0030). */
+    val decision: com.meucoach.core.domain.today.TodayDecision? = null,
+    /** Every event date in the visible week, including resolved history. */
+    val eventDates: Set<LocalDate> = emptySet(),
     val explanation: TodayExplanationUi? = null,
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */
@@ -103,7 +107,11 @@ data class TodayUiState(
     val completionMessage: String? = null,
     /** Blocks completion and explains why the day is a rest/illness day. */
     val illnessOrInjury: Boolean = false,
-)
+) {
+    /** The race event resolved for today, when the daily decision is competition. */
+    val raceEvent: com.meucoach.core.model.RaceEvent?
+        get() = (decision as? com.meucoach.core.domain.today.TodayDecision.Competition)?.event
+}
 
 fun demoTodayUiState(today: LocalDate, now: LocalTime = LocalTime.NOON): TodayUiState {
     val labels = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")

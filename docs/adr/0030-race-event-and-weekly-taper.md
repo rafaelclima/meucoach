@@ -1,6 +1,6 @@
 # ADR 0030 — Evento de prova e taper semanal
 
-**Status:** Aceito em princípios de produto/autoridade diária em 2026-11-10; desenho técnico C3-G1 concluído em 2026-11-10; migração e implementação pendentes
+**Status:** Aceito em princípios de produto/autoridade diária em 2026-11-10; desenho técnico C3-G1 concluído e implementação C3-05 concluída em 2026-11-10
 **Data:** 2026-11-10
 **Escopo:** C3-G1/F2 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md`
 **Relacionados:** ADR 0022 (tempo/fuso), ADR 0023 (plano × prescrição), ADR 0024 (conclusão/evidência), ADR 0028 (replanejamento), ADR 0031 (fingerprint)
@@ -225,5 +225,7 @@ estavam em aberto, sem implementar código:
 - **Sequência:** model/domínio → Room 15 → casos de uso → gerador/replanejamento/
   notificação → UI/goldens → documentação.
 
-Nenhum código, entidade ou migração foi implementado neste gate. A implementação
-segue em C3-05, conforme a ordem do plano técnico.
+A implementação foi concluída em C3-05 conforme a ordem do plano técnico: modelo,
+domínio, Room 15, casos de uso, gerador/replanejamento/notificação, UI de
+Perfil/Hoje/Plano e documentação. Recuperação pós-prova (FR-207) e limite de longão
+por fração da prova (FR-206) permanecem fora do escopo.

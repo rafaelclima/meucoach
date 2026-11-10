@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-05 em andamento: modelo, TodayDecision, Room 15 e taper por data; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 10/11/2026 (C3-05 concluído: modelo, TodayDecision, Room 15, taper por data, wiring do app, notificação e UI do evento; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.200 testes no total (573 em `:app`, 152 em `core:data`, 439 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,65% de linhas (3.953/4.048), 81,84% de branches (2.879/3.518), 96,24% de instruções (27.661/28.741)
+- **Testes:** 1.231 testes no total (603 em `:app`, 152 em `core:data`, 440 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,63% de linhas (3.954/4.050), 81,85% de branches (2.881/3.520), 96,21% de instruções (27.681/28.770)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -20,7 +20,7 @@
 - **Perfil e plano (C3-02):** salvar Perfil/onboarding ou Calibração avalia T4 e publica o resultado; o Perfil mostra sugestão com aceitar/recusar/suprimir, `NoChange` ou limite seguro. O resultado é consumido uma vez; o Hoje continua avaliando e exibindo a sugestão, e o reset limpa o resultado pendente.
 - **Briefing do dia (C3-03/04):** `SessionBriefingEngine` puro em `core:domain` deriva foco, alvo, rationale/confiança e orientação de “como correr”/“se estiver difícil” somente da `DailyPrescription` persistida. Nenhum número/alvo/segmento é recalculado ou inventado; sem calibração vale o RPE existente. `DONE`/`CLOSED` não geram briefing retrospectivo. O Hoje ganha o CTA “Como correr hoje” no card do treino (sessão não concluída) e um sheet acessível com as seções na ordem de leitura, sem `R-`/`EV-` na superfície comum.
 - **Evento de prova (C3-G1):** desenho técnico fechado em `docs/PLANO_TECNICO_CICLO_3_EVENTO.md`, sem código/migração. Define `RaceEvent`/`RaceDistance`/`RaceStatus` em `core:model`, `TodayDecision` discriminada, Room 15 (`race_events` vazia, `activeKey` único, FK `SET NULL`), projeção `PlanningGoal` sem backfill, taper/cutoff por data com `R-PLAN-10` LIMITED, exclusão de datas de evento da adesão e ordem C3-05.
-- **Evento de prova — C3-05 (em andamento):** `RaceEvent`, `TodayDecision` e `PlanningGoalResolver` puros implementados; Room 15 com `race_events`, DAO, `RaceEventRepository`, export/reset e migração sem backfill. Taper/cutoff por data (`RacePlan`), exclusão de datas de evento na adesão e guarda no `SessionSwapper` implementados e testados. Ainda pendentes: proteção de datas no fluxo do `PlanReplanner` via app, wiring do `GetTodayDecision` na UI, notificação, taper no app e telas de Perfil/Hoje/Plano.
+- **Evento de prova (C3-05, concluído):** `RaceEvent`, `TodayDecision`, `PlanningGoalResolver` e Room 15 completos. O app resolve `GetTodayDecision` antes de renderizar: prova no dia vence sem calcular/persistir prescrição, `Competition` suprime treino/briefing e `Training` continua igual. O gerador/replanejador recebem `race`/`eventDates`, a adesão exclui datas de evento, a troca e a conclusão de treino são bloqueadas no dia, e a notificação usa copy de prova com deep link para o Hoje. Perfil, Hoje e Plano têm card/marcador do evento, ações explícitas e goldens dark/light/estreito.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -67,6 +67,44 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-05 (parte 3): wiring do app, notificação e UI do evento
+
+**Objetivo:** consumir o evento no app sem criar uma segunda decisão de treino e fechar a superfície de Perfil/Hoje/Plano.
+
+### Concluído
+
+- **`GetTodayDecision`:** lê o evento do dia e devolve `Competition` sem chamar `GetTodayPrescription`; sem evento, devolve `Training` com a prescrição persistida e, sem perfil/evento, `null`. `TodayViewModel` passou a consumir essa decisão e mantém `prescription`/`briefing` nulos no ramo de competição.
+- **Plano no app:** `WeeklyPlanInput`/`ReplanInput` recebem `race` (evento `PLANNED`) e todas as datas de evento. Depois do primeiro evento, o fallback da meta legada deixa de planejar; nenhuma sessão é criada no dia da prova.
+- **Adesão:** `TrendsViewModel` passa as datas de evento da janela de 8 semanas ao `PlanCompletionCalculator`; sessões legadas sobrepostas saem do numerador/denominador.
+- **Conclusão e troca:** `CompleteSession` rejeita concluir sessão legada em data de evento; `TodayViewModel`/`SessionSwapper` recebem `raceDates` e a UI de troca não oferece a data da prova.
+- **Notificação:** `ReminderWorker` lê o evento do dia, usa copy de prova (`Prova hoje: 10 km`), `DEEP_LINK_TODAY` e não repete o lembrete de treino; o Hoje revalida a decisão ao abrir.
+- **Perfil:** card “Prova” com as quatro distâncias, data, meta declarada opcional, estado, criar/editar, concluir com corrida opcional, cancelar e não compareceu; histórico de eventos encerrados; nenhum pace/faixa/previsão derivado da meta.
+- **Hoje:** ramo `Competition` mostra distância/data/estado/meta e ações do evento, e esconde treino, briefing, iniciar/trocar/concluir e sugestões de treino.
+- **Plano da semana:** dia de evento aparece como “Prova · {distância}” e a sessão legada sobreposta é ocultada; nenhuma ação de pular é oferecida no dia.
+- **Testes:** `GetTodayDecision`, ViewModel do Hoje (prova vence, geração sem sessão no dia, troca bloqueada), conclusão em data de evento, adesão com evento, notificação, UI do Perfil/Hoje, parsers de data/tempo e goldens.
+- **Acessibilidade:** alvos ≥ 48 dp nos chips/ações, textos com unidade/contexto, testes em tema claro/escuro e tela estreita.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde.
+- **1.231 testes**, 0 falhas e 0 `@Ignore` (603 `:app`, 152 `core:data`, 440 `core:domain`, 36 `core:model`).
+- `core:domain`: 97,63% de linhas, 81,85% de branches, 96,21% de instruções; parser FIT 93,01% de branches.
+- Goldens novos: `today-race-{dark,light,narrow-dark}.png` e `profile-race-{dark,light}.png`; Perfil dark/light e saúde atualizados pela nova seção.
+
+### Decisões e observações
+
+- **Uma decisão só:** a UI recebe `TodayDecision` pronto; o card de prova substitui o card de treino em vez de coexistir com ele.
+- **Evento encerrado ainda vence o dia:** `CANCELLED`/`NO_SHOW` continuam `Competition`, sem recuperação automática nem liberação de treino.
+- **Meta declarada:** `targetTimeSec` aparece como “meta informada” e nunca vira pace, faixa ou previsão.
+- **Legado protegido:** plano antigo com sessão no dia da prova não é reescrito; a sessão é ocultada, excluída da adesão e não pode ser concluída/trocada.
+- **Primeiro evento encerra a fonte legada:** depois de qualquer evento persistido, `TrainingGoal` não volta a alimentar taper/plano; não há backfill.
+
+### Próximo passo
+
+1. C3-G2 (revisão de fontes/copy de F4) permanece fora deste ciclo.
+2. Validar o fluxo de prova em aparelho real e revisar cópia com o usuário 0, se desejado.
 
 ## Sessão 2026-11-10 — C3-05 (parte 2): taper por data, adesão e troca
 

@@ -91,10 +91,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (10/11/2026):
 
-- 1200 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 439 em `core:domain`, 152 em `core:data`, 573 em `:app`).
+- 1.231 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 440 em `core:domain`, 152 em `core:data`, 603 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,65% de linhas, 81,84% de branches, 96,24% de instruções.
+- `core:domain`: 97,63% de linhas, 81,85% de branches, 96,21% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -103,7 +103,7 @@ Evidência atual (10/11/2026):
 ## 5.1 Testes de persistência
 
 - `MeuCoachDatabaseTest` (Robolectric): CRUD do agregado, lista observável, soft delete, cascata de laps/samples, `SET NULL` em import jobs e unicidade de `sourceFileSha256`.
-- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 13→14, incluindo backfill de `DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED`, hashes legados desconhecidos na 12→13 e fingerprint/checkpoint `NULL` na 13→14.
+- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 14→15, incluindo backfill de `DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED`, hashes legados desconhecidos na 12→13, fingerprint/checkpoint `NULL` na 13→14 e `race_events` vazia sem backfill na 14→15.
 - `SampleBlobCodecTest`: round-trip de todas as colunas e developer fields, compressão, timestamps reconstruídos, gzip inválido, truncamento, versão desconhecida, contagem absurda, bytes extras e ordem dos samples.
 - `ActivityRepositoryTest`: salvar/listar/abrir, dedup por SHA-256, blob corrompido e encoding desconhecido com `sampleWarning`, soft delete, exclusão permanente e export JSON.
 - `UuidV7Test`: versão 7, variante RFC e determinismo com clock/random fixos.

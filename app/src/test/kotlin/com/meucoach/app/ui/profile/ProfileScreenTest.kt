@@ -124,7 +124,7 @@ class ProfileScreenTest {
         }
 
         val list = compose.onNodeWithTag("profile-list")
-        list.performScrollToNode(hasText("Sono, recuperação e oxigenação"))
+        list.performScrollToNode(hasText("Conectado · 47 dias"))
         compose.onNodeWithText("Sono, recuperação e oxigenação").assertIsDisplayed()
         compose.onNodeWithText("Conectado · 47 dias").assertIsDisplayed()
         compose.onNodeWithTag("profile-open-health").performClick()

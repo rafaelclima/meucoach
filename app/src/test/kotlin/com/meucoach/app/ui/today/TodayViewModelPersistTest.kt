@@ -5,6 +5,7 @@ import android.os.Looper
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.CompleteSession
+import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.time.FakeTimeProvider
@@ -14,7 +15,9 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
+import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.model.ActivitySource
@@ -22,6 +25,7 @@ import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
 import com.meucoach.core.model.WeeklyAvailability
@@ -60,6 +64,7 @@ class TodayViewModelPersistTest {
     private lateinit var activities: ActivityRepository
     private lateinit var plans: TrainingPlanRepository
     private lateinit var prescriptions: DailyPrescriptionRepository
+    private lateinit var raceEvents: RaceEventRepository
     private var nextActivityId = 0
 
     @Before
@@ -85,6 +90,7 @@ class TodayViewModelPersistTest {
             )
         plans = TrainingPlanRepository(database, clock)
         prescriptions = DailyPrescriptionRepository(database, clock)
+        raceEvents = RaceEventRepository(database, clock)
     }
 
     @After
@@ -348,6 +354,108 @@ class TodayViewModelPersistTest {
         assertThat(updated.completionMessage).contains("substituído")
     }
 
+    @Test
+    fun `race day suppresses the training prescription and briefing`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(weekWith(today, weekStart))
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, today))
+
+        val viewModel = createViewModel()
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.raceEvent != null }
+        }
+
+        assertThat(state.decision)
+            .isInstanceOf(com.meucoach.core.domain.today.TodayDecision.Competition::class.java)
+        assertThat(state.prescription).isNull()
+        assertThat(state.briefing).isNull()
+        assertThat(state.explanation).isNull()
+        assertThat(state.todayExecution).isNull()
+        assertThat(state.activitySuggestions).isEmpty()
+        assertThat(prescriptions.getLatest(today)).isNull()
+    }
+
+    @Test
+    fun `does not generate an ordinary session on a future race day`(): Unit = runBlocking {
+        val timeProvider = FakeTimeProvider(
+            instant = Instant.parse("2026-11-02T12:00:00Z"),
+            zone = ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        val raceDate = weekStart.plusDays(4)
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, raceDate))
+
+        val viewModel = createViewModel(timeProvider)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan?.sessions?.isNotEmpty() == true }
+        }
+
+        assertThat(state.plan!!.sessions.map { it.date }).doesNotContain(raceDate)
+        assertThat(state.eventDates).contains(raceDate)
+    }
+
+    @Test
+    fun `blocks swapping a session into a race date`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        val tomorrow = today.plusDays(1)
+        val week = weekWith(today, weekStart).copy(
+            sessions = listOf(
+                com.meucoach.core.domain.prescription.PlannedSession(
+                    date = today,
+                    type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                    title = "Fácil",
+                    durationMin = 30,
+                    rationale = "Base.",
+                    ruleIds = listOf("R-ZONE-01"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                com.meucoach.core.domain.prescription.PlannedSession(
+                    date = tomorrow,
+                    type = com.meucoach.core.domain.prescription.WorkoutType.QUALITY,
+                    title = "Tempo",
+                    durationMin = 30,
+                    rationale = "Qualidade.",
+                    ruleIds = listOf("R-PLAN-02"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+            ),
+        )
+        plans.saveWeek(week)
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, tomorrow))
+
+        val viewModel = createViewModel()
+        withTimeout(5_000) { viewModel.uiState.first { it.plan != null } }
+        viewModel.swapSession(today, tomorrow, today)
+        delay(200)
+
+        val stored = plans.getWeek(weekStart)!!
+        assertThat(stored.sessions.first { it.date == today }.type)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
+        assertThat(stored.sessions.first { it.date == tomorrow }.type)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.QUALITY)
+    }
+
     private fun weekWith(today: LocalDate, weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
@@ -379,10 +487,11 @@ class TodayViewModelPersistTest {
             activities,
             plans,
             executions,
-            CompleteSession(plans, activities, executions),
+            raceEvents,
+            CompleteSession(plans, activities, executions, raceEvents),
             ReplaceManualCompletion(plans, activities, executions),
             timeProvider,
-            GetTodayPrescription(prescriptions),
+            GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
         )
     }
 

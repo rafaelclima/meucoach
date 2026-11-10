@@ -23,6 +23,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.replan.PlanReplanner
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,7 @@ class ReplanViewModelTest {
             checkIns = checkIns,
             metrics = metrics,
             activities = activities,
+            raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )
         val evaluate = EvaluateReplan(contexts, plans)

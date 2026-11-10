@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadActivity
@@ -51,6 +52,7 @@ class TrendsViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
+    private val raceEventRepository: RaceEventRepository,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val engine = TrainingLoadEngine()
@@ -129,10 +131,16 @@ class TrendsViewModel @Inject constructor(
         )
         val weekStarts = (PLAN_COMPLETION_WEEKS - 1 downTo 0)
             .map { currentMonday.minusWeeks(it.toLong()) }
+        // Event days never count as planned/missed sessions, in any state.
+        val excludedDates = raceEventRepository.getDatesBetween(
+            start = weekStarts.first(),
+            end = weekStarts.last().plusDays(6),
+        )
         return planCompletionCalculator.calculate(
             plans = planRepository.getWeeks(weekStarts),
             today = today,
             weeks = PLAN_COMPLETION_WEEKS,
+            excludedDates = excludedDates,
         )
     }
 

@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.NewRaceEvent
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.DailyPrescription
@@ -20,6 +22,7 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -63,12 +66,29 @@ class CompleteSessionTest {
             idGenerator = { "activity-1" },
         )
         val executions = SessionExecutionRepository(database, clock)
-        useCase = CompleteSession(plans, activities, executions)
+        useCase = CompleteSession(plans, activities, executions, RaceEventRepository(database, clock))
     }
 
     @After
     fun tearDown() {
         database.close()
+    }
+
+    @Test
+    fun `rejects completing a legacy session on a race day`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        RaceEventRepository(database, clock).create(NewRaceEvent(RaceDistance.TEN_K, today))
+
+        val result = useCase(
+            request(
+                evidence = CompletionEvidence.ACTIVITY,
+                activityId = "activity-1",
+            ),
+        )
+
+        assertThat(result).isInstanceOf(CompleteSessionResult.Rejected::class.java)
+        assertThat((result as CompleteSessionResult.Rejected).message).contains("prova")
+        assertThat(session(today).status).isEqualTo(SessionStatus.PLANNED)
     }
 
     @Test

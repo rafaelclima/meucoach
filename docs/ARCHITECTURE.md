@@ -179,7 +179,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 ### 6.3 Tempo, prescrição e evidência
 
 - **Tempo:** `TimeProvider` (em `:app/time`) expõe `today`, `zoneId`, `now()`, `currentWeekStart()` e `refresh()`. `SystemTimeProvider` usa o relógio do sistema; `ProfileTimeProvider` usa o fuso IANA do perfil e cai para o fuso do sistema antes do onboarding. Hilt fornece um único `Clock`. `MainActivity.onResume()` e a meia-noite disparam `refresh()`; trocar o fuso reagenda lembretes. ViewModels e telas não chamam `LocalDate.now()`/`System.currentTimeMillis()` (`ADR 0022`).
-- **Prescrição do dia:** `GetTodayPrescription` lê a última versão de `daily_prescriptions` e só persiste quando `inputsHash`/`engineVersion` mudam. Editar o check-in cria uma nova linha com `supersedesId`; a anterior continua auditável. `TodayViewModel` não recalcula a decisão (`ADR 0023`).
+- **Decisão do dia:** `GetTodayDecision` resolve primeiro um `RaceEvent` na data; se existir, devolve `Competition` sem chamar a prescrição. Sem evento, `GetTodayPrescription` lê a última versão de `daily_prescriptions` e só persiste quando `inputsHash`/`engineVersion` mudam. Editar o check-in cria uma nova linha com `supersedesId`; a anterior continua auditável. `TodayViewModel` não recalcula a decisão (`ADR 0023`/`0030`).
 - **Conclusão:** `CompleteSession` valida data, estado e prescrição; `DONE` exige `completionEvidence` (`ACTIVITY`, `GUIDED` ou `MANUAL`). `SessionExecution` guarda a execução; índices únicos garantem 1:1 entre atividade e sessão. Descanso/doença encerram a sessão como `CLOSED` com motivo. `LEGACY_UNVERIFIED` preserva o histórico antigo sem promovê-lo a verdade (`ADR 0024`).
 - **Datas locais:** atividades persistem instante UTC + `zoneId` + `localDate`; a data local de planejamento vem do fuso do perfil. Treino que cruza meia-noite pertence ao dia de início.
 
@@ -206,13 +206,18 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   `EvaluateReplan`; o resultado é transportado por `ProfilePlanEvaluationStore` e
   exibido no Perfil (sugestão com ações, `NoChange` ou limite). O Hoje continua
   avaliando e mostrando a sugestão.
-- **Evento de prova (ADR 0030, C3-G1):** desenho técnico concluído em
-  [`PLANO_TECNICO_CICLO_3_EVENTO.md`](PLANO_TECNICO_CICLO_3_EVENTO.md); ainda não
-  implementado. `RaceEvent` será separado de `WorkoutType`/`PlannedSession`;
-  `TodayDecision` discriminará `Training(DailyPrescription)` e
-  `Competition(RaceEvent)`; Room 15 terá `race_events` com `activeKey` único,
-  `activityId` único/FK `SET NULL` e migração sem backfill. Taper/cutoff serão
-  calculados por data da sessão; a adesão exclui datas de evento.
+- **Evento de prova (ADR 0030, C3-05):** `RaceEvent` é separado de
+  `WorkoutType`/`PlannedSession`; Room 15 tem `race_events` com `activeKey` único,
+  `activityId` único/FK `SET NULL` e migração sem backfill. `GetTodayDecision` lê o
+  evento do dia antes de qualquer prescrição e devolve `Training(DailyPrescription)`
+  ou `Competition(RaceEvent)`; no ramo de competição nenhuma prescrição é
+  calculada/persistida e o Hoje não renderiza treino, briefing, iniciar/trocar/concluir.
+  `WeeklyPlanInput`/`ReplanInput` recebem `race` e `eventDates`, o taper/cutoff é
+  calculado por data da sessão, a adesão exclui datas de evento e
+  `CompleteSession`/`SessionSwapper` recusam o dia da prova. A notificação lê o
+  evento do dia, usa copy de prova e `meucoach://today`; o Hoje revalida a decisão
+  ao abrir. Perfil concentra criar/editar/concluir/cancelar/não compareceu; plano
+  marca o dia como evento e oculta sessão legada sobreposta.
 - **Briefing (C3-03/04):** `SessionBriefingEngine` puro em `core:domain/briefing`
   deriva o briefing só da `DailyPrescription` persistida. `SessionBriefing` copia
   título, tipo, duração, alvos, rationale, confiança e IDs; não há cálculo de alvo,
@@ -223,8 +228,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - **Nutrição (F4):** intenção de conteúdo geral aprovada, mas fontes/copy ainda
   precisam de revisão; nada é exibido antes do gate.
 
-> Evento de prova e F4 continuam sem alterar o comportamento atual até seus gates de
-> implementação.
+> F4 continua sem alterar o comportamento atual até seu gate de implementação.
 
 ## 7. Persistência
 

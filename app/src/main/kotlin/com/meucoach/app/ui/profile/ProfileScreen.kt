@@ -49,6 +49,8 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -85,6 +87,11 @@ fun ProfileScreen(
         onReplanDecline = replanViewModel::decline,
         onReplanSuppress = replanViewModel::suppress,
         onReplanConsumeMessage = replanViewModel::consumeMessage,
+        onRaceSave = viewModel::saveRaceEvent,
+        onRaceComplete = viewModel::completeRaceEvent,
+        onRaceCancel = viewModel::cancelRaceEvent,
+        onRaceNoShow = viewModel::noShowRaceEvent,
+        onRaceConsumeMessage = viewModel::consumeRaceMessage,
         modifier = modifier,
     )
 }
@@ -102,6 +109,11 @@ internal fun ProfileContent(
     onReplanDecline: () -> Unit = {},
     onReplanSuppress: () -> Unit = {},
     onReplanConsumeMessage: () -> Unit = {},
+    onRaceSave: (RaceDistance, LocalDate, Int?) -> Unit = { _, _, _ -> },
+    onRaceComplete: (String?) -> Unit = {},
+    onRaceCancel: () -> Unit = {},
+    onRaceNoShow: () -> Unit = {},
+    onRaceConsumeMessage: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
@@ -137,6 +149,9 @@ internal fun ProfileContent(
                 now = state.now,
                 zone = state.zone,
                 replan = replan,
+                raceEvents = state.raceEvents,
+                raceActivities = state.raceActivities,
+                raceMessage = state.raceMessage,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
                 onOpenHealth = onOpenHealth,
@@ -146,6 +161,11 @@ internal fun ProfileContent(
                 onReplanDecline = onReplanDecline,
                 onReplanSuppress = onReplanSuppress,
                 onReplanConsumeMessage = onReplanConsumeMessage,
+                onRaceSave = onRaceSave,
+                onRaceComplete = onRaceComplete,
+                onRaceCancel = onRaceCancel,
+                onRaceNoShow = onRaceNoShow,
+                onRaceConsumeMessage = onRaceConsumeMessage,
             )
         }
     }
@@ -159,6 +179,9 @@ private fun ProfileDetails(
     now: Instant?,
     zone: ZoneId,
     replan: ReplanUiState,
+    raceEvents: List<com.meucoach.core.model.RaceEvent>,
+    raceActivities: List<RaceActivityOption>,
+    raceMessage: String?,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onOpenHealth: () -> Unit,
@@ -168,6 +191,11 @@ private fun ProfileDetails(
     onReplanDecline: () -> Unit,
     onReplanSuppress: () -> Unit,
     onReplanConsumeMessage: () -> Unit,
+    onRaceSave: (RaceDistance, LocalDate, Int?) -> Unit,
+    onRaceComplete: (String?) -> Unit,
+    onRaceCancel: () -> Unit,
+    onRaceNoShow: () -> Unit,
+    onRaceConsumeMessage: () -> Unit,
 ) {
     val colors = McTheme.colors
     LazyColumn(
@@ -244,7 +272,29 @@ private fun ProfileDetails(
                     SummaryRow("Tempo alvo", targetTimeLabel(profile.goal?.targetTimeSec))
                 }
                 SummaryRow("Disponibilidade", availabilityLabel(profile))
+                if (raceEvents.any { it.status == RaceStatus.PLANNED }) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "A prova planejada abaixo é o objetivo ativo do plano. " +
+                            "Esta meta legada não gera taper nem dia de prova.",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                        modifier = Modifier.testTag("legacy-goal-note"),
+                    )
+                }
             }
+        }
+        item {
+            RaceEventCard(
+                events = raceEvents,
+                activities = raceActivities,
+                message = raceMessage,
+                onSave = onRaceSave,
+                onComplete = onRaceComplete,
+                onCancel = onRaceCancel,
+                onNoShow = onRaceNoShow,
+                onConsumeMessage = onRaceConsumeMessage,
+            )
         }
         item { McSectionHeader(title = "Seu limite de esforço") }
         item {
@@ -404,7 +454,7 @@ private fun ProfileDetails(
 }
 
 @Composable
-private fun SummaryRow(label: String, value: String) {
+internal fun SummaryRow(label: String, value: String) {
     val colors = McTheme.colors
     Row(
         modifier = Modifier

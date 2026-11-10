@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.16 · **Data:** 10/11/2026 · **Mudança:** C3-05 avança com taper/cutoff por data, adesão e guarda de troca; C3-G1 e C3-03/04 mantidos.
+**Versão:** 1.17 · **Data:** 10/11/2026 · **Mudança:** C3-05 concluído com wiring do app, notificação e UI do evento; C3-G1 e C3-03/04 mantidos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -387,7 +387,7 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 - Toda regra nova cita `ruleId`, `evidenceId` e confiança.
 - Dados reais nunca entram no diff.
 
-### Ciclo 3 — C3-01A/B, C3-02 e C3-03/04 implementados; C3-G1 detalhado; C3-05/C3-G2 pendentes (10/11/2026)
+### Ciclo 3 — C3-01A/B, C3-02, C3-03/04 e C3-05 implementados; C3-G1 detalhado; C3-G2 pendente (10/11/2026)
 
 **Documentos:** [`docs/PRD_ADAPTACAO_E_BRIEFING_v0.2.md`](PRD_ADAPTACAO_E_BRIEFING_v0.2.md),
 [`docs/RELATORIO_ALTERACOES_PRD_CICLO_3_v0.2.md`](RELATORIO_ALTERACOES_PRD_CICLO_3_v0.2.md),
@@ -402,7 +402,7 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 | **C3-02** | Avaliação ao salvar Perfil/Calibração e UI da sugestão | **Implementado em 10/11/2026**; card no Perfil e resultado consumido uma vez |
 | **C3-03/04** | Briefing genérico a partir da prescrição e sheet acessível no Hoje | **Implementado em 10/11/2026**; fidelidade, determinismo, RPE sem calibração, downgrade, `DONE`/`CLOSED` sem briefing, goldens e estados de UI testados |
 | **C3-G1** | Contrato Room/migração, `TodayDecision`, vínculo com atividade, taper por data, adesão e testes do evento | **Desenho técnico concluído em 10/11/2026** em [`PLANO_TECNICO_CICLO_3_EVENTO.md`](PLANO_TECNICO_CICLO_3_EVENTO.md); nenhum código/migração implementado |
-| **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Em andamento em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, taper/cutoff por data, adesão e guarda de troca implementados; wiring do app, notificação e UI pendentes |
+| **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Concluído em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, taper/cutoff, adesão, troca, `GetTodayDecision`, notificação e UI de Perfil/Hoje/Plano com goldens |
 | **C3-G2** | Revisão de fontes/copy de F4 | Não iniciado; nenhuma dica exibida |
 
 Fora do escopo implementável: recuperação pós-prova (FR-207), pace/faixa de prova e

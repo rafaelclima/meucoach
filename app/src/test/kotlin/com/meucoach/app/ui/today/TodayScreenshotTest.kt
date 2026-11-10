@@ -18,6 +18,7 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.today.TodayDecision
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
@@ -25,6 +26,8 @@ import com.meucoach.core.model.DailyMetricsSource
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
 import org.junit.Before
@@ -84,6 +87,34 @@ class TodayScreenshotTest {
     }
 
     @Test
+    fun todayRaceDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-race-dark.png",
+            raceEvent = raceEvent(),
+        )
+    }
+
+    @Test
+    fun todayRaceLight() {
+        capture(
+            darkTheme = false,
+            file = "src/test/screenshots/today-race-light.png",
+            raceEvent = raceEvent(),
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun todayRaceNarrowDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-race-narrow-dark.png",
+            raceEvent = raceEvent(),
+        )
+    }
+
+    @Test
     fun todayPlanDark() {
         capture(
             darkTheme = true,
@@ -112,24 +143,34 @@ class TodayScreenshotTest {
         ),
         replan: ReplanUiState = ReplanUiState(),
         scrollTo: String? = null,
+        raceEvent: RaceEvent? = null,
     ) {
         val today = LocalDate.of(2026, 10, 30)
+        val baseState = todayState(
+            checkIn = checkIn(today),
+            metrics = metrics(today),
+            profile = profile(today),
+            today = today,
+            // Fixed time so the greeting does not change the golden during the day.
+            now = LocalTime.of(8, 0),
+            plan = plan(today),
+            load = loadSnapshot(),
+            kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
+            weeklyLoadKm = 11.31,
+        )
+        val state = raceEvent?.let { event ->
+            baseState.copy(
+                decision = TodayDecision.Competition(event),
+                prescription = null,
+                briefing = null,
+                eventDates = setOf(event.targetDate),
+            )
+        } ?: baseState
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 TodayScreen(
                     onDemoAction = {},
-                    state = todayState(
-                        checkIn = checkIn(today),
-                        metrics = metrics(today),
-                        profile = profile(today),
-                        today = today,
-                        // Fixed time so the greeting does not change the golden during the day.
-                        now = LocalTime.of(8, 0),
-                        plan = plan(today),
-                        load = loadSnapshot(),
-                        kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
-                        weeklyLoadKm = 11.31,
-                    ),
+                    state = state,
                     checklistState = checklistState,
                     replan = replan,
                 )
@@ -141,6 +182,15 @@ class TodayScreenshotTest {
 
         compose.onRoot().captureRoboImage(file)
     }
+
+    private fun raceEvent() = RaceEvent(
+        id = "race-1",
+        distance = RaceDistance.TEN_K,
+        targetDate = LocalDate.of(2026, 10, 30),
+        targetTimeSec = 3_000,
+        createdAt = java.time.Instant.parse("2026-10-01T12:00:00Z"),
+        updatedAt = java.time.Instant.parse("2026-10-01T12:00:00Z"),
+    )
 
     private fun revisedPlan() = ReplanUiState(
         planVersion = 2,

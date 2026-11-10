@@ -2,6 +2,7 @@ package com.meucoach.core.domain.prescription
 
 import com.meucoach.core.model.GoalType
 import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.TrainingGoal
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -58,6 +59,10 @@ data class RacePlan(val eventId: String, val distance: RaceDistance, val targetD
         const val DEEP_CUT_DAYS = 7L
         const val TAPER_FACTOR = 0.55
         const val DEEP_CUT_FACTOR = 0.45
+
+        /** Canonical projection of a persisted event (ADR 0030 §3.2). */
+        fun from(event: RaceEvent): RacePlan =
+            RacePlan(eventId = event.id, distance = event.distance, targetDate = event.targetDate)
 
         /** Legacy compatibility while the goal is still the planning source. */
         fun from(goal: TrainingGoal?): RacePlan? {

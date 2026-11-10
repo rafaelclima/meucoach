@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.profile
 
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -10,6 +11,8 @@ import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.GoalType
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.TrainingGoal
 import com.meucoach.core.model.WeeklyAvailability
@@ -49,6 +52,43 @@ class ProfileScreenshotTest {
     fun profileHealthLight() {
         captureHealth(darkTheme = false, file = "src/test/screenshots/profile-health-light.png")
     }
+
+    @Test
+    fun profileRaceDark() {
+        captureRace(darkTheme = true, file = "src/test/screenshots/profile-race-dark.png")
+    }
+
+    @Test
+    fun profileRaceLight() {
+        captureRace(darkTheme = false, file = "src/test/screenshots/profile-race-light.png")
+    }
+
+    private fun captureRace(darkTheme: Boolean, file: String) {
+        compose.setContent {
+            McTheme(darkTheme = darkTheme) {
+                ProfileContent(
+                    state = state().copy(raceEvents = listOf(raceEvent())),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-card"))
+        compose.onRoot().captureRoboImage(file)
+    }
+
+    private fun raceEvent() = RaceEvent(
+        id = "race-1",
+        distance = RaceDistance.TEN_K,
+        targetDate = LocalDate.of(2027, 3, 14),
+        targetTimeSec = 3_000,
+        createdAt = Instant.parse("2026-10-01T12:00:00Z"),
+        updatedAt = Instant.parse("2026-10-01T12:00:00Z"),
+    )
 
     private fun captureHealth(darkTheme: Boolean, file: String) {
         compose.setContent {

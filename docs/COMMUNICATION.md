@@ -218,3 +218,23 @@ bloco, intervalo ou alternativa nova.
 Nenhum `R-`/`EV-` aparece no sheet comum; os IDs continuam no contrato `SessionBriefing`
 e na prescrição persistida para auditoria. A notificação segue abrindo o Hoje; a
 prescrição vigente é revalidada antes de o CTA aparecer.
+
+### 6.9 Evento de prova (10/11/2026)
+
+A prova é um evento, não um treino. A copy nunca oferece “iniciar”, “trocar” ou
+“concluir treino” no dia; mostra o evento e as ações do ciclo de vida.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Perfil — card | `PROVA` + `Adicionar prova` | Superfície explícita; não compete com o formulário de objetivo. |
+| Perfil/Hoje — distância | `5 km`, `10 km`, `Meia maratona`, `Maratona` | Só as quatro distâncias suportadas. |
+| Meta declarada | `META INFORMADA` + `50:00 (meta sua, não é pace prescrito)` | Nunca deriva pace, faixa ou previsão. |
+| Estado | `Planejada`, `Concluída`, `Cancelada`, `Não compareceu` | Ciclo explícito; nada é inferido pelo calendário. |
+| Ações (planejada) | `Concluir prova`, `Não compareceu`, `Cancelar prova` | Conclusão exige ação; corrida vinculada é opcional. |
+| Hoje — competição | `Hoje é dia de prova. Não há treino prescrito para hoje; o app não cria uma segunda instrução.` | Uma decisão só; treino/briefing ocultos. |
+| Hoje — cancelada/não compareceu | `O app não inicia recuperação nem libera treino automático para hoje.` | Ausência de recuperação automática (FR-207 fora de escopo). |
+| Plano da semana | `Prova · {distância}` + `Sem treino neste dia` | Marca o dia e oculta sessão legada sobreposta. |
+| Notificação | `Prova hoje: {distância}` / `Seu dia de prova chegou...` | Abre o Hoje por `meucoach://today`; sem copy de treino. |
+
+IDs de regra/evidência continuam fora da superfície comum. O cutoff de 10/14 dias
+permanece `LIMITED`: a copy não o apresenta como consenso científico.

@@ -6,10 +6,13 @@ import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -98,6 +101,36 @@ class ReminderContentTest {
         ).isNull()
         assertThat(ReminderContent.workout(today, plan(session.copy(date = today.plusDays(1))))).isNull()
         assertThat(ReminderContent.workout(today, null)).isNull()
+    }
+
+    @Test
+    fun `race day copy opens today and never repeats the workout reminder`() {
+        val event = RaceEvent(
+            id = "race-1",
+            distance = RaceDistance.TEN_K,
+            targetDate = today,
+            createdAt = Instant.EPOCH,
+            updatedAt = Instant.EPOCH,
+        )
+
+        val message = ReminderContent.race(event)
+
+        assertThat(message.kind).isEqualTo(ReminderKind.RACE)
+        assertThat(message.id).isEqualTo(ReminderContent.RACE_ID)
+        assertThat(message.title).isEqualTo("Prova hoje: 10 km")
+        assertThat(message.body).contains("dia de prova")
+        assertThat(message.body).doesNotContain("Treino de hoje")
+        assertThat(message.deepLink).isEqualTo(DEEP_LINK_TODAY)
+
+        val cancelled = ReminderContent.race(
+            event.copy(
+                status = com.meucoach.core.model.RaceStatus.CANCELLED,
+                resolvedAt = Instant.EPOCH,
+            ),
+        )
+        assertThat(cancelled.title).contains("cancelada")
+        assertThat(cancelled.body).contains("não libera treino")
+        assertThat(cancelled.deepLink).isEqualTo(DEEP_LINK_TODAY)
     }
 
     @Test

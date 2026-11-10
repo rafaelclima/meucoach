@@ -156,7 +156,10 @@ class WeeklyPlanGenerator {
         val daysAfterToday = allDays.filter { day ->
             !weekStart.plusDays((day.value - 1).toLong()).isBefore(input.today)
         }
+        // A persisted event (even a terminal one) means the legacy goal no longer
+        // plans; only the event projection can define a race from now on.
         val race = input.race ?: RacePlan.from(input.profile.goal)
+            .takeIf { input.eventDates.isEmpty() }
         val eventDates = input.eventDates + listOfNotNull(race?.targetDate)
         // A race day never receives an ordinary session. The rest of the race
         // week stays free too: recovery is out of scope, so the app does not

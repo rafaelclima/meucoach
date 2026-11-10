@@ -6,14 +6,17 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.StoredWeeklyPlan
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
+import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanInput
 import com.meucoach.core.domain.replan.ReplanTrigger
+import com.meucoach.core.model.RaceStatus
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -33,6 +36,7 @@ class ReplanContextBuilder @Inject constructor(
     private val checkIns: CheckInRepository,
     private val metrics: DailyMetricsRepository,
     private val activities: ActivityRepository,
+    private val raceEvents: RaceEventRepository,
     private val timeProvider: TimeProvider,
 ) {
     suspend fun build(explicit: Boolean): ReplanContext? {
@@ -93,6 +97,12 @@ class ReplanContextBuilder @Inject constructor(
             weekStart = weekStart,
             today = today,
         )
+        val events = raceEvents.listAll()
+        val eventDates = events.map { it.targetDate }.toSet()
+        val race = events
+            .filter { it.status == RaceStatus.PLANNED }
+            .maxByOrNull { it.updatedAt }
+            ?.let(RacePlan::from)
 
         val input = ReplanInput(
             currentPlan = record.plan,
@@ -112,6 +122,8 @@ class ReplanContextBuilder @Inject constructor(
             previousWeek = previousWeek,
             weekNumberInBlock = weekNumberInBlock,
             nonTrainablePastDates = nonTrainablePastDates,
+            race = race,
+            eventDates = eventDates,
             today = today,
         )
         return ReplanContext(today = today, record = record, input = input)

@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -16,6 +17,7 @@ class ReminderWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val checkIns: CheckInRepository,
     private val plans: TrainingPlanRepository,
+    private val raceEvents: RaceEventRepository,
     private val timeProvider: TimeProvider,
     private val notifier: ReminderNotifier,
 ) : CoroutineWorker(appContext, params) {
@@ -27,8 +29,13 @@ class ReminderWorker @AssistedInject constructor(
                 ReminderKind.CHECK_IN.name -> ReminderContent.checkIn(today, checkIns.get(today))
 
                 ReminderKind.WORKOUT.name -> {
-                    val weekStart = timeProvider.currentWeekStart()
-                    ReminderContent.workout(today, plans.getWeek(weekStart))
+                    val event = raceEvents.getForDate(today)
+                    if (event != null) {
+                        ReminderContent.race(event)
+                    } else {
+                        val weekStart = timeProvider.currentWeekStart()
+                        ReminderContent.workout(today, plans.getWeek(weekStart))
+                    }
                 }
 
                 else -> null

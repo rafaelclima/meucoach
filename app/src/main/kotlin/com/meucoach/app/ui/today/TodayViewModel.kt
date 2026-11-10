@@ -11,11 +11,11 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.CompleteSessionRequest
 import com.meucoach.app.application.CompleteSessionResult
-import com.meucoach.app.application.GetTodayPrescription
+import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.ReplaceManualCompletionRequest
 import com.meucoach.app.application.ReplaceManualCompletionResult
-import com.meucoach.app.application.TodayPrescriptionRequest
+import com.meucoach.app.application.TodayDecisionRequest
 import com.meucoach.app.application.buildLoadSnapshot
 import com.meucoach.app.application.readinessResult
 import com.meucoach.app.time.TimeProvider
@@ -30,6 +30,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.briefing.SessionBriefingEngine
@@ -38,6 +39,7 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
+import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionCompletionRules
 import com.meucoach.core.domain.prescription.SessionMatcher
@@ -50,12 +52,15 @@ import com.meucoach.core.domain.prescription.WeeklyPlanInput
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessCalculator
 import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
+import com.meucoach.core.domain.today.TodayDecision
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.HeatLevel
+import com.meucoach.core.model.RaceEvent
+import com.meucoach.core.model.RaceStatus
 import com.meucoach.core.model.Sport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -85,10 +90,11 @@ class TodayViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
     private val executionRepository: SessionExecutionRepository,
+    private val raceEventRepository: RaceEventRepository,
     private val completeSession: CompleteSession,
     private val replaceManualCompletion: ReplaceManualCompletion,
     private val timeProvider: TimeProvider,
-    private val getTodayPrescription: GetTodayPrescription,
+    private val getTodayDecision: GetTodayDecision,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
     private val matcher = SessionMatcher()
@@ -100,7 +106,7 @@ class TodayViewModel @Inject constructor(
         val weekStart: LocalDate,
     )
 
-    private data class ResolvedDay(val context: TodayContext, val plan: WeeklyPlan?)
+    private data class ResolvedDay(val context: TodayContext, val plan: WeeklyPlan?, val events: List<RaceEvent>)
 
     private data class TodayContext(
         val checkIn: DailyCheckIn?,
@@ -171,11 +177,18 @@ class TodayViewModel @Inject constructor(
         .distinctUntilChanged()
         .flatMapLatest { weekStart -> planRepository.observeWeek(weekStart) }
 
-    private val resolvedDay = combine(context, storedPlan, planHistory) { context, plan, history ->
+    private val events = raceEventRepository.observeAll()
+
+    private val resolvedDay = combine(context, storedPlan, planHistory, events) { context, plan, history, events ->
         val weekStart = context.today.weekStart()
         val historyReady = history.isReady && history.weekStart == weekStart
         val planned = plan ?: if (historyReady) {
             context.profile?.let {
+                val eventDates = events.map { event -> event.targetDate }.toSet()
+                val race = events
+                    .filter { event -> event.status == RaceStatus.PLANNED }
+                    .maxByOrNull { event -> event.updatedAt }
+                    ?.let(RacePlan::from)
                 planGenerator.generate(
                     WeeklyPlanInput(
                         profile = it,
@@ -185,13 +198,15 @@ class TodayViewModel @Inject constructor(
                         today = context.today,
                         previousWeek = history.previousWeek,
                         weekNumberInBlock = history.weekNumberInBlock,
+                        race = race,
+                        eventDates = eventDates,
                     ),
                 )
             }
         } else {
             null
         }
-        ResolvedDay(context = context, plan = planned)
+        ResolvedDay(context = context, plan = planned, events = events)
     }
 
     private val dayState = resolvedDay
@@ -201,18 +216,20 @@ class TodayViewModel @Inject constructor(
                 planRepository.getWeek(generated.weekStart) ?: generated.also { planRepository.saveWeek(it) }
             }
             val readiness = readinessResult(context.checkIn, context.metrics, context.today)
-            val prescription = context.profile?.let { profile ->
-                getTodayPrescription(
-                    TodayPrescriptionRequest(
-                        date = context.today,
-                        profile = profile,
-                        readiness = readiness,
-                        load = context.load,
-                        heatLevel = context.checkIn?.heatLevel ?: HeatLevel.NONE,
-                        plan = plan,
-                    ),
-                )
-            }
+            // Competition wins and prevents any prescription calculation/persist
+            // for the race day; the resolver owns the single branch.
+            val decision = getTodayDecision(
+                TodayDecisionRequest(
+                    date = context.today,
+                    profile = context.profile,
+                    readiness = readiness,
+                    load = context.load,
+                    heatLevel = context.checkIn?.heatLevel ?: HeatLevel.NONE,
+                    plan = plan,
+                ),
+            )
+            val prescription = (decision as? TodayDecision.Training)?.prescription
+            val competition = decision is TodayDecision.Competition
             closeBlockedSessionIfNeeded(
                 plan = plan,
                 prescription = prescription,
@@ -225,10 +242,15 @@ class TodayViewModel @Inject constructor(
                 prescription = prescription,
                 context = context,
                 zone = timeProvider.zoneId.value,
+                competition = competition,
             )
-            val todayExecution = plan?.sessions
-                ?.firstOrNull { it.date == context.today }
-                ?.let { session -> executionUi(plan, session, context) }
+            val todayExecution = if (competition) {
+                null
+            } else {
+                plan?.sessions
+                    ?.firstOrNull { it.date == context.today }
+                    ?.let { session -> executionUi(plan, session, context) }
+            }
             todayState(
                 checkIn = context.checkIn,
                 metrics = context.metrics,
@@ -238,6 +260,8 @@ class TodayViewModel @Inject constructor(
                 now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
                 plan = plan,
                 prescription = prescription,
+                decision = decision,
+                eventDates = resolved.events.map { event -> event.targetDate }.toSet(),
                 kmByDay = context.kmByDay,
                 weeklyLoadKm = context.weeklyLoadKm,
                 recentActivity = context.recentActivity,
@@ -298,7 +322,27 @@ class TodayViewModel @Inject constructor(
         prescription: DailyPrescription?,
         context: TodayContext,
         zone: java.time.ZoneId,
+        competition: Boolean = false,
     ): List<ActivitySuggestionUi> {
+        if (competition) {
+            // On a race day the imported run may be linked to the event, never
+            // offered as a training completion.
+            return context.activities
+                .filter { activity ->
+                    (activity.sport == Sport.RUNNING || activity.sport == Sport.TREADMILL) &&
+                        activity.startTime.atZone(zone).toLocalDate() == context.today &&
+                        activity.id !in context.linkedActivityIds
+                }
+                .map { activity ->
+                    ActivitySuggestionUi(
+                        id = activity.id,
+                        title = sportLabel(activity.sport),
+                        subtitle = formatDateTime(activity.startTime, zone),
+                        distance = "${formatDistance(activity.distance)} km",
+                        duration = formatDuration(activity.durationSec),
+                    )
+                }
+        }
         val session = plan?.sessions?.firstOrNull {
             it.date == context.today && (
                 it.status == SessionStatus.PLANNED ||
@@ -471,6 +515,50 @@ class TodayViewModel @Inject constructor(
         completionMessage.value = null
     }
 
+    /** Explicit race completion; the activity link is optional and never inferred. */
+    fun completeRaceEvent(activityId: String? = null) {
+        viewModelScope.launch {
+            val event = raceEventRepository.getPlanned() ?: return@launch
+            completionMessage.value = when (val outcome = raceEventRepository.complete(event.id, activityId)) {
+                is com.meucoach.core.data.repository.RaceEventOutcome.Saved ->
+                    "Prova registrada como concluída."
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.Rejected -> outcome.message
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.ActiveEventExists ->
+                    "Já existe uma prova planejada ativa."
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.ActivityAlreadyLinked -> outcome.message
+            }
+        }
+    }
+
+    fun cancelRaceEvent() = resolveRaceEvent(cancel = true)
+
+    fun noShowRaceEvent() = resolveRaceEvent(cancel = false)
+
+    private fun resolveRaceEvent(cancel: Boolean) {
+        viewModelScope.launch {
+            val event = raceEventRepository.getPlanned() ?: return@launch
+            val outcome = if (cancel) {
+                raceEventRepository.cancel(event.id)
+            } else {
+                raceEventRepository.noShow(event.id)
+            }
+            completionMessage.value = when (outcome) {
+                is com.meucoach.core.data.repository.RaceEventOutcome.Saved ->
+                    if (cancel) "Prova cancelada." else "Registrado que você não compareceu."
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.Rejected -> outcome.message
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.ActiveEventExists ->
+                    "Já existe uma prova planejada ativa."
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.ActivityAlreadyLinked -> outcome.message
+            }
+        }
+    }
+
     fun skipSession(date: LocalDate, reason: String) {
         viewModelScope.launch {
             val weekStart = date.weekStart()
@@ -484,8 +572,10 @@ class TodayViewModel @Inject constructor(
 
     fun swapSession(firstDate: LocalDate, secondDate: LocalDate, today: LocalDate) {
         viewModelScope.launch {
-            val plan = planRepository.getWeek(firstDate.weekStart()) ?: return@launch
-            val result = SessionSwapper.swap(plan, firstDate, secondDate, today)
+            val weekStart = firstDate.weekStart()
+            val plan = planRepository.getWeek(weekStart) ?: return@launch
+            val raceDates = raceEventRepository.getDatesBetween(weekStart, weekStart.plusDays(6))
+            val result = SessionSwapper.swap(plan, firstDate, secondDate, today, raceDates)
             if (result is SwapResult.Applied) {
                 planRepository.updateSessions(result.plan.weekStart, result.plan.sessions)
             }
@@ -536,6 +626,9 @@ fun TodayRoute(
         onReplaceWithActivity = viewModel::replaceManualWithActivity,
         onSkipSession = viewModel::skipSession,
         onSwapSession = { first, second -> viewModel.swapSession(first, second, state.today) },
+        onCompleteRace = viewModel::completeRaceEvent,
+        onCancelRace = viewModel::cancelRaceEvent,
+        onNoShowRace = viewModel::noShowRaceEvent,
         onConsumeCompletionMessage = viewModel::consumeCompletionMessage,
         replan = replanState,
         onReplanRequest = replanViewModel::replanNow,
@@ -557,6 +650,8 @@ internal fun todayState(
     now: LocalTime = LocalTime.NOON,
     plan: WeeklyPlan? = null,
     prescription: DailyPrescription? = null,
+    decision: TodayDecision? = null,
+    eventDates: Set<LocalDate> = emptySet(),
     kmByDay: Map<LocalDate, Double> = emptyMap(),
     weeklyLoadKm: Double? = null,
     recentActivity: RecentActivityUi? = null,
@@ -587,13 +682,25 @@ internal fun todayState(
             isToday = date == today,
         )
     }
+    val competition = decision is TodayDecision.Competition
     // Preview/test/tutorial fallback. Production always receives the persisted
-    // prescription from GetTodayPrescription, which is the single authority.
-    val dayPrescription =
-        prescription ?: profile?.let { buildPreviewPrescription(it, checkIn, result, load, today, plan) }
+    // prescription from GetTodayDecision, which is the single authority.
+    val dayPrescription = when (decision) {
+        is TodayDecision.Competition -> null
+
+        is TodayDecision.Training -> decision.prescription
+
+        null -> prescription ?: profile?.let {
+            buildPreviewPrescription(it, checkIn, result, load, today, plan)
+        }
+    }
     val todaySession = plan?.sessions?.firstOrNull { it.date == today }
-    val briefing = dayPrescription?.let { SessionBriefingEngine().brief(it, todaySession?.status) }
-    val explanation = if (profile != null && dayPrescription != null) {
+    val briefing = if (competition) {
+        null
+    } else {
+        dayPrescription?.let { SessionBriefingEngine().brief(it, todaySession?.status) }
+    }
+    val explanation = if (!competition && profile != null && dayPrescription != null) {
         buildExplanation(
             checkIn = checkIn,
             inputs = inputs,
@@ -622,6 +729,8 @@ internal fun todayState(
         workout = dayPrescription?.toWorkoutUi() ?: base.workout,
         prescription = dayPrescription,
         briefing = briefing,
+        decision = decision,
+        eventDates = eventDates,
         explanation = explanation,
         readinessExplanation = readinessExplanation,
         ctl = load?.ctl?.roundToInt(),
@@ -637,8 +746,8 @@ internal fun todayState(
         athleteName = profile?.name.orEmpty(),
         avatarPath = profile?.avatarPath,
         weather = profile?.city ?: "",
-        activitySuggestions = activitySuggestions,
-        todayExecution = todayExecution,
+        activitySuggestions = if (competition) emptyList() else activitySuggestions,
+        todayExecution = if (competition) null else todayExecution,
         completionMessage = completionMessage,
         illnessOrInjury = signals.illnessOrInjury,
     )

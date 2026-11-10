@@ -3,6 +3,7 @@ package com.meucoach.app.application
 import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CompletionOutcome
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.DailyPrescription
@@ -53,8 +54,16 @@ class CompleteSession @Inject constructor(
     private val planRepository: TrainingPlanRepository,
     private val activityRepository: ActivityRepository,
     private val executions: SessionExecutionRepository,
+    private val raceEvents: RaceEventRepository,
 ) {
     suspend operator fun invoke(request: CompleteSessionRequest): CompleteSessionResult {
+        // A race day has its own lifecycle. Completing a legacy overlapping
+        // session would create a second execution decision for the same day.
+        if (raceEvents.getForDate(request.date) != null) {
+            return CompleteSessionResult.Rejected(
+                "Este dia tem uma prova. Conclua, cancele ou registre que não compareceu no card da prova.",
+            )
+        }
         val weekStart = request.date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val plan = planRepository.getWeek(weekStart)
             ?: return CompleteSessionResult.Rejected("Plano da semana não encontrado.")

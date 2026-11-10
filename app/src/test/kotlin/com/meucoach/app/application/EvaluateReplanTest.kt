@@ -9,6 +9,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanningFingerprints
@@ -58,6 +59,7 @@ class EvaluateReplanTest {
             checkIns = checkIns,
             metrics = metrics,
             activities = activities,
+            raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )
         evaluate = EvaluateReplan(contexts, plans)
@@ -102,6 +104,7 @@ class EvaluateReplanTest {
             checkIns = checkIns,
             metrics = DailyMetricsRepository(database, clock),
             activities = ActivityRepository(database = database, clock = clock, zoneId = ZoneOffset.UTC),
+            raceEvents = RaceEventRepository(database, clock),
             timeProvider = utcProvider,
         )
         val profile = replanProfile().copy(timezone = "America/Sao_Paulo")
