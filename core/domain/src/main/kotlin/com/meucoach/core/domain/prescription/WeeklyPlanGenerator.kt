@@ -108,6 +108,10 @@ data class WeeklyPlanInput(
     val previousWeek: WeeklyPlan? = null,
     /** 1-based position in the current block; every 4th week is a deload. */
     val weekNumberInBlock: Int = 1,
+    /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */
+    val race: RacePlan? = null,
+    /** Every event date that must not receive an ordinary training session. */
+    val eventDates: Set<LocalDate> = emptySet(),
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
@@ -149,16 +153,28 @@ class WeeklyPlanGenerator {
 
         val allDays = availability.keys.toList()
         // N-02: a plan created midweek only contains today and the remaining days.
-        val days = allDays.filter { day ->
+        val daysAfterToday = allDays.filter { day ->
             !weekStart.plusDays((day.value - 1).toLong()).isBefore(input.today)
         }
-        if (days.isEmpty()) {
-            return base.copy(
-                rationale = "Não há dias de treino restantes nesta semana. " +
-                    "O próximo plano começa na segunda-feira.",
-            )
+        val race = input.race ?: RacePlan.from(input.profile.goal)
+        val eventDates = input.eventDates + listOfNotNull(race?.targetDate)
+        // A race day never receives an ordinary session. The rest of the race
+        // week stays free too: recovery is out of scope, so the app does not
+        // invent post-race training (ADR 0030).
+        val days = daysAfterToday.filter { day ->
+            val date = weekStart.plusDays((day.value - 1).toLong())
+            date !in eventDates && (race == null || !race.isRaceDayOrLater(date))
         }
-        val dayTrimmed = days.size < allDays.size
+        if (days.isEmpty()) {
+            val message = if (daysAfterToday.isNotEmpty() && race != null) {
+                "Não há dias de treino antes da prova nesta semana. O próximo plano começa depois do evento."
+            } else {
+                "Não há dias de treino restantes nesta semana. O próximo plano começa na segunda-feira."
+            }
+            return base.copy(rationale = message)
+        }
+        val dayTrimmed = daysAfterToday.size < allDays.size
+        val eventDaysSkipped = days.size < daysAfterToday.size
         val longDay = days.maxBy { day -> availability.getValue(day) }
         val safetyBlock = input.readiness.flags.any {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
@@ -175,9 +191,13 @@ class WeeklyPlanGenerator {
         val completionRatio = input.previousWeek?.completionRatio() ?: 0.0
         val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
         val deload = input.weekNumberInBlock % DELOAD_EVERY_WEEKS == 0
+        val qualityCandidateDays = days.filter { day ->
+            val date = weekStart.plusDays((day.value - 1).toLong())
+            race?.allowsQuality(date) ?: true
+        }
         val qualityDays = if (qualityAllowed) {
             selectQualityDays(
-                days = days,
+                days = qualityCandidateDays,
                 longDay = longDay,
                 maxQualities = if (progressed) 2 else 1,
             )
@@ -264,25 +284,17 @@ class WeeklyPlanGenerator {
                 session
             }
         }
-        val taper = taperFor(input.profile.goal, weekStart)
-        val adjusted = when {
-            taper != null -> limitedLong.map { session ->
-                if (session.type == WorkoutType.QUALITY || session.durationMin == null) {
-                    session
-                } else {
-                    session.copy(durationMin = scaledMinutes(session, taper.factor))
-                }
-            }
+        val taperActive = race?.isInTaperWindow(input.today) == true
+        val adjusted = limitedLong.map { session ->
+            when {
+                race != null && race.isInTaperWindow(session.date) && session.durationMin != null ->
+                    session.copy(durationMin = scaledMinutes(session, race.taperFactor(session.date)))
 
-            deload -> limitedLong.map { session ->
-                if (session.durationMin == null) {
-                    session
-                } else {
+                deload && session.durationMin != null ->
                     session.copy(durationMin = scaledMinutes(session, DELOAD_FACTOR))
-                }
-            }
 
-            else -> limitedLong
+                else -> session
+            }
         }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
@@ -290,13 +302,21 @@ class WeeklyPlanGenerator {
         val baseConfidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
         val confidence = if (loadTrusted) baseConfidence else downgrade(baseConfidence)
         val rationale = buildString {
-            if (taper != null) {
-                append("Semana de prova em ${taper.daysToRace} dias: volume reduzido. ")
+            if (taperActive) {
+                val days = race?.daysTo(input.today) ?: 0
+                if (days == 0L) {
+                    append("Prova hoje: volume reduzido. ")
+                } else {
+                    append("Semana de prova em $days dias: volume reduzido. ")
+                }
             } else if (deload) {
                 append(
                     "Semana de descarga (${input.weekNumberInBlock} de 4 no bloco): volume −" +
                         "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
                 )
+            }
+            if (eventDaysSkipped) {
+                append("Dias de prova não recebem sessão de treino. ")
             }
             if (dayTrimmed) {
                 append("Plano criado hoje: dias anteriores não entram nesta semana. ")
@@ -349,8 +369,9 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-06")
                 if (!loadTrusted) add("R-DATA-01")
                 if (loadTrusted && !acwrInRange) add("R-LOAD-03")
-                if (taper != null) add("R-PLAN-05")
-                if (deload && taper == null) add("R-PLAN-04")
+                if (taperActive) add("R-PLAN-05")
+                if (taperActive) add("R-PLAN-10")
+                if (deload && !taperActive) add("R-PLAN-04")
             },
             evidenceIds = buildList {
                 add("EV-SEILER-2010")
@@ -359,11 +380,11 @@ class WeeklyPlanGenerator {
                 if (!loadTrusted || (loadTrusted && !acwrInRange)) {
                     add("EV-IMPELLIZZERI-2020")
                 }
-                if (taper != null) {
+                if (taperActive) {
                     add("EV-BOSQUET-2007")
                     add("EV-MUJIKA-2003")
                 }
-                if (deload && taper == null) add("EV-ISSURIN-2010")
+                if (deload && !taperActive) add("EV-ISSURIN-2010")
             },
             createdOn = input.today,
         )
@@ -421,17 +442,6 @@ class WeeklyPlanGenerator {
         val slowKmh = 3_600.0 / threshold.maxSecPerKm
         val fastKmh = 3_600.0 / threshold.minSecPerKm
         return String.format(PT_BR, " ou %.1f–%.1f km/h a 1%%", slowKmh, fastKmh)
-    }
-
-    private data class Taper(val factor: Double, val daysToRace: Long)
-
-    private fun taperFor(goal: com.meucoach.core.model.TrainingGoal?, weekStart: LocalDate): Taper? {
-        val target = goal?.targetDate ?: return null
-        val window = if (goal.type == com.meucoach.core.model.GoalType.MARATHON) 21 else 14
-        val days = java.time.temporal.ChronoUnit.DAYS.between(weekStart, target)
-        if (days !in 0..window.toLong()) return null
-        val factor = if (days <= 7) 0.45 else 0.55
-        return Taper(factor = factor, daysToRace = days)
     }
 
     private fun adjacentDays(a: DayOfWeek, b: DayOfWeek): Boolean {

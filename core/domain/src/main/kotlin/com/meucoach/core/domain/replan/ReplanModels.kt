@@ -1,6 +1,7 @@
 package com.meucoach.core.domain.replan
 
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
@@ -126,6 +127,10 @@ data class ReplanInput(
     val previousWeek: WeeklyPlan? = null,
     val weekNumberInBlock: Int = 1,
     val nonTrainablePastDates: Set<LocalDate> = emptySet(),
+    /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */
+    val race: RacePlan? = null,
+    /** Every event date that must not receive an ordinary session. */
+    val eventDates: Set<LocalDate> = emptySet(),
     /** Product heuristic: how many eligible missed sessions trigger T1. */
     val missedSessionThreshold: Int = PlanReplanner.PRODUCT_MISSED_SESSION_THRESHOLD,
     val today: LocalDate,

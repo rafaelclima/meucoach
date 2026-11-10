@@ -91,10 +91,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (10/11/2026):
 
-- 1181 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 420 em `core:domain`, 152 em `core:data`, 573 em `:app`).
+- 1200 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 439 em `core:domain`, 152 em `core:data`, 573 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,69% de linhas, 81,80% de branches, 96,24% de instruções.
+- `core:domain`: 97,65% de linhas, 81,84% de branches, 96,24% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -162,6 +162,11 @@ Evidência atual (10/11/2026):
 - `RaceEventTest`: distâncias suportadas, estados, `resolvedAt`, vínculo só em `COMPLETED` e data passada ainda `PLANNED`.
 - `TodayDecisionResolverTest`: treino × competição, evento terminal no dia, ausência de decisão e data divergente.
 - `PlanningGoalResolverTest`: precedência do evento `PLANNED`, equivalência com a meta legada, meta fora do fingerprint e fim do fallback após o primeiro evento.
+- `RacePlanTest`: janelas 14/21, cutoff 10/14 inclusivo, semana da prova sem qualidade, prova passada e fator profundo.
+- `WeeklyPlanGeneratorTest`: sem sessão no dia/depois da prova, qualidade removida no cutoff, taper por data da sessão, janela de maratona e data de evento sem taper.
+- `PlanReplannerTest`: nenhuma sessão em data de evento, sessão passada em evento não conta como perdida, qualidade legada na semana da prova e hash sensível a corrida/datas.
+- `PlanCompletionCalculatorTest`: datas de evento fora do numerador e denominador.
+- `SessionSwapperTest`: troca envolvendo data de evento é rejeitada.
 - `RaceEventRepositoryTest`: evento ativo único, edição, conclusão/cancelamento/não comparecimento, vínculo único e cruzado com execução, lixeira/expurgo e janela de datas.
 - `MeuCoachDatabaseMigrationTest` (14→15): `race_events` vazia, dados legados preservados e schema validado.
 - `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.

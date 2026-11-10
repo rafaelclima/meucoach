@@ -86,14 +86,19 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 today = input.today,
                 previousWeek = input.previousWeek,
                 weekNumberInBlock = input.weekNumberInBlock,
+                race = input.race,
+                eventDates = input.eventDates,
             ),
         )
+        val raceDates = input.eventDates + listOfNotNull(input.race?.targetDate)
         val preserved = input.currentPlan.sessions.filter {
             !it.date.isAfter(input.today) || it.status != SessionStatus.PLANNED
         }
         val preservedDates = preserved.map { it.date }.toSet()
         val candidateFuture = generated.sessions.filter {
-            it.date.isAfter(input.today) && it.date !in preservedDates
+            it.date.isAfter(input.today) &&
+                it.date !in preservedDates &&
+                it.date !in raceDates
         }
         val candidateSessions = (preserved + candidateFuture).sortedBy { it.date }
         val currentFuture = input.currentPlan.sessions.filter { it.date.isAfter(input.today) }
@@ -185,7 +190,9 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 session.type != WorkoutType.REST &&
                 session.date.isBefore(input.today) &&
                 !session.date.isBefore(input.currentPlan.createdOn) &&
-                session.date !in input.nonTrainablePastDates
+                session.date !in input.nonTrainablePastDates &&
+                session.date !in input.eventDates &&
+                session.date != input.race?.targetDate
         }
 
     /** Validates the whole merged week: only executed sessions and the new future constrain it. */
@@ -194,6 +201,15 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         future: List<PlannedSession>,
         input: ReplanInput,
     ): String? {
+        val raceDates = input.eventDates + listOfNotNull(input.race?.targetDate)
+        future.forEach { session ->
+            if (session.date in raceDates) {
+                return "Dia de prova não recebe sessão de treino."
+            }
+            if (session.type == WorkoutType.QUALITY && input.race?.allowsQuality(session.date) == false) {
+                return "Sem treino forte na semana da prova nem dentro do corte conservador."
+            }
+        }
         val effective = sessions.filter {
             it.status == SessionStatus.DONE ||
                 (it.status == SessionStatus.PLANNED && it.date.isAfter(input.today))
@@ -384,6 +400,10 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";previous=").append(previousWeek?.canonical() ?: "null")
     append(";block=").append(weekNumberInBlock)
     append(";nonTrainable=").append(nonTrainablePastDates.sorted().joinToString(","))
+    append(";race=").append(
+        race?.let { "${it.eventId},${it.distance.name},${it.targetDate}" } ?: "null",
+    )
+    append(";eventDates=").append(eventDates.sorted().joinToString(","))
     append(";threshold=").append(missedSessionThreshold)
     append(";sessions=").append(currentPlan.sessions.joinToString("|") { it.canonical() })
 }

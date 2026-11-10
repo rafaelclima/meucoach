@@ -31,6 +31,10 @@ object ExplanationCatalog {
         "R-SAFE-01" to RuleExplanation("R-SAFE-01", "Sinal de alerta interrompe o treino"),
         "R-PLAN-01" to RuleExplanation("R-PLAN-01", "Disponibilidade define os dias de treino"),
         "R-PLAN-09" to RuleExplanation("R-PLAN-09", "Mudança de perfil gera revisão sugerida, nunca automática"),
+        "R-PLAN-10" to RuleExplanation(
+            "R-PLAN-10",
+            "Sem treino forte na semana da prova e corte conservador antes dela",
+        ),
         "R-PRESC-01" to RuleExplanation("R-PRESC-01", "A prescrição do dia mantém o plano"),
         "R-PRESC-02" to RuleExplanation("R-PRESC-02", "Ajuste do dia reduz, nunca aumenta"),
         "R-PRESC-03" to RuleExplanation("R-PRESC-03", "Uma decisão por dia, a mesma em todas as telas"),

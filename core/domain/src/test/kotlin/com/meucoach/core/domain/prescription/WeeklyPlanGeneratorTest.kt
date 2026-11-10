@@ -10,6 +10,7 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
@@ -727,6 +728,135 @@ class WeeklyPlanGeneratorTest {
         return diff == 1 || diff == 6
     }
 
+    @Test
+    fun `never creates a session on or after the race date in the same week`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.SATURDAY to 90,
+            ),
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(5)),
+            ),
+        )
+
+        assertThat(plan.sessions.map { it.date }).containsExactly(monday, monday.plusDays(2))
+        assertThat(plan.sessions).noneMatch { it.date.isAfter(monday.plusDays(4)) }
+        assertThat(plan.rationale).contains("Dias de prova não recebem sessão de treino")
+        assertThat(plan.ruleIds).contains("R-PLAN-05", "R-PLAN-10")
+    }
+
+    @Test
+    fun `removes a quality inside the cutoff and keeps none in the race week`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val profile = profile(Experience.INTERMEDIATE, availability)
+        val outsideCutoff = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(12)),
+            ),
+        )
+        val insideCutoff = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(10)),
+            ),
+        )
+
+        assertThat(outsideCutoff.sessions.filter { it.type == WorkoutType.QUALITY }).isNotEmpty
+        assertThat(insideCutoff.sessions.filter { it.type == WorkoutType.QUALITY }).isEmpty()
+        assertThat(insideCutoff.ruleIds).contains("R-PLAN-10")
+    }
+
+    @Test
+    fun `applies the taper factor by session date`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.SATURDAY to 90,
+            ),
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(9)),
+            ),
+        )
+
+        val mondaySession = plan.sessions.first { it.date == monday }
+        val wednesdaySession = plan.sessions.first { it.date == monday.plusDays(2) }
+        assertThat(mondaySession.durationMin).isEqualTo(22)
+        assertThat(wednesdaySession.durationMin).isEqualTo(20)
+    }
+
+    @Test
+    fun `uses the 21 day marathon window`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 60),
+        )
+        val target = monday.plusDays(20)
+        val marathon = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                race = RacePlan("race-1", RaceDistance.MARATHON, target),
+            ),
+        )
+        val tenK = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                race = RacePlan("race-2", RaceDistance.TEN_K, target),
+            ),
+        )
+
+        assertThat(marathon.sessions.first { it.date == monday }.durationMin).isEqualTo(22)
+        assertThat(tenK.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
+        assertThat(marathon.ruleIds).contains("R-PLAN-05")
+        assertThat(tenK.ruleIds).doesNotContain("R-PLAN-05")
+    }
+
+    @Test
+    fun `skips any other event date without a taper`() {
+        val profile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.TUESDAY to 40,
+                DayOfWeek.THURSDAY to 90,
+            ),
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                eventDates = setOf(monday.plusDays(2)),
+            ),
+        )
+
+        assertThat(plan.sessions.map { it.date }).containsExactly(monday, monday.plusDays(1), monday.plusDays(3))
+        assertThat(plan.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
+    }
+
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
@@ -735,6 +865,8 @@ class WeeklyPlanGeneratorTest {
         today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
         weekNumberInBlock: Int = 1,
+        race: RacePlan? = null,
+        eventDates: Set<LocalDate> = emptySet(),
     ) = WeeklyPlanInput(
         profile = profile,
         readiness = readiness,
@@ -743,6 +875,8 @@ class WeeklyPlanGeneratorTest {
         today = today,
         previousWeek = previousWeek,
         weekNumberInBlock = weekNumberInBlock,
+        race = race,
+        eventDates = eventDates,
     )
 
     private fun readiness(

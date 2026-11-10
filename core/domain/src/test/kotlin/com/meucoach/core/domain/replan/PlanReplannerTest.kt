@@ -4,6 +4,7 @@ import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
@@ -20,6 +21,7 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
@@ -987,6 +989,104 @@ class PlanReplannerTest {
 
     // --- Fixtures ----------------------------------------------------------
 
+    @Test
+    fun `never suggests a session on a race date`() {
+        val profile = profile(mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40))
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(monday.plusDays(2), WorkoutType.EASY, 40),
+        )
+
+        val result = PlanReplanner().evaluate(
+            input(
+                current = current,
+                today = monday,
+                trigger = ReplanTrigger.USER_REQUEST,
+                profile = profile,
+                eventDates = setOf(monday.plusDays(2)),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
+        val candidate = (result as ReplanResult.Suggest).candidate
+        assertThat(candidate.sessions.map { it.date }).doesNotContain(monday.plusDays(2))
+        assertThat(candidate.sessions.none { it.date.isAfter(monday) }).isTrue()
+    }
+
+    @Test
+    fun `does not count a past session on a race date as missed`() {
+        val profile = profile(defaultAvailability())
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(monday.plusDays(1), WorkoutType.EASY, 40),
+        )
+
+        val result = PlanReplanner().evaluate(
+            input(
+                current = current,
+                today = monday.plusDays(2),
+                profile = profile,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(profile.weeklyAvailability),
+                eventDates = setOf(monday),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat((result as ReplanResult.NoChange).reason).contains("Nenhum desvio elegível")
+    }
+
+    @Test
+    fun `removes a legacy quality inside the race week`() {
+        val profile = profile(defaultAvailability())
+        val current = planOf(
+            session(monday.plusDays(2), WorkoutType.QUALITY, 30),
+            session(monday.plusDays(5), WorkoutType.LONG, 90),
+        )
+
+        val result = PlanReplanner().evaluate(
+            input(
+                current = current,
+                today = monday,
+                trigger = ReplanTrigger.USER_REQUEST,
+                profile = profile,
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(5)),
+                eventDates = setOf(monday.plusDays(5)),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
+        val candidate = (result as ReplanResult.Suggest).candidate
+        assertThat(candidate.sessions.filter { it.type == WorkoutType.QUALITY }).isEmpty()
+        assertThat(candidate.sessions.map { it.date }).doesNotContain(monday.plusDays(5))
+    }
+
+    @Test
+    fun `inputs hash changes when the race or an event date changes`() {
+        val profile = profile(defaultAvailability())
+        val current = planOf(session(monday, WorkoutType.EASY, 40))
+
+        val base = PlanReplanner.inputsHash(input(current = current, today = monday, profile = profile))
+        val race = PlanReplanner.inputsHash(
+            input(
+                current = current,
+                today = monday,
+                profile = profile,
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(20)),
+            ),
+        )
+        val event = PlanReplanner.inputsHash(
+            input(
+                current = current,
+                today = monday,
+                profile = profile,
+                eventDates = setOf(monday.plusDays(3)),
+            ),
+        )
+
+        assertThat(base).isNotEqualTo(race)
+        assertThat(base).isNotEqualTo(event)
+    }
+
     private fun input(
         current: WeeklyPlan,
         today: LocalDate,
@@ -1004,6 +1104,8 @@ class PlanReplannerTest {
         currentEvaluatedFingerprintVersion: String? = null,
         currentEvaluatedFingerprint: String? = null,
         currentTemporalContextHash: String? = null,
+        race: RacePlan? = null,
+        eventDates: Set<LocalDate> = emptySet(),
     ) = ReplanInput(
         currentPlan = current,
         currentVersion = currentVersion,
@@ -1019,6 +1121,8 @@ class PlanReplannerTest {
         previousWeek = previousWeek,
         weekNumberInBlock = weekNumberInBlock,
         nonTrainablePastDates = nonTrainablePastDates,
+        race = race,
+        eventDates = eventDates,
         missedSessionThreshold = missedSessionThreshold,
         today = today,
     )

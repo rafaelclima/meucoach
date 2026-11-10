@@ -80,6 +80,51 @@ class PlanCompletionCalculatorTest {
     }
 
     @Test
+    fun `excludes event dates from both numerator and denominator`() {
+        val plan = plan(
+            weekStart = weekStart,
+            sessions = listOf(
+                session(weekStart, SessionStatus.DONE),
+                session(weekStart.plusDays(1), SessionStatus.PLANNED),
+                session(weekStart.plusDays(2), SessionStatus.DONE),
+            ),
+        )
+
+        val completion = calculator.calculate(
+            plans = listOf(plan),
+            today = today,
+            weeks = 1,
+            excludedDates = setOf(weekStart.plusDays(2)),
+        )
+
+        assertThat(completion.planned).isEqualTo(2)
+        assertThat(completion.done).isEqualTo(1)
+        assertThat(completion.completionRatio).isEqualTo(0.5)
+    }
+
+    @Test
+    fun `exclusion also removes a done session on an event date`() {
+        val plan = plan(
+            weekStart = weekStart,
+            sessions = listOf(
+                session(weekStart, SessionStatus.DONE),
+                session(weekStart.plusDays(1), SessionStatus.DONE),
+            ),
+        )
+
+        val completion = calculator.calculate(
+            plans = listOf(plan),
+            today = today,
+            weeks = 1,
+            excludedDates = setOf(weekStart, weekStart.plusDays(1)),
+        )
+
+        assertThat(completion.planned).isZero()
+        assertThat(completion.done).isZero()
+        assertThat(completion.completionRatio).isNull()
+    }
+
+    @Test
     fun `reports no ratio without planned sessions`() {
         val completion = calculator.calculate(emptyList(), today, weeks = 4)
 

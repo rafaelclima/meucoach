@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.15 · **Data:** 10/11/2026 · **Mudança:** C3-05 iniciado (modelo, TodayDecision, Room 15 e repositório); C3-G1 e C3-03/04 mantidos.
+**Versão:** 1.16 · **Data:** 10/11/2026 · **Mudança:** C3-05 avança com taper/cutoff por data, adesão e guarda de troca; C3-G1 e C3-03/04 mantidos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -402,7 +402,7 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 | **C3-02** | Avaliação ao salvar Perfil/Calibração e UI da sugestão | **Implementado em 10/11/2026**; card no Perfil e resultado consumido uma vez |
 | **C3-03/04** | Briefing genérico a partir da prescrição e sheet acessível no Hoje | **Implementado em 10/11/2026**; fidelidade, determinismo, RPE sem calibração, downgrade, `DONE`/`CLOSED` sem briefing, goldens e estados de UI testados |
 | **C3-G1** | Contrato Room/migração, `TodayDecision`, vínculo com atividade, taper por data, adesão e testes do evento | **Desenho técnico concluído em 10/11/2026** em [`PLANO_TECNICO_CICLO_3_EVENTO.md`](PLANO_TECNICO_CICLO_3_EVENTO.md); nenhum código/migração implementado |
-| **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Em andamento em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, export/reset e migração implementados; taper/adesião/UI/notificação pendentes |
+| **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Em andamento em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, taper/cutoff por data, adesão e guarda de troca implementados; wiring do app, notificação e UI pendentes |
 | **C3-G2** | Revisão de fontes/copy de F4 | Não iniciado; nenhuma dica exibida |
 
 Fora do escopo implementável: recuperação pós-prova (FR-207), pace/faixa de prova e

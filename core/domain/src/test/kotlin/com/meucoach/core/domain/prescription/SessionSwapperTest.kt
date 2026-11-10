@@ -31,6 +31,25 @@ class SessionSwapperTest {
     }
 
     @Test
+    fun `rejects a swap involving a race date`() {
+        val plan = plan(
+            session(monday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(wednesday, WorkoutType.QUALITY, "Tempo", 30),
+        )
+
+        val result = SessionSwapper.swap(
+            plan = plan,
+            firstDate = monday,
+            secondDate = wednesday,
+            today = monday,
+            raceDates = setOf(wednesday),
+        )
+
+        assertThat(result).isInstanceOf(SwapResult.Rejected::class.java)
+        assertThat((result as SwapResult.Rejected).reason).contains("prova")
+    }
+
+    @Test
     fun `rejects past or completed sessions`() {
         val plan = plan(
             session(monday, WorkoutType.EASY, "Fácil e conversável", 40),

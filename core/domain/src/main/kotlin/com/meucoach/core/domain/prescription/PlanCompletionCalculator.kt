@@ -44,7 +44,13 @@ data class PlanCompletion(val weeks: List<PlanCompletionWeek>, val windowWeeks: 
  * current week's completion.
  */
 class PlanCompletionCalculator {
-    fun calculate(plans: List<WeeklyPlan>, today: LocalDate, weeks: Int = 8): PlanCompletion {
+    fun calculate(
+        plans: List<WeeklyPlan>,
+        today: LocalDate,
+        weeks: Int = 8,
+        /** Event dates never count as planned/missed sessions (ADR 0030). */
+        excludedDates: Set<LocalDate> = emptySet(),
+    ): PlanCompletion {
         require(weeks in 1..26) { "Week window must be between 1 and 26" }
         val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val weekStarts = (weeks - 1 downTo 0).map { currentWeekStart.minusWeeks(it.toLong()) }
@@ -57,6 +63,7 @@ class PlanCompletionCalculator {
                 // N-02: a plan created midweek must not count days before its creation.
                 .filter { plan == null || !it.date.isBefore(plan.createdOn) }
                 .filter { it.type != WorkoutType.REST && !it.date.isAfter(today) }
+                .filterNot { it.date in excludedDates }
                 // ADR 0024: a non-trainable closure is not a failure of adherence.
                 .filterNot {
                     it.status == SessionStatus.CLOSED && it.closureReason?.isNonTrainable == true

@@ -14,8 +14,18 @@ sealed interface SwapResult {
  * spacing rules, so a swap can be rejected even when both sessions are planned.
  */
 object SessionSwapper {
-    fun swap(plan: WeeklyPlan, firstDate: LocalDate, secondDate: LocalDate, today: LocalDate): SwapResult {
+    fun swap(
+        plan: WeeklyPlan,
+        firstDate: LocalDate,
+        secondDate: LocalDate,
+        today: LocalDate,
+        /** Event dates never receive an ordinary session (ADR 0030). */
+        raceDates: Set<LocalDate> = emptySet(),
+    ): SwapResult {
         if (firstDate == secondDate) return SwapResult.Rejected("Escolha outro dia.")
+        if (firstDate in raceDates || secondDate in raceDates) {
+            return SwapResult.Rejected("Dia de prova não entra na troca de treinos.")
+        }
         val first = plan.sessions.firstOrNull { it.date == firstDate }
             ?: return SwapResult.Rejected("Sessão de hoje não encontrada.")
         val second = plan.sessions.firstOrNull { it.date == secondDate }
