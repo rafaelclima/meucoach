@@ -22,6 +22,18 @@ enum class ReplanTrigger {
 
     /** T3 — the user explicitly asked to replan the current week. */
     USER_REQUEST,
+
+    /** T4 — the planning fingerprint or temporal context differs from the evaluated checkpoint. */
+    PROFILE_CHANGED,
+}
+
+/** Every reason that contributed to a revision; a suggestion may have more than one. */
+enum class ReplanCause {
+    PROFILE_CHANGED,
+    TIMEZONE_CONTEXT_CHANGED,
+    MISSED_SESSIONS,
+    AVAILABILITY_CHANGED,
+    USER_REQUEST,
 }
 
 /**
@@ -31,6 +43,8 @@ enum class ReplanTrigger {
 data class ReplanSuggestion(
     val weekStart: LocalDate,
     val trigger: ReplanTrigger,
+    /** All concurrent causes, so copy never attributes a change to a single factor. */
+    val causes: List<ReplanCause>,
     /** Eligible past `PLANNED` sessions that motivated T1; product heuristic, not science. */
     val missedTrainableCount: Int,
     val expectedVersion: Int,
@@ -40,6 +54,12 @@ data class ReplanSuggestion(
     val expectedAvailabilityHash: String?,
     /** Availability hash the candidate was computed against; persist it after acceptance. */
     val availabilityHash: String,
+    /** Planning fingerprint the candidate was computed against (ADR 0031). */
+    val expectedFingerprintVersion: String,
+    val expectedFingerprint: String,
+    val profileSnapshot: PlanningProfileSnapshot,
+    /** Temporal context of the coherent snapshot used to evaluate the week. */
+    val expectedTemporalContextHash: String,
     val rationale: String,
     /** Rules actually emitted by the regenerated future; never new physiological rules. */
     val ruleIds: List<String>,
@@ -47,8 +67,12 @@ data class ReplanSuggestion(
     val confidence: DataConfidence,
 ) {
     init {
+        require(causes.isNotEmpty()) { "Suggestion must record at least one cause" }
         require(missedTrainableCount >= 0) { "Missed session count must not be negative" }
         require(expectedVersion >= 1) { "Expected version must be >= 1" }
+        require(expectedFingerprintVersion.isNotBlank()) { "Fingerprint version must not be blank" }
+        require(expectedFingerprint.isNotBlank()) { "Fingerprint must not be blank" }
+        require(expectedTemporalContextHash.isNotBlank()) { "Temporal context hash must not be blank" }
         require(rationale.isNotBlank()) { "Suggestion must have a rationale" }
         require(ruleIds.isNotEmpty()) { "Suggestion must cite at least one rule" }
         require(evidenceIds.isNotEmpty()) { "Suggestion must cite at least one evidence" }
@@ -63,6 +87,8 @@ sealed interface ReplanResult {
         val reason: String,
         /** Current availability hash; safe to persist as the baseline even without a revision. */
         val availabilityHash: String,
+        /** Evaluated planning fingerprint/context, persisted as the checkpoint without a revision. */
+        val checkpoint: PlanEvaluationCheckpoint,
     ) : ReplanResult {
         init {
             require(reason.isNotBlank()) { "No-change reason must not be blank" }
@@ -84,8 +110,17 @@ data class ReplanInput(
     val currentInputsHash: String? = null,
     /** Persisted availability baseline; `null` means "unknown, do not infer a historical change". */
     val currentAvailabilityHash: String? = null,
+    /** Last evaluated fingerprint checkpoint; both fields `null` on a legacy plan (ADR 0031). */
+    val currentEvaluatedFingerprintVersion: String? = null,
+    val currentEvaluatedFingerprint: String? = null,
+    /** Persisted temporal context checkpoint; `null` on a legacy plan. */
+    val currentTemporalContextHash: String? = null,
     val trigger: ReplanTrigger,
     val profile: AthleteProfile,
+    /** Current planning fingerprint of [profile]; computed by default so callers cannot forget it. */
+    val planningFingerprint: PlanningFingerprint = PlanningFingerprints.of(profile),
+    /** Current temporal context derived from the persisted profile timezone. */
+    val temporalContextHash: String = PlanningFingerprints.temporalContextHash(profile),
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
     val previousWeek: WeeklyPlan? = null,

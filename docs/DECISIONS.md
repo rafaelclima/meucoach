@@ -1,12 +1,13 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.6 · **Data:** 10/11/2026
+**Versão:** 1.7 · **Data:** 10/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
 > Revisão 1.4 (08/11/2026): ADR 0028 extraído para `docs/adr/` e marcado como aceito/implementado. O ADR 0027 (sessão guiada) continua proposto. Nenhuma decisão histórica foi reescrita.
 > Revisão 1.5 (10/11/2026): propostas C3-G0 `ADR 0030` (evento/taper) e `ADR 0031` (fingerprint/T4) registradas; nenhuma alteração de código.
 > Revisão 1.6 (10/11/2026): usuário aprovou as decisões C3-G0; ADRs 0030/0031 aceitos em princípio, com implementação ainda pendente de gates. ADR 0029 permanece reservado para F4.
+> Revisão 1.7 (10/11/2026): C3-01A (guarda de iniciante) e C3-01B (fingerprint/checkpoint, T4, migração 13→14 e aceite atômico) implementados; ADR 0031 passa a implementado e ADR 0030 segue pendente de C3-G1/C3-05.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -39,7 +40,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Aceito parcialmente — gate implementado em C1-02; limiares de iniciante a validar | 06/11/2026 |
 | [0028](adr/0028-versioned-plan-replanning.md) | Replanejamento versionado e sugerido da semana | Aceito — implementado em R-01/R-02/R-03 | 08/11/2026 |
 | [0030](adr/0030-race-event-and-weekly-taper.md) | Evento de prova, autoridade diária e taper | Aceito — decisões de produto/arquitetura; migração/código pendentes | 10/11/2026 |
-| [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — inclui `temporalContextHash`; implementação pendente | 10/11/2026 |
+| [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — implementado em C3-01B (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply) | 10/11/2026 |
 
 > ADR 0029 continua reservado pelo PRD v0.2 para F4 (conteúdo geral de hidratação/alimentação); não foi redigido porque fontes e copy ainda precisam de revisão.
 
@@ -58,7 +59,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Tempo:** dia e semana derivam do fuso do perfil, com `TimeProvider`/`Clock` injetável e virada observável (ADR-0022).
 - **Plano × prescrição:** o plano é intenção; a prescrição diária persistida é a única autoridade do dia; adaptações são versionadas e auditáveis (ADR-0023).
 - **Replanejamento:** regenera só o futuro da semana com o mesmo gerador, nunca aplica sozinho e versiona o aceite no Room; a recusa é por proposta (semana/versão/hashes) e a supressão vale até o fim do dia (ADR 0028, implementado em R-01..R-03).
-- **Fingerprint de planejamento:** proveniência e último estado avaliado são separados; mudanças em input de plano ou no fuso/contexto temporal tornam a sugestão stale; o aceite revalida dentro da transação Room (ADR 0031, direção aceita; implementação pendente).
+- **Fingerprint de planejamento:** proveniência e último estado avaliado são separados; mudanças em input de plano ou no fuso/contexto temporal tornam a sugestão stale; o aceite revalida dentro da transação Room (ADR 0031, implementado em C3-01B).
 - **Prova:** é um evento com estado próprio, não um `WorkoutType`; `TodayDecision` mostra treino ou competição, nunca os dois; atividade é vínculo opcional e não marca a prova como realizada sozinha (ADR 0030, direção aceita; implementação pendente).
 - **Semana da prova:** sem `QUALITY` na semana local e cutoff de última qualidade de 10/14 dias como política `LIMITED` de produto, não consenso científico (ADR 0030).
 - **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).

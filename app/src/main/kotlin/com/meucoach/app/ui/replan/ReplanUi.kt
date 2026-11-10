@@ -3,6 +3,7 @@ package com.meucoach.app.ui.replan
 import com.meucoach.app.application.ReplanChange
 import com.meucoach.app.application.ReplanChangeKind
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanSuggestion
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.DataConfidence
@@ -23,6 +24,7 @@ data class ReplanSuggestionUi(
     val versionFrom: Int,
     val versionTo: Int,
     val trigger: ReplanTrigger,
+    val causes: List<ReplanCause>,
     val headline: String,
     val body: String,
     val changes: List<ReplanChangeUi>,
@@ -48,26 +50,55 @@ internal fun ReplanSuggestion.toUi(changes: List<ReplanChange>): ReplanSuggestio
     versionFrom = expectedVersion,
     versionTo = expectedVersion + 1,
     trigger = trigger,
-    headline = when (trigger) {
-        ReplanTrigger.USER_REQUEST -> "Reorganizar o resto da semana?"
-        ReplanTrigger.MISSED_SESSIONS -> "Dá para ajustar o resto da semana"
-        ReplanTrigger.AVAILABILITY_CHANGED -> "Sua disponibilidade mudou"
-    },
-    body = when (trigger) {
-        ReplanTrigger.USER_REQUEST ->
-            "O que já passou e o treino de hoje ficam como estão. A mudança vale só para os próximos dias."
-
-        ReplanTrigger.MISSED_SESSIONS ->
-            "$missedSentence Posso reorganizar só os próximos dias, " +
-                "sem repor carga e sem mexer no que já passou."
-
-        ReplanTrigger.AVAILABILITY_CHANGED ->
-            "Posso reorganizar só os próximos dias com os horários que você tem agora, " +
-                "sem aumentar a carga e sem mexer no que já passou."
-    },
+    causes = causes,
+    headline = headline(),
+    body = body(),
     changes = changes.map { it.toUi() },
     confidence = confidence,
 )
+
+private fun ReplanSuggestion.headline(): String = when {
+    causes.size > 1 -> "Vale ajustar o resto da semana?"
+    causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) -> "Seu fuso mudou"
+    trigger == ReplanTrigger.PROFILE_CHANGED -> "Seu perfil mudou"
+    trigger == ReplanTrigger.USER_REQUEST -> "Reorganizar o resto da semana?"
+    trigger == ReplanTrigger.MISSED_SESSIONS -> "Dá para ajustar o resto da semana"
+    else -> "Sua disponibilidade mudou"
+}
+
+private fun ReplanSuggestion.body(): String = when {
+    causes.size > 1 -> {
+        "Mais de um motivo motivou a revisão: ${causes.joinToString(" e ") { it.label() }}. " +
+            "Posso reorganizar só os próximos dias, sem repor carga e sem mexer no que já passou."
+    }
+
+    causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) ->
+        "O fuso que define seus dias mudou. Posso reorganizar só os próximos dias, " +
+            "sem aumentar a carga e sem mexer no que já passou."
+
+    trigger == ReplanTrigger.PROFILE_CHANGED ->
+        "Seu perfil de planejamento mudou. Posso reorganizar só os próximos dias, " +
+            "sem aumentar a carga e sem mexer no que já passou."
+
+    trigger == ReplanTrigger.USER_REQUEST ->
+        "O que já passou e o treino de hoje ficam como estão. A mudança vale só para os próximos dias."
+
+    trigger == ReplanTrigger.MISSED_SESSIONS ->
+        "$missedSentence Posso reorganizar só os próximos dias, " +
+            "sem repor carga e sem mexer no que já passou."
+
+    else ->
+        "Posso reorganizar só os próximos dias com os horários que você tem agora, " +
+            "sem aumentar a carga e sem mexer no que já passou."
+}
+
+private fun ReplanCause.label(): String = when (this) {
+    ReplanCause.PROFILE_CHANGED -> "perfil"
+    ReplanCause.TIMEZONE_CONTEXT_CHANGED -> "fuso"
+    ReplanCause.MISSED_SESSIONS -> "treinos não concluídos"
+    ReplanCause.AVAILABILITY_CHANGED -> "disponibilidade"
+    ReplanCause.USER_REQUEST -> "pedido seu"
+}
 
 internal fun ReplanChange.toUi(): ReplanChangeUi = ReplanChangeUi(
     date = date,

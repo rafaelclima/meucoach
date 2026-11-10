@@ -66,6 +66,7 @@ class ApplyReplan @Inject constructor(
                 ReplanApplyFailure.STALE_VERSION,
                 ReplanApplyFailure.STALE_INPUTS,
                 ReplanApplyFailure.STALE_AVAILABILITY,
+                ReplanApplyFailure.STALE_PROFILE,
                 -> stale(request)
 
                 ReplanApplyFailure.INVALID_CANDIDATE,

@@ -528,6 +528,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-06` | 80% do tempo em Z1–Z2; qualidade doseada | SEILER | MODERATE |
 | `R-PLAN-07` | Ajuste por calor +3–8%, subordinado a FC/RPE | ELY | LIMITED |
 | `R-PLAN-08` | Esteira válida para qualidade no calor; prescrever por velocidade/inclinação | ELY, DANIELS | LIMITED |
+| `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |
 | `R-SAFE-02` | Sem diagnóstico; app não é dispositivo médico | Regulatório | STRONG |
 | `R-SAFE-03` | Sem prescrição de peso/nutrição | Escopo | STRONG |

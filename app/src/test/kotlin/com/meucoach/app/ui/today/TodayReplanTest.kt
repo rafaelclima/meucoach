@@ -17,6 +17,7 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.DataConfidence
 import org.assertj.core.api.Assertions.assertThat
@@ -110,6 +111,7 @@ class TodayReplanTest {
                             versionFrom = 1,
                             versionTo = 2,
                             trigger = ReplanTrigger.MISSED_SESSIONS,
+                            causes = listOf(ReplanCause.MISSED_SESSIONS),
                             headline = "Dá para ajustar o resto da semana",
                             body = "2 treinos desta semana não aconteceram.",
                             changes = listOf(modifiedChange()),

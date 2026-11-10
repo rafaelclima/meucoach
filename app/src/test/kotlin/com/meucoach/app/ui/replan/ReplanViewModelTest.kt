@@ -79,7 +79,7 @@ class ReplanViewModelTest {
             activities = activities,
             timeProvider = timeProvider,
         )
-        val evaluate = EvaluateReplan(contexts)
+        val evaluate = EvaluateReplan(contexts, plans)
         store = ReplanSuggestionStore(context, "replan-view-${System.nanoTime()}")
         viewModel = ReplanViewModel(
             plans = plans,

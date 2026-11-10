@@ -77,7 +77,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun weeklyPlanRevisionDao(): WeeklyPlanRevisionDao
 
     companion object {
-        const val VERSION = 13
+        const val VERSION = 14
         const val NAME = "meucoach.db"
 
         /**
@@ -442,6 +442,31 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 14 separates planning provenance from the last evaluated
+         * checkpoint and records the temporal context hash (ADR 0031). Legacy
+         * plans/revisions keep every new field `NULL`: migration never invents a
+         * fingerprint that was not evaluated.
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `generatedFromFingerprintVersion` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `generatedFromFingerprint` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `generatedFromProfileSnapshotJson` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `lastEvaluatedFingerprintVersion` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `lastEvaluatedFingerprint` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `temporalContextHash` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `fromFingerprintVersion` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `fromFingerprint` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `fromProfileSnapshotJson` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `fromTemporalContextHash` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `toFingerprintVersion` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `toFingerprint` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `toProfileSnapshotJson` TEXT")
+                db.execSQL("ALTER TABLE `weekly_plan_revisions` ADD COLUMN `toTemporalContextHash` TEXT")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -457,6 +482,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_10_11,
                 MIGRATION_11_12,
                 MIGRATION_12_13,
+                MIGRATION_13_14,
             )
             .build()
     }

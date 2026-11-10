@@ -8,12 +8,16 @@ import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
 import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.data.prescription.PlanJson
+import com.meucoach.core.data.prescription.PlanningSnapshotJson
 import com.meucoach.core.data.prescription.PrescriptionJson
+import com.meucoach.core.data.profile.toModel
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
+import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanSuggestion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -30,6 +34,12 @@ data class StoredWeeklyPlan(
     val revisedAt: Instant?,
     val inputsHash: String?,
     val availabilityHash: String?,
+    val generatedFromFingerprintVersion: String? = null,
+    val generatedFromFingerprint: String? = null,
+    val generatedFromProfileSnapshotJson: String? = null,
+    val lastEvaluatedFingerprintVersion: String? = null,
+    val lastEvaluatedFingerprint: String? = null,
+    val temporalContextHash: String? = null,
 )
 
 /** The last accepted revision, with the future sessions it replaced. */
@@ -49,6 +59,7 @@ enum class ReplanApplyFailure {
     STALE_VERSION,
     STALE_INPUTS,
     STALE_AVAILABILITY,
+    STALE_PROFILE,
     INVALID_CANDIDATE,
     PROTECTED_CONFLICT,
 }
@@ -151,6 +162,12 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                 revisedAt = existing?.revisedAt,
                 inputsHash = existing?.inputsHash,
                 availabilityHash = existing?.availabilityHash,
+                generatedFromFingerprintVersion = existing?.generatedFromFingerprintVersion,
+                generatedFromFingerprint = existing?.generatedFromFingerprint,
+                generatedFromProfileSnapshotJson = existing?.generatedFromProfileSnapshotJson,
+                lastEvaluatedFingerprintVersion = existing?.lastEvaluatedFingerprintVersion,
+                lastEvaluatedFingerprint = existing?.lastEvaluatedFingerprint,
+                temporalContextHash = existing?.temporalContextHash,
             ),
         )
         dao.deleteSessions(weekStart)
@@ -169,6 +186,29 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
             if (plan.availabilityHash != null) return@withTransaction false
             dao.updatePlan(plan.copy(availabilityHash = availabilityHash)) == 1
         }
+    }
+
+    /**
+     * Advances only the evaluated checkpoint (ADR 0031). A `NoChange` or a
+     * baseline capture never increments the version or claims provenance: the
+     * `generatedFrom*` fields stay exactly as they were.
+     */
+    suspend fun captureEvaluationCheckpoint(
+        weekStart: LocalDate,
+        expectedVersion: Int,
+        checkpoint: PlanEvaluationCheckpoint,
+    ): Boolean = database.withTransaction {
+        val plan = dao.getPlan(weekStart.toString()) ?: return@withTransaction false
+        if (plan.version != expectedVersion) return@withTransaction false
+        dao.updatePlan(
+            plan.copy(
+                lastEvaluatedFingerprintVersion = checkpoint.fingerprintVersion,
+                lastEvaluatedFingerprint = checkpoint.fingerprint,
+                temporalContextHash = checkpoint.temporalContextHash,
+                // Also establish an unknown availability baseline without a revision.
+                availabilityHash = plan.availabilityHash ?: checkpoint.availabilityHash,
+            ),
+        ) == 1
     }
 
     /**
@@ -198,6 +238,24 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                 return@withTransaction ReplanApplyOutcome.Failed(
                     ReplanApplyFailure.STALE_VERSION,
                     "O plano mudou desde esta sugestão. Avalie novamente.",
+                )
+            }
+            // Compare-and-apply of the planning identity runs inside the same
+            // transaction that validates the version and writes the revision.
+            val profile = database.profileDao().get()?.toModel()
+                ?: return@withTransaction ReplanApplyOutcome.Failed(
+                    ReplanApplyFailure.STALE_PROFILE,
+                    "O perfil mudou desde esta sugestão. Avalie novamente.",
+                )
+            val currentFingerprint = PlanningFingerprints.of(profile)
+            val currentTemporalContext = PlanningFingerprints.temporalContextHash(profile)
+            if (currentFingerprint.version != suggestion.expectedFingerprintVersion ||
+                currentFingerprint.hash != suggestion.expectedFingerprint ||
+                currentTemporalContext != suggestion.expectedTemporalContextHash
+            ) {
+                return@withTransaction ReplanApplyOutcome.Failed(
+                    ReplanApplyFailure.STALE_PROFILE,
+                    "O perfil ou o fuso mudou desde esta sugestão. Avalie novamente.",
                 )
             }
             if (currentInputsHash != null && currentInputsHash != suggestion.expectedInputsHash) {
@@ -264,6 +322,14 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                 toInputsHash = suggestion.expectedInputsHash,
                 fromAvailabilityHash = stored.availabilityHash,
                 toAvailabilityHash = suggestion.availabilityHash,
+                fromFingerprintVersion = stored.generatedFromFingerprintVersion,
+                fromFingerprint = stored.generatedFromFingerprint,
+                fromProfileSnapshotJson = stored.generatedFromProfileSnapshotJson,
+                fromTemporalContextHash = stored.temporalContextHash,
+                toFingerprintVersion = suggestion.expectedFingerprintVersion,
+                toFingerprint = suggestion.expectedFingerprint,
+                toProfileSnapshotJson = PlanningSnapshotJson.toJson(suggestion.profileSnapshot),
+                toTemporalContextHash = suggestion.expectedTemporalContextHash,
                 generatorVersion = WeeklyPlanGenerator.ENGINE_VERSION,
                 previousPlanJson = PlanJson.planMetadataToJson(stored).toString(),
                 replacedSessionsJson = PlanJson.sessionsToJson(replaced),
@@ -284,6 +350,12 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                 revisedAt = clock.millis(),
                 inputsHash = suggestion.expectedInputsHash,
                 availabilityHash = suggestion.availabilityHash,
+                generatedFromFingerprintVersion = suggestion.expectedFingerprintVersion,
+                generatedFromFingerprint = suggestion.expectedFingerprint,
+                generatedFromProfileSnapshotJson = PlanningSnapshotJson.toJson(suggestion.profileSnapshot),
+                lastEvaluatedFingerprintVersion = suggestion.expectedFingerprintVersion,
+                lastEvaluatedFingerprint = suggestion.expectedFingerprint,
+                temporalContextHash = suggestion.expectedTemporalContextHash,
                 weeklyMinutes = mergedSessions.sumOf { it.durationMin ?: 0 },
                 longRunMinutes = mergedSessions.firstOrNull { it.type == WorkoutType.LONG }?.durationMin,
                 qualityCount = mergedSessions.count { it.type == WorkoutType.QUALITY },
@@ -332,6 +404,12 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         revisedAt = revisedAt?.let(Instant::ofEpochMilli),
         inputsHash = inputsHash,
         availabilityHash = availabilityHash,
+        generatedFromFingerprintVersion = generatedFromFingerprintVersion,
+        generatedFromFingerprint = generatedFromFingerprint,
+        generatedFromProfileSnapshotJson = generatedFromProfileSnapshotJson,
+        lastEvaluatedFingerprintVersion = lastEvaluatedFingerprintVersion,
+        lastEvaluatedFingerprint = lastEvaluatedFingerprint,
+        temporalContextHash = temporalContextHash,
     )
 
     private fun PlannedSessionEntity.toModel() = PlannedSession(

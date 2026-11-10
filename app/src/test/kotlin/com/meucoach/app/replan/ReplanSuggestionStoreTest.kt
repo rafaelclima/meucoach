@@ -2,9 +2,12 @@ package com.meucoach.app.replan
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.core.domain.replan.PlanningProfileSnapshot
+import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanSuggestion
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Experience
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Before
 import org.junit.Test
@@ -64,11 +67,22 @@ class ReplanSuggestionStoreTest {
     private fun suggestion(version: Int = 1, hash: String = "hash-a") = ReplanSuggestion(
         weekStart = today.minusDays(2),
         trigger = ReplanTrigger.USER_REQUEST,
+        causes = listOf(ReplanCause.USER_REQUEST),
         missedTrainableCount = 0,
         expectedVersion = version,
         expectedInputsHash = hash,
         expectedAvailabilityHash = null,
         availabilityHash = "availability",
+        expectedFingerprintVersion = "planning-v1",
+        expectedFingerprint = "fingerprint",
+        profileSnapshot = PlanningProfileSnapshot(
+            experience = Experience.BEGINNER,
+            thresholdPaceSecondsPerKm = null,
+            lactateThresholdHeartRate = null,
+            treadmillAccess = false,
+            goal = null,
+        ),
+        expectedTemporalContextHash = "temporal",
         rationale = "Revisão.",
         ruleIds = listOf("R-PLAN-02"),
         evidenceIds = listOf("EV-DANIELS-2014"),

@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.5 · **Data:** 08/11/2026 · Reconcilia schema v13 (revisões versionadas do plano, [ADR 0028](adr/0028-versioned-plan-replanning.md)) mantendo a distinção entre persistido e derivado.
+**Versão:** 1.6 · **Data:** 10/11/2026 · Reconcilia schema v14 (fingerprint/checkpoint do plano, [ADR 0031](adr/0031-profile-planning-fingerprint.md)) mantendo a distinção entre persistido e derivado.
 
 ## 1. Convenções
 
@@ -189,7 +189,7 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 
 ### 3.8 `WeeklyPlan` / `PlannedSession`
 
-`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`, `version` (começa em 1), `revisionReason`, `revisedAt`, `inputsHash` e `availabilityHash`. Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil. `inputsHash`/`availabilityHash` nulos significam hash histórico desconhecido (planos migrados de v12), nunca hash inventado.
+`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`, `version` (começa em 1), `revisionReason`, `revisedAt`, `inputsHash`, `availabilityHash`, `generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`, `lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint` e `temporalContextHash`. Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil. `inputsHash`/`availabilityHash`/campos de fingerprint nulos significam histórico desconhecido (planos migrados de v12/v13), nunca hash inventado. `generatedFrom*` é proveniência; `lastEvaluated*` é o checkpoint de avaliação e pode avançar em `NoChange` sem incrementar versão (ADR 0031). O snapshot JSON usa apenas a allowlist (experiência, pace de limiar, LTHR, esteira e objetivo suportado).
 
 `PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale` e IDs de regra/evidência.
 
@@ -211,10 +211,14 @@ Tabela **append-only** (`weekly_plan_revisions`) que audita cada revisão aceita
 | `fromVersion` / `toVersion` | Int | versões anterior e resultante |
 | `fromInputsHash` / `toInputsHash` | String? / String | hashes de inputs antes e depois |
 | `fromAvailabilityHash` / `toAvailabilityHash` | String? / String | baseline de disponibilidade antes e depois |
+| `fromFingerprintVersion` / `fromFingerprint` | String? | proveniência substituída; `NULL` em legado |
+| `fromProfileSnapshotJson` / `fromTemporalContextHash` | String? | snapshot/contexto anteriores |
+| `toFingerprintVersion` / `toFingerprint` | String? | proveniência gravada pelo aceite |
+| `toProfileSnapshotJson` / `toTemporalContextHash` | String? | snapshot/contexto do candidato aceito |
 | `generatorVersion` | String | versão das regras do `WeeklyPlanGenerator` |
 | `previousPlanJson` | JSON | metadados da versão substituída (sem sessões) |
 | `replacedSessionsJson` | JSON | snapshot das sessões futuras `PLANNED` removidas |
-| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST` |
+| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST`, `PROFILE_CHANGED` |
 | `reason` | String | rationale da revisão |
 | `ruleIdsJson` / `evidenceIdsJson` | JSON | regras/evidências emitidas pelo gerador |
 | `confidence` | enum | confiança da revisão |
@@ -267,7 +271,7 @@ acrescenta uma versão com `supersedesId` (`ADR 0023`).
 ### 3.9 `SessionFeedback` — **planejado, não implementado**
 
 `activityId`, `rpe` (1–10), `feeling` (1–5), `notes`, `createdAt`. Não existe
-tabela no schema v13; o RPE coletado hoje é o de `SessionExecution` (`MANUAL`) e
+tabela no schema v14; o RPE coletado hoje é o de `SessionExecution` (`MANUAL`) e
 o RPE pós-treino por atividade segue no roadmap (FR-013). sRPE não é usado como
 fonte de carga neste ciclo.
 
@@ -317,11 +321,12 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v13**; migrações 1→2 até 12→13 testadas em Robolectric.
+- Estado atual: banco **v14**; migrações 1→2 até 13→14 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
 - `12→13` adiciona `version` (default 1), `revisionReason`, `revisedAt`, `inputsHash` e `availabilityHash` a `weekly_plans` e cria `weekly_plan_revisions` com FK `CASCADE`. Planos e sessões existentes são preservados campo a campo; hashes legados ficam `NULL` (desconhecidos) e o baseline de disponibilidade é capturado só depois, de forma explícita.
+- `13→14` adiciona proveniência (`generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`), checkpoint (`lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint`) e `temporalContextHash` a `weekly_plans`, além dos pares anterior/novo de fingerprint/snapshot/contexto em `weekly_plan_revisions`. Planos, sessões e revisões existentes são preservados; todos os campos novos ficam `NULL` no legado, sem revisão falsa.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.

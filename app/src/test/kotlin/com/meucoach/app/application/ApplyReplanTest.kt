@@ -14,6 +14,7 @@ import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.model.CompletionEvidence
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -65,7 +66,7 @@ class ApplyReplanTest {
             activities = activities,
             timeProvider = timeProvider,
         )
-        evaluate = EvaluateReplan(contexts)
+        evaluate = EvaluateReplan(contexts, plans)
         apply = ApplyReplan(plans, contexts, evaluate)
     }
 
@@ -128,6 +129,10 @@ class ApplyReplanTest {
         assertThat(revision.replacedSessions.map { it.date })
             .containsExactly(REPLAN_WEEK_START.plusDays(4))
         assertThat(plans.getWeekRecord(REPLAN_WEEK_START)!!.version).isEqualTo(2)
+        assertThat(plans.getWeekRecord(REPLAN_WEEK_START)!!.generatedFromFingerprint)
+            .isEqualTo(PlanningFingerprints.of(replanProfile()).hash)
+        assertThat(plans.getWeekRecord(REPLAN_WEEK_START)!!.generatedFromProfileSnapshotJson)
+            .isNotNull()
     }
 
     @Test
@@ -175,6 +180,28 @@ class ApplyReplanTest {
         assertThat(fresh).isInstanceOf(EvaluateReplanResult.Suggestion::class.java)
         assertThat((fresh as EvaluateReplanResult.Suggestion).suggestion.expectedInputsHash)
             .isNotEqualTo(evaluated.suggestion.expectedInputsHash)
+        assertThat(plans.getWeekRecord(REPLAN_WEEK_START)!!.version).isEqualTo(1)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `re-evaluates when the profile changed before acceptance`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        checkIns.save(replanCheckIn())
+        plans.saveWeek(replanPlan())
+        val evaluated = evaluate(explicit = true) as EvaluateReplanResult.Suggestion
+
+        profiles.saveProfile(replanProfile().copy(experience = com.meucoach.core.model.Experience.ADVANCED))
+        val outcome = apply(
+            ApplyReplanRequest(
+                suggestion = evaluated.suggestion,
+                candidate = evaluated.candidate,
+                today = REPLAN_TODAY,
+                explicit = true,
+            ),
+        )
+
+        assertThat(outcome).isInstanceOf(ApplyReplanResult.Stale::class.java)
         assertThat(plans.getWeekRecord(REPLAN_WEEK_START)!!.version).isEqualTo(1)
         assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
     }

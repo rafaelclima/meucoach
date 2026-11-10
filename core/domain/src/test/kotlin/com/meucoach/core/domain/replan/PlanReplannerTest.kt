@@ -786,6 +786,196 @@ class PlanReplannerTest {
             .isNotEqualTo(PlanReplanner.availabilityHash(ordered))
     }
 
+    // --- T4: planning fingerprint and temporal context ---------------------
+
+    @Test
+    fun `a changed planning profile suggests a revision and cites R-PLAN-09`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val previousWeek = completedPreviousWeek()
+        val original = profile(availability)
+        val current = generatedPlan(original, today = monday, previousWeek = previousWeek)
+        val changedProfile = profile(availability, treadmillAccess = true)
+        val originalFingerprint = PlanningFingerprints.of(original)
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                profile = changedProfile,
+                previousWeek = previousWeek,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    WeeklyAvailability(availability),
+                ),
+                currentEvaluatedFingerprintVersion = originalFingerprint.version,
+                currentEvaluatedFingerprint = originalFingerprint.hash,
+                currentTemporalContextHash = PlanningFingerprints.temporalContextHash(original),
+            ),
+        )
+
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.PROFILE_CHANGED)
+        assertThat(suggested.suggestion.causes).contains(ReplanCause.PROFILE_CHANGED)
+        assertThat(suggested.suggestion.ruleIds).contains("R-PLAN-09")
+        assertThat(suggested.suggestion.expectedFingerprintVersion)
+            .isEqualTo(PlanningFingerprints.VERSION)
+        assertThat(suggested.suggestion.expectedFingerprint)
+            .isEqualTo(PlanningFingerprints.of(changedProfile).hash)
+        assertThat(suggested.suggestion.expectedTemporalContextHash)
+            .isEqualTo(PlanningFingerprints.temporalContextHash(changedProfile))
+        assertThat(suggested.suggestion.profileSnapshot.treadmillAccess).isTrue()
+    }
+
+    @Test
+    fun `an unchanged fingerprint and temporal context do not trigger T4`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val currentProfile = profile(availability)
+        val current = generatedPlan(currentProfile, today = monday)
+        val fingerprint = PlanningFingerprints.of(currentProfile)
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                profile = currentProfile,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    WeeklyAvailability(availability),
+                ),
+                currentEvaluatedFingerprintVersion = fingerprint.version,
+                currentEvaluatedFingerprint = fingerprint.hash,
+                currentTemporalContextHash = PlanningFingerprints.temporalContextHash(currentProfile),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat((result as ReplanResult.NoChange).reason).contains("Nenhum desvio")
+    }
+
+    @Test
+    fun `a timezone change alone is registered as the temporal context cause`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val currentProfile = profile(availability)
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(saturday, WorkoutType.LONG, 34),
+        )
+        val fingerprint = PlanningFingerprints.of(currentProfile)
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                profile = currentProfile.copy(timezone = "America/Recife"),
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    WeeklyAvailability(availability),
+                ),
+                currentEvaluatedFingerprintVersion = fingerprint.version,
+                currentEvaluatedFingerprint = fingerprint.hash,
+                currentTemporalContextHash = PlanningFingerprints.temporalContextHash(currentProfile),
+            ),
+        )
+
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.PROFILE_CHANGED)
+        assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.TIMEZONE_CONTEXT_CHANGED)
+        assertThat(suggested.suggestion.rationale).contains("fuso")
+        assertThat(suggested.suggestion.ruleIds).contains("R-PLAN-09")
+    }
+
+    @Test
+    fun `multiple concurrent causes are all recorded`() {
+        val oldAvailability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.THURSDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val newAvailability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val original = profile(oldAvailability)
+        val originalFingerprint = PlanningFingerprints.of(original)
+        val current = planOf(
+            session(monday, WorkoutType.QUALITY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(thursday, WorkoutType.EASY, 40),
+            session(saturday, WorkoutType.LONG, 51),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = wednesday,
+                profile = profile(newAvailability, treadmillAccess = true),
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    WeeklyAvailability(oldAvailability),
+                ),
+                currentEvaluatedFingerprintVersion = originalFingerprint.version,
+                currentEvaluatedFingerprint = originalFingerprint.hash,
+                currentTemporalContextHash = PlanningFingerprints.temporalContextHash(original),
+            ),
+        )
+
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.causes).contains(
+            ReplanCause.PROFILE_CHANGED,
+            ReplanCause.AVAILABILITY_CHANGED,
+        )
+        assertThat(suggested.suggestion.rationale).contains("Mais de um motivo")
+    }
+
+    @Test
+    fun `a legacy checkpoint is not inferred as a profile change`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.SATURDAY to 90,
+        )
+        val currentProfile = profile(availability)
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(saturday, WorkoutType.LONG, 34),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                profile = currentProfile,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    WeeklyAvailability(availability),
+                ),
+                currentEvaluatedFingerprintVersion = null,
+                currentEvaluatedFingerprint = null,
+                currentTemporalContextHash = null,
+            ),
+        )
+
+        val noChange = result as ReplanResult.NoChange
+        assertThat(noChange.reason).contains("Nenhum desvio")
+        assertThat(noChange.checkpoint.fingerprint)
+            .isEqualTo(PlanningFingerprints.of(currentProfile).hash)
+        assertThat(noChange.checkpoint.temporalContextHash)
+            .isEqualTo(PlanningFingerprints.temporalContextHash(currentProfile))
+    }
+
     @Test
     fun `rejects a threshold below one`() {
         val current = planOf(session(monday, WorkoutType.EASY, 40), session(saturday, WorkoutType.LONG, 34))
@@ -811,11 +1001,17 @@ class PlanReplannerTest {
         currentVersion: Int = 1,
         currentInputsHash: String? = null,
         currentAvailabilityHash: String? = null,
+        currentEvaluatedFingerprintVersion: String? = null,
+        currentEvaluatedFingerprint: String? = null,
+        currentTemporalContextHash: String? = null,
     ) = ReplanInput(
         currentPlan = current,
         currentVersion = currentVersion,
         currentInputsHash = currentInputsHash,
         currentAvailabilityHash = currentAvailabilityHash,
+        currentEvaluatedFingerprintVersion = currentEvaluatedFingerprintVersion,
+        currentEvaluatedFingerprint = currentEvaluatedFingerprint,
+        currentTemporalContextHash = currentTemporalContextHash,
         trigger = trigger,
         profile = profile,
         readiness = readiness,

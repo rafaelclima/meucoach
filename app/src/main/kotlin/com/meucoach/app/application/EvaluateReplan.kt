@@ -1,5 +1,6 @@
 package com.meucoach.app.application
 
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.ReplanResult
@@ -23,7 +24,10 @@ sealed interface EvaluateReplanResult {
  * state and delegates the decision to the pure `PlanReplanner`; no training
  * rule is repeated here.
  */
-class EvaluateReplan @Inject constructor(private val contexts: ReplanContextBuilder) {
+class EvaluateReplan @Inject constructor(
+    private val contexts: ReplanContextBuilder,
+    private val plans: TrainingPlanRepository,
+) {
     private val replanner = PlanReplanner()
 
     suspend operator fun invoke(explicit: Boolean): EvaluateReplanResult {
@@ -38,7 +42,16 @@ class EvaluateReplan @Inject constructor(private val contexts: ReplanContextBuil
                 diff = replanDiff(context.record.plan, result.candidate, context.today),
             )
 
-            is ReplanResult.NoChange -> EvaluateReplanResult.NoChange(result.reason)
+            is ReplanResult.NoChange -> {
+                // NoChange advances only the evaluated checkpoint; provenance and
+                // the plan version remain untouched (ADR 0031).
+                plans.captureEvaluationCheckpoint(
+                    weekStart = context.record.plan.weekStart,
+                    expectedVersion = context.record.version,
+                    checkpoint = result.checkpoint,
+                )
+                EvaluateReplanResult.NoChange(result.reason)
+            }
         }
     }
 }

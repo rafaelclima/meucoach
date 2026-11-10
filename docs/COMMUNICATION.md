@@ -177,6 +177,10 @@ A revisão é um convite, não uma correção do usuário. O texto informa o que
 | Título (T1) | `Dá para ajustar o resto da semana` | Convite, não cobrança. |
 | Corpo (T1) | `2 treinos desta semana não aconteceram. Posso reorganizar só os próximos dias, sem repor carga e sem mexer no que já passou.` | Fato + limite conservador + proteção do passado. |
 | Título (T2) | `Sua disponibilidade mudou` | Mudança de rotina não é falha. |
+| Título (T4) | `Seu perfil mudou` | Mudança de nível/objetivo não é cobrança nem promessa de ganho. |
+| Título (T4, só fuso) | `Seu fuso mudou` | Explica a mudança de data local sem tratar como alteração de desempenho. |
+| Título (causas múltiplas) | `Vale ajustar o resto da semana?` | Evita atribuir a revisão a um único fator. |
+| Corpo (T4) | `Seu perfil de planejamento mudou. Posso reorganizar só os próximos dias, sem aumentar a carga e sem mexer no que já passou.` | Mudança de input vira convite; hoje/passado protegidos. |
 | Título (T3) | `Reorganizar o resto da semana?` | Devolve a intenção ao usuário. |
 | Nota fixa | `O treino de hoje não muda. Sessões já feitas também ficam intactas.` | Preserva a autoridade do dia e a evidência já registrada. |
 | Ação primária | `Ajustar a semana` | Só o futuro muda. |

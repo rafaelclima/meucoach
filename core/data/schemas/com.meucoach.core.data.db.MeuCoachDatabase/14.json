@@ -1,0 +1,1530 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 14,
+    "identityHash": "f71f37034b0812b9c1c8c8d8b69c9f1e",
+    "entities": [
+      {
+        "tableName": "activities",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `source` TEXT NOT NULL, `sourceId` TEXT, `sourceFileSha256` TEXT, `sport` TEXT NOT NULL, `subSport` TEXT, `startTimeUtc` INTEGER NOT NULL, `zoneId` TEXT NOT NULL, `localDate` TEXT NOT NULL, `durationSec` INTEGER NOT NULL, `movingTimeSec` INTEGER, `distanceM` REAL NOT NULL, `averagePaceSecPerKm` REAL, `bestPaceSecPerKm` REAL, `averageHeartRate` INTEGER, `maxHeartRate` INTEGER, `averageCadenceSpm` INTEGER, `maxCadenceSpm` INTEGER, `averagePowerW` INTEGER, `maxPowerW` INTEGER, `averageStepLengthM` REAL, `elevationGainM` REAL, `elevationLossM` REAL, `calories` INTEGER, `trainingEffectAerobic` REAL, `trainingEffectAnaerobic` REAL, `trainingLoadPeak` REAL, `deviceName` TEXT, `rawFilePath` TEXT, `parserVersion` TEXT NOT NULL, `importedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "sourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourceFileSha256",
+            "columnName": "sourceFileSha256",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sport",
+            "columnName": "sport",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subSport",
+            "columnName": "subSport",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startTimeUtc",
+            "columnName": "startTimeUtc",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneId",
+            "columnName": "zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localDate",
+            "columnName": "localDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSec",
+            "columnName": "durationSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "movingTimeSec",
+            "columnName": "movingTimeSec",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "distanceM",
+            "columnName": "distanceM",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averagePaceSecPerKm",
+            "columnName": "averagePaceSecPerKm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "bestPaceSecPerKm",
+            "columnName": "bestPaceSecPerKm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "averageHeartRate",
+            "columnName": "averageHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxHeartRate",
+            "columnName": "maxHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averageCadenceSpm",
+            "columnName": "averageCadenceSpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxCadenceSpm",
+            "columnName": "maxCadenceSpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averagePowerW",
+            "columnName": "averagePowerW",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxPowerW",
+            "columnName": "maxPowerW",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averageStepLengthM",
+            "columnName": "averageStepLengthM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "elevationGainM",
+            "columnName": "elevationGainM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "elevationLossM",
+            "columnName": "elevationLossM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "calories",
+            "columnName": "calories",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "trainingEffectAerobic",
+            "columnName": "trainingEffectAerobic",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "trainingEffectAnaerobic",
+            "columnName": "trainingEffectAnaerobic",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "trainingLoadPeak",
+            "columnName": "trainingLoadPeak",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "deviceName",
+            "columnName": "deviceName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rawFilePath",
+            "columnName": "rawFilePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "parserVersion",
+            "columnName": "parserVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importedAt",
+            "columnName": "importedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_activities_startTimeUtc",
+            "unique": false,
+            "columnNames": [
+              "startTimeUtc"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_activities_startTimeUtc` ON `${TABLE_NAME}` (`startTimeUtc`)"
+          },
+          {
+            "name": "index_activities_sport_startTimeUtc",
+            "unique": false,
+            "columnNames": [
+              "sport",
+              "startTimeUtc"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_activities_sport_startTimeUtc` ON `${TABLE_NAME}` (`sport`, `startTimeUtc`)"
+          },
+          {
+            "name": "index_activities_sourceFileSha256",
+            "unique": true,
+            "columnNames": [
+              "sourceFileSha256"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_activities_sourceFileSha256` ON `${TABLE_NAME}` (`sourceFileSha256`)"
+          }
+        ]
+      },
+      {
+        "tableName": "laps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `lapIndex` INTEGER NOT NULL, `startTimeUtc` INTEGER, `durationSec` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averageHeartRate` INTEGER, `maxHeartRate` INTEGER, `averagePaceSecPerKm` REAL, `averageCadenceSpm` INTEGER, `averagePowerW` INTEGER, `elevationGainM` REAL, PRIMARY KEY(`activityId`, `lapIndex`), FOREIGN KEY(`activityId`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapIndex",
+            "columnName": "lapIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTimeUtc",
+            "columnName": "startTimeUtc",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "durationSec",
+            "columnName": "durationSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distanceM",
+            "columnName": "distanceM",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averageHeartRate",
+            "columnName": "averageHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxHeartRate",
+            "columnName": "maxHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averagePaceSecPerKm",
+            "columnName": "averagePaceSecPerKm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "averageCadenceSpm",
+            "columnName": "averageCadenceSpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averagePowerW",
+            "columnName": "averagePowerW",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "elevationGainM",
+            "columnName": "elevationGainM",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "activityId",
+            "lapIndex"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "activities",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "activityId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sample_blobs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `version` INTEGER NOT NULL, `encoding` TEXT NOT NULL, `bytes` BLOB NOT NULL, `sampleCount` INTEGER NOT NULL, `startTimeUtc` INTEGER NOT NULL, PRIMARY KEY(`activityId`), FOREIGN KEY(`activityId`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encoding",
+            "columnName": "encoding",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bytes",
+            "columnName": "bytes",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sampleCount",
+            "columnName": "sampleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTimeUtc",
+            "columnName": "startTimeUtc",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "activityId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "activities",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "activityId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "import_jobs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `fileName` TEXT NOT NULL, `sha256` TEXT NOT NULL, `mime` TEXT, `sizeBytes` INTEGER NOT NULL, `status` TEXT NOT NULL, `parserVersion` TEXT, `activityId` TEXT, `errorCode` TEXT, `errorMessage` TEXT, `createdAt` INTEGER NOT NULL, `finishedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`activityId`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "fileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mime",
+            "columnName": "mime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sizeBytes",
+            "columnName": "sizeBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parserVersion",
+            "columnName": "parserVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "errorCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "errorMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finishedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_import_jobs_activityId",
+            "unique": false,
+            "columnNames": [
+              "activityId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_import_jobs_activityId` ON `${TABLE_NAME}` (`activityId`)"
+          },
+          {
+            "name": "index_import_jobs_sha256",
+            "unique": false,
+            "columnNames": [
+              "sha256"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_import_jobs_sha256` ON `${TABLE_NAME}` (`sha256`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "activities",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "activityId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "activity_alternates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `activityId` TEXT NOT NULL, `source` TEXT NOT NULL, `sourceId` TEXT, `sourceFileSha256` TEXT, `rawFilePath` TEXT, `parserVersion` TEXT NOT NULL, `importedAt` INTEGER NOT NULL, `sampleCount` INTEGER NOT NULL, `durationSec` INTEGER NOT NULL, `distanceM` REAL NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`activityId`) REFERENCES `activities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "sourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourceFileSha256",
+            "columnName": "sourceFileSha256",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rawFilePath",
+            "columnName": "rawFilePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "parserVersion",
+            "columnName": "parserVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importedAt",
+            "columnName": "importedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sampleCount",
+            "columnName": "sampleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSec",
+            "columnName": "durationSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distanceM",
+            "columnName": "distanceM",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_activity_alternates_activityId",
+            "unique": false,
+            "columnNames": [
+              "activityId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_activity_alternates_activityId` ON `${TABLE_NAME}` (`activityId`)"
+          },
+          {
+            "name": "index_activity_alternates_sourceFileSha256",
+            "unique": true,
+            "columnNames": [
+              "sourceFileSha256"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_activity_alternates_sourceFileSha256` ON `${TABLE_NAME}` (`sourceFileSha256`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "activities",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "activityId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "athlete_profile",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `birthDate` TEXT NOT NULL, `sex` TEXT NOT NULL, `heightCm` REAL, `weightKg` REAL, `restingHeartRate` INTEGER, `maxHeartRateObserved` INTEGER, `lactateThresholdHeartRate` INTEGER, `thresholdPaceSecPerKm` INTEGER, `vdot` REAL, `experience` TEXT NOT NULL, `timezone` TEXT NOT NULL, `availabilityJson` TEXT NOT NULL, `goalJson` TEXT, `city` TEXT, `latitude` REAL, `longitude` REAL, `units` TEXT NOT NULL, `treadmillAccess` INTEGER NOT NULL, `name` TEXT, `avatarPath` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "birthDate",
+            "columnName": "birthDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sex",
+            "columnName": "sex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heightCm",
+            "columnName": "heightCm",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "weightKg",
+            "columnName": "weightKg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "restingHeartRate",
+            "columnName": "restingHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxHeartRateObserved",
+            "columnName": "maxHeartRateObserved",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lactateThresholdHeartRate",
+            "columnName": "lactateThresholdHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "thresholdPaceSecPerKm",
+            "columnName": "thresholdPaceSecPerKm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "vdot",
+            "columnName": "vdot",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "experience",
+            "columnName": "experience",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timezone",
+            "columnName": "timezone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "availabilityJson",
+            "columnName": "availabilityJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "goalJson",
+            "columnName": "goalJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "city",
+            "columnName": "city",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "units",
+            "columnName": "units",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "treadmillAccess",
+            "columnName": "treadmillAccess",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "avatarPath",
+            "columnName": "avatarPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_check_ins",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`date` TEXT NOT NULL, `sleepQuality` INTEGER NOT NULL, `fatigue` INTEGER NOT NULL, `soreness` INTEGER NOT NULL, `stress` INTEGER NOT NULL, `illnessOrInjury` INTEGER NOT NULL, `heatLevel` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`date`))",
+        "fields": [
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepQuality",
+            "columnName": "sleepQuality",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fatigue",
+            "columnName": "fatigue",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "soreness",
+            "columnName": "soreness",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stress",
+            "columnName": "stress",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "illnessOrInjury",
+            "columnName": "illnessOrInjury",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heatLevel",
+            "columnName": "heatLevel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "date"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_metrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`date` TEXT NOT NULL, `sleepDurationMin` INTEGER, `restingHeartRate` REAL, `hrvRmssdMs` REAL, `spo2Avg` REAL, `source` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`date`))",
+        "fields": [
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepDurationMin",
+            "columnName": "sleepDurationMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "restingHeartRate",
+            "columnName": "restingHeartRate",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "hrvRmssdMs",
+            "columnName": "hrvRmssdMs",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "spo2Avg",
+            "columnName": "spo2Avg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "date"
+          ]
+        }
+      },
+      {
+        "tableName": "weekly_plans",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`weekStart` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `createdOn` TEXT NOT NULL, `confidence` TEXT NOT NULL, `rationale` TEXT NOT NULL, `weeklyMinutes` INTEGER NOT NULL, `longRunMinutes` INTEGER, `qualityCount` INTEGER NOT NULL, `ruleIdsJson` TEXT NOT NULL, `evidenceIdsJson` TEXT NOT NULL, `version` INTEGER NOT NULL DEFAULT 1, `revisionReason` TEXT, `revisedAt` INTEGER, `inputsHash` TEXT, `availabilityHash` TEXT, `generatedFromFingerprintVersion` TEXT, `generatedFromFingerprint` TEXT, `generatedFromProfileSnapshotJson` TEXT, `lastEvaluatedFingerprintVersion` TEXT, `lastEvaluatedFingerprint` TEXT, `temporalContextHash` TEXT, PRIMARY KEY(`weekStart`))",
+        "fields": [
+          {
+            "fieldPath": "weekStart",
+            "columnName": "weekStart",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdOn",
+            "columnName": "createdOn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rationale",
+            "columnName": "rationale",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weeklyMinutes",
+            "columnName": "weeklyMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longRunMinutes",
+            "columnName": "longRunMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "qualityCount",
+            "columnName": "qualityCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleIdsJson",
+            "columnName": "ruleIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceIdsJson",
+            "columnName": "evidenceIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "revisionReason",
+            "columnName": "revisionReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revisedAt",
+            "columnName": "revisedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "inputsHash",
+            "columnName": "inputsHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "availabilityHash",
+            "columnName": "availabilityHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generatedFromFingerprintVersion",
+            "columnName": "generatedFromFingerprintVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generatedFromFingerprint",
+            "columnName": "generatedFromFingerprint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generatedFromProfileSnapshotJson",
+            "columnName": "generatedFromProfileSnapshotJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastEvaluatedFingerprintVersion",
+            "columnName": "lastEvaluatedFingerprintVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastEvaluatedFingerprint",
+            "columnName": "lastEvaluatedFingerprint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "temporalContextHash",
+            "columnName": "temporalContextHash",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "weekStart"
+          ]
+        }
+      },
+      {
+        "tableName": "planned_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `weekStart` TEXT NOT NULL, `date` TEXT NOT NULL, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `durationMin` INTEGER, `rationale` TEXT NOT NULL, `ruleIdsJson` TEXT NOT NULL, `evidenceIdsJson` TEXT NOT NULL, `targetsJson` TEXT NOT NULL, `status` TEXT NOT NULL, `skipReason` TEXT, `completedAt` INTEGER, `completionEvidence` TEXT, `executionId` TEXT, `activityId` TEXT, `closureReason` TEXT, `closedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`weekStart`) REFERENCES `weekly_plans`(`weekStart`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekStart",
+            "columnName": "weekStart",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMin",
+            "columnName": "durationMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rationale",
+            "columnName": "rationale",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleIdsJson",
+            "columnName": "ruleIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceIdsJson",
+            "columnName": "evidenceIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetsJson",
+            "columnName": "targetsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skipReason",
+            "columnName": "skipReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "completionEvidence",
+            "columnName": "completionEvidence",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "executionId",
+            "columnName": "executionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "closureReason",
+            "columnName": "closureReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "closedAt",
+            "columnName": "closedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_planned_sessions_weekStart",
+            "unique": false,
+            "columnNames": [
+              "weekStart"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_planned_sessions_weekStart` ON `${TABLE_NAME}` (`weekStart`)"
+          },
+          {
+            "name": "index_planned_sessions_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_planned_sessions_date` ON `${TABLE_NAME}` (`date`)"
+          },
+          {
+            "name": "index_planned_sessions_activityId",
+            "unique": true,
+            "columnNames": [
+              "activityId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_planned_sessions_activityId` ON `${TABLE_NAME}` (`activityId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "weekly_plans",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "weekStart"
+            ],
+            "referencedColumns": [
+              "weekStart"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "daily_prescriptions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `date` TEXT NOT NULL, `plannedSessionId` TEXT, `plannedType` TEXT, `plannedTitle` TEXT, `plannedDurationMin` INTEGER, `prescribedType` TEXT NOT NULL, `title` TEXT NOT NULL, `prescribedDurationMin` INTEGER, `targetsJson` TEXT NOT NULL, `adjustment` TEXT NOT NULL, `rationale` TEXT NOT NULL, `ruleIdsJson` TEXT NOT NULL, `evidenceIdsJson` TEXT NOT NULL, `confidence` TEXT NOT NULL, `engineVersion` TEXT NOT NULL, `inputsHash` TEXT NOT NULL, `supersedesId` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedSessionId",
+            "columnName": "plannedSessionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "plannedType",
+            "columnName": "plannedType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "plannedTitle",
+            "columnName": "plannedTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "plannedDurationMin",
+            "columnName": "plannedDurationMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "prescribedType",
+            "columnName": "prescribedType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prescribedDurationMin",
+            "columnName": "prescribedDurationMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "targetsJson",
+            "columnName": "targetsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "adjustment",
+            "columnName": "adjustment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rationale",
+            "columnName": "rationale",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleIdsJson",
+            "columnName": "ruleIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceIdsJson",
+            "columnName": "evidenceIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "engineVersion",
+            "columnName": "engineVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inputsHash",
+            "columnName": "inputsHash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supersedesId",
+            "columnName": "supersedesId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_daily_prescriptions_date",
+            "unique": false,
+            "columnNames": [
+              "date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_daily_prescriptions_date` ON `${TABLE_NAME}` (`date`)"
+          }
+        ]
+      },
+      {
+        "tableName": "session_executions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `plannedSessionId` TEXT, `activityId` TEXT, `startedAt` INTEGER, `endedAt` INTEGER, `pausesJson` TEXT NOT NULL, `durationSec` INTEGER NOT NULL, `distanceM` REAL, `rpe` INTEGER, `source` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedSessionId",
+            "columnName": "plannedSessionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pausesJson",
+            "columnName": "pausesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSec",
+            "columnName": "durationSec",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distanceM",
+            "columnName": "distanceM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "rpe",
+            "columnName": "rpe",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_session_executions_plannedSessionId",
+            "unique": true,
+            "columnNames": [
+              "plannedSessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_session_executions_plannedSessionId` ON `${TABLE_NAME}` (`plannedSessionId`)"
+          },
+          {
+            "name": "index_session_executions_activityId",
+            "unique": true,
+            "columnNames": [
+              "activityId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_session_executions_activityId` ON `${TABLE_NAME}` (`activityId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "weekly_plan_revisions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `weekStart` TEXT NOT NULL, `fromVersion` INTEGER NOT NULL, `toVersion` INTEGER NOT NULL, `fromInputsHash` TEXT, `toInputsHash` TEXT NOT NULL, `fromAvailabilityHash` TEXT, `toAvailabilityHash` TEXT NOT NULL, `fromFingerprintVersion` TEXT, `fromFingerprint` TEXT, `fromProfileSnapshotJson` TEXT, `fromTemporalContextHash` TEXT, `toFingerprintVersion` TEXT, `toFingerprint` TEXT, `toProfileSnapshotJson` TEXT, `toTemporalContextHash` TEXT, `generatorVersion` TEXT NOT NULL, `previousPlanJson` TEXT NOT NULL, `replacedSessionsJson` TEXT NOT NULL, `trigger` TEXT NOT NULL, `reason` TEXT NOT NULL, `ruleIdsJson` TEXT NOT NULL, `evidenceIdsJson` TEXT NOT NULL, `confidence` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`weekStart`) REFERENCES `weekly_plans`(`weekStart`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekStart",
+            "columnName": "weekStart",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromVersion",
+            "columnName": "fromVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toVersion",
+            "columnName": "toVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromInputsHash",
+            "columnName": "fromInputsHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "toInputsHash",
+            "columnName": "toInputsHash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromAvailabilityHash",
+            "columnName": "fromAvailabilityHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "toAvailabilityHash",
+            "columnName": "toAvailabilityHash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromFingerprintVersion",
+            "columnName": "fromFingerprintVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fromFingerprint",
+            "columnName": "fromFingerprint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fromProfileSnapshotJson",
+            "columnName": "fromProfileSnapshotJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fromTemporalContextHash",
+            "columnName": "fromTemporalContextHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "toFingerprintVersion",
+            "columnName": "toFingerprintVersion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "toFingerprint",
+            "columnName": "toFingerprint",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "toProfileSnapshotJson",
+            "columnName": "toProfileSnapshotJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "toTemporalContextHash",
+            "columnName": "toTemporalContextHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generatorVersion",
+            "columnName": "generatorVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousPlanJson",
+            "columnName": "previousPlanJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "replacedSessionsJson",
+            "columnName": "replacedSessionsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trigger",
+            "columnName": "trigger",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleIdsJson",
+            "columnName": "ruleIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceIdsJson",
+            "columnName": "evidenceIdsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_weekly_plan_revisions_weekStart",
+            "unique": false,
+            "columnNames": [
+              "weekStart"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_weekly_plan_revisions_weekStart` ON `${TABLE_NAME}` (`weekStart`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "weekly_plans",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "weekStart"
+            ],
+            "referencedColumns": [
+              "weekStart"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f71f37034b0812b9c1c8c8d8b69c9f1e')"
+    ]
+  }
+}

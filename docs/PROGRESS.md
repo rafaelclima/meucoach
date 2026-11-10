@@ -1,22 +1,22 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-01A: guarda diária de iniciante implementada; R-01, R-02 e R-03 mantidos)
+**Atualizado:** 10/11/2026 (C3-01B: fingerprint de planejamento, T4, migração 13→14 e compare-and-apply; C3-01A incluído)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1101 testes no total (554 em `:app`, 137 em `core:data`, 383 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,79% de linhas (3.680/3.763), 81,96% de branches (2.703/3.298), 96,11% de instruções (26.015/27.069)
+- **Testes:** 1122 testes no total (557 em `:app`, 142 em `core:data`, 396 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,77% de linhas (3.806/3.893), 81,82% de branches (2.764/3.378), 96,23% de instruções (26.709/27.756)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v13 (prescrição diária, execução/evidência de sessão, vínculo com atividade e revisões versionadas do plano), migrações 1→2 até 12→13 testadas.
+- **Persistência:** Room 2.8.5, schema v14 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano e fingerprint/checkpoint de planejamento), migrações 1→2 até 13→14 testadas.
 - **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador. A guarda `R-PRESC-04` rebaixa `QUALITY → EASY` para perfil `BEGINNER` apenas na sessão de hoje `PLANNED`; `DONE`/`CLOSED` preservam prescrição, execução e histórico.
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
-- **Replanejamento (R-01/R-02/R-03):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; R-02 persiste o aceite de forma versionada e transacional em `weekly_plans` + `weekly_plan_revisions`. R-03 expõe `EvaluateReplan`/`ApplyReplan` no app, sugere por dia com aceitar/recusar/suprimir, reavalia se versão/hash mudarem, mostra selo de versão e diff “o que mudou” e mantém a prescrição de hoje e as sessões protegidas intactas.
+- **Replanejamento (R-01/R-02/R-03):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; R-02 persiste o aceite de forma versionada e transacional em `weekly_plans` + `weekly_plan_revisions`. R-03 expõe `EvaluateReplan`/`ApplyReplan` no app, sugere por dia com aceitar/recusar/suprimir, reavalia se versão/hash mudarem, mostra selo de versão e diff “o que mudou” e mantém a prescrição de hoje e as sessões protegidas intactas. C3-01B acrescenta T4 `PROFILE_CHANGED`, fingerprint/checkpoint e compare-and-apply do perfil dentro da transação.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -63,6 +63,44 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-01B: fingerprint de planejamento, T4 e aceite atômico
+
+**Objetivo:** implementar o segundo item do Ciclo 3 com testes primeiro: fingerprint canônico/versionado do perfil, proveniência × checkpoint, T4 `PROFILE_CHANGED`, migração `13→14` e compare-and-apply do perfil dentro da mesma transação Room que valida a versão e grava a revisão.
+
+### Concluído
+
+- **Domínio (`PlanningFingerprint`):** `PlanningGoal` (somente as quatro distâncias suportadas), `PlanningProfileSnapshot` (experiência, pace de limiar, LTHR, esteira e objetivo), `PlanningFingerprint` (`planning-v1`) e `PlanningFingerprints.temporalContextHash` (`planning-context-v1`). Nome, avatar, peso, altura, sexo, cidade, coordenadas e `targetTimeSec` ficam fora; `null` é distinto de valor presente e disponibilidade continua em hash separado.
+- **T4 no `PlanReplanner`:** `ReplanTrigger.PROFILE_CHANGED` e `ReplanCause` (`PROFILE_CHANGED`, `TIMEZONE_CONTEXT_CHANGED`, `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST`). A sugestão guarda causa principal + lista completa; o rationale não atribui a mudança a um único fator quando há concorrência e cita `R-PLAN-09`.
+- **Checkpoint × proveniência:** `ReplanResult.NoChange` carrega `PlanEvaluationCheckpoint`; `NoChange` e o primeiro encontro com plano legado avançam somente `lastEvaluated*`/`temporalContextHash`, sem incrementar versão nem inventar `generatedFrom*`.
+- **Orquestração:** `ReplanContextBuilder` usa um único instante + fuso do perfil persistido para derivar `today`/`weekStart` e o hash temporal, sem depender do `ProfileTimeProvider` assíncrono. `EvaluateReplan` persiste o checkpoint em `NoChange`; `ApplyReplan`/`TrainingPlanRepository` releem o perfil na mesma transação e devolvem `STALE_PROFILE` se fingerprint ou contexto temporal divergirem.
+- **Persistência (schema 14):** `weekly_plans` ganhou `generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`, `lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint` e `temporalContextHash`; `weekly_plan_revisions` ganhou os pares anterior/novo de fingerprint, snapshot e contexto. Migração `13→14` preserva planos, sessões e revisões e deixa os campos novos `NULL` no legado. `saveWeek`, snapshots/`PlanJson`, export e reset preservam os campos.
+- **Serialização e mapeamento:** `PlanningSnapshotJson` guarda só a allowlist; `ProfileMapper` centraliza o mapeamento perfil persistido ↔ domínio para a transação de T4.
+- **App/UI:** `ReplanUi` entende `PROFILE_CHANGED`, fuso e múltiplas causas sem copy que atribua um único motivo. `ReplanViewModel` enfileira um pedido explícito que chegue enquanto uma avaliação automática termina, em vez de descartá-lo.
+- **Testes:** +13 no domínio (fingerprint/allowlist/fuso/objetivo e T4/checkpoint/causas), +5 em `core:data` (migração `13→14`, checkpoint, preservação no `saveWeek`, `STALE_PROFILE` por perfil e por fuso) e +3 em `:app` (T4 via perfil, snapshot coerente de fuso/dia e reavaliação quando o perfil muda antes do aceite). O teste de supressão do `ReplanViewModel` cobre o enfileiramento do pedido explícito.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde na reexecução isolada; nenhum golden foi alterado. `TrendsFullScreenshotTest`/`TrendsScreenshotTest` saíram com o gráfico Vico em branco sob carga, a mesma flakiness visual já registrada e sem relação com o diff.
+- **1.122 testes**, 0 falhas e 0 `@Ignore` (557 `:app`, 142 `core:data`, 396 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,77% de linhas (3.806/3.893), 81,82% de branches (2.764/3.378), 96,23% de instruções (26.709/27.756).
+- Parser FIT: 93,01% de branches (572/615).
+- Schema `14.json` exportado; migração `13→14` coberta com plano, sessão e revisão legados preservados e campos novos `NULL`.
+- Nenhuma dependência nova, dado real no diff ou migração destrutiva.
+
+### Decisões e observações
+
+- **Allowlist, não hash de tudo:** o fingerprint só inclui campos que alteram plano/alvos; `inputsHash` passou a usar o fingerprint + contexto temporal + disponibilidade, então mudanças de peso/cidade não invalidam uma sugestão.
+- **Legado honesto:** plano v12/v13 não recebe fingerprint retroativo. O primeiro encontro grava só o checkpoint avaliado; a proveniência só nasce no aceite de uma revisão.
+- **Aceite atômico:** a checagem de perfil/fuso acontece dentro do `withTransaction` de `applyReplan`, junto de versão, inputs, disponibilidade e sessões protegidas; nenhum candidato obsoleto é aplicado.
+- **Escopo respeitado:** C3-02 (avaliar ao salvar Perfil/Calibração e UI dedicada), briefing (C3-03/04), evento de prova/F2 e recuperação pós-prova não foram iniciados.
+
+### Próximo passo
+
+1. Autorizar C3-02: avaliar após salvar Perfil/Calibração, mostrar sugestão/`NoChange`/limite no Perfil e no Hoje e validar a copy com o usuário 0.
+2. Validar em aparelho o T4 completo (editar experiência/objetivo/fuso, ver sugestão, aceitar e conferir o diff) com dados locais privados.
+3. Manter evento de prova, briefing e F4 fora do escopo até os gates definidos.
 
 ## Sessão 2026-11-10 — C3-01A: guarda diária de iniciante
 

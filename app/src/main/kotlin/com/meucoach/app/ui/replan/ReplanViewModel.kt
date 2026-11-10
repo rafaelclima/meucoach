@@ -44,6 +44,7 @@ class ReplanViewModel @Inject constructor(
 
     private var pending: EvaluateReplanResult.Suggestion? = null
     private var evaluating = false
+    private var queuedExplicit = false
 
     /** Called when Today becomes visible; never surfaces an explicit-only message. */
     fun refresh() = runEvaluation(explicit = false)
@@ -208,7 +209,13 @@ class ReplanViewModel @Inject constructor(
     }
 
     private fun runEvaluation(explicit: Boolean) {
-        if (evaluating || mutableState.value.isApplying) return
+        if (mutableState.value.isApplying) return
+        if (evaluating) {
+            // An explicit request must never be dropped by an automatic evaluation
+            // that is just finishing; queue it instead.
+            if (explicit) queuedExplicit = true
+            return
+        }
         evaluating = true
         mutableState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
@@ -222,7 +229,12 @@ class ReplanViewModel @Inject constructor(
                 }
             } finally {
                 evaluating = false
-                mutableState.update { if (it.isLoading) it.copy(isLoading = false) else it }
+                if (queuedExplicit) {
+                    queuedExplicit = false
+                    runEvaluation(explicit = true)
+                } else {
+                    mutableState.update { if (it.isLoading) it.copy(isLoading = false) else it }
+                }
             }
         }
     }

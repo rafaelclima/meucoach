@@ -33,6 +33,12 @@ internal object PlanJson {
         putNullable("revisedAt", plan.revisedAt?.let { Instant.ofEpochMilli(it).toString() })
         putNullable("inputsHash", plan.inputsHash)
         putNullable("availabilityHash", plan.availabilityHash)
+        putNullable("generatedFromFingerprintVersion", plan.generatedFromFingerprintVersion)
+        putNullable("generatedFromFingerprint", plan.generatedFromFingerprint)
+        putNullable("generatedFromProfileSnapshotJson", plan.generatedFromProfileSnapshotJson)
+        putNullable("lastEvaluatedFingerprintVersion", plan.lastEvaluatedFingerprintVersion)
+        putNullable("lastEvaluatedFingerprint", plan.lastEvaluatedFingerprint)
+        putNullable("temporalContextHash", plan.temporalContextHash)
     }
 
     fun weeklyPlanToJson(plan: WeeklyPlanEntity, sessions: List<PlannedSessionEntity>): JSONObject =
@@ -47,8 +53,16 @@ internal object PlanJson {
         put("toVersion", revision.toVersion)
         putNullable("fromInputsHash", revision.fromInputsHash)
         put("toInputsHash", revision.toInputsHash)
-        putNullable("fromAvailabilityHash", revision.fromAvailabilityHash)
+        put("fromAvailabilityHash", revision.fromAvailabilityHash)
         put("toAvailabilityHash", revision.toAvailabilityHash)
+        putNullable("fromFingerprintVersion", revision.fromFingerprintVersion)
+        putNullable("fromFingerprint", revision.fromFingerprint)
+        putNullable("fromProfileSnapshotJson", revision.fromProfileSnapshotJson)
+        putNullable("fromTemporalContextHash", revision.fromTemporalContextHash)
+        putNullable("toFingerprintVersion", revision.toFingerprintVersion)
+        putNullable("toFingerprint", revision.toFingerprint)
+        putNullable("toProfileSnapshotJson", revision.toProfileSnapshotJson)
+        putNullable("toTemporalContextHash", revision.toTemporalContextHash)
         put("generatorVersion", revision.generatorVersion)
         put("previousPlan", runCatching { JSONObject(revision.previousPlanJson) }.getOrElse { JSONObject() })
         put(

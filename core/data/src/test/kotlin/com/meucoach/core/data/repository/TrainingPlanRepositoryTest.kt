@@ -9,9 +9,17 @@ import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
+import com.meucoach.core.domain.replan.PlanningFingerprints
+import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanSuggestion
 import com.meucoach.core.domain.replan.ReplanTrigger
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Experience
+import com.meucoach.core.model.Pace
+import com.meucoach.core.model.Sex
+import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -48,6 +56,7 @@ class TrainingPlanRepositoryTest {
                 .build()
         repository = TrainingPlanRepository(database, clock)
         executions = SessionExecutionRepository(database, clock)
+        runBlocking { ProfileRepository(database, clock).saveProfile(profile()) }
     }
 
     @After
@@ -212,6 +221,15 @@ class TrainingPlanRepositoryTest {
         assertThat(stored.revisedAt).isEqualTo(clock.instant())
         assertThat(stored.inputsHash).isEqualTo("inputs-2")
         assertThat(stored.availabilityHash).isEqualTo("availability-2")
+        assertThat(stored.generatedFromFingerprintVersion).isEqualTo(PlanningFingerprints.VERSION)
+        assertThat(stored.generatedFromFingerprint)
+            .isEqualTo(PlanningFingerprints.of(profile()).hash)
+        assertThat(stored.generatedFromProfileSnapshotJson).isNotNull()
+        assertThat(stored.lastEvaluatedFingerprintVersion).isEqualTo(PlanningFingerprints.VERSION)
+        assertThat(stored.lastEvaluatedFingerprint)
+            .isEqualTo(PlanningFingerprints.of(profile()).hash)
+        assertThat(stored.temporalContextHash)
+            .isEqualTo(PlanningFingerprints.temporalContextHash(profile()))
         assertThat(stored.plan.createdOn).isEqualTo(monday)
         assertThat(stored.plan.weeklyMinutes).isEqualTo(140)
         assertThat(stored.plan.longRunMinutes).isEqualTo(45)
@@ -238,6 +256,15 @@ class TrainingPlanRepositoryTest {
         assertThat(revision.toInputsHash).isEqualTo("inputs-2")
         assertThat(revision.fromAvailabilityHash).isNull()
         assertThat(revision.toAvailabilityHash).isEqualTo("availability-2")
+        assertThat(revision.fromFingerprintVersion).isNull()
+        assertThat(revision.fromFingerprint).isNull()
+        assertThat(revision.fromProfileSnapshotJson).isNull()
+        assertThat(revision.fromTemporalContextHash).isNull()
+        assertThat(revision.toFingerprintVersion).isEqualTo(PlanningFingerprints.VERSION)
+        assertThat(revision.toFingerprint).isEqualTo(PlanningFingerprints.of(profile()).hash)
+        assertThat(revision.toProfileSnapshotJson).contains("\"treadmillAccess\"")
+        assertThat(revision.toTemporalContextHash)
+            .isEqualTo(PlanningFingerprints.temporalContextHash(profile()))
         assertThat(
             revision.generatorVersion,
         ).isEqualTo(com.meucoach.core.domain.prescription.WeeklyPlanGenerator.ENGINE_VERSION)
@@ -424,6 +451,97 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `checkpoint advances without changing provenance or version`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        val fingerprint = PlanningFingerprints.of(profile())
+        val checkpoint = PlanEvaluationCheckpoint(
+            fingerprintVersion = fingerprint.version,
+            fingerprint = fingerprint.hash,
+            profileSnapshot = fingerprint.snapshot,
+            temporalContextHash = PlanningFingerprints.temporalContextHash(profile()),
+            availabilityHash = "availability-1",
+        )
+
+        assertThat(repository.captureEvaluationCheckpoint(monday, expectedVersion = 1, checkpoint = checkpoint))
+            .isTrue()
+        assertThat(repository.captureEvaluationCheckpoint(monday, expectedVersion = 2, checkpoint = checkpoint))
+            .isFalse()
+
+        val stored = repository.getWeekRecord(monday)!!
+        assertThat(stored.version).isEqualTo(1)
+        assertThat(stored.generatedFromFingerprint).isNull()
+        assertThat(stored.generatedFromProfileSnapshotJson).isNull()
+        assertThat(stored.lastEvaluatedFingerprintVersion).isEqualTo(PlanningFingerprints.VERSION)
+        assertThat(stored.lastEvaluatedFingerprint).isEqualTo(fingerprint.hash)
+        assertThat(stored.temporalContextHash)
+            .isEqualTo(PlanningFingerprints.temporalContextHash(profile()))
+        assertThat(stored.availabilityHash).isEqualTo("availability-1")
+    }
+
+    @Test
+    fun `rejects a suggestion when the profile changed after evaluation`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(expectedFingerprint = "another-profile"),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.STALE_PROFILE,
+                "O perfil ou o fuso mudou desde esta sugestão. Avalie novamente.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `rejects a suggestion when the temporal context changed after evaluation`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        val outcome = repository.applyReplan(
+            suggestion = suggestion(expectedTemporalContextHash = "another-zone"),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+
+        assertThat(outcome).isEqualTo(
+            ReplanApplyOutcome.Failed(
+                ReplanApplyFailure.STALE_PROFILE,
+                "O perfil ou o fuso mudou desde esta sugestão. Avalie novamente.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+    }
+
+    @Test
+    fun `re-saving the week preserves the accepted fingerprint metadata`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+        val before = repository.getWeekRecord(monday)!!
+
+        repository.saveWeek(before.plan)
+
+        val after = repository.getWeekRecord(monday)!!
+        assertThat(after.version).isEqualTo(2)
+        assertThat(after.generatedFromFingerprint).isEqualTo(before.generatedFromFingerprint)
+        assertThat(after.generatedFromProfileSnapshotJson)
+            .isEqualTo(before.generatedFromProfileSnapshotJson)
+        assertThat(after.lastEvaluatedFingerprint).isEqualTo(before.lastEvaluatedFingerprint)
+        assertThat(after.temporalContextHash).isEqualTo(before.temporalContextHash)
+    }
+
+    @Test
     fun `captures a legacy availability baseline only while it is unknown`(): Unit = runBlocking {
         repository.saveWeek(revisionWeek())
 
@@ -474,18 +592,42 @@ class TrainingPlanRepositoryTest {
         expectedVersion: Int = 1,
         expectedInputsHash: String = "inputs-2",
         expectedAvailabilityHash: String? = null,
+        expectedFingerprint: String = PlanningFingerprints.of(profile()).hash,
+        expectedTemporalContextHash: String = PlanningFingerprints.temporalContextHash(profile()),
     ) = ReplanSuggestion(
         weekStart = monday,
         trigger = ReplanTrigger.USER_REQUEST,
+        causes = listOf(ReplanCause.USER_REQUEST),
         missedTrainableCount = 0,
         expectedVersion = expectedVersion,
         expectedInputsHash = expectedInputsHash,
         expectedAvailabilityHash = expectedAvailabilityHash,
         availabilityHash = "availability-2",
+        expectedFingerprintVersion = PlanningFingerprints.VERSION,
+        expectedFingerprint = expectedFingerprint,
+        profileSnapshot = PlanningFingerprints.of(profile()).snapshot,
+        expectedTemporalContextHash = expectedTemporalContextHash,
         rationale = "Revisão pedida por você.",
         ruleIds = listOf("R-PLAN-03"),
         evidenceIds = listOf("EV-PFITZINGER-2008"),
         confidence = DataConfidence.MEDIUM,
+    )
+
+    private fun profile() = AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = Sex.MALE,
+        thresholdPace = Pace.fromSecondsPerKm(360),
+        lactateThresholdHeartRate = 180,
+        experience = Experience.INTERMEDIATE,
+        timezone = "America/Sao_Paulo",
+        weeklyAvailability = WeeklyAvailability(
+            mapOf(
+                java.time.DayOfWeek.MONDAY to 40,
+                java.time.DayOfWeek.WEDNESDAY to 40,
+                java.time.DayOfWeek.SATURDAY to 90,
+            ),
+        ),
     )
 
     private fun session(date: LocalDate, type: WorkoutType, durationMin: Int, title: String) = PlannedSession(

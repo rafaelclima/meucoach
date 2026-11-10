@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.app.application.ReplanChangeKind
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.DataConfidence
 import org.junit.Rule
@@ -57,6 +58,7 @@ class ReplanScreenshotTest {
                                     versionFrom = 1,
                                     versionTo = 2,
                                     trigger = ReplanTrigger.MISSED_SESSIONS,
+                                    causes = listOf(ReplanCause.MISSED_SESSIONS),
                                     headline = "Dá para ajustar o resto da semana",
                                     body = "2 treinos desta semana não aconteceram. Posso reorganizar só " +
                                         "os próximos dias, sem repor carga e sem mexer no que já passou.",

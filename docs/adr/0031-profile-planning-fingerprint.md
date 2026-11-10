@@ -1,6 +1,6 @@
 # ADR 0031 — Fingerprint de planejamento e aceite atômico de T4
 
-**Status:** Aceito no C3-G0 em 2026-11-10; implementação pendente dos gates desta decisão
+**Status:** Aceito no C3-G0 em 2026-11-10; implementado no C3-01B em 2026-11-10 (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply). Restante: telas/rotas de avaliação do C3-02.
 **Data:** 2026-11-10
 **Escopo:** C3-G0/F1 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md`
 **Relacionados:** ADR 0022 (tempo/fuso), ADR 0023 (prescrição diária), ADR 0028 (replanejamento versionado)
@@ -164,6 +164,4 @@ migrar de `TrainingGoal` para `RaceEvent`.
 - Compare-and-apply no Room com teste de concorrência perfil × aceite.
 - `ReplanSuggestion` pode explicar múltiplas causas sem mudar a regra de aceite.
 
-**Status atual:** decisões C3-G0 aprovadas pelo usuário em 2026-11-10; ADR aceito,
-**não implementado**. Migração, código e testes continuam bloqueados até aprovação
-explícita da etapa de implementação.
+**Status atual:** decisões C3-G0 aprovadas pelo usuário em 2026-11-10; ADR aceito e implementado no C3-01B. As rotas de UI/avaliação ao salvar Perfil/Calibração ficam no C3-02.

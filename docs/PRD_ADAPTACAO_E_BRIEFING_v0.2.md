@@ -3,7 +3,7 @@
 **Versão:** 0.2 (proposta consolidada) · **Data:** 10/11/2026
 **Produto:** MeuCoach — coach de corrida Android, local-first e determinístico.
 **Ciclo proposto:** Ciclo 3 — “acompanhar o atleta” (C3).
-**Status:** escopo v0.2 aprovado em 2026-11-10; ADRs C3-G0 aceitos em princípios; implementação ainda aguarda aprovação da próxima etapa.
+**Status:** escopo v0.2 aprovado em 2026-11-10; ADRs C3-G0 aceitos. C3-01A (guarda de iniciante) e C3-01B (fingerprint/T4/migração 13→14) implementados; as demais entregas aguardam seus gates.
 
 ---
 

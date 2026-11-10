@@ -34,6 +34,16 @@ data class WeeklyPlanRevisionEntity(
     val toInputsHash: String,
     val fromAvailabilityHash: String?,
     val toAvailabilityHash: String,
+    /** Provenance fingerprint/context of the replaced version; null for legacy rows. */
+    val fromFingerprintVersion: String? = null,
+    val fromFingerprint: String? = null,
+    val fromProfileSnapshotJson: String? = null,
+    val fromTemporalContextHash: String? = null,
+    /** Provenance fingerprint/context written by the accepted revision. */
+    val toFingerprintVersion: String? = null,
+    val toFingerprint: String? = null,
+    val toProfileSnapshotJson: String? = null,
+    val toTemporalContextHash: String? = null,
     val generatorVersion: String,
     /** JSON metadata of the version that was replaced. */
     val previousPlanJson: String,

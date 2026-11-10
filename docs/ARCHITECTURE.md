@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.8 · **Data:** 10/11/2026 · **Reconciliação:** ADRs 0030/0031 aceitos em princípios para o Ciclo 3; implementação ainda pendente.
+**Versão:** 1.9 · **Data:** 10/11/2026 · **Reconciliação:** C3-01A/C3-01B implementados (guarda de iniciante e fingerprint/T4/schema 14); demais gates do Ciclo 3 pendentes.
 
 ## 1. Restrições e forças
 
@@ -22,7 +22,7 @@ flowchart LR
         DOM[core:domain\nzonas · carga · prontidão · prescrição · evidência]
         TIME[TimeProvider\nfuso do perfil]
         REPO[Repositórios]
-        ROOM[(Room v13 / SQLite)]
+        ROOM[(Room v14 / SQLite)]
         HC[Health Connect]
         IMP[Import\nFIT · TCX · GPX · CSV]
         FS[Arquivos originais]
@@ -185,33 +185,38 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 ### 6.4 Replanejamento da semana (ADR 0028)
 
-- **Fluxo:** `ReplanContextBuilder` lê o `StoredWeeklyPlan` (versão/hashes), perfil, prontidão, carga, semana anterior, bloco e check-ins de doença; captura o baseline de disponibilidade quando desconhecido. `EvaluateReplan` delega ao `PlanReplanner` puro e devolve `Suggestion` (candidato + diff), `NoChange` ou `Unavailable`.
+- **Fluxo:** `ReplanContextBuilder` lê o `StoredWeeklyPlan` (versão/hashes, proveniência/checkpoint), perfil, prontidão, carga, semana anterior, bloco e check-ins de doença; captura o baseline de disponibilidade e o checkpoint de perfil quando desconhecidos, usando um snapshot coerente de instante + fuso. `EvaluateReplan` delega ao `PlanReplanner` puro e devolve `Suggestion` (candidato + diff), `NoChange` ou `Unavailable`; `NoChange` persiste somente o checkpoint avaliado.
 - **Proteções:** só sessões `date > today` e `PLANNED` entram no diff/substituição. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` são copiadas; a prescrição do dia não é recalculada pelo aceite.
-- **Aceite:** `ApplyReplan` relê o estado, exige `expectedVersion`, recalcula o `inputsHash` e chama `TrainingPlanRepository.applyReplan` com validação dentro da transação. Versão, data ou inputs divergentes produzem `Stale` com reavaliação; conflito protegido produz `Rejected`.
+- **Aceite:** `ApplyReplan` relê o estado, exige `expectedVersion`, recalcula o `inputsHash` e chama `TrainingPlanRepository.applyReplan` com validação dentro da transação. A mesma transação relê o perfil persistido, recalcula o fingerprint/contexto temporal e retorna `Stale` se algo divergiu; conflito protegido produz `Rejected`.
 - **UI:** `ReplanViewModel` avalia no resume, respeita recusa por proposta (`weekStart` + versão + hash) e supressão até o fim do dia em `ReplanSuggestionStore` (SharedPreferences), e oferece aceitar/recusar/suprimir. O card do plano mostra o selo `v{n}`, o botão explícito e “Ver o que mudou” a partir de `getLatestRevision` + `PlanJson`.
 - **Explicabilidade:** a revisão reutiliza as regras/evidências emitidas pelo gerador; `ReplanDiff` e a copy são apresentação, não regra fisiológica.
 
-### 6.5 Ciclo 3 — direção aprovada, não implementada
+### 6.5 Ciclo 3 — C3-01A/B implementados; demais gates pendentes
 
-- **Fingerprint de planejamento (ADR 0031):** fingerprint versionado/canônico dos
-  inputs que alteram plano/alvos; proveniência (`generatedFrom`) e checkpoint
-  (`lastEvaluated`) separados; `temporalContextHash` para o fuso que define
-  `today`/semana; aceite T4 revalida o fingerprint dentro da transação Room.
-- **Evento de prova (ADR 0030):** `RaceEvent` separado de `WorkoutType` e de
-  `PlannedSession`, com estados `PLANNED/COMPLETED/CANCELLED/NO_SHOW`; `TodayDecision`
-  discrimina treino e competição, sem duas instruções no Hoje.
+- **Guarda de iniciante (C3-01A):** a prescrição do dia rebaixa `QUALITY → EASY`
+  apenas para sessão de hoje `PLANNED` e perfil `BEGINNER`; `DONE`/`CLOSED`
+  preservam prescrição, execução e histórico (`R-PRESC-04`).
+- **Fingerprint de planejamento (ADR 0031, C3-01B):** fingerprint
+  `planning-v1`/canônico dos inputs que alteram plano/alvos; proveniência
+  (`generatedFrom*`) e checkpoint (`lastEvaluated*`) separados; `temporalContextHash`
+  para o fuso que define `today`/semana; T4 `PROFILE_CHANGED`; aceite revalida o
+  fingerprint dentro da transação Room. Migração `13→14`, export/reset e
+  `saveWeek` preservam os campos.
+- **Evento de prova (ADR 0030):** direção aceita, ainda não implementada.
+  `RaceEvent` será separado de `WorkoutType`/`PlannedSession`; `TodayDecision`
+  discriminará treino e competição.
 - **Briefing:** derivado da `DailyPrescription` persistida; v1 não inventa segmentos,
   intervalos ou alvos e não é reconstruído para sessões concluídas.
 - **Nutrição (F4):** intenção de conteúdo geral aprovada, mas fontes/copy ainda
   precisam de revisão; nada é exibido antes do gate.
 
-> Nenhum item desta seção altera o comportamento atual até a implementação e os
-> gates de migração/testes serem concluídos.
+> Evento de prova, briefing e F4 continuam sem alterar o comportamento atual até
+> seus gates de implementação.
 
 ## 7. Persistência
 
-- **Room/SQLite** como fonte de verdade local; versão atual **13** (`MeuCoachDatabase.VERSION`).
-- `:core:data` implementa `MeuCoachDatabase` v13 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity` e `SessionExecutionEntity`.
+- **Room/SQLite** como fonte de verdade local; versão atual **14** (`MeuCoachDatabase.VERSION`).
+- `:core:data` implementa `MeuCoachDatabase` v14 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity` e `SessionExecutionEntity`.
 - DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository` e `UserDataRepository`.
 - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda (não há série downsampled persistida).
 - UUID v7 gerado no cliente para IDs ordenáveis.
@@ -222,7 +227,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - “Apagar tudo” usa transação + `DataEpochStore` + `DataWriteMutex`: gira a época, cancela importação/saúde/lembretes/story/expurgo, limpa banco, staging, avatar, cache e preferências; Health Connect externo não é tocado (`ADR 0025`).
 - Arquivos originais em storage privado do app, referenciados por hash; o arquivo temporário de staging é limpo após o processamento.
 - `SharedPreferences`/DataStore apenas para preferências e marcas d'água (tema, unidades, onboarding, tutorial, `firstRun`, `HealthSyncStore`, `DataEpochStore`).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`) e `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos).
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos) e `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado).
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect

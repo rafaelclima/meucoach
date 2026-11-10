@@ -9,7 +9,6 @@ import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.ReadinessResult
-import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.WeeklyAvailability
 import java.security.MessageDigest
 import java.time.DayOfWeek
@@ -33,11 +32,19 @@ import kotlin.math.abs
 class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGenerator()) {
     fun evaluate(input: ReplanInput): ReplanResult {
         val availabilityHash = availabilityHash(input.profile.weeklyAvailability)
+        val fingerprint = input.planningFingerprint
+        val profileChanged = input.currentEvaluatedFingerprintVersion != null &&
+            input.currentEvaluatedFingerprint != null &&
+            (
+                input.currentEvaluatedFingerprintVersion != fingerprint.version ||
+                    input.currentEvaluatedFingerprint != fingerprint.hash
+                )
+        val temporalChanged = input.currentTemporalContextHash != null &&
+            input.currentTemporalContextHash != input.temporalContextHash
+        val t4Triggered = profileChanged || temporalChanged
+
         if (input.currentPlan.weekStart != currentWeekStart(input.today)) {
-            return ReplanResult.NoChange(
-                "Só é possível replanejar a semana vigente.",
-                availabilityHash,
-            )
+            return noChange("Só é possível replanejar a semana vigente.", input, availabilityHash)
         }
 
         val missed = missedSessions(input)
@@ -45,25 +52,27 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         val availabilityTriggered = input.currentAvailabilityHash != null &&
             input.currentAvailabilityHash != availabilityHash
         val userRequested = input.trigger == ReplanTrigger.USER_REQUEST
-        if (!userRequested && !missedTriggered && !availabilityTriggered) {
+        if (!userRequested && !missedTriggered && !availabilityTriggered && !t4Triggered) {
             // A missing baseline is captured for the future, never inferred as a change.
             val reason = if (input.currentAvailabilityHash == null) {
                 "Disponibilidade atual registrada como referência; ainda não há histórico para comparar."
             } else {
                 "Nenhum desvio elegível nesta semana."
             }
-            return ReplanResult.NoChange(reason, availabilityHash)
+            return noChange(reason, input, availabilityHash)
         }
 
         if (input.profile.weeklyAvailability.minutesByDay.isEmpty()) {
-            return ReplanResult.NoChange(
+            return noChange(
                 "Sem disponibilidade configurada; não é possível replanejar.",
+                input,
                 availabilityHash,
             )
         }
         if (input.currentPlan.sessions.none { it.date.isAfter(input.today) }) {
-            return ReplanResult.NoChange(
+            return noChange(
                 "Não há dias futuros nesta semana para replanejar.",
+                input,
                 availabilityHash,
             )
         }
@@ -90,23 +99,33 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         val currentFuture = input.currentPlan.sessions.filter { it.date.isAfter(input.today) }
 
         validationFailure(candidateSessions, candidateFuture, input)?.let { reason ->
-            return ReplanResult.NoChange(reason, availabilityHash)
+            return noChange(reason, input, availabilityHash)
         }
         ceilingFailure(currentFuture, candidateFuture)?.let { reason ->
-            return ReplanResult.NoChange(reason, availabilityHash)
+            return noChange(reason, input, availabilityHash)
         }
         if (sameProjection(currentFuture, candidateFuture)) {
-            return ReplanResult.NoChange(
+            return noChange(
                 "O resto da semana já está como deveria; nada a sugerir.",
+                input,
                 availabilityHash,
             )
         }
 
-        val trigger = activeTrigger(
+        val causes = causes(
             userRequested = userRequested,
+            profileChanged = profileChanged,
+            temporalChanged = temporalChanged,
             missedTriggered = missedTriggered,
+            availabilityTriggered = availabilityTriggered,
         )
-        val rationale = rationale(trigger, missed.size)
+        val trigger = activeTrigger(causes)
+        val rationale = rationale(trigger, causes, missed.size)
+        val suggestionRules = if (profileChanged || temporalChanged) {
+            (generated.ruleIds + "R-PLAN-09").distinct()
+        } else {
+            generated.ruleIds
+        }
         val candidate = WeeklyPlan(
             weekStart = input.currentPlan.weekStart,
             sessions = candidateSessions,
@@ -123,19 +142,37 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
             suggestion = ReplanSuggestion(
                 weekStart = candidate.weekStart,
                 trigger = trigger,
+                causes = causes,
                 missedTrainableCount = missed.size,
                 expectedVersion = input.currentVersion,
                 expectedInputsHash = inputsHash(input),
                 expectedAvailabilityHash = input.currentAvailabilityHash,
                 availabilityHash = availabilityHash,
+                expectedFingerprintVersion = fingerprint.version,
+                expectedFingerprint = fingerprint.hash,
+                profileSnapshot = fingerprint.snapshot,
+                expectedTemporalContextHash = input.temporalContextHash,
                 rationale = rationale,
-                ruleIds = generated.ruleIds,
+                ruleIds = suggestionRules,
                 evidenceIds = generated.evidenceIds,
                 confidence = generated.confidence,
             ),
             candidate = candidate,
         )
     }
+
+    private fun noChange(reason: String, input: ReplanInput, availabilityHash: String): ReplanResult.NoChange =
+        ReplanResult.NoChange(
+            reason = reason,
+            availabilityHash = availabilityHash,
+            checkpoint = PlanEvaluationCheckpoint(
+                fingerprintVersion = input.planningFingerprint.version,
+                fingerprint = input.planningFingerprint.hash,
+                profileSnapshot = input.planningFingerprint.snapshot,
+                temporalContextHash = input.temporalContextHash,
+                availabilityHash = availabilityHash,
+            ),
+        )
 
     /**
      * T1 counts `PLANNED` sessions of the week that are already in the past and
@@ -216,21 +253,58 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         return current == candidate
     }
 
-    private fun activeTrigger(userRequested: Boolean, missedTriggered: Boolean): ReplanTrigger = when {
-        userRequested -> ReplanTrigger.USER_REQUEST
-        missedTriggered -> ReplanTrigger.MISSED_SESSIONS
+    private fun causes(
+        userRequested: Boolean,
+        profileChanged: Boolean,
+        temporalChanged: Boolean,
+        missedTriggered: Boolean,
+        availabilityTriggered: Boolean,
+    ): List<ReplanCause> = buildList {
+        if (userRequested) add(ReplanCause.USER_REQUEST)
+        if (profileChanged) add(ReplanCause.PROFILE_CHANGED)
+        if (temporalChanged) add(ReplanCause.TIMEZONE_CONTEXT_CHANGED)
+        if (missedTriggered) add(ReplanCause.MISSED_SESSIONS)
+        if (availabilityTriggered) add(ReplanCause.AVAILABILITY_CHANGED)
+    }.distinct()
+
+    private fun activeTrigger(causes: List<ReplanCause>): ReplanTrigger = when {
+        ReplanCause.USER_REQUEST in causes -> ReplanTrigger.USER_REQUEST
+
+        ReplanCause.PROFILE_CHANGED in causes ||
+            ReplanCause.TIMEZONE_CONTEXT_CHANGED in causes -> ReplanTrigger.PROFILE_CHANGED
+
+        ReplanCause.MISSED_SESSIONS in causes -> ReplanTrigger.MISSED_SESSIONS
+
         else -> ReplanTrigger.AVAILABILITY_CHANGED
     }
 
-    private fun rationale(trigger: ReplanTrigger, missedCount: Int): String = when (trigger) {
-        ReplanTrigger.USER_REQUEST ->
-            "Revisão pedida por você. O restante da semana foi reorganizado sem repor treinos perdidos."
+    private fun rationale(trigger: ReplanTrigger, causes: List<ReplanCause>, missedCount: Int): String {
+        if (causes.size > 1) {
+            val labels = causes.joinToString(" e ") { it.label() }
+            return "Mais de um motivo motivou a revisão: $labels. " +
+                "O restante da semana foi reorganizado sem repor carga."
+        }
+        return when (trigger) {
+            ReplanTrigger.USER_REQUEST ->
+                "Revisão pedida por você. O restante da semana foi reorganizado sem repor treinos perdidos."
 
-        ReplanTrigger.MISSED_SESSIONS ->
-            "Treinos elegíveis sem conclusão: $missedCount. O restante da semana foi reorganizado sem repor carga."
+            ReplanTrigger.PROFILE_CHANGED -> when {
+                ReplanCause.TIMEZONE_CONTEXT_CHANGED in causes &&
+                    ReplanCause.PROFILE_CHANGED !in causes ->
+                    "Seu fuso mudou. O restante da semana foi reorganizado sem aumentar a carga."
 
-        ReplanTrigger.AVAILABILITY_CHANGED ->
-            "Sua disponibilidade mudou. O restante da semana foi reorganizado sem aumentar a carga."
+                else ->
+                    "Seu perfil de planejamento mudou. " +
+                        "O restante da semana foi reorganizado sem aumentar a carga."
+            }
+
+            ReplanTrigger.MISSED_SESSIONS ->
+                "Treinos elegíveis sem conclusão: $missedCount. " +
+                    "O restante da semana foi reorganizado sem repor carga."
+
+            ReplanTrigger.AVAILABILITY_CHANGED ->
+                "Sua disponibilidade mudou. O restante da semana foi reorganizado sem aumentar a carga."
+        }
     }
 
     companion object {
@@ -271,6 +345,14 @@ private val PROJECTION_ORDER: Comparator<SessionProjection> = compareBy(
     { it.durationMin ?: -1 },
 )
 
+private fun ReplanCause.label(): String = when (this) {
+    ReplanCause.PROFILE_CHANGED -> "perfil"
+    ReplanCause.TIMEZONE_CONTEXT_CHANGED -> "fuso"
+    ReplanCause.MISSED_SESSIONS -> "treinos não concluídos"
+    ReplanCause.AVAILABILITY_CHANGED -> "disponibilidade"
+    ReplanCause.USER_REQUEST -> "pedido seu"
+}
+
 private fun PlannedSession.projection(): SessionProjection = SessionProjection(
     date = date,
     type = type,
@@ -294,7 +376,9 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";createdOn=").append(currentPlan.createdOn)
     append(";today=").append(today)
     append(";availability=").append(PlanReplanner.availabilityHash(profile.weeklyAvailability))
-    append(";profile=").append(profile.canonical())
+    append(";fingerprintVersion=").append(planningFingerprint.version)
+    append(";fingerprint=").append(planningFingerprint.hash)
+    append(";temporalContext=").append(temporalContextHash)
     append(";readiness=").append(readiness.canonical())
     append(";load=").append(load?.canonical() ?: "null")
     append(";previous=").append(previousWeek?.canonical() ?: "null")
@@ -303,30 +387,6 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";threshold=").append(missedSessionThreshold)
     append(";sessions=").append(currentPlan.sessions.joinToString("|") { it.canonical() })
 }
-
-private fun AthleteProfile.canonical(): String = listOf(
-    id,
-    birthDate.toString(),
-    sex.name,
-    heightCm?.toString(),
-    weightKg?.toString(),
-    restingHeartRate?.toString(),
-    maxHeartRateObserved?.toString(),
-    lactateThresholdHeartRate?.toString(),
-    thresholdPace?.secondsPerKm?.toString(),
-    vdot?.toString(),
-    experience.name,
-    timezone,
-    weeklyAvailability.minutesByDay.entries
-        .sortedBy { it.key.value }
-        .joinToString(",") { "${it.key.name}=${it.value}" },
-    goal?.let { "${it.type.name}@${it.targetDate}" },
-    city,
-    latitude?.toString(),
-    longitude?.toString(),
-    units.name,
-    treadmillAccess.toString(),
-).joinToString(",")
 
 private fun ReadinessResult.canonical(): String = buildString {
     append(score).append(',')

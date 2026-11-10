@@ -34,6 +34,18 @@ data class WeeklyPlanEntity(
     val inputsHash: String? = null,
     /** Availability baseline of this version; null when unknown (legacy v12). */
     val availabilityHash: String? = null,
+    /** Version of the planning fingerprint that generated this version; null for legacy rows. */
+    val generatedFromFingerprintVersion: String? = null,
+    /** Planning fingerprint that generated this version; null for legacy rows. */
+    val generatedFromFingerprint: String? = null,
+    /** Minimal JSON snapshot (allowlist) of the profile that generated this version. */
+    val generatedFromProfileSnapshotJson: String? = null,
+    /** Version of the last evaluated planning fingerprint; advances on `NoChange` too. */
+    val lastEvaluatedFingerprintVersion: String? = null,
+    /** Last evaluated planning fingerprint; distinct from provenance (ADR 0031). */
+    val lastEvaluatedFingerprint: String? = null,
+    /** Hash of the timezone that defined today/week start at the last evaluation. */
+    val temporalContextHash: String? = null,
 )
 
 @Entity(
