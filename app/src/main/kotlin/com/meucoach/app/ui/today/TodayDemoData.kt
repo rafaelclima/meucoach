@@ -86,6 +86,8 @@ data class TodayUiState(
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     /** Single authority of the day; null only before a profile exists. */
     val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
+    /** Briefing derived from the persisted prescription; null for done/closed days. */
+    val briefing: com.meucoach.core.domain.briefing.SessionBriefing? = null,
     val explanation: TodayExplanationUi? = null,
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */

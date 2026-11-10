@@ -32,6 +32,7 @@ import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.briefing.SessionBriefingEngine
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.DailyPrescription
@@ -590,6 +591,8 @@ internal fun todayState(
     // prescription from GetTodayPrescription, which is the single authority.
     val dayPrescription =
         prescription ?: profile?.let { buildPreviewPrescription(it, checkIn, result, load, today, plan) }
+    val todaySession = plan?.sessions?.firstOrNull { it.date == today }
+    val briefing = dayPrescription?.let { SessionBriefingEngine().brief(it, todaySession?.status) }
     val explanation = if (profile != null && dayPrescription != null) {
         buildExplanation(
             checkIn = checkIn,
@@ -618,6 +621,7 @@ internal fun todayState(
         ),
         workout = dayPrescription?.toWorkoutUi() ?: base.workout,
         prescription = dayPrescription,
+        briefing = briefing,
         explanation = explanation,
         readinessExplanation = readinessExplanation,
         ctl = load?.ctl?.roundToInt(),

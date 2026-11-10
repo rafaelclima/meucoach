@@ -118,6 +118,7 @@ fun TodayScreen(
     var correctionOpen by remember { mutableStateOf(false) }
     var changesOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
+    var briefingOpen by remember { mutableStateOf(false) }
     val planExplanation = remember(state.plan) { state.plan?.let(::buildPlanExplanation) }
     val openExplanation: (ExplanationSource) -> Unit = { source ->
         val available = when (source) {
@@ -177,6 +178,7 @@ fun TodayScreen(
             NextWorkoutCard(
                 workout = state.workout,
                 prescription = state.prescription,
+                briefing = state.briefing,
                 session = todaySession,
                 execution = state.todayExecution,
                 canComplete = hasPlannedSessionToday,
@@ -188,6 +190,7 @@ fun TodayScreen(
                 onCorrectClick = { correctionOpen = true },
                 onConsumeMessage = onConsumeCompletionMessage,
                 onWhyClick = { openExplanation(ExplanationSource.WORKOUT) },
+                onBriefingClick = { briefingOpen = true },
                 onActivityClick = onActivityClick,
             )
         }
@@ -311,6 +314,14 @@ fun TodayScreen(
         replan.lastChange?.let { change ->
             ReplanChangesSheet(change = change, onDismiss = { changesOpen = false })
         }
+    }
+    if (briefingOpen) {
+        SessionBriefingSheet(
+            state = state.briefing
+                ?.let { SessionBriefingSheetState.Ready(it) }
+                ?: SessionBriefingSheetState.Empty,
+            onDismiss = { briefingOpen = false },
+        )
     }
 }
 
@@ -483,6 +494,7 @@ private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
 private fun NextWorkoutCard(
     workout: WorkoutUi,
     prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
+    briefing: com.meucoach.core.domain.briefing.SessionBriefing?,
     session: com.meucoach.core.domain.prescription.PlannedSession?,
     execution: TodayExecutionUi?,
     canComplete: Boolean,
@@ -494,6 +506,7 @@ private fun NextWorkoutCard(
     onCorrectClick: () -> Unit,
     onConsumeMessage: () -> Unit,
     onWhyClick: () -> Unit,
+    onBriefingClick: () -> Unit,
     onActivityClick: (String) -> Unit,
 ) {
     val colors = McTheme.colors
@@ -663,6 +676,16 @@ private fun NextWorkoutCard(
             onClick = onWhyClick,
             trailingArrow = false,
         )
+        if (!done && !closed && briefing != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            McSecondaryButton(
+                text = "Como correr hoje",
+                onClick = onBriefingClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("today-briefing-cta"),
+            )
+        }
         if (!done && !closed) {
             Spacer(modifier = Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

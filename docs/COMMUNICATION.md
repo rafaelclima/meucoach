@@ -193,3 +193,28 @@ A revisão é um convite, não uma correção do usuário. O texto informa o que
 | `NoChange` | `O resto da semana já está como deveria; nada a sugerir.` | Evita revisão cosmética. |
 
 O par `Agora não` × `Não sugerir hoje` foi escolhido com o usuário 0: mantém a distinção temporal (esta proposta × o resto do dia) e evita “mostrar”, que poderia ser lido como esconder o plano. O diff usa rótulos `Novo`, `Sai` e `Muda`, com dia, título e duração. IDs de regra/evidência continuam fora da UI comum e ficam no snapshot auditável.
+
+### 6.8 Briefing do treino (10/11/2026)
+
+O briefing responde “o que a prescrição de hoje me pede”, não “o que o app acha melhor
+agora”. A copy repete somente o que já está na `DailyPrescription`: nenhum alvo,
+bloco, intervalo ou alternativa nova.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Card do treino (não concluído) | `Como correr hoje` | CTA do briefing; “Ver explicação” continua secundário. |
+| Sheet — cabeçalho | `COMO CORRER HOJE` + título da prescrição | Deixa claro que o conteúdo é do dia, não um novo plano. |
+| Seção | `FOCO` | Tipo e duração da prescrição vigente. |
+| Seção | `ALVO` | Só os alvos existentes (ritmo, FC, distância, zona, esforço), copiados sem arredondar a decisão. |
+| Nota do alvo | `Números copiados da prescrição de hoje.` | Reforça fidelidade e ausência de recálculo. |
+| Seção | `POR QUE HOJE` | Rationale e confiança já persistidos. |
+| Seção | `COMO CORRER` | Orientação genérica de esforço compatível com o tipo/alvo; sem aquecimento, blocos ou séries inventados. |
+| Seção | `SE ESTIVER DIFÍCIL` | Reduzir/interromper e procurar avaliação diante de sinal de alerta; sem número nem treino alternativo. |
+| Sem calibração | `Use o esforço percebido 4/10 como guia.` | Mostra o RPE existente; nunca calcula pace/FC. |
+| Sessão concluída | Sem CTA e sem sheet | O card mostra execução/atividade/motivo já persistidos; nada é reinterpretado com o perfil atual. |
+| Vazio | `Ainda não há prescrição para hoje` | Ausência é ausência, não um treino inventado. |
+| Erro | `Não foi possível mostrar o briefing` + motivo | Falha explícita, sem fallback para uma decisão nova. |
+
+Nenhum `R-`/`EV-` aparece no sheet comum; os IDs continuam no contrato `SessionBriefing`
+e na prescrição persistida para auditoria. A notificação segue abrindo o Hoje; a
+prescrição vigente é revalidada antes de o CTA aparecer.

@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-02: avaliação ao salvar Perfil/Calibração e card no Perfil; C3-01A/B incluídos)
+**Atualizado:** 10/11/2026 (C3-03/04: briefing genérico e sheet no Hoje; C3-02/C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1127 testes no total (562 em `:app`, 142 em `core:data`, 396 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,77% de linhas (3.806/3.893), 81,82% de branches (2.764/3.378), 96,23% de instruções (26.709/27.756)
+- **Testes:** 1.149 testes no total (573 em `:app`, 142 em `core:data`, 407 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,70% de linhas (3.874/3.965), 81,74% de branches (2.797/3.422), 96,23% de instruções (27.137/28.201)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -18,6 +18,7 @@
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
 - **Replanejamento (R-01/R-02/R-03):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; R-02 persiste o aceite de forma versionada e transacional em `weekly_plans` + `weekly_plan_revisions`. R-03 expõe `EvaluateReplan`/`ApplyReplan` no app, sugere por dia com aceitar/recusar/suprimir, reavalia se versão/hash mudarem, mostra selo de versão e diff “o que mudou” e mantém a prescrição de hoje e as sessões protegidas intactas. C3-01B acrescenta T4 `PROFILE_CHANGED`, fingerprint/checkpoint e compare-and-apply do perfil dentro da transação.
 - **Perfil e plano (C3-02):** salvar Perfil/onboarding ou Calibração avalia T4 e publica o resultado; o Perfil mostra sugestão com aceitar/recusar/suprimir, `NoChange` ou limite seguro. O resultado é consumido uma vez; o Hoje continua avaliando e exibindo a sugestão, e o reset limpa o resultado pendente.
+- **Briefing do dia (C3-03/04):** `SessionBriefingEngine` puro em `core:domain` deriva foco, alvo, rationale/confiança e orientação de “como correr”/“se estiver difícil” somente da `DailyPrescription` persistida. Nenhum número/alvo/segmento é recalculado ou inventado; sem calibração vale o RPE existente. `DONE`/`CLOSED` não geram briefing retrospectivo. O Hoje ganha o CTA “Como correr hoje” no card do treino (sessão não concluída) e um sheet acessível com as seções na ordem de leitura, sem `R-`/`EV-` na superfície comum.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -64,6 +65,42 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-03/04: briefing genérico e sheet no Hoje
+
+**Objetivo:** transformar a prescrição persistida em um briefing determinístico e legível no Hoje, sem criar uma segunda decisão nem recalcular números com o perfil atual.
+
+### Concluído
+
+- **Domínio:** `SessionBriefing` imutável e `SessionBriefingEngine` puro em `core:domain/briefing`. O contrato copia título, tipo, duração, alvos, rationale, confiança e IDs da `DailyPrescription`; `briefingEngineVersion` (`session-briefing-v1`) identifica o template.
+- **Fidelidade:** nenhum alvo é derivado no briefing; pace/FC/distância/zona/RPE são os persistidos. Sem calibração, o texto usa o RPE existente e não calcula pace/FC.
+- **Copy genérica:** “Como correr” descreve esforço fácil/forte e repete apenas os alvos existentes; “Se estiver difícil” reduz/interrompe, não propõe treino alternativo e cita `R-SAFE-01` no contrato de auditoria.
+- **Sem segmentos inventados:** a v1 não cria aquecimento, intervalos, séries, blocos ou alternativas; testes varrem a copy contra esses termos.
+- **Histórico protegido:** `DONE`/`CLOSED` retornam `null`; o card continua mostrando `SessionExecution`, atividade vinculada ou motivo de encerramento persistidos. O gate status-aware do C3-01A permanece no `GetTodayPrescription`.
+- **Hoje:** `TodayUiState` carrega `briefing` derivado da prescrição vigente em `todayState`. O card do treino ganha o CTA “Como correr hoje” apenas quando a sessão não está concluída; “Ver explicação” continua secundário.
+- **Sheet:** reutiliza `ModalBottomSheet` e componentes/tokens do `core:designsystem` com as seções Foco → Alvo → Por que hoje → Como correr → Se estiver difícil, cabeçalho de confiança e fechar. Sem `R-`/`EV-` na superfície; estados loading, vazio e erro cobertos.
+- **Acessibilidade:** headings semânticos, ordem de leitura verificada na árvore de semântica, alvos ≥ 48 dp, tema claro/escuro, tela estreita e fonte 200%.
+- **Notificação:** permanece abrindo o Hoje (`meucoach://today`); ao abrir, o fluxo do Hoje revalida a prescrição vigente via `GetTodayPrescription` antes de oferecer o briefing.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde; goldens do Hoje atualizados pelo novo CTA e novos goldens `today-briefing-dark/light`.
+- **1.149 testes**, 0 falhas e 0 `@Ignore` (573 `:app`, 142 `core:data`, 407 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,70% de linhas, 81,74% de branches, 96,23% de instruções; parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova ou dado real no diff.
+
+### Decisões e observações
+
+- **Briefing não decide:** é projeção read-only da prescrição; não lê perfil, clima ou carga e não pode produzir alvo diferente do persistido.
+- **`R-SAFE-01` no contrato:** a seção “Se estiver difícil” usa a copy conservadora já aprovada e mantém o ID apenas na auditoria, nunca no sheet comum.
+- **Sem persistência de texto:** como o PRD define, a versão do engine serve a determinismo/testes; não há reconstrução histórica.
+- **Escopo respeitado:** evento de prova/F2, F4, recuperação pós-prova, segmentos estruturados, LLM e áudio continuam fora.
+
+### Próximo passo
+
+1. Validar o sheet em aparelho real com TalkBack, fonte 200%, claro/escuro e tela estreita (checklist manual do PRD §11.4).
+2. Seguir para C3-G1/C3-05 somente após autorização e desenho técnico do evento de prova.
 
 ## Sessão 2026-11-10 — C3-02: avaliação ao salvar Perfil/Calibração
 

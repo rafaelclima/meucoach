@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.4 · **Data:** 06/11/2026 · Reconcilia contagens, goldens e ausência de instrumentados após C1-06.
+**Versão:** 1.5 · **Data:** 10/11/2026 · Reconcilia contagens e goldens após C3-03/04 (briefing no Hoje).
 
 ## 1. Princípios
 
@@ -91,10 +91,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (10/11/2026):
 
-- 1127 testes no repositório, 0 falhas e 0 `@Ignore` (27 em `core:model`, 396 em `core:domain`, 142 em `core:data`, 562 em `:app`).
+- 1149 testes no repositório, 0 falhas e 0 `@Ignore` (27 em `core:model`, 407 em `core:domain`, 142 em `core:data`, 573 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,77% de linhas, 81,82% de branches, 96,23% de instruções.
+- `core:domain`: 97,70% de linhas, 81,74% de branches, 96,23% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -158,10 +158,13 @@ Evidência atual (10/11/2026):
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
 - `TodayReplanTest`: selo de versão, botão explícito, diff “o que mudou” e aceitar/recusar/suprimir na tela Hoje.
+- `SessionBriefingEngineTest`: fidelidade de cada campo à prescrição, determinismo, RPE sem calibração, ausência de blocos/intervalos/alternativas, `DONE`/`CLOSED` sem briefing, downgrade `QUALITY → EASY` e IDs preservados.
+- `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.
 - `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.
 - `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale e ausência de semana.
 - `ReplanSuggestionStoreTest`: recusa por semana/versão/hash, supressão por dia, clear e reset.
-- `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino e plano (inclui o card do plano com versão).
+- `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino, CTA do briefing e plano (inclui o card do plano com versão).
+- `SessionBriefingScreenshotTest`: golden dark/light do conteúdo do briefing (foco, alvo, rationale, como correr e se estiver difícil).
 - `ReplanScreenshotTest`: golden dark/light do card de sugestão de replanejamento.
 - `TrainingPlanRepositoryTest`: round-trip da semana, substituição de sessões, status/motivo, exclusão e semana vazia.
 - `MeuCoachDatabaseMigrationTest`: 7→8 adiciona status da sessão sem perder o plano.
@@ -297,7 +300,7 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (50 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (52 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -309,7 +312,7 @@ Screenshots atuais (50 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 | Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-routine-dark` |
 | Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light` |
 | Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
-| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light` |
+| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light` |
 | Replanejamento | `replan-dark`, `replan-light` |
 | Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
 | Tutorial | `tutorial-dark`, `tutorial-light`, `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light` |

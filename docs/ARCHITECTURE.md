@@ -209,13 +209,18 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - **Evento de prova (ADR 0030):** direção aceita, ainda não implementada.
   `RaceEvent` será separado de `WorkoutType`/`PlannedSession`; `TodayDecision`
   discriminará treino e competição.
-- **Briefing:** derivado da `DailyPrescription` persistida; v1 não inventa segmentos,
-  intervalos ou alvos e não é reconstruído para sessões concluídas.
+- **Briefing (C3-03/04):** `SessionBriefingEngine` puro em `core:domain/briefing`
+  deriva o briefing só da `DailyPrescription` persistida. `SessionBriefing` copia
+  título, tipo, duração, alvos, rationale, confiança e IDs; não há cálculo de alvo,
+  blocos/intervalos, persistência de texto ou leitura do perfil atual. `DONE`/`CLOSED`
+  não recebem briefing retrospectivo. O Hoje expõe o CTA “Como correr hoje” e um sheet
+  com seções Foco → Alvo → Por que hoje → Como correr → Se estiver difícil, sem
+  `R-`/`EV-` na superfície comum.
 - **Nutrição (F4):** intenção de conteúdo geral aprovada, mas fontes/copy ainda
   precisam de revisão; nada é exibido antes do gate.
 
-> Evento de prova, briefing e F4 continuam sem alterar o comportamento atual até
-> seus gates de implementação.
+> Evento de prova e F4 continuam sem alterar o comportamento atual até seus gates de
+> implementação.
 
 ## 7. Persistência
 
