@@ -47,6 +47,111 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `beginner planned quality today is downgraded with the beginner guard`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val beginner = profile(experience = Experience.BEGINNER)
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = beginner,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.plannedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.plannedDurationMin).isEqualTo(quality.durationMin)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.prescribedDurationMin).isLessThanOrEqualTo(quality.durationMin!!)
+        assertThat(prescription.rationale).contains("iniciante")
+        assertThat(prescription.rationale).contains("Planejado:")
+        assertThat(prescription.ruleIds).contains("R-PRESC-04", "R-PRESC-02")
+        assertThat(prescription.evidenceIds).isNotEmpty
+        assertThat(prescription.confidence).isEqualTo(DataConfidence.MEDIUM)
+        assertThat(ExplanationCatalog.hasRule("R-PRESC-04")).isTrue()
+    }
+
+    @Test
+    fun `non beginner planned quality today keeps the strong session`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val intermediate = profile(experience = Experience.INTERMEDIATE)
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = intermediate,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.ruleIds).doesNotContain("R-PRESC-04")
+    }
+
+    @Test
+    fun `a done quality is not re-downgraded by the beginner guard`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val done = quality.copy(
+            status = SessionStatus.DONE,
+            completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = done.date,
+                planned = done,
+                plan = plan,
+                profile = profile(experience = Experience.BEGINNER),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.ruleIds).doesNotContain("R-PRESC-04")
+        assertThat(prescription.rationale).doesNotContain("iniciante")
+    }
+
+    @Test
+    fun `a closed quality is not re-downgraded by the beginner guard`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val closed = quality.copy(
+            status = SessionStatus.CLOSED,
+            closureReason = SessionClosureReason.ILLNESS_OR_INJURY,
+            closedAt = java.time.Instant.EPOCH,
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = closed.date,
+                planned = closed,
+                plan = plan,
+                profile = profile(experience = Experience.BEGINNER),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.ruleIds).doesNotContain("R-PRESC-04")
+        assertThat(prescription.rationale).doesNotContain("iniciante")
+    }
+
+    @Test
     fun `red readiness turns a planned quality into rest`() {
         val plan = planWithQuality()
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }

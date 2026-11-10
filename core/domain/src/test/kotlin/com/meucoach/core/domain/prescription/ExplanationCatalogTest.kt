@@ -26,6 +26,7 @@ class ExplanationCatalogTest {
             "R-PRESC-01",
             "R-PRESC-02",
             "R-PRESC-03",
+            "R-PRESC-04",
         )
 
         ids.forEach { id ->

@@ -35,6 +35,7 @@ class GetTodayPrescription @Inject constructor(private val repository: DailyPres
 
     suspend operator fun invoke(request: TodayPrescriptionRequest): DailyPrescription {
         val plan = request.plan
+        val todaySession = plan?.sessions?.firstOrNull { it.date == request.date }
         val planned = plan
             ?.sessions
             ?.firstOrNull { session ->
@@ -46,6 +47,12 @@ class GetTodayPrescription @Inject constructor(private val repository: DailyPres
                     SessionStatus.CLOSED -> session.closureReason?.isNonTrainable == true
                 }
             }
+        val latest = repository.getLatest(request.date)
+        // A finished day is history: the persisted prescription is authoritative
+        // and the day guard is never re-applied with a newer profile/readiness.
+        val finished = todaySession != null && todaySession.status != SessionStatus.PLANNED
+        if (finished && latest != null) return latest
+
         val input = DailyPrescriptionInput(
             date = request.date,
             profile = request.profile,
@@ -58,10 +65,12 @@ class GetTodayPrescription @Inject constructor(private val repository: DailyPres
             } else {
                 null
             },
+            sessionStatus = todaySession?.status,
             planConfidence = plan?.confidence,
         )
         val fresh = engine.prescribe(input)
-        val latest = repository.getLatest(request.date)
+        // Never write a retrospective decision for a day that already ended.
+        if (finished) return fresh
         if (latest != null &&
             latest.engineVersion == fresh.engineVersion &&
             latest.inputsHash == fresh.inputsHash

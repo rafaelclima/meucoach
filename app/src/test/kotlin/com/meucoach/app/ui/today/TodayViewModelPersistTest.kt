@@ -96,13 +96,17 @@ class TodayViewModelPersistTest {
 
     @Test
     fun `generates and persists the current week once`(): Unit = runBlocking {
-        val today = LocalDate.now()
+        val timeProvider = FakeTimeProvider(
+            instant = Instant.parse("2026-11-02T12:00:00Z"),
+            zone = ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
         profiles.saveProfile(profile(today))
         checkIns.save(
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
 
-        val viewModel = createViewModel()
+        val viewModel = createViewModel(timeProvider)
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }

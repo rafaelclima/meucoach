@@ -1,18 +1,18 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 08/11/2026 (R-01, R-02 e R-03 implementados; ADR 0028 aceito; sessão guiada pendente)
+**Atualizado:** 10/11/2026 (C3-01A: guarda diária de iniciante implementada; R-01, R-02 e R-03 mantidos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1091 testes no total (548 em `:app`, 137 em `core:data`, 379 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,79% de linhas (3.668/3.751), 81,91% de branches (2.690/3.284), 96,10% de instruções (25.941/26.995)
+- **Testes:** 1101 testes no total (554 em `:app`, 137 em `core:data`, 383 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,79% de linhas (3.680/3.763), 81,96% de branches (2.703/3.298), 96,11% de instruções (26.015/27.069)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
 - **Persistência:** Room 2.8.5, schema v13 (prescrição diária, execução/evidência de sessão, vínculo com atividade e revisões versionadas do plano), migrações 1→2 até 12→13 testadas.
-- **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador.
+- **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador. A guarda `R-PRESC-04` rebaixa `QUALITY → EASY` para perfil `BEGINNER` apenas na sessão de hoje `PLANNED`; `DONE`/`CLOSED` preservam prescrição, execução e histórico.
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
 - **Plano como intenção:** a semana gerada no meio da semana começa em hoje (N-02), a adesão ignora dias anteriores à criação e as sessões carregam zona/pace/FC/distância/RPE (N-01).
@@ -63,6 +63,43 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-01A: guarda diária de iniciante
+
+**Objetivo:** implementar o primeiro item do Ciclo 3 com testes primeiro: `QUALITY → EASY` quando o perfil vigente é `BEGINNER` e a sessão de hoje está `PLANNED`, citando `R-PRESC-04`, sem alterar o plano persistido, sem criar sessão, sem pedir aceite e sem reescrever `DONE`/`CLOSED`.
+
+### Concluído
+
+- **Domínio (`DailyPrescriptionEngine`):** `DailyPrescriptionInput` passou a carregar `sessionStatus` (default derivado da sessão planejada). A guarda `beginnerGuard` só ativa com `QUALITY` + `Experience.BEGINNER` + `SessionStatus.PLANNED`; o resultado usa o caminho `DOWNGRADE` já existente, com motivo “seu nível é iniciante e o treino forte fica para depois” no `rationale`, `R-PRESC-04` + `R-PRESC-02` nas regras e evidências do plano preservadas.
+- **Confiança preservada:** a guarda é política de produto e não reduz a confiança dos dados; a decisão mantém a confiança calculada por prontidão, plano, carga e calor.
+- **Versionamento:** `PrescriptionPolicy.ENGINE_VERSION` subiu para `daily-prescription-v2` e `sessionStatus` entrou no `inputsHash`, para a nova decisão não ser confundida com a versão anterior.
+- **Orquestração status-aware (`GetTodayPrescription`):** o caso de uso lê a sessão de hoje e passa o status ao domínio. Dia `DONE`/`CLOSED` com prescrição persistida devolve a versão persistida sem recalcular; sem versão persistida, a decisão é apenas exibida e não é gravada. O caminho `PLANNED` continua persistindo/versionando como antes.
+- **Catálogo:** `R-PRESC-04` entrou no `ExplanationCatalog` com título curto, sem jargão na superfície comum.
+- **Testes:** +4 no domínio (guarda com iniciante, não-iniciante mantém, `DONE` e `CLOSED` não recebem a guarda) e +6 em `:app` (guarda com plano persistido intacto, não-iniciante, `DONE` preservando a versão anterior, `CLOSED` por doença/lesão, `CLOSED` por pulo e dia concluído sem prescrição persistida não sendo gravado). O teste `TodayViewModelPersistTest` ficou determinístico com `FakeTimeProvider` na segunda-feira, corrigindo dependência da data real (terça sem disponibilidade).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate do parser FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde na repetição; nenhum golden foi alterado. `TrendsFullScreenshotTest.volumeDark` saiu com o gráfico Vico em branco uma vez sob carga, passou isolado e na suíte completa (mesma família de flakiness já registrada), sem reduzir assert.
+- **1.101 testes**, 0 falhas e 0 `@Ignore` (554 `:app`, 137 `core:data`, 383 `core:domain`, 27 `core:model`).
+- `core:domain`: 97,79% de linhas (3.680/3.763), 81,96% de branches (2.703/3.298), 96,11% de instruções (26.015/27.069).
+- Parser FIT: 93,01% de branches (572/615).
+- Nenhuma migração, dependência nova, schema alterado ou dado real no diff.
+
+### Decisões e observações
+
+- **Regra no domínio, status na orquestração:** a UI continua sem calcular treino; `GetTodayPrescription` escolhe o contexto e o `DailyPrescriptionEngine` aplica a guarda.
+- **Histórico não é recalculado:** `DONE`/`CLOSED` com prescrição persistida retornam exatamente a versão anterior; mesmo que o perfil mude depois, não nasce uma prescrição retroativa.
+- **Plano intacto:** a guarda só produz uma nova `DailyPrescription`; nenhum caminho escreve em `weekly_plans`/`planned_sessions`.
+- **Flakiness pré-existente:** em uma execução completa, `MetricsImportViewModelTest`, `TutorialSystemBackTest` e `TodayViewModelPersistTest` falharam por `Dispatchers.Main` concorrente/exceção não capturada antes do teste; todos passaram isolados e na reexecução dedicada de `:app:testDebugUnitTest`, e o `check` final ficou verde. Nenhum assert foi reduzido.
+- **`Spotless`:** a execução de `spotlessApply` também removeu espaços finais de `docs/AUDITORIA_TECNICA_PRD_CICLO_3.md`, arquivo não versionado que já existia e bloqueava o gate; nenhuma alteração de conteúdo.
+- **Escopo respeitado:** C3-01B (fingerprint/T4/migração), briefing, evento de prova/F2 e recuperação pós-prova não foram iniciados.
+
+### Próximo passo
+
+1. Autorizar C3-01B (fingerprint versionado, proveniência/checkpoint, T4, migração e compare-and-apply atômico).
+2. Validar em aparelho o card de hoje com perfil iniciante e uma qualidade planejada, incluindo o sheet “Por que este treino?”.
+3. Manter FR-207, FR-206 e F4 fora do escopo até os gates definidos no PRD v0.2.
 
 ## Sessão 2026-11-08 — ADR 0028 extraído e aceito
 

@@ -33,6 +33,7 @@ object ExplanationCatalog {
         "R-PRESC-01" to RuleExplanation("R-PRESC-01", "A prescrição do dia mantém o plano"),
         "R-PRESC-02" to RuleExplanation("R-PRESC-02", "Ajuste do dia reduz, nunca aumenta"),
         "R-PRESC-03" to RuleExplanation("R-PRESC-03", "Uma decisão por dia, a mesma em todas as telas"),
+        "R-PRESC-04" to RuleExplanation("R-PRESC-04", "Iniciante não recebe treino forte no dia"),
     )
 
     private val evidence = mapOf(

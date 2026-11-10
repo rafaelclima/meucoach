@@ -6,6 +6,7 @@ import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Experience
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.ReadinessLevel
 import java.security.MessageDigest
@@ -22,6 +23,11 @@ data class DailyPrescriptionInput(
     val plannedSession: PlannedSession? = null,
     val plannedSessionId: String? = null,
     val planConfidence: DataConfidence? = null,
+    /**
+     * Status of today's planned session. Day-level guards only apply to
+     * [SessionStatus.PLANNED]; a finished day is history and is never rewritten.
+     */
+    val sessionStatus: SessionStatus? = plannedSession?.status,
 )
 
 /**
@@ -59,9 +65,16 @@ class DailyPrescriptionEngine {
         val absenceOnly = ReadinessFlag.INSUFFICIENT_DATA in readiness.flags && readiness.components.isEmpty()
         val negativeReadiness = readiness.level != ReadinessLevel.GREEN && !absenceOnly
         val safetyReduce = negativeReadiness || shortSleep
-        val qualityBlocked = safetyReduce || absenceOnly || !loadTrusted || acwrBlocked || acwrHigh
+        // D-6 v0.1: a beginner never receives today's strong session, even when
+        // the saved plan has one. Finished days bypass the guard (history).
+        val beginnerGuard = planned.type == WorkoutType.QUALITY &&
+            input.profile.experience == Experience.BEGINNER &&
+            input.sessionStatus == SessionStatus.PLANNED
+        val qualityBlocked =
+            safetyReduce || absenceOnly || !loadTrusted || acwrBlocked || acwrHigh || beginnerGuard
         val safetyReasons = safetyReasons(input, shortSleep, negativeReadiness, absenceOnly)
         val qualityReasons = qualityReasons(loadState, acwrHigh, acwrBlocked)
+        val guardReasons = if (beginnerGuard) listOf(BEGINNER_REASON) else emptyList()
         val uncertainLoad = !loadTrusted || acwrBlocked || acwrHigh
 
         val baseConfidence = confidence(input, loadTrusted = loadTrusted)
@@ -76,7 +89,9 @@ class DailyPrescriptionEngine {
             WorkoutType.QUALITY -> {
                 if (qualityBlocked) {
                     val duration = reducedDuration(planned.durationMin, PrescriptionPolicy.DOWNGRADE_FACTOR)
-                    val reason = (safetyReasons + qualityReasons).distinct().joinToString("; ")
+                    val reason = (safetyReasons + qualityReasons + guardReasons)
+                        .distinct()
+                        .joinToString("; ")
                     return build(
                         input = input,
                         planned = planned,
@@ -93,7 +108,8 @@ class DailyPrescriptionEngine {
                         rationale = "Planejado: ${planned.title} (${planned.durationMin ?: "—"} min). " +
                             "Hoje: fácil, ${duration ?: "—"} min. Motivo: $reason. " +
                             "Treino forte não foi prescrito hoje.",
-                        rules = rules + "R-PRESC-02" + readinessRules(negativeReadiness, shortSleep) +
+                        rules = rules + "R-PRESC-02" + beginnerRules(beginnerGuard) +
+                            readinessRules(negativeReadiness, shortSleep) +
                             loadRules(uncertainLoad, acwrHigh),
                         evidence = evidence + readinessEvidence(shortSleep, negativeReadiness) +
                             loadEvidence(uncertainLoad, acwrHigh),
@@ -407,6 +423,8 @@ class DailyPrescriptionEngine {
         if (uncertain && !acwrHigh) add("EV-IMPELLIZZERI-2020")
     }
 
+    private fun beginnerRules(active: Boolean): List<String> = if (active) listOf("R-PRESC-04") else emptyList()
+
     private fun targetRules(targets: PrescriptionTargets): List<String> = buildList {
         if (targets.pace != null || targets.heartRate != null) add("R-ZONE-01")
         if (targets.pace == null && targets.heartRate == null && targets.rpe != null) add("R-CAL-02")
@@ -468,6 +486,7 @@ class DailyPrescriptionEngine {
             append(input.load?.coverage?.sourceFresh).append('|')
             append("heat=").append(input.heatLevel).append('|')
             append("planConfidence=").append(input.planConfidence).append('|')
+            append("status=").append(input.sessionStatus).append('|')
             if (planned != null) {
                 append("planned=").append(planned.date).append(',')
                 append(planned.type).append(',')
@@ -487,5 +506,6 @@ class DailyPrescriptionEngine {
         const val ACWR_MIN = 0.8
         const val ACWR_MAX = 1.3
         const val EASY_REDUCED_TITLE = "Fácil, sem pressa"
+        const val BEGINNER_REASON = "seu nível é iniciante e o treino forte fica para depois"
     }
 }

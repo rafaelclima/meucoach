@@ -365,9 +365,17 @@ prescrição parte da sessão planejada e só pode manter ou reduzir:
 
 Nenhuma decisão aumenta tipo, duração ou intensidade. Sem calibração, pace/FC ficam
 `null` e o alvo é RPE. Calor desacelera o pace ou sobe o RPE, sem alongar a sessão.
-As regras são `R-PRESC-01` (mantém o plano), `R-PRESC-02` (reduz, nunca aumenta) e
-`R-PRESC-03` (uma decisão por dia, a mesma em todas as telas); a decisão é
-persistida e versionada (`ADR 0023`).
+As regras são `R-PRESC-01` (mantém o plano), `R-PRESC-02` (reduz, nunca aumenta),
+`R-PRESC-03` (uma decisão por dia, a mesma em todas as telas) e `R-PRESC-04`
+(iniciante não recebe qualidade no dia); a decisão é persistida e versionada
+(`ADR 0023`).
+
+`R-PRESC-04` é uma política conservadora de produto (D-6 v0.1), não uma alegação
+fisiológica específica: quando o perfil vigente é `BEGINNER` e a sessão de hoje está
+`PLANNED` com `QUALITY`, a prescrição faz `DOWNGRADE` para `EASY`. A guarda não cria
+sessão, não altera o plano semanal persistido e não pede aceite. Ela não se aplica a
+`DONE`/`CLOSED`: esses dias preservam a prescrição, a execução e o histórico já
+persistidos, sem recálculo retrospectivo.
 
 Conclusão não é clique (`ADR 0024`):
 
@@ -528,6 +536,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PRESC-01` | A prescrição do dia parte da sessão planejada e a mantém quando os guardrails permitem | ADR 0023; R-PLAN/R-READY | MODERATE |
 | `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade); nunca aumenta | ADR 0023; R-READY/R-DATA | STRONG |
 | `R-PRESC-03` | Uma decisão por dia, versionada e a mesma em todas as telas | ADR 0023; Produto | STRONG |
+| `R-PRESC-04` | Iniciante com sessão de hoje `PLANNED` em `QUALITY` recebe `DOWNGRADE` para `EASY`; `DONE`/`CLOSED` preservam prescrição e histórico | D-6 v0.1; ADR 0023 | LIMITED — política conservadora de produto, sem alegação fisiológica específica |
 
 ## 15. Limitações conhecidas
 

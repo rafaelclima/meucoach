@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.8 · **Data:** 08/11/2026 · **Mudança:** R-01, R-02 e R-03 do ciclo 2 implementados; ADR 0028 extraído e aceito; sessão guiada permanece pendente.
+**Versão:** 1.10 · **Data:** 10/11/2026 · **Mudança:** C3-01A implementado; PRD v0.2 do Ciclo 3 aprovado; ADRs 0030/0031 aceitos em princípios.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -386,6 +386,27 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 - Sem refatoração abrangente, sem novos módulos e sem mudança de stack.
 - Toda regra nova cita `ruleId`, `evidenceId` e confiança.
 - Dados reais nunca entram no diff.
+
+### Ciclo 3 — C3-01A implementado; demais gates pendentes (10/11/2026)
+
+**Documentos:** [`docs/PRD_ADAPTACAO_E_BRIEFING_v0.2.md`](PRD_ADAPTACAO_E_BRIEFING_v0.2.md),
+[`docs/RELATORIO_ALTERACOES_PRD_CICLO_3_v0.2.md`](RELATORIO_ALTERACOES_PRD_CICLO_3_v0.2.md),
+[ADR 0030](adr/0030-race-event-and-weekly-taper.md) e
+[ADR 0031](adr/0031-profile-planning-fingerprint.md).
+
+| Gate | Escopo | Estado |
+|---|---|---|
+| **C3-G0** | Fingerprint/proveniência, contexto temporal, compare-and-apply e projeção canônica de objetivo; proposta de evento | **Decisões aprovadas**; detalhes técnicos/migração pendentes |
+| **C3-01A** | `QUALITY → EASY` para iniciante, status-aware e sem reescrever histórico | **Implementado em 10/11/2026**; testes de domínio/app verdes |
+| **C3-01B** | Fingerprint/T4, migração e aceite atômico | Não iniciado |
+| **C3-02** | Avaliação ao salvar Perfil/Calibração e UI da sugestão | Não iniciado |
+| **C3-03/04** | Briefing genérico e sheet acessível | Não iniciado |
+| **C3-G1/C3-05** | Detalhamento e implementação do evento de prova/taper 2A | Não iniciado |
+| **C3-G2** | Revisão de fontes/copy de F4 | Não iniciado; nenhuma dica exibida |
+
+Fora do escopo implementável: recuperação pós-prova (FR-207), pace/faixa de prova e
+limite de longão por fração da distância (FR-206). N-03 continua sem entrega; o PRD
+v0.2 apenas definiu a direção de evento/taper que a futura implementação deverá seguir.
 
 ### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
 
