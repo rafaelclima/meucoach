@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-03/04: briefing genérico e sheet no Hoje; C3-02/C3-01A/B incluídos)
+**Atualizado:** 10/11/2026 (C3-G1: desenho técnico do evento de prova; C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -19,6 +19,7 @@
 - **Replanejamento (R-01/R-02/R-03):** `PlanReplanner` puro no `core:domain` regenera somente o futuro da semana, preserva hoje/passado e sessões `DONE`/`CLOSED`, valida a semana mesclada (2 qualidades, um longão, espaçamento e disponibilidade) e não repõe carga perdida. A revisão é sugestão (`Suggest`) ou `NoChange`; R-02 persiste o aceite de forma versionada e transacional em `weekly_plans` + `weekly_plan_revisions`. R-03 expõe `EvaluateReplan`/`ApplyReplan` no app, sugere por dia com aceitar/recusar/suprimir, reavalia se versão/hash mudarem, mostra selo de versão e diff “o que mudou” e mantém a prescrição de hoje e as sessões protegidas intactas. C3-01B acrescenta T4 `PROFILE_CHANGED`, fingerprint/checkpoint e compare-and-apply do perfil dentro da transação.
 - **Perfil e plano (C3-02):** salvar Perfil/onboarding ou Calibração avalia T4 e publica o resultado; o Perfil mostra sugestão com aceitar/recusar/suprimir, `NoChange` ou limite seguro. O resultado é consumido uma vez; o Hoje continua avaliando e exibindo a sugestão, e o reset limpa o resultado pendente.
 - **Briefing do dia (C3-03/04):** `SessionBriefingEngine` puro em `core:domain` deriva foco, alvo, rationale/confiança e orientação de “como correr”/“se estiver difícil” somente da `DailyPrescription` persistida. Nenhum número/alvo/segmento é recalculado ou inventado; sem calibração vale o RPE existente. `DONE`/`CLOSED` não geram briefing retrospectivo. O Hoje ganha o CTA “Como correr hoje” no card do treino (sessão não concluída) e um sheet acessível com as seções na ordem de leitura, sem `R-`/`EV-` na superfície comum.
+- **Evento de prova (C3-G1):** desenho técnico fechado em `docs/PLANO_TECNICO_CICLO_3_EVENTO.md`, sem código/migração. Define `RaceEvent`/`RaceDistance`/`RaceStatus` em `core:model`, `TodayDecision` discriminada, Room 15 (`race_events` vazia, `activeKey` único, FK `SET NULL`), projeção `PlanningGoal` sem backfill, taper/cutoff por data com `R-PLAN-10` LIMITED, exclusão de datas de evento da adesão e ordem C3-05.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -65,6 +66,36 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-G1: desenho técnico do evento de prova
+
+**Objetivo:** fechar os detalhes técnicos pendentes do ADR 0030 antes de qualquer código, sem implementar `RaceEvent`/migração ou alterar o comportamento atual.
+
+### Concluído
+
+- **Plano técnico:** criado `docs/PLANO_TECNICO_CICLO_3_EVENTO.md` com contrato de domínio, `TodayDecision`, schema Room 15, migração, vínculo com atividade, taper/cutoff, adesão, notificação, export/reset, matriz de testes e ordem do C3-05.
+- **Decisões fechadas:** `RaceEvent` em `core:model`; `TodayDecision` em `core:domain`; nenhum backfill de `TrainingGoal`; `race_events` com `activeKey` único e `activityId` único/FK `SET NULL`; lixeira suspende e restaurar devolve o vínculo; adesão exclui datas de evento; taper por `targetDate - session.date`; cutoff 10/14 como `R-PLAN-10` LIMITED.
+- **Transição de fonte:** evento `PLANNED` tem precedência sobre a meta legada; depois do primeiro evento, `TrainingGoal` não volta a planejar. `targetTimeSec` fica fora do fingerprint.
+- **ADR 0030:** status atualizado para “desenho técnico C3-G1 concluído; implementação pendente” e §6 reconciliada com o plano.
+- **Roadmap/arquitetura:** C3-G1 marcado como concluído (documentação) e C3-05 como próximo, aguardando execução.
+
+### Evidências
+
+- Nenhum arquivo de código, schema, migração, dependência ou golden foi alterado nesta sessão.
+- Nenhum dado real no diff; working tree apenas documental.
+- `./gradlew check :app:assembleDebug` permanece verde do commit anterior (`df4cdb6`).
+
+### Decisões e observações
+
+- **Sem backfill é a decisão conservadora:** `TrainingGoal` é objetivo declarado, não prova; materializar evento na migração poderia criar histórico e T4 falsos. O fallback legado cobre quem ainda não criou evento.
+- **Evento no dia sempre vence:** inclusive `CANCELLED`/`NO_SHOW`; nenhum deles inicia recuperação ou libera treino automático, preservando a autoridade única.
+- **Cutoff não é consenso:** `R-PLAN-10` será LIMITED e a copy não pode apresentar 10/14 como resultado direto de Bosquet/Mujika.
+- **Escopo respeitado:** nenhuma linha de C3-05, F4 ou recuperação pós-prova foi implementada.
+
+### Próximo passo
+
+1. Executar C3-05 na ordem do plano técnico: model/domínio → Room 15 → casos de uso → gerador/replanejamento/notificação → UI/goldens.
+2. Manter F4 (C3-G2) bloqueado até revisão de fontes/copy.
 
 ## Sessão 2026-11-10 — C3-03/04: briefing genérico e sheet no Hoje
 

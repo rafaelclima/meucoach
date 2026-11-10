@@ -206,9 +206,13 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   `EvaluateReplan`; o resultado é transportado por `ProfilePlanEvaluationStore` e
   exibido no Perfil (sugestão com ações, `NoChange` ou limite). O Hoje continua
   avaliando e mostrando a sugestão.
-- **Evento de prova (ADR 0030):** direção aceita, ainda não implementada.
-  `RaceEvent` será separado de `WorkoutType`/`PlannedSession`; `TodayDecision`
-  discriminará treino e competição.
+- **Evento de prova (ADR 0030, C3-G1):** desenho técnico concluído em
+  [`PLANO_TECNICO_CICLO_3_EVENTO.md`](PLANO_TECNICO_CICLO_3_EVENTO.md); ainda não
+  implementado. `RaceEvent` será separado de `WorkoutType`/`PlannedSession`;
+  `TodayDecision` discriminará `Training(DailyPrescription)` e
+  `Competition(RaceEvent)`; Room 15 terá `race_events` com `activeKey` único,
+  `activityId` único/FK `SET NULL` e migração sem backfill. Taper/cutoff serão
+  calculados por data da sessão; a adesão exclui datas de evento.
 - **Briefing (C3-03/04):** `SessionBriefingEngine` puro em `core:domain/briefing`
   deriva o briefing só da `DailyPrescription` persistida. `SessionBriefing` copia
   título, tipo, duração, alvos, rationale, confiança e IDs; não há cálculo de alvo,

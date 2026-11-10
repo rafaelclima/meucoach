@@ -1,9 +1,10 @@
 # ADR 0030 — Evento de prova e taper semanal
 
-**Status:** Aceito em princípios de produto/autoridade diária em 2026-11-10; migração e implementação pendentes
+**Status:** Aceito em princípios de produto/autoridade diária em 2026-11-10; desenho técnico C3-G1 concluído em 2026-11-10; migração e implementação pendentes
 **Data:** 2026-11-10
 **Escopo:** C3-G1/F2 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md`
-**Relacionados:** ADR 0022 (tempo/fuso), ADR 0023 (plano × prescrição), ADR 0024 (conclusão/evidência), ADR 0028 (replanejamento), proposta ADR 0031 (fingerprint)
+**Relacionados:** ADR 0022 (tempo/fuso), ADR 0023 (plano × prescrição), ADR 0024 (conclusão/evidência), ADR 0028 (replanejamento), ADR 0031 (fingerprint)
+**Desenho técnico:** [PLANO_TECNICO_CICLO_3_EVENTO.md](PLANO_TECNICO_CICLO_3_EVENTO.md)
 
 ---
 
@@ -208,10 +209,21 @@ Em 2026-11-10, o usuário aprovou: `TodayDecision` discriminada (opção A),
 `COMPLETED` por confirmação explícita com vínculo opcional, uma prova planejada ativa
 com histórico preservado e cutoff de 10/14 dias como política `LIMITED`.
 
-Continuam pendentes de detalhamento técnico antes do código: backfill/migração do
-`TrainingGoal`, unicidade/FK do vínculo com atividade, limpeza do vínculo após
-exclusão, e sequência de migrações Room. A equipe não deve alterar as decisões de
-produto acima enquanto resolve esses detalhes.
+O desenho técnico do C3-G1 foi concluído em 2026-11-10 e resolve os detalhes que
+estavam em aberto, sem implementar código:
 
-**Status atual:** princípios de produto/autoridade diária aceitos; **nenhum código ou
-migração foi implementado**.
+- **Backfill:** a migração `14→15` cria `race_events` vazia; nenhum evento é inferido
+  de `TrainingGoal`. A projeção de planejamento usa evento `PLANNED` quando existir,
+  senão a meta legada; depois do primeiro evento, a meta não volta a planejar.
+- **Room:** `race_events` com `activeKey` único (`"ACTIVE"` só em `PLANNED`),
+  `activityId` único com FK `ON DELETE SET NULL`, índices por data e estado.
+- **Vínculo:** atividade na lixeira suspende a exibição e restaurar devolve; expurgo
+  zera o vínculo. Unicidade cruzada com `session_executions` é transacional.
+- **Adesão:** sessões em datas de evento (qualquer estado) saem do denominador.
+- **Taper:** por `targetDate - session.date`, sem `QUALITY` na semana da prova,
+  cutoff inclusivo 10/14 e nova regra `R-PLAN-10` classificada `LIMITED`.
+- **Sequência:** model/domínio → Room 15 → casos de uso → gerador/replanejamento/
+  notificação → UI/goldens → documentação.
+
+Nenhum código, entidade ou migração foi implementado neste gate. A implementação
+segue em C3-05, conforme a ordem do plano técnico.
