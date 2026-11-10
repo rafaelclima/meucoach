@@ -17,6 +17,7 @@ import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
 import com.meucoach.core.model.WeeklyAvailability
@@ -48,6 +49,7 @@ class UserDataRepositoryTest {
     private lateinit var metrics: DailyMetricsRepository
     private lateinit var plans: TrainingPlanRepository
     private lateinit var prescriptions: DailyPrescriptionRepository
+    private lateinit var events: RaceEventRepository
     private val clock = Clock.fixed(Instant.parse("2026-11-02T13:00:00Z"), ZoneOffset.UTC)
     private val monday = LocalDate.of(2026, 11, 2)
 
@@ -72,6 +74,7 @@ class UserDataRepositoryTest {
         metrics = DailyMetricsRepository(database, clock)
         plans = TrainingPlanRepository(database, clock)
         prescriptions = DailyPrescriptionRepository(database, clock)
+        events = RaceEventRepository(database, clock)
     }
 
     @After
@@ -129,6 +132,12 @@ class UserDataRepositoryTest {
         val doneSession = plan.getJSONArray("sessions").getJSONObject(0)
         assertThat(doneSession.getString("status")).isEqualTo("DONE")
         assertThat(doneSession.getString("completionEvidence")).isEqualTo("ACTIVITY")
+        val race = export.getJSONArray("raceEvents").getJSONObject(0)
+        assertThat(race.getString("distance")).isEqualTo("TEN_K")
+        assertThat(race.getString("targetDate")).isEqualTo(monday.plusDays(20).toString())
+        assertThat(race.getString("status")).isEqualTo("CANCELLED")
+        assertThat(race.isNull("activityId")).isTrue()
+        assertThat(race.getString("resolvedAt")).isEqualTo(clock.instant().toString())
     }
 
     @Test
@@ -159,6 +168,7 @@ class UserDataRepositoryTest {
         assertThat(deletion.prescriptions).isEqualTo(1)
         assertThat(deletion.executions).isEqualTo(1)
         assertThat(deletion.planRevisions).isEqualTo(1)
+        assertThat(deletion.raceEvents).isEqualTo(1)
         assertThat(deletion.profileDeleted).isTrue()
         assertThat(deletion.removedAnything).isTrue()
         assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
@@ -171,6 +181,7 @@ class UserDataRepositoryTest {
         assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
         assertThat(database.sessionExecutionDao().getAll()).isEmpty()
         assertThat(database.dailyPrescriptionDao().getAll()).isEmpty()
+        assertThat(database.raceEventDao().getAll()).isEmpty()
     }
 
     @Test
@@ -226,6 +237,14 @@ class UserDataRepositoryTest {
             durationSec = 1_800,
             distanceM = 5_000.0,
         )
+        val race = events.create(
+            NewRaceEvent(
+                distance = RaceDistance.TEN_K,
+                targetDate = monday.plusDays(20),
+                targetTimeSec = 3_600,
+            ),
+        ) as RaceEventOutcome.Saved
+        events.cancel(race.event.id)
     }
 
     private fun planRevision() = com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity(

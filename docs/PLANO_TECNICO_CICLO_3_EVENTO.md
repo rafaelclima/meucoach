@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_3_EVENTO.md — Evento de prova, TodayDecision e migração
 
 **Versão:** 1.0 · **Data:** 10/11/2026
-**Status:** C3-G1 concluído (desenho técnico); nenhum código, entidade ou migração foi implementado.
+**Status:** C3-G1 concluído (desenho técnico). C3-05 iniciado em 10/11/2026: `RaceEvent`, `TodayDecision`, `PlanningGoalResolver`, Room 15, repositório e export/reset implementados; taper/adesião/UI/notificação pendentes.
 **Escopo:** F2/C3-G1 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md`: contrato de `RaceEvent`, `TodayDecision`,
 schema Room, vínculo com atividade, taper por data, adesão, notificação, export/reset e testes.
 **Referências:** ADR 0030 (decisão de produto), ADR 0022 (tempo), ADR 0023 (plano × prescrição),

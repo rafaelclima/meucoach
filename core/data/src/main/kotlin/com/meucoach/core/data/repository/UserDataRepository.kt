@@ -10,6 +10,7 @@ import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
+import com.meucoach.core.data.db.entity.RaceEventEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.db.entity.SessionExecutionEntity
 import com.meucoach.core.data.health.HealthSyncStore
@@ -29,10 +30,11 @@ data class UserDataDeletion(
     val prescriptions: Int = 0,
     val executions: Int = 0,
     val planRevisions: Int = 0,
+    val raceEvents: Int = 0,
 ) {
     val removedAnything: Boolean
         get() = activities > 0 || checkIns > 0 || metrics > 0 || plans > 0 ||
-            prescriptions > 0 || executions > 0 || planRevisions > 0 || profileDeleted
+            prescriptions > 0 || executions > 0 || planRevisions > 0 || raceEvents > 0 || profileDeleted
 }
 
 /**
@@ -59,6 +61,7 @@ class UserDataRepository(
                 .put("weeklyPlanRevisions", exportPlanRevisions())
                 .put("dailyPrescriptions", exportPrescriptions())
                 .put("sessionExecutions", exportExecutions(trashedIds))
+                .put("raceEvents", exportRaceEvents())
                 .put("activities", exportActivities(includeTrash))
                 .put(
                     "importJobs",
@@ -73,6 +76,8 @@ class UserDataRepository(
 
     suspend fun deleteAllData(): UserDataDeletion {
         val deletion = database.withTransaction {
+            // Race events reference activities; delete the link owners first.
+            val raceEvents = database.raceEventDao().deleteAll()
             val activities = database.activityDao().deleteAll()
             database.importJobDao().deleteAll()
             val checkIns = database.dailyCheckInDao().deleteAll()
@@ -93,6 +98,7 @@ class UserDataRepository(
                 prescriptions = prescriptions,
                 executions = executions,
                 planRevisions = planRevisions,
+                raceEvents = raceEvents,
             )
         }
         // A fresh profile must read the full initial Health Connect window again.
@@ -146,12 +152,29 @@ class UserDataRepository(
         .getAll()
         .filterNot { it.activityId in excludedActivityIds }
         .toJsonArray { it.toJson() }
+
+    private suspend fun exportRaceEvents(): JSONArray = database
+        .raceEventDao()
+        .getAll()
+        .toJsonArray { it.toJson() }
 }
 
 private inline fun <T> List<T>.toJsonArray(crossinline toJson: (T) -> JSONObject): JSONArray {
     val array = JSONArray()
     forEach { array.put(toJson(it)) }
     return array
+}
+
+private fun RaceEventEntity.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    put("distance", distance)
+    put("targetDate", targetDate)
+    putNullable("targetTimeSec", targetTimeSec)
+    put("status", status)
+    putNullable("activityId", activityId)
+    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
+    put("updatedAt", Instant.ofEpochMilli(updatedAt).toString())
+    put("resolvedAt", resolvedAt?.let { Instant.ofEpochMilli(it).toString() } ?: JSONObject.NULL)
 }
 
 private fun AthleteProfileEntity.toJson(): JSONObject = JSONObject().apply {

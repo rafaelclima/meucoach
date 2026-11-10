@@ -14,6 +14,7 @@ import com.meucoach.core.data.db.dao.DailyMetricsDao
 import com.meucoach.core.data.db.dao.DailyPrescriptionDao
 import com.meucoach.core.data.db.dao.ImportJobDao
 import com.meucoach.core.data.db.dao.LapDao
+import com.meucoach.core.data.db.dao.RaceEventDao
 import com.meucoach.core.data.db.dao.SampleBlobDao
 import com.meucoach.core.data.db.dao.SessionExecutionDao
 import com.meucoach.core.data.db.dao.TrainingPlanDao
@@ -27,6 +28,7 @@ import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
 import com.meucoach.core.data.db.entity.ImportJobEntity
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
+import com.meucoach.core.data.db.entity.RaceEventEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.db.entity.SessionExecutionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
@@ -47,6 +49,7 @@ import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
         DailyPrescriptionEntity::class,
         SessionExecutionEntity::class,
         WeeklyPlanRevisionEntity::class,
+        RaceEventEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -76,8 +79,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun weeklyPlanRevisionDao(): WeeklyPlanRevisionDao
 
+    abstract fun raceEventDao(): RaceEventDao
+
     companion object {
-        const val VERSION = 14
+        const val VERSION = 15
         const val NAME = "meucoach.db"
 
         /**
@@ -467,6 +472,50 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 15 adds race events (ADR 0030 / C3-G1).
+         *
+         * The table starts empty: `TrainingGoal` is a declared objective, not a
+         * performed race, so the migration never infers an event or a completion.
+         * `activeKey` enforces at most one PLANNED event and `activityId` is
+         * cleared by the foreign key when an activity is permanently deleted.
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `race_events` (
+                        `id` TEXT NOT NULL,
+                        `distance` TEXT NOT NULL,
+                        `targetDate` TEXT NOT NULL,
+                        `targetTimeSec` INTEGER,
+                        `status` TEXT NOT NULL,
+                        `activityId` TEXT,
+                        `activeKey` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        `resolvedAt` INTEGER,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`activityId`) REFERENCES `activities`(`id`)
+                            ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_race_events_targetDate` " +
+                        "ON `race_events` (`targetDate`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_race_events_activityId` " +
+                        "ON `race_events` (`activityId`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_race_events_activeKey` " +
+                        "ON `race_events` (`activeKey`)",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -483,6 +532,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_11_12,
                 MIGRATION_12_13,
                 MIGRATION_13_14,
+                MIGRATION_14_15,
             )
             .build()
     }

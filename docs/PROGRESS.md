@@ -1,17 +1,17 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-G1: desenho técnico do evento de prova; C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 10/11/2026 (C3-05 em andamento: modelo, TodayDecision e Room 15; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.149 testes no total (573 em `:app`, 142 em `core:data`, 407 em `core:domain`, 27 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,70% de linhas (3.874/3.965), 81,74% de branches (2.797/3.422), 96,23% de instruções (27.137/28.201)
+- **Testes:** 1.181 testes no total (573 em `:app`, 152 em `core:data`, 420 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,69% de linhas (3.894/3.986), 81,80% de branches (2.814/3.440), 96,24% de instruções (27.255/28.321)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v14 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano e fingerprint/checkpoint de planejamento), migrações 1→2 até 13→14 testadas.
+- **Persistência:** Room 2.8.5, schema v15 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano, fingerprint/checkpoint de planejamento e evento de prova), migrações 1→2 até 14→15 testadas.
 - **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador. A guarda `R-PRESC-04` rebaixa `QUALITY → EASY` para perfil `BEGINNER` apenas na sessão de hoje `PLANNED`; `DONE`/`CLOSED` preservam prescrição, execução e histórico.
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
@@ -20,6 +20,7 @@
 - **Perfil e plano (C3-02):** salvar Perfil/onboarding ou Calibração avalia T4 e publica o resultado; o Perfil mostra sugestão com aceitar/recusar/suprimir, `NoChange` ou limite seguro. O resultado é consumido uma vez; o Hoje continua avaliando e exibindo a sugestão, e o reset limpa o resultado pendente.
 - **Briefing do dia (C3-03/04):** `SessionBriefingEngine` puro em `core:domain` deriva foco, alvo, rationale/confiança e orientação de “como correr”/“se estiver difícil” somente da `DailyPrescription` persistida. Nenhum número/alvo/segmento é recalculado ou inventado; sem calibração vale o RPE existente. `DONE`/`CLOSED` não geram briefing retrospectivo. O Hoje ganha o CTA “Como correr hoje” no card do treino (sessão não concluída) e um sheet acessível com as seções na ordem de leitura, sem `R-`/`EV-` na superfície comum.
 - **Evento de prova (C3-G1):** desenho técnico fechado em `docs/PLANO_TECNICO_CICLO_3_EVENTO.md`, sem código/migração. Define `RaceEvent`/`RaceDistance`/`RaceStatus` em `core:model`, `TodayDecision` discriminada, Room 15 (`race_events` vazia, `activeKey` único, FK `SET NULL`), projeção `PlanningGoal` sem backfill, taper/cutoff por data com `R-PLAN-10` LIMITED, exclusão de datas de evento da adesão e ordem C3-05.
+- **Evento de prova — C3-05 (em andamento):** `RaceEvent`, `TodayDecision` e `PlanningGoalResolver` puros implementados; Room 15 com `race_events`, DAO, `RaceEventRepository`, export/reset e migração sem backfill. Ainda pendentes: taper/cutoff no gerador e replanejador, guarda de troca/conclusão, adesão por datas de evento, casos de uso/UI/notificação do app.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -66,6 +67,39 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-05 (parte 1): modelo, TodayDecision e Room 15
+
+**Objetivo:** iniciar a implementação do evento de prova pelo núcleo puro e pela persistência, mantendo o comportamento atual das telas inalterado.
+
+### Concluído
+
+- **`core:model`:** `RaceDistance` (4 distâncias), `RaceStatus` e `RaceEvent` com invariantes de estado, `resolvedAt`, vínculo e meta declarada. `PLANNED` continua válido no passado.
+- **`core:domain`:** `TodayDecision.Training`/`Competition` e `TodayDecisionResolver` (evento vence, `CANCELLED`/`NO_SHOW` não iniciam recuperação, data divergente é rejeitada); `PlanningGoalResolver` com evento `PLANNED` tendo precedência, sem backfill e com projeção equivalente à meta legada.
+- **Room 15:** entidade `RaceEventEntity`, DAO e `RaceEventRepository` com criação/edição/conclusão/cancelamento/não comparecimento, um único `PLANNED` via `activeKey`, vínculo único com atividade, bloqueio cruzado com `session_executions` e lote por data.
+- **Migração `14→15`:** cria `race_events` vazia, índices e FK `SET NULL`; planos, sessões, revisões, prescrições, execuções e atividades permanecem intactos. Nenhum evento é inferido de `TrainingGoal`.
+- **Export/reset:** `raceEvents` sai no JSON e entra em `UserDataDeletion`; reset remove eventos antes das atividades.
+- **Testes:** +9 em `core:model`, +13 em `core:domain` e +10 em `core:data` (migração, repositório, lixeira/expurgo e export/reset).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- **1.181 testes**, 0 falhas e 0 `@Ignore` (573 `:app`, 152 `core:data`, 420 `core:domain`, 36 `core:model`).
+- `core:domain`: 97,69% de linhas, 81,80% de branches, 96,24% de instruções; parser FIT 93,01% de branches.
+- Schema `15.json` exportado; migração `14→15` validada com atividade legada preservada e `race_events` vazia.
+- Nenhuma dependência nova e nenhum dado real no diff.
+
+### Decisões e observações
+
+- **Sem backfill:** a migração não materializa evento a partir da meta; o fallback legado continua até o usuário criar a primeira prova.
+- **Persistência antes da UI:** a tabela/repositório entram primeiro para que C3-05 possa evoluir gerador, adesão e telas sem uma segunda migração.
+- **Telas inalteradas:** `TodayDecision`/`RaceEvent` ainda não são consumidos pelo Hoje; nenhum golden mudou.
+- **Escopo respeitado:** taper/cutoff, replanejamento, regra de adesão, notificação e UI de prova permanecem pendentes.
+
+### Próximo passo
+
+1. Aplicar taper/cutoff por data e exclusão de eventos em gerador/replanejador/adesão/swapper.
+2. Depois, casos de uso, notificação e UI de Perfil/Hoje/Plano com goldens.
 
 ## Sessão 2026-11-10 — C3-G1: desenho técnico do evento de prova
 
