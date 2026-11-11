@@ -117,6 +117,48 @@ class TodayBriefingTest {
     }
 
     @Test
+    fun `hydration and nutrition sections show the approved copy without numbers`() {
+        val state = todayState(
+            checkIn = checkIn(),
+            profile = profile(),
+            plan = plan(status = SessionStatus.PLANNED),
+            today = today,
+        )
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(onDemoAction = {}, state = state)
+            }
+        }
+
+        compose.onNodeWithTag("today-list").performScrollToNode(hasText("Como correr hoje"))
+        compose.onNodeWithTag("today-briefing-cta").performClick()
+
+        compose.onNodeWithTag("briefing-hydration").assertExists()
+        compose.onNodeWithTag("briefing-nutrition").assertExists()
+
+        val tree = compose.onNodeWithTag("briefing-content").printToString()
+        val hard = tree.indexOf("briefing-if-hard")
+        val hydration = tree.indexOf("briefing-hydration")
+        val nutrition = tree.indexOf("briefing-nutrition")
+        val close = tree.indexOf("briefing-close")
+        assertThat(hard).isGreaterThanOrEqualTo(0)
+        assertThat(hard).isLessThan(hydration)
+        assertThat(hydration).isLessThan(nutrition)
+        assertThat(nutrition).isLessThan(close)
+
+        compose.onNodeWithText("Comece o treino já hidratado. Nos minutos antes, beba água com calma.")
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithTag("briefing-hydration-note")
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText(BriefingFuelContent.NUTRITION_REFERRAL)
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `a done session has no briefing and keeps the persisted execution`() {
         val execution = TodayExecutionUi(
             duration = "45 min",
@@ -284,6 +326,7 @@ class TodayBriefingTest {
 
         compose.onNodeWithTag("briefing-how").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("briefing-if-hard").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("briefing-nutrition").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("briefing-close").performScrollTo().assertIsDisplayed()
     }
 

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.18 · **Data:** 10/11/2026 · **Mudança:** C3-G2 concluído (ADR 0029 aceito; copy educativa de hidratação aprovada); C3-05 e demais gates mantidos.
+**Versão:** 1.19 · **Data:** 10/11/2026 · **Mudança:** F4 implementado na UI (seções de hidratação/alimentação no briefing, conforme ADR 0029); C3-G2 fechado.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -404,7 +404,7 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 | **C3-03/04** | Briefing genérico a partir da prescrição e sheet acessível no Hoje | **Implementado em 10/11/2026**; fidelidade, determinismo, RPE sem calibração, downgrade, `DONE`/`CLOSED` sem briefing, goldens e estados de UI testados |
 | **C3-G1** | Contrato Room/migração, `TodayDecision`, vínculo com atividade, taper por data, adesão e testes do evento | **Desenho técnico concluído em 10/11/2026** em [`PLANO_TECNICO_CICLO_3_EVENTO.md`](PLANO_TECNICO_CICLO_3_EVENTO.md); nenhum código/migração implementado |
 | **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Concluído em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, taper/cutoff, adesão, troca, `GetTodayDecision`, notificação e UI de Perfil/Hoje/Plano com goldens |
-| **C3-G2** | Revisão de fontes/copy de F4 | **Concluído em 10/11/2026:** ADR 0029 aceito (fontes ACSM 2007/NATA 2017/Thomas 2016 revisadas; `EV-NATA-2017` corrige a citação do PRD); copy educativa aprovada em `COMMUNICATION.md` §6.10; implementação em ciclo futuro |
+| **C3-G2** | Revisão de fontes/copy de F4 | **Concluído e implementado em 10/11/2026:** ADR 0029 aceito (fontes ACSM 2007/NATA 2017/Thomas 2016 revisadas; `EV-NATA-2017` corrige a citação do PRD), copy aprovada em `COMMUNICATION.md` §6.10 e seções de hidratação/alimentação no sheet de briefing com testes de regressão e goldens |
 
 Fora do escopo implementável: recuperação pós-prova (FR-207), pace/faixa de prova e
 limite de longão por fração da distância (FR-206). N-03 continua sem entrega; o PRD

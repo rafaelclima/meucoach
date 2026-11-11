@@ -40,7 +40,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0025](adr/0025-deletion-retention-reset.md) | Lixeira de 7 dias, reset imediato e época de dados | Aceito — implementado em C1-05 | 06/11/2026 |
 | [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Aceito parcialmente — gate implementado em C1-02; limiares de iniciante a validar | 06/11/2026 |
 | [0028](adr/0028-versioned-plan-replanning.md) | Replanejamento versionado e sugerido da semana | Aceito — implementado em R-01/R-02/R-03 | 08/11/2026 |
-| [0029](adr/0029-f4-hydration-nutrition-copy.md) | F4: copy educativa de hidratação e encaminhamento alimentar (gate de fontes) | Aceito — gate documental C3-G2; implementação em ciclo futuro | 10/11/2026 |
+| [0029](adr/0029-f4-hydration-nutrition-copy.md) | F4: copy educativa de hidratação e encaminhamento alimentar (gate de fontes) | Aceito — gate documental C3-G2 e implementado na UI (sheet de briefing) | 10/11/2026 |
 | [0030](adr/0030-race-event-and-weekly-taper.md) | Evento de prova, autoridade diária e taper | Aceito — decisões de produto/arquitetura; migração/código pendentes | 10/11/2026 |
 | [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — implementado em C3-01B (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply) | 10/11/2026 |
 

@@ -1,6 +1,6 @@
 # ADR 0029 — F4: conteúdo educativo de hidratação e alimentação (gate de fontes e copy)
 
-**Status:** Aceito em 2026-11-10 (C3-G2; aprovação do usuário 0). Gate documental cumprido e documentos atualizados na mesma data. A implementação de F4 segue para ciclo futuro (FR-404).
+**Status:** Aceito em 2026-11-10 (C3-G2; aprovação do usuário 0) e implementado na UI na mesma data: seções de hidratação/alimentação no sheet de briefing (`SessionBriefingSheet`), copy estática em `BriefingFuelContent`, testes de regressão de copy e goldens regravados. O ramo de prova continua sem F4 (FR-404).
 **Data:** 2026-11-10
 **Escopo:** F4 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md` (§4.4, FR-401…FR-404, D-1)
 **Relacionados:** ADR 0004 (motor determinístico), ADR 0023 (prescrição diária), `R-SAFE-03` (`SPORTS_SCIENCE.md`), `PRODUCT.md` §4
@@ -141,8 +141,11 @@ vigente e sessão não concluída.
 ## 6. Gates antes do código
 
 - ~~Aprovação do usuário 0 desta proposta (status sai de "Proposto").~~ Feito em 10/11/2026.
-- Atualização coordenada dos documentos da §3.3.
-- Teste de regressão: nenhuma seção F4 exibe número, unidade ou ID de regra;
-  ramo de prova não recebe seção F4.
-- Copy revisada contra `COMMUNICATION.md` §6.5 (sem jargão, número com unidade e
-  consequência — aqui, sem número nenhum).
+- ~~Atualização coordenada dos documentos da §3.3.~~ Feito em 10/11/2026.
+- ~~Teste de regressão: nenhuma seção F4 exibe número, unidade ou ID de regra;
+  ramo de prova não recebe seção F4.~~ Feito em 10/11/2026: `BriefingFuelContentTest`
+  (copy sem dígitos/unidades/IDs) e teste de UI no `TodayBriefingTest` (ordem das
+  seções, textos exibidos, sem `R-`/`EV-`); o ramo de prova já não renderiza o
+  sheet de briefing.
+- ~~Copy revisada contra `COMMUNICATION.md` §6.5 (sem jargão, número com unidade e
+  consequência — aqui, sem número nenhum).~~ Feito em 10/11/2026.

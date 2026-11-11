@@ -202,6 +202,8 @@ private fun ReadyContent(briefing: SessionBriefing, onClose: () -> Unit) {
         )
     }
 
+    FuelSections()
+
     McSecondaryButton(
         text = "Fechar",
         onClick = onClose,
@@ -301,6 +303,56 @@ private fun BriefingSection(title: String, tag: String, content: @Composable Col
         Spacer(modifier = Modifier.height(10.dp))
         McDivider()
         Spacer(modifier = Modifier.height(10.dp))
+    }
+}
+
+/**
+ * F4 educational content (ADR 0029): static approved copy, shown after the
+ * prescription-derived sections. Not rendered for `Loading`/`Empty`/`Failed`
+ * states and never part of the race-day branch (FR-404).
+ */
+@Composable
+private fun FuelSections() {
+    BriefingSection(title = BriefingFuelContent.HYDRATION_TITLE, tag = "briefing-hydration") {
+        FuelLines()
+    }
+    BriefingSection(title = BriefingFuelContent.NUTRITION_TITLE, tag = "briefing-nutrition") {
+        FuelLine(label = null, text = BriefingFuelContent.NUTRITION_REFERRAL)
+    }
+}
+
+@Composable
+private fun FuelLines() {
+    val colors = McTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FuelLine(BriefingFuelContent.BEFORE_RUN_LABEL, BriefingFuelContent.BEFORE_RUN)
+        FuelLine(BriefingFuelContent.DURING_LABEL, BriefingFuelContent.DURING)
+        FuelLine(BriefingFuelContent.AFTER_LABEL, BriefingFuelContent.AFTER)
+        Text(
+            text = BriefingFuelContent.INDIVIDUAL_NOTE,
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+            modifier = Modifier.testTag("briefing-hydration-note"),
+        )
+    }
+}
+
+@Composable
+private fun FuelLine(label: String?, text: String) {
+    val colors = McTheme.colors
+    Column {
+        label?.let {
+            Text(
+                text = it,
+                style = McTextStyles.caption,
+                color = colors.textPrimary,
+            )
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
     }
 }
 

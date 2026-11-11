@@ -253,6 +253,10 @@ alimentação vira encaminhamento, nunca dica.
 | Nota fixa | `O quanto beber varia de pessoa para pessoa — suor, clima, duração. O MeuCoach não calcula quanto você deve beber.` | Declara o limite do app com honestidade; evita leitura de conselho universal. |
 | Alimentação | `O MeuCoach não prescreve dietas nem suplementos. Para um plano alimentar individual, procure um nutricionista.` | Encaminhamento em vez de prescrição (`PRODUCT.md` §4; `R-SAFE-03`). |
 
+Implementado em 10/11/2026 no sheet "Como correr hoje" (`SessionBriefingSheet`),
+após as seções derivadas da prescrição; copy estática em `BriefingFuelContent` com
+teste de regressão (`BriefingFuelContentTest`) e goldens regravados.
+
 Proibições permanentes da copy: ml, g, kcal, macros, dose, % de peso, horário
 rígido, produto, eletrólito, "água à vontade", jejum e emagrecimento. O ramo de
 prova não recebe essas seções até copy de prova própria ser aprovada (FR-404).

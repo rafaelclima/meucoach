@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-05 concluído: modelo, TodayDecision, Room 15, taper por data, wiring do app, notificação e UI do evento; C3-G2 concluído com ADR 0029 aceito e copy educativa de hidratação aprovada; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 10/11/2026 (C3-05 concluído: modelo, TodayDecision, Room 15, taper por data, wiring do app, notificação e UI do evento; C3-G2 concluído e F4 implementado no briefing com ADR 0029; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.231 testes no total (603 em `:app`, 152 em `core:data`, 440 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.234 testes no total (606 em `:app`, 152 em `core:data`, 440 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,63% de linhas (3.954/4.050), 81,85% de branches (2.881/3.520), 96,21% de instruções (27.681/28.770)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -21,7 +21,7 @@
 - **Briefing do dia (C3-03/04):** `SessionBriefingEngine` puro em `core:domain` deriva foco, alvo, rationale/confiança e orientação de “como correr”/“se estiver difícil” somente da `DailyPrescription` persistida. Nenhum número/alvo/segmento é recalculado ou inventado; sem calibração vale o RPE existente. `DONE`/`CLOSED` não geram briefing retrospectivo. O Hoje ganha o CTA “Como correr hoje” no card do treino (sessão não concluída) e um sheet acessível com as seções na ordem de leitura, sem `R-`/`EV-` na superfície comum.
 - **Evento de prova (C3-G1):** desenho técnico fechado em `docs/PLANO_TECNICO_CICLO_3_EVENTO.md`, sem código/migração. Define `RaceEvent`/`RaceDistance`/`RaceStatus` em `core:model`, `TodayDecision` discriminada, Room 15 (`race_events` vazia, `activeKey` único, FK `SET NULL`), projeção `PlanningGoal` sem backfill, taper/cutoff por data com `R-PLAN-10` LIMITED, exclusão de datas de evento da adesão e ordem C3-05.
 - **Evento de prova (C3-05, concluído):** `RaceEvent`, `TodayDecision`, `PlanningGoalResolver` e Room 15 completos. O app resolve `GetTodayDecision` antes de renderizar: prova no dia vence sem calcular/persistir prescrição, `Competition` suprime treino/briefing e `Training` continua igual. O gerador/replanejador recebem `race`/`eventDates`, a adesão exclui datas de evento, a troca e a conclusão de treino são bloqueadas no dia, e a notificação usa copy de prova com deep link para o Hoje. Perfil, Hoje e Plano têm card/marcador do evento, ações explícitas e goldens dark/light/estreito.
-- **F4 — hidratação (C3-G2, concluído):** gate documental fechado em [ADR 0029](adr/0029-f4-hydration-nutrition-copy.md): copy educativa estática de hidratação aprovada (sem números, produto, eletrólito ou horário), alimentação vira encaminhamento a nutricionista, `R-FUEL-01/02` e evidências aceitas nos catálogos, e `EV-NATA-2017` corrige a citação `EV-NATA-2025` do PRD. Implementação em ciclo futuro; ramo de prova continua sem dicas (FR-404).
+- **F4 — hidratação (C3-G2, concluído):** gate documental fechado e implementado no mesmo dia ([ADR 0029](adr/0029-f4-hydration-nutrition-copy.md)): copy educativa estática de hidratação aprovada e exibida no sheet "Como correr hoje" (sem números, produto, eletrólito ou horário), alimentação vira encaminhamento a nutricionista, `R-FUEL-01/02` e evidências aceitas nos catálogos, e `EV-NATA-2017` corrige a citação `EV-NATA-2025` do PRD. Ramo de prova continua sem dicas (FR-404).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -68,6 +68,31 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — F4 na UI: hidratação e alimentação no briefing
+
+**Objetivo:** implementar o conteúdo aprovado na ADR 0029 no sheet "Como correr hoje", com copy estática, testes de regressão e goldens.
+
+### Concluído
+
+- **`BriefingFuelContent`:** copy do F4 como constantes estáticas no app (`ui/today`), fora do motor e de `SessionBriefing`; nada deriva da prescrição nem altera confiança. `const` com textos exatamente iguais ao aprovado em `COMMUNICATION.md` §6.10.
+- **Sheet:** novas seções `HIDRATAÇÃO` (Antes de correr / Durante / Depois + nota fixa de variação individual) e `ALIMENTAÇÃO` (encaminhamento a nutricionista), após "SE ESTIVER DIFÍCIL" e antes do botão Fechar; títulos com semântica de heading e reuso de `BriefingSection`. Só aparece em `Ready` (prescrição vigente, sessão não concluída); o ramo de prova não renderiza o sheet (FR-404).
+- **Testes de regressão:** `BriefingFuelContentTest` trava a copy aprovada e garante ausência de dígitos, unidades (ml/kcal/macro/%), "eletrólito", `R-`/`EV-`; `TodayBriefingTest` ganhou teste de ordem (difícil < hidratação < alimentação < Fechar), exibição dos textos e nota rolagável; o teste de fonte 200% em tela estreita agora verifica a seção de alimentação.
+- **Goldens:** `today-briefing-{dark,light}.png` regravados com as novas seções; nenhum outro golden mudou.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT 93,01%).
+- **1.234 testes**, 0 falhas e 0 `@Ignore` (606 `:app`, 152 `core:data`, 440 `core:domain`, 36 `core:model`).
+
+### Decisões e observações
+
+- **Copy fora do motor:** o conteúdo educativo não entra em `core:domain` nem em `SessionBriefing`; é conteúdo de produto estático auditado pela ADR 0029, não uma decisão do coach.
+- **Nota fixa sempre visível** dentro da seção de hidratação, evitando a leitura de "beba quando sentir sede" como instrução universal.
+
+### Próximo passo
+
+1. Coletar feedback do usuário 0 sobre a copy exibida no aparelho (validação real do F4 e do fluxo de prova já feito).
 
 ## Sessão 2026-11-10 — C3-G2: gate de fontes e copy do F4
 
