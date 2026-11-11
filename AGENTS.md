@@ -54,7 +54,7 @@ Leia primeiro:
 ## 5. Ciência e produto
 
 - Fonte de verdade: `docs/SPORTS_SCIENCE.md`. Se o código divergir, atualize o doc **e** o código com justificativa.
-- Não prescrever musculação, nutrição, emagrecimento ou diagnóstico.
+- Não prescrever musculação, nutrição, emagrecimento ou diagnóstico. Única exceção: copy educativa de hidratação, estática e sem números, conforme ADR 0029.
 - Força é rotina do usuário; o app só captura fadiga global no check-in.
 - Esteira é modalidade válida para qualidade/calor.
 - Toda regra nova precisa de evidência e teste.
@@ -125,4 +125,4 @@ Use o MCP **Context7** para documentação atual de bibliotecas (Compose, Room, 
 - Não "consertar" teste reduzindo cobertura ou removendo assert.
 - Não commitar keystore, `.env`, `local.properties` ou dados de saúde.
 - Não reescrever documentos inteiros sem necessidade; edite com precisão.
-- Não adicionar features de musculação/nutrição.
+- Não adicionar features de musculação/nutrição. A copy educativa de hidratação do ADR 0029 é conteúdo estático aprovado por gate, não uma feature de nutrição.

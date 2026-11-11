@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-05 concluído: modelo, TodayDecision, Room 15, taper por data, wiring do app, notificação e UI do evento; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 10/11/2026 (C3-05 concluído: modelo, TodayDecision, Room 15, taper por data, wiring do app, notificação e UI do evento; C3-G2 concluído com ADR 0029 aceito e copy educativa de hidratação aprovada; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -21,6 +21,7 @@
 - **Briefing do dia (C3-03/04):** `SessionBriefingEngine` puro em `core:domain` deriva foco, alvo, rationale/confiança e orientação de “como correr”/“se estiver difícil” somente da `DailyPrescription` persistida. Nenhum número/alvo/segmento é recalculado ou inventado; sem calibração vale o RPE existente. `DONE`/`CLOSED` não geram briefing retrospectivo. O Hoje ganha o CTA “Como correr hoje” no card do treino (sessão não concluída) e um sheet acessível com as seções na ordem de leitura, sem `R-`/`EV-` na superfície comum.
 - **Evento de prova (C3-G1):** desenho técnico fechado em `docs/PLANO_TECNICO_CICLO_3_EVENTO.md`, sem código/migração. Define `RaceEvent`/`RaceDistance`/`RaceStatus` em `core:model`, `TodayDecision` discriminada, Room 15 (`race_events` vazia, `activeKey` único, FK `SET NULL`), projeção `PlanningGoal` sem backfill, taper/cutoff por data com `R-PLAN-10` LIMITED, exclusão de datas de evento da adesão e ordem C3-05.
 - **Evento de prova (C3-05, concluído):** `RaceEvent`, `TodayDecision`, `PlanningGoalResolver` e Room 15 completos. O app resolve `GetTodayDecision` antes de renderizar: prova no dia vence sem calcular/persistir prescrição, `Competition` suprime treino/briefing e `Training` continua igual. O gerador/replanejador recebem `race`/`eventDates`, a adesão exclui datas de evento, a troca e a conclusão de treino são bloqueadas no dia, e a notificação usa copy de prova com deep link para o Hoje. Perfil, Hoje e Plano têm card/marcador do evento, ações explícitas e goldens dark/light/estreito.
+- **F4 — hidratação (C3-G2, concluído):** gate documental fechado em [ADR 0029](adr/0029-f4-hydration-nutrition-copy.md): copy educativa estática de hidratação aprovada (sem números, produto, eletrólito ou horário), alimentação vira encaminhamento a nutricionista, `R-FUEL-01/02` e evidências aceitas nos catálogos, e `EV-NATA-2017` corrige a citação `EV-NATA-2025` do PRD. Implementação em ciclo futuro; ramo de prova continua sem dicas (FR-404).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -67,6 +68,33 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-10 — C3-G2: gate de fontes e copy do F4
+
+**Objetivo:** revisar as fontes do F4 (hidratação/alimentação), aprovar copy educativa e registrar o gate na ADR 0029, sem código.
+
+### Concluído
+
+- **Revisão das fontes:** ACSM 2007 (Sawka), NATA (statement vigente é o de **2017**, McDermott — o PDF citado no PRD como `EV-NATA-2025` era o statement de 2000, Casa, já substituído) e Thomas 2016. Consenso: toda recomendação quantitativa exige contexto individual (suor, massa, clima, duração); nenhuma fonte sustenta conselho universal de quantidade/produto/eletrólito.
+- **ADR 0029 aceito:** F4 liberado apenas como copy educativa estática (não sai do motor, não altera prescrição/confiança), com nota fixa de variação individual; alimentação vira encaminhamento a nutricionista, nunca dica; ramo de prova sem F4 na v1 (FR-404).
+- **Copy aprovada** em `COMMUNICATION.md` §6.10: "Antes de correr", "Durante", "Depois" e nota fixa — sem ml, g, kcal, macros, dose, % de peso, horário, produto ou eletrólito.
+- **Catálogos atualizados:** `R-FUEL-01/02` (STRONG como política de produto) e `EV-ACSM-2007`/`EV-NATA-2017`/`EV-THOMAS-2016` (tier A) em `SPORTS_SCIENCE.md` §13/§14; `R-SAFE-03` cita a única exceção.
+- **Documentos coordenados:** `PRODUCT.md` §4, `AGENTS.md` §5/§12, PRD v0.2 (§4.4, §6.1, §6.2, plano de execução), `DECISIONS.md` 1.8 e `ROADMAP.md` 1.18.
+
+### Evidências
+
+- Gate documental: sem mudança de código; nenhum build/teste novo necessário.
+- Referências verificadas por leitura integral dos PDFs em 10/11/2026 (ACSM 2007 e NATA 2000/2017); citação corrigida antes de entrar no catálogo.
+
+### Decisões e observações
+
+- **"2025" da NATA era o caminho de upload do PDF**, não o ano do documento; o catálogo usa `EV-NATA-2017` com o link do statement vigente.
+- Thomas 2016 entra no catálogo sustentando **apenas a recusa** de prescrição alimentar; nenhuma dica deriva dela.
+
+### Próximo passo
+
+1. Implementar F4 (seções no sheet de briefing + teste de regressão de "nenhum número/ID nas seções F4") em ciclo futuro, após priorização com o usuário 0.
+2. Validação do fluxo de prova em aparelho real (C3-05) e revisão de cópia continuam abertos.
 
 ## Sessão 2026-11-10 — C3-05 (parte 3): wiring do app, notificação e UI do evento
 

@@ -336,6 +336,10 @@ emagrecimento; substituição de refeição; conselho dependente de diagnóstico
 copy aprovada e atualização coordenada de `PRODUCT.md`, `SPORTS_SCIENCE.md`,
 `COMMUNICATION.md` e `AGENTS.md`. Até esse gate, F4 não é código implementável e
 nenhuma dica de alimentação/hidratação aparece no briefing.
+**Gate cumprido em 10/11/2026:** `ADR 0029` aceito, fontes revisadas
+(ACSM 2007, NATA 2017, Thomas 2016) e copy aprovada em `COMMUNICATION.md` §6.10.
+F4 segue condicional à implementação em ciclo futuro; o ramo de prova continua sem
+dicas (FR-404).
 
 ---
 
@@ -413,21 +417,22 @@ nenhuma dica de alimentação/hidratação aparece no briefing.
 | `R-BRIEF-01` | Briefing deriva da prescrição persistida e não decide nem inventa alvo | ADR 0023; D-4/D-5 v0.2 | `STRONG` como contrato arquitetural/produto |
 | `R-BRIEF-02` | Briefing v1 só descreve duração/alvos existentes; não cria segmentos | ADR 0023; ADR 0027 §3.3; D-4 v0.2 | `STRONG` como restrição de proveniência, não alegação fisiológica |
 | `R-BRIEF-03` | Sinais de parada usam `R-SAFE-01`; não criam diagnóstico/triagem | `R-SAFE-01` | `STRONG` conforme catálogo vigente |
-| `R-FUEL-01` | Conteúdo geral e não individualizado só após revisão de fonte e copy; sem recomendação universal de sais/ingestão | D-1 v0.2; ACSM/NATA/Thomas a revisar antes do catálogo | **PENDENTE; não emitir regra no motor/UI** |
-| `R-FUEL-02` | Não prescrever quantidade, suplemento, eletrólito ou alimentação específica sem contexto aprovado | Escopo de produto e futura revisão documental | **PENDENTE; gate antes de F4** |
+| `R-FUEL-01` | Dicas de hidratação são conteúdo educativo fixo aprovado por fonte; não derivam de prescrição nem alteram decisão do motor | ADR 0029; EV-ACSM-2007; EV-NATA-2017 | `STRONG` como política de produto/copy |
+| `R-FUEL-02` | Sem recomendação de quantidade, eletrólito, suplemento ou horário sem contexto individual aprovado | ADR 0029; EV-ACSM-2007; EV-NATA-2017 (nº 1, 5, 6 — SOR A) | `STRONG` |
 
 ### 6.2 Evidências novas propostas (a validar antes de entrar no catálogo)
 
 | ID | Referência | Uso |
 |---|---|---|
 | `EV-WANG-2023` [proposta] | Wang et al. *Effects of tapering on performance in endurance athletes: a systematic review and meta-analysis*. PLoS One 18(5):e0282838, 2023. [PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC10171681/) | Taper geral: redução de volume e manutenção de intensidade/frequência, janelas estudadas até 21 dias; não define última sessão forte por distância nem justifica proibição de qualidade na semana da prova |
-| `EV-ACSM-2007` [pendente] | Sawka, M. N. et al. ACSM position stand: exercise and fluid replacement. *Med Sci Sports Exerc* 39(2):377–390, 2007. | Só após revisão da recomendação concreta que se pretende exibir |
-| `EV-THOMAS-2016` [pendente] | Thomas, D. T., Erdman, K. A., Burke, L. M. Nutrition and athletic performance. *Med Sci Sports Exerc* 48(3):543–568, 2016. | Não validar uma recomendação universal sem leitura contextual |
-| `EV-NATA-2025` [pendente] | NATA. *Fluid Replacement for the Physically Active*, 2025. [PDF](https://www.nata.org/sites/default/files/2025-08/FluidReplacementsForAthletes.pdf) | Considerar riscos de hipo/hiper-hidratação e contexto individual antes de qualquer copy |
+| `EV-ACSM-2007` [aceita] | Sawka, M. N. et al. ACSM position stand: exercise and fluid replacement. *Med Sci Sports Exerc* 39(2):377–390, 2007. | Individualização da hidratação; risco de hiperhidratação (ADR 0029) |
+| `EV-THOMAS-2016` [aceita] | Thomas, D. T., Erdman, K. A., Burke, L. M. Nutrition and athletic performance. *Med Sci Sports Exerc* 48(3):543–568, 2016. | Sustenta apenas a recusa de prescrição alimentar; nenhuma dica deriva dela (ADR 0029) |
+| `EV-NATA-2017` [aceita] | McDermott, B. P. et al. NATA position statement: Fluid Replacement for the Physically Active. *J Athl Train* 52(9):877–895, 2017. [PDF](https://www.nata.org/sites/default/files/2025-08/fluid_replacement_for_the_physically_active.pdf) | Individualização (SOR A); não ganhar massa durante o exercício; hidratação antes/depois. Corrige a citação `EV-NATA-2025`, que apontava para o statement de 2000 (Casa et al.) |
 
-> As referências de F4 ainda precisam de revisão de escopo/conteúdo antes de entrar
-> no catálogo. As fontes de taper sustentam princípios gerais, não os cutoffs
-> exatos de última `QUALITY` propostos nesta versão.
+> Revisão de F4 concluída em 10/11/2026 (ADR 0029, gate C3-G2): fontes revisadas e
+> aceitas, copy aprovada em `COMMUNICATION.md` §6.10; a implementação de F4 segue
+> para ciclo futuro. As fontes de taper continuam sustentando princípios gerais,
+> não os cutoffs exatos de última `QUALITY` propostos nesta versão.
 
 ### 6.3 Mudanças de escopo exigidas
 
@@ -713,7 +718,7 @@ decomposição dos caminhos de persistência; não assumir que cada linha cabe e
 | 5 | **C3-04** | Sheet de briefing, estado histórico e notificação baseada na prescrição | C3-03 | Compose/Robolectric, goldens, stale, execução concluída sem briefing; checklist manual de TalkBack/fonte 200% |
 | 6 | **C3-G1** | Detalhar contrato Room/migração, `TodayDecision`, vínculo com atividade e testes de compatibilidade do evento | C3-04 e ADR 0030 aceito; sem implementação ainda | Backfill sem inferência; sessão sobreposta/evento no dia; regra de exclusão da adesão; FK/export/reset definidos |
 | 7 | **C3-05** | Implementar evento de prova e taper 2A; sem `WorkoutType.RACE` | C3-G1 | Migração/export/reset, estados, link, disponibilidade, evento no dia e cutoff/taper por data testados |
-| 8 | **C3-G2** | Revisão de fontes e copy de F4 (gate documental; não implica código) | D-1 v0.2 | Aprovação de conteúdo/fontes; ADR 0029; só então decidir se F4 entra em entrega futura |
+| 8 | **C3-G2** | Revisão de fontes e copy de F4 (gate documental; não implica código) | D-1 v0.2 | **Concluído em 10/11/2026:** ADR 0029 aceito, fontes revisadas e copy aprovada; implementação decidida para ciclo futuro |
 
 **Fora da sequência implementável:** recuperação pós-prova (FR-207), previsão/faixa
 de pace e limite de longão por fração da distância (FR-206). Não criar código para

@@ -500,6 +500,9 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `EV-SCHUBERT-2014` | Schubert, A. G., Kempf, J., Heiderscheit, B. C. Influence of stride frequency and length on running mechanics. *Sports Health* 6(3):210–217, 2014. doi:10.1177/1941738113508544 | A | Cadência individual |
 | `EV-ISSURIN-2010` | Issurin, V. B. New horizons for the methodology and physiology of training periodization. *Sports Med* 40(3):189–206, 2010. | A | Periodização em blocos |
 | `EV-BEATTIE-2014` | Beattie, K. et al. The effect of strength training on performance in endurance athletes. *Sports Med* 44(6):845–865, 2014. | A | Contexto de força (fora do escopo de prescrição) |
+| `EV-ACSM-2007` | Sawka, M. N. et al. ACSM position stand: Exercise and fluid replacement. *Med Sci Sports Exerc* 39(2):377–390, 2007. doi:10.1249/00005768-200702000-00016 | A | Individualização da hidratação; risco de hiperhidratação (ADR 0029) |
+| `EV-NATA-2017` | McDermott, B. P. et al. NATA position statement: Fluid Replacement for the Physically Active. *J Athl Train* 52(9):877–895, 2017. doi:10.4085/1062-6050-52.9.02 | A | Hidratação individualizada (SOR A); não ganhar massa durante o exercício (ADR 0029) |
+| `EV-THOMAS-2016` | Thomas, D. T., Erdman, K. A., Burke, L. M. Nutrition and Athletic Performance. *Med Sci Sports Exerc* 48(3):543–568, 2016. doi:10.1249/MSS.0000000000000852 | A | Sustenta apenas a recusa de prescrição alimentar; nenhuma dica deriva dela (ADR 0029) |
 
 ## 14. Catálogo de regras
 
@@ -532,13 +535,15 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-10` | Sem `QUALITY` na semana civil da prova e corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) antes dela; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |
 | `R-SAFE-02` | Sem diagnóstico; app não é dispositivo médico | Regulatório | STRONG |
-| `R-SAFE-03` | Sem prescrição de peso/nutrição | Escopo | STRONG |
+| `R-SAFE-03` | Sem prescrição de peso/nutrição; única exceção é a copy educativa de hidratação do ADR 0029 (sem números) | Escopo; ADR 0029 | STRONG |
 | `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
 | `R-DATA-01` | Dado ausente não preenche valor neutro silencioso; cobertura/frescor de carga são declaradas | Produto | STRONG |
 | `R-PRESC-01` | A prescrição do dia parte da sessão planejada e a mantém quando os guardrails permitem | ADR 0023; R-PLAN/R-READY | MODERATE |
 | `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade); nunca aumenta | ADR 0023; R-READY/R-DATA | STRONG |
 | `R-PRESC-03` | Uma decisão por dia, versionada e a mesma em todas as telas | ADR 0023; Produto | STRONG |
 | `R-PRESC-04` | Iniciante com sessão de hoje `PLANNED` em `QUALITY` recebe `DOWNGRADE` para `EASY`; `DONE`/`CLOSED` preservam prescrição e histórico | D-6 v0.1; ADR 0023 | LIMITED — política conservadora de produto, sem alegação fisiológica específica |
+| `R-FUEL-01` | Dicas de hidratação são conteúdo educativo fixo aprovado por fonte; não derivam de prescrição nem alteram decisão do motor | ADR 0029; ACSM, NATA | STRONG como política de produto/copy |
+| `R-FUEL-02` | Sem recomendação de quantidade, eletrólito, suplemento ou horário sem contexto individual aprovado | ADR 0029; ACSM 2007; NATA 2017 (SOR A) | STRONG |
 
 ## 15. Limitações conhecidas
 

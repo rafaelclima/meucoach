@@ -238,3 +238,23 @@ A prova é um evento, não um treino. A copy nunca oferece “iniciar”, “tro
 
 IDs de regra/evidência continuam fora da superfície comum. O cutoff de 10/14 dias
 permanece `LIMITED`: a copy não o apresenta como consenso científico.
+
+### 6.10 Dicas de hidratação — F4 (10/11/2026)
+
+O gate C3-G2 aprovou conteúdo educativo estático de hidratação (ADR 0029). A copy
+não sai do motor, não altera prescrição e não traz número, produto ou eletrólito;
+alimentação vira encaminhamento, nunca dica.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Sheet — "Antes de correr" | `Comece o treino já hidratado. Nos minutos antes, beba água com calma.` | Princípio de iniciar eu-hidratado (NATA 2017 nº 7; ACSM 2007), sem dose. |
+| Sheet — "Durante" | `Em corridas curtas, beba quando sentir sede. Em treinos longos ou no calor, planeje pausas para beber.` | Sede guia em sessões curtas; planejamento em longas/calor, sem quantidade. |
+| Sheet — "Depois" | `Nas horas depois do treino, reponha líquidos junto com a alimentação de sempre.` | Recomposição junto à rotina (NATA 2017 nº 15), sem fórmula. |
+| Nota fixa | `O quanto beber varia de pessoa para pessoa — suor, clima, duração. O MeuCoach não calcula quanto você deve beber.` | Declara o limite do app com honestidade; evita leitura de conselho universal. |
+| Alimentação | `O MeuCoach não prescreve dietas nem suplementos. Para um plano alimentar individual, procure um nutricionista.` | Encaminhamento em vez de prescrição (`PRODUCT.md` §4; `R-SAFE-03`). |
+
+Proibições permanentes da copy: ml, g, kcal, macros, dose, % de peso, horário
+rígido, produto, eletrólito, "água à vontade", jejum e emagrecimento. O ramo de
+prova não recebe essas seções até copy de prova própria ser aprovada (FR-404).
+Os IDs (`R-FUEL-01/02`, `EV-ACSM-2007`, `EV-NATA-2017`, `EV-THOMAS-2016`) ficam
+fora da superfície comum, conforme §6.5.

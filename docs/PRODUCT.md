@@ -76,7 +76,7 @@ A promessa central:
 ### Fora (explícito)
 
 - Prescrição ou acompanhamento de musculação — o usuário tem rotina própria; o app só captura fadiga global no check-in.
-- Nutrição, emagrecimento e prescrição alimentar.
+- Nutrição, emagrecimento e prescrição alimentar. Única exceção (ADR 0029): copy educativa de hidratação, estática e sem números, no briefing; alimentação vira encaminhamento a nutricionista, nunca dica.
 - Diagnóstico, reabilitação ou tratamento de lesões.
 - Integração direta com a API do Zepp (Fase 3, experimental).
 - Social, ranking, feed e desafios (Fase 3).
