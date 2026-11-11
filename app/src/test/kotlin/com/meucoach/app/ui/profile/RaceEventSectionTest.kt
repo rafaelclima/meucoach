@@ -2,6 +2,7 @@ package com.meucoach.app.ui.profile
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -82,10 +83,74 @@ class RaceEventSectionTest {
         compose.onNodeWithTag("race-add").performClick()
         compose.onNodeWithText("5 km").performClick()
         compose.onNodeWithTag("race-date").performTextInput("14032027")
-        compose.onNodeWithTag("race-time").performTextInput("25:00")
+        compose.onNodeWithTag("race-date").assertTextContains("14/03/2027")
+        compose.onNodeWithTag("race-time-minutes").performTextInput("25")
+        compose.onNodeWithTag("race-time-seconds").performTextInput("00")
         compose.onNodeWithTag("race-save").performClick()
 
         assertThat(saved).isEqualTo(Triple(RaceDistance.FIVE_K, LocalDate.of(2027, 3, 14), 1_500))
+    }
+
+    @Test
+    fun `chooses hours and applies the hours mask`() {
+        var saved: Triple<RaceDistance, LocalDate, Int?>? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(events = emptyList()),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                    onRaceSave = { distance, date, time -> saved = Triple(distance, date, time) },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-card"))
+        compose.onNodeWithTag("race-add").performClick()
+        compose.onNodeWithTag("race-time-unit-hours").performClick()
+        compose.onNodeWithTag("race-time-hours").performTextInput("1")
+        compose.onNodeWithTag("race-time-minutes").performTextInput("02")
+        compose.onNodeWithTag("race-time-seconds").performTextInput("03")
+        compose.onNodeWithTag("race-date").performTextInput("14032027")
+        compose.onNodeWithTag("race-save").performClick()
+
+        assertThat(saved).isEqualTo(Triple(RaceDistance.TEN_K, LocalDate.of(2027, 3, 14), 3_723))
+    }
+
+    @Test
+    fun `converts minutes to hours when the unit changes`() {
+        var saved: Triple<RaceDistance, LocalDate, Int?>? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(events = emptyList()),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                    onRaceSave = { distance, date, time -> saved = Triple(distance, date, time) },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-card"))
+        compose.onNodeWithTag("race-add").performClick()
+        compose.onNodeWithTag("race-time-minutes").performTextInput("90")
+        compose.onNodeWithTag("race-time-seconds").performTextInput("30")
+        compose.onNodeWithTag("race-time-unit-hours").performClick()
+
+        compose.onNodeWithTag("race-time-hours").assertTextContains("1")
+        compose.onNodeWithTag("race-time-minutes").assertTextContains("30")
+        compose.onNodeWithTag("race-time-seconds").assertTextContains("30")
+
+        compose.onNodeWithTag("race-date").performTextInput("14032027")
+        compose.onNodeWithTag("race-save").performClick()
+
+        assertThat(saved).isEqualTo(Triple(RaceDistance.TEN_K, LocalDate.of(2027, 3, 14), 5_430))
     }
 
     @Test
@@ -107,7 +172,8 @@ class RaceEventSectionTest {
 
         compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-card"))
         compose.onNodeWithTag("race-edit").performClick()
-        compose.onNodeWithTag("race-time").performTextClearance()
+        compose.onNodeWithTag("race-time-minutes").performTextClearance()
+        compose.onNodeWithTag("race-time-seconds").performTextClearance()
         compose.onNodeWithTag("race-save").performClick()
 
         assertThat(saved).isEqualTo(Triple(RaceDistance.TEN_K, LocalDate.of(2027, 3, 14), null))

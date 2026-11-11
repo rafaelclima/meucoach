@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026 · **Status:** direção aprovada
+**Versão:** 1.1 · **Data:** 10/11/2026 · **Status:** direção aprovada; §7.3 normatiza campos de data e duração
 
 ## 1. Ideia de marca
 
@@ -221,6 +221,84 @@ Regras:
 ### 7.2 Estados
 
 Todo componente interativo define: default, pressed, focused, disabled, loading, error. Todo dado remoto define: loading, empty, error, success, stale (com timestamp).
+
+### 7.3 Campos de data e duração
+
+Regra normativa para **todo** campo de data, hora ou duração do app
+(onboarding, perfil, prova, calibração e qualquer tela futura).
+
+**Princípios**
+
+1. **O estado guarda o dado, não a máscara.** Data persiste como `LocalDate`/ISO
+   `uuuu-MM-dd`; o campo guarda apenas os dígitos crus. Hora/duração persiste como
+   segundos inteiros; o campo guarda os segmentos numéricos. Nunca armazenar
+   `dd/mm/aaaa` ou `mm:ss` como valor de domínio.
+2. **A máscara é visual.** Barras e dois-pontos são desenhados por
+   `VisualTransformation`/segmentos estáticos e mapeados com `OffsetMapping`.
+   Digitar, apagar ou editar no meio não pode reordenar dígitos nem prender o cursor.
+3. **Nunca exigir separador digitado.** O usuário digita só números; a interface
+   insere `/` e `:`.
+4. **Unidade explícita em duração.** Se o campo aceita minutos ou horas, o usuário
+   escolhe primeiro (`Minutos` × `Horas`), vê a máscara vigente (`mm:ss` ×
+   `h:mm:ss`) e a troca de unidade converte o valor atual. Não usar placeholder
+   ambíguo como “mm:ss ou h:mm:ss”.
+5. **Opcional é vazio, não zero.** Campo opcional vazio produz `null`; zero não é
+   um alvo válido. Ausência não vira `00:00`.
+6. **Validação antes de salvar.** Data precisa existir no calendário (rejeitar
+   `31/02`), minutos/segundos ficam em `0..59` quando a unidade é hora, e um alvo
+   de tempo precisa ser `> 0`. Mensagem de erro diz o formato esperado e o limite.
+7. **Acessibilidade.** Label visível, `contentDescription`/TalkBack por segmento,
+   alvo ≥ 48 dp, fonte a 200% sem corte, teclado numérico e ordem de foco natural
+   (dia → mês → ano; horas → minutos → segundos).
+
+**Data (`dd/mm/aaaa`)**
+
+- Estado: `TextFieldValue` com até 8 dígitos crus e seleção preservada; a
+  transformação visual insere as barras.
+- Placeholder: `dd/mm/aaaa`; label inclui a unidade (`Data de nascimento`,
+  `Data da prova`).
+- Mínimo/máximo: data de nascimento no passado e compatível com a idade; data de
+  prova pode ser futura ou passada conforme a regra da tela; calibração não aceita
+  futuro.
+- Teste obrigatório: digitar `14032027` mostra `14/03/2027`; editar no meio,
+  apagar sobre a barra e colar com barras não reordena os dígitos.
+
+**Duração/tempo alvo (`mm:ss` × `h:mm:ss`)**
+
+- Estado: `TargetTimeParts` (horas, minutos, segundos) + `TargetTimeUnit`;
+  conversão pura para segundos no save.
+- `Minutos`: minutos de 1 a 3 dígitos e segundos de 2 dígitos; aceita mais de 59
+  minutos (`60:00`, `90:30`).
+- `Horas`: horas de 1 a 2 dígitos, minutos e segundos de 2 dígitos (`1:00:00`,
+  `1:02:03`).
+- Trocar a unidade converte o valor (`90:30` ↔ `1:30:30`); valor inválido é
+  limpo, não convertido pela metade.
+- O campo é opcional quando a regra permitir; `0:00` continua inválido.
+- Teste obrigatório: digitar segmento a segmento, trocar unidade, rejeitar
+  `segundos = 60`, testar vazio e 200% de fonte.
+
+**Inventário atual e pendências de migração**
+
+| Superfície | Campo | Estado |
+|---|---|---|
+| Onboarding | Data de nascimento | Conforme (`DateMask` + `DateVisualTransformation`) |
+| Onboarding | Data da prova (meta legada) | Conforme (`DateMask` + `DateVisualTransformation`) |
+| Onboarding | Tempo alvo (meta legada) | **Pendente:** ainda é texto livre `mm:ss ou h:mm:ss`; migrar para `TargetTimeParts` |
+| Perfil | Card Prova — data | Conforme (`RaceDateVisualTransformation`) |
+| Perfil | Card Prova — tempo alvo | Conforme (`TargetTimeUnit` + segmentos) |
+| Calibração | Data da prova/teste | **Pendente:** texto livre `dd/mm/aaaa`; migrar para a máscara comum |
+| Calibração | Tempo do esforço | **Pendente:** texto livre `mm:ss ou h:mm:ss`; migrar para `TargetTimeUnit` |
+| Qualquer campo novo | Data/hora/duração | Obrigatório seguir esta seção antes do merge |
+
+**Checklist de migração**
+
+- [ ] Extrair a máscara de data para `ui/common` e reutilizar no onboarding,
+      Perfil e Calibração (hoje há duas implementações).
+- [ ] Migrar o tempo alvo do onboarding para o mesmo seletor de unidade.
+- [ ] Migrar data e tempo da Calibração.
+- [ ] Adicionar testes unitários de máscara/parse/conversão e Compose de digitação,
+      edição no meio, erro, vazio, 200% e tema claro/escuro.
+- [ ] Atualizar goldens das telas afetadas.
 
 ## 8. Data visualization
 

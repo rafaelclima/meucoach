@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.5 · **Data:** 10/11/2026 · Reconcilia contagens e goldens após C3-03/04 (briefing no Hoje).
+**Versão:** 1.6 · **Data:** 10/11/2026 · Reconcilia contagens/goldens após C3-05 e adiciona os testes de máscaras de data/duração.
 
 ## 1. Princípios
 
@@ -91,7 +91,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (10/11/2026):
 
-- 1.231 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 440 em `core:domain`, 152 em `core:data`, 603 em `:app`).
+- 1.242 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 440 em `core:domain`, 152 em `core:data`, 614 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,63% de linhas, 81,85% de branches, 96,21% de instruções.
@@ -306,11 +306,12 @@ artificiais.
 - **Formatação:** pace `7:40`, distância `5,11 km`, data pt-BR, unidade.
 - **Interação:** trocar treino, concluir check-in, abrir "por quê".
 - **Temas:** dark e light, fonte 100% e 200%.
+- **Data e duração:** seguir `DESIGN_SYSTEM.md` §7.3. Testar dígitos crus, máscara visual, edição no meio, troca de unidade (`Minutos` × `Horas`), segmentos inválidos (minutos/segundos > 59), vazio opcional, zero inválido e fonte 200%.
 - **Screenshot:** tamanhos reais usados — 393×852 (principal), 360×760/800 (estreito) e capturas focadas de altura variável (ex.: 393×760, 393×1500) × 2 temas, apenas telas-chave.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (52 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (57 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -320,9 +321,9 @@ Screenshots atuais (52 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 | Dados | `data-management-dark`, `data-management-light` (lixeira e opção de backup) |
 | Saúde | `health-dark`, `health-light`, `health-narrow-dark`, `health-charts-dark`, `health-recovery-dark`, `health-sources-dark`, `health-today-hint-dark` |
 | Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-routine-dark` |
-| Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light` |
+| Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light`, `profile-race-dark`, `profile-race-light` |
 | Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
-| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light` |
+| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
 | Replanejamento | `replan-dark`, `replan-light` |
 | Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
 | Tutorial | `tutorial-dark`, `tutorial-light`, `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light` |

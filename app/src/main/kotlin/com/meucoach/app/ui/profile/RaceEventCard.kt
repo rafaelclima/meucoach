@@ -28,16 +28,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.meucoach.app.ui.common.RaceDateVisualTransformation
+import com.meucoach.app.ui.common.TargetTimeUnit
+import com.meucoach.app.ui.common.convert
 import com.meucoach.app.ui.common.formatRaceDateForInput
+import com.meucoach.app.ui.common.maskLabel
 import com.meucoach.app.ui.common.parseRaceDate
-import com.meucoach.app.ui.common.parseRaceTargetTime
-import com.meucoach.app.ui.common.raceDateForDisplay
 import com.meucoach.app.ui.common.raceDateLabel
 import com.meucoach.app.ui.common.raceDistanceLabel
 import com.meucoach.app.ui.common.raceStatusLabel
 import com.meucoach.app.ui.common.raceTargetTimeLabel
+import com.meucoach.app.ui.common.targetTimeParts
+import com.meucoach.app.ui.common.totalSeconds
+import com.meucoach.app.ui.common.unitLabel
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
@@ -234,12 +241,15 @@ private fun RaceEventFormDialog(
 ) {
     val colors = McTheme.colors
     var distance by remember { mutableStateOf(initial?.distance ?: RaceDistance.TEN_K) }
-    var dateDigits by remember {
-        mutableStateOf(initial?.targetDate?.let(::formatRaceDateForInput).orEmpty())
+    var dateValue by remember {
+        mutableStateOf(TextFieldValue(initial?.targetDate?.let(::formatRaceDateForInput).orEmpty()))
     }
-    var targetTime by remember {
-        mutableStateOf(initial?.targetTimeSec?.let(::raceTargetTimeLabel).orEmpty())
+    var targetUnit by remember {
+        mutableStateOf(
+            if ((initial?.targetTimeSec ?: 0) >= 3_600) TargetTimeUnit.HOURS else TargetTimeUnit.MINUTES,
+        )
     }
+    var targetParts by remember { mutableStateOf(targetTimeParts(initial?.targetTimeSec, targetUnit)) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -278,11 +288,19 @@ private fun RaceEventFormDialog(
                     }
                 }
                 OutlinedTextField(
-                    value = raceDateForDisplay(dateDigits),
-                    onValueChange = {
-                        dateDigits = it.filter(Char::isDigit).take(8)
+                    value = dateValue,
+                    onValueChange = { input ->
+                        val digits = input.text.filter(Char::isDigit).take(8)
+                        dateValue = input.copy(
+                            text = digits,
+                            selection = TextRange(
+                                start = input.selection.start.coerceIn(0, digits.length),
+                                end = input.selection.end.coerceIn(0, digits.length),
+                            ),
+                        )
                         error = null
                     },
+                    visualTransformation = RaceDateVisualTransformation,
                     label = { Text(text = "Data (dd/mm/aaaa)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -294,23 +312,96 @@ private fun RaceEventFormDialog(
                         unfocusedTextColor = colors.textPrimary,
                     ),
                 )
-                OutlinedTextField(
-                    value = targetTime,
-                    onValueChange = {
-                        targetTime = it
-                        error = null
-                    },
-                    label = { Text(text = "Tempo alvo opcional (mm:ss ou h:mm:ss)") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("race-time"),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary,
-                    ),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Tempo alvo (opcional)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.textPrimary,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TargetTimeUnit.entries.forEach { option ->
+                            FilterChip(
+                                selected = option == targetUnit,
+                                onClick = {
+                                    targetParts = targetParts.convert(targetUnit, option)
+                                    targetUnit = option
+                                    error = null
+                                },
+                                label = { Text(text = option.unitLabel()) },
+                                modifier = Modifier
+                                    .heightIn(min = 48.dp)
+                                    .testTag("race-time-unit-${option.name.lowercase()}"),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = colors.surfaceInset,
+                                    labelColor = colors.textSecondary,
+                                    selectedContainerColor = colors.accentSoft,
+                                    selectedLabelColor = colors.accentText,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = option == targetUnit,
+                                    borderColor = colors.borderSubtle,
+                                    selectedBorderColor = colors.accent.copy(alpha = 0.5f),
+                                ),
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Máscara: ${targetUnit.maskLabel()}",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                        modifier = Modifier.testTag("race-time-mask"),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("race-time"),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (targetUnit == TargetTimeUnit.HOURS) {
+                            TimePartField(
+                                label = "Horas",
+                                value = targetParts.hours,
+                                maxDigits = 2,
+                                onValueChange = { value ->
+                                    targetParts = targetParts.copy(hours = value)
+                                    error = null
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("race-time-hours"),
+                            )
+                            Text(text = ":", style = MaterialTheme.typography.titleMedium, color = colors.textSecondary)
+                        }
+                        TimePartField(
+                            label = "Min",
+                            value = targetParts.minutes,
+                            maxDigits = if (targetUnit == TargetTimeUnit.MINUTES) 3 else 2,
+                            onValueChange = { value ->
+                                targetParts = targetParts.copy(minutes = value)
+                                error = null
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("race-time-minutes"),
+                        )
+                        Text(text = ":", style = MaterialTheme.typography.titleMedium, color = colors.textSecondary)
+                        TimePartField(
+                            label = "Seg",
+                            value = targetParts.seconds,
+                            maxDigits = 2,
+                            onValueChange = { value ->
+                                targetParts = targetParts.copy(seconds = value)
+                                error = null
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("race-time-seconds"),
+                        )
+                    }
+                }
                 Text(
                     text = "A meta é só sua. O app não transforma isso em pace, faixa ou previsão.",
                     style = McTextStyles.caption,
@@ -330,14 +421,18 @@ private fun RaceEventFormDialog(
             McTextButton(
                 text = "Salvar",
                 onClick = {
-                    val date = parseRaceDate(dateDigits)
+                    val date = parseRaceDate(dateValue.text)
                     if (date == null) {
                         error = "Informe uma data válida no formato dd/mm/aaaa."
                         return@McTextButton
                     }
-                    val time = parseRaceTargetTime(targetTime)
-                    if (targetTime.isNotBlank() && time == null) {
-                        error = "Use mm:ss ou h:mm:ss para o tempo alvo, ou deixe vazio."
+                    val time = targetParts.totalSeconds(targetUnit)
+                    if (!targetParts.isBlank && (time == null || time <= 0)) {
+                        error = if (targetUnit == TargetTimeUnit.HOURS) {
+                            "Use horas, minutos (0–59) e segundos (0–59), ou deixe vazio."
+                        } else {
+                            "Use minutos e segundos (0–59), ou deixe vazio."
+                        }
                         return@McTextButton
                     }
                     onSave(distance, date, time)
@@ -353,6 +448,30 @@ private fun RaceEventFormDialog(
                 trailingArrow = false,
             )
         },
+    )
+}
+
+@Composable
+private fun TimePartField(
+    label: String,
+    value: String,
+    maxDigits: Int,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = McTheme.colors
+    OutlinedTextField(
+        value = value,
+        onValueChange = { input -> onValueChange(input.filter(Char::isDigit).take(maxDigits)) },
+        label = { Text(text = label) },
+        placeholder = { Text(text = "00") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = colors.textPrimary,
+            unfocusedTextColor = colors.textPrimary,
+        ),
     )
 }
 

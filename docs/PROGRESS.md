@@ -6,7 +6,7 @@
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.234 testes no total (606 em `:app`, 152 em `core:data`, 440 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.242 testes no total (614 em `:app`, 152 em `core:data`, 440 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,63% de linhas (3.954/4.050), 81,85% de branches (2.881/3.520), 96,21% de instruções (27.681/28.770)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -137,12 +137,13 @@
 - **Plano da semana:** dia de evento aparece como “Prova · {distância}” e a sessão legada sobreposta é ocultada; nenhuma ação de pular é oferecida no dia.
 - **Testes:** `GetTodayDecision`, ViewModel do Hoje (prova vence, geração sem sessão no dia, troca bloqueada), conclusão em data de evento, adesão com evento, notificação, UI do Perfil/Hoje, parsers de data/tempo e goldens.
 - **Acessibilidade:** alvos ≥ 48 dp nos chips/ações, textos com unidade/contexto, testes em tema claro/escuro e tela estreita.
+- **Padrão de entrada:** `DESIGN_SYSTEM.md` §7.3 normatiza máscara visual de data e seletor de unidade para duração; inventário e migração de onboarding/Calibração em `ROADMAP` U-13.
 
 ### Evidências
 
 - `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
 - `./gradlew :app:verifyRoborazziDebug` — verde.
-- **1.231 testes**, 0 falhas e 0 `@Ignore` (603 `:app`, 152 `core:data`, 440 `core:domain`, 36 `core:model`).
+- **1.239 testes**, 0 falhas e 0 `@Ignore` (611 `:app`, 152 `core:data`, 440 `core:domain`, 36 `core:model`).
 - `core:domain`: 97,63% de linhas, 81,85% de branches, 96,21% de instruções; parser FIT 93,01% de branches.
 - Goldens novos: `today-race-{dark,light,narrow-dark}.png` e `profile-race-{dark,light}.png`; Perfil dark/light e saúde atualizados pela nova seção.
 
@@ -153,6 +154,8 @@
 - **Meta declarada:** `targetTimeSec` aparece como “meta informada” e nunca vira pace, faixa ou previsão.
 - **Legado protegido:** plano antigo com sessão no dia da prova não é reescrito; a sessão é ocultada, excluída da adesão e não pode ser concluída/trocada.
 - **Primeiro evento encerra a fonte legada:** depois de qualquer evento persistido, `TrainingGoal` não volta a alimentar taper/plano; não há backfill.
+- **Máscara de data do card de prova:** o campo guarda `TextFieldValue` com dígitos crus e usa `VisualTransformation` para exibir `dd/mm/aaaa`; editar no meio do texto não reordena os dígitos e o cursor acompanha as barras.
+- **Tempo alvo do card de prova:** o usuário escolhe `Minutos` (`mm:ss`, aceitando mais de 59 minutos) ou `Horas` (`h:mm:ss`) e digita apenas números em campos separados; a troca de unidade converte o valor atual e a validação rejeita minutos/segundos acima de 59.
 
 ### Próximo passo
 

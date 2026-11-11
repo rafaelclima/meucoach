@@ -1,5 +1,9 @@
 package com.meucoach.app.ui.common
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceStatus
 import java.time.LocalDate
@@ -51,24 +55,6 @@ fun parseRaceDate(raw: String): LocalDate? {
     }.getOrNull()
 }
 
-/** Parses an optional declared time in `mm:ss` or `h:mm:ss`; blank means none. */
-fun parseRaceTargetTime(raw: String): Int? {
-    val text = raw.trim()
-    if (text.isEmpty()) return null
-    val parts = text.split(":").map { it.trim() }
-    if (parts.any { it.isEmpty() || !it.all(Char::isDigit) }) return null
-    val seconds = when (parts.size) {
-        2 -> parts[0].toIntOrNull()?.let { it * 60 }?.plus(parts[1].toIntOrNull() ?: return null)
-
-        3 -> parts[0].toIntOrNull()?.let { it * 3_600 }
-            ?.plus(parts[1].toIntOrNull()?.let { it * 60 } ?: return null)
-            ?.plus(parts[2].toIntOrNull() ?: return null)
-
-        else -> null
-    }
-    return seconds?.takeIf { it > 0 }
-}
-
 fun raceDateForDisplay(raw: String): String {
     val digits = raw.filter { it.isDigit() }
     return buildString {
@@ -80,3 +66,27 @@ fun raceDateForDisplay(raw: String): String {
 }
 
 fun formatRaceDateForInput(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("ddMMuuuu", PT_BR))
+
+/**
+ * The date field stores only digits; slashes live in the visual layer so the
+ * caret and mid-string edits are not reordered by reformatting the raw value.
+ */
+val RaceDateVisualTransformation = VisualTransformation { annotated ->
+    val digits = annotated.text.filter { it.isDigit() }.take(8)
+    val formatted = AnnotatedString(raceDateForDisplay(digits))
+    TransformedText(
+        formatted,
+        object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 2 -> offset
+                offset <= 4 -> offset + 1
+                else -> offset + 2
+            }.coerceAtMost(formatted.length)
+
+            override fun transformedToOriginal(offset: Int): Int {
+                val slashes = (if (offset > 2) 1 else 0) + (if (offset > 5) 1 else 0)
+                return (offset - slashes).coerceIn(0, digits.length)
+            }
+        },
+    )
+}

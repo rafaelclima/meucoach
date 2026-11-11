@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.common
 
+import androidx.compose.ui.text.AnnotatedString
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceStatus
 import org.assertj.core.api.Assertions.assertThat
@@ -24,12 +25,16 @@ class RaceEventLabelsTest {
     }
 
     @Test
-    fun `parses an optional declared time and rejects pace-like input`() {
-        assertThat(parseRaceTargetTime("25:00")).isEqualTo(1_500)
-        assertThat(parseRaceTargetTime("1:02:03")).isEqualTo(3_723)
-        assertThat(parseRaceTargetTime("")).isNull()
-        assertThat(parseRaceTargetTime("6:04/km")).isNull()
-        assertThat(parseRaceTargetTime("0:00")).isNull()
+    fun `date mask keeps raw digits and maps the caret around the slashes`() {
+        val result = RaceDateVisualTransformation.filter(AnnotatedString("14032027"))
+
+        assertThat(result.text.text).isEqualTo("14/03/2027")
+        assertThat(result.offsetMapping.originalToTransformed(0)).isEqualTo(0)
+        assertThat(result.offsetMapping.originalToTransformed(2)).isEqualTo(2)
+        assertThat(result.offsetMapping.originalToTransformed(3)).isEqualTo(4)
+        assertThat(result.offsetMapping.originalToTransformed(4)).isEqualTo(5)
+        assertThat(result.offsetMapping.transformedToOriginal(3)).isEqualTo(2)
+        assertThat(result.offsetMapping.transformedToOriginal(6)).isEqualTo(4)
     }
 
     @Test

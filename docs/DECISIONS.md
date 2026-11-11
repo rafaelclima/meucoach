@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.7 · **Data:** 10/11/2026
+**Versão:** 1.9 · **Data:** 11/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -9,6 +9,7 @@
 > Revisão 1.6 (10/11/2026): usuário aprovou as decisões C3-G0; ADRs 0030/0031 aceitos em princípio, com implementação ainda pendente de gates. ADR 0029 permanece reservado para F4.
 > Revisão 1.7 (10/11/2026): C3-01A (guarda de iniciante) e C3-01B (fingerprint/checkpoint, T4, migração 13→14 e aceite atômico) implementados; ADR 0031 passa a implementado e ADR 0030 segue pendente de C3-G1/C3-05.
 > Revisão 1.8 (10/11/2026): C3-G2 concluído — ADR 0029 redigido e aceito com a copy educativa de hidratação (F4); `EV-NATA-2017` corrige a citação do PRD. Implementação de F4 em ciclo futuro.
+> Revisão 1.9 (11/11/2026): status reconciliado com o código — F4 implementado na UI (sheet de briefing) e ADR 0030 implementado em C3-05.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -41,10 +42,10 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0026](adr/0026-load-coverage-quality-eligibility.md) | Cobertura de carga, ACWR desconhecido e elegibilidade de qualidade | Aceito parcialmente — gate implementado em C1-02; limiares de iniciante a validar | 06/11/2026 |
 | [0028](adr/0028-versioned-plan-replanning.md) | Replanejamento versionado e sugerido da semana | Aceito — implementado em R-01/R-02/R-03 | 08/11/2026 |
 | [0029](adr/0029-f4-hydration-nutrition-copy.md) | F4: copy educativa de hidratação e encaminhamento alimentar (gate de fontes) | Aceito — gate documental C3-G2 e implementado na UI (sheet de briefing) | 10/11/2026 |
-| [0030](adr/0030-race-event-and-weekly-taper.md) | Evento de prova, autoridade diária e taper | Aceito — decisões de produto/arquitetura; migração/código pendentes | 10/11/2026 |
+| [0030](adr/0030-race-event-and-weekly-taper.md) | Evento de prova, autoridade diária e taper | Aceito — implementado em C3-05 (modelo, Room 15, TodayDecision, taper, notificação e UI) | 10/11/2026 |
 | [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — implementado em C3-01B (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply) | 10/11/2026 |
 
-> ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementação em ciclo futuro.
+> ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
 ## Decisões menores (registro rápido)
 
