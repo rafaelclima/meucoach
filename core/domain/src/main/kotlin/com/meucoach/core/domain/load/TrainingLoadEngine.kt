@@ -138,6 +138,12 @@ data class LoadSnapshot(
  * when heart-rate reserve data is available. The two metrics are never summed
  * in the same day (R-LOAD-01).
  *
+ * CTL/ATL are exponential moving averages: their value depends on the load
+ * before the displayed window. The engine therefore feeds a bounded warm-up
+ * ([DEFAULT_WARMUP_DAYS]) instead of restarting the 42-day EMA at zero whenever
+ * older activities exist (BUG-03). When there is no pre-window history, the
+ * warm-up is empty and the series honestly starts at zero.
+ *
  * The engine also reports coverage and source freshness. ACWR is only exposed
  * when the source is fresh and at least [LoadSnapshot.MIN_DAYS_WITH_LOAD] days
  * have a computable load in the last 28 days (ADR 0026).
@@ -149,22 +155,26 @@ class TrainingLoadEngine {
         today: LocalDate,
         sourceStatus: ActivitySourceStatus,
         days: Int = 42,
+        warmupDays: Int = DEFAULT_WARMUP_DAYS,
     ): LoadSnapshot {
         require(days >= 28) { "Load series needs at least 28 days" }
-        val start = today.minusDays(days - 1L)
-        val filtered = activities.filter { !it.date.isBefore(start) && !it.date.isAfter(today) }
+        require(warmupDays >= 0) { "Warm-up days must not be negative" }
+        val displayStart = today.minusDays(days - 1L)
+        val seriesStart = displayStart.minusDays(warmupDays.toLong())
+        val filtered = activities.filter { !it.date.isBefore(seriesStart) && !it.date.isAfter(today) }
         val byDate = filtered.groupBy { it.date }
 
-        val daily = (0 until days).map { offset ->
-            val date = start.plusDays(offset.toLong())
+        val fullSeries = (0 until days + warmupDays).map { offset ->
+            val date = seriesStart.plusDays(offset.toLong())
             estimate(byDate[date].orEmpty(), profile, date)
         }
-
-        val loads = daily.map { it.load }
-        val ctlSeries = TrainingLoadCalculator.ctl(loads)
-        val atlSeries = TrainingLoadCalculator.atl(loads)
-        val last7 = loads.takeLast(7)
-        val last28 = loads.takeLast(28)
+        val daily = fullSeries.takeLast(days)
+        val loads = fullSeries.map { it.load }
+        val ctlSeries = TrainingLoadCalculator.ctl(loads).takeLast(days)
+        val atlSeries = TrainingLoadCalculator.atl(loads).takeLast(days)
+        val displayLoads = daily.map { it.load }
+        val last7 = displayLoads.takeLast(7)
+        val last28 = displayLoads.takeLast(28)
         val acute = last7.average()
         val chronic = last28.average()
 
@@ -173,6 +183,7 @@ class TrainingLoadEngine {
             activitiesByDate = byDate,
             sourceStatus = sourceStatus,
             today = today,
+            displayStart = displayStart,
         )
         val acwr = if (sourceStatus.isFresh && coverage.daysWithLoad >= LoadSnapshot.MIN_DAYS_WITH_LOAD) {
             TrainingLoadCalculator.acwr(acute, chronic)
@@ -201,6 +212,7 @@ class TrainingLoadEngine {
         activitiesByDate: Map<LocalDate, List<LoadActivity>>,
         sourceStatus: ActivitySourceStatus,
         today: LocalDate,
+        displayStart: LocalDate,
     ): LoadCoverage {
         val windowStart = today.minusDays(COVERAGE_DAYS - 1L)
         val window = daily.filter { !it.date.isBefore(windowStart) }
@@ -212,7 +224,10 @@ class TrainingLoadEngine {
             0
         }
         val daysWithoutData = window.size - daysWithLoad - daysWithoutActivity
-        val lastActivityAt = activitiesByDate.values
+        // Warm-up days only feed the EMA; they are not part of the displayed window.
+        val lastActivityAt = activitiesByDate
+            .filterKeys { !it.isBefore(displayStart) }
+            .values
             .flatten()
             .mapNotNull { it.startTime }
             .maxOrNull()
@@ -277,5 +292,12 @@ class TrainingLoadEngine {
 
     private companion object {
         const val COVERAGE_DAYS = 28L
+
+        /**
+         * Bounded burn-in for the 42-day CTL EMA (≈4.3 time constants).
+         * Reading more than this adds no meaningful accuracy; reading less
+         * would let the displayed window start from zero again (BUG-03).
+         */
+        const val DEFAULT_WARMUP_DAYS = 180
     }
 }

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.25 · **Data:** 11/11/2026 · **Mudança:** FR-011 concluído (revisão semanal determinística no domínio e no card de Tendências, ADR 0034); FR-010 e U-13 seguem no mesmo ciclo.
+**Versão:** 1.26 · **Data:** 11/11/2026 · **Mudança:** BUG-03 corrigido (burn-in de 180 dias nas EMAs do PMC, sem inventar histórico); FR-011, FR-010 e U-13 seguem no mesmo ciclo.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -173,15 +173,16 @@
 
 ### P1-03 · Motor de carga
 
-**Status:** concluído em 30/10/2026
+**Status:** concluído em 30/10/2026; viés do PMC corrigido em 11/11/2026
 
 - [x] Integração com atividades importadas e perfil calibrado.
 - [x] TRIMP/rTSS sem soma no mesmo dia; CTL/ATL/TSB.
 - [x] ACWR e monotonia como flags, com dias sem carga explícitos.
 - [x] Tela Tendências com PMC em Canvas.
 - [x] Golden `G-LOAD-02` do motor de 28 dias.
+- [x] Burn-in de 180 dias das EMAs do PMC (BUG-03): histórico anterior à janela de 42 dias alimenta CTL/ATL; sem histórico, a série continua começando em zero; cobertura e `lastActivityAt` não usam o aquecimento.
 
-**Aceite:** série de carga bate com o golden; ausência de dados não gera ACWR falso; a UI não trata ACWR como meta.
+**Aceite:** série de carga bate com o golden; ausência de dados não gera ACWR falso; a UI não trata ACWR como meta; carga constante converge para o valor real em vez de 63% dele.
 
 ### P1-04 · Prontidão
 

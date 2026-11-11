@@ -91,7 +91,7 @@ class TrainingLoadEngineTest {
     }
 
     @Test
-    fun `matches the calculator for CTL ATL and TSB`() {
+    fun `matches the calculator when there is no pre-window history`() {
         val snapshot = engine.calculate(
             activities = (0 until 8).map { index ->
                 LoadActivity(
@@ -112,6 +112,77 @@ class TrainingLoadEngineTest {
         assertThat(snapshot.tsb).isCloseTo(snapshot.ctl - snapshot.atl, within(1e-9))
         assertThat(snapshot.acwr).isNotNull
         assertThat(snapshot.monotony).isNotNull
+    }
+
+    @Test
+    fun `uses pre-window history as warm-up for CTL and ATL`() {
+        val snapshot = engine.calculate(
+            activities = constantLoadDays(days = 200),
+            profile = profile(),
+            today = today,
+            sourceStatus = source(),
+            days = 42,
+        )
+
+        assertThat(snapshot.daily).hasSize(42)
+        assertThat(snapshot.ctlSeries).hasSize(42)
+        assertThat(snapshot.atlSeries).hasSize(42)
+        // 200 days of 100 points/day converge to the real value instead of 63% of it.
+        assertThat(snapshot.ctl).isGreaterThan(99.0)
+        assertThat(snapshot.atl).isCloseTo(100.0, within(0.1))
+        assertThat(snapshot.tsb).isGreaterThan(-2.0)
+    }
+
+    @Test
+    fun `does not invent past load when there is no history before the window`() {
+        val snapshot = engine.calculate(
+            activities = constantLoadDays(days = 42),
+            profile = profile(),
+            today = today,
+            sourceStatus = source(),
+            days = 42,
+        )
+
+        // Honest convergence from zero: no pre-window activity exists to seed the EMA.
+        assertThat(snapshot.ctl).isCloseTo(63.65, within(0.1))
+    }
+
+    @Test
+    fun `lets the warm-up decay when the display window has no load`() {
+        val snapshot = engine.calculate(
+            activities = (42..241).map { daysAgo -> constantLoadDay(daysAgo.toLong()) },
+            profile = profile(),
+            today = today,
+            sourceStatus = source(),
+            days = 42,
+        )
+
+        assertThat(snapshot.hasData).isFalse()
+        // The 42-day break decays the warm-up; a zeroed window would show 0.
+        assertThat(snapshot.ctl).isGreaterThan(35.0)
+        assertThat(snapshot.ctl).isLessThan(37.0)
+    }
+
+    @Test
+    fun `keeps warm-up activities out of coverage and lastActivityAt`() {
+        val snapshot = engine.calculate(
+            activities = listOf(
+                LoadActivity(
+                    date = today.minusDays(100),
+                    durationSec = 3_600,
+                    averagePace = Pace.fromSecondsPerKm(360),
+                    startTime = Instant.parse("2026-07-22T09:00:00Z"),
+                ),
+            ),
+            profile = profile(),
+            today = today,
+            sourceStatus = source(fresh = false),
+            days = 28,
+        )
+
+        assertThat(snapshot.coverage.lastActivityAt).isNull()
+        assertThat(snapshot.coverage.daysWithLoad).isZero()
+        assertThat(snapshot.dataState).isEqualTo(LoadDataState.INSUFFICIENT)
     }
 
     @Test
@@ -247,10 +318,14 @@ class TrainingLoadEngineTest {
     }
 
     @Test
-    fun `ignores activities outside the requested window`() {
+    fun `ignores activities before the warm-up window`() {
         val snapshot = engine.calculate(
             activities = listOf(
-                LoadActivity(date = today.minusDays(40), durationSec = 3_600, averagePace = Pace.fromSecondsPerKm(360)),
+                LoadActivity(
+                    date = today.minusDays(300),
+                    durationSec = 3_600,
+                    averagePace = Pace.fromSecondsPerKm(360),
+                ),
             ),
             profile = profile(),
             today = today,
@@ -259,6 +334,7 @@ class TrainingLoadEngineTest {
         )
 
         assertThat(snapshot.hasData).isFalse()
+        assertThat(snapshot.ctl).isZero()
     }
 
     @Test
@@ -276,6 +352,15 @@ class TrainingLoadEngineTest {
             startTime = Instant.parse("2026-10-30T09:00:00Z").minusSeconds(index * 86_400L),
         )
     }
+
+    private fun constantLoadDays(days: Int): List<LoadActivity> =
+        (0 until days).map { index -> constantLoadDay(index.toLong()) }
+
+    private fun constantLoadDay(daysAgo: Long) = LoadActivity(
+        date = today.minusDays(daysAgo),
+        durationSec = 3_600,
+        averagePace = Pace.fromSecondsPerKm(360),
+    )
 
     private fun source(fresh: Boolean = true) = ActivitySourceStatus(
         lastImportedAt = if (fresh) {

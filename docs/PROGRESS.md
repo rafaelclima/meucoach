@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.397 testes no total (682 em `:app`, 161 em `core:data`, 515 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,60% de linhas (4.468/4.578), 81,44% de branches (3.308/4.062), 96,27% de instruções (31.021/32.222)
+- **Testes:** 1.401 testes no total (682 em `:app`, 161 em `core:data`, 519 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,62% de linhas (4.477/4.586), 81,44% de branches (3.313/4.068), 96,29% de instruções (31.082/32.278)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -33,7 +33,7 @@
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
-- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão.
+- **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão. A CTL/ATL é alimentada com até 180 dias anteriores à janela exibida (BUG-03); sem histórico, a série começa honestamente em zero.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
 - **CSV diário:** parser de sono/RHR/HRV/SpO2, persistência, importação pelo perfil e agregação de janelas 7/30/60 dias na prontidão.
 - **Métricas diárias:** CSV e Health Connect são mesclados por campo, com precedência `MANUAL` > `Health Connect` > `CSV`; um sync não apaga mais o que só o CSV tinha (ADR 0016).
@@ -72,6 +72,39 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — BUG-03: PMC com burn-in de 180 dias
+
+**Objetivo:** corrigir o viés do PMC (CTL ~63% do valor real e TSB sempre negativo) quando existe histórico anterior à janela de 42 dias, sem inventar carga quando não há histórico e sem alterar ACWR, cobertura, prescrição ou o contrato de `TrainingLoadCalculator`.
+
+### Concluído
+
+- **Domínio:** `TrainingLoadEngine.calculate` ganhou `warmupDays` (padrão 180) e monta a série completa desde o início do aquecimento; `daily`, `ctlSeries` e `atlSeries` continuam com `days` pontos. O aquecimento alimenta CTL/ATL, mas fica fora de `LoadCoverage`, `missingDays`, `lastActivityAt` e dos cálculos de decisão (ACWR e monotonia seguem na janela de 7/28 dias).
+- **Honestidade sem histórico:** com 42 dias de carga constante e nenhuma atividade anterior, a CTL continua convergindo de zero (63,65 em vez de 100). Com 200 dias de carga constante, converge para >99 em vez de ~63,65.
+- **Sem mudar a função pura:** `TrainingLoadCalculator.ewma` continua começando em zero; o burn-in é responsabilidade do engine. O golden `G-LOAD-01` e o contrato do calculator não mudaram.
+- **Testes:** +4 em `TrainingLoadEngineTest` — burn-in de histórico anterior, ausência de histórico (não inventa passado), decaimento da CTL após 42 dias sem carga e exclusão do aquecimento de cobertura/`lastActivityAt`; o teste de atividade fora da janela agora aponta para o limite do aquecimento.
+- **Docs:** `SPORTS_SCIENCE.md` §6.1 registra a inicialização do PMC; `TESTING.md` cobre o burn-in; `ROADMAP` (P1-03) e `PRD_COACH_CORRIDA` marcam BUG-03 resolvido.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` — verde (64 testes de screenshot).
+- **1.401 testes**, 0 falhas e 0 `@Ignore` (682 `:app`, 161 `core:data`, 519 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,62% de linhas (4.477/4.586), 81,44% de branches (3.313/4.068), 96,29% de instruções (31.082/32.278); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova, mudança de schema ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Aquecimento limitado:** 180 dias (≈4,3 constantes de 42) equilibram precisão e leitura de histórico; a janela exibida e as decisões continuam em 42/28 dias. Sem histórico anterior, o zero continua sendo o começo honesto — nada é inferido.
+- **Hash de replanejamento:** CTL/ATL entram no `inputsHash` do `PlanReplanner`; usuários com histórico anterior à janela podem ver uma reavaliação uma vez, sempre como sugestão com aceite, nunca aplicada automaticamente.
+- **Sem UI nova:** “Base · 42 dias” continua correto; o número agora é a CTL real da janela, e o texto de ajuda não precisou mudar.
+- **Flake visual:** quatro execuções completas de goldens falharam em gráficos Vico diferentes (`trends-charts-dark`, `health-charts-dark` e `health-recovery-dark`), sem relação com a carga; os mesmos testes passaram isolados e a execução completa seguinte ficou verde. O flake já documentado de Vico permanece no backlog de estabilização, sem mascarar o resultado.
+
+### Próximo passo
+
+1. BUG-04 (HRV em espaço logarítmico): unificar o z-score em `HrvMetrics`, remover as três duplicatas e recalcular os goldens de prontidão.
+2. BUG-06 (Tier B da calibração) e os demais itens da auditoria seguem no backlog.
+3. Validar o card do PMC em aparelho real com TalkBack, fonte 200% e tela estreita.
 
 ## Sessão 2026-11-11 — FR-011 fatia 2: card de revisão semanal em Tendências
 

@@ -139,7 +139,7 @@ Evidência atual (10/11/2026):
 - `CalibrationViewModelTest`: carregamento, cálculo, invalidação ao editar e salvamento no perfil.
 - `CalibrationScreenTest`: formulário, resultado, ausência de métricas, erros e ação de salvar.
 - `HrZoneDistributionCalculatorTest`: alocação por zona, ordenação, intervalos sem FC e LTHR inválido.
-- `TrainingLoadEngineTest`: TRIMP vs rTSS, CTL/ATL/TSB, ACWR, monotonia, janela e dias ausentes.
+- `TrainingLoadEngineTest`: TRIMP vs rTSS, CTL/ATL/TSB, ACWR, monotonia, janela, dias ausentes e burn-in de 180 dias (histórico anterior à janela alimenta as EMAs; sem histórico, a série começa em zero; aquecimento não entra em cobertura nem em `lastActivityAt`).
 - `LoadEngineGoldenTest`: cenário `G-LOAD-02` de 28 dias.
 - `TrendsViewModelTest` e `TrendsScreenTest`: carga a partir das atividades, estados vazios e PMC.
 - `DailyCheckInTest`: validação 1–5 e Hooper sum.

@@ -148,6 +148,8 @@ O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
 
 Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pontos ≈ 1 hora no limiar para o rTSS; no TRIMP, uma hora fácil rende menos e uma hora forte rende mais. O número serve para comparar o atleta com ele mesmo ao longo do tempo, nunca entre pessoas diferentes.
 
+**Inicialização do PMC:** CTL e ATL são médias exponenciais e dependem da carga anterior à janela exibida. O app alimenta até 180 dias de histórico antes dos 42 dias mostrados, para não reiniciar a CTL em zero quando existem atividades mais antigas (BUG-03). Sem histórico anterior, a série começa honestamente em zero; nada é inventado. ACWR e monotonia continuam calculados somente sobre a janela de decisão (7 e 28 dias), sem usar o aquecimento.
+
 ### 6.2 Normalização de NGP
 
 - Sem elevação confiável: pace bruto.

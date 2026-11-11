@@ -51,6 +51,7 @@ O PRD continua sendo um retrato datado; onde ele divergir do código, vale o có
 |---|---|
 | BUG-01 / FR-001 — duas prescrições concorrentes | Resolvido em C1-03: `DailyPrescriptionEngine` + `daily_prescriptions`; o Hoje tem um card e o plano é contexto (`ADR 0023`). |
 | BUG-02 / FR-003 — conclusão sem execução | Resolvido para `ACTIVITY`/`MANUAL`: `SessionExecution`, `completionEvidence` e vínculo 1:1; `DONE` sem evidência é rejeitado (`ADR 0024`). FR-002 (`GUIDED` persistente) segue no ciclo 3. |
+| BUG-03 — PMC enviesado por janela de 42 dias e EMA inicializada em zero | Resolvido em 11/11/2026: `TrainingLoadEngine` alimenta CTL/ATL com até 180 dias anteriores à janela exibida; sem histórico, a série começa honestamente em zero; ACWR, monotonia, cobertura e `lastActivityAt` continuam restritos à janela de decisão. Testes de burn-in, ausência de histórico e decaimento em `TrainingLoadEngineTest`. |
 | SEC-01/SEC-02 / FR-009 — exclusão não efetiva | Resolvido em C1-05: lixeira de **7 dias**, expurgo por clock, reset com época e workers bloqueados (`ADR 0025`). O prazo de 30 dias desta auditoria foi substituído por 7. |
 | BUG-09 / NFR-005 — tempo congelado | Resolvido em C1-01: `TimeProvider`/`Clock` injetados, fuso do perfil e virada de dia/semana (`ADR 0022`). |
 | N-04 / FR-004/005 — carga ausente liberando qualidade | Gate implementado em C1-02: `LoadCoverage`/`LoadDataState`, frescor de 14 dias, mínimo de 8 dias com carga; iniciante ainda pendente (`ADR 0026`, parcial). |
