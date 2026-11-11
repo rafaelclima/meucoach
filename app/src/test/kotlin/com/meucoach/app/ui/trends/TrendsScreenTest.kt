@@ -1,7 +1,10 @@
 package com.meucoach.app.ui.trends
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -9,12 +12,20 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.Density
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionWeek
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
+import com.meucoach.core.domain.review.WeeklyAdherence
+import com.meucoach.core.domain.review.WeeklyReadiness
+import com.meucoach.core.domain.review.WeeklyReview
+import com.meucoach.core.domain.review.WeeklyReviewObservation
+import com.meucoach.core.domain.review.WeeklyReviewObservationKind
+import com.meucoach.core.domain.review.WeeklyReviewStatus
+import com.meucoach.core.domain.review.WeeklySleep
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ConsistencyDay
 import com.meucoach.core.domain.trends.ConsistencySummary
@@ -36,6 +47,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.LocalDate
+import com.meucoach.core.domain.review.WeeklyVolume as ReviewVolume
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -314,6 +326,119 @@ class TrendsScreenTest {
     }
 
     @Test
+    fun `shows the weekly review with facts and observations`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                weeklyReview = review(),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Revisão da semana"))
+        compose.onNodeWithText("Revisão da semana").assertIsDisplayed()
+        compose.onNodeWithText("Semana de 19/10 a 25/10").assertIsDisplayed()
+        compose.onNodeWithText("Confiança média").assertIsDisplayed()
+
+        list.performScrollToNode(hasText("2 de 4 sessões concluídas"))
+        compose.onNodeWithText("2 de 4 sessões concluídas").assertIsDisplayed()
+        compose.onNodeWithText("50%").assertIsDisplayed()
+        list.performScrollToNode(hasText("1 com evidência · 1 sem registro · 2 puladas"))
+        compose.onNodeWithText("1 com evidência · 1 sem registro · 2 puladas").assertIsDisplayed()
+
+        list.performScrollToNode(hasText("2h30"))
+        compose.onNodeWithText("2h30").assertIsDisplayed()
+        list.performScrollToNode(hasText("1h40"))
+        compose.onNodeWithText("1h40").assertIsDisplayed()
+        list.performScrollToNode(hasText("67%"))
+        compose.onNodeWithText("67%").assertIsDisplayed()
+
+        list.performScrollToNode(
+            hasContentDescription("Distribuição por tempo da semana: 50% fácil, 25% moderado e 25% forte"),
+        )
+        list.performScrollToNode(hasText("50% fácil · 25% moderado · 25% forte · 4 sessões"))
+        compose.onNodeWithText("50% fácil · 25% moderado · 25% forte · 4 sessões").assertIsDisplayed()
+
+        list.performScrollToNode(hasText("O que a semana mostrou"))
+        compose.onNodeWithText("O que a semana mostrou").assertIsDisplayed()
+        list.performScrollToNode(hasText("2 de 4 sessões planejadas foram concluídas."))
+        compose.onNodeWithText("2 de 4 sessões planejadas foram concluídas.").assertIsDisplayed()
+        list.performScrollToNode(hasText("O volume ficou 33% abaixo do planejado."))
+        compose.onNodeWithText("O volume ficou 33% abaixo do planejado.").assertIsDisplayed()
+        compose.onNodeWithText("R-REVIEW-01").assertDoesNotExist()
+        compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows an honest empty weekly review`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                weeklyReview = emptyReview(),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Revisão da semana"))
+        compose.onNodeWithText("Ainda não há dados desta semana.").assertIsDisplayed()
+        compose.onNodeWithText("Sem plano registrado nesta semana.").assertDoesNotExist()
+        compose.onNodeWithText("Confiança baixa").assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows a review without a plan but keeps the executed facts`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                weeklyReview = emptyReview().copy(
+                    status = WeeklyReviewStatus.EMPTY_NO_PLAN,
+                    volume = ReviewVolume(plannedMin = null, executedMin = 30, percentOfPlan = null),
+                ),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Sem plano registrado nesta semana."))
+        compose.onNodeWithText("Sem plano registrado nesta semana.").assertIsDisplayed()
+        list.performScrollToNode(hasText("30 min"))
+        compose.onNodeWithText("30 min").assertIsDisplayed()
+        compose.onNodeWithText("sessões concluídas", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("feito ÷ planejado").assertIsDisplayed()
+    }
+
+    @Test
+    fun `weekly review stays readable at 200 percent font`() {
+        compose.setContent {
+            CompositionLocalProvider(
+                LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f),
+            ) {
+                McTheme(darkTheme = true) {
+                    TrendsContent(
+                        state = TrendsUiState(
+                            isLoading = false,
+                            profile = profile(),
+                            snapshot = snapshot(hasData = true),
+                            weeklyReview = review(),
+                        ),
+                    )
+                }
+            }
+        }
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasTestTag("weekly-review-adherence"))
+        compose.onNodeWithTag("weekly-review-adherence").assertIsDisplayed()
+        list.performScrollToNode(hasText("O que a semana mostrou"))
+        compose.onNodeWithText("O que a semana mostrou").assertIsDisplayed()
+    }
+
+    @Test
     fun `shows personal records from imported runs`() {
         setContent(
             TrendsUiState(
@@ -421,6 +546,55 @@ class TrendsScreenTest {
         birthDate = LocalDate.of(1988, 1, 1),
         sex = Sex.MALE,
         timezone = "America/Sao_Paulo",
+    )
+
+    private fun review() = WeeklyReview(
+        weekStart = LocalDate.of(2026, 10, 19),
+        weekEnd = LocalDate.of(2026, 10, 25),
+        status = WeeklyReviewStatus.AVAILABLE,
+        adherence = WeeklyAdherence(
+            planned = 4,
+            done = 2,
+            verified = 1,
+            manual = 1,
+            legacy = 0,
+            skipped = 2,
+        ),
+        volume = ReviewVolume(plannedMin = 150, executedMin = 100, percentOfPlan = 67),
+        intensity = WeeklyIntensity(LocalDate.of(2026, 10, 19), 3_600, 1_800, 1_800),
+        intensitySessions = 4,
+        readiness = WeeklyReadiness(measuredDays = 5, averageScore = 48, redDays = 3),
+        sleep = WeeklySleep(measuredNights = 6, averageMinutes = 451, shortNights = 3),
+        observations = listOf(
+            observation(WeeklyReviewObservationKind.ADHERENCE_PARTIAL),
+            observation(WeeklyReviewObservationKind.VOLUME_BELOW_PLAN),
+        ),
+        ruleIds = listOf("R-REVIEW-01"),
+        evidenceIds = emptyList(),
+        confidence = DataConfidence.MEDIUM,
+    )
+
+    private fun emptyReview() = WeeklyReview(
+        weekStart = LocalDate.of(2026, 10, 19),
+        weekEnd = LocalDate.of(2026, 10, 25),
+        status = WeeklyReviewStatus.EMPTY_NO_DATA,
+        adherence = null,
+        volume = null,
+        intensity = null,
+        intensitySessions = 0,
+        readiness = null,
+        sleep = null,
+        observations = emptyList(),
+        ruleIds = emptyList(),
+        evidenceIds = emptyList(),
+        confidence = DataConfidence.LOW,
+    )
+
+    private fun observation(kind: WeeklyReviewObservationKind) = WeeklyReviewObservation(
+        kind = kind,
+        ruleId = "R-REVIEW-01",
+        evidenceIds = emptyList(),
+        confidence = DataConfidence.MEDIUM,
     )
 
     private fun snapshot(hasData: Boolean): LoadSnapshot {

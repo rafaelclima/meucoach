@@ -890,6 +890,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   3. Observações não usam LLM e são reproduzíveis.
   4. Testes de cálculo e de UI; golden.
 - **Prioridade:** P2 · **Dependências:** FR-003, FR-004, FR-010 · **Evidência:** UX-06.
+- **Status na reconciliação:** implementado em 11/11/2026: `WeeklyReviewCalculator` consolida a última semana fechada em adesão, volume, intensidade, prontidão, sono e até 3 observações determinísticas, com estados vazios honestos; o card “Revisão da semana” vive em Tendências com goldens dark/light/estreito. Sem migração; ver ADR 0034. “Prévia da próxima semana” e interpretação de “próximo passo” ficam para uma evolução.
 
 ### FR-012 — Periodização por blocos e plano de prova
 

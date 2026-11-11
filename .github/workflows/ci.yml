@@ -48,7 +48,7 @@ jobs:
         run: ./gradlew --no-daemon spotlessCheck check :core:domain:koverVerify :app:assembleDebug
 
       - name: Verify screenshots
-        run: ./gradlew --no-daemon :app:verifyRoborazziDebug
+        run: ./gradlew --no-daemon :app:verifyRoborazziDebug --tests "*ScreenshotTest"
 
       - name: Upload verification reports
         if: always()

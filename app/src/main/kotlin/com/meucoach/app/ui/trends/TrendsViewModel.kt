@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
@@ -13,6 +15,10 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionCalculator
+import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.readiness.ReadinessHistoryCalculator
+import com.meucoach.core.domain.review.WeeklyReview
+import com.meucoach.core.domain.review.WeeklyReviewCalculator
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ActivityTrendsCalculator
 import com.meucoach.core.domain.trends.IntensityDistribution
@@ -27,9 +33,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 enum class TrendsPeriod(val weeks: Int, val consistencyDays: Int, val label: String) {
     WEEKS_6(weeks = 6, consistencyDays = 42, label = "6 sem"),
@@ -44,6 +53,7 @@ data class TrendsUiState(
     val activityTrends: ActivityTrends? = null,
     val intensity: IntensityDistribution? = null,
     val planCompletion: PlanCompletion? = null,
+    val weeklyReview: WeeklyReview? = null,
     val period: TrendsPeriod = TrendsPeriod.WEEKS_6,
 )
 
@@ -53,12 +63,16 @@ class TrendsViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
     private val raceEventRepository: RaceEventRepository,
+    private val checkInRepository: CheckInRepository,
+    private val metricsRepository: DailyMetricsRepository,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private val engine = TrainingLoadEngine()
     private val trendsCalculator = ActivityTrendsCalculator()
     private val intensityCalculator = IntensityDistributionCalculator()
     private val planCompletionCalculator = PlanCompletionCalculator()
+    private val readinessCalculator = ReadinessHistoryCalculator()
+    private val weeklyReviewCalculator = WeeklyReviewCalculator()
     private val _uiState = MutableStateFlow(TrendsUiState())
     val uiState: StateFlow<TrendsUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
@@ -100,6 +114,30 @@ class TrendsViewModel @Inject constructor(
                     startTime = summary.startTime,
                 )
             }
+            val completion = completion(today)
+            val intensitySessions = intensitySessions(summaries, today, zone)
+            val intensity = profile.lactateThresholdHeartRate?.let { lthr ->
+                intensityCalculator.calculate(
+                    sessions = intensitySessions,
+                    today = today,
+                    lthrBpm = lthr,
+                    windowDays = INTENSITY_WINDOW_DAYS,
+                )
+            }
+            // The review always covers the last closed week: a partial week would
+            // turn a progress snapshot into an adherence judgement (no guilt).
+            val reviewWeekStart = today.with(
+                TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY),
+            ).minusWeeks(1)
+            val weeklyReview = weeklyReview(
+                weekStart = reviewWeekStart,
+                today = today,
+                summaries = summaries,
+                zone = zone,
+                completion = completion,
+                intensity = intensity,
+                intensitySessions = intensitySessions,
+            )
             _uiState.value = TrendsUiState(
                 isLoading = false,
                 profile = profile,
@@ -116,19 +154,16 @@ class TrendsViewModel @Inject constructor(
                     weeks = period.weeks,
                     consistencyDays = period.consistencyDays,
                 ),
-                intensity = profile.lactateThresholdHeartRate?.let { lthr ->
-                    distribution(summaries, today, zone, lthr)
-                },
-                planCompletion = completion(today),
+                intensity = intensity,
+                planCompletion = completion,
+                weeklyReview = weeklyReview,
                 period = period,
             )
         }
     }
 
     private suspend fun completion(today: LocalDate): PlanCompletion {
-        val currentMonday = today.with(
-            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
-        )
+        val currentMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val weekStarts = (PLAN_COMPLETION_WEEKS - 1 downTo 0)
             .map { currentMonday.minusWeeks(it.toLong()) }
         // Event days never count as planned/missed sessions, in any state.
@@ -144,14 +179,13 @@ class TrendsViewModel @Inject constructor(
         )
     }
 
-    private suspend fun distribution(
+    private suspend fun intensitySessions(
         summaries: List<ActivitySummary>,
         today: LocalDate,
         zone: ZoneId,
-        lthr: Int,
-    ): IntensityDistribution? {
+    ): List<IntensitySession> {
         val start = today.minusDays(INTENSITY_WINDOW_DAYS - 1L)
-        val sessions = summaries
+        return summaries
             .filter { it.sport == Sport.RUNNING || it.sport == Sport.TREADMILL }
             .mapNotNull { summary ->
                 val date = summary.startTime.atZone(zone).toLocalDate()
@@ -159,16 +193,77 @@ class TrendsViewModel @Inject constructor(
                 val samples = activityRepository.openActivity(summary.id)?.imported?.samples.orEmpty()
                 if (samples.isEmpty()) null else IntensitySession(date = date, samples = samples)
             }
-        return intensityCalculator.calculate(
-            sessions = sessions,
+    }
+
+    /**
+     * Consolidates the last closed week without a second training decision. The
+     * calculator only receives values that Trends already computed; it never
+     * re-reads a target or invents a section for missing input (FR-011).
+     */
+    private suspend fun weeklyReview(
+        weekStart: LocalDate,
+        today: LocalDate,
+        summaries: List<ActivitySummary>,
+        zone: ZoneId,
+        completion: PlanCompletion,
+        intensity: IntensityDistribution?,
+        intensitySessions: List<IntensitySession>,
+    ): WeeklyReview {
+        val weekEnd = weekStart.plusDays(6)
+        val plan = planRepository.getWeek(weekStart)
+        val completionWeek = completion.weeks.firstOrNull { it.weekStart == weekStart }
+        val checkIns = checkInRepository.getAll()
+        val metrics = metricsRepository.getAll()
+        val readiness = readinessCalculator.calculate(
+            checkIns = checkIns,
+            metrics = metrics,
             today = today,
-            lthrBpm = lthr,
-            windowDays = INTENSITY_WINDOW_DAYS,
+            days = REVIEW_HEALTH_WINDOW_DAYS,
+        )
+        val executedMin = summaries
+            .filter { it.sport == Sport.RUNNING || it.sport == Sport.TREADMILL }
+            .filter { summary ->
+                val date = summary.startTime.atZone(zone).toLocalDate()
+                !date.isBefore(weekStart) && !date.isAfter(weekEnd)
+            }
+            .sumOf { it.durationSec }
+            .let { seconds -> if (seconds <= 0) null else (seconds / 60.0).roundToInt().takeIf { it > 0 } }
+        val plannedMin = plan
+            ?.let { week ->
+                week.sessions
+                    .filter { it.type != WorkoutType.REST && !it.date.isBefore(week.createdOn) }
+                    .mapNotNull { it.durationMin }
+                    .sum()
+                    .takeIf { it > 0 }
+            }
+        val hasPlan = plan?.sessions.orEmpty().any { it.type != WorkoutType.REST }
+        val intensityWeek = intensity?.weeks?.firstOrNull { it.weekStart == weekStart }
+        val weekIntensitySessions = if (intensityWeek == null) {
+            0
+        } else {
+            intensitySessions.count { it.date in weekStart..weekEnd }.coerceAtLeast(1)
+        }
+
+        return weeklyReviewCalculator.calculate(
+            weekStart = weekStart,
+            today = today,
+            hasPlan = hasPlan,
+            completion = completionWeek,
+            plannedDurationMin = if (hasPlan) plannedMin else null,
+            executedDurationMin = executedMin,
+            intensity = intensityWeek,
+            intensitySessions = weekIntensitySessions,
+            readinessDays = readiness,
+            metrics = metrics,
+            checkIns = checkIns,
         )
     }
 
     private companion object {
         const val INTENSITY_WINDOW_DAYS = 28
         const val PLAN_COMPLETION_WEEKS = 8
+
+        /** Covers the last closed week (7–13 days back) with readiness/sleep. */
+        const val REVIEW_HEALTH_WINDOW_DAYS = 14
     }
 }

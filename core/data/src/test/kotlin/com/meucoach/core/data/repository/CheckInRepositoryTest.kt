@@ -57,6 +57,17 @@ class CheckInRepositoryTest {
     }
 
     @Test
+    fun `reads the full history ordered by date`(): Unit = runBlocking {
+        repository.save(checkIn().copy(date = date.plusDays(1)))
+        repository.save(checkIn())
+
+        assertThat(repository.getAll()).containsExactly(
+            checkIn(),
+            checkIn().copy(date = date.plusDays(1)),
+        )
+    }
+
+    @Test
     fun `updates the same date and preserves createdAt`(): Unit = runBlocking {
         repository.save(checkIn())
         clock.instant = Instant.parse("2026-10-30T18:00:00Z")

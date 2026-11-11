@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
@@ -14,9 +16,12 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.review.WeeklyReviewObservationKind
+import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
@@ -38,21 +43,26 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.temporal.TemporalAdjusters
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class TrendsViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
+    private val zone = ZoneId.of("America/Sao_Paulo")
     private lateinit var database: MeuCoachDatabase
     private lateinit var profiles: ProfileRepository
     private lateinit var activities: ActivityRepository
     private lateinit var plans: TrainingPlanRepository
     private lateinit var raceEvents: RaceEventRepository
+    private lateinit var checkIns: CheckInRepository
+    private lateinit var metrics: DailyMetricsRepository
 
     @Before
     fun setUp() {
@@ -67,11 +77,13 @@ class TrendsViewModelTest {
         profiles = ProfileRepository(database, clock)
         plans = TrainingPlanRepository(database, clock)
         raceEvents = RaceEventRepository(database, clock)
+        checkIns = CheckInRepository(database, clock)
+        metrics = DailyMetricsRepository(database, clock)
         activities =
             ActivityRepository(
                 database = database,
                 clock = clock,
-                zoneId = ZoneId.of("America/Sao_Paulo"),
+                zoneId = zone,
                 idGenerator = { "activity-${System.nanoTime()}" },
             )
     }
@@ -87,7 +99,15 @@ class TrendsViewModelTest {
         profiles.saveProfile(profile())
         activities.saveImportedActivity(activity(), "sha")
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider()).uiState.first {
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            checkIns,
+            metrics,
+            FakeTimeProvider(),
+        ).uiState.first {
             !it.isLoading
         }
 
@@ -100,7 +120,15 @@ class TrendsViewModelTest {
 
     @Test
     fun `returns no snapshot without a profile`(): Unit = runBlocking {
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider()).uiState.first {
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            checkIns,
+            metrics,
+            FakeTimeProvider(),
+        ).uiState.first {
             !it.isLoading
         }
 
@@ -112,7 +140,15 @@ class TrendsViewModelTest {
     fun `reports missing load without activities`(): Unit = runBlocking {
         profiles.saveProfile(profile())
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider()).uiState.first {
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            checkIns,
+            metrics,
+            FakeTimeProvider(),
+        ).uiState.first {
             !it.isLoading
         }
 
@@ -134,7 +170,15 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider()).uiState.first {
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            checkIns,
+            metrics,
+            FakeTimeProvider(),
+        ).uiState.first {
             !it.isLoading
         }
 
@@ -157,7 +201,15 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider()).uiState.first {
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            checkIns,
+            metrics,
+            FakeTimeProvider(),
+        ).uiState.first {
             !it.isLoading
         }
 
@@ -191,7 +243,15 @@ class TrendsViewModelTest {
             ),
         )
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider()).uiState.first {
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            checkIns,
+            metrics,
+            FakeTimeProvider(),
+        ).uiState.first {
             !it.isLoading
         }
 
@@ -228,7 +288,7 @@ class TrendsViewModelTest {
         )
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, eventDate))
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider())
+        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, FakeTimeProvider())
             .uiState.first { !it.isLoading }
 
         assertThat(state.planCompletion?.planned).isEqualTo(1)
@@ -239,7 +299,7 @@ class TrendsViewModelTest {
     @Test
     fun `reloads activity trends with the selected period`(): Unit = runBlocking {
         profiles.saveProfile(profile())
-        val viewModel = TrendsViewModel(profiles, activities, plans, raceEvents, FakeTimeProvider())
+        val viewModel = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, FakeTimeProvider())
         val initial = viewModel.uiState.first { !it.isLoading }
 
         assertThat(initial.period).isEqualTo(TrendsPeriod.WEEKS_6)
@@ -255,6 +315,101 @@ class TrendsViewModelTest {
         assertThat(updated.activityTrends?.weeks).hasSize(26)
         assertThat(updated.activityTrends?.consistency?.windowDays).isEqualTo(182)
     }
+
+    @Test
+    fun `consolidates the last closed week from stored plan and activities`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.of(2026, 10, 30)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = weekStart,
+                sessions = listOf(
+                    session(weekStart.plusDays(1), SessionStatus.DONE),
+                    session(weekStart.plusDays(3), SessionStatus.CLOSED),
+                ),
+                weeklyMinutes = 60,
+                longRunMinutes = null,
+                qualityCount = 0,
+                rationale = "Plano.",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        )
+        activities.saveImportedActivity(
+            activity().copy(
+                startTime = weekStart.plusDays(1).atTime(7, 0).atZone(zone).toInstant(),
+                durationSec = 2_400,
+            ),
+            "sha",
+        )
+        metrics.saveAll(
+            (0..4).map { offset ->
+                DailyMetrics(date = weekStart.plusDays(offset.toLong()), sleepDurationMin = 420)
+            },
+        )
+
+        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, fixedTime())
+            .uiState.first { !it.isLoading }
+
+        val review = state.weeklyReview
+        assertThat(review).isNotNull
+        assertThat(review?.weekStart).isEqualTo(weekStart)
+        assertThat(review?.status).isEqualTo(WeeklyReviewStatus.AVAILABLE)
+        assertThat(review?.adherence?.planned).isEqualTo(2)
+        assertThat(review?.adherence?.done).isEqualTo(1)
+        assertThat(review?.adherence?.skipped).isEqualTo(1)
+        assertThat(review?.volume?.plannedMin).isEqualTo(60)
+        assertThat(review?.volume?.executedMin).isEqualTo(40)
+        assertThat(review?.volume?.percentOfPlan).isEqualTo(67)
+        assertThat(review?.sleep?.measuredNights).isEqualTo(5)
+        assertThat(review?.readiness?.measuredDays).isEqualTo(5)
+        assertThat(review?.observations?.map { it.kind })
+            .contains(
+                WeeklyReviewObservationKind.ADHERENCE_PARTIAL,
+                WeeklyReviewObservationKind.VOLUME_BELOW_PLAN,
+            )
+    }
+
+    @Test
+    fun `reviews the last closed week instead of the current one`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.of(2026, 10, 30)
+        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, fixedTime())
+            .uiState.first { !it.isLoading }
+
+        assertThat(state.weeklyReview?.weekStart).isEqualTo(monday.minusWeeks(1))
+        assertThat(state.weeklyReview?.status).isEqualTo(WeeklyReviewStatus.EMPTY_NO_DATA)
+    }
+
+    @Test
+    fun `keeps the weekly review honest without a plan`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.of(2026, 10, 30)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
+        activities.saveImportedActivity(
+            activity().copy(
+                startTime = weekStart.plusDays(2).atTime(7, 0).atZone(zone).toInstant(),
+                durationSec = 1_800,
+            ),
+            "sha",
+        )
+
+        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, fixedTime())
+            .uiState.first { !it.isLoading }
+
+        val review = state.weeklyReview
+        assertThat(review?.status).isEqualTo(WeeklyReviewStatus.EMPTY_NO_PLAN)
+        assertThat(review?.adherence).isNull()
+        assertThat(review?.volume?.executedMin).isEqualTo(30)
+        assertThat(review?.volume?.plannedMin).isNull()
+        assertThat(review?.volume?.percentOfPlan).isNull()
+    }
+
+    private fun fixedTime() = FakeTimeProvider(Instant.parse("2026-10-30T12:00:00Z"), zone)
 
     private fun session(date: LocalDate, status: SessionStatus) = PlannedSession(
         date = date,

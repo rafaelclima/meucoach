@@ -241,6 +241,13 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   da semana) apenas quando a atividade é a evidência do treino. Devolve direção e
   tolerância por métrica, com dado ausente como ausente; treino livre não recebe
   alvo. `GetSessionComparison` só coleta estado e o detalhe só renderiza (ADR 0033).
+- **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro em
+  `core:domain/review` consolida adesão, volume planejado × executado, intensidade
+  medida, prontidão, sono e check-ins de uma semana segunda–domingo. Recebe apenas
+  entradas já calculadas, devolve no máximo 3 observações determinísticas com
+  regra/evidência/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`.
+  Nada é persistido. O `TrendsViewModel` alimenta a calculadora com a última semana
+  fechada e o card em Tendências só renderiza o que existe (ADR 0034).
 - **Nutrição (F4):** copy educativa estática aprovada pelo ADR 0029 e exibida no
   sheet de briefing. O conteúdo não sai do motor, não altera prescrição/confiança e
   o ramo de prova continua sem dicas (FR-404).

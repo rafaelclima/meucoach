@@ -67,6 +67,7 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
+import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ConsistencyDay
 import com.meucoach.core.domain.trends.IntensityDistribution
@@ -153,6 +154,7 @@ internal fun TrendsContent(
                 activityTrends = state.activityTrends,
                 intensity = state.intensity,
                 planCompletion = state.planCompletion,
+                weeklyReview = state.weeklyReview,
                 period = state.period,
                 onPeriodSelected = onPeriodSelected,
                 lthr = state.profile.lactateThresholdHeartRate,
@@ -168,6 +170,7 @@ private fun LoadDetails(
     activityTrends: ActivityTrends?,
     intensity: IntensityDistribution?,
     planCompletion: PlanCompletion?,
+    weeklyReview: WeeklyReview?,
     period: TrendsPeriod,
     onPeriodSelected: (TrendsPeriod) -> Unit,
     lthr: Int?,
@@ -221,6 +224,10 @@ private fun LoadDetails(
                     color = colors.textSecondary,
                 )
             }
+        }
+        if (weeklyReview != null) {
+            item { McSectionHeader(title = "Revisão da semana") }
+            item { WeeklyReviewCard(review = weeklyReview) }
         }
         if (activityTrends != null) {
             item { PeriodFilter(period = period, onSelect = onPeriodSelected) }
@@ -1127,7 +1134,7 @@ private fun IntensityLegendRow(color: Color, label: String, seconds: Int, percen
 }
 
 @Composable
-private fun IntensityBar(easySec: Int, moderateSec: Int, hardSec: Int, modifier: Modifier = Modifier) {
+internal fun IntensityBar(easySec: Int, moderateSec: Int, hardSec: Int, modifier: Modifier = Modifier) {
     val colors = McTheme.colors
     Row(modifier = modifier.clip(RoundedCornerShape(6.dp))) {
         if (easySec > 0) {

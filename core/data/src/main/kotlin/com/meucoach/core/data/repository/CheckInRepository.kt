@@ -18,6 +18,9 @@ class CheckInRepository(private val database: MeuCoachDatabase, private val cloc
 
     suspend fun get(date: LocalDate): DailyCheckIn? = dao.get(date.toString())?.toModel()
 
+    /** Full history, ordered by date. Used by weekly consolidations. */
+    suspend fun getAll(): List<DailyCheckIn> = dao.getAll().map { it.toModel() }
+
     suspend fun save(checkIn: DailyCheckIn): DailyCheckIn = database.withTransaction {
         val now = clock.millis()
         val createdAt = dao.get(checkIn.date.toString())?.createdAt ?: now

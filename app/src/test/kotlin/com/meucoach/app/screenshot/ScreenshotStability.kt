@@ -12,15 +12,33 @@ import com.github.takahirom.roborazzi.captureRoboImage
  * while the canvas is still mid-frame, so the golden catches anti-aliasing noise
  * from a partially drawn chart.
  *
- * Waits (bounded) for two consecutive identical captures before writing the
- * golden. A genuinely different screen still differs and fails the comparison;
- * only the race between capture and paint is removed.
+ * Waits (bounded) for several consecutive identical captures before writing the
+ * golden, which covers a frame that briefly looks stable between two paints.
+ * A genuinely different screen still differs and fails the comparison; only the
+ * race between capture and paint is removed.
  */
-fun SemanticsNodeInteraction.captureStableScreenshot(compose: ComposeTestRule, file: String, attempts: Int = 40) {
+fun SemanticsNodeInteraction.captureStableScreenshot(
+    compose: ComposeTestRule,
+    file: String,
+    attempts: Int = 100,
+    initialSettleMillis: Long = 0L,
+) {
+    if (!roborazziEnabled()) return
+    // Vico builds and paints off the composition; under a loaded suite the
+    // canvas can stay blank for longer than the frame sampler expects.
+    if (initialSettleMillis > 0) {
+        compose.waitForIdle()
+        Thread.sleep(initialSettleMillis)
+        repeat(3) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+        }
+    }
     var previous: IntArray? = null
     var stableFrames = 0
     var attempt = 0
-    while (attempt < attempts && stableFrames < 1) {
+    while (attempt < attempts && stableFrames < STABLE_FRAMES) {
+        compose.mainClock.advanceTimeByFrame()
         compose.waitForIdle()
         val pixels = captureToImage().toPixelMap().buffer
         if (previous != null && pixels.contentEquals(previous)) {
@@ -30,7 +48,7 @@ fun SemanticsNodeInteraction.captureStableScreenshot(compose: ComposeTestRule, f
         }
         previous = pixels
         attempt++
-        if (stableFrames < 1) Thread.sleep(100)
+        if (stableFrames < STABLE_FRAMES) Thread.sleep(STABLE_FRAME_DELAY_MILLIS)
     }
     captureRoboImage(
         filePath = file,
@@ -39,3 +57,14 @@ fun SemanticsNodeInteraction.captureStableScreenshot(compose: ComposeTestRule, f
         ),
     )
 }
+
+/** Real-time window for the chart dispatcher before sampling frames. */
+const val CHART_SETTLE_MILLIS = 500L
+
+/** ~700 ms of an unchanged frame: long enough for Vico to finish a paint. */
+private const val STABLE_FRAMES = 8
+private const val STABLE_FRAME_DELAY_MILLIS = 100L
+
+/** Roborazzi no-ops when no mode is enabled; skip the sampling cost too. */
+private fun roborazziEnabled(): Boolean =
+    listOf("record", "compare", "verify").any { System.getProperty("roborazzi.test.$it") == "true" }

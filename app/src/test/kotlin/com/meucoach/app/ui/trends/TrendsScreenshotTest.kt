@@ -6,6 +6,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.screenshot.CHART_SETTLE_MILLIS
+import com.meucoach.app.screenshot.captureStableScreenshot
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadMetric
@@ -57,7 +59,11 @@ class TrendsScreenshotTest {
                 ),
             )
         settle()
-        compose.onRoot().captureRoboImage("src/test/screenshots/trends-charts-dark.png")
+        compose.onRoot().captureStableScreenshot(
+            compose,
+            "src/test/screenshots/trends-charts-dark.png",
+            initialSettleMillis = CHART_SETTLE_MILLIS,
+        )
     }
 
     private fun capture(darkTheme: Boolean, file: String) {

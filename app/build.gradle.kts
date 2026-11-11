@@ -57,6 +57,20 @@ android {
     }
 }
 
+// The golden gate is explicit: `:app:verifyRoborazziDebug`. Running the logic
+// suite must not depend on Robolectric rendering Vico charts under full load,
+// where the canvas can be captured before Vico paints. Roborazzi tasks still
+// configure their own verify/record mode.
+val roborazziTaskRequested =
+    gradle.startParameter.taskNames.any {
+        it.contains("Roborazzi", ignoreCase = true)
+    }
+tasks.withType<Test>().configureEach {
+    if (!roborazziTaskRequested) {
+        systemProperty("roborazzi.test.verify", "false")
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:domain"))

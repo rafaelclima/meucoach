@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (FR-010 concluído: comparação planejado × executado no detalhe da atividade; U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.342 testes no total (663 em `:app`, 160 em `core:data`, 480 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,52% de linhas (4.208/4.315), 81,27% de branches (3.059/3.764), 96,20% de instruções (29.263/30.420)
+- **Testes:** 1.397 testes no total (682 em `:app`, 161 em `core:data`, 515 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,60% de linhas (4.468/4.578), 81,44% de branches (3.308/4.062), 96,27% de instruções (31.021/32.222)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -71,6 +71,79 @@
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
+- **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — FR-011 fatia 2: card de revisão semanal em Tendências
+
+**Objetivo:** levar a consolidação determinística para a superfície, cobrindo adesão, volume, zonas, prontidão, sono e observações da última semana fechada — sem recalcular no Compose, sem culpa e sem IDs técnicos.
+
+### Concluído
+
+- **ViewModel:** `TrendsUiState.weeklyReview`; `TrendsViewModel` recebe `CheckInRepository`/`DailyMetricsRepository`, reutiliza adesão e intensidade já calculadas e consolida a **última semana fechada** (segunda–domingo anterior), não a semana em curso. `CheckInRepository.getAll()` foi adicionado para a leitura pontual.
+- **Card:** `WeeklyReviewCard` em `ui/trends`, com selo de confiança, adesão (concluídas/planejadas, evidência, sem registro, não verificadas, puladas), volume (planejado, feito e % do plano), barra de zonas por tempo, prontidão/sono e até 3 observações. Estados `AVAILABLE`, `EMPTY_NO_PLAN` e `EMPTY_NO_DATA`; sem CTA, streak ou nota.
+- **Copy:** `WeeklyReviewFormat` centraliza textos, números e pluralização; nenhum `R-`/`EV-` na superfície.
+- **Acessibilidade:** barra de zonas com `contentDescription`, headings por seção, fonte 200% e tela estreita de 360 dp.
+- **Goldens:** `trends-weekly-review-{dark,light,narrow-dark}.png`.
+- **Estabilização:** o gate de goldens virou explícito (`:app:verifyRoborazziDebug --tests "*ScreenshotTest"`) e `check` deixou de verificar imagens; `captureStableScreenshot` ganhou espera real configurável (500 ms nos gráficos) e exige oito capturas idênticas (~700 ms). `health-recovery-dark` passou a capturar a raiz, porque o recorte do card podia perder a camada do Vico. O flake deixou de derrubar o `check`.
+- **Testes:** +9 `WeeklyReviewFormatTest`, +4 `TrendsScreenTest`, +3 `TrendsViewModelTest`, +1 `CheckInRepositoryTest` e 3 goldens novos.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` — verde (63 goldens, incluindo os 3 da revisão).
+- **1.397 testes**, 0 falhas e 0 `@Ignore` (682 `:app`, 161 `core:data`, 515 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,60% de linhas (4.468/4.578), 81,44% de branches (3.308/4.062), 96,27% de instruções (31.021/32.222); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Última semana fechada:** revisar a semana em curso transformaria progresso em julgamento de adesão parcial; o Hoje já cobre o dia atual e a revisão fica retrospectiva.
+- **Sem recomputar no Compose:** a ViewModel monta as entradas e o card só formata/renderiza o `WeeklyReview`.
+- **Sem ACWR por semana:** o ACWR de hoje não é o da semana revisada; uma série por semana fica para uma evolução.
+- **Sem culpa:** as observações não usam “falhou”, “perdeu” ou streak; singular/plural e voz descritiva estão travados por teste.
+- **Escopo respeitado:** sem alteração no motor de prescrição/plano, sem nova aba, sem migração e sem LLM.
+
+### Próximo passo
+
+1. Validar o card em aparelho real com TalkBack, fonte 200% e 360 dp.
+2. Avaliar “prévia da próxima semana” quando existir plano futuro persistido.
+3. D6-B (VDOT/Riegel), FR-206/FR-207, N-03/N-05, P1-12 e validações manuais em aparelho continuam no backlog.
+
+## Sessão 2026-11-11 — FR-011 fatia 1: revisão semanal determinística
+
+**Objetivo:** fechar o “aprender” da semana com uma consolidação curta, determinística e auditável de adesão, volume, intensidade, prontidão e sono, sem criar uma segunda decisão de treino, sem persistência e sem LLM. A superfície em Tendências fica para a fatia 2.
+
+### Concluído
+
+- **Domínio:** `WeeklyReview`, `WeeklyAdherence`, `WeeklyVolume`, `WeeklyReadiness`, `WeeklySleep`, `WeeklyReviewObservation` e `WeeklyReviewCalculator` em `core:domain/review`. A calculadora recebe adesão (`PlanCompletionWeek`), volume planejado/executado, `WeeklyIntensity` + nº de sessões, prontidão e sono por data e check-ins; não lê repositório nem recalcula alvo.
+- **Estados honestos:** `AVAILABLE` (há plano), `EMPTY_NO_PLAN` (há corrida/saúde, sem plano) e `EMPTY_NO_DATA` (nada a consolidar). Semana sem plano não inventa adesão; dado ausente não vira zero e ratios/percentual são `null` sem denominador.
+- **Observações:** no máximo 3, em ordem determinística — segurança (doença/lesão) → sono → prontidão → adesão → volume → intensidade. Com plano e nenhum alerta, uma observação `NO_ALERTS`. Cada uma cita regra e, quando é alegação fisiológica, evidência; adesão/volume são fatos do registro persistido e ficam sem `evidenceId` (documentado no ADR 0034).
+- **Convenções de produto (ADR 0034):** adesão ≥ 80% não gera observação; banda de volume 70–120%; 80/20 só é julgado com ≥ 3 sessões medidas; noite curta = < 6 h 30 (`R-READY-04`) por ≥ 3 noites; prontidão baixa = ≥ 3 dias vermelhos (`R-READY-03`).
+- **Confiança por cobertura:** 3+ blocos disponíveis (adesão, intensidade, ≥ 3 dias de prontidão, ≥ 3 noites de sono) = alta; 2 = média; 0–1 = baixa. Não é julgamento de qualidade.
+- **Catálogo:** `R-REVIEW-01` em `SPORTS_SCIENCE.md` §14 e `ExplanationCatalog`; `EV-WATSON-2015` entrou no catálogo de evidências. Linha malformada de `R-FEEDBACK-01`/`R-SAFE-01` na tabela do §14 foi corrigida.
+- **Testes:** +35 no domínio (27 `WeeklyReviewCalculatorTest` e 8 `WeeklyReviewTest`), cobrindo semana completa/parcial, sem plano, sem dados, doença primeiro, sono/prontidão repetidos, volume, intensidade, determinismo, filtro de datas, deduplicação e invariantes dos modelos.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- **1.377 testes**, 0 falhas e 0 `@Ignore` (663 `:app`, 160 `core:data`, 515 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,60% de linhas (4.468/4.578), 81,44% de branches (3.308/4.062), 96,27% de instruções (31.021/32.222); pacote `review` com 98,83% de linhas e 83,56% de branches; parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova, golden ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Projeção, não decisão:** a revisão não altera a semana seguinte, não repõe carga perdida e não substitui o `DailyPrescriptionEngine` (ADR 0023).
+- **Sem ACWR de hoje para revisar semana passada:** o ACWR do dia não é o da semana revisada; a série por semana fica para uma evolução, em vez de rotular um número potencialmente falso.
+- **Dado ausente é ausente:** seções só existem com input; a UI da fatia 2 decide como mostrar a lacuna, nunca com zero.
+- **Sem texto no domínio:** a fatia 1 entrega estrutura, IDs e confiança; a copy fica na UI da fatia 2, no padrão de `ActivityComparisonFormat`.
+- **Escopo respeitado:** sem alteração no motor de prescrição/plano, sem nova aba, sem migração, sem LLM e sem golden.
+
+### Próximo passo
+
+1. Fatia 2 do FR-011: `TrendsViewModel` alimenta `WeeklyReviewCalculator` com os dados já carregados e o card em Tendências cobre loading/empty/error, `AVAILABLE`/`EMPTY_NO_PLAN`, TalkBack, fonte 200% e goldens dark/light/estreito.
+2. Só depois avaliar “prévia da próxima semana”, que exige plano futuro persistido para não inventar intenção.
+3. D6-B (VDOT/Riegel), FR-206/FR-207, N-03/N-05 e validações manuais em aparelho continuam no backlog.
+
 
 ## Sessão 2026-11-11 — FR-010: comparação planejado × executado
 

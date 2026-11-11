@@ -51,6 +51,10 @@ object ExplanationCatalog {
             "R-FEEDBACK-01",
             "Planejado × executado descreve a diferença, sem julgar",
         ),
+        "R-REVIEW-01" to RuleExplanation(
+            "R-REVIEW-01",
+            "A semana é lida como fato, com dado ausente como ausente",
+        ),
     )
 
     private val evidence = mapOf(
@@ -123,6 +127,11 @@ object ExplanationCatalog {
             "EV-WALSH-2021",
             "Sono e recuperação",
             "Walsh et al., BJSM 2021",
+        ),
+        "EV-WATSON-2015" to EvidenceExplanation(
+            "EV-WATSON-2015",
+            "Sono recomendado",
+            "Watson et al., Sleep 2015",
         ),
     )
 

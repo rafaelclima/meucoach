@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.app.screenshot.CHART_SETTLE_MILLIS
 import com.meucoach.app.screenshot.captureStableScreenshot
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
@@ -85,7 +86,7 @@ class TrendsFullScreenshotTest {
         }
         compose.onNodeWithTag("trends-list").performScrollToNode(scrollTo)
         settle()
-        compose.onRoot().captureStableScreenshot(compose, file)
+        compose.onRoot().captureStableScreenshot(compose, file, initialSettleMillis = CHART_SETTLE_MILLIS)
     }
 
     /** Vico builds the model off the composition; give it a moment before capturing. */

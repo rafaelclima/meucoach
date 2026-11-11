@@ -12,6 +12,7 @@
 > Revisão 1.9 (11/11/2026): status reconciliado com o código — F4 implementado na UI (sheet de briefing) e ADR 0030 implementado em C3-05.
 > Revisão 1.10 (11/11/2026): ADR 0032 aceito e implementado em C3-06 — auto-conclusão conservadora da prova, `completionSource`, undo auditável e referência aritmética da meta; revoga parcialmente o ADR 0030 §3.1/§3.5.
 > Revisão 1.11 (11/11/2026): ADR 0033 aceito e implementado — comparação planejado × executado descritiva no detalhe da atividade (FR-010), sem migração e sem regra fisiológica nova.
+> Revisão 1.12 (11/11/2026): ADR 0034 aceito e implementado — consolidação semanal determinística no domínio e card em Tendências (FR-011), com `R-REVIEW-01`, sem migração e sem LLM.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -48,6 +49,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — implementado em C3-01B (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply) | 10/11/2026 |
 | [0032](adr/0032-race-autocompletion-and-target-projection.md) | Auto-conclusão da prova e projeção aritmética da meta | Aceito — implementado em C3-06 (regra 90–110%, `completionSource`/Room 16, undo e referência no Perfil/Hoje) | 11/11/2026 |
 | [0033](adr/0033-planned-vs-executed-comparison.md) | Comparação planejado × executado descritiva (FR-010) | Aceito — implementado em 11/11/2026 (calculadora pura, card no detalhe, treino livre sem alvo) | 11/11/2026 |
+| [0034](adr/0034-weekly-review-consolidation.md) | Revisão semanal determinística (FR-011) | Aceito — implementado em 11/11/2026 (domínio puro + card em Tendências, até 3 observações, goldens, sem LLM) | 11/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
@@ -70,6 +72,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Prova:** é um evento com estado próprio, não um `WorkoutType`; `TodayDecision` mostra treino ou competição, nunca os dois; atividade é vínculo opcional e não marca a prova como realizada sozinha (ADR 0030, implementado em C3-05; auto-conclusão explícita no ADR 0032).
 - **Semana da prova:** sem `QUALITY` na semana local e cutoff de última qualidade de 10/14 dias como política `LIMITED` de produto, não consenso científico (ADR 0030).
 - **Planejado × executado:** comparação descritiva, derivada da prescrição do dia e só quando a corrida é a evidência do treino; tolerâncias de 10% (duração/distância) e 1 ponto de RPE são convenção de produto; nada é persistido e treino livre não inventa alvo (ADR 0033, implementado).
+- **Revisão semanal:** consolidação determinística de adesão, volume, intensidade, prontidão e sono, com no máximo 3 observações que citam regra/evidência; dado ausente continua ausente, sem nota, streak ou LLM (ADR 0034, implementado no domínio e no card de Tendências).
 - **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).
 - **Exclusão:** lixeira de 7 dias para atividade; “apagar tudo” imediato, sem recibo, com época de dados que invalida workers em voo; Health Connect não é apagado (ADR-0025).
 - **Carga/qualidade:** ACWR desconhecido, cobertura insuficiente ou fonte desatualizada bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR-0026, implementado em C1-02).

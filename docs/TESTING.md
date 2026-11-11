@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.8 · **Data:** 11/11/2026 · Adiciona os testes e goldens da comparação planejado × executado (FR-010) e a captura estável de gráficos Vico.
+**Versão:** 1.9 · **Data:** 11/11/2026 · Adiciona os testes e goldens da revisão semanal (FR-011) e separa o gate visual (`verifyRoborazziDebug`) da suíte lógica (`check`).
 
 ## 1. Princípios
 
@@ -182,6 +182,12 @@ Evidência atual (10/11/2026):
 - `GetSessionComparisonTest`: prescrição preferida à sessão, fallback da semana, vínculo por execução, corrida não vinculada em dia com plano e corrida sem plano.
 - `ActivityComparisonFormatTest`: linhas, omissão de dado ausente, notas factuais, resumo “tudo dentro” e treino livre com “—”.
 - `ActivityDetailScreenTest` (FR-010): card no detalhe, ausência de IDs técnicos e treino livre sem alvo.
+- `WeeklyReviewCalculatorTest`: semana completa/parcial, semana sem plano, semana sem dados, doença primeiro, sono/prontidão repetidos, volume, intensidade, `NO_ALERTS`, determinismo, filtro de datas, deduplicação e invariantes.
+- `WeeklyReviewTest`: invariantes de adesão, volume, prontidão, sono, janela, intensidade, limite de 3 observações e estado vazio.
+- `WeeklyReviewFormatTest`: data, adesão, minutos, volume, prontidão/sono, cada observação, singular/plural e ausência de `R-`/`EV-`.
+- `TrendsViewModelTest` (FR-011): última semana fechada, consolidação com plano/corridas/métricas e semana sem plano.
+- `TrendsScreenTest` (FR-011): card com adesão/volume/zonas/observações, estados vazios, ausência de IDs e fonte 200%.
+- `WeeklyReviewScreenshotTest`: goldens dark/light/estreito do card de revisão.
 - `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.
 - `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.
 - `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale e ausência de semana.
@@ -325,7 +331,7 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (60 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (63 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -340,19 +346,26 @@ Screenshots atuais (60 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 | Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
 | Replanejamento | `replan-dark`, `replan-light` |
 | Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
+| Revisão semanal | `trends-weekly-review-dark`, `trends-weekly-review-light`, `trends-weekly-review-narrow-dark` |
 | Tutorial | `tutorial-dark`, `tutorial-light`, `tutorial-2-dark`, `tutorial-2-light`, `tutorial-3-dark`, `tutorial-3-light` |
 
-`./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
-falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
+`./gradlew :app:recordRoborazziDebug` atualiza os goldens;
+`./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` falha se a tela mudar.
+`check` **não** verifica goldens: o gate visual é explícito e roda em invocação própria,
+sem competir com a suíte lógica pelo dispatcher do Vico. O CI roda a verificação e
+publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 
 Goldens de C3-06: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}` foram regravados com o bloco “Referência da meta” e os mesmos fixtures sintéticos.
 
-Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre). `HealthMetricsScreenshotTest` e `TrendsFullScreenshotTest` usam `captureStableScreenshot`, que espera dois quadros idênticos antes de gravar; isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
+Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre).
+
+Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 500 ms reais iniciais; o helper não faz nada quando nenhum modo do Roborazzi está ativo. Isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
 
 Gráficos Vico desenham depois do primeiro layout. `McLineChart`/`McBarChart` expõem a tag
 `mc-chart-ready` quando o modelo foi aplicado; testes de screenshot devem esperar por ela
-(`waitUntil` + `onAllNodesWithTag`) antes de `captureRoboImage`. Isso substitui esperas fixas e
-evita capturar a área do gráfico vazia.
+(`waitUntil` + `onAllNodesWithTag`) antes de `captureRoboImage`. O gate visual roda em
+invocação própria (`verifyRoborazziDebug --tests "*ScreenshotTest"`), porque a suíte inteira
+pode deixar o canvas do Vico sem pintar.
 
 ## 9. Health Connect
 
@@ -365,11 +378,13 @@ evita capturar a área do gráfico vazia.
 
 ```yaml
 - ./gradlew spotlessCheck check :core:domain:koverVerify :app:assembleDebug
-- ./gradlew :app:verifyRoborazziDebug
+- ./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"
 ```
 
 - JDK 17, SDK 37, build-tools 37.
 - Cache Gradle.
+- `check` cobre a lógica; o gate de goldens é a invocação própria de `verifyRoborazziDebug`
+  com os testes de screenshot, para não herdar a contenção de frames do Vico.
 - Relatórios de teste, Kover e lint como artifacts em toda execução (`if: always()`); o diff do Roborazzi também é publicado.
 - **Não há** nightly de emulador nem `connectedDebugAndroidTest`; instrumentados dependem de decisão de distribuição (TEST-01).
 - Branch protection: CI verde obrigatório.

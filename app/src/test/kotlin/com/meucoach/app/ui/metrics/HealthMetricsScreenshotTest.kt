@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
+import com.meucoach.app.screenshot.CHART_SETTLE_MILLIS
 import com.meucoach.app.screenshot.captureStableScreenshot
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
@@ -80,8 +81,9 @@ class HealthMetricsScreenshotTest {
             .performScrollToNode(hasTestTag("health-card-hrv"))
         awaitChart("HRV nos últimos 30 dias")
         settle()
-        compose.onNodeWithTag("health-card-hrv")
-            .captureScreenshot("src/test/screenshots/health-recovery-dark.png")
+        // Capture the root: a sub-node capture can miss Vico's canvas layer
+        // under Robolectric, while the root still guards the card and chart.
+        compose.onRoot().captureScreenshot("src/test/screenshots/health-recovery-dark.png")
     }
 
     @Test
@@ -148,7 +150,7 @@ class HealthMetricsScreenshotTest {
      * failing on anti-aliasing noise.
      */
     private fun SemanticsNodeInteraction.captureScreenshot(file: String) {
-        captureStableScreenshot(compose, file)
+        captureStableScreenshot(compose, file, initialSettleMillis = CHART_SETTLE_MILLIS)
     }
 
     private fun awaitChartsReady(vararg descriptions: String) {

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.23 · **Data:** 11/11/2026 · **Mudança:** FR-010 concluído (comparação planejado × executado no detalhe da atividade, descritiva e sem migração) e U-13 fechado em commit.
+**Versão:** 1.25 · **Data:** 11/11/2026 · **Mudança:** FR-011 concluído (revisão semanal determinística no domínio e no card de Tendências, ADR 0034); FR-010 e U-13 seguem no mesmo ciclo.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -377,7 +377,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 | **R — Replanejamento** | R-01: `PlanReplanner` puro; preservar sessões feitas e validar a semana mesclada. R-02: migração `12→13`, snapshots versionados e `applyReplan` transacional. R-03: casos de uso, sugestão por dia, invalidação por versão/hash, selo e diff | Testes primeiro em `core:domain`; R-03 depende dos gates do plano | **R-01 concluído em 08/11/2026** (28 testes); **R-02 concluído em 08/11/2026** (migração/revisões/export-reset); **R-03 concluído em 08/11/2026** (Evaluate/ApplyReplan, sugestão/recusa/supressão, versão e diff, goldens) |
 | **G — Sessão guiada** | Player persistente, cues temporais, TTS opcional e evidência `GUIDED`; RPE sem carga sRPE nesta etapa | Fechar tipo de FGS/distribuição e comportamento diante de doença durante execução; validar em aparelho | Proposto |
 
-FR-011 (revisão semanal com métricas e observações) continua pendente; replanejamento é relacionado, mas não o satisfaz. FR-010 foi concluído em 11/11/2026 e passa a ser a base da revisão semanal. N-03 e N-05 permanecem pendências separadas. R foi concluído antes de G; a migração `13→14` da sessão guiada continua isolada. A3/A4/A7 continuam bloqueando G-03.
+FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/2026 (consolidação determinística no domínio e card em Tendências, ADR 0034); replanejamento é relacionado, mas não o substitui. FR-010 foi concluído em 11/11/2026 e passa a ser a base da revisão semanal. N-03 e N-05 permanecem pendências separadas. R foi concluído antes de G; a migração `13→14` da sessão guiada continua isolada. A3/A4/A7 continuam bloqueando G-03.
 
 **Regras adotadas no ciclo 1:**
 
@@ -421,8 +421,22 @@ app e card no detalhe da atividade. Compara a corrida com a prescrição do dia 
 quando ela é a evidência do treino; tolerâncias de 10% (duração/distância) e 1
 ponto de RPE; treino livre não inventa alvo; dado ausente aparece como ausente.
 Sem migração nem dependência nova. ADR 0033, `R-FEEDBACK-01`, 3 goldens novos.
-Interpretação de “próximo passo”, comparação por splits e o card semanal (FR-011)
-seguem pendentes.
+Interpretação de “próximo passo” e comparação por splits seguem pendentes.
+
+### FR-011 — Revisão semanal concluída em 11/11/2026
+
+**Status:** concluído — `WeeklyReviewCalculator` puro em `core:domain/review`
+consolida adesão, volume planejado × executado, intensidade medida, prontidão e
+sono da última semana fechada, em até 3 observações determinísticas com
+regra/evidência/confiança. Estados `AVAILABLE`, `EMPTY_NO_PLAN` e `EMPTY_NO_DATA`;
+dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra
+adesão, volume, zonas, prontidão, sono e observações, com confiança, estados vazios
+e goldens dark/light/estreito. Sem LLM, sem migração e sem dependência nova.
+`R-REVIEW-01`, ADR 0034, 35 testes de domínio + 16 de app.
+
+**Fora desta entrega:** “prévia da próxima semana” só quando existir plano futuro
+persistido; interpretação de “próximo passo”, monotonia/ACWR por semana e
+comparação por splits seguem pendentes.
 
 ### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
 
