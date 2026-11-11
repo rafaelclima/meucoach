@@ -8,6 +8,8 @@ import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
+import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -490,6 +492,13 @@ class TodayViewModelPersistTest {
             raceEvents,
             CompleteSession(plans, activities, executions, raceEvents),
             ReplaceManualCompletion(plans, activities, executions),
+            UndoRaceAutoCompletion(
+                raceEvents,
+                RaceAutoCompletionStore(
+                    ApplicationProvider.getApplicationContext(),
+                    "persist-race-${System.nanoTime()}",
+                ),
+            ),
             timeProvider,
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
         )

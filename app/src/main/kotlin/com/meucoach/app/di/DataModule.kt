@@ -4,6 +4,7 @@ import android.content.Context
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.app.importer.ImportedRunPromptStore
+import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
@@ -150,6 +151,11 @@ object DataModule {
     @Singleton
     fun provideImportedRunPromptStore(@ApplicationContext context: Context): ImportedRunPromptStore =
         ImportedRunPromptStore(context)
+
+    @Provides
+    @Singleton
+    fun provideRaceAutoCompletionStore(@ApplicationContext context: Context): RaceAutoCompletionStore =
+        RaceAutoCompletionStore(context)
 
     @Provides
     @Singleton

@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.meucoach.app.ui.common.RaceTargetProjectionBlock
 import com.meucoach.app.ui.common.raceDateLabel
 import com.meucoach.app.ui.common.raceDistanceLabel
 import com.meucoach.app.ui.common.raceStatusLabel
@@ -32,6 +33,8 @@ import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.race.RaceTargetProjection
+import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
 
@@ -44,11 +47,14 @@ import com.meucoach.core.model.RaceStatus
 @Composable
 internal fun RaceDayCard(
     event: RaceEvent,
+    projection: RaceTargetProjection?,
+    activityAvailable: Boolean,
     suggestions: List<ActivitySuggestionUi>,
     completionMessage: String?,
     onComplete: (String?) -> Unit,
     onCancel: () -> Unit,
     onNoShow: () -> Unit,
+    onUndoAutoCompletion: (String) -> Unit,
     onConsumeMessage: () -> Unit,
     onActivityClick: (String) -> Unit,
 ) {
@@ -96,6 +102,10 @@ internal fun RaceDayCard(
                 modifier = Modifier.testTag("race-target-time"),
             )
         }
+        if (projection != null) {
+            Spacer(modifier = Modifier.height(14.dp))
+            RaceTargetProjectionBlock(projection = projection)
+        }
         Spacer(modifier = Modifier.height(14.dp))
         Text(
             text = when (event.status) {
@@ -103,7 +113,11 @@ internal fun RaceDayCard(
                     "Hoje é dia de prova. Não há treino prescrito para hoje; o app não cria uma segunda instrução."
 
                 RaceStatus.COMPLETED ->
-                    "Prova concluída. A corrida vinculada segue contando como atividade normal."
+                    if (event.completionSource == RaceCompletionSource.AUTO_IMPORT) {
+                        "Prova concluída com a corrida importada. Se não foi a prova, você pode desfazer."
+                    } else {
+                        "Prova concluída. A corrida vinculada segue contando como atividade normal."
+                    }
 
                 RaceStatus.CANCELLED ->
                     "Prova cancelada. O app não inicia recuperação nem libera treino automático para hoje."
@@ -144,14 +158,24 @@ internal fun RaceDayCard(
             }
         }
         if (event.status == RaceStatus.COMPLETED) {
-            event.activityId?.let { activityId ->
-                Spacer(modifier = Modifier.height(4.dp))
+            if (event.completionSource == RaceCompletionSource.AUTO_IMPORT) {
                 McTextButton(
-                    text = "Ver corrida",
-                    onClick = { onActivityClick(activityId) },
+                    text = "Não era a prova",
+                    onClick = { onUndoAutoCompletion(event.id) },
                     trailingArrow = false,
-                    modifier = Modifier.testTag("race-open-activity"),
+                    modifier = Modifier.testTag("race-undo-auto"),
                 )
+            }
+            event.activityId?.let { activityId ->
+                if (activityAvailable) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    McTextButton(
+                        text = "Ver corrida",
+                        onClick = { onActivityClick(activityId) },
+                        trailingArrow = false,
+                        modifier = Modifier.testTag("race-open-activity"),
+                    )
+                }
             }
         }
         completionMessage?.let { message ->

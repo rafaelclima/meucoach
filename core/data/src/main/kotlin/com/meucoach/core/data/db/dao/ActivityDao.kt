@@ -35,6 +35,12 @@ interface ActivityDao {
     )
     suspend fun findCandidates(sport: Sport, fromUtc: Long, toUtc: Long): List<ActivityEntity>
 
+    @Query(
+        "SELECT * FROM activities WHERE deletedAt IS NULL " +
+            "AND startTimeUtc >= :fromUtc AND startTimeUtc < :toUtc ORDER BY startTimeUtc",
+    )
+    suspend fun findBetween(fromUtc: Long, toUtc: Long): List<ActivityEntity>
+
     @Query("SELECT * FROM activities WHERE deletedAt IS NULL ORDER BY startTimeUtc DESC")
     fun observeAll(): Flow<List<ActivityEntity>>
 

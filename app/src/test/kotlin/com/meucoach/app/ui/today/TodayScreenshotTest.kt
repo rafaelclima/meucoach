@@ -163,6 +163,10 @@ class TodayScreenshotTest {
                 decision = TodayDecision.Competition(event),
                 prescription = null,
                 briefing = null,
+                raceProjection = com.meucoach.core.domain.race.RaceTargetProjector.project(
+                    event.distance,
+                    event.targetTimeSec,
+                ),
                 eventDates = setOf(event.targetDate),
             )
         } ?: baseState

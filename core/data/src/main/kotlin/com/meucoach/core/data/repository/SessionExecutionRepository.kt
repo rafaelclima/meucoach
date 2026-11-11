@@ -76,10 +76,11 @@ class SessionExecutionRepository(
                 )
             }
             if (sessions.getSessionByActivityId(activityId) != null ||
-                executions.findByActivity(activityId) != null
+                executions.findByActivity(activityId) != null ||
+                database.raceEventDao().findByActivity(activityId) != null
             ) {
                 return@withTransaction CompletionOutcome.ActivityAlreadyLinked(
-                    "Esta corrida já está vinculada a outro treino.",
+                    "Esta corrida já está vinculada a outro treino ou prova.",
                 )
             }
             if (executions.findBySession(plannedSessionId) != null) {
@@ -210,10 +211,11 @@ class SessionExecutionRepository(
                 )
             }
             if (sessions.getSessionByActivityId(activityId) != null ||
-                executions.findByActivity(activityId) != null
+                executions.findByActivity(activityId) != null ||
+                database.raceEventDao().findByActivity(activityId) != null
             ) {
                 return@withTransaction CompletionOutcome.ActivityAlreadyLinked(
-                    "Esta corrida já está vinculada a outro treino.",
+                    "Esta corrida já está vinculada a outro treino ou prova.",
                 )
             }
             val updatedExecution = execution.copy(

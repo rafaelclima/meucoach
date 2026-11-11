@@ -14,6 +14,8 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceCompletionSource
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -230,6 +232,49 @@ class SessionExecutionRepositoryTest {
 
         assertThat(second).isInstanceOf(CompletionOutcome.ActivityAlreadyLinked::class.java)
         assertThat(plans.getWeek(monday)?.sessions?.last()?.status).isEqualTo(SessionStatus.PLANNED)
+    }
+
+    @Test
+    fun `an activity linked to a race cannot complete a session`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+        val races = RaceEventRepository(database, clock)
+        val race = races.create(NewRaceEvent(RaceDistance.TEN_K, monday)) as RaceEventOutcome.Saved
+        races.complete(race.event.id, "activity-1", RaceCompletionSource.AUTO_IMPORT)
+
+        val outcome = executions.recordActivityExecution(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+
+        assertThat(outcome).isInstanceOf(CompletionOutcome.ActivityAlreadyLinked::class.java)
+        assertThat(plans.getWeek(monday)?.sessions?.first()?.status).isEqualTo(SessionStatus.PLANNED)
+    }
+
+    @Test
+    fun `a race linked activity cannot replace a manual completion`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+        executions.recordManualExecution("2026-11-02-2026-11-02", durationMin = 40, rpe = 5)
+        val races = RaceEventRepository(database, clock)
+        val race = races.create(NewRaceEvent(RaceDistance.TEN_K, monday)) as RaceEventOutcome.Saved
+        races.complete(race.event.id, "activity-1", RaceCompletionSource.AUTO_IMPORT)
+
+        val outcome = executions.replaceManualWithActivity(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+
+        assertThat(outcome).isInstanceOf(CompletionOutcome.ActivityAlreadyLinked::class.java)
+        val session = plans.getWeek(monday)?.sessions?.first()
+        assertThat(session?.completionEvidence).isEqualTo(CompletionEvidence.MANUAL)
+        assertThat(session?.activityId).isNull()
     }
 
     @Test

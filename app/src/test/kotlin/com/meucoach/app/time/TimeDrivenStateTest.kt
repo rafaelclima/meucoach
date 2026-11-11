@@ -7,6 +7,8 @@ import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
+import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.ui.checkin.CheckInViewModel
 import com.meucoach.app.ui.today.TodayViewModel
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -150,6 +152,13 @@ class TimeDrivenStateTest {
             raceEvents,
             CompleteSession(plans, activities, executions, raceEvents),
             ReplaceManualCompletion(plans, activities, executions),
+            UndoRaceAutoCompletion(
+                raceEvents,
+                RaceAutoCompletionStore(
+                    ApplicationProvider.getApplicationContext(),
+                    "time-race-${System.nanoTime()}",
+                ),
+            ),
             time,
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
         )

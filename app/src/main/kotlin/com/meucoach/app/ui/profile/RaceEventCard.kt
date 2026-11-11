@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.meucoach.app.ui.common.RaceDateVisualTransformation
+import com.meucoach.app.ui.common.RaceTargetProjectionBlock
 import com.meucoach.app.ui.common.TargetTimeUnit
 import com.meucoach.app.ui.common.convert
 import com.meucoach.app.ui.common.formatRaceDateForInput
@@ -54,6 +55,8 @@ import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.race.RaceTargetProjection
+import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
@@ -62,19 +65,22 @@ import java.time.LocalDate
 /**
  * The explicit race surface of the profile (ADR 0030).
  *
- * `targetTimeSec` is shown as a declared goal only. The card never derives a
- * pace, range or prediction from it.
+ * `targetTimeSec` is shown as a declared goal and, when present, as an
+ * arithmetic reference (pace, band and projected splits, ADR 0032). It is never
+ * a prescribed pace or a training target.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun RaceEventCard(
     events: List<RaceEvent>,
     activities: List<RaceActivityOption>,
+    projection: RaceTargetProjection?,
     message: String?,
     onSave: (RaceDistance, LocalDate, Int?) -> Unit,
     onComplete: (String?) -> Unit,
     onCancel: () -> Unit,
     onNoShow: () -> Unit,
+    onUndoAutoCompletion: (String) -> Unit,
     onConsumeMessage: () -> Unit,
 ) {
     val colors = McTheme.colors
@@ -124,6 +130,10 @@ internal fun RaceEventCard(
             SummaryRow("Data", raceDateLabel(planned.targetDate))
             raceTargetTimeLabel(planned.targetTimeSec)?.let { target ->
                 SummaryRow("Meta informada", target)
+            }
+            if (projection != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                RaceTargetProjectionBlock(projection = projection)
             }
             Spacer(modifier = Modifier.height(12.dp))
             McPrimaryButton(
@@ -183,6 +193,21 @@ internal fun RaceEventCard(
                                 text = "Meta: $target",
                                 style = McTextStyles.caption,
                                 color = colors.textTertiary,
+                            )
+                        }
+                        if (event.status == RaceStatus.COMPLETED &&
+                            event.completionSource == RaceCompletionSource.AUTO_IMPORT
+                        ) {
+                            Text(
+                                text = "Concluída pela corrida importada.",
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                            )
+                            McTextButton(
+                                text = "Não era a prova",
+                                onClick = { onUndoAutoCompletion(event.id) },
+                                trailingArrow = false,
+                                modifier = Modifier.testTag("race-undo-auto-${event.id}"),
                             )
                         }
                     }

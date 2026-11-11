@@ -172,6 +172,7 @@ private fun RaceEventEntity.toJson(): JSONObject = JSONObject().apply {
     putNullable("targetTimeSec", targetTimeSec)
     put("status", status)
     putNullable("activityId", activityId)
+    putNullable("completionSource", completionSource)
     put("createdAt", Instant.ofEpochMilli(createdAt).toString())
     put("updatedAt", Instant.ofEpochMilli(updatedAt).toString())
     put("resolvedAt", resolvedAt?.let { Instant.ofEpochMilli(it).toString() } ?: JSONObject.NULL)

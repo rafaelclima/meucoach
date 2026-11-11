@@ -137,7 +137,25 @@ class UserDataRepositoryTest {
         assertThat(race.getString("targetDate")).isEqualTo(monday.plusDays(20).toString())
         assertThat(race.getString("status")).isEqualTo("CANCELLED")
         assertThat(race.isNull("activityId")).isTrue()
+        assertThat(race.has("completionSource")).isTrue()
+        assertThat(race.isNull("completionSource")).isTrue()
         assertThat(race.getString("resolvedAt")).isEqualTo(clock.instant().toString())
+    }
+
+    @Test
+    fun `export includes the completion source of an inferred race`(): Unit = runBlocking {
+        val saved = events.create(
+            NewRaceEvent(RaceDistance.TEN_K, monday.plusDays(20)),
+        ) as RaceEventOutcome.Saved
+        events.complete(
+            saved.event.id,
+            source = com.meucoach.core.model.RaceCompletionSource.AUTO_IMPORT,
+        )
+
+        val race = JSONObject(userData.exportJson()).getJSONArray("raceEvents").getJSONObject(0)
+
+        assertThat(race.getString("status")).isEqualTo("COMPLETED")
+        assertThat(race.getString("completionSource")).isEqualTo("AUTO_IMPORT")
     }
 
     @Test

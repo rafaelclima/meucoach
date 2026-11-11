@@ -10,6 +10,7 @@ import com.meucoach.app.importer.ImportNotifier
 import com.meucoach.app.importer.ImportStaging
 import com.meucoach.app.importer.ImportWorker
 import com.meucoach.app.importer.ImportedRunPromptStore
+import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.reminder.ReminderWorker
@@ -61,6 +62,7 @@ class DataResetCoordinator @Inject constructor(
     private val staging: ImportStaging,
     private val photos: ProfilePhotoStore,
     private val importedRunPrompts: ImportedRunPromptStore,
+    private val raceAutoCompletions: RaceAutoCompletionStore,
     private val replanSuggestions: ReplanSuggestionStore,
     private val profilePlanEvaluations: ProfilePlanEvaluationStore,
     private val tutorial: TutorialStore,
@@ -85,6 +87,7 @@ class DataResetCoordinator @Inject constructor(
             cleanup("avatar") { if (!photos.clear()) error("diretório não removido") }
                 ?.let(failures::add)
             cleanup("oferta de corrida importada") { importedRunPrompts.reset() }?.let(failures::add)
+            cleanup("recusa de auto-conclusão de prova") { raceAutoCompletions.reset() }?.let(failures::add)
             cleanup("sugestão de replanejamento") { replanSuggestions.reset() }?.let(failures::add)
             cleanup("avaliação de perfil") { profilePlanEvaluations.clear() }?.let(failures::add)
             cleanup("cache de story") {

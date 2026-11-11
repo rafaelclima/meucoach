@@ -106,6 +106,7 @@ fun TodayScreen(
     onCompleteRace: (String?) -> Unit = {},
     onCancelRace: () -> Unit = {},
     onNoShowRace: () -> Unit = {},
+    onUndoAutoRaceCompletion: (String) -> Unit = {},
     onConsumeCompletionMessage: () -> Unit = {},
     replan: ReplanUiState = ReplanUiState(),
     onReplanRequest: () -> Unit = {},
@@ -182,11 +183,14 @@ fun TodayScreen(
             item {
                 RaceDayCard(
                     event = raceEvent,
+                    projection = state.raceProjection,
+                    activityAvailable = state.raceActivityAvailable,
                     suggestions = state.activitySuggestions,
                     completionMessage = state.completionMessage,
                     onComplete = onCompleteRace,
                     onCancel = onCancelRace,
                     onNoShow = onNoShowRace,
+                    onUndoAutoCompletion = onUndoAutoRaceCompletion,
                     onConsumeMessage = onConsumeCompletionMessage,
                     onActivityClick = onActivityClick,
                 )

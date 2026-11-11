@@ -1,5 +1,6 @@
 package com.meucoach.app.importer
 
+import com.meucoach.app.application.AutoCompleteRaceFromActivity
 import com.meucoach.app.application.OfferImportedRun
 import com.meucoach.core.data.epoch.DataEpochStore
 import com.meucoach.core.data.importer.ImportRequest
@@ -15,6 +16,7 @@ class StagedImportProcessor @Inject constructor(
     private val profiles: ProfileRepository? = null,
     private val epochStore: DataEpochStore? = null,
     private val offerImportedRun: OfferImportedRun? = null,
+    private val autoCompleteRaceFromActivity: AutoCompleteRaceFromActivity? = null,
 ) {
     suspend fun process(relativePath: String, displayName: String, mime: String?): ImportResult {
         // A reset may have removed the profile and the staging directory while
@@ -37,11 +39,21 @@ class StagedImportProcessor @Inject constructor(
                 rawFilePath = relativePath,
             ),
         )
-        // A prompt must never turn a successful import into a failed job.
+        // A prompt must never turn a successful import into a failed job. The
+        // race is completed first: on a race day the run must not be offered as
+        // an ordinary workout anyway.
         runCatching {
             when (result) {
-                is ImportResult.Imported -> offerImportedRun?.evaluate(result.activityId)
-                is ImportResult.Duplicate -> offerImportedRun?.evaluate(result.activityId)
+                is ImportResult.Imported -> {
+                    autoCompleteRaceFromActivity?.evaluate(result.activityId)
+                    offerImportedRun?.evaluate(result.activityId)
+                }
+
+                is ImportResult.Duplicate -> {
+                    autoCompleteRaceFromActivity?.evaluate(result.activityId)
+                    offerImportedRun?.evaluate(result.activityId)
+                }
+
                 else -> Unit
             }
         }

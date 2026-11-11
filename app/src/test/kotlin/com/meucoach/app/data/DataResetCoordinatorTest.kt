@@ -16,6 +16,7 @@ import com.meucoach.app.importer.ImportNotifier
 import com.meucoach.app.importer.ImportStaging
 import com.meucoach.app.importer.ImportWorker
 import com.meucoach.app.importer.ImportedRunPromptStore
+import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.replan.ReplanSuggestionStore
@@ -88,6 +89,7 @@ class DataResetCoordinatorTest {
     private lateinit var storyFailures: StoryExportFailureStore
     private lateinit var storyIntro: StoryIntroStore
     private lateinit var importedRunPrompts: ImportedRunPromptStore
+    private lateinit var raceAutoCompletions: RaceAutoCompletionStore
     private lateinit var replanSuggestions: ReplanSuggestionStore
     private lateinit var healthSync: HealthSyncCoordinator
     private lateinit var coordinator: DataResetCoordinator
@@ -124,6 +126,7 @@ class DataResetCoordinatorTest {
         storyFailures = StoryExportFailureStore(context)
         storyIntro = StoryIntroStore(context)
         importedRunPrompts = ImportedRunPromptStore(context, "reset-import-prompts-${System.nanoTime()}")
+        raceAutoCompletions = RaceAutoCompletionStore(context, "reset-race-auto-${System.nanoTime()}")
         replanSuggestions = ReplanSuggestionStore(context, "reset-replan-${System.nanoTime()}")
         userData = UserDataRepository(database, healthStore, clock)
         val source = FakeSource()
@@ -150,6 +153,7 @@ class DataResetCoordinatorTest {
             staging = ImportStaging(context),
             photos = ProfilePhotoStore(context),
             importedRunPrompts = importedRunPrompts,
+            raceAutoCompletions = raceAutoCompletions,
             replanSuggestions = replanSuggestions,
             profilePlanEvaluations = com.meucoach.app.replan.ProfilePlanEvaluationStore(),
             tutorial = tutorial,
@@ -191,6 +195,7 @@ class DataResetCoordinatorTest {
         assertThat(tutorial.isIntroDone()).isFalse()
         assertThat(firstRunTips.isShown("first-import")).isFalse()
         assertThat(importedRunPrompts.pending.value).isEmpty()
+        assertThat(raceAutoCompletions.declinedActivityIds()).isEmpty()
         assertThat(replanSuggestions.isSuppressed(LocalDate.of(2026, 11, 6))).isFalse()
         assertThat(storyIntro.seen()).isFalse()
         assertThat(storyFailures.messageFor("activity-1")).isNull()
@@ -264,6 +269,7 @@ class DataResetCoordinatorTest {
         firstRunMetrics.markTutorialStarted()
         firstRunTips.markShown("first-import")
         importedRunPrompts.add("activity-1")
+        raceAutoCompletions.decline("activity-1")
         replanSuggestions.suppress(LocalDate.of(2026, 11, 6))
         storyFailures.save("activity-1", "erro")
         storyIntro.markSeen()

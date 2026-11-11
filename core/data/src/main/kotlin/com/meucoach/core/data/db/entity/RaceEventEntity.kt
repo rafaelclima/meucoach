@@ -37,6 +37,8 @@ data class RaceEventEntity(
     val targetTimeSec: Int?,
     val status: String,
     val activityId: String?,
+    /** `USER`, `AUTO_IMPORT`, or null for legacy/non-completed rows (ADR 0032). */
+    val completionSource: String?,
     /** "ACTIVE" only for a PLANNED event; null for finished history. */
     val activeKey: String?,
     val createdAt: Long,

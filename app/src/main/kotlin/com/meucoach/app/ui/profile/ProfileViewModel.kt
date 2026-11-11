@@ -2,6 +2,7 @@ package com.meucoach.app.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.application.UndoRaceAutoCompletion
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
@@ -73,6 +74,8 @@ data class ProfileUiState(
     val zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
     val raceEvents: List<RaceEvent> = emptyList(),
     val raceActivities: List<RaceActivityOption> = emptyList(),
+    /** Arithmetic reference of the planned goal; null when there is no target time (ADR 0032). */
+    val raceProjection: com.meucoach.core.domain.race.RaceTargetProjection? = null,
     val raceMessage: String? = null,
 )
 
@@ -84,6 +87,7 @@ class ProfileViewModel @Inject constructor(
     private val syncStore: HealthSyncStore,
     private val raceEventRepository: RaceEventRepository,
     private val activities: ActivityRepository,
+    private val undoRaceAutoCompletion: UndoRaceAutoCompletion,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
     private data class HealthAccess(
@@ -147,6 +151,9 @@ class ProfileViewModel @Inject constructor(
             zone = zone,
             raceEvents = events,
             raceActivities = raceActivities,
+            raceProjection = planned?.let {
+                com.meucoach.core.domain.race.RaceTargetProjector.project(it.distance, it.targetTimeSec)
+            },
             raceMessage = race.second,
         )
     }.stateIn(
@@ -197,6 +204,16 @@ class ProfileViewModel @Inject constructor(
             raceMessage.value = raceOutcomeMessage(
                 raceEventRepository.noShow(planned.id),
                 saved = "Registrado que você não compareceu.",
+            )
+        }
+    }
+
+    /** Reverts only an inferred completion and records the refusal (ADR 0032/D3). */
+    fun undoAutoCompletedRace(eventId: String) {
+        viewModelScope.launch {
+            raceMessage.value = raceOutcomeMessage(
+                undoRaceAutoCompletion(eventId),
+                saved = "Conclusão automática desfeita. A prova voltou para planejada.",
             )
         }
     }

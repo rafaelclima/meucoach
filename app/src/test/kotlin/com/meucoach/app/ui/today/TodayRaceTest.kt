@@ -17,10 +17,13 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.race.RaceTargetProjector
 import com.meucoach.core.domain.today.TodayDecision
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
+import com.meucoach.core.model.RaceStatus
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -161,10 +164,100 @@ class TodayRaceTest {
         compose.onAllNodesWithText("Sessão legada").assertCountEquals(0)
     }
 
+    @Test
+    fun `race day shows the target reference and its splits`() {
+        val event = raceEvent(today)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = competitionState(event),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("race-projection"))
+        compose.onNodeWithText("REFERÊNCIA DA META").assertIsDisplayed()
+        compose.onNodeWithText("5:00/km").assertIsDisplayed()
+        compose.onNodeWithText("4:51–5:09/km").assertIsDisplayed()
+        compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("race-splits-open"))
+        compose.onNodeWithTag("race-splits-open").performClick()
+        compose.onNodeWithTag("race-splits-list").performScrollToNode(hasText("10 km · 50:00"))
+        compose.onNodeWithText("10 km · 50:00").assertIsDisplayed()
+        compose.onNodeWithTag("race-splits-close").performClick()
+    }
+
+    @Test
+    fun `without a target time the race day does not invent a pace`() {
+        val event = raceEvent(today).copy(targetTimeSec = null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = competitionState(event),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("race-day-card"))
+        compose.onAllNodesWithText("REFERÊNCIA DA META").assertCountEquals(0)
+        compose.onAllNodesWithText("Ver passagens por km").assertCountEquals(0)
+    }
+
+    @Test
+    fun `an inferred completion can be undone from the race day card`() {
+        var undone: String? = null
+        val event = raceEvent(today).copy(
+            status = RaceStatus.COMPLETED,
+            resolvedAt = Instant.parse("2026-11-02T12:00:00Z"),
+            activityId = "activity-1",
+            completionSource = RaceCompletionSource.AUTO_IMPORT,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = competitionState(event),
+                    onUndoAutoRaceCompletion = { undone = it },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("race-undo-auto"))
+        compose.onNodeWithText(
+            "Prova concluída com a corrida importada. Se não foi a prova, você pode desfazer.",
+        ).assertIsDisplayed()
+        compose.onNodeWithTag("race-undo-auto").performClick()
+
+        assertThat(undone).isEqualTo("race-1")
+    }
+
+    @Test
+    fun `a completed race without an available run hides the run link`() {
+        val event = raceEvent(today).copy(
+            status = RaceStatus.COMPLETED,
+            resolvedAt = Instant.parse("2026-11-02T12:00:00Z"),
+            activityId = "activity-1",
+            completionSource = RaceCompletionSource.USER,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = competitionState(event),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("race-day-card"))
+        compose.onAllNodesWithText("Ver corrida").assertCountEquals(0)
+    }
+
     private fun competitionState(event: RaceEvent) = demoTodayUiState(today).copy(
         decision = TodayDecision.Competition(event),
         prescription = null,
         briefing = null,
+        raceProjection = RaceTargetProjector.project(event.distance, event.targetTimeSec),
         eventDates = setOf(event.targetDate),
     )
 

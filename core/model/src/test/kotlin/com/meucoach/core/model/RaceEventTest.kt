@@ -64,6 +64,43 @@ class RaceEventTest {
     }
 
     @Test
+    fun `completed event can carry the source of its completion`() {
+        for (source in RaceCompletionSource.entries) {
+            val completed = event(
+                status = RaceStatus.COMPLETED,
+                resolvedAt = at,
+                completionSource = source,
+            )
+
+            assertThat(completed.completionSource).isEqualTo(source)
+        }
+    }
+
+    @Test
+    fun `a legacy completed event may have no completion source`() {
+        val completed = event(status = RaceStatus.COMPLETED, resolvedAt = at)
+
+        assertThat(completed.completionSource).isNull()
+    }
+
+    @Test
+    fun `completion source is only allowed on a completed event`() {
+        assertThatThrownBy {
+            event(completionSource = RaceCompletionSource.AUTO_IMPORT)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("completion source")
+
+        assertThatThrownBy {
+            event(
+                status = RaceStatus.CANCELLED,
+                resolvedAt = at,
+                completionSource = RaceCompletionSource.USER,
+            )
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("completion source")
+    }
+
+    @Test
     fun `target time must be positive`() {
         assertThatThrownBy { event(targetTimeSec = 0) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -88,6 +125,7 @@ class RaceEventTest {
         status: RaceStatus = RaceStatus.PLANNED,
         resolvedAt: Instant? = null,
         activityId: String? = null,
+        completionSource: RaceCompletionSource? = null,
         targetTimeSec: Int? = 3_600,
         targetDate: LocalDate = date,
     ) = RaceEvent(
@@ -97,6 +135,7 @@ class RaceEventTest {
         targetTimeSec = targetTimeSec,
         status = status,
         activityId = activityId,
+        completionSource = completionSource,
         createdAt = at,
         updatedAt = at,
         resolvedAt = resolvedAt,

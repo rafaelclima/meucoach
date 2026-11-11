@@ -16,6 +16,7 @@ import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.ReplaceManualCompletionRequest
 import com.meucoach.app.application.ReplaceManualCompletionResult
 import com.meucoach.app.application.TodayDecisionRequest
+import com.meucoach.app.application.UndoRaceAutoCompletion
 import com.meucoach.app.application.buildLoadSnapshot
 import com.meucoach.app.application.readinessResult
 import com.meucoach.app.time.TimeProvider
@@ -93,6 +94,7 @@ class TodayViewModel @Inject constructor(
     private val raceEventRepository: RaceEventRepository,
     private val completeSession: CompleteSession,
     private val replaceManualCompletion: ReplaceManualCompletion,
+    private val undoRaceAutoCompletion: UndoRaceAutoCompletion,
     private val timeProvider: TimeProvider,
     private val getTodayDecision: GetTodayDecision,
 ) : ViewModel() {
@@ -537,6 +539,23 @@ class TodayViewModel @Inject constructor(
 
     fun noShowRaceEvent() = resolveRaceEvent(cancel = false)
 
+    /** Reverts only an inferred completion and records the refusal (ADR 0032/D3). */
+    fun undoAutoCompletedRace(eventId: String) {
+        viewModelScope.launch {
+            completionMessage.value = when (val outcome = undoRaceAutoCompletion(eventId)) {
+                is com.meucoach.core.data.repository.RaceEventOutcome.Saved ->
+                    "Conclusão automática desfeita. A prova voltou para planejada."
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.Rejected -> outcome.message
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.ActiveEventExists ->
+                    "Já existe outra prova planejada."
+
+                is com.meucoach.core.data.repository.RaceEventOutcome.ActivityAlreadyLinked -> outcome.message
+            }
+        }
+    }
+
     private fun resolveRaceEvent(cancel: Boolean) {
         viewModelScope.launch {
             val event = raceEventRepository.getPlanned() ?: return@launch
@@ -629,6 +648,7 @@ fun TodayRoute(
         onCompleteRace = viewModel::completeRaceEvent,
         onCancelRace = viewModel::cancelRaceEvent,
         onNoShowRace = viewModel::noShowRaceEvent,
+        onUndoAutoRaceCompletion = viewModel::undoAutoCompletedRace,
         onConsumeCompletionMessage = viewModel::consumeCompletionMessage,
         replan = replanState,
         onReplanRequest = replanViewModel::replanNow,
@@ -716,6 +736,12 @@ internal fun todayState(
         inputs = inputs,
         result = result,
     )
+    val raceProjection = (decision as? TodayDecision.Competition)?.event?.let { event ->
+        com.meucoach.core.domain.race.RaceTargetProjector.project(event.distance, event.targetTimeSec)
+    }
+    val raceActivityAvailable = (decision as? TodayDecision.Competition)?.event?.activityId?.let { id ->
+        activities.any { it.id == id }
+    } ?: false
     return base.copy(
         readinessScore = result.score,
         readinessLevel = result.level,
@@ -730,6 +756,8 @@ internal fun todayState(
         prescription = dayPrescription,
         briefing = briefing,
         decision = decision,
+        raceProjection = raceProjection,
+        raceActivityAvailable = raceActivityAvailable,
         eventDates = eventDates,
         explanation = explanation,
         readinessExplanation = readinessExplanation,

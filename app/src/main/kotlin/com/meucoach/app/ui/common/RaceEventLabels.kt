@@ -4,6 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import com.meucoach.core.domain.race.RaceSplitProjection
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceStatus
 import java.time.LocalDate
@@ -66,6 +67,27 @@ fun raceDateForDisplay(raw: String): String {
 }
 
 fun formatRaceDateForInput(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("ddMMuuuu", PT_BR))
+
+/** Arithmetic reference only (ADR 0032): always shown with the /km unit. */
+fun racePaceLabel(secondsPerKm: Int): String = "${formatPaceSeconds(secondsPerKm)}/km"
+
+/** Reference band derived from the declared goal; never a prescribed range. */
+fun racePaceRangeLabel(range: IntRange): String {
+    require(range.first > 0 && range.last >= range.first) { "Pace range must be positive and ordered" }
+    return "${formatPaceSeconds(range.first)}–${formatPaceSeconds(range.last)}/km"
+}
+
+/** One projected passage; a fractional finish is labelled "Chegada". */
+fun raceProjectionSplitLabel(split: RaceSplitProjection): String {
+    val distance = if (split.isFinish && split.distanceMeters % 1_000 != 0) {
+        "Chegada"
+    } else {
+        "${split.distanceMeters / 1_000} km"
+    }
+    return "$distance · ${raceTargetTimeLabel(split.cumulativeSec)}"
+}
+
+private fun formatPaceSeconds(seconds: Int): String = String.format(Locale.US, "%d:%02d", seconds / 60, seconds % 60)
 
 /**
  * The date field stores only digits; slashes live in the visual layer so the

@@ -13,9 +13,13 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.race.RaceTargetProjection
+import com.meucoach.core.domain.race.RaceTargetProjector
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
+import com.meucoach.core.model.RaceStatus
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
 import org.assertj.core.api.Assertions.assertThat
@@ -39,11 +43,14 @@ class RaceEventSectionTest {
     private val today = LocalDate.of(2026, 11, 6)
 
     @Test
-    fun `shows the planned race and its declared target time only`() {
+    fun `shows the planned race and its declared target reference`() {
         compose.setContent {
             McTheme(darkTheme = true) {
                 ProfileContent(
-                    state = state(events = listOf(plannedEvent())),
+                    state = state(
+                        events = listOf(plannedEvent()),
+                        projection = RaceTargetProjector.project(RaceDistance.TEN_K, 3_000),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
                     onOpenHealth = {},
@@ -58,8 +65,36 @@ class RaceEventSectionTest {
         compose.onNodeWithText("14/03/2027").assertIsDisplayed()
         compose.onNodeWithText("Meta informada").assertIsDisplayed()
         compose.onNodeWithText("50:00", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-projection"))
+        compose.onNodeWithText("REFERÊNCIA DA META").assertIsDisplayed()
+        compose.onNodeWithText("5:00/km").assertIsDisplayed()
+        compose.onNodeWithText("4:51–5:09/km").assertIsDisplayed()
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-splits-open"))
+        compose.onNodeWithTag("race-splits-open").performClick()
+        compose.onNodeWithText("1 km · 5:00").assertIsDisplayed()
+        compose.onNodeWithTag("race-splits-close").performClick()
         compose.onNodeWithText("Planejada").assertIsDisplayed()
         compose.onNodeWithTag("race-profile-complete").assertIsDisplayed()
+    }
+
+    @Test
+    fun `without a target time the reference is not invented`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(events = listOf(plannedEvent().copy(targetTimeSec = null))),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-card"))
+        compose.onAllNodesWithText("REFERÊNCIA DA META").assertCountEquals(0)
+        compose.onAllNodesWithText("Ver passagens por km").assertCountEquals(0)
     }
 
     @Test
@@ -237,11 +272,43 @@ class RaceEventSectionTest {
         compose.onAllNodesWithText("Editar").assertCountEquals(0)
     }
 
-    private fun state(events: List<RaceEvent>) = ProfileUiState(
+    @Test
+    fun `an inferred completion exposes the correction action in history`() {
+        var undone: String? = null
+        val completed = plannedEvent().copy(
+            status = RaceStatus.COMPLETED,
+            resolvedAt = Instant.parse("2027-03-14T12:00:00Z"),
+            activityId = "activity-1",
+            completionSource = RaceCompletionSource.AUTO_IMPORT,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(events = listOf(completed)),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                    onRaceUndoAutoCompletion = { undone = it },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-card"))
+        compose.onNodeWithText("Concluída pela corrida importada.").assertExists()
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-undo-auto-race-1"))
+        compose.onNodeWithTag("race-undo-auto-race-1").performClick()
+
+        assertThat(undone).isEqualTo("race-1")
+    }
+
+    private fun state(events: List<RaceEvent>, projection: RaceTargetProjection? = null) = ProfileUiState(
         isLoading = false,
         profile = profile(),
         today = today,
         raceEvents = events,
+        raceProjection = projection,
     )
 
     private fun plannedEvent() = RaceEvent(

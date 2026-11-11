@@ -2,13 +2,30 @@ package com.meucoach.core.domain.prescription
 
 import com.meucoach.core.model.GoalType
 import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.TrainingGoal
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
 
 class RacePlanTest {
     private val monday = LocalDate.of(2026, 11, 2)
+
+    @Test
+    fun `the declared target time never changes the race plan`() {
+        val at = Instant.parse("2026-11-10T12:00:00Z")
+        val withoutTarget = RaceEvent(
+            id = "race-1",
+            distance = RaceDistance.TEN_K,
+            targetDate = monday.plusDays(20),
+            createdAt = at,
+            updatedAt = at,
+        )
+
+        assertThat(RacePlan.from(withoutTarget.copy(targetTimeSec = 3_000)))
+            .isEqualTo(RacePlan.from(withoutTarget))
+    }
 
     @Test
     fun `uses the approved taper window by distance`() {

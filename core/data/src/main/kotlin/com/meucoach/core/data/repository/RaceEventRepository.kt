@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.RaceEventEntity
 import com.meucoach.core.data.id.UuidV7
+import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
@@ -48,6 +49,8 @@ class RaceEventRepository(
 
     suspend fun getPlanned(): RaceEvent? = events.findPlanned()?.toModel()
 
+    suspend fun getById(id: String): RaceEvent? = events.findById(id)?.toModel()
+
     suspend fun getForDate(date: LocalDate): RaceEvent? = events.findForDate(date.toString()).firstOrNull()?.toModel()
 
     suspend fun getDatesBetween(start: LocalDate, end: LocalDate): Set<LocalDate> =
@@ -65,6 +68,7 @@ class RaceEventRepository(
                 targetTimeSec = request.targetTimeSec,
                 status = RaceStatus.PLANNED.name,
                 activityId = null,
+                completionSource = null,
                 activeKey = ACTIVE_KEY,
                 createdAt = now.toEpochMilli(),
                 updatedAt = now.toEpochMilli(),
@@ -104,7 +108,11 @@ class RaceEventRepository(
         RaceEventOutcome.Saved(updated.toModel())
     }
 
-    suspend fun complete(id: String, activityId: String? = null): RaceEventOutcome = runCatching {
+    suspend fun complete(
+        id: String,
+        activityId: String? = null,
+        source: RaceCompletionSource = RaceCompletionSource.USER,
+    ): RaceEventOutcome = runCatching {
         database.withTransaction {
             val entity = events.findById(id)
                 ?: return@withTransaction RaceEventOutcome.Rejected("Prova não encontrada.")
@@ -129,6 +137,7 @@ class RaceEventRepository(
             val updated = entity.copy(
                 status = RaceStatus.COMPLETED.name,
                 activityId = activityId,
+                completionSource = source.name,
                 activeKey = null,
                 updatedAt = now,
                 resolvedAt = now,
@@ -141,6 +150,53 @@ class RaceEventRepository(
             is SQLiteConstraintException -> RaceEventOutcome.ActivityAlreadyLinked(
                 "Esta corrida já está vinculada a outro treino ou prova.",
             )
+
+            else -> throw error
+        }
+    }
+
+    /**
+     * Reverts an inferred completion only. Explicit completions are never undone
+     * here; the user can edit/cancel the event explicitly instead (ADR 0032).
+     */
+    suspend fun reopenAutoCompleted(id: String): RaceEventOutcome = runCatching {
+        database.withTransaction {
+            val entity = events.findById(id)
+                ?: return@withTransaction RaceEventOutcome.Rejected("Prova não encontrada.")
+            val event = entity.toModel()
+            if (event.status != RaceStatus.COMPLETED ||
+                event.completionSource != RaceCompletionSource.AUTO_IMPORT
+            ) {
+                return@withTransaction RaceEventOutcome.Rejected(
+                    "Somente uma conclusão automática pode ser desfeita.",
+                )
+            }
+            val active = events.findPlanned()
+            if (active != null) {
+                return@withTransaction RaceEventOutcome.ActiveEventExists(active.toModel())
+            }
+            val now = clock.millis()
+            val updated = entity.copy(
+                status = RaceStatus.PLANNED.name,
+                activityId = null,
+                completionSource = null,
+                activeKey = ACTIVE_KEY,
+                updatedAt = now,
+                resolvedAt = null,
+            )
+            events.update(updated)
+            RaceEventOutcome.Saved(updated.toModel())
+        }
+    }.getOrElse { error ->
+        when (error) {
+            is SQLiteConstraintException -> {
+                val active = events.findPlanned()?.toModel()
+                if (active != null) {
+                    RaceEventOutcome.ActiveEventExists(active)
+                } else {
+                    RaceEventOutcome.Rejected("Não foi possível reabrir a prova.")
+                }
+            }
 
             else -> throw error
         }
@@ -163,6 +219,7 @@ class RaceEventRepository(
         val updated = entity.copy(
             status = status.name,
             activityId = null,
+            completionSource = null,
             activeKey = null,
             updatedAt = now,
             resolvedAt = now,
@@ -178,6 +235,7 @@ class RaceEventRepository(
         targetTimeSec = targetTimeSec,
         status = RaceStatus.valueOf(status),
         activityId = activityId,
+        completionSource = completionSource?.let(RaceCompletionSource::valueOf),
         createdAt = Instant.ofEpochMilli(createdAt),
         updatedAt = Instant.ofEpochMilli(updatedAt),
         resolvedAt = resolvedAt?.let(Instant::ofEpochMilli),

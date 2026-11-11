@@ -4,13 +4,23 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.AutoCompleteRaceFromActivity
+import com.meucoach.app.importer.RaceAutoCompletionStore
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ImportJobStatus
 import com.meucoach.core.data.epoch.DataEpochStore
 import com.meucoach.core.data.importer.ImportResult
 import com.meucoach.core.data.importer.ImportService
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventOutcome
+import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
+import com.meucoach.core.model.RaceCompletionSource
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceStatus
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -24,6 +34,8 @@ import java.io.File
 import java.io.IOException
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
@@ -110,10 +122,76 @@ class StagedImportProcessorTest {
         }.isInstanceOf(IOException::class.java)
     }
 
+    @Test
+    fun `a matching import auto-completes the planned race`() {
+        runBlocking {
+            val zone = ZoneId.of("America/Sao_Paulo")
+            val clock = Clock.fixed(Instant.parse("2026-11-08T15:00:00Z"), ZoneOffset.UTC)
+            val timeProvider = FakeTimeProvider(
+                instant = LocalDate.of(2026, 11, 8).atTime(12, 0).atZone(zone).toInstant(),
+                zone = zone,
+            )
+            val raceEvents = RaceEventRepository(database, clock)
+            val event = raceEvents.create(
+                NewRaceEvent(RaceDistance.FIVE_K, LocalDate.of(2026, 11, 8)),
+            ) as RaceEventOutcome.Saved
+            val processor = StagedImportProcessor(
+                staging = staging,
+                importService = ImportService(database, repository),
+                autoCompleteRaceFromActivity = AutoCompleteRaceFromActivity(
+                    raceEvents = raceEvents,
+                    activities = repository,
+                    executions = SessionExecutionRepository(database, clock),
+                    declines = RaceAutoCompletionStore(
+                        context,
+                        "processor-race-${System.nanoTime()}",
+                    ),
+                    timeProvider = timeProvider,
+                ),
+            )
+            val staged = staging.stage(Uri.fromFile(sourceFile("prova.gpx", raceGpx())))
+
+            val result = processor.process(staged.relativePath, staged.displayName, staged.mime)
+
+            assertThat(result).isInstanceOf(ImportResult.Imported::class.java)
+            val firstActivityId = (result as ImportResult.Imported).activityId
+            val completed = raceEvents.getById(event.event.id)!!
+            assertThat(completed.status).isEqualTo(RaceStatus.COMPLETED)
+            assertThat(completed.completionSource).isEqualTo(RaceCompletionSource.AUTO_IMPORT)
+            assertThat(completed.activityId).isEqualTo(firstActivityId)
+            assertThat(SessionExecutionRepository(database, clock).listAll()).isEmpty()
+
+            val secondStaged = staging.stage(Uri.fromFile(sourceFile("prova-2.gpx", raceGpx())))
+            val duplicate = processor.process(secondStaged.relativePath, secondStaged.displayName, secondStaged.mime)
+
+            assertThat(duplicate).isInstanceOf(ImportResult.Duplicate::class.java)
+            assertThat((duplicate as ImportResult.Duplicate).activityId).isEqualTo(firstActivityId)
+            val afterDuplicate = raceEvents.getById(event.event.id)!!
+            assertThat(afterDuplicate.status).isEqualTo(RaceStatus.COMPLETED)
+            assertThat(afterDuplicate.activityId).isEqualTo(firstActivityId)
+            assertThat(repository.listActivitySummaries()).hasSize(1)
+        }
+    }
+
     private fun sourceFile(name: String, bytes: ByteArray): File = File(context.cacheDir, name).apply {
         parentFile?.mkdirs()
         writeBytes(bytes)
     }
+
+    private fun raceGpx(): ByteArray = buildString {
+        append("""<?xml version="1.0" encoding="UTF-8"?>""")
+        append("""<gpx version="1.1" creator="meucoach.test" xmlns="http://www.topografix.com/GPX/1/1">""")
+        append("<trk><type>running</type><trkseg>")
+        for (index in 0..5) {
+            val longitude = -35.21 + index * 0.009
+            val minute = 10 + index
+            append(
+                """<trkpt lat="-5.79" lon="$longitude">""" +
+                    """<time>2026-11-08T10:$minute:00Z</time></trkpt>""",
+            )
+        }
+        append("</trkseg></trk></gpx>")
+    }.toByteArray()
 
     private fun gpx(): ByteArray =
         """

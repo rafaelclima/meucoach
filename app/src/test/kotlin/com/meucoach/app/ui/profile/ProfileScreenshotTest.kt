@@ -64,10 +64,17 @@ class ProfileScreenshotTest {
     }
 
     private fun captureRace(darkTheme: Boolean, file: String) {
+        val event = raceEvent()
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 ProfileContent(
-                    state = state().copy(raceEvents = listOf(raceEvent())),
+                    state = state().copy(
+                        raceEvents = listOf(event),
+                        raceProjection = com.meucoach.core.domain.race.RaceTargetProjector.project(
+                            event.distance,
+                            event.targetTimeSec,
+                        ),
+                    ),
                     onEdit = {},
                     onCalibrate = {},
                     onOpenHealth = {},

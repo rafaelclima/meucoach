@@ -73,6 +73,19 @@ class ActivityRepository(
         entity.toSummary(alternates)
     }
 
+    /** Activities whose start time falls in the half-open interval, excluding the trash. */
+    suspend fun listActivitySummariesBetween(from: Instant, to: Instant): List<ActivitySummary> =
+        database.withTransaction {
+            val sourcesByActivity = database
+                .activityAlternateDao()
+                .getAllSources()
+                .groupBy({ it.activityId }, { it.source })
+            database
+                .activityDao()
+                .findBetween(from.toEpochMilli(), to.toEpochMilli())
+                .map { it.toSummary(sourcesByActivity[it.id].orEmpty()) }
+        }
+
     /** Last time an activity was imported, used to decide whether load data is fresh. */
     fun observeLastImportedAt(): Flow<Instant?> = database
         .activityDao()

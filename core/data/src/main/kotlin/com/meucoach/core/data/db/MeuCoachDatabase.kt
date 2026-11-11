@@ -82,7 +82,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun raceEventDao(): RaceEventDao
 
     companion object {
-        const val VERSION = 15
+        const val VERSION = 16
         const val NAME = "meucoach.db"
 
         /**
@@ -516,6 +516,20 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 16 adds the completion source to race events (ADR 0032).
+         *
+         * The column is nullable on purpose: completed events created before
+         * C3-06 were always explicit, so `NULL` is read as `USER` and the
+         * migration does not rewrite history. New explicit completions write
+         * `USER`; inferred ones write `AUTO_IMPORT`.
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `race_events` ADD COLUMN `completionSource` TEXT")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -533,6 +547,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_12_13,
                 MIGRATION_13_14,
                 MIGRATION_14_15,
+                MIGRATION_15_16,
             )
             .build()
     }

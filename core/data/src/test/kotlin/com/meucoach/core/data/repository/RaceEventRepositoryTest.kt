@@ -98,8 +98,69 @@ class RaceEventRepositoryTest {
         val event = (completed as RaceEventOutcome.Saved).event
         assertThat(event.status).isEqualTo(RaceStatus.COMPLETED)
         assertThat(event.activityId).isEqualTo("activity-1")
+        assertThat(event.completionSource).isEqualTo(com.meucoach.core.model.RaceCompletionSource.USER)
         assertThat(event.resolvedAt).isNotNull
         assertThat(events.getPlanned()).isNull()
+    }
+
+    @Test
+    fun `an inferred completion is auditable and reversible`(): Unit = runBlocking {
+        activities.saveImportedActivity(activity())
+        val saved = (events.create(NewRaceEvent(RaceDistance.TEN_K, date)) as RaceEventOutcome.Saved).event
+        events.complete(
+            saved.id,
+            activityId = "activity-1",
+            source = com.meucoach.core.model.RaceCompletionSource.AUTO_IMPORT,
+        )
+
+        val reopened = events.reopenAutoCompleted(saved.id)
+
+        val event = (reopened as RaceEventOutcome.Saved).event
+        assertThat(event.status).isEqualTo(RaceStatus.PLANNED)
+        assertThat(event.activityId).isNull()
+        assertThat(event.completionSource).isNull()
+        assertThat(event.resolvedAt).isNull()
+        assertThat(events.getPlanned()?.id).isEqualTo(saved.id)
+        assertThat(activities.getActivitySummary("activity-1")).isNotNull
+    }
+
+    @Test
+    fun `an explicit completion is not undone by the automatic undo`(): Unit = runBlocking {
+        val saved = (events.create(NewRaceEvent(RaceDistance.TEN_K, date)) as RaceEventOutcome.Saved).event
+        events.complete(saved.id)
+
+        val outcome = events.reopenAutoCompleted(saved.id)
+
+        assertThat(outcome).isInstanceOf(RaceEventOutcome.Rejected::class.java)
+        assertThat(events.getById(saved.id)?.status).isEqualTo(RaceStatus.COMPLETED)
+    }
+
+    @Test
+    fun `undo is rejected while another race is planned`(): Unit = runBlocking {
+        val first = (events.create(NewRaceEvent(RaceDistance.TEN_K, date)) as RaceEventOutcome.Saved).event
+        events.complete(
+            first.id,
+            source = com.meucoach.core.model.RaceCompletionSource.AUTO_IMPORT,
+        )
+        val second = (
+            events.create(
+                NewRaceEvent(RaceDistance.FIVE_K, date.plusDays(7)),
+            ) as RaceEventOutcome.Saved
+            ).event
+
+        val outcome = events.reopenAutoCompleted(first.id)
+
+        assertThat(outcome).isInstanceOf(RaceEventOutcome.ActiveEventExists::class.java)
+        assertThat((outcome as RaceEventOutcome.ActiveEventExists).active.id).isEqualTo(second.id)
+        assertThat(events.getById(first.id)?.status).isEqualTo(RaceStatus.COMPLETED)
+    }
+
+    @Test
+    fun `undo of a planned event is rejected`(): Unit = runBlocking {
+        val saved = (events.create(NewRaceEvent(RaceDistance.TEN_K, date)) as RaceEventOutcome.Saved).event
+
+        assertThat(events.reopenAutoCompleted(saved.id))
+            .isInstanceOf(RaceEventOutcome.Rejected::class.java)
     }
 
     @Test

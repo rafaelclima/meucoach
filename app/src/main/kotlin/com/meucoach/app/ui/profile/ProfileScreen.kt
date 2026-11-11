@@ -91,6 +91,7 @@ fun ProfileScreen(
         onRaceComplete = viewModel::completeRaceEvent,
         onRaceCancel = viewModel::cancelRaceEvent,
         onRaceNoShow = viewModel::noShowRaceEvent,
+        onRaceUndoAutoCompletion = viewModel::undoAutoCompletedRace,
         onRaceConsumeMessage = viewModel::consumeRaceMessage,
         modifier = modifier,
     )
@@ -113,6 +114,7 @@ internal fun ProfileContent(
     onRaceComplete: (String?) -> Unit = {},
     onRaceCancel: () -> Unit = {},
     onRaceNoShow: () -> Unit = {},
+    onRaceUndoAutoCompletion: (String) -> Unit = {},
     onRaceConsumeMessage: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -151,6 +153,7 @@ internal fun ProfileContent(
                 replan = replan,
                 raceEvents = state.raceEvents,
                 raceActivities = state.raceActivities,
+                raceProjection = state.raceProjection,
                 raceMessage = state.raceMessage,
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
@@ -165,6 +168,7 @@ internal fun ProfileContent(
                 onRaceComplete = onRaceComplete,
                 onRaceCancel = onRaceCancel,
                 onRaceNoShow = onRaceNoShow,
+                onRaceUndoAutoCompletion = onRaceUndoAutoCompletion,
                 onRaceConsumeMessage = onRaceConsumeMessage,
             )
         }
@@ -181,6 +185,7 @@ private fun ProfileDetails(
     replan: ReplanUiState,
     raceEvents: List<com.meucoach.core.model.RaceEvent>,
     raceActivities: List<RaceActivityOption>,
+    raceProjection: com.meucoach.core.domain.race.RaceTargetProjection?,
     raceMessage: String?,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
@@ -195,6 +200,7 @@ private fun ProfileDetails(
     onRaceComplete: (String?) -> Unit,
     onRaceCancel: () -> Unit,
     onRaceNoShow: () -> Unit,
+    onRaceUndoAutoCompletion: (String) -> Unit,
     onRaceConsumeMessage: () -> Unit,
 ) {
     val colors = McTheme.colors
@@ -288,11 +294,13 @@ private fun ProfileDetails(
             RaceEventCard(
                 events = raceEvents,
                 activities = raceActivities,
+                projection = raceProjection,
                 message = raceMessage,
                 onSave = onRaceSave,
                 onComplete = onRaceComplete,
                 onCancel = onRaceCancel,
                 onNoShow = onRaceNoShow,
+                onUndoAutoCompletion = onRaceUndoAutoCompletion,
                 onConsumeMessage = onRaceConsumeMessage,
             )
         }
