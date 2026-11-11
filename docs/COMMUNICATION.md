@@ -282,3 +282,24 @@ correção. A referência da meta é aritmética e sempre rotulada como referên
 Proibições: chamar a referência de “pace prescrito”, “alvo de treino”, “previsão de
 resultado” ou “garantia”; exibir a projeção em cards de treino, plano, briefing ou
 notificação de treino. A meta declarada continua sendo do atleta.
+
+### 6.12 Comparação planejado × executado (11/11/2026)
+
+O detalhe da atividade ganhou o card “Planejado × executado” (FR-010, ADR 0033).
+A copy descreve a direção da diferença, nunca a qualidade, e só cita o que ficou
+fora do alvo; o resto é resumido em uma linha.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Card — título | `PLANEJADO × EXECUTADO` | Nomeia a leitura sem jargão. |
+| Card — subtítulo | `O alvo do dia e o que a corrida entregou.` | Deixa claro que o alvo veio do dia da corrida. |
+| Linha de métrica | `Duração 30 min → 30 min` · `Ritmo 5:50–6:30/km → 6:00/km` | Compara alvo e realizado com unidade e números tabulares. |
+| Notas de diferença | `Ritmo mais rápido que o alvo` · `FC média acima da faixa-alvo` · `Duração abaixo do planejado (75%)` | Direção factual, sem elogio nem alerta. |
+| Sem diferença | `Tudo dentro do planejado.` | Fecha sem ruído quando nada saiu do alvo. |
+| Sem dados | `Sem alvos suficientes para comparar.` | Estado honesto em vez de zero. |
+| Treino livre | `Treino livre` · `Sem plano vinculado a esta corrida.` | Não inventa alvo para corrida sem vínculo. |
+
+Proibições: “bom/ruim”, “falhou”, “treino perdido”, “forte demais”, “você deveria”,
+streak, culpa ou recomendação de treino. “Acima do planejado” é direção, não
+julgamento. Os IDs (`R-FEEDBACK-01`, `EV-DANIELS-2014`, `EV-FRIEL-2018`) ficam fora
+da superfície comum, conforme §6.5.

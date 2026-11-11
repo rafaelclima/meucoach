@@ -82,6 +82,41 @@ class ActivityDetailScreenTest {
     }
 
     @Test
+    fun `compares the planned and executed run`() {
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state(comparison = ActivityDetailTestData.linkedComparison()),
+                onBack = {},
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasTestTag("activity-comparison"))
+        compose.onNodeWithText("PLANEJADO × EXECUTADO").assertIsDisplayed()
+        compose.onNodeWithText("Fácil 30 min").assertIsDisplayed()
+        compose.onNodeWithText("Duração", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Tudo dentro do planejado.").assertIsDisplayed()
+        compose.onNodeWithText("R-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `labels a free run without inventing a target`() {
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state(comparison = ActivityDetailTestData.freeRunComparison()),
+                onBack = {},
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasTestTag("activity-comparison"))
+        compose.onNodeWithText("Treino livre").assertIsDisplayed()
+        compose.onNodeWithText("Sem plano vinculado a esta corrida.").assertIsDisplayed()
+        compose.onNodeWithText("Ritmo 6:00/km", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("no alvo", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun `offers calibration when the run can be a threshold effort`() {
         var calibratedId: String? = null
         setContent {

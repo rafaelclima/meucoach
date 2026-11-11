@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
+import com.meucoach.app.application.GetSessionComparison
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
@@ -48,6 +49,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyIntro: StoryIntroStore,
     private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
     private val timeProvider: TimeProvider,
+    private val comparisons: GetSessionComparison,
 ) : ViewModel() {
     private val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
         "Activity detail requires an activityId"
@@ -82,6 +84,7 @@ class ActivityDetailViewModel @Inject constructor(
                     )?.verdict
                 }
             }
+            val comparison = activity?.let { comparisons.forActivity(it) }
             // update(), not a fresh state: the WorkManager observer may have
             // restored a Generating/Done story while this load was running.
             _uiState.update {
@@ -104,6 +107,7 @@ class ActivityDetailViewModel @Inject constructor(
                     storyIntroSeen = storyIntro.seen(),
                     avatar = avatar,
                     coachVerdict = coachVerdict,
+                    comparison = comparison,
                 )
             }
         }

@@ -1,11 +1,20 @@
 package com.meucoach.app.ui.activitydetail
 
 import com.meucoach.core.data.repository.StoredActivity
+import com.meucoach.core.domain.feedback.ComparisonPlan
+import com.meucoach.core.domain.feedback.SessionComparison
+import com.meucoach.core.domain.feedback.SessionComparisonCalculator
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.domain.prescription.HeartRateTarget
+import com.meucoach.core.domain.prescription.PaceTarget
+import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.ActivitySummary
+import com.meucoach.core.model.Distance
 import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sport
@@ -13,7 +22,7 @@ import java.time.Instant
 import java.time.LocalDate
 
 internal object ActivityDetailTestData {
-    fun state(): ActivityDetailUiState {
+    fun state(comparison: SessionComparison? = null): ActivityDetailUiState {
         val activity = activity()
         return ActivityDetailUiState(
             isLoading = false,
@@ -21,8 +30,43 @@ internal object ActivityDetailTestData {
             insights = ActivityInsightsCalculator().calculate(activity.imported.laps),
             hrZones = HrZoneDistributionCalculator.calculate(activity.imported.samples, LTHR),
             lthr = LTHR,
+            comparison = comparison,
         )
     }
+
+    fun linkedComparison(): SessionComparison = SessionComparisonCalculator.compare(
+        linkedPlan = ComparisonPlan(
+            title = "Fácil 30 min",
+            type = WorkoutType.EASY,
+            durationMin = 30,
+            targets = PrescriptionTargets(
+                pace = PaceTarget(fast = Pace.fromSecondsPerKm(350), slow = Pace.fromSecondsPerKm(390)),
+                heartRate = HeartRateTarget(140, 155),
+                zone = "Z2",
+                distanceKm = 5.5,
+            ),
+        ),
+        activity = summary(),
+        rpe = 5,
+    )
+
+    fun freeRunComparison(): SessionComparison = SessionComparisonCalculator.compare(
+        linkedPlan = null,
+        activity = summary(),
+        rpe = null,
+    )
+
+    private fun summary() = ActivitySummary(
+        id = "activity-1",
+        source = ActivitySource.FIT,
+        sport = Sport.RUNNING,
+        startTime = Instant.parse("2026-10-24T08:17:10Z"),
+        durationSec = 1_800,
+        distance = Distance(5_000.0),
+        averageHeartRate = 150,
+        maxHeartRate = 170,
+        averagePace = Pace.fromSecondsPerKm(360),
+    )
 
     fun activity(): StoredActivity {
         val start = Instant.parse("2026-10-24T08:17:10Z")

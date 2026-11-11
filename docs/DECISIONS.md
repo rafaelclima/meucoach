@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.10 · **Data:** 11/11/2026
+**Versão:** 1.11 · **Data:** 11/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -11,6 +11,7 @@
 > Revisão 1.8 (10/11/2026): C3-G2 concluído — ADR 0029 redigido e aceito com a copy educativa de hidratação (F4); `EV-NATA-2017` corrige a citação do PRD. Implementação de F4 em ciclo futuro.
 > Revisão 1.9 (11/11/2026): status reconciliado com o código — F4 implementado na UI (sheet de briefing) e ADR 0030 implementado em C3-05.
 > Revisão 1.10 (11/11/2026): ADR 0032 aceito e implementado em C3-06 — auto-conclusão conservadora da prova, `completionSource`, undo auditável e referência aritmética da meta; revoga parcialmente o ADR 0030 §3.1/§3.5.
+> Revisão 1.11 (11/11/2026): ADR 0033 aceito e implementado — comparação planejado × executado descritiva no detalhe da atividade (FR-010), sem migração e sem regra fisiológica nova.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -46,6 +47,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0030](adr/0030-race-event-and-weekly-taper.md) | Evento de prova, autoridade diária e taper | Aceito — implementado em C3-05 (modelo, Room 15, TodayDecision, taper, notificação e UI) | 10/11/2026 |
 | [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — implementado em C3-01B (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply) | 10/11/2026 |
 | [0032](adr/0032-race-autocompletion-and-target-projection.md) | Auto-conclusão da prova e projeção aritmética da meta | Aceito — implementado em C3-06 (regra 90–110%, `completionSource`/Room 16, undo e referência no Perfil/Hoje) | 11/11/2026 |
+| [0033](adr/0033-planned-vs-executed-comparison.md) | Comparação planejado × executado descritiva (FR-010) | Aceito — implementado em 11/11/2026 (calculadora pura, card no detalhe, treino livre sem alvo) | 11/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
@@ -65,8 +67,9 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Plano × prescrição:** o plano é intenção; a prescrição diária persistida é a única autoridade do dia; adaptações são versionadas e auditáveis (ADR-0023).
 - **Replanejamento:** regenera só o futuro da semana com o mesmo gerador, nunca aplica sozinho e versiona o aceite no Room; a recusa é por proposta (semana/versão/hashes) e a supressão vale até o fim do dia (ADR 0028, implementado em R-01..R-03).
 - **Fingerprint de planejamento:** proveniência e último estado avaliado são separados; mudanças em input de plano ou no fuso/contexto temporal tornam a sugestão stale; o aceite revalida dentro da transação Room (ADR 0031, implementado em C3-01B).
-- **Prova:** é um evento com estado próprio, não um `WorkoutType`; `TodayDecision` mostra treino ou competição, nunca os dois; atividade é vínculo opcional e não marca a prova como realizada sozinha (ADR 0030, direção aceita; implementação pendente).
+- **Prova:** é um evento com estado próprio, não um `WorkoutType`; `TodayDecision` mostra treino ou competição, nunca os dois; atividade é vínculo opcional e não marca a prova como realizada sozinha (ADR 0030, implementado em C3-05; auto-conclusão explícita no ADR 0032).
 - **Semana da prova:** sem `QUALITY` na semana local e cutoff de última qualidade de 10/14 dias como política `LIMITED` de produto, não consenso científico (ADR 0030).
+- **Planejado × executado:** comparação descritiva, derivada da prescrição do dia e só quando a corrida é a evidência do treino; tolerâncias de 10% (duração/distância) e 1 ponto de RPE são convenção de produto; nada é persistido e treino livre não inventa alvo (ADR 0033, implementado).
 - **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).
 - **Exclusão:** lixeira de 7 dias para atividade; “apagar tudo” imediato, sem recibo, com época de dados que invalida workers em voo; Health Connect não é apagado (ADR-0025).
 - **Carga/qualidade:** ACWR desconhecido, cobertura insuficiente ou fonte desatualizada bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR-0026, implementado em C1-02).

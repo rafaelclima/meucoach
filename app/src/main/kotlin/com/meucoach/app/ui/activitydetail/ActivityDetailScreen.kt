@@ -173,6 +173,9 @@ internal fun ActivityDetailContent(
                 state.activity != null -> {
                     item { HeroCard(state.activity) }
                     item { MetricsCard(state.activity) }
+                    state.comparison?.let { comparison ->
+                        item { ActivityComparisonCard(comparison) }
+                    }
                     state.coachVerdict?.let { verdict ->
                         item { CoachReadingCard(verdict) }
                     }

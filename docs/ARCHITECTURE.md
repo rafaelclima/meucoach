@@ -236,10 +236,14 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   não recebem briefing retrospectivo. O Hoje expõe o CTA “Como correr hoje” e um sheet
   com seções Foco → Alvo → Por que hoje → Como correr → Se estiver difícil, sem
   `R-`/`EV-` na superfície comum.
-- **Nutrição (F4):** intenção de conteúdo geral aprovada, mas fontes/copy ainda
-  precisam de revisão; nada é exibido antes do gate.
-
-> F4 continua sem alterar o comportamento atual até seu gate de implementação.
+- **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` é
+  puro e compara a corrida com a `DailyPrescription` do dia (fallback para a sessão
+  da semana) apenas quando a atividade é a evidência do treino. Devolve direção e
+  tolerância por métrica, com dado ausente como ausente; treino livre não recebe
+  alvo. `GetSessionComparison` só coleta estado e o detalhe só renderiza (ADR 0033).
+- **Nutrição (F4):** copy educativa estática aprovada pelo ADR 0029 e exibida no
+  sheet de briefing. O conteúdo não sai do motor, não altera prescrição/confiança e
+  o ramo de prova continua sem dicas (FR-404).
 
 ## 7. Persistência
 
@@ -357,6 +361,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0028](adr/0028-versioned-plan-replanning.md) — replanejamento versionado e sugerido da semana
 - [ADR-0030](adr/0030-race-event-and-weekly-taper.md) — evento de prova, autoridade diária e taper
 - [ADR-0031](adr/0031-profile-planning-fingerprint.md) — fingerprint de planejamento e aceite atômico
+- [ADR-0032](adr/0032-race-autocompletion-and-target-projection.md) — auto-conclusão da prova e projeção da meta
+- [ADR-0033](adr/0033-planned-vs-executed-comparison.md) — comparação planejado × executado
 
 > Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
 

@@ -57,7 +57,7 @@ O PRD continua sendo um retrato datado; onde ele divergir do código, vale o có
 | ARCH-01/ARCH-04 / DEBT-04 — docs × código | Resolvido no C1-06: `ARCHITECTURE.md`, `DATA_MODEL.md`, `TESTING.md`, `README.md`, `PRODUCT.md`, `ROADMAP.md` e este PRD reconciliados com o schema v12. |
 | FR-004 (progressão por volume) | **Pendente**: o plano ainda parte da disponibilidade; `R-PLAN-01` promete 5–8% sem executar. Exige ADR próprio. |
 | FR-005 (qualidade para iniciante) | **Pendente**: depende de histórico de evidência forte e validação dos limiares do ADR 0026. |
-| FR-002/FR-007/FR-008/FR-010..FR-018 | **Pendentes**, conforme prioridade original. |
+| FR-002/FR-007/FR-008/FR-011..FR-018 | **Pendentes**, conforme prioridade original. FR-010 foi implementado em 11/11/2026 (ADR 0033). |
 
 Divergências documentais apontadas em §3.9 foram corrigidas na fonte; a tabela abaixo
 permanece como registro histórico da auditoria.
@@ -877,6 +877,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   3. Dados ausentes aparecem como “—”, não zero.
   4. Testes de UI e de cálculo.
 - **Prioridade:** P2 · **Dependências:** FR-003 · **Evidência:** UX-06.
+- **Status na reconciliação:** implementado em 11/11/2026: `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia; o detalhe mostra as linhas planejado → feito, dados ausentes como “—” e “treino livre” sem alvo. Sem migração; ver ADR 0033.
 
 ### FR-011 — Revisão semanal do coach
 

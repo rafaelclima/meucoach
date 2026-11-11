@@ -9,8 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
-import com.github.takahirom.roborazzi.RoborazziOptions
-import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.screenshot.captureStableScreenshot
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.health.DailyMetricsTrendsCalculator
@@ -149,12 +148,7 @@ class HealthMetricsScreenshotTest {
      * failing on anti-aliasing noise.
      */
     private fun SemanticsNodeInteraction.captureScreenshot(file: String) {
-        captureRoboImage(
-            filePath = file,
-            roborazziOptions = RoborazziOptions(
-                compareOptions = RoborazziOptions.CompareOptions(changeThreshold = 0.00001f),
-            ),
-        )
+        captureStableScreenshot(compose, file)
     }
 
     private fun awaitChartsReady(vararg descriptions: String) {

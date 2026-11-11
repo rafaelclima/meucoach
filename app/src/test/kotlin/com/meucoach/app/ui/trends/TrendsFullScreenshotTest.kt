@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
-import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.screenshot.captureStableScreenshot
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadMetric
@@ -85,7 +85,7 @@ class TrendsFullScreenshotTest {
         }
         compose.onNodeWithTag("trends-list").performScrollToNode(scrollTo)
         settle()
-        compose.onRoot().captureRoboImage(file)
+        compose.onRoot().captureStableScreenshot(compose, file)
     }
 
     /** Vico builds the model off the composition; give it a moment before capturing. */

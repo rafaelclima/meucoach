@@ -5,6 +5,7 @@ import android.net.Uri
 import com.meucoach.app.story.StoryPlan
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.feedback.SessionComparison
 import com.meucoach.core.domain.insights.ActivityInsight
 import com.meucoach.core.domain.story.StoryVerdict
 import com.meucoach.core.domain.zones.HrZoneDistribution
@@ -35,6 +36,8 @@ data class ActivityDetailUiState(
     val avatar: Bitmap? = null,
     /** Private coach reading, shown on this screen and never in the video. */
     val coachVerdict: StoryVerdict? = null,
+    /** Planned × executed reading (FR-010); null while loading or without an activity. */
+    val comparison: SessionComparison? = null,
     val isDeleting: Boolean = false,
     val deleted: Boolean = false,
     val deleteError: String? = null,

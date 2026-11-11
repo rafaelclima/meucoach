@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (U-13 concluído: máscara de data única em `ui/common`, tempo alvo do onboarding e data/tempo da Calibração no padrão da §7.3; C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (FR-010 concluído: comparação planejado × executado no detalhe da atividade; U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.309 testes no total (643 em `:app`, 160 em `core:data`, 467 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,62% de linhas (4.065/4.164), 81,47% de branches (2.951/3.622), 96,25% de instruções (28.451/29.558)
+- **Testes:** 1.342 testes no total (663 em `:app`, 160 em `core:data`, 480 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,52% de linhas (4.208/4.315), 81,27% de branches (3.059/3.764), 96,20% de instruções (29.263/30.420)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -70,6 +70,44 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+- **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
+
+## Sessão 2026-11-11 — FR-010: comparação planejado × executado
+
+**Objetivo:** fechar o “aprender” do loop mostrando, no detalhe da atividade, o alvo que o atleta recebeu no dia e o que a corrida entregou — sem criar uma segunda decisão de treino, sem migração e sem inventar alvo para treino livre.
+
+### Concluído
+
+- **Domínio:** `SessionComparison`/`ComparisonPlan`/`SessionComparisonCalculator` em `core:domain/feedback`. Compara duração, distância, pace, FC média e RPE; cada métrica só existe com os dois lados, com `WITHIN`/`ABOVE`/`BELOW` como direção. Tolerâncias de 10% (duração/distância) e 1 ponto de RPE. Confiança alta com ≥3 métricas comparadas, média com 2, baixa com 0–1; treino livre é sempre baixa.
+- **Fonte do alvo:** `DailyPrescription` da data (o que o atleta viu), com a sessão da semana como fallback para dia vinculado sem prescrição. Prescrição `REST` não gera comparação.
+- **Vínculo obrigatório:** `GetSessionComparison` só compara quando a atividade é a evidência do treino (`SessionExecution` ou `planned_session.activityId`); sem vínculo, a corrida é `FREE_RUN` e o card não inventa alvo.
+- **App:** caso de uso só coleta estado; `ActivityDetailViewModel` transporta `comparison` e a UI não calcula.
+- **UI:** card “Planejado × executado” após as métricas, com selo de confiança, linhas `planejado → feito` (números tabulares), notas de diferença (“Ritmo mais rápido que o alvo”, “FC média acima da faixa-alvo”), “Tudo dentro do planejado.”, estado “Sem alvos suficientes para comparar.” e “Treino livre / Sem plano vinculado a esta corrida.”.
+- **Catálogo:** `R-FEEDBACK-01` (política de produto/copy) em `SPORTS_SCIENCE.md` §14 e `ExplanationCatalog`; `EV-DANIELS-2014`/`EV-FRIEL-2018` como origem das faixas. Nenhuma regra fisiológica nova.
+- **Estabilização de teste:** `captureStableScreenshot` espera dois quadros idênticos antes de gravar o golden e foi aplicado a `HealthMetricsScreenshotTest` e `TrendsFullScreenshotTest`; o flake de gráficos Vico sob carga deixou de falhar a suíte, sem regravar nenhum golden existente.
+- **Testes:** +13 no domínio (`SessionComparisonCalculatorTest`), +6 em `:app` (`GetSessionComparisonTest`), +7 em `ActivityComparisonFormatTest`, +2 em `ActivityDetailScreenTest` e +2 no ViewModel; 3 goldens novos.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde (60 goldens).
+- **1.342 testes**, 0 falhas e 0 `@Ignore` (663 `:app`, 160 `core:data`, 480 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,52% de linhas (4.208/4.315), 81,27% de branches (3.059/3.764), 96,20% de instruções (29.263/30.420); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Alvo prescrito, não intenção:** comparar com a sessão original puniria o atleta por uma redução/`DOWNGRADE` que o próprio app aplicou (ADR 0023).
+- **Descritivo por escolha:** o card mostra direção e diferença, nunca “bom/ruim”, erro ou próximo treino; a decisão do dia seguinte continua no motor.
+- **Vínculo é a chave:** uma corrida no mesmo dia do plano não vira comparação se não for a evidência do treino; é treino livre.
+- **Sem persistência:** a comparação é derivada como o briefing; reset/export não mudam.
+- **ADR 0033 documenta** as tolerâncias como convenção de produto (não consenso científico) e os limites (média de sessão, não splits).
+
+### Próximo passo
+
+1. Validar o card em aparelho real com TalkBack, fonte 200% e tela estreita (360 dp).
+2. Usar a base da FR-010 para a revisão semanal (FR-011), que segue pendente.
+3. Comparação por splits e “próximo passo” interpretado continuam fora até terem regra/evidência.
 
 ## Sessão 2026-11-11 — U-13: campos de data e duração no padrão da §7.3
 

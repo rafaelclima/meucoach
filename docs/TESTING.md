@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.7 · **Data:** 11/11/2026 · Reconcilia contagens/goldens após C3-06 e adiciona os testes de auto-conclusão e projeção da meta.
+**Versão:** 1.8 · **Data:** 11/11/2026 · Adiciona os testes e goldens da comparação planejado × executado (FR-010) e a captura estável de gráficos Vico.
 
 ## 1. Princípios
 
@@ -178,6 +178,10 @@ Evidência atual (10/11/2026):
 - `UserDataRepositoryTest` (C3-06): export inclui `completionSource`; reset remove eventos e recusas.
 - `RacePlanTest` (C3-06): `targetTimeSec` não altera a projeção de planejamento.
 - `MeuCoachDatabaseMigrationTest` (14→15): `race_events` vazia, dados legados preservados e schema validado.
+- `SessionComparisonCalculatorTest`: tolerância inclusiva de 10%, direções de duração/distância/pace/FC/RPE, FC sem teto, ausência de um dos lados, pace derivado, treino livre, plano a partir de prescrição/sessão e `REST`.
+- `GetSessionComparisonTest`: prescrição preferida à sessão, fallback da semana, vínculo por execução, corrida não vinculada em dia com plano e corrida sem plano.
+- `ActivityComparisonFormatTest`: linhas, omissão de dado ausente, notas factuais, resumo “tudo dentro” e treino livre com “—”.
+- `ActivityDetailScreenTest` (FR-010): card no detalhe, ausência de IDs técnicos e treino livre sem alvo.
 - `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.
 - `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.
 - `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale e ausência de semana.
@@ -321,11 +325,11 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (57 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (60 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
-| Atividade | `activity-detail-dark`, `activity-detail-light` |
+| Atividade | `activity-detail-dark`, `activity-detail-light`, `activity-comparison-dark`, `activity-comparison-light`, `activity-comparison-free-dark` |
 | Calibração | `calibration-dark`, `calibration-light` |
 | Check-in | `checkin-dark`, `checkin-light` |
 | Dados | `data-management-dark`, `data-management-light` (lixeira e opção de backup) |
@@ -342,6 +346,8 @@ Screenshots atuais (57 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 
 Goldens de C3-06: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}` foram regravados com o bloco “Referência da meta” e os mesmos fixtures sintéticos.
+
+Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre). `HealthMetricsScreenshotTest` e `TrendsFullScreenshotTest` usam `captureStableScreenshot`, que espera dois quadros idênticos antes de gravar; isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
 
 Gráficos Vico desenham depois do primeiro layout. `McLineChart`/`McBarChart` expõem a tag
 `mc-chart-ready` quando o modelo foi aplicado; testes de screenshot devem esperar por ela
@@ -428,6 +434,6 @@ Uma tarefa só termina quando:
 | Fixtures reais vazarem | `.gitignore`, revisão manual, script de sanitização |
 | Parser FIT frágil | Golden + referência + fuzz leve |
 | Fórmulas com erro sutil | Casos à mão + referência independente |
-| Screenshot flaky | Robolectric NATIVE, versão fixa, tolerância |
+| Screenshot flaky | Robolectric NATIVE, versão fixa, tolerância e espera por frame estável (`captureStableScreenshot`) |
 | Testes lentos | Separar unit/instrumentado; cache |
 | Cobertura performática | Focar em branches críticos, não em getters |

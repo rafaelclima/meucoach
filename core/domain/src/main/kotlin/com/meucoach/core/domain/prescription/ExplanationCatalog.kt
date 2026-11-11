@@ -47,6 +47,10 @@ object ExplanationCatalog {
             "R-RACE-02",
             "Ritmo e passagens de referência a partir da meta",
         ),
+        "R-FEEDBACK-01" to RuleExplanation(
+            "R-FEEDBACK-01",
+            "Planejado × executado descreve a diferença, sem julgar",
+        ),
     )
 
     private val evidence = mapOf(

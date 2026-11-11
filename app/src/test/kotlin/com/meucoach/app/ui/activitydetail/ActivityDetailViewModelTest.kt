@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.Data
 import androidx.work.WorkInfo
 import androidx.work.workDataOf
+import com.meucoach.app.application.GetSessionComparison
 import com.meucoach.app.story.BoundingBox
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
@@ -21,8 +22,12 @@ import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.feedback.ComparisonVerdict
+import com.meucoach.core.domain.feedback.SessionComparisonKind
 import com.meucoach.core.domain.insights.ActivityInsightRules
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -71,6 +76,8 @@ class ActivityDetailViewModelTest {
     private lateinit var repository: ActivityRepository
     private lateinit var profiles: ProfileRepository
     private lateinit var plans: TrainingPlanRepository
+    private lateinit var executions: SessionExecutionRepository
+    private lateinit var prescriptions: DailyPrescriptionRepository
 
     @Before
     fun setUp() {
@@ -96,6 +103,16 @@ class ActivityDetailViewModelTest {
             database = database,
             clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
         )
+        executions = SessionExecutionRepository(
+            database = database,
+            clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
+            idGenerator = { "execution-1" },
+        )
+        prescriptions = DailyPrescriptionRepository(
+            database = database,
+            clock = Clock.fixed(Instant.parse("2026-10-30T12:00:00Z"), ZoneOffset.UTC),
+            idGenerator = { "prescription-1" },
+        )
     }
 
     @After
@@ -116,6 +133,34 @@ class ActivityDetailViewModelTest {
             assertThat(state.activity?.id).isEqualTo("activity-1")
             assertThat(state.activity?.imported?.distanceM).isEqualTo(5_000.0)
             assertThat(state.insights.map { it.ruleId }).containsExactly(ActivityInsightRules.PACING)
+        }
+    }
+
+    @Test
+    fun `compares a linked run with the plan of the day`() {
+        runBlocking {
+            repository.saveImportedActivity(importedActivity(), "sha")
+            saveEasyPlan()
+
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.comparison?.kind).isEqualTo(SessionComparisonKind.LINKED)
+            assertThat(state.comparison?.plan?.title).isEqualTo("Fácil 40 min")
+            assertThat(state.comparison?.durationPercentOfPlan).isEqualTo(75)
+            assertThat(state.comparison?.durationVerdict).isEqualTo(ComparisonVerdict.BELOW)
+        }
+    }
+
+    @Test
+    fun `labels an unlinked run as free run`() {
+        runBlocking {
+            repository.saveImportedActivity(importedActivity(), "sha")
+
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.comparison?.kind).isEqualTo(SessionComparisonKind.FREE_RUN)
+            assertThat(state.comparison?.plan).isNull()
+            assertThat(state.comparison?.durationVerdict).isNull()
         }
     }
 
@@ -219,6 +264,7 @@ class ActivityDetailViewModelTest {
                     ApplicationProvider.getApplicationContext(),
                 ),
                 FakeTimeProvider(),
+                GetSessionComparison(repository, executions, prescriptions, plans),
             )
         }
             .isInstanceOf(IllegalStateException::class.java)
@@ -247,6 +293,7 @@ class ActivityDetailViewModelTest {
             ApplicationProvider.getApplicationContext(),
         ),
         timeProvider = FakeTimeProvider(),
+        comparisons = GetSessionComparison(repository, executions, prescriptions, plans),
     )
 
     @Test
