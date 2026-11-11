@@ -66,6 +66,7 @@ A promessa central:
 - Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto. Quando o treino do dia já foi concluído, o card vira um resumo com selo “Concluído” e esconde as ações.
 - **Briefing do treino** (“Como correr hoje”): foco, alvo, por que hoje, como correr e o que fazer se estiver difícil, sempre copiados da prescrição vigente. Sessão concluída não recebe briefing retrospectivo; o histórico mostra a execução registrada.
 - Conclusão com evidência: corrida vinculada, execução guiada (contrato) ou “fiz sem registro” com duração e RPE; descanso/doença encerram o dia com motivo.
+- Evento de prova (5K/10K/meia/maratona) com taper por data e dia de prova como autoridade única; a corrida importada compatível pode concluir a prova automaticamente, com origem auditável e correção, e a meta declarada gera apenas uma referência aritmética de pace/faixa/passagens (ADR 0030/0032).
 - Oferta reativa ao importar: uma corrida do próprio dia, em dia de treino ainda pendente, pergunta na hora se deve virar o treino de hoje; se o dia já foi concluído, o app avisa que ela fica apenas como treino livre. Um “fiz sem registro” pode ser corrigido pela corrida real, com confirmação explícita.
 - Tela **Saúde** como destino principal: painel de sono, FC de repouso, HRV e SpO₂, com período, fontes e aviso quando o dia atual ainda não chegou.
 - Tela **Tendências** com gráficos de evolução.
@@ -155,6 +156,7 @@ Estas decisões complementam o escopo acima e orientam o primeiro ciclo. O detal
 | Backup | **Versionado e restaurável** como funcionalidade de ciclo posterior; não bloqueia o ciclo 1. |
 | Motor | **Determinístico**; regra, evidência e confiança em toda recomendação. LLM não decide treino. |
 | Conclusão | `ACTIVITY` > `GUIDED` > `MANUAL`; descanso, doença e não realizado têm estados próprios (ADR 0024). |
+| Prova | Evento separado, uma prova `PLANNED` ativa; auto-conclusão conservadora (mesma data, 90–110%, uma única candidata) com `completionSource` e undo; meta declarada gera referência aritmética, nunca prescrição (ADR 0030/0032). |
 | Plano × prescrição | Plano é intenção; prescrição diária persistida é a única autoridade do dia (ADR 0023). |
 | Exclusão | Lixeira de 7 dias para atividade; reset imediato, com época de dados e sem apagar Health Connect (ADR 0025). |
 | Carga | ACWR desconhecido/cobertura insuficiente bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR 0026). |

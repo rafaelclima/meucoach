@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — MeuCoach
 
-**Versão:** 1.1 · **Data:** 10/11/2026 · **Status:** direção aprovada; §7.3 normatiza campos de data e duração
+**Versão:** 1.2 · **Data:** 11/11/2026 · **Status:** direção aprovada; §7.3 normatiza campos de data e duração e a leitura read-only da referência da meta
 
 ## 1. Ideia de marca
 
@@ -289,6 +289,16 @@ Regra normativa para **todo** campo de data, hora ou duração do app
 | Calibração | Data da prova/teste | **Pendente:** texto livre `dd/mm/aaaa`; migrar para a máscara comum |
 | Calibração | Tempo do esforço | **Pendente:** texto livre `mm:ss ou h:mm:ss`; migrar para `TargetTimeUnit` |
 | Qualquer campo novo | Data/hora/duração | Obrigatório seguir esta seção antes do merge |
+
+**Leitura read-only da referência da prova (ADR 0032)**
+
+- O card da prova pode exibir pace médio, faixa ±3% e passagens por km derivados de
+  `targetTimeSec`. **Não é campo de entrada** e não usa máscara.
+- Números tabulares, unidade em cada valor (`5:00/km`, `4:51–5:09/km`), TalkBack e
+  contraste AA; o CTA “Ver passagens por km” tem alvo ≥ 48 dp e o diálogo é rolável.
+- Nota fixa: `Referência da meta, não prescrição nem garantia.` Nunca chamar de
+  “pace prescrito”, “alvo de treino” ou “previsão”.
+- Sem `targetTimeSec`, o bloco não aparece; nada é inventado.
 
 **Checklist de migração**
 

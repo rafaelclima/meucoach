@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.20 · **Data:** 11/11/2026 · **Mudança:** F4 implementado na UI (seções de hidratação/alimentação no briefing, conforme ADR 0029); C3-G2 fechado; padrão de campos de data/duração documentado em DESIGN_SYSTEM §7.3 e migração registrada em U-13.
+**Versão:** 1.21 · **Data:** 11/11/2026 · **Mudança:** C3-06 concluído (auto-conclusão da prova com auditoria/undo e referência aritmética da meta no Perfil/Hoje, ADR 0032); F4/C3-G2 e C3-05 mantidos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -387,13 +387,15 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 - Toda regra nova cita `ruleId`, `evidenceId` e confiança.
 - Dados reais nunca entram no diff.
 
-### Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05 e C3-G2 implementados; C3-G1 detalhado (10/11/2026)
+### Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05, C3-06 e C3-G2 implementados; C3-G1 detalhado (11/11/2026)
 
 **Documentos:** [`docs/PRD_ADAPTACAO_E_BRIEFING_v0.2.md`](PRD_ADAPTACAO_E_BRIEFING_v0.2.md),
 [`docs/RELATORIO_ALTERACOES_PRD_CICLO_3_v0.2.md`](RELATORIO_ALTERACOES_PRD_CICLO_3_v0.2.md),
+[`PLANO_TECNICO_CICLO_3_C3-06.md`](PLANO_TECNICO_CICLO_3_C3-06.md),
 [ADR 0029](adr/0029-f4-hydration-nutrition-copy.md),
-[ADR 0030](adr/0030-race-event-and-weekly-taper.md) e
-[ADR 0031](adr/0031-profile-planning-fingerprint.md).
+[ADR 0030](adr/0030-race-event-and-weekly-taper.md),
+[ADR 0031](adr/0031-profile-planning-fingerprint.md) e
+[ADR 0032](adr/0032-race-autocompletion-and-target-projection.md).
 
 | Gate | Escopo | Estado |
 |---|---|---|
@@ -405,10 +407,12 @@ FR-011 (revisão semanal com métricas e observações) continua pendente; repla
 | **C3-G1** | Contrato Room/migração, `TodayDecision`, vínculo com atividade, taper por data, adesão e testes do evento | **Desenho técnico concluído em 10/11/2026** em [`PLANO_TECNICO_CICLO_3_EVENTO.md`](PLANO_TECNICO_CICLO_3_EVENTO.md); nenhum código/migração implementado |
 | **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Concluído em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, taper/cutoff, adesão, troca, `GetTodayDecision`, notificação e UI de Perfil/Hoje/Plano com goldens |
 | **C3-G2** | Revisão de fontes/copy de F4 | **Concluído e implementado em 10/11/2026:** ADR 0029 aceito (fontes ACSM 2007/NATA 2017/Thomas 2016 revisadas; `EV-NATA-2017` corrige a citação do PRD), copy aprovada em `COMMUNICATION.md` §6.10 e seções de hidratação/alimentação no sheet de briefing com testes de regressão e goldens |
+| **C3-06** | Auto-conclusão da prova e referência da meta (pace/faixa/passagens) | **Concluído em 11/11/2026:** ADR 0032, regra 90–110% com uma única candidata, `completionSource`/Room 16, undo com recusa persistida, referência aritmética no Perfil/Hoje, testes de domínio/dados/app/UI e goldens de prova atualizados |
 
-Fora do escopo implementável: recuperação pós-prova (FR-207), pace/faixa de prova e
-limite de longão por fração da distância (FR-206). N-03 continua sem entrega; o PRD
-v0.2 apenas definiu a direção de evento/taper que a futura implementação deverá seguir.
+Fora do escopo implementável: recuperação pós-prova (FR-207), previsão de tempo por
+VDOT/Riegel (D6-B, exige ADR próprio com calibração e confiança) e limite de longão
+por fração da distância (FR-206). N-03 continua sem entrega; o PRD v0.2 apenas
+definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu.
 
 ### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
 

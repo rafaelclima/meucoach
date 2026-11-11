@@ -247,10 +247,12 @@ como um treino comum nem prometer uma periodização multissemanal.
 6. Prova passada ou a menos de 10 dias não recebe taper retroativo nem promessa de
    preparação completa. O evento permanece `PLANNED` até ação explícita. A decisão
    diária continua seguindo `TodayDecision`; não aumenta carga nem infere realização.
-7. `targetTimeSec` é o objetivo declarado do atleta. Não produz faixa de pace,
-   alvo de execução ou previsão. Alterá-lo atualiza a informação do evento, mas não
-   dispara replanejamento do treino enquanto não influenciar uma regra de plano.
-   Alterar distância suportada ou data pode disparar T4.
+7. `targetTimeSec` é o objetivo declarado do atleta. Pode gerar uma referência
+   aritmética de pace médio, faixa ±3% e passagens por km (ADR 0032), exibida
+   apenas nos cards da prova; não produz pace prescrito, alvo de execução,
+   previsão de desempenho ou promessa. Alterá-lo atualiza a informação do evento,
+   mas não dispara replanejamento do treino. Alterar distância suportada ou data
+   pode disparar T4.
 
 #### Autoridade do dia — decisão C3-G0 aprovada
 
@@ -373,9 +375,9 @@ dicas (FR-404).
 | FR-205 | Meta passada ou a menos de 10 dias não produz taper retroativo nem promessa de preparação completa; evento não muda de estado por inferência | P0 | M |
 | FR-206 | Limitar o longão do pico por fração da distância da prova | **Removido do ciclo** até existir regra e justificativa esportiva aprovadas | — |
 | FR-207 | Recuperação pós-prova e janelas por distância | **Fora do escopo implementável** até confirmação de realização e política aprovada | — |
-| FR-208 | Limitar eventos v1 às quatro distâncias do formulário; mudança de data/distância invalida T4; mudança de tempo-alvo só atualiza o objetivo declarado, sem pace/previsão | P0 | M |
+| FR-208 | Limitar eventos v1 às quatro distâncias do formulário; mudança de data/distância invalida T4; mudança de tempo-alvo atualiza a referência aritmética da meta (pace/faixa/passagens), sem pace prescrito ou previsão de desempenho | P0 | M |
 | FR-209 | Um `TodayDecision` retorna exatamente um ramo: prescrição de treino ou evento de prova; evento no dia prevalece sobre sessão ordinária, não cria `WorkoutType` e não conta adesão | P0 / contrato aceito; implementação gate | L |
-| FR-210 | Exibir data/distância/estado do evento e permitir transição explícita e vínculo opcional a atividade, segundo ADR 0030 | P0 / gate de implementação | M |
+| FR-210 | Exibir data/distância/estado do evento e permitir transição explícita e vínculo opcional a atividade, segundo ADR 0030; a auto-conclusão C3-06 pode inferir `COMPLETED` pela regra 90–110% e oferece undo auditável | P0 / gate de implementação | M |
 
 ### F3 — Briefing
 
@@ -552,6 +554,7 @@ de treino. `TodayDecision` seleciona o evento como ramo diário separado.
 | Editar perfil | Ao salvar: resultado da avaliação (sugestão / nada a mudar / limite) | — | — |
 | Hoje — card do treino | Card de sugestão com versão e diff | `TodayDecision` mostra evento em vez de sessão sobreposta | Botão “Como correr hoje” para sessão não concluída |
 | Hoje — sheet expandido | “Ver o que mudou” | Detalhes do evento, sem tratá-lo como sessão | Briefing da prescrição vigente |
+| Perfil/Hoje — card da prova (C3-06) | — | Pace médio, faixa ±3% e passagens por km da meta, rotulados como referência; confirmação de auto-conclusão com “Não era a prova” | — |
 | Plano da semana | — | Marca visual por data; evento não entra como sessão/qualidade | — |
 | Notificação | — | Texto relativo à data; destino Hoje | Foco derivado da prescrição no agendamento |
 | Perfil | Campos relevantes de perfil | Quatro distâncias suportadas e data | — |
@@ -632,6 +635,10 @@ de treino. `TodayDecision` seleciona o evento como ramo diário separado.
   sobreposição da adesão e não dispara recuperação nesta versão.
 - Evento/UI: estados, edição/cancelamento, ação explícita de conclusão/não
   comparecimento, vínculo opcional com atividade e data local renderizados sem erro.
+- Evento C3-06: auto-conclusão apenas na regra 90–110% com uma única candidata,
+  nunca em `CANCELLED`/`NO_SHOW`/`COMPLETED`; undo volta a `PLANNED`, grava a recusa
+  e reimportar o mesmo arquivo não reconclui. Projeção da meta: pace/faixa/passagens
+  aritméticos, `null` sem `targetTimeSec`, sem contaminar plano/prescrição.
 - Briefing: só lê prescrição persistida; números iguais aos persistidos; nenhum bloco,
   intervalo, pace ou alternativa inventados; determinismo e ramo sem calibração.
 - Sessão `DONE`: briefing indisponível; apresentação é somente a execução registrada.
@@ -648,6 +655,10 @@ de treino. `TodayDecision` seleciona o evento como ramo diário separado.
   não testar restore/import como capacidade existente.
 - Migração preserva `TrainingGoal` e não infere eventos concluídos; FK/vínculo e
   comportamento de lixeira/exclusão do evento são testados.
+- Migração `15→16` adiciona `completionSource` nullable, preserva eventos/estados e
+  o export inclui a origem; reset remove eventos e recusas persistentes.
+- A regra de auto-conclusão é pura e testada por limites (90%/110%), candidatas
+  múltiplas, vínculo cruzado, lixeira/expurgo e idempotência.
 
 ### 11.3 App/UI
 
@@ -660,6 +671,9 @@ de treino. `TodayDecision` seleciona o evento como ramo diário separado.
 - Sessão concluída mostra execução e não renderiza briefing calculado com perfil atual.
 - Fluxo de evento, estado terminal, associação de atividade e copy dinâmica são
   implementados conforme ADR 0030 e verificados no Hoje/Plano/notificação.
+- C3-06: o card da prova no Perfil/Hoje mostra a referência da meta com unidade,
+  passagens em diálogo rolável e “Não era a prova” quando a conclusão é automática;
+  testar TalkBack, 200%, tema claro/escuro e tela estreita.
 - Nenhum `R-`/`EV-` na superfície comum (teste de regressão existente).
 - Goldens: card de sugestão de perfil, sheet do briefing (dark/light) e `TodayDecision`
   de evento/dia da prova conforme ADR 0030.
@@ -720,9 +734,11 @@ decomposição dos caminhos de persistência; não assumir que cada linha cabe e
 | 7 | **C3-05** | Implementar evento de prova e taper 2A; sem `WorkoutType.RACE` | C3-G1 | Migração/export/reset, estados, link, disponibilidade, evento no dia e cutoff/taper por data testados |
 | 8 | **C3-G2** | Revisão de fontes e copy de F4 (gate documental; não implica código) | D-1 v0.2 | **Concluído em 10/11/2026:** ADR 0029 aceito, fontes revisadas e copy aprovada; implementação decidida para ciclo futuro |
 
-**Fora da sequência implementável:** recuperação pós-prova (FR-207), previsão/faixa
-de pace e limite de longão por fração da distância (FR-206). Não criar código para
-esses itens neste ciclo.
+**Fora da sequência implementável:** recuperação pós-prova (FR-207), previsão de
+tempo por VDOT/Riegel (D6-B, exige ADR próprio com calibração e confiança) e
+limite de longão por fração da distância (FR-206). A referência aritmética da meta
+(pace/faixa/passagens) foi implementada no C3-06. Não criar código para os itens
+fora da sequência neste ciclo.
 
 **Racional:** preserva a ordem aprovada: perfil antes do briefing; briefing genérico
 antes da prova. O design/ADR de evento é um gate documental prévio, sem antecipar

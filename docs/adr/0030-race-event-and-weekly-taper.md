@@ -1,6 +1,6 @@
 # ADR 0030 — Evento de prova e taper semanal
 
-**Status:** Aceito em princípios de produto/autoridade diária em 2026-11-10; desenho técnico C3-G1 concluído e implementação C3-05 concluída em 2026-11-10
+**Status:** Aceito em princípios de produto/autoridade diária em 2026-11-10; desenho técnico C3-G1 concluído e implementação C3-05 concluída em 2026-11-10. Revisto parcialmente pelo ADR 0032 em 2026-11-11 (auto-conclusão e referência aritmética da meta).
 **Data:** 2026-11-10
 **Escopo:** C3-G1/F2 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md`
 **Relacionados:** ADR 0022 (tempo/fuso), ADR 0023 (plano × prescrição), ADR 0024 (conclusão/evidência), ADR 0028 (replanejamento), ADR 0031 (fingerprint)
@@ -64,8 +64,9 @@ PLANNED → NO_SHOW
 Um evento com data passada continua `PLANNED` até ação do usuário; não inferir que
 foi realizado. `COMPLETED` requer confirmação explícita; atividade é opcional e pode
 ser associada na confirmação ou depois. Importar atividade nunca marca o evento como
-realizado automaticamente; pode oferecer vínculo explícito. `CANCELLED`/`NO_SHOW` não
-iniciam recuperação.
+realizado automaticamente; pode oferecer vínculo explícito. **(Revogado parcialmente
+pelo ADR 0032: a auto-conclusão conservadora é permitida com auditoria e undo; ver
+§7.)** `CANCELLED`/`NO_SHOW` não iniciam recuperação.
 
 ### 3.2 Relação com `Activity`, adesão e disponibilidade
 
@@ -156,7 +157,9 @@ Fontes consultadas:
   preparação completa. A regra diária conservadora atual continua valendo.
 - Distância não customizada; apenas quatro tipos do formulário.
 - Tempo-alvo pode ser mostrado como “meta informada”, sem conversão em pace,
-  intervalo, previsão ou promessa.
+  intervalo, previsão ou promessa. **(Revogado parcialmente pelo ADR 0032: a meta
+  pode gerar referência aritmética de pace/faixa/passagens, nunca prescrição; ver
+  §7.)**
 - FR-206 (limitar longão por fração da prova) removido; FR-207 (recuperação)
   adiado.
 
@@ -229,3 +232,19 @@ A implementação foi concluída em C3-05 conforme a ordem do plano técnico: mo
 domínio, Room 15, casos de uso, gerador/replanejamento/notificação, UI de
 Perfil/Hoje/Plano e documentação. Recuperação pós-prova (FR-207) e limite de longão
 por fração da prova (FR-206) permanecem fora do escopo.
+
+## 7. Revisão C3-06 (2026-11-11)
+
+O [ADR 0032](0032-race-autocompletion-and-target-projection.md) complementa este
+ADR e **revoga parcialmente** dois pontos, por decisão do usuário 0:
+
+- §3.1: importar uma corrida pode concluir automaticamente um evento `PLANNED`
+  quando a atividade está na mesma data local, é `RUNNING`/`TREADMILL`, não está
+  vinculada, a distância fica entre 90% e 110% e há uma única candidata. A
+  conclusão é auditada por `completionSource` (`AUTO_IMPORT`) e pode ser desfeita.
+- §3.5: `targetTimeSec` pode gerar **referência aritmética** de pace, faixa ±3% e
+  passagens por km. Continua proibido virar pace prescrito, alvo de treino,
+  previsão de desempenho ou promessa.
+
+Permanecem válidos: `TodayDecision`, `COMPLETED` sem atividade, ausência de
+recuperação automática, uma única prova `PLANNED`, F4/F404, FR-206 e FR-207.

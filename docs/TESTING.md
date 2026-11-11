@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.6 · **Data:** 10/11/2026 · Reconcilia contagens/goldens após C3-05 e adiciona os testes de máscaras de data/duração.
+**Versão:** 1.7 · **Data:** 11/11/2026 · Reconcilia contagens/goldens após C3-06 e adiciona os testes de auto-conclusão e projeção da meta.
 
 ## 1. Princípios
 
@@ -91,10 +91,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (10/11/2026):
 
-- 1.242 testes no repositório, 0 falhas e 0 `@Ignore` (36 em `core:model`, 440 em `core:domain`, 152 em `core:data`, 614 em `:app`).
+- 1.301 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 467 em `core:domain`, 160 em `core:data`, 635 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,63% de linhas, 81,85% de branches, 96,21% de instruções.
+- `core:domain`: 97,62% de linhas, 81,47% de branches, 96,25% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -168,6 +168,15 @@ Evidência atual (10/11/2026):
 - `PlanCompletionCalculatorTest`: datas de evento fora do numerador e denominador.
 - `SessionSwapperTest`: troca envolvendo data de evento é rejeitada.
 - `RaceEventRepositoryTest`: evento ativo único, edição, conclusão/cancelamento/não comparecimento, vínculo único e cruzado com execução, lixeira/expurgo e janela de datas.
+- `RaceTargetProjectionTest`: pace de 5K/10K/meia/maratona, faixa ±3% arredondada, passagens por km, chegada fracionária, `null` sem meta e monotonicidade.
+- `RaceAutoCompletionRuleTest`: mesma data, 90%/110% inclusivos, fora da banda, esporte, vínculo com treino/prova, recusa, evento terminal, múltiplas candidatas e fuso do perfil.
+- `AutoCompleteRaceFromActivityTest`: conclusão com corrida compatível sem `SessionExecution`, rejeições, idempotência, treadmill, undo com recusa persistida e conclusão explícita intocada.
+- `RaceEventRepositoryTest` (C3-06): `USER` × `AUTO_IMPORT`, reopen automático, undo com outra prova planejada, undo de evento planejado e vínculo cruzado reverso.
+- `MeuCoachDatabaseMigrationTest` (14→16 e 15→16): `race_events` vazia e `completionSource` nullable preservando o histórico.
+- `RaceEventSectionTest` e `TodayRaceTest`: referência da meta, sheet de passagens, ausência de projeção sem meta, confirmação de auto-conclusão e “Não era a prova”.
+- `StagedImportProcessorTest` (C3-06): importação compatível auto-conclui a prova sem criar treino concorrente.
+- `UserDataRepositoryTest` (C3-06): export inclui `completionSource`; reset remove eventos e recusas.
+- `RacePlanTest` (C3-06): `targetTimeSec` não altera a projeção de planejamento.
 - `MeuCoachDatabaseMigrationTest` (14→15): `race_events` vazia, dados legados preservados e schema validado.
 - `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.
 - `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.
@@ -307,6 +316,7 @@ artificiais.
 - **Interação:** trocar treino, concluir check-in, abrir "por quê".
 - **Temas:** dark e light, fonte 100% e 200%.
 - **Data e duração:** seguir `DESIGN_SYSTEM.md` §7.3. Testar dígitos crus, máscara visual, edição no meio, troca de unidade (`Minutos` × `Horas`), segmentos inválidos (minutos/segundos > 59), vazio opcional, zero inválido e fonte 200%.
+- **Referência da meta:** pace/faixa sempre com unidade, passagens em diálogo rolável, `null` sem tempo-alvo, números tabulares, TalkBack e fonte 200% em tela estreita.
 - **Screenshot:** tamanhos reais usados — 393×852 (principal), 360×760/800 (estreito) e capturas focadas de altura variável (ex.: 393×760, 393×1500) × 2 temas, apenas telas-chave.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
@@ -330,6 +340,8 @@ Screenshots atuais (57 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens; `./gradlew :app:verifyRoborazziDebug`
 falha se a tela mudar. O CI roda a verificação e publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
+
+Goldens de C3-06: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}` foram regravados com o bloco “Referência da meta” e os mesmos fixtures sintéticos.
 
 Gráficos Vico desenham depois do primeiro layout. `McLineChart`/`McBarChart` expõem a tag
 `mc-chart-ready` quando o modelo foi aplicado; testes de screenshot devem esperar por ela

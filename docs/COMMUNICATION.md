@@ -228,7 +228,9 @@ A prova é um evento, não um treino. A copy nunca oferece “iniciar”, “tro
 |---|---|---|
 | Perfil — card | `PROVA` + `Adicionar prova` | Superfície explícita; não compete com o formulário de objetivo. |
 | Perfil/Hoje — distância | `5 km`, `10 km`, `Meia maratona`, `Maratona` | Só as quatro distâncias suportadas. |
-| Meta declarada | `META INFORMADA` + `50:00 (meta sua, não é pace prescrito)` | Nunca deriva pace, faixa ou previsão. |
+| Meta declarada | `META INFORMADA` + `50:00 (meta sua, não é pace prescrito)` | A meta é declarada; não vira prescrição. |
+| Referência da meta | `REFERÊNCIA DA META` + `Ritmo médio necessário 5:00/km` + `Faixa de referência 4:51–5:09/km` + `Referência da meta, não prescrição nem garantia.` | Referência aritmética da meta; nunca alvo de treino. |
+| Auto-conclusão | `Prova concluída com a corrida importada. Se não foi a prova, você pode desfazer.` / `Não era a prova` | Inferência conservadora, auditável e corrigível. |
 | Estado | `Planejada`, `Concluída`, `Cancelada`, `Não compareceu` | Ciclo explícito; nada é inferido pelo calendário. |
 | Ações (planejada) | `Concluir prova`, `Não compareceu`, `Cancelar prova` | Conclusão exige ação; corrida vinculada é opcional. |
 | Hoje — competição | `Hoje é dia de prova. Não há treino prescrito para hoje; o app não cria uma segunda instrução.` | Uma decisão só; treino/briefing ocultos. |
@@ -262,3 +264,21 @@ rígido, produto, eletrólito, "água à vontade", jejum e emagrecimento. O ramo
 prova não recebe essas seções até copy de prova própria ser aprovada (FR-404).
 Os IDs (`R-FUEL-01/02`, `EV-ACSM-2007`, `EV-NATA-2017`, `EV-THOMAS-2016`) ficam
 fora da superfície comum, conforme §6.5.
+
+### 6.11 Auto-conclusão e referência da meta (11/11/2026)
+
+A prova continua um evento, não um treino. A auto-conclusão (ADR 0032) só aparece
+quando a corrida importada é compatível; a copy informa a inferência e oferece a
+correção. A referência da meta é aritmética e sempre rotulada como referência.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Hoje/Perfil — auto-conclusão | `Prova concluída com a corrida importada. Se não foi a prova, você pode desfazer.` | Explicita a origem inferida sem culpa. |
+| Ação de correção | `Não era a prova` | Volta a prova para planejada, desvincula e evita reconcluir o mesmo arquivo. |
+| Card da prova — referência | `REFERÊNCIA DA META` · `Ritmo médio necessário` · `Faixa de referência` | Separa meta declarada de prescrição. |
+| Card da prova — nota | `Referência da meta, não prescrição nem garantia.` | Limita a leitura a uma referência aritmética. |
+| Passagens | `Passagens por km` · `1 km · 5:00` … `Chegada · 1:45:00` | Mostra a projeção com unidade; chegada fracionária não vira “km 22”. |
+
+Proibições: chamar a referência de “pace prescrito”, “alvo de treino”, “previsão de
+resultado” ou “garantia”; exibir a projeção em cards de treino, plano, briefing ou
+notificação de treino. A meta declarada continua sendo do atleta.

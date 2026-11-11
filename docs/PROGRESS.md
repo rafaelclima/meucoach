@@ -1,17 +1,17 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 10/11/2026 (C3-05 concluído: modelo, TodayDecision, Room 15, taper por data, wiring do app, notificação e UI do evento; C3-G2 concluído e F4 implementado no briefing com ADR 0029; C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (C3-06 concluído: auto-conclusão da prova por corrida compatível, `completionSource`/Room 16, undo auditável e referência aritmética da meta no Perfil/Hoje; C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.242 testes no total (614 em `:app`, 152 em `core:data`, 440 em `core:domain`, 36 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,63% de linhas (3.954/4.050), 81,85% de branches (2.881/3.520), 96,21% de instruções (27.681/28.770)
+- **Testes:** 1.301 testes no total (635 em `:app`, 160 em `core:data`, 467 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,62% de linhas (4.065/4.164), 81,47% de branches (2.951/3.622), 96,25% de instruções (28.451/29.558)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v15 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano, fingerprint/checkpoint de planejamento e evento de prova), migrações 1→2 até 14→15 testadas.
+- **Persistência:** Room 2.8.5, schema v16 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano, fingerprint/checkpoint de planejamento, evento de prova e origem da conclusão), migrações 1→2 até 15→16 testadas.
 - **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador. A guarda `R-PRESC-04` rebaixa `QUALITY → EASY` para perfil `BEGINNER` apenas na sessão de hoje `PLANNED`; `DONE`/`CLOSED` preservam prescrição, execução e histórico.
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
@@ -22,6 +22,8 @@
 - **Evento de prova (C3-G1):** desenho técnico fechado em `docs/PLANO_TECNICO_CICLO_3_EVENTO.md`, sem código/migração. Define `RaceEvent`/`RaceDistance`/`RaceStatus` em `core:model`, `TodayDecision` discriminada, Room 15 (`race_events` vazia, `activeKey` único, FK `SET NULL`), projeção `PlanningGoal` sem backfill, taper/cutoff por data com `R-PLAN-10` LIMITED, exclusão de datas de evento da adesão e ordem C3-05.
 - **Evento de prova (C3-05, concluído):** `RaceEvent`, `TodayDecision`, `PlanningGoalResolver` e Room 15 completos. O app resolve `GetTodayDecision` antes de renderizar: prova no dia vence sem calcular/persistir prescrição, `Competition` suprime treino/briefing e `Training` continua igual. O gerador/replanejador recebem `race`/`eventDates`, a adesão exclui datas de evento, a troca e a conclusão de treino são bloqueadas no dia, e a notificação usa copy de prova com deep link para o Hoje. Perfil, Hoje e Plano têm card/marcador do evento, ações explícitas e goldens dark/light/estreito.
 - **F4 — hidratação (C3-G2, concluído):** gate documental fechado e implementado no mesmo dia ([ADR 0029](adr/0029-f4-hydration-nutrition-copy.md)): copy educativa estática de hidratação aprovada e exibida no sheet "Como correr hoje" (sem números, produto, eletrólito ou horário), alimentação vira encaminhamento a nutricionista, `R-FUEL-01/02` e evidências aceitas nos catálogos, e `EV-NATA-2017` corrige a citação `EV-NATA-2025` do PRD. Ramo de prova continua sem dicas (FR-404).
+- **Auto-conclusão da prova (C3-06, concluído):** corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova automaticamente; múltiplas candidatas exigem escolha explícita. `completionSource` (`USER` × `AUTO_IMPORT`) audita a origem, o undo volta a `PLANNED` e grava a recusa para o mesmo arquivo, e a corrida continua uma atividade normal (sem `SessionExecution`). Room 16 e migração 15→16 preservam o histórico.
+- **Referência da meta (C3-06, concluído):** `RaceTargetProjector` puro deriva pace médio, faixa ±3% e passagens por km de `RaceEvent.distance`/`targetTimeSec`; sem meta, nada é inventado. A referência aparece só nos cards de prova do Perfil/Hoje, nunca em prescrição, plano, briefing ou troca, e é rotulada “referência da meta, não prescrição nem garantia”.
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -68,6 +70,41 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-11 — C3-06: auto-conclusão da prova e referência da meta
+
+**Objetivo:** fechar o ciclo da prova quando a corrida importada é compatível e permitir que a meta declarada gere uma referência aritmética (pace, faixa e passagens), sem contaminar o motor de treino. As decisões D1–D6 foram aprovadas pelo usuário 0 e registradas no [ADR 0032](adr/0032-race-autocompletion-and-target-projection.md).
+
+### Concluído
+
+- **Auto-conclusão:** `RaceAutoCompletionRule` puro no domínio (mesma data, `RUNNING`/`TREADMILL`, não vinculada, `PLANNED`, 90–110%, uma única candidata, recusa anterior) e `AutoCompleteRaceFromActivity` no app. `StagedImportProcessor` chama a auto-conclusão para `Imported`/`Duplicate` antes do prompt de treino; falha nunca derruba a importação.
+- **Auditoria e undo:** `RaceCompletionSource` (`USER`/`AUTO_IMPORT`) em `RaceEvent`, Room 16 e migração `15→16` (coluna nullable; legado `NULL` = conclusão explícita anterior). `reopenAutoCompleted` volta a `PLANNED`, desvincula e limpa a origem; `RaceAutoCompletionStore` grava a recusa por `activityId` para o mesmo arquivo não reconcluir. Reset limpa a recusa.
+- **Sem treino concorrente:** auto-conclusão não cria `SessionExecution`; a corrida continua em volume/carga/zonas e o evento não adiciona carga. `CompleteSession`/`SessionExecutionRepository` recusam atividade já vinculada a uma prova.
+- **Referência da meta:** `RaceTargetProjection`/`RaceTargetProjector` puros; pace médio arredondado, faixa ±3% e passagens acumuladas (chegada exata), `null` sem meta. Exibida em `RaceTargetProjectionBlock` no card do Perfil e no card de prova do Hoje, com sheet “Ver passagens por km”, números tabulares e nota “não é prescrição nem garantia”.
+- **Catálogo:** `R-RACE-01` (auto-conclusão, LIMITED) e `R-RACE-02` (referência aritmética, LIMITED) no catálogo; `R-RACE-03` (VDOT/Riegel) documentada como fora desta fase.
+- **Testes:** +27 no domínio (projeção, regra e independência do plano), +8 em `core:data` (migração 15→16, `completionSource`, undo, vínculo cruzado e export) e +21 em `:app` (caso de uso, importação, reset, UI e goldens).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde.
+- **1.301 testes**, 0 falhas e 0 `@Ignore` (635 `:app`, 160 `core:data`, 467 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,62% de linhas (4.065/4.164), 81,47% de branches (2.951/3.622), 96,25% de instruções (28.451/29.558); parser FIT 93,01% de branches.
+- Goldens atualizados: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}`; nenhum dado real, dependência nova ou LLM.
+
+### Decisões e observações
+
+- **Inferência conservadora:** a regra exige data local exata, esporte de corrida, vínculo único, `PLANNED` e uma única candidata na banda; qualquer ambiguidade cai no fluxo explícito já existente.
+- **Undo com memória:** o `activityId` recusado não volta a auto-concluir; o fluxo explícito “Concluir prova” continua disponível.
+- **Auditoria sem reescrever o passado:** a migração adiciona uma coluna nullable; conclusões anteriores ficam `NULL` e são lidas como explícitas.
+- **Referência não é prescrição:** a projeção é pura, não persistida e só consumida pelos cards da prova. `RacePlan.from(event)` ignora `targetTimeSec` e há teste de independência do plano.
+- **F4 preservado:** o ramo de prova continua sem briefing/F4 (FR-404); nenhuma copy de hidratação/alimentação foi alterada.
+
+### Próximo passo
+
+1. Validar em aparelho real o fluxo de auto-conclusão, o undo e o sheet de passagens com TalkBack, 200% e tela estreita.
+2. Avaliar D6-B (previsão VDOT/Riegel) em ADR próprio, com evidência, janela de calibração e confiança explícita.
+3. Manter FR-206 (longão), FR-207 (recuperação pós-prova) e a revisão de copy de F4 fora deste ciclo.
 
 ## Sessão 2026-11-10 — F4 na UI: hidratação e alimentação no briefing
 

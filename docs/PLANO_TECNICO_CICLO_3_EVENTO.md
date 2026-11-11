@@ -1,7 +1,7 @@
 # PLANO_TECNICO_CICLO_3_EVENTO.md — Evento de prova, TodayDecision e migração
 
 **Versão:** 1.0 · **Data:** 10/11/2026
-**Status:** C3-G1 concluído (desenho técnico) e C3-05 concluído em 10/11/2026: `RaceEvent`, `TodayDecision`, `PlanningGoalResolver`, Room 15, repositório, export/reset, `RacePlan`, taper/cutoff por data, adesão, guarda de troca, wiring do app, notificação e UI de Perfil/Hoje/Plano implementados e testados.
+**Status:** C3-G1 concluído (desenho técnico) e C3-05 concluído em 10/11/2026: `RaceEvent`, `TodayDecision`, `PlanningGoalResolver`, Room 15, repositório, export/reset, `RacePlan`, taper/cutoff por data, adesão, guarda de troca, wiring do app, notificação e UI de Perfil/Hoje/Plano implementados e testados. Revisão C3-06 (ADR 0032): auto-conclusão conservadora e referência aritmética da meta.
 **Escopo:** F2/C3-G1 do `PRD_ADAPTACAO_E_BRIEFING_v0.2.md`: contrato de `RaceEvent`, `TodayDecision`,
 schema Room, vínculo com atividade, taper por data, adesão, notificação, export/reset e testes.
 **Referências:** ADR 0030 (decisão de produto), ADR 0022 (tempo), ADR 0023 (plano × prescrição),
@@ -84,7 +84,7 @@ data class RaceEvent(
 Regras:
 
 - `targetDate` é data local no fuso do perfil; não carrega hora nem fuso.
-- `targetTimeSec` é meta declarada. Não gera pace, faixa, previsão nem alvo de execução.
+- `targetTimeSec` é meta declarada. Pode gerar referência aritmética de pace, faixa ±3% e passagens por km (ADR 0032), nunca pace prescrito, alvo de execução ou previsão de desempenho.
 - Evento com data passada continua `PLANNED` até ação explícita; o modelo não valida “futuro”.
 - `COMPLETED` pode existir sem atividade. `CANCELLED`/`NO_SHOW` nunca têm atividade.
 - `RaceDistance` é a única allowlist de distância; `GoalType.CUSTOM`/`GENERAL_FITNESS` não viram evento.
@@ -247,8 +247,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS `index_race_events_activeKey` ON `race_events`
 
 ## 5. Atividade, lixeira e exclusão
 
-- **Vínculo explícito:** só `CompleteRaceEvent` grava `activityId`. Importar ou concluir uma corrida
-  nunca marca prova como realizada; no máximo a UI oferece “usar esta corrida”.
+- **Vínculo explícito:** só `CompleteRaceEvent` grava `activityId`. A exceção C3-06 é a
+  auto-conclusão conservadora do ADR 0032 (mesma data, 90–110%, uma única candidata),
+  sempre auditada por `completionSource` e corrigível; fora dessa regra, importar nunca
+  marca a prova.
 - **Lixeira:** a atividade continua com `deletedAt`; o vínculo permanece no banco. Consultas de
   exibição ignoram atividade na lixeira e mostram “vínculo suspenso”. Restaurar devolve o vínculo
   sem ação extra; isso replica o comportamento de `session_executions`.

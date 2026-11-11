@@ -347,8 +347,12 @@ segunda→domingo:
 
 ### 8.10 Prova
 
-- Pace alvo por VDOT/Riegel, com banda conservadora.
-- Riegel: `t2 = t1 × (d2/d1)^1,06` — usar como referência, não garantia.
+- Referência aritmética da meta (ADR 0032): pace médio, faixa ±3% e passagens por
+  km derivados de `targetTimeSec`. É referência de leitura, não prescrição de
+  treino nem garantia de resultado; a faixa é convenção de produto.
+- Previsão por VDOT/Riegel (`R-RACE-03`) **não é implementada nesta fase**. Se
+  entrar, usa `EV-DANIELS-2014`/`EV-RIEGEL-1981`, exige calibração explícita,
+  confiança e ausência quando não houver dados; Riegel é referência, nunca promessa.
 - Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
 - Recuperação: 1 dia fácil por 3 km de prova (heurística), mínimo 3 dias sem qualidade após 5k/10k.
 
@@ -533,6 +537,8 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-08` | Esteira válida para qualidade no calor; prescrever por velocidade/inclinação | ELY, DANIELS | LIMITED |
 | `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
 | `R-PLAN-10` | Sem `QUALITY` na semana civil da prova e corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) antes dela; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
+| `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
+| `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |
 | `R-SAFE-02` | Sem diagnóstico; app não é dispositivo médico | Regulatório | STRONG |
 | `R-SAFE-03` | Sem prescrição de peso/nutrição; única exceção é a copy educativa de hidratação do ADR 0029 (sem números) | Escopo; ADR 0029 | STRONG |

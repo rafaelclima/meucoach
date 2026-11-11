@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.9 · **Data:** 11/11/2026
+**Versão:** 1.10 · **Data:** 11/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -10,6 +10,7 @@
 > Revisão 1.7 (10/11/2026): C3-01A (guarda de iniciante) e C3-01B (fingerprint/checkpoint, T4, migração 13→14 e aceite atômico) implementados; ADR 0031 passa a implementado e ADR 0030 segue pendente de C3-G1/C3-05.
 > Revisão 1.8 (10/11/2026): C3-G2 concluído — ADR 0029 redigido e aceito com a copy educativa de hidratação (F4); `EV-NATA-2017` corrige a citação do PRD. Implementação de F4 em ciclo futuro.
 > Revisão 1.9 (11/11/2026): status reconciliado com o código — F4 implementado na UI (sheet de briefing) e ADR 0030 implementado em C3-05.
+> Revisão 1.10 (11/11/2026): ADR 0032 aceito e implementado em C3-06 — auto-conclusão conservadora da prova, `completionSource`, undo auditável e referência aritmética da meta; revoga parcialmente o ADR 0030 §3.1/§3.5.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -44,6 +45,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0029](adr/0029-f4-hydration-nutrition-copy.md) | F4: copy educativa de hidratação e encaminhamento alimentar (gate de fontes) | Aceito — gate documental C3-G2 e implementado na UI (sheet de briefing) | 10/11/2026 |
 | [0030](adr/0030-race-event-and-weekly-taper.md) | Evento de prova, autoridade diária e taper | Aceito — implementado em C3-05 (modelo, Room 15, TodayDecision, taper, notificação e UI) | 10/11/2026 |
 | [0031](adr/0031-profile-planning-fingerprint.md) | Fingerprint de planejamento e aceite atômico de T4 | Aceito — implementado em C3-01B (fingerprint, checkpoint, T4, migração 13→14 e compare-and-apply) | 10/11/2026 |
+| [0032](adr/0032-race-autocompletion-and-target-projection.md) | Auto-conclusão da prova e projeção aritmética da meta | Aceito — implementado em C3-06 (regra 90–110%, `completionSource`/Room 16, undo e referência no Perfil/Hoje) | 11/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

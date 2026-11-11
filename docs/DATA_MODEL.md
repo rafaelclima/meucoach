@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.6 · **Data:** 10/11/2026 · Reconcilia schema v14 (fingerprint/checkpoint do plano, [ADR 0031](adr/0031-profile-planning-fingerprint.md)) mantendo a distinção entre persistido e derivado.
+**Versão:** 1.7 · **Data:** 11/11/2026 · Reconcilia schema v16 (evento de prova, `completionSource` e auto-conclusão do [ADR 0032](adr/0032-race-autocompletion-and-target-projection.md)), mantendo a distinção entre persistido e derivado.
 
 ## 1. Convenções
 
@@ -268,6 +268,26 @@ repositório grava em transação e ignora uma decisão idêntica (mesma data,
 a proteção contra duplicata é lógica, dentro da transação. Editar o check-in
 acrescenta uma versão com `supersedesId` (`ADR 0023`).
 
+### 3.8.4 `RaceEvent` (v15; `completionSource` em v16)
+
+Evento de prova separado de `PlannedSession`/`WorkoutType` (`ADR 0030`/`ADR 0032`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | PK |
+| `distance` | enum | `FIVE_K`, `TEN_K`, `HALF_MARATHON`, `MARATHON` |
+| `targetDate` | LocalDate | data local no fuso do perfil |
+| `targetTimeSec` | Int? | meta declarada; gera referência aritmética, nunca prescrição |
+| `status` | enum | `PLANNED`, `COMPLETED`, `CANCELLED`, `NO_SHOW` |
+| `activityId` | UUID? | FK `SET NULL`; único; só em `COMPLETED` |
+| `completionSource` | enum? | `USER` ou `AUTO_IMPORT` (v16); `NULL` = explícita anterior/legado |
+| `activeKey` | String? | `"ACTIVE"` só em `PLANNED`; índice único |
+| `createdAt` / `updatedAt` / `resolvedAt` | Long? | epoch ms; `resolvedAt` só fora de `PLANNED` |
+
+A regra de auto-conclusão é do domínio (`RaceAutoCompletionRule`), não da tabela.
+`completionSource` audita a inferência; `reopenAutoCompleted` volta a `PLANNED` e
+limpa o vínculo. A corrida vinculada continua uma `Activity` normal.
+
 ### 3.9 `SessionFeedback` — **planejado, não implementado**
 
 `activityId`, `rpe` (1–10), `feeling` (1–5), `notes`, `createdAt`. Não existe
@@ -321,12 +341,14 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v14**; migrações 1→2 até 13→14 testadas em Robolectric.
+- Estado atual: banco **v16**; migrações 1→2 até 15→16 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
 - `12→13` adiciona `version` (default 1), `revisionReason`, `revisedAt`, `inputsHash` e `availabilityHash` a `weekly_plans` e cria `weekly_plan_revisions` com FK `CASCADE`. Planos e sessões existentes são preservados campo a campo; hashes legados ficam `NULL` (desconhecidos) e o baseline de disponibilidade é capturado só depois, de forma explícita.
 - `13→14` adiciona proveniência (`generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`), checkpoint (`lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint`) e `temporalContextHash` a `weekly_plans`, além dos pares anterior/novo de fingerprint/snapshot/contexto em `weekly_plan_revisions`. Planos, sessões e revisões existentes são preservados; todos os campos novos ficam `NULL` no legado, sem revisão falsa.
+- `14→15` cria `race_events` vazia, com `activeKey` único, FK `SET NULL` e nenhum backfill de `TrainingGoal`.
+- `15→16` adiciona `completionSource` nullable a `race_events`; nenhum evento é reescrito e `NULL` é lido como conclusão explícita anterior.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.

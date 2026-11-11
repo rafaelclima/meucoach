@@ -191,7 +191,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - **UI:** `ReplanViewModel` avalia no resume, respeita recusa por proposta (`weekStart` + versão + hash) e supressão até o fim do dia em `ReplanSuggestionStore` (SharedPreferences), e oferece aceitar/recusar/suprimir. O card do plano mostra o selo `v{n}`, o botão explícito e “Ver o que mudou” a partir de `getLatestRevision` + `PlanJson`.
 - **Explicabilidade:** a revisão reutiliza as regras/evidências emitidas pelo gerador; `ReplanDiff` e a copy são apresentação, não regra fisiológica.
 
-### 6.5 Ciclo 3 — C3-01A/B implementados; demais gates pendentes
+### 6.5 Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05, C3-06 e C3-G2 implementados
 
 - **Guarda de iniciante (C3-01A):** a prescrição do dia rebaixa `QUALITY → EASY`
   apenas para sessão de hoje `PLANNED` e perfil `BEGINNER`; `DONE`/`CLOSED`
@@ -218,6 +218,17 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   evento do dia, usa copy de prova e `meucoach://today`; o Hoje revalida a decisão
   ao abrir. Perfil concentra criar/editar/concluir/cancelar/não compareceu; plano
   marca o dia como evento e oculta sessão legada sobreposta.
+- **Auto-conclusão e referência da meta (ADR 0032, C3-06):**
+  `RaceAutoCompletionRule` é pura (mesma data local, `RUNNING`/`TREADMILL`, não
+  vinculada, `PLANNED`, 90–110%, uma única candidata, recusa anterior);
+  `AutoCompleteRaceFromActivity` só coleta estado e chama a transação existente com
+  `completionSource = AUTO_IMPORT`. `StagedImportProcessor` executa a regra após
+  `Imported`/`Duplicate` e antes do prompt de treino. Room 16 adiciona
+  `completionSource` nullable e a migração `15→16` não reescreve o histórico;
+  `reopenAutoCompleted` volta a `PLANNED` e o `RaceAutoCompletionStore` grava a
+  recusa. `RaceTargetProjection`/`RaceTargetProjector` são puros, não persistidos e
+  consumidos apenas pelo card de prova do Perfil/Hoje; não entram em prescrição,
+  plano, briefing ou troca.
 - **Briefing (C3-03/04):** `SessionBriefingEngine` puro em `core:domain/briefing`
   deriva o briefing só da `DailyPrescription` persistida. `SessionBriefing` copia
   título, tipo, duração, alvos, rationale, confiança e IDs; não há cálculo de alvo,
@@ -232,8 +243,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 ## 7. Persistência
 
-- **Room/SQLite** como fonte de verdade local; versão atual **15** (`MeuCoachDatabase.VERSION`).
-- `:core:data` implementa `MeuCoachDatabase` v15 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity` e `RaceEventEntity`.
+- **Room/SQLite** como fonte de verdade local; versão atual **16** (`MeuCoachDatabase.VERSION`).
+- `:core:data` implementa `MeuCoachDatabase` v16 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity` e `RaceEventEntity`.
 - DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository`, `RaceEventRepository` e `UserDataRepository`.
 - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda (não há série downsampled persistida).
 - UUID v7 gerado no cliente para IDs ordenáveis.
@@ -244,7 +255,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - “Apagar tudo” usa transação + `DataEpochStore` + `DataWriteMutex`: gira a época, cancela importação/saúde/lembretes/story/expurgo, limpa banco, staging, avatar, cache e preferências; Health Connect externo não é tocado (`ADR 0025`).
 - Arquivos originais em storage privado do app, referenciados por hash; o arquivo temporário de staging é limpo após o processamento.
 - `SharedPreferences`/DataStore apenas para preferências e marcas d'água (tema, unidades, onboarding, tutorial, `firstRun`, `HealthSyncStore`, `DataEpochStore`).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado) e `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`).
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`) e `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior).
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect
