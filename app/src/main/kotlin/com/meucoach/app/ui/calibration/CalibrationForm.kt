@@ -1,21 +1,20 @@
 package com.meucoach.app.ui.calibration
 
+import com.meucoach.app.ui.common.DateMask
+import com.meucoach.app.ui.common.TargetTimeParts
+import com.meucoach.app.ui.common.TargetTimeUnit
+import com.meucoach.app.ui.common.totalSeconds
 import com.meucoach.core.domain.calibration.CalibrationPerformance
 import com.meucoach.core.model.ActivitySummary
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.ResolverStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-private val DATE = DateTimeFormatter
-    .ofPattern("dd/MM/uuuu")
-    .withResolverStyle(ResolverStyle.STRICT)
-
 data class CalibrationForm(
     val distanceKm: String = "5",
-    val time: String = "",
+    val timeParts: TargetTimeParts = TargetTimeParts(),
+    val timeUnit: TargetTimeUnit = TargetTimeUnit.MINUTES,
     val date: String = "",
     val averageHeartRate: String = "",
 )
@@ -39,14 +38,16 @@ object CalibrationFormValidator {
             else -> null
         }
 
-        val duration = parseDuration(form.time)
+        val duration = form.timeParts.totalSeconds(form.timeUnit)
         val timeError = when {
-            duration == null -> "Use mm:ss ou h:mm:ss."
+            form.timeParts.isBlank -> missingTimeMessage(form.timeUnit)
+            duration == null -> missingTimeMessage(form.timeUnit)
+            duration <= 0 -> "O tempo precisa ser maior que zero."
             duration !in MIN_EFFORT_SEC..MAX_EFFORT_SEC -> "Tempo entre 8 e 180 minutos."
             else -> null
         }
 
-        val date = parseDate(form.date)
+        val date = DateMask.parse(form.date)
         val dateError = when {
             date == null -> "Use dd/mm/aaaa."
             date.isAfter(today) -> "A data não pode estar no futuro."
@@ -73,8 +74,8 @@ object CalibrationFormValidator {
         val distanceKm = requireNotNull(form.distanceKm.trim().replace(',', '.').toDoubleOrNull())
         return CalibrationPerformance(
             distanceM = distanceKm * 1_000.0,
-            durationSec = requireNotNull(parseDuration(form.time)),
-            date = requireNotNull(parseDate(form.date)),
+            durationSec = requireNotNull(form.timeParts.totalSeconds(form.timeUnit)),
+            date = requireNotNull(DateMask.parse(form.date)),
             averageHeartRate = form.averageHeartRate.trim().toIntOrNull(),
         )
     }
@@ -90,26 +91,10 @@ object CalibrationFormValidator {
         }
     }
 
-    fun parseDuration(text: String): Int? {
-        val parts = text.trim().split(":")
-        if (parts.size !in 2..3 || parts.any { it.isBlank() }) return null
-        val values = parts.map { it.toIntOrNull() ?: return null }
-        return when (values.size) {
-            2 -> {
-                val (minutes, seconds) = values
-                if (minutes !in 0..180 || seconds !in 0..59) return null
-                minutes * 60 + seconds
-            }
-
-            else -> {
-                val (hours, minutes, seconds) = values
-                if (hours !in 0..23 || minutes !in 0..59 || seconds !in 0..59) return null
-                hours * 3_600 + minutes * 60 + seconds
-            }
-        }
+    private fun missingTimeMessage(unit: TargetTimeUnit): String = when (unit) {
+        TargetTimeUnit.MINUTES -> "Informe minutos e segundos (0 a 59)."
+        TargetTimeUnit.HOURS -> "Informe horas, minutos e segundos (0 a 59)."
     }
-
-    private fun parseDate(text: String): LocalDate? = runCatching { LocalDate.parse(text.trim(), DATE) }.getOrNull()
 
     private const val MIN_EFFORT_SEC = 8 * 60
     private const val MAX_EFFORT_SEC = 180 * 60

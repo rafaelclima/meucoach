@@ -1,8 +1,10 @@
 package com.meucoach.app.ui.onboarding
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
@@ -13,6 +15,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.unit.Density
+import com.meucoach.app.ui.common.TargetTimeParts
+import com.meucoach.app.ui.common.TargetTimeUnit
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.GoalType
 import org.assertj.core.api.Assertions.assertThat
@@ -111,6 +118,88 @@ class OnboardingScreenTest {
 
         compose.onNodeWithTag("birth-date-field").assertTextContains("01/11/1988")
         assertThat(state.form.birthDate).isEqualTo("01111988")
+    }
+
+    @Test
+    fun `edits the target time with explicit segments and converts the unit`() {
+        var state by mutableStateOf(step(1))
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                OnboardingContent(
+                    state = state,
+                    onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                    onNext = {},
+                    onBack = {},
+                    onSave = {},
+                    onToggleDay = {},
+                    onDayMinutes = { _, _ -> },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("onboarding-list").performScrollToNode(hasTestTag("target-time-minutes"))
+        compose.onNodeWithTag("target-time-minutes").performTextInput("90")
+        compose.onNodeWithTag("target-time-seconds").performTextInput("30")
+        compose.onNodeWithTag("target-time-unit-hours").performClick()
+
+        compose.onNodeWithTag("target-time-hours").assertTextContains("1")
+        compose.onNodeWithTag("target-time-minutes").assertTextContains("30")
+        compose.onNodeWithTag("target-time-seconds").assertTextContains("30")
+        assertThat(state.form.targetTimeParts).isEqualTo(TargetTimeParts(hours = "1", minutes = "30", seconds = "30"))
+        assertThat(state.form.targetTimeUnit).isEqualTo(TargetTimeUnit.HOURS)
+    }
+
+    @Test
+    fun `keeps digits in place when editing the birth date in the middle`() {
+        var state by mutableStateOf(step(0))
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                OnboardingContent(
+                    state = state,
+                    onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                    onNext = {},
+                    onBack = {},
+                    onSave = {},
+                    onToggleDay = {},
+                    onDayMinutes = { _, _ -> },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("birth-date-field").performTextInput("01011990")
+        compose.onNodeWithTag("birth-date-field").performTextInputSelection(TextRange(2))
+        compose.onNodeWithTag("birth-date-field").performTextInput("2")
+
+        assertThat(state.form.birthDate).isEqualTo("01201199")
+        compose.onNodeWithTag("birth-date-field").assertTextContains("01/20/1199")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun `keeps the target time usable at 200 percent font`() {
+        var state by mutableStateOf(step(1))
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                McTheme(darkTheme = true) {
+                    OnboardingContent(
+                        state = state,
+                        onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                        onNext = {},
+                        onBack = {},
+                        onSave = {},
+                        onToggleDay = {},
+                        onDayMinutes = { _, _ -> },
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithTag("onboarding-list").performScrollToNode(hasTestTag("target-time-minutes"))
+        compose.onNodeWithTag("target-time-mask").assertIsDisplayed()
+        compose.onNodeWithTag("target-time-unit-minutes").assertIsDisplayed()
+        compose.onNodeWithTag("target-time-minutes").assertIsDisplayed()
+        compose.onNodeWithTag("target-time-seconds").assertIsDisplayed()
     }
 
     @Test

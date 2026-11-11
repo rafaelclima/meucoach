@@ -3,6 +3,7 @@ package com.meucoach.app.ui.calibration
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.ui.common.TargetTimeParts
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
@@ -40,8 +41,8 @@ class CalibrationScreenshotTest {
                         isLoading = false,
                         form = CalibrationForm(
                             distanceKm = "5",
-                            time = "30:59",
-                            date = "24/10/2026",
+                            timeParts = TargetTimeParts(minutes = "30", seconds = "59"),
+                            date = "24102026",
                             averageHeartRate = "181",
                         ),
                         recentEfforts = 4,

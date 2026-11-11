@@ -13,6 +13,8 @@ import com.meucoach.app.application.replanProfile
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.app.time.TimeProvider
+import com.meucoach.app.ui.common.DateMask
+import com.meucoach.app.ui.common.TargetTimeParts
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
@@ -48,7 +50,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -128,7 +129,7 @@ class CalibrationViewModelTest {
         viewModel.calculate()
         assertThat(viewModel.uiState.value.result).isNotNull
 
-        viewModel.update { it.copy(time = "abc") }
+        viewModel.update { it.copy(timeParts = it.timeParts.copy(minutes = "abc")) }
         assertThat(viewModel.uiState.value.result).isNull()
         viewModel.calculate()
 
@@ -179,8 +180,8 @@ class CalibrationViewModelTest {
         viewModel.update {
             it.copy(
                 distanceKm = "5",
-                time = "30:59",
-                date = today.format(DateTimeFormatter.ofPattern("dd/MM/uuuu")),
+                timeParts = TargetTimeParts(minutes = "30", seconds = "59"),
+                date = DateMask.toDigits(today),
                 averageHeartRate = "181",
             )
         }
@@ -203,7 +204,7 @@ class CalibrationViewModelTest {
 
         assertThat(state.prefilledFrom).isNotNull
         assertThat(state.form.distanceKm).isEqualTo("7,00")
-        assertThat(state.form.time).isEqualTo("30:00")
+        assertThat(state.form.timeParts).isEqualTo(TargetTimeParts(minutes = "30", seconds = "00"))
         assertThat(state.form.averageHeartRate).isEqualTo("176")
         assertThat(state.result).isNull()
         assertThat(profiles.getProfile()?.lactateThresholdHeartRate).isNull()
@@ -219,7 +220,7 @@ class CalibrationViewModelTest {
 
         assertThat(state.prefilledFrom).isNull()
         assertThat(state.form.distanceKm).isEqualTo("5")
-        assertThat(state.form.time).isEmpty()
+        assertThat(state.form.timeParts.isBlank).isTrue()
     }
 
     private fun viewModel(
@@ -249,11 +250,11 @@ class CalibrationViewModelTest {
     }
 
     private fun fillRace(viewModel: CalibrationViewModel) {
-        val date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/uuuu"))
+        val date = DateMask.toDigits(LocalDate.now())
         viewModel.update {
             it.copy(
                 distanceKm = "5",
-                time = "30:59",
+                timeParts = TargetTimeParts(minutes = "30", seconds = "59"),
                 date = date,
                 averageHeartRate = "181",
             )

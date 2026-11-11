@@ -7,6 +7,9 @@ import com.meucoach.app.application.EvaluateReplan
 import com.meucoach.app.application.EvaluateReplanResult
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.TimeProvider
+import com.meucoach.app.ui.common.DateMask
+import com.meucoach.app.ui.common.targetTimeParts
+import com.meucoach.app.ui.common.targetTimeUnitFor
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.calibration.CalibrationCalculator
@@ -22,7 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 
@@ -130,15 +132,18 @@ class CalibrationViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isSaved = false)
     }
 
-    private fun prefillForm(candidate: CalibrationCandidate) = CalibrationForm(
-        distanceKm = String.format(Locale.forLanguageTag("pt-BR"), "%.2f", candidate.distanceM / 1_000.0),
-        time = CalibrationFormValidator.formatTime(candidate.durationSec),
-        date = candidate.date.format(DATE),
-        averageHeartRate = candidate.averageHeartRate.toString(),
-    )
+    private fun prefillForm(candidate: CalibrationCandidate): CalibrationForm {
+        val unit = targetTimeUnitFor(candidate.durationSec)
+        return CalibrationForm(
+            distanceKm = String.format(Locale.forLanguageTag("pt-BR"), "%.2f", candidate.distanceM / 1_000.0),
+            timeParts = targetTimeParts(candidate.durationSec, unit),
+            timeUnit = unit,
+            date = DateMask.toDigits(candidate.date),
+            averageHeartRate = candidate.averageHeartRate.toString(),
+        )
+    }
 
     companion object {
         const val ARG_ACTIVITY_ID = "activityId"
-        private val DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu")
     }
 }

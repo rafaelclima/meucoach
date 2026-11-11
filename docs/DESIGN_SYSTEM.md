@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — MeuCoach
 
-**Versão:** 1.2 · **Data:** 11/11/2026 · **Status:** direção aprovada; §7.3 normatiza campos de data e duração e a leitura read-only da referência da meta
+**Versão:** 1.3 · **Data:** 11/11/2026 · **Status:** direção aprovada; §7.3 normatiza campos de data e duração (U-13 concluído) e a leitura read-only da referência da meta
 
 ## 1. Ideia de marca
 
@@ -277,17 +277,17 @@ Regra normativa para **todo** campo de data, hora ou duração do app
 - Teste obrigatório: digitar segmento a segmento, trocar unidade, rejeitar
   `segundos = 60`, testar vazio e 200% de fonte.
 
-**Inventário atual e pendências de migração**
+**Inventário atual**
 
 | Superfície | Campo | Estado |
 |---|---|---|
-| Onboarding | Data de nascimento | Conforme (`DateMask` + `DateVisualTransformation`) |
-| Onboarding | Data da prova (meta legada) | Conforme (`DateMask` + `DateVisualTransformation`) |
-| Onboarding | Tempo alvo (meta legada) | **Pendente:** ainda é texto livre `mm:ss ou h:mm:ss`; migrar para `TargetTimeParts` |
-| Perfil | Card Prova — data | Conforme (`RaceDateVisualTransformation`) |
-| Perfil | Card Prova — tempo alvo | Conforme (`TargetTimeUnit` + segmentos) |
-| Calibração | Data da prova/teste | **Pendente:** texto livre `dd/mm/aaaa`; migrar para a máscara comum |
-| Calibração | Tempo do esforço | **Pendente:** texto livre `mm:ss ou h:mm:ss`; migrar para `TargetTimeUnit` |
+| Onboarding | Data de nascimento | Conforme (`DateMask` + `DateVisualTransformation` em `ui/common`) |
+| Onboarding | Data da prova (meta legada) | Conforme (`DateMask` + `DateVisualTransformation` em `ui/common`) |
+| Onboarding | Tempo alvo (meta legada) | Conforme (`TargetTimeField` + `TargetTimeParts`) |
+| Perfil | Card Prova — data | Conforme (`DateMask` + `DateVisualTransformation` em `ui/common`) |
+| Perfil | Card Prova — tempo alvo | Conforme (`TargetTimeField` + `TargetTimeParts`) |
+| Calibração | Data da prova/teste | Conforme (`DateMask` + `DateVisualTransformation` em `ui/common`) |
+| Calibração | Tempo do esforço | Conforme (`TargetTimeField` + `TargetTimeParts`) |
 | Qualquer campo novo | Data/hora/duração | Obrigatório seguir esta seção antes do merge |
 
 **Leitura read-only da referência da prova (ADR 0032)**
@@ -300,15 +300,15 @@ Regra normativa para **todo** campo de data, hora ou duração do app
   “pace prescrito”, “alvo de treino” ou “previsão”.
 - Sem `targetTimeSec`, o bloco não aparece; nada é inventado.
 
-**Checklist de migração**
+**Checklist de migração (U-13, concluído em 11/11/2026)**
 
-- [ ] Extrair a máscara de data para `ui/common` e reutilizar no onboarding,
-      Perfil e Calibração (hoje há duas implementações).
-- [ ] Migrar o tempo alvo do onboarding para o mesmo seletor de unidade.
-- [ ] Migrar data e tempo da Calibração.
-- [ ] Adicionar testes unitários de máscara/parse/conversão e Compose de digitação,
+- [x] Extrair a máscara de data para `ui/common` e reutilizar no onboarding,
+      Perfil e Calibração (uma única implementação em `ui/common/DateMask.kt`).
+- [x] Migrar o tempo alvo do onboarding para o mesmo seletor de unidade.
+- [x] Migrar data e tempo da Calibração.
+- [x] Adicionar testes unitários de máscara/parse/conversão e Compose de digitação,
       edição no meio, erro, vazio, 200% e tema claro/escuro.
-- [ ] Atualizar goldens das telas afetadas.
+- [x] Atualizar goldens das telas afetadas (`calibration-*` e novo `onboarding-goal-dark`).
 
 ## 8. Data visualization
 

@@ -15,6 +15,7 @@ import com.meucoach.app.application.replanProfile
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.app.time.TimeProvider
+import com.meucoach.app.ui.common.TargetTimeParts
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
@@ -265,7 +266,7 @@ class OnboardingViewModelTest {
                 weightKg = "97",
                 goalType = GoalType.FIVE_K,
                 targetDate = "14/03/2027",
-                targetTime = "30:00",
+                targetTimeParts = TargetTimeParts(minutes = "30", seconds = "00"),
                 availabilityMinutes = mapOf(
                     java.time.DayOfWeek.MONDAY to "40",
                     java.time.DayOfWeek.WEDNESDAY to "50",

@@ -1,6 +1,13 @@
 package com.meucoach.app.ui.calibration
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -8,6 +15,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.Density
+import com.meucoach.app.ui.common.TargetTimeParts
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.calibration.CalibrationResult
@@ -106,11 +116,64 @@ class CalibrationScreenTest {
     fun `shows form errors`() {
         setContent(
             state = loadedState().copy(
-                errors = CalibrationFormErrors(time = "Use mm:ss ou h:mm:ss."),
+                errors = CalibrationFormErrors(time = "Informe minutos e segundos (0 a 59)."),
             ),
         )
 
-        compose.onNodeWithText("Use mm:ss ou h:mm:ss.").assertIsDisplayed()
+        compose.onNodeWithTag("calibration-list")
+            .performScrollToNode(hasText("Informe minutos e segundos (0 a 59)."))
+        compose.onNodeWithText("Informe minutos e segundos (0 a 59).").assertIsDisplayed()
+    }
+
+    @Test
+    fun `masks the date and keeps time segments explicit`() {
+        var state by mutableStateOf(loadedState().copy(form = CalibrationForm()))
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CalibrationContent(
+                    state = state,
+                    onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
+                    onCalculate = {},
+                    onSave = {},
+                    onBack = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasTestTag("calibration-time-minutes"))
+        compose.onNodeWithTag("calibration-time-minutes").performTextInput("30")
+        compose.onNodeWithTag("calibration-time-seconds").performTextInput("59")
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasTestTag("calibration-date"))
+        compose.onNodeWithTag("calibration-date").performTextInput("24102026")
+
+        assertThat(state.form.timeParts).isEqualTo(TargetTimeParts(minutes = "30", seconds = "59"))
+        assertThat(state.form.date).isEqualTo("24102026")
+        compose.onNodeWithTag("calibration-date").assertTextContains("24/10/2026")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun `keeps the time and date fields usable at 200 percent font`() {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                McTheme(darkTheme = false) {
+                    CalibrationContent(
+                        state = loadedState(),
+                        onUpdate = {},
+                        onCalculate = {},
+                        onSave = {},
+                        onBack = {},
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasTestTag("calibration-time-minutes"))
+        compose.onNodeWithTag("calibration-time-mask").assertIsDisplayed()
+        compose.onNodeWithTag("calibration-time-minutes").assertIsDisplayed()
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasTestTag("calibration-date"))
+        compose.onNodeWithTag("calibration-date").assertIsDisplayed()
     }
 
     private fun setContent(state: CalibrationUiState, onCalculate: () -> Unit = {}, onSave: () -> Unit = {}) {
@@ -131,8 +194,8 @@ class CalibrationScreenTest {
         isLoading = false,
         form = CalibrationForm(
             distanceKm = "5",
-            time = "30:59",
-            date = "24/10/2026",
+            timeParts = TargetTimeParts(minutes = "30", seconds = "59"),
+            date = "24102026",
             averageHeartRate = "181",
         ),
     )

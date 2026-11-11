@@ -69,3 +69,7 @@ fun TargetTimeUnit.unitLabel(): String = when (this) {
     TargetTimeUnit.MINUTES -> "Minutos"
     TargetTimeUnit.HOURS -> "Horas"
 }
+
+/** Unit a persisted target opens with: hours only when the value needs them. */
+fun targetTimeUnitFor(seconds: Int?): TargetTimeUnit =
+    if ((seconds ?: 0) >= 3_600) TargetTimeUnit.HOURS else TargetTimeUnit.MINUTES

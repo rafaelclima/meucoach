@@ -1,5 +1,7 @@
 package com.meucoach.app.ui.onboarding
 
+import com.meucoach.app.ui.common.TargetTimeParts
+import com.meucoach.app.ui.common.TargetTimeUnit
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.GoalType
@@ -138,9 +140,29 @@ class OnboardingValidatorTest {
     fun `requires a future race date and valid target time`() {
         assertInvalid(1, form().copy(targetDate = "01/01/2020"), OnboardingField.TARGET_DATE)
         assertInvalid(1, form().copy(targetDate = "31/02/2027"), OnboardingField.TARGET_DATE)
-        assertInvalid(1, form().copy(targetTime = "trinta"), OnboardingField.TARGET_TIME)
-        assertInvalid(1, form().copy(targetTime = "10:99"), OnboardingField.TARGET_TIME)
-        assertInvalid(1, form().copy(targetTime = "1:75:00"), OnboardingField.TARGET_TIME)
+        assertInvalid(
+            1,
+            form().copy(targetTimeParts = TargetTimeParts(minutes = "trinta", seconds = "00")),
+            OnboardingField.TARGET_TIME,
+        )
+        assertInvalid(
+            1,
+            form().copy(targetTimeParts = TargetTimeParts(minutes = "10", seconds = "99")),
+            OnboardingField.TARGET_TIME,
+        )
+        assertInvalid(
+            1,
+            form().copy(
+                targetTimeParts = TargetTimeParts(hours = "1", minutes = "75", seconds = "00"),
+                targetTimeUnit = TargetTimeUnit.HOURS,
+            ),
+            OnboardingField.TARGET_TIME,
+        )
+        assertInvalid(
+            1,
+            form().copy(targetTimeParts = TargetTimeParts(minutes = "0", seconds = "00")),
+            OnboardingField.TARGET_TIME,
+        )
         assertInvalid(
             1,
             form().copy(availabilityMinutes = mapOf(DayOfWeek.MONDAY to "0")),
@@ -157,7 +179,7 @@ class OnboardingValidatorTest {
     fun `accepts general fitness without a target date`() {
         val validation = OnboardingValidator.validateStep(
             1,
-            form().copy(goalType = GoalType.GENERAL_FITNESS, targetDate = "", targetTime = ""),
+            form().copy(goalType = GoalType.GENERAL_FITNESS, targetDate = "", targetTimeParts = TargetTimeParts()),
             today,
         )
 
@@ -167,11 +189,22 @@ class OnboardingValidatorTest {
     @Test
     fun `parses short and long target times`() {
         assertThat(
-            OnboardingValidator.toProfile(form().copy(targetTime = "29:30"), "a", today = today)
+            OnboardingValidator.toProfile(
+                form().copy(targetTimeParts = TargetTimeParts(minutes = "29", seconds = "30")),
+                "a",
+                today = today,
+            )
                 .goal?.targetTimeSec,
         ).isEqualTo(1_770)
         assertThat(
-            OnboardingValidator.toProfile(form().copy(targetTime = "1:30:00"), "a", today = today)
+            OnboardingValidator.toProfile(
+                form().copy(
+                    targetTimeParts = TargetTimeParts(hours = "1", minutes = "30", seconds = "00"),
+                    targetTimeUnit = TargetTimeUnit.HOURS,
+                ),
+                "a",
+                today = today,
+            )
                 .goal?.targetTimeSec,
         ).isEqualTo(5_400)
     }
@@ -237,7 +270,7 @@ class OnboardingValidatorTest {
         experience = Experience.BEGINNER,
         goalType = GoalType.FIVE_K,
         targetDate = "14/03/2027",
-        targetTime = "30:00",
+        targetTimeParts = TargetTimeParts(minutes = "30", seconds = "00"),
         availabilityMinutes = mapOf(
             DayOfWeek.MONDAY to "40",
             DayOfWeek.WEDNESDAY to "50",

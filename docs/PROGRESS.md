@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (C3-06 concluído: auto-conclusão da prova por corrida compatível, `completionSource`/Room 16, undo auditável e referência aritmética da meta no Perfil/Hoje; C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (U-13 concluído: máscara de data única em `ui/common`, tempo alvo do onboarding e data/tempo da Calibração no padrão da §7.3; C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.301 testes no total (635 em `:app`, 160 em `core:data`, 467 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.309 testes no total (643 em `:app`, 160 em `core:data`, 467 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,62% de linhas (4.065/4.164), 81,47% de branches (2.951/3.622), 96,25% de instruções (28.451/29.558)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -70,6 +70,39 @@
 - **Tutorial de boas-vindas:** 3 cenas sobre o Hoje na primeira abertura com perfil criado: plano real da semana, como o coach lê esforço/descanso e o primeiro passo (check-in, importar corrida ou Health Connect). Revisível em Perfil → Ajuda; flag e versão em SharedPreferences (`meucoach_tutorial`), sem migração de Room. O checklist “Complete seu setup” continua no Hoje e desaparece ao concluir ou após “Agora não”.
 - **Importação reativa:** ao terminar um import de corrida/esteira do próprio dia, um overlay global pergunta se a corrida deve virar o treino de hoje (vínculo `ACTIVITY`). Se o treino do dia já foi concluído, o overlay apenas avisa que a corrida fica como treino livre e não será usada pelo coach. A pendência é persistida em SharedPreferences (`meucoach_import_prompts`), sobrevive à morte do processo e é limpa no reset.
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
+
+## Sessão 2026-11-11 — U-13: campos de data e duração no padrão da §7.3
+
+**Objetivo:** fechar a pendência U-13 do backlog de apresentação: uma única máscara de data em `ui/common`, tempo alvo do onboarding no seletor de unidade e data/tempo da Calibração no mesmo padrão, sem tocar em domínio, schema, motor ou dependências.
+
+### Concluído
+
+- **Máscara única (`ui/common/DateMask.kt`):** `DateMask` reúne `digits`, `format`, `parse` (aceita `ddMMuuuu` e `dd/MM/uuuu`), `toDigits` e o mapeamento de cursor; `DateVisualTransformation` é a única transformação visual usada por onboarding, card de prova e Calibração. A implementação duplicada em `ui/onboarding/DateMask.kt` e `RaceDateVisualTransformation` em `RaceEventLabels.kt` foram removidas.
+- **Campo de tempo compartilhado (`ui/common/TargetTimeField.kt`):** chips `Minutos`/`Horas`, máscara vigente (`mm:ss` × `h:mm:ss`) e segmentos com tags próprias; o card de prova passou a reutilizá-lo (mesmas tags `race-time-*`) e `targetTimeUnitFor` centraliza a unidade inicial.
+- **Onboarding:** `targetTime: String` virou `TargetTimeParts` + `TargetTimeUnit`; o tempo é convertido ao trocar a unidade, `0:00` é rejeitado e a mensagem de erro informa o limite (0 a 59) da unidade escolhida. `parseDuration`/`formatDuration` locais foram removidos.
+- **Calibração:** `time` virou segmentos com unidade; a data guarda dígitos crus e usa a máscara comum; `prefillForm` passou a derivar a unidade do tempo da corrida e a gravar a data em dígitos.
+- **Testes:** +7 em `DateMaskTest` (formatação, dígitos, parse, `toDigits`, mapeamento de cursor, transformação e colagem com barras), +2 em `OnboardingScreenTest` (edição no meio sem reordenar e 200% em 360 dp), +2 em `CalibrationScreenTest` (digitação de tempo/data e 200% em 360 dp), +1 golden novo `onboarding-goal-dark.png`, goldens `calibration-dark/light` regravados. Nenhum assert existente foi reduzido.
+- **Design system:** §7.3 atualizada (versão 1.3) com o inventário todo “Conforme” e o checklist de migração marcado; `ROADMAP` U-13 concluído.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug` — verde.
+- **1.309 testes**, 0 falhas e 0 `@Ignore` (643 `:app`, 160 `core:data`, 467 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,62% de linhas (4.065/4.164), 81,47% de branches (2.951/3.622), 96,25% de instruções (28.451/29.558); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova ou dado real no diff. Build executado com JDK 17 via mise (`JAVA_HOME`), pois o ambiente não tem JDK 17 no caminho padrão do Gradle.
+
+### Decisões e observações
+
+- **Estado guarda o dado:** data continua como dígitos crus e tempo como segmentos; barras e dois-pontos existem só na camada visual. `parse` aceita valor formatado apenas para leitura de testes/legado, nunca como formato persistido.
+- **Opcional ≠ zero:** tempo vazio continua `null`; `0:00` agora é inválido no onboarding, alinhado à §7.3.
+- **Reuso sem mudança de comportamento:** o card de prova mantém as mesmas tags, conversão e mensagens; a extração só removeu a duplicação.
+- **Escopo respeitado:** domínio, plano, prescrição, calibração (cálculo) e prova não foram alterados; nenhuma decisão científica ou de produto mudou.
+
+### Próximo passo
+
+1. Validar no aparelho o teclado numérico, a edição no meio, a troca de unidade e a fonte 200% em onboarding e Calibração.
+2. Escolher a próxima entrega: FR-011 (revisão semanal), ADR de D6-B (VDOT/Riegel) ou estabilização da suíte/goldens sob carga.
 
 ## Sessão 2026-11-11 — C3-06: auto-conclusão da prova e referência da meta
 

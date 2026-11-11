@@ -1,5 +1,11 @@
 package com.meucoach.app.ui.onboarding
 
+import com.meucoach.app.ui.common.DateMask
+import com.meucoach.app.ui.common.TargetTimeParts
+import com.meucoach.app.ui.common.TargetTimeUnit
+import com.meucoach.app.ui.common.targetTimeParts
+import com.meucoach.app.ui.common.targetTimeUnitFor
+import com.meucoach.app.ui.common.totalSeconds
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.GoalType
@@ -10,7 +16,6 @@ import com.meucoach.core.model.WeeklyAvailability
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 private val RACE_GOAL_TYPES = setOf(
     GoalType.FIVE_K,
@@ -44,7 +49,8 @@ data class OnboardingForm(
     val experience: Experience = Experience.BEGINNER,
     val goalType: GoalType = GoalType.GENERAL_FITNESS,
     val targetDate: String = "",
-    val targetTime: String = "",
+    val targetTimeParts: TargetTimeParts = TargetTimeParts(),
+    val targetTimeUnit: TargetTimeUnit = TargetTimeUnit.MINUTES,
     val availabilityMinutes: Map<DayOfWeek, String> = emptyMap(),
     val restingHeartRate: String = "",
     val maxHeartRateObserved: String = "",
@@ -62,13 +68,6 @@ data class OnboardingValidation(val errors: Map<OnboardingField, String> = empty
 }
 
 object OnboardingValidator {
-    private val DATE = DateTimeFormatter
-        .ofPattern("dd/MM/uuuu")
-        .withResolverStyle(java.time.format.ResolverStyle.STRICT)
-    private val DIGITS_DATE = DateTimeFormatter
-        .ofPattern("ddMMuuuu")
-        .withResolverStyle(java.time.format.ResolverStyle.STRICT)
-
     fun validateStep(step: Int, form: OnboardingForm, today: LocalDate): OnboardingValidation = when (step) {
         0 -> validateAbout(form, today)
         1 -> validateGoal(form, today)
@@ -93,7 +92,7 @@ object OnboardingValidator {
             id = id,
             name = form.name.trim().ifBlank { null },
             avatarPath = form.avatarPath.ifBlank { null },
-            birthDate = requireNotNull(parseDate(form.birthDate)) { "Birth date must be valid" },
+            birthDate = requireNotNull(DateMask.parse(form.birthDate)) { "Birth date must be valid" },
             sex = form.sex,
             heightCm = form.heightCm.toDoubleOrNull(),
             weightKg = form.weightKg.toDoubleOrNull(),
@@ -118,17 +117,20 @@ object OnboardingValidator {
 
     fun fromProfile(profile: AthleteProfile?): OnboardingForm {
         if (profile == null) return OnboardingForm()
+        val targetTimeSec = profile.goal?.targetTimeSec
+        val targetUnit = targetTimeUnitFor(targetTimeSec)
         return OnboardingForm(
             name = profile.name.orEmpty(),
             avatarPath = profile.avatarPath.orEmpty(),
-            birthDate = profile.birthDate.format(DIGITS_DATE),
+            birthDate = DateMask.toDigits(profile.birthDate),
             sex = profile.sex,
             heightCm = profile.heightCm?.let { formatDecimal(it) } ?: "",
             weightKg = profile.weightKg?.let { formatDecimal(it) } ?: "",
             experience = profile.experience,
             goalType = profile.goal?.type ?: GoalType.GENERAL_FITNESS,
-            targetDate = profile.goal?.targetDate?.format(DIGITS_DATE) ?: "",
-            targetTime = profile.goal?.targetTimeSec?.let { formatDuration(it) } ?: "",
+            targetDate = profile.goal?.targetDate?.let(DateMask::toDigits).orEmpty(),
+            targetTimeParts = targetTimeParts(targetTimeSec, targetUnit),
+            targetTimeUnit = targetUnit,
             availabilityMinutes = profile.weeklyAvailability.minutesByDay.mapValues { it.value.toString() },
             restingHeartRate = profile.restingHeartRate?.toString() ?: "",
             maxHeartRateObserved = profile.maxHeartRateObserved?.toString() ?: "",
@@ -146,7 +148,7 @@ object OnboardingValidator {
             name.isBlank() -> errors[OnboardingField.NAME] = "Informe seu nome."
             name.length > MAX_NAME_LENGTH -> errors[OnboardingField.NAME] = "Use até $MAX_NAME_LENGTH caracteres."
         }
-        val birthDate = parseDate(form.birthDate)
+        val birthDate = DateMask.parse(form.birthDate)
         when {
             birthDate == null -> errors[OnboardingField.BIRTH_DATE] = "Use dd/mm/aaaa."
 
@@ -175,16 +177,22 @@ object OnboardingValidator {
     private fun validateGoal(form: OnboardingForm, today: LocalDate): OnboardingValidation {
         val errors = mutableMapOf<OnboardingField, String>()
         if (form.goalType in RACE_GOAL_TYPES && form.targetDate.isNotBlank()) {
-            val date = parseDate(form.targetDate)
+            val date = DateMask.parse(form.targetDate)
             when {
                 date == null -> errors[OnboardingField.TARGET_DATE] = "Use dd/mm/aaaa."
                 !date.isAfter(today) -> errors[OnboardingField.TARGET_DATE] = "A prova precisa estar no futuro."
             }
-        } else if (form.targetDate.isNotBlank() && parseDate(form.targetDate) == null) {
+        } else if (form.targetDate.isNotBlank() && DateMask.parse(form.targetDate) == null) {
             errors[OnboardingField.TARGET_DATE] = "Use dd/mm/aaaa."
         }
-        if (form.targetTime.isNotBlank() && parseDuration(form.targetTime) == null) {
-            errors[OnboardingField.TARGET_TIME] = "Use mm:ss ou h:mm:ss."
+        val targetTime = form.targetTimeParts.totalSeconds(form.targetTimeUnit)
+        when {
+            form.targetTimeParts.isBlank -> Unit
+
+            targetTime == null ->
+                errors[OnboardingField.TARGET_TIME] = invalidTargetTimeMessage(form.targetTimeUnit)
+
+            targetTime <= 0 -> errors[OnboardingField.TARGET_TIME] = "O tempo precisa ser maior que zero."
         }
         form.availabilityMinutes.forEach { (_, minutes) ->
             val value = minutes.toIntOrNull()
@@ -242,9 +250,9 @@ object OnboardingValidator {
         val sameType = existing?.goal?.type == form.goalType
         return TrainingGoal(
             type = form.goalType,
-            targetDate = parseDate(form.targetDate),
+            targetDate = DateMask.parse(form.targetDate),
             targetDistanceM = if (sameType) existing?.goal?.targetDistanceM else defaultDistance(form.goalType),
-            targetTimeSec = parseDuration(form.targetTime),
+            targetTimeSec = form.targetTimeParts.totalSeconds(form.targetTimeUnit),
         )
     }
 
@@ -256,46 +264,9 @@ object OnboardingValidator {
         GoalType.GENERAL_FITNESS, GoalType.CUSTOM -> null
     }
 
-    private fun parseDate(text: String): LocalDate? {
-        val trimmed = text.trim()
-        val digits = trimmed.filter { it.isDigit() }
-        return if (digits.length == DateMask.MAX_DIGITS && trimmed.all { it.isDigit() || it == '/' }) {
-            runCatching { LocalDate.parse(digits, DIGITS_DATE) }.getOrNull()
-        } else {
-            runCatching { LocalDate.parse(trimmed, DATE) }.getOrNull()
-        }
-    }
-
-    private fun parseDuration(text: String): Int? {
-        val parts = text.trim().split(":")
-        if (parts.any { it.isBlank() }) return null
-        val values = parts.map { it.toIntOrNull() ?: return null }
-        return when (values.size) {
-            2 -> {
-                val (minutes, seconds) = values
-                if (minutes !in 0..180 || seconds !in 0..59) return null
-                minutes * 60 + seconds
-            }
-
-            3 -> {
-                val (hours, minutes, seconds) = values
-                if (hours !in 0..23 || minutes !in 0..59 || seconds !in 0..59) return null
-                hours * 3_600 + minutes * 60 + seconds
-            }
-
-            else -> null
-        }
-    }
-
-    private fun formatDuration(seconds: Int): String {
-        val hours = seconds / 3_600
-        val minutes = (seconds % 3_600) / 60
-        val rest = seconds % 60
-        return if (hours > 0) {
-            "%d:%02d:%02d".format(hours, minutes, rest)
-        } else {
-            "%d:%02d".format(minutes, rest)
-        }
+    private fun invalidTargetTimeMessage(unit: TargetTimeUnit): String = when (unit) {
+        TargetTimeUnit.MINUTES -> "Informe minutos e segundos (0 a 59)."
+        TargetTimeUnit.HOURS -> "Informe horas, minutos e segundos (0 a 59)."
     }
 
     private fun formatDecimal(value: Double): String =

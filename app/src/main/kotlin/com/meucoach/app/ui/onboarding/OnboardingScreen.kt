@@ -62,7 +62,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.ui.common.AVAILABLE_CITIES
 import com.meucoach.app.ui.common.AVAILABLE_TIMEZONES
+import com.meucoach.app.ui.common.DateMask
+import com.meucoach.app.ui.common.DateVisualTransformation
 import com.meucoach.app.ui.common.ProfileAvatar
+import com.meucoach.app.ui.common.TargetTimeField
+import com.meucoach.app.ui.common.convert
 import com.meucoach.app.ui.common.matchesSearch
 import com.meucoach.app.ui.common.timezoneLabel
 import com.meucoach.app.ui.profile.availabilityDayLabel
@@ -390,11 +394,20 @@ private fun goalStep(
             visualTransformation = DateVisualTransformation,
             modifier = Modifier.testTag("target-date-field"),
         )
-        FormTextField(
+        TargetTimeField(
             label = "Tempo alvo (opcional)",
-            value = form.targetTime,
-            onValueChange = { value -> onUpdate { it.copy(targetTime = value) } },
-            placeholder = "mm:ss ou h:mm:ss",
+            parts = form.targetTimeParts,
+            unit = form.targetTimeUnit,
+            onPartsChange = { parts -> onUpdate { it.copy(targetTimeParts = parts) } },
+            onUnitChange = { unit ->
+                onUpdate {
+                    it.copy(
+                        targetTimeParts = it.targetTimeParts.convert(it.targetTimeUnit, unit),
+                        targetTimeUnit = unit,
+                    )
+                }
+            },
+            tagPrefix = "target-time",
             error = state.errors[OnboardingField.TARGET_TIME],
         )
     }

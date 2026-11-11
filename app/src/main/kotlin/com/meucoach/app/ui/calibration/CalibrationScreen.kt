@@ -34,9 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.common.DateMask
+import com.meucoach.app.ui.common.DateVisualTransformation
+import com.meucoach.app.ui.common.TargetTimeField
+import com.meucoach.app.ui.common.convert
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McPrimaryButton
@@ -196,19 +201,32 @@ internal fun CalibrationContent(
                             keyboardType = KeyboardType.Decimal,
                             error = state.errors.distance,
                         )
-                        CalibrationField(
+                        TargetTimeField(
                             label = "Tempo",
-                            value = state.form.time,
-                            onValueChange = { value -> onUpdate { it.copy(time = value) } },
-                            placeholder = "mm:ss ou h:mm:ss",
+                            parts = state.form.timeParts,
+                            unit = state.form.timeUnit,
+                            onPartsChange = { parts -> onUpdate { it.copy(timeParts = parts) } },
+                            onUnitChange = { unit ->
+                                onUpdate {
+                                    it.copy(
+                                        timeParts = it.timeParts.convert(it.timeUnit, unit),
+                                        timeUnit = unit,
+                                    )
+                                }
+                            },
+                            tagPrefix = "calibration-time",
                             error = state.errors.time,
+                            modifier = Modifier.padding(bottom = 8.dp),
                         )
                         CalibrationField(
                             label = "Data",
                             value = state.form.date,
-                            onValueChange = { value -> onUpdate { it.copy(date = value) } },
+                            onValueChange = { value -> onUpdate { it.copy(date = DateMask.digits(value)) } },
                             placeholder = "dd/mm/aaaa",
+                            keyboardType = KeyboardType.Number,
+                            visualTransformation = DateVisualTransformation,
                             error = state.errors.date,
+                            testTag = "calibration-date",
                         )
                         CalibrationField(
                             label = "FC média do esforço (opcional)",
@@ -319,14 +337,18 @@ private fun CalibrationField(
     placeholder: String? = null,
     suffix: String? = null,
     keyboardType: KeyboardType = KeyboardType.Ascii,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     error: String? = null,
+    testTag: String? = null,
 ) {
     val colors = McTheme.colors
     Column(modifier = modifier.fillMaxWidth().padding(bottom = 8.dp)) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
             label = { Text(text = label) },
             placeholder = if (placeholder != null) {
                 { Text(text = placeholder) }
@@ -340,6 +362,7 @@ private fun CalibrationField(
             },
             singleLine = true,
             isError = error != null,
+            visualTransformation = visualTransformation,
             supportingText = if (error != null) {
                 { Text(text = error) }
             } else {

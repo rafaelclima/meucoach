@@ -1,5 +1,7 @@
 package com.meucoach.app.ui.calibration
 
+import com.meucoach.app.ui.common.TargetTimeParts
+import com.meucoach.app.ui.common.TargetTimeUnit
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.Distance
@@ -19,8 +21,8 @@ class CalibrationFormTest {
     fun `accepts a valid race`() {
         val form = CalibrationForm(
             distanceKm = "5",
-            time = "30:59",
-            date = "24/10/2026",
+            timeParts = TargetTimeParts(minutes = "30", seconds = "59"),
+            date = "24102026",
             averageHeartRate = "181",
         )
 
@@ -35,8 +37,9 @@ class CalibrationFormTest {
     fun `accepts comma decimals and long efforts`() {
         val form = CalibrationForm(
             distanceKm = "21,1",
-            time = "1:30:00",
-            date = "24/10/2026",
+            timeParts = TargetTimeParts(hours = "1", minutes = "30", seconds = "00"),
+            timeUnit = TargetTimeUnit.HOURS,
+            date = "24102026",
         )
 
         val performance = CalibrationFormValidator.toPerformance(form, today)
@@ -48,14 +51,42 @@ class CalibrationFormTest {
 
     @Test
     fun `rejects invalid distance, time, date and heart rate`() {
-        val base = CalibrationForm(distanceKm = "5", time = "30:59", date = "24/10/2026")
+        val base = CalibrationForm(
+            distanceKm = "5",
+            timeParts = TargetTimeParts(minutes = "30", seconds = "59"),
+            date = "24102026",
+        )
 
         assertThat(CalibrationFormValidator.validate(base.copy(distanceKm = "0"), today).distance).isNotNull()
         assertThat(CalibrationFormValidator.validate(base.copy(distanceKm = "101"), today).distance).isNotNull()
         assertThat(CalibrationFormValidator.validate(base.copy(distanceKm = "abc"), today).distance).isNotNull()
-        assertThat(CalibrationFormValidator.validate(base.copy(time = "10:99"), today).time).isNotNull()
-        assertThat(CalibrationFormValidator.validate(base.copy(time = "5:00"), today).time).isNotNull()
-        assertThat(CalibrationFormValidator.validate(base.copy(time = "4:00:00"), today).time).isNotNull()
+        assertThat(
+            CalibrationFormValidator.validate(
+                base.copy(timeParts = TargetTimeParts(minutes = "10", seconds = "99")),
+                today,
+            ).time,
+        ).isNotNull()
+        assertThat(
+            CalibrationFormValidator.validate(
+                base.copy(timeParts = TargetTimeParts(minutes = "5", seconds = "00")),
+                today,
+            ).time,
+        ).isNotNull()
+        assertThat(
+            CalibrationFormValidator.validate(
+                base.copy(
+                    timeParts = TargetTimeParts(hours = "4", minutes = "00", seconds = "00"),
+                    timeUnit = TargetTimeUnit.HOURS,
+                ),
+                today,
+            ).time,
+        ).isNotNull()
+        assertThat(
+            CalibrationFormValidator.validate(
+                base.copy(timeParts = TargetTimeParts(minutes = "0", seconds = "00")),
+                today,
+            ).time,
+        ).isNotNull()
         assertThat(
             CalibrationFormValidator.validate(base.copy(date = "31/02/2026"), today).date,
         ).isNotNull()
