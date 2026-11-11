@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.9 · **Data:** 11/11/2026 · Adiciona os testes e goldens da revisão semanal (FR-011) e separa o gate visual (`verifyRoborazziDebug`) da suíte lógica (`check`).
+**Versão:** 1.10 · **Data:** 11/11/2026 · Atualiza a evidência de testes e cobre o burn-in do PMC (BUG-03), o z-score de HRV em log (BUG-04) e a estabilização do gate visual.
 
 ## 1. Princípios
 
@@ -89,12 +89,12 @@ Para cada formato:
 
 O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX reais sanitizados em `fixtures/tcx/` cobrem laps, trackpoints, FC, cadência e resumo; posição, múltiplos laps e XML inválido são cobertos por fixtures sintéticas. Nenhum teste pode depender de rede.
 
-Evidência atual (10/11/2026):
+Evidência atual (11/11/2026):
 
-- 1.301 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 467 em `core:domain`, 160 em `core:data`, 635 em `:app`).
+- 1.405 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 523 em `core:domain`, 161 em `core:data`, 682 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,62% de linhas, 81,47% de branches, 96,25% de instruções.
+- `core:domain`: 97,63% de linhas, 81,42% de branches, 96,30% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -148,7 +148,8 @@ Evidência atual (10/11/2026):
 - `CheckInViewModelTest` e `CheckInScreenTest`: prefill, salvamento, escalas e loading.
 - `DailyMetricsCsvParserTest`: template, datas ISO/BR, aliases, erros por linha e duplicatas.
 - `DailyMetricsRepositoryTest`: lote, atualização por data, `createdAt` e exclusão.
-- `DailyMetricsReadinessBuilderTest`: janelas 7/30/60, HRV mínimo, sono recente e RHR elevada 2 dias.
+- `DailyMetricsReadinessBuilderTest`: janelas 7/30/60, HRV mínimo, sono recente, RHR elevada 2 dias, estatísticas em log e rejeição de valores não finitos.
+- `ReadinessCalculatorTest`: pesos renormalizados, níveis/limites, clamp de HRV/RHR, z-score em log e validação de entradas.
 - `MetricsImportViewModelTest` e `MetricsImportScreenTest`: importação, erros, duplicatas e template.
 - `HealthMetricsAggregatorTest`: sono por data local, sobreposição, médias diárias e fuso.
 - `HealthConnectViewModelTest`: status, permissões faltantes, sync, indisponibilidade e erro.

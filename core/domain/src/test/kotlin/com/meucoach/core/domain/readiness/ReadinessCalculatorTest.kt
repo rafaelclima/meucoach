@@ -5,6 +5,7 @@ import com.meucoach.core.model.ReadinessLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
+import kotlin.math.ln
 
 class ReadinessCalculatorTest {
     private val goodCheckIn =
@@ -19,6 +20,8 @@ class ReadinessCalculatorTest {
         HrvMetrics(
             rmssd7dMs = 60.0,
             baseline60dMs = 50.0,
+            meanLog7d = ln(60.0),
+            meanLog60d = ln(50.0),
             sdLnMs = 0.2,
             validNights = 6,
         )
@@ -187,7 +190,7 @@ class ReadinessCalculatorTest {
             ReadinessCalculator.calculate(
                 checkIn = SubjectiveCheckIn(1, 5, 5, 5),
                 sleep = SleepMetrics(300),
-                hrv = HrvMetrics(10.0, 50.0, 0.2, 6),
+                hrv = hrv(10.0, 50.0, 0.2, 6),
                 restingHeartRate = RestingHeartRateMetrics(70.0, 58.0),
             )
 
@@ -233,14 +236,14 @@ class ReadinessCalculatorTest {
             ReadinessCalculator.calculate(
                 null,
                 null,
-                HrvMetrics(200.0, 50.0, 0.2, 6),
+                hrv(200.0, 50.0, 0.2, 6),
                 null,
             )
         val lowHrv =
             ReadinessCalculator.calculate(
                 null,
                 null,
-                HrvMetrics(5.0, 50.0, 0.2, 6),
+                hrv(5.0, 50.0, 0.2, 6),
                 null,
             )
         val lowRhr =
@@ -265,6 +268,27 @@ class ReadinessCalculatorTest {
     }
 
     @Test
+    fun `uses the log-space z-score instead of the raw ratio`() {
+        val result =
+            ReadinessCalculator.calculate(
+                checkIn = null,
+                sleep = null,
+                hrv = HrvMetrics(
+                    rmssd7dMs = 60.0,
+                    baseline60dMs = 60.0,
+                    meanLog7d = ln(60.0) + 0.5,
+                    meanLog60d = ln(60.0),
+                    sdLnMs = 0.5,
+                    validNights = 7,
+                ),
+                restingHeartRate = null,
+            )
+
+        // z = 0.5 / 0.5 = 1.0. The old raw ratio (60/60) would score 50.
+        assertThat(result.components.getValue(ReadinessComponent.HRV)).isEqualTo(75)
+    }
+
+    @Test
     fun `validates check-in and metric inputs`() {
         assertThatThrownBy { SubjectiveCheckIn(0, 1, 1, 1) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -274,17 +298,26 @@ class ReadinessCalculatorTest {
             .isInstanceOf(IllegalArgumentException::class.java)
         assertThatThrownBy { SleepMetrics(1_441) }
             .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { HrvMetrics(0.0, 50.0, 0.2, 6) }
+        assertThatThrownBy { hrv(0.0, 50.0, 0.2, 6) }
             .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { HrvMetrics(60.0, 0.0, 0.2, 6) }
+        assertThatThrownBy { hrv(60.0, 0.0, 0.2, 6) }
             .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { HrvMetrics(60.0, 50.0, 0.0, 6) }
+        assertThatThrownBy { hrv(60.0, 50.0, 0.0, 6) }
             .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { HrvMetrics(60.0, 50.0, 0.2, -1) }
+        assertThatThrownBy { hrv(60.0, 50.0, 0.2, -1) }
             .isInstanceOf(IllegalArgumentException::class.java)
         assertThatThrownBy { RestingHeartRateMetrics(0.0, 58.0) }
             .isInstanceOf(IllegalArgumentException::class.java)
         assertThatThrownBy { RestingHeartRateMetrics(55.0, 0.0) }
             .isInstanceOf(IllegalArgumentException::class.java)
     }
+
+    private fun hrv(rmssd7dMs: Double, baseline60dMs: Double, sdLnMs: Double, validNights: Int) = HrvMetrics(
+        rmssd7dMs = rmssd7dMs,
+        baseline60dMs = baseline60dMs,
+        meanLog7d = ln(rmssd7dMs),
+        meanLog60d = ln(baseline60dMs),
+        sdLnMs = sdLnMs,
+        validNights = validNights,
+    )
 }

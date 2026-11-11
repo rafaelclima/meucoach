@@ -2,6 +2,7 @@ package com.meucoach.core.domain.readiness
 
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ReadinessLevel
+import kotlin.math.abs
 
 enum class ReadinessComponent {
     SUBJECTIVE,
@@ -40,12 +41,48 @@ data class SleepMetrics(val durationMin: Int) {
     }
 }
 
-data class HrvMetrics(val rmssd7dMs: Double, val baseline60dMs: Double, val sdLnMs: Double, val validNights: Int) {
+data class HrvMetrics(
+    /** Arithmetic mean of the raw RMSSD (ms), kept for display only. */
+    val rmssd7dMs: Double,
+    /** Arithmetic mean of the raw 60-night RMSSD (ms), kept for display only. */
+    val baseline60dMs: Double,
+    /** Mean of ln(RMSSD) across the last seven valid nights. */
+    val meanLog7d: Double,
+    /** Mean of ln(RMSSD) across the 60-night baseline. */
+    val meanLog60d: Double,
+    /** Standard deviation of ln(RMSSD) across the baseline. */
+    val sdLnMs: Double,
+    val validNights: Int,
+) {
     init {
         require(rmssd7dMs > 0.0) { "RMSSD must be positive" }
         require(baseline60dMs > 0.0) { "Baseline RMSSD must be positive" }
+        require(meanLog7d.isFinite()) { "Seven-day log mean must be finite" }
+        require(meanLog60d.isFinite()) { "Baseline log mean must be finite" }
         require(sdLnMs > 0.0) { "Standard deviation must be positive" }
         require(validNights >= 0) { "Valid nights must not be negative" }
+    }
+
+    /**
+     * Log-space z-score: the seven-night mean of ln(RMSSD) minus the 60-night
+     * baseline mean, divided by the baseline SD of ln(RMSSD). Raw RMSSD is
+     * display-only; mixing its arithmetic mean with a log SD biased the score
+     * (BUG-04, `SPORTS_SCIENCE.md` §7.4).
+     *
+     * A flat baseline has no meaningful dispersion: the two sample averages can
+     * still differ by a few ULPs, so a near-zero difference is treated as the
+     * average (z = 0) instead of being amplified by a near-zero SD.
+     */
+    val zScore: Double
+        get() = if (abs(meanLog7d - meanLog60d) <= FLAT_BASELINE_TOLERANCE) {
+            0.0
+        } else {
+            (meanLog7d - meanLog60d) / sdLnMs
+        }
+
+    private companion object {
+        /** Log-RMSSD differences below this are floating-point noise (~1e-9). */
+        const val FLAT_BASELINE_TOLERANCE = 1e-9
     }
 }
 

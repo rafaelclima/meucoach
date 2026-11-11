@@ -36,17 +36,21 @@ object DailyMetricsReadinessBuilder {
         val last30 = ordered.filter { it.date.isAfter(today.minusDays(30)) }
         val last60 = ordered.filter { it.date.isAfter(today.minusDays(60)) }
 
-        val hrvValues = last7.mapNotNull { it.hrvRmssdMs }.filter { it > 0.0 }
-        val hrvBaselineValues = last60.mapNotNull { it.hrvRmssdMs }.filter { it > 0.0 }
+        val hrvValues = last7.mapNotNull { it.hrvRmssdMs }.filter { it.isFinite() && it > 0.0 }
+        val hrvBaselineValues = last60.mapNotNull { it.hrvRmssdMs }.filter { it.isFinite() && it > 0.0 }
         val hrv = if (hrvValues.size >= MIN_HRV_NIGHTS && hrvBaselineValues.size >= MIN_BASELINE_DAYS) {
-            val logs = hrvBaselineValues.map { ln(it) }
-            val mean = logs.average()
-            val variance = logs.sumOf { (it - mean) * (it - mean) } / logs.size
+            val hrvLogs = hrvValues.map { ln(it) }
+            val baselineLogs = hrvBaselineValues.map { ln(it) }
+            val meanLog7d = hrvLogs.average()
+            val meanLog60d = baselineLogs.average()
+            val variance = baselineLogs.sumOf { (it - meanLog60d) * (it - meanLog60d) } / baselineLogs.size
             val sd = sqrt(variance)
             if (sd > 0.0) {
                 HrvMetrics(
                     rmssd7dMs = hrvValues.average(),
                     baseline60dMs = hrvBaselineValues.average(),
+                    meanLog7d = meanLog7d,
+                    meanLog60d = meanLog60d,
                     sdLnMs = sd,
                     validNights = hrvValues.size,
                 )

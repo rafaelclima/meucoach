@@ -19,7 +19,6 @@ import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.ReadinessLevel
-import kotlin.math.ln
 import kotlin.math.roundToInt
 
 data class ExplanationRuleUi(val id: String, val title: String)
@@ -250,7 +249,7 @@ private fun readinessRationale(result: ReadinessResult, inputs: ReadinessInputs,
 }
 
 private fun hrvLabel(hrv: HrvMetrics): String {
-    val z = ln(hrv.rmssd7dMs / hrv.baseline60dMs) / hrv.sdLnMs
+    val z = hrv.zScore
     val position = when {
         z < -1.0 -> "abaixo da média"
         z > 0.0 -> "acima da média"

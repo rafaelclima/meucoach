@@ -79,7 +79,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 import javax.inject.Inject
-import kotlin.math.ln
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -847,7 +846,7 @@ private fun buildSignals(
         )
     }
     inputs.hrv?.let { hrv ->
-        val z = ln(hrv.rmssd7dMs / hrv.baseline60dMs) / hrv.sdLnMs
+        val z = hrv.zScore
         add(
             ReadinessSignalUi(
                 label = "Variabilidade",

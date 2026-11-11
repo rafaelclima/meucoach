@@ -222,6 +222,7 @@ A UI mostra os contribuintes e o que falta. "Sem dados" não é "recuperação r
 
 - Usar **ln rMSSD**, não RMSSD bruto.
 - Baseline móvel de 60 dias; comparar média de 7 dias.
+- z-score = (média de ln rMSSD em 7 dias − média de ln rMSSD em 60 dias) ÷ desvio-padrão de ln rMSSD na baseline. A média bruta fica só para exibição; misturar média aritmética bruta com desvio log desloca o score (BUG-04).
 - Só calcular se houver ≥ 4 noites válidas na semana.
 - SWC = 0,5 × desvio-padrão do baseline.
 - Tendência importa mais que valor absoluto.

@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.401 testes no total (682 em `:app`, 161 em `core:data`, 519 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,62% de linhas (4.477/4.586), 81,44% de branches (3.313/4.068), 96,29% de instruções (31.082/32.278)
+- **Testes:** 1.405 testes no total (682 em `:app`, 161 em `core:data`, 523 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,63% de linhas (4.491/4.600), 81,42% de branches (3.327/4.086), 96,30% de instruções (31.172/32.370)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -40,6 +40,7 @@
 - **Health Connect:** leitura read-only de sono/RHR/HRV/SpO2, agregação por dia, permissões, sincronização incremental (primeira execução 30 dias, depois desde o último sucesso) e sync periódico diário via WorkManager.
 - **Diagnóstico:** status do Health Connect, base local de métricas e confiança por componente na tela Hoje.
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
+- **HRV em log:** o z-score usa a média e o desvio de `ln(RMSSD)` em 7 vs 60 noites; a média bruta fica só para exibição e uma baseline plana resulta em z=0. A prescrição é `daily-prescription-v3`.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não; calor informado desacelera o pace em 3% e reduz a confiança.
 - **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30%, taper por prova e deload a cada 4ª semana; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
@@ -72,6 +73,41 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — BUG-04: HRV em espaço logarítmico
+
+**Objetivo:** corrigir a mistura de média aritmética do RMSSD com desvio-padrão do log no z-score de HRV, que deslocava 25% da prontidão e podia mudar a prescrição do dia, sem inventar dado e sem duplicar a fórmula na UI.
+
+### Concluído
+
+- **Domínio:** `HrvMetrics` passou a guardar `meanLog7d`/`meanLog60d` e expõe um único `zScore`; `DailyMetricsReadinessBuilder` calcula média e desvio de `ln(RMSSD)` e ignora valores não finitos. Baseline plana (SD ~1e-15) resolve para z=0 em vez de um z falso de −1.
+- **Sem duplicação:** `ReadinessCalculator`, `TodayExplanation` e `TodayViewModel` usam `hrv.zScore`; a fórmula antiga `ln(rmssd7d/baseline)` foi removida dos três pontos.
+- **Versionamento:** `PrescriptionPolicy.ENGINE_VERSION` subiu para `daily-prescription-v3`, forçando a reavaliação da prescrição persistida com a prontidão corrigida.
+- **Fixtures:** os goldens de prontidão ganharam `meanLog7d`/`meanLog60d` explícitos; o `expected.json` não mudou.
+- **Testes:** +4 (`zScore` em log no calculator, baseline enviesado no builder, valores não finitos e baseline plana). O teste de HRV constante travou o caso de borda que gerava o z falso.
+- **Estabilização do gate:** `CHART_SETTLE_MILLIS` subiu de 500 ms para 1 s; o Vico podia capturar o gráfico em branco sob a suíte completa. Nenhum golden foi regravado.
+- **Docs:** `SPORTS_SCIENCE` §7.4 com a fórmula explícita; `TESTING`, `ROADMAP` (P1-04), `PRD_COACH_CORRIDA` (BUG-04) e `PROGRESS` atualizados.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` — verde (64 testes; duas execuções completas com a espera de 1 s).
+- **1.405 testes**, 0 falhas e 0 `@Ignore` (682 `:app`, 161 `core:data`, 523 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,63% de linhas (4.491/4.600), 81,42% de branches (3.327/4.086), 96,30% de instruções (31.172/32.370); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova, mudança de schema ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Média bruta só para exibição:** o z usa os logs; manter os dois campos evita que um consumidor futuro repita a mistura.
+- **Baseline plana:** a diferença entre médias de amostras de tamanhos diferentes é ruído de ponto flutuante; o guard de 1e-9 evita amplificá-la por um SD ~0 sem esconder desvios reais maiores.
+- **Bump de versão:** a prescrição persistida da v2 é reavaliada como v3; nada é migrado e o histórico continua auditável.
+- **Screenshot:** nenhum golden precisou mudar. Os 10 goldens de Hoje que falharam no primeiro teste eram o z falso com HRV constante, não uma mudança visual desejada.
+
+### Próximo passo
+
+1. BUG-06 (Tier B da calibração): melhor esforço sustentado + curva pace×FC, com confiança média e evidência.
+2. Validar em aparelho o card de prontidão e o z-score com dados reais de HRV.
+3. Manter as validações manuais de FR-011 e do fluxo de prova no roteiro de aparelho.
 
 ## Sessão 2026-11-11 — BUG-03: PMC com burn-in de 180 dias
 

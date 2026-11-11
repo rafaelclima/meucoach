@@ -2,7 +2,6 @@ package com.meucoach.core.domain.readiness
 
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ReadinessLevel
-import kotlin.math.ln
 import kotlin.math.roundToInt
 
 object ReadinessCalculator {
@@ -109,8 +108,7 @@ object ReadinessCalculator {
 
     private fun hrvScore(hrv: HrvMetrics?): Int? {
         if (hrv == null || hrv.validNights < MIN_HRV_NIGHTS) return null
-        val zScore = ln(hrv.rmssd7dMs / hrv.baseline60dMs) / hrv.sdLnMs
-        return (50.0 + 25.0 * zScore).roundToInt().coerceIn(0, 100)
+        return (50.0 + 25.0 * hrv.zScore).roundToInt().coerceIn(0, 100)
     }
 
     private fun restingHeartRateScore(metrics: RestingHeartRateMetrics?): Int? {

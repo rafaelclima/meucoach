@@ -58,8 +58,13 @@ fun SemanticsNodeInteraction.captureStableScreenshot(
     )
 }
 
-/** Real-time window for the chart dispatcher before sampling frames. */
-const val CHART_SETTLE_MILLIS = 500L
+/**
+ * Real-time window for the chart dispatcher before sampling frames.
+ *
+ * Vico can stay blank for longer than 500 ms when the full golden suite runs;
+ * one second keeps the gate deterministic without changing any expected image.
+ */
+const val CHART_SETTLE_MILLIS = 1_000L
 
 /** ~700 ms of an unchanged frame: long enough for Vico to finish a paint. */
 private const val STABLE_FRAMES = 8

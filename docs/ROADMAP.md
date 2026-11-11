@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.26 · **Data:** 11/11/2026 · **Mudança:** BUG-03 corrigido (burn-in de 180 dias nas EMAs do PMC, sem inventar histórico); FR-011, FR-010 e U-13 seguem no mesmo ciclo.
+**Versão:** 1.27 · **Data:** 11/11/2026 · **Mudança:** BUG-04 corrigido (HRV em espaço logarítmico); BUG-03 e FR-011 concluídos; FR-010 e U-13 seguem no mesmo ciclo.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -186,7 +186,7 @@
 
 ### P1-04 · Prontidão
 
-**Status:** concluído em 30/10/2026 (validação instrumentada do Health Connect pendente)
+**Status:** concluído em 30/10/2026; z-score de HRV corrigido em 11/11/2026 (validação instrumentada do Health Connect pendente)
 
 - [x] Check-in diário de 15 s (sono, fadiga, dor, estresse + doença/lesão).
 - [x] Persistência por data e prontidão real na tela Hoje.
@@ -194,6 +194,7 @@
 - [x] Health Connect read-only (sono, RHR, HRV, SpO2) com permissões e sync de 30 dias.
 - [x] Diagnóstico básico de fontes, base local e confiança na tela Hoje.
 - [x] Histórico de prontidão dos últimos 14 dias em Tendências.
+- [x] HRV em espaço logarítmico (BUG-04): média e desvio de `ln(RMSSD)`; `HrvMetrics.zScore` é a única fonte do score, e a prescrição sobe para `daily-prescription-v3`.
 
 ### P1-05 · Prescrição
 

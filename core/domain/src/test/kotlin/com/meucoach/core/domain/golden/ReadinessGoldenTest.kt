@@ -67,6 +67,8 @@ class ReadinessGoldenTest {
     private fun JSONObject.toHrv() = HrvMetrics(
         rmssd7dMs = getDouble("rmssd7dMs"),
         baseline60dMs = getDouble("baseline60dMs"),
+        meanLog7d = getDouble("meanLog7d"),
+        meanLog60d = getDouble("meanLog60d"),
         sdLnMs = getDouble("sdLnMs"),
         validNights = getInt("validNights"),
     )
