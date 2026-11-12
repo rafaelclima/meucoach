@@ -158,9 +158,10 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 | `HeartRateZoneCalculator` / `PaceZoneCalculator` | LTHR, pace de limiar | 5 zonas de FC, 5 de pace, 3 zonas polarizadas |
 | `TrainingLoadEngine` | atividades + frescor da fonte | TRIMP, rTSS, CTL, ATL, TSB, ACWR, monotonia, `LoadCoverage`/`LoadDataState` |
 | `ReadinessCalculator` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
-| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today` | semana conservadora (até 2 qualidades, longão, taper, deload) |
-| `PlanReplanner` | plano versionado, perfil, prontidão, carga, `today`, datas não treináveis | `Suggest` (futuro mesclado) ou `NoChange`, sem tocar hoje/passado/protegidas |
-| `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
+| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today`, prova, janela de recuperação | semana conservadora (até 2 qualidades, longão, taper, deload, recuperação pós-prova) |
+| `RecoveryWindow` | prova concluída (`distância`/`data`) e data consultada | janela ativa, teto de duração, bloqueio de qualidade/longão |
+| `PlanReplanner` | plano versionado, perfil, prontidão, carga, `today`, datas não treináveis, recuperação | `Suggest` (futuro mesclado) ou `NoChange`, sem tocar hoje/passado/protegidas |
+| `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil, recuperação | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
 | `PlanCompletionCalculator` | plano, sessões, execuções | adesão, execução comprovada, pendências |
 | `SessionMatcher` | sessão planejada, atividades | sugestões de vínculo (nunca automático) |
 | `SessionCompletionRules` | sessão, data, prescrição | bloqueios de conclusão e encerramento |
@@ -370,6 +371,10 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0031](adr/0031-profile-planning-fingerprint.md) — fingerprint de planejamento e aceite atômico
 - [ADR-0032](adr/0032-race-autocompletion-and-target-projection.md) — auto-conclusão da prova e projeção da meta
 - [ADR-0033](adr/0033-planned-vs-executed-comparison.md) — comparação planejado × executado
+- [ADR-0034](adr/0034-weekly-review-consolidation.md) — revisão semanal determinística
+- [ADR-0035](adr/0035-tier-b-calibration-estimates.md) — estimativas Tier B da calibração
+- [ADR-0036](adr/0036-race-time-prediction-vdot-riegel.md) — previsão de prova por VDOT/Riegel
+- [ADR-0037](adr/0037-post-race-recovery.md) — recuperação pós-prova e janela por distância
 
 > Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
 

@@ -10,6 +10,7 @@ import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
@@ -510,6 +511,159 @@ class DailyPrescriptionEngineTest {
         assertThat(prescription.targets).isEqualTo(PrescriptionTargets())
     }
 
+    @Test
+    fun `downgrades a planned quality during post-race recovery`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.TEN_K, monday.minusDays(3)),
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.title).isEqualTo("Recuperação: fácil e curto")
+        assertThat(prescription.prescribedDurationMin).isEqualTo(28)
+        assertThat(prescription.ruleIds).contains("R-RACE-04", "R-PRESC-02")
+        assertThat(prescription.rationale).contains("recuperação após a prova")
+    }
+
+    @Test
+    fun `caps an easy session above the recovery ceiling`() {
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.HALF_MARATHON, monday.minusDays(1)),
+        )
+        val easy = easySession(durationMin = 50)
+
+        val prescription = engine.prescribe(
+            input(
+                date = monday,
+                planned = easy,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.REDUCE)
+        assertThat(prescription.prescribedDurationMin).isEqualTo(30)
+        assertThat(prescription.title).isEqualTo("Recuperação: fácil e curto")
+        assertThat(prescription.ruleIds).contains("R-RACE-04")
+    }
+
+    @Test
+    fun `downgrades the long run during recovery`() {
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.HALF_MARATHON, monday.minusDays(5)),
+        )
+        val longRun = PlannedSession(
+            date = monday,
+            type = WorkoutType.LONG,
+            title = "Longão",
+            durationMin = 90,
+            rationale = "Longão.",
+            ruleIds = listOf("R-PLAN-03"),
+            evidenceIds = listOf("EV-PFITZINGER-2008"),
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = monday,
+                planned = longRun,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.prescribedDurationMin).isEqualTo(45)
+        assertThat(prescription.ruleIds).contains("R-RACE-04")
+        assertThat(prescription.rationale).contains("O longão fica para quando a recuperação permitir")
+    }
+
+    @Test
+    fun `keeps an easy session already inside the cap`() {
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.TEN_K, monday.minusDays(1)),
+        )
+        val easy = easySession(durationMin = 25)
+
+        val prescription = engine.prescribe(
+            input(
+                date = monday,
+                planned = easy,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedDurationMin).isEqualTo(25)
+    }
+
+    @Test
+    fun `ignores recovery outside the window`() {
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.FIVE_K, monday.minusDays(4)),
+        )
+        val easy = easySession(durationMin = 50)
+
+        val prescription = engine.prescribe(
+            input(
+                date = monday,
+                planned = easy,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedDurationMin).isEqualTo(50)
+        assertThat(prescription.ruleIds).doesNotContain("R-RACE-04")
+    }
+
+    @Test
+    fun `a done quality is not downgraded by recovery`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val done = quality.copy(
+            status = SessionStatus.DONE,
+            completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+        )
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.TEN_K, monday.minusDays(3)),
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = done.date,
+                planned = done,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.ruleIds).doesNotContain("R-RACE-04")
+    }
+
     private fun input(
         date: LocalDate = monday,
         planned: PlannedSession?,
@@ -518,6 +672,7 @@ class DailyPrescriptionEngineTest {
         readiness: ReadinessResult,
         load: LoadSnapshot?,
         heat: HeatLevel = HeatLevel.NONE,
+        recovery: RecoveryWindow? = null,
     ) = DailyPrescriptionInput(
         date = date,
         profile = profile,
@@ -527,6 +682,7 @@ class DailyPrescriptionEngineTest {
         plannedSession = planned,
         plannedSessionId = planned?.let { "${plan?.weekStart}-${it.date}" },
         planConfidence = plan?.confidence,
+        recovery = recovery,
     )
 
     private fun planWithQuality(): WeeklyPlan = WeeklyPlanGenerator().generate(

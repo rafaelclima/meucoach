@@ -10,7 +10,9 @@ import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.StoredWeeklyPlan
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
+import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.RacePlan
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanningFingerprints
@@ -103,6 +105,12 @@ class ReplanContextBuilder @Inject constructor(
             .filter { it.status == RaceStatus.PLANNED }
             .maxByOrNull { it.updatedAt }
             ?.let(RacePlan::from)
+        // ADR 0037: only a completed race starts a recovery window.
+        val recovery = RecoveryWindow.covering(
+            races = events.mapNotNull(CompletedRace::from),
+            start = weekStart,
+            end = weekStart.plusDays(6),
+        )
 
         val input = ReplanInput(
             currentPlan = record.plan,
@@ -124,6 +132,7 @@ class ReplanContextBuilder @Inject constructor(
             nonTrainablePastDates = nonTrainablePastDates,
             race = race,
             eventDates = eventDates,
+            recovery = recovery,
             today = today,
         )
         return ReplanContext(today = today, record = record, input = input)

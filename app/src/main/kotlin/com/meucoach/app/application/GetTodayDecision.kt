@@ -2,6 +2,7 @@ package com.meucoach.app.application
 
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.domain.today.TodayDecision
@@ -23,6 +24,8 @@ data class TodayDecisionRequest(
     val load: LoadSnapshot? = null,
     val heatLevel: HeatLevel = HeatLevel.NONE,
     val plan: WeeklyPlan? = null,
+    /** Post-race recovery window (ADR 0037). */
+    val recovery: RecoveryWindow? = null,
 )
 
 /**
@@ -50,6 +53,7 @@ class GetTodayDecision @Inject constructor(
                 load = request.load,
                 heatLevel = request.heatLevel,
                 plan = request.plan,
+                recovery = request.recovery,
             ),
         )
         return TodayDecisionResolver.resolve(date = request.date, event = null, prescription = prescription)

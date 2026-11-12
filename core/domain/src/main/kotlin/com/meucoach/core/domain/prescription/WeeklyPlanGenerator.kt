@@ -112,6 +112,8 @@ data class WeeklyPlanInput(
     val race: RacePlan? = null,
     /** Every event date that must not receive an ordinary training session. */
     val eventDates: Set<LocalDate> = emptySet(),
+    /** Post-race recovery window (ADR 0037); caps sessions and blocks quality/long run. */
+    val recovery: RecoveryWindow? = null,
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
@@ -132,6 +134,7 @@ class WeeklyPlanGenerator {
         val availability = input.profile.weeklyAvailability.minutesByDay
             .filterKeys { it in DayOfWeek.entries }
             .toSortedMap()
+        val recovery = input.recovery
         val base = WeeklyPlan(
             weekStart = weekStart,
             sessions = emptyList(),
@@ -178,7 +181,17 @@ class WeeklyPlanGenerator {
         }
         val dayTrimmed = daysAfterToday.size < allDays.size
         val eventDaysSkipped = days.size < daysAfterToday.size
-        val longDay = days.maxBy { day -> availability.getValue(day) }
+        // A recovery day is active but never receives a long run (ADR 0037).
+        val longDay = days
+            .filter { day ->
+                val date = weekStart.plusDays((day.value - 1).toLong())
+                recovery?.allowsLongRun(date) != false
+            }
+            .maxByOrNull { day -> availability.getValue(day) }
+        val recoveryDays = days.map { weekStart.plusDays((it.value - 1).toLong()) }
+            .filter { recovery?.isActive(it) == true }
+        val recoveryActive = recoveryDays.isNotEmpty()
+        val fullyRecovering = days.isNotEmpty() && recoveryDays.size == days.size
         val safetyBlock = input.readiness.flags.any {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
         } || input.readiness.level != ReadinessLevel.GREEN
@@ -196,7 +209,7 @@ class WeeklyPlanGenerator {
         val deload = input.weekNumberInBlock % DELOAD_EVERY_WEEKS == 0
         val qualityCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
-            race?.allowsQuality(date) ?: true
+            (race?.allowsQuality(date) ?: true) && (recovery?.allowsQuality(date) ?: true)
         }
         val qualityDays = if (qualityAllowed) {
             selectQualityDays(
@@ -257,14 +270,25 @@ class WeeklyPlanGenerator {
                 }
 
                 else -> {
+                    val recoveryCap = recovery?.maxSessionMinutes(date)
+                    val isRecoveryDay = recoveryCap != null
                     val duration = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN)
+                        .let { minutes -> recoveryCap?.let { cap -> minOf(minutes, cap) } ?: minutes }
                     PlannedSession(
                         date = date,
                         type = WorkoutType.EASY,
-                        title = "Fácil e conversável",
+                        title = if (isRecoveryDay) RECOVERY_TITLE else "Fácil e conversável",
                         durationMin = duration,
-                        rationale = "Base aeróbica conversável; sem treino forte neste dia.",
-                        ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
+                        rationale = if (isRecoveryDay) {
+                            "Recuperação após a prova: sessão curta e leve, sem treino forte."
+                        } else {
+                            "Base aeróbica conversável; sem treino forte neste dia."
+                        },
+                        ruleIds = buildList {
+                            add("R-ZONE-01")
+                            add("R-PLAN-06")
+                            if (isRecoveryDay) add("R-RACE-04")
+                        },
                         evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.EASY,
@@ -305,7 +329,16 @@ class WeeklyPlanGenerator {
         val baseConfidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
         val confidence = if (loadTrusted) baseConfidence else downgrade(baseConfidence)
         val rationale = buildString {
-            if (taperActive) {
+            if (recoveryActive) {
+                append(
+                    if (fullyRecovering) {
+                        "Recuperação após a prova: sessões curtas, sem treino forte e sem longão. "
+                    } else {
+                        "Recuperação após a prova em parte da semana: sem treino forte e sem " +
+                            "longão nesses dias. "
+                    },
+                )
+            } else if (taperActive) {
                 val days = race?.daysTo(input.today) ?: 0
                 if (days == 0L) {
                     append("Prova hoje: volume reduzido. ")
@@ -372,6 +405,7 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-06")
                 if (!loadTrusted) add("R-DATA-01")
                 if (loadTrusted && !acwrInRange) add("R-LOAD-03")
+                if (recoveryActive) add("R-RACE-04")
                 if (taperActive) add("R-PLAN-05")
                 if (taperActive) add("R-PLAN-10")
                 if (deload && !taperActive) add("R-PLAN-04")
@@ -404,11 +438,11 @@ class WeeklyPlanGenerator {
         }.toDouble() / planned.size
     }
 
-    private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek, maxQualities: Int): Set<DayOfWeek> {
+    private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek?, maxQualities: Int): Set<DayOfWeek> {
         val selected = mutableListOf<DayOfWeek>()
         days.forEach { day ->
             if (selected.size >= maxQualities) return@forEach
-            if (day == longDay || adjacentDays(day, longDay)) return@forEach
+            if (day == longDay || (longDay != null && adjacentDays(day, longDay))) return@forEach
             if (selected.any { adjacentDays(it, day) }) return@forEach
             selected += day
         }
@@ -480,8 +514,9 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v1"
+        const val ENGINE_VERSION = "weekly-plan-v2"
 
+        private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MIN_EASY_MIN = 20
         private const val MAX_EASY_MIN = 60
         private const val MIN_QUALITY_MIN = 25

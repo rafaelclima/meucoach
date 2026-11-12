@@ -370,7 +370,14 @@ segunda→domingo:
   número — o card diz por quê. É referência, nunca promessa, prescrição ou
   garantia; não entra em plano, taper, prescrição ou briefing.
 - Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
-- Recuperação: 1 dia fácil por 3 km de prova (heurística), mínimo 3 dias sem qualidade após 5k/10k.
+- Recuperação após prova concluída (`R-RACE-04`, [ADR 0037](adr/0037-post-race-recovery.md)):
+  a janela é ancorada na data da prova e vale para 5k (2 dias), 10k (3), meia (5)
+  e maratona (10). Dentro dela não há `QUALITY` nem longão; as sessões viram fácil
+  curto com teto de 30 min (45 min na 2ª metade da meia; 60 min na 2ª metade da
+  maratona). A frequência é mantida e a adesão conta normalmente. `CANCELLED`/
+  `NO_SHOW` não iniciam janela. É heurística de produto (`LIMITED`), encurtada em
+  12/11/2026 por decisão do usuário 0; não é prescrição médica nem consenso
+  científico.
 
 ### 8.11 Prescrição do dia e evidência de conclusão
 
@@ -556,6 +563,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |
+| `R-RACE-04` | Após prova concluída, janela por distância (5k 2, 10k 3, meia 5, maratona 10 dias) sem treino forte e sem longão, com sessões fáceis de até 30 min (45/60 na 2ª metade); `CANCELLED`/`NO_SHOW` não iniciam | ADR 0037; heurística de produto derivada de `SPORTS_SCIENCE` §8.10 | LIMITED — convenção conservadora de produto, sem alegação fisiológica |
 | `R-FEEDBACK-01` | Comparação planejado × executado é descritiva: usa o alvo prescrito do dia, tolera 10% em duração/distância e 1 ponto de RPE, mostra dado ausente como ausente e não julga qualidade nem prescreve; treino livre não inventa alvo | ADR 0033; DANIELS, FRIEL | STRONG como política de produto/copy |
 | `R-REVIEW-01` | A revisão semanal consolida adesão, volume, intensidade, prontidão e sono a partir de valores já calculados; reporta no máximo 3 observações determinísticas que citam regra/evidência, com dado ausente como ausente, sem LLM, sem nota, streak ou prescrição | ADR 0034; política de produto | STRONG como política de produto/copy |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |

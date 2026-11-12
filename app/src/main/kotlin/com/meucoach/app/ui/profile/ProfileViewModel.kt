@@ -13,6 +13,8 @@ import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventOutcome
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.domain.prescription.CompletedRace
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
@@ -79,7 +81,12 @@ data class ProfileUiState(
     /** VDOT/Riegel prediction of the planned race; never a prescription (ADR 0036). */
     val racePrediction: com.meucoach.core.domain.race.RacePredictionResult? = null,
     val raceMessage: String? = null,
+    /** Active post-race recovery window, when today is inside it (ADR 0037). */
+    val raceRecovery: RaceRecoveryUi? = null,
 )
+
+/** Recovery state of the completed race shown in the profile card. */
+data class RaceRecoveryUi(val eventId: String, val until: LocalDate)
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -162,6 +169,13 @@ class ProfileViewModel @Inject constructor(
                 }
             },
             raceMessage = race.second,
+            raceRecovery = RecoveryWindow.active(events.mapNotNull(CompletedRace::from), today)
+                ?.let {
+                    RaceRecoveryUi(
+                        eventId = it.race.eventId,
+                        until = it.race.raceDate.plusDays(it.totalDays.toLong()),
+                    )
+                },
         )
     }.stateIn(
         scope = viewModelScope,

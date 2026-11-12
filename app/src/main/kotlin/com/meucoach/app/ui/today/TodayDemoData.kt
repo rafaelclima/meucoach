@@ -62,6 +62,14 @@ data class TodayExecutionUi(
     val withoutRunData: Boolean,
 )
 
+/** Post-race recovery shown in the day card (ADR 0037). */
+data class RecoveryUi(
+    val dayOfWindow: Int,
+    val totalDays: Int,
+    /** Last day of the window, inclusive. */
+    val until: LocalDate,
+)
+
 data class TodayUiState(
     val today: LocalDate,
     val athleteName: String,
@@ -113,6 +121,8 @@ data class TodayUiState(
     val completionMessage: String? = null,
     /** Blocks completion and explains why the day is a rest/illness day. */
     val illnessOrInjury: Boolean = false,
+    /** Post-race recovery window for today, when active (ADR 0037). */
+    val recovery: RecoveryUi? = null,
 ) {
     /** The race event resolved for today, when the daily decision is competition. */
     val raceEvent: com.meucoach.core.model.RaceEvent?

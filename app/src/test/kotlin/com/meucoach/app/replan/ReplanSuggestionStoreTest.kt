@@ -51,6 +51,18 @@ class ReplanSuggestionStoreTest {
     }
 
     @Test
+    fun `recovery decline is scoped to the week and race`() {
+        store.declineRecovery(today, "race-1")
+
+        assertThat(store.declinedRecovery(today, "race-1")).isTrue()
+        assertThat(store.declinedRecovery(today.plusWeeks(1), "race-1")).isFalse()
+        assertThat(store.declinedRecovery(today, "race-2")).isFalse()
+
+        store.reset()
+        assertThat(store.declinedRecovery(today, "race-1")).isFalse()
+    }
+
+    @Test
     fun `clear and reset remove the preference`() {
         store.suppress(today)
         store.decline(today, suggestion())

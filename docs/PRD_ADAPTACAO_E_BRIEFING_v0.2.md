@@ -374,7 +374,7 @@ dicas (FR-404).
 | FR-204 | Taper e cutoff de qualidade são calculados por data de cada sessão; respeitam sessões protegidas e usam janela `LIMITED` aprovada no `ADR 0030` | P0 / gate de implementação | L |
 | FR-205 | Meta passada ou a menos de 10 dias não produz taper retroativo nem promessa de preparação completa; evento não muda de estado por inferência | P0 | M |
 | FR-206 | Limitar o longão do pico por fração da distância da prova | **Removido do ciclo** até existir regra e justificativa esportiva aprovadas | — |
-| FR-207 | Recuperação pós-prova e janelas por distância | **Fora do escopo implementável** até confirmação de realização e política aprovada | — |
+| FR-207 | Recuperação pós-prova e janelas por distância | **Implementado em 12/11/2026** ([ADR 0037](adr/0037-post-race-recovery.md), C3-07): janela 2/3/5/10 dias, sem qualidade/longão, sessões curtas, `R-RACE-04` LIMITED | — |
 | FR-208 | Limitar eventos v1 às quatro distâncias do formulário; mudança de data/distância invalida T4; mudança de tempo-alvo atualiza a referência aritmética da meta (pace/faixa/passagens), sem pace prescrito ou previsão de desempenho | P0 | M |
 | FR-209 | Um `TodayDecision` retorna exatamente um ramo: prescrição de treino ou evento de prova; evento no dia prevalece sobre sessão ordinária, não cria `WorkoutType` e não conta adesão | P0 / contrato aceito; implementação gate | L |
 | FR-210 | Exibir data/distância/estado do evento e permitir transição explícita e vínculo opcional a atividade, segundo ADR 0030; a auto-conclusão C3-06 pode inferir `COMPLETED` pela regra 90–110% e oferece undo auditável | P0 / gate de implementação | M |
@@ -734,11 +734,11 @@ decomposição dos caminhos de persistência; não assumir que cada linha cabe e
 | 7 | **C3-05** | Implementar evento de prova e taper 2A; sem `WorkoutType.RACE` | C3-G1 | Migração/export/reset, estados, link, disponibilidade, evento no dia e cutoff/taper por data testados |
 | 8 | **C3-G2** | Revisão de fontes e copy de F4 (gate documental; não implica código) | D-1 v0.2 | **Concluído em 10/11/2026:** ADR 0029 aceito, fontes revisadas e copy aprovada; implementação decidida para ciclo futuro |
 
-**Fora da sequência implementável:** recuperação pós-prova (FR-207), previsão de
-tempo por VDOT/Riegel (D6-B, exige ADR próprio com calibração e confiança) e
-limite de longão por fração da distância (FR-206). A referência aritmética da meta
-(pace/faixa/passagens) foi implementada no C3-06. Não criar código para os itens
-fora da sequência neste ciclo.
+**Fora da sequência implementável original:** recuperação pós-prova (FR-207),
+previsão de tempo por VDOT/Riegel (D6-B) e limite de longão por fração da distância
+(FR-206). FR-207 foi concluída em 12/11/2026 pelo [ADR 0037](adr/0037-post-race-recovery.md)
+e D6-B pelo ADR 0036; FR-206 continua fora. A referência aritmética da meta
+(pace/faixa/passagens) foi implementada no C3-06.
 
 **Racional:** preserva a ordem aprovada: perfil antes do briefing; briefing genérico
 antes da prova. O design/ADR de evento é um gate documental prévio, sem antecipar

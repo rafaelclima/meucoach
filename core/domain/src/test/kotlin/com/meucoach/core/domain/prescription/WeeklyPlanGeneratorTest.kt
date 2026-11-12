@@ -889,6 +889,105 @@ class WeeklyPlanGeneratorTest {
             .isGreaterThan(legacyPlan.sessions.first { it.date == monday }.durationMin)
     }
 
+    @Test
+    fun `post-race recovery blocks quality and the long run`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 50,
+                        DayOfWeek.WEDNESDAY to 50,
+                        DayOfWeek.FRIDAY to 50,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery(RaceDistance.MARATHON),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.longRunMinutes).isNull()
+        assertThat(plan.sessions.map { it.type }).containsOnly(WorkoutType.EASY)
+        assertThat(plan.rationale).contains("Recuperação após a prova: sessões curtas")
+        assertThat(plan.ruleIds).contains("R-RACE-04")
+    }
+
+    @Test
+    fun `caps easy sessions by recovery phase`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 50,
+                        DayOfWeek.TUESDAY to 50,
+                        DayOfWeek.WEDNESDAY to 50,
+                        DayOfWeek.THURSDAY to 50,
+                        DayOfWeek.FRIDAY to 50,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                recovery = recovery(RaceDistance.HALF_MARATHON),
+            ),
+        )
+
+        assertThat(plan.sessions.map { it.durationMin }).containsExactly(30, 30, 30, 45, 45)
+        assertThat(plan.sessions.map { it.title }).containsOnly("Recuperação: fácil e curto")
+        assertThat(plan.sessions.all { "R-RACE-04" in it.ruleIds }).isTrue()
+    }
+
+    @Test
+    fun `skips the long run when every available day is recovery`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.TUESDAY to 40),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                recovery = recovery(RaceDistance.FIVE_K),
+            ),
+        )
+
+        assertThat(plan.sessions.map { it.type }).containsExactly(WorkoutType.EASY, WorkoutType.EASY)
+        assertThat(plan.longRunMinutes).isNull()
+        assertThat(plan.weeklyMinutes).isEqualTo(60)
+    }
+
+    @Test
+    fun `returns to normal training after the recovery window`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                recovery = recovery(RaceDistance.FIVE_K),
+            ),
+        )
+
+        val mondaySession = plan.sessions.first { it.date == monday }
+        assertThat(mondaySession.title).isEqualTo("Recuperação: fácil e curto")
+        assertThat(mondaySession.durationMin).isEqualTo(30)
+        assertThat(plan.sessions.none { it.date == monday.plusDays(1) }).isTrue()
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.longRunMinutes).isEqualTo(47)
+        assertThat(plan.rationale).contains("em parte da semana")
+    }
+
+    private fun recovery(distance: RaceDistance): RecoveryWindow =
+        RecoveryWindow(CompletedRace("race-1", distance, monday.minusDays(1)))
+
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
@@ -899,6 +998,7 @@ class WeeklyPlanGeneratorTest {
         weekNumberInBlock: Int = 1,
         race: RacePlan? = null,
         eventDates: Set<LocalDate> = emptySet(),
+        recovery: RecoveryWindow? = null,
     ) = WeeklyPlanInput(
         profile = profile,
         readiness = readiness,
@@ -909,6 +1009,7 @@ class WeeklyPlanGeneratorTest {
         weekNumberInBlock = weekNumberInBlock,
         race = race,
         eventDates = eventDates,
+        recovery = recovery,
     )
 
     private fun readiness(

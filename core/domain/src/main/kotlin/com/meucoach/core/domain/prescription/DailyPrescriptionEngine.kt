@@ -28,6 +28,11 @@ data class DailyPrescriptionInput(
      * [SessionStatus.PLANNED]; a finished day is history and is never rewritten.
      */
     val sessionStatus: SessionStatus? = plannedSession?.status,
+    /**
+     * Post-race recovery window (ADR 0037). It only lowers a `PLANNED` day:
+     * quality/long run are downgraded and easy sessions are capped.
+     */
+    val recovery: RecoveryWindow? = null,
 )
 
 /**
@@ -70,11 +75,27 @@ class DailyPrescriptionEngine {
         val beginnerGuard = planned.type == WorkoutType.QUALITY &&
             input.profile.experience == Experience.BEGINNER &&
             input.sessionStatus == SessionStatus.PLANNED
+        // ADR 0037: after a completed race the day is never strong and the session
+        // is capped, even when the persisted plan still has a full session.
+        val recovery = input.recovery
+        val recoveryActive = recovery?.isActive(input.date) == true &&
+            input.sessionStatus == SessionStatus.PLANNED
+        val recoveryCap = if (recoveryActive) recovery?.maxSessionMinutes(input.date) else null
+        val recoveryReason = if (recoveryActive && recovery != null) {
+            "recuperação após a prova (dia ${recovery.dayOfWindow(input.date)} de ${recovery.totalDays})"
+        } else {
+            null
+        }
+        val recoveryGuard = recoveryActive && planned.type == WorkoutType.QUALITY
         val qualityBlocked =
-            safetyReduce || absenceOnly || !loadTrusted || acwrBlocked || acwrHigh || beginnerGuard
+            safetyReduce || absenceOnly || !loadTrusted || acwrBlocked || acwrHigh ||
+                beginnerGuard || recoveryGuard
         val safetyReasons = safetyReasons(input, shortSleep, negativeReadiness, absenceOnly)
         val qualityReasons = qualityReasons(loadState, acwrHigh, acwrBlocked)
-        val guardReasons = if (beginnerGuard) listOf(BEGINNER_REASON) else emptyList()
+        val guardReasons = buildList {
+            if (beginnerGuard) add(BEGINNER_REASON)
+            if (recoveryGuard && recoveryReason != null) add(recoveryReason)
+        }
         val uncertainLoad = !loadTrusted || acwrBlocked || acwrHigh
 
         val baseConfidence = confidence(input, loadTrusted = loadTrusted)
@@ -88,7 +109,12 @@ class DailyPrescriptionEngine {
         return when (planned.type) {
             WorkoutType.QUALITY -> {
                 if (qualityBlocked) {
-                    val duration = reducedDuration(planned.durationMin, PrescriptionPolicy.DOWNGRADE_FACTOR)
+                    val downgraded = reducedDuration(planned.durationMin, PrescriptionPolicy.DOWNGRADE_FACTOR)
+                    val duration = if (recoveryGuard && recoveryCap != null) {
+                        downgraded?.let { minOf(it, recoveryCap) }
+                    } else {
+                        downgraded
+                    }
                     val reason = (safetyReasons + qualityReasons + guardReasons)
                         .distinct()
                         .joinToString("; ")
@@ -96,7 +122,7 @@ class DailyPrescriptionEngine {
                         input = input,
                         planned = planned,
                         type = WorkoutType.EASY,
-                        title = EASY_REDUCED_TITLE,
+                        title = if (recoveryGuard) RECOVERY_REDUCED_TITLE else EASY_REDUCED_TITLE,
                         durationMin = duration,
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.EASY,
@@ -109,6 +135,7 @@ class DailyPrescriptionEngine {
                             "Hoje: fácil, ${duration ?: "—"} min. Motivo: $reason. " +
                             "Treino forte não foi prescrito hoje.",
                         rules = rules + "R-PRESC-02" + beginnerRules(beginnerGuard) +
+                            recoveryRules(recoveryGuard) +
                             readinessRules(negativeReadiness, shortSleep) +
                             loadRules(uncertainLoad, acwrHigh),
                         evidence = evidence + readinessEvidence(shortSleep, negativeReadiness) +
@@ -133,14 +160,22 @@ class DailyPrescriptionEngine {
             }
 
             WorkoutType.LONG -> {
-                if (safetyReduce || acwrHigh) {
-                    val duration = reducedDuration(planned.durationMin, PrescriptionPolicy.DOWNGRADE_FACTOR)
-                    val reason = (safetyReasons + qualityReasons).distinct().joinToString("; ")
+                if (safetyReduce || acwrHigh || recoveryActive) {
+                    val reduced = reducedDuration(planned.durationMin, PrescriptionPolicy.DOWNGRADE_FACTOR)
+                    val duration = if (recoveryActive && recoveryCap != null) {
+                        reduced?.let { minOf(it, recoveryCap) }
+                    } else {
+                        reduced
+                    }
+                    val reason = (
+                        safetyReasons + qualityReasons +
+                            listOfNotNull(recoveryReason)
+                        ).distinct().joinToString("; ")
                     return build(
                         input = input,
                         planned = planned,
                         type = WorkoutType.EASY,
-                        title = EASY_REDUCED_TITLE,
+                        title = if (recoveryActive) RECOVERY_REDUCED_TITLE else EASY_REDUCED_TITLE,
                         durationMin = duration,
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.EASY,
@@ -152,7 +187,8 @@ class DailyPrescriptionEngine {
                         rationale = "Planejado: ${planned.title} (${planned.durationMin ?: "—"} min). " +
                             "Hoje: fácil, ${duration ?: "—"} min. Motivo: $reason. " +
                             "O longão fica para quando a recuperação permitir.",
-                        rules = rules + "R-PRESC-02" + readinessRules(negativeReadiness, shortSleep) +
+                        rules = rules + "R-PRESC-02" + recoveryRules(recoveryActive) +
+                            readinessRules(negativeReadiness, shortSleep) +
                             (if (acwrHigh) listOf("R-LOAD-03") else emptyList()),
                         evidence = evidence + readinessEvidence(shortSleep, negativeReadiness) +
                             (if (acwrHigh) listOf("EV-GABBETT-2016") else emptyList()),
@@ -176,20 +212,35 @@ class DailyPrescriptionEngine {
             }
 
             WorkoutType.EASY -> {
-                if (safetyReduce) {
-                    val duration = reducedDuration(planned.durationMin, PrescriptionPolicy.REDUCE_FACTOR)
-                    val reason = safetyReasons.joinToString("; ")
+                val reduced = if (safetyReduce) {
+                    reducedDuration(planned.durationMin, PrescriptionPolicy.REDUCE_FACTOR)
+                } else {
+                    planned.durationMin
+                }
+                val duration = if (recoveryActive && recoveryCap != null &&
+                    reduced != null && reduced > recoveryCap
+                ) {
+                    recoveryCap
+                } else {
+                    reduced
+                }
+                val recoveryReduced = recoveryActive && duration != planned.durationMin
+                if (safetyReduce || recoveryReduced) {
+                    val reason = (safetyReasons + listOfNotNull(recoveryReason))
+                        .distinct()
+                        .joinToString("; ")
                     return build(
                         input = input,
                         planned = planned,
                         type = WorkoutType.EASY,
-                        title = EASY_REDUCED_TITLE,
+                        title = if (recoveryReduced) RECOVERY_REDUCED_TITLE else EASY_REDUCED_TITLE,
                         durationMin = duration,
                         targets = plannedTargets(planned, WorkoutType.EASY, input, duration),
                         adjustment = PrescriptionAdjustment.REDUCE,
                         rationale = "Planejado: ${planned.title} (${planned.durationMin ?: "—"} min). " +
                             "Hoje: fácil, ${duration ?: "—"} min. Motivo: $reason.",
-                        rules = rules + "R-PRESC-02" + readinessRules(negativeReadiness, shortSleep),
+                        rules = rules + "R-PRESC-02" + recoveryRules(recoveryActive) +
+                            readinessRules(negativeReadiness, shortSleep),
                         evidence = evidence + readinessEvidence(shortSleep, negativeReadiness),
                         confidence = baseConfidence,
                     )
@@ -425,6 +476,9 @@ class DailyPrescriptionEngine {
 
     private fun beginnerRules(active: Boolean): List<String> = if (active) listOf("R-PRESC-04") else emptyList()
 
+    /** ADR 0037: recovery is a product convention, never a physiological claim. */
+    private fun recoveryRules(active: Boolean): List<String> = if (active) listOf("R-RACE-04") else emptyList()
+
     private fun targetRules(targets: PrescriptionTargets): List<String> = buildList {
         if (targets.pace != null || targets.heartRate != null) add("R-ZONE-01")
         if (targets.pace == null && targets.heartRate == null && targets.rpe != null) add("R-CAL-02")
@@ -485,6 +539,10 @@ class DailyPrescriptionEngine {
             append(input.load?.coverage?.daysWithLoad).append(',')
             append(input.load?.coverage?.sourceFresh).append('|')
             append("heat=").append(input.heatLevel).append('|')
+            append("recovery=").append(
+                input.recovery?.takeIf { it.isActive(input.date) }
+                    ?.let { "${it.race.eventId},${it.dayOfWindow(input.date)}" } ?: "null",
+            ).append('|')
             append("planConfidence=").append(input.planConfidence).append('|')
             append("status=").append(input.sessionStatus).append('|')
             if (planned != null) {
@@ -506,6 +564,7 @@ class DailyPrescriptionEngine {
         const val ACWR_MIN = 0.8
         const val ACWR_MAX = 1.3
         const val EASY_REDUCED_TITLE = "Fácil, sem pressa"
+        const val RECOVERY_REDUCED_TITLE = "Recuperação: fácil e curto"
         const val BEGINNER_REASON = "seu nível é iniciante e o treino forte fica para depois"
     }
 }

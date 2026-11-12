@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 12/11/2026 (C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.440 testes no total (696 em `:app`, 162 em `core:data`, 543 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,62% de linhas (4.632/4.745), 80,94% de branches (3.426/4.233), 96,24% de instruções (32.026/33.278)
+- **Testes:** 1.467 testes no total (700 em `:app`, 162 em `core:data`, 566 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,56% de linhas (4.762/4.881), 81,13% de branches (3.582/4.415), 96,23% de instruções (32.952/34.244)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -24,6 +24,7 @@
 - **F4 — hidratação (C3-G2, concluído):** gate documental fechado e implementado no mesmo dia ([ADR 0029](adr/0029-f4-hydration-nutrition-copy.md)): copy educativa estática de hidratação aprovada e exibida no sheet "Como correr hoje" (sem números, produto, eletrólito ou horário), alimentação vira encaminhamento a nutricionista, `R-FUEL-01/02` e evidências aceitas nos catálogos, e `EV-NATA-2017` corrige a citação `EV-NATA-2025` do PRD. Ramo de prova continua sem dicas (FR-404).
 - **Auto-conclusão da prova (C3-06, concluído):** corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova automaticamente; múltiplas candidatas exigem escolha explícita. `completionSource` (`USER` × `AUTO_IMPORT`) audita a origem, o undo volta a `PLANNED` e grava a recusa para o mesmo arquivo, e a corrida continua uma atividade normal (sem `SessionExecution`). Room 16 e migração 15→16 preservam o histórico.
 - **Referência da meta (C3-06, concluído):** `RaceTargetProjector` puro deriva pace médio, faixa ±3% e passagens por km de `RaceEvent.distance`/`targetTimeSec`; sem meta, nada é inventado. A referência aparece só nos cards de prova do Perfil/Hoje, nunca em prescrição, plano, briefing ou troca, e é rotulada “referência da meta, não prescrição nem garantia”.
+- **Recuperação pós-prova (C3-07, concluído):** `RecoveryWindow` puro deriva a janela da prova concluída (5k 2, 10k 3, meia 5, maratona 10 dias) e bloqueia qualidade/longão com sessões fáceis de até 30 min (45/60 na 2ª metade). O gerador e o replanejador recebem a janela; a prescrição do dia aplica defesa em profundidade (`QUALITY`/`LONG` → `EASY`, `EASY` → teto), `daily-prescription-v4` e `weekly-plan-v2`. Semana persistida que ainda viola a janela gera sugestão `RACE_COMPLETED` (aceitar/recusar, lembrada por semana+evento). Hoje/Plano/Perfil mostram a recuperação; `CANCELLED`/`NO_SHOW` e meta legada não iniciam janela; sem migração (`R-RACE-04`, LIMITED).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -75,6 +76,46 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-12 — C3-07: recuperação pós-prova (FR-207)
+
+**Objetivo:** fechar o ciclo da prova — depois de concluir o evento, o app encerra os dias restantes da semana da prova e aplica uma janela de recuperação por distância, sem prescrever treino forte ou longão, sem reescrever histórico e sem migração. Decisões D1–D6 aprovadas pelo usuário 0 e registradas no [ADR 0037](adr/0037-post-race-recovery.md).
+
+### Concluído
+
+- **ADR 0037:** janela **2/3/5/10 dias** (5k/10k/meia/maratona), sessões curtas e fáceis, tetos de **30 min → 45/60 min**, superfícies Hoje/Plano/Perfil, `R-RACE-04` **LIMITED sem `evidenceId`** e sugestão de revisão com aceite.
+- **Domínio:** `CompletedRace`/`RecoveryWindow` puros, com `dayNumber`, `isActive`, `allowsQuality`, `allowsLongRun`, `maxSessionMinutes`, `blocks`, `active`/`latest` e `intersects`; âncora em `targetDate` (nunca `resolvedAt`).
+- **Gerador:** dias de recuperação não são candidatos a `QUALITY`; o longão é deslocado ou omitido; `EASY` recebe o teto e o título “Recuperação: fácil e curto”; rationale e plano citam `R-RACE-04`; `ENGINE_VERSION` → `weekly-plan-v2`.
+- **Prescrição:** defesa em profundidade com `DOWNGRADE` de `QUALITY`/`LONG` e `REDUCE` de `EASY` acima do teto, sem tocar `DONE`/`CLOSED`; o hash de inputs inclui a janela ativa; `ENGINE_VERSION` → `daily-prescription-v4`.
+- **Replanejador:** recebe a janela, valida a semana mesclada, não repõe carga e cria `ReplanCause`/`ReplanTrigger.RACE_COMPLETED` quando a semana persistida ainda viola a recuperação; `ReplanSuggestion.recoveryEventId` permite lembrar a recusa por semana+evento.
+- **Troca:** `SessionSwapper` recusa dias de recuperação.
+- **App:** `TodayViewModel` e `ReplanContextBuilder` derivam a janela dos eventos `COMPLETED`; `GetTodayPrescription`/`GetTodayDecision` transportam; Hoje mostra “Recuperação após a prova · dia N de M · até dd/mm”, o Plano ganha a pill “Recuperação” e o Perfil mostra “Recuperação até dd/mm”.
+- **Copy:** `COMMUNICATION.md` §6.13; `ExplanationCatalog` com `R-RACE-04`; nenhum ID técnico na superfície comum.
+- **Docs:** `SPORTS_SCIENCE` §8.10/§14 reescritos para o comportamento real, `DECISIONS` 1.18, `ROADMAP` 1.32, `PRD_COACH_CORRIDA` (BUG-05) e `PRD` v0.2.
+- **Testes:** +11 `RecoveryWindowTest`, +4 `WeeklyPlanGeneratorTest` (bloqueio, fases, semana inteira, retorno ao normal), +6 `DailyPrescriptionEngineTest` (qualidade, fácil acima do teto, longão, dentro do teto, fora da janela, `DONE` intacto), +3 `PlanReplannerTest` (sugestão, semana compatível, janela encerrada), +3 `TodayRecoveryTest` (estado, ausência, linha no card) e +1 `ReplanSuggestionStoreTest`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint e Kover).
+- **1.467 testes**, 0 falhas e 0 `@Ignore` (700 `:app`, 162 `core:data`, 566 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,56% de linhas (4.762/4.881), 81,13% de branches (3.582/4.415), 96,23% de instruções (32.952/34.244).
+- Schema permanece **v17**; nenhuma dependência nova; nenhum dado real no diff.
+- `:app:verifyRoborazziDebug --tests "*ScreenshotTest"` — **verde na execução final** (66 goldens). Durante a sessão o flake de Vico apareceu em `health-recovery-dark`/`health-charts-dark`/`trends-volume-dark` em execuções diferentes, sempre com o canvas do gráfico vazio e o resto do card idêntico; esperas de 2 s e 4 s não o eliminaram, nenhum golden foi regravado e a constante voltou para 1 s. O item segue no backlog de estabilização.
+- Goldens existentes não mudaram: a recuperação só aparece quando existe prova concluída e o estado de demo não tem janela.
+
+### Decisões e observações
+
+- **Janela mais leve que o texto anterior:** 2/3/5/10 foi escolha explícita do usuário 0; `SPORTS_SCIENCE` §8.10 deixou de prometer “mínimo 3 dias” e passou a descrever a tabela real, mantendo `LIMITED`.
+- **Sem `WorkoutType.RECOVERY`:** recuperação é estado de calendário, não treino novo; o dia continua `EASY`, preservando troca, matcher, adesão e alvos.
+- **Sem migração:** a janela é derivada de `status`/`targetDate`; o undo da auto-conclusão só volta o evento e a janela desaparece. `CANCELLED`/`NO_SHOW` e meta legada não geram janela.
+- **Sugestão, nunca automática:** o replanejador só sugere quando a semana persistida ainda tem forte/longão ou duração acima do teto na janela; a recusa fica em SharedPreferences e não volta todo dia.
+- **Fim da janela no meio da semana:** a semana termina conservadora; o app não aumenta carga no meio da semana (ADR 0028).
+
+### Próximo passo
+
+1. Validar em aparelho: concluir uma prova, ver a janela no Hoje/Plano/Perfil, aceitar/recusar a sugestão e testar o undo.
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: FR-206 (longão por fração), N-03 (duração da qualidade no taper), T-02/T-03/T-04, flake de Vico e U-01..U-04.
 
 ## Sessão 2026-11-11 — D6-B: previsão de prova por VDOT/Riegel
 

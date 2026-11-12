@@ -37,10 +37,12 @@ import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.briefing.SessionBriefingEngine
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
 import com.meucoach.core.domain.prescription.RacePlan
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionCompletionRules
 import com.meucoach.core.domain.prescription.SessionMatcher
@@ -107,7 +109,12 @@ class TodayViewModel @Inject constructor(
         val weekStart: LocalDate,
     )
 
-    private data class ResolvedDay(val context: TodayContext, val plan: WeeklyPlan?, val events: List<RaceEvent>)
+    private data class ResolvedDay(
+        val context: TodayContext,
+        val plan: WeeklyPlan?,
+        val events: List<RaceEvent>,
+        val recovery: RecoveryWindow?,
+    )
 
     private data class TodayContext(
         val checkIn: DailyCheckIn?,
@@ -183,6 +190,13 @@ class TodayViewModel @Inject constructor(
     private val resolvedDay = combine(context, storedPlan, planHistory, events) { context, plan, history, events ->
         val weekStart = context.today.weekStart()
         val historyReady = history.isReady && history.weekStart == weekStart
+        // ADR 0037: only completed races start a recovery window; the latest one
+        // applies while it intersects the visible week.
+        val recovery = RecoveryWindow.covering(
+            races = events.mapNotNull(CompletedRace::from),
+            start = weekStart,
+            end = weekStart.plusDays(6),
+        )
         val planned = plan ?: if (historyReady) {
             context.profile?.let {
                 val eventDates = events.map { event -> event.targetDate }.toSet()
@@ -201,13 +215,14 @@ class TodayViewModel @Inject constructor(
                         weekNumberInBlock = history.weekNumberInBlock,
                         race = race,
                         eventDates = eventDates,
+                        recovery = recovery,
                     ),
                 )
             }
         } else {
             null
         }
-        ResolvedDay(context = context, plan = planned, events = events)
+        ResolvedDay(context = context, plan = planned, events = events, recovery = recovery)
     }
 
     private val dayState = resolvedDay
@@ -227,6 +242,7 @@ class TodayViewModel @Inject constructor(
                     load = context.load,
                     heatLevel = context.checkIn?.heatLevel ?: HeatLevel.NONE,
                     plan = plan,
+                    recovery = resolved.recovery,
                 ),
             )
             val prescription = (decision as? TodayDecision.Training)?.prescription
@@ -263,6 +279,7 @@ class TodayViewModel @Inject constructor(
                 prescription = prescription,
                 decision = decision,
                 eventDates = resolved.events.map { event -> event.targetDate }.toSet(),
+                recovery = resolved.recovery,
                 kmByDay = context.kmByDay,
                 weeklyLoadKm = context.weeklyLoadKm,
                 recentActivity = context.recentActivity,
@@ -677,6 +694,7 @@ internal fun todayState(
     activitySuggestions: List<ActivitySuggestionUi> = emptyList(),
     todayExecution: TodayExecutionUi? = null,
     completionMessage: String? = null,
+    recovery: RecoveryWindow? = null,
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
     val signals = inputs.signals.copy(
@@ -710,7 +728,7 @@ internal fun todayState(
         is TodayDecision.Training -> decision.prescription
 
         null -> prescription ?: profile?.let {
-            buildPreviewPrescription(it, checkIn, result, load, today, plan)
+            buildPreviewPrescription(it, checkIn, result, load, today, plan, recovery)
         }
     }
     val todaySession = plan?.sessions?.firstOrNull { it.date == today }
@@ -783,6 +801,13 @@ internal fun todayState(
         todayExecution = if (competition) null else todayExecution,
         completionMessage = completionMessage,
         illnessOrInjury = signals.illnessOrInjury,
+        recovery = recovery?.takeIf { it.isActive(today) }?.let {
+            RecoveryUi(
+                dayOfWindow = it.dayOfWindow(today),
+                totalDays = it.totalDays,
+                until = it.race.raceDate.plusDays(it.totalDays.toLong()),
+            )
+        },
     )
 }
 
@@ -793,6 +818,7 @@ private fun buildPreviewPrescription(
     load: LoadSnapshot?,
     today: LocalDate,
     plan: WeeklyPlan?,
+    recovery: RecoveryWindow? = null,
 ): DailyPrescription {
     val planned = plan?.sessions?.firstOrNull { it.date == today }
     return DailyPrescriptionEngine().prescribe(
@@ -809,6 +835,7 @@ private fun buildPreviewPrescription(
                 null
             },
             planConfidence = plan?.confidence,
+            recovery = recovery,
         ),
     )
 }

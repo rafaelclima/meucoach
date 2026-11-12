@@ -51,6 +51,10 @@ object ExplanationCatalog {
             "R-RACE-03",
             "Previsão de tempo por VDOT, com faixa e checagem de Riegel",
         ),
+        "R-RACE-04" to RuleExplanation(
+            "R-RACE-04",
+            "Recuperação após a prova, sem treino forte e sem longão",
+        ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",
             "Planejado × executado descreve a diferença, sem julgar",

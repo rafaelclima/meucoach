@@ -27,6 +27,14 @@ class ReplanSuggestionStore(context: Context, prefsName: String = PREFS_NAME) {
         prefs.edit().putString(declinedKey(date), suggestionKey(suggestion)).apply()
     }
 
+    /** Recovery proposals are declined for the whole week + race, not only for today (ADR 0037). */
+    fun declinedRecovery(weekStart: LocalDate, eventId: String): Boolean =
+        prefs.getString(recoveryKey(weekStart, eventId), null) != null
+
+    fun declineRecovery(weekStart: LocalDate, eventId: String) {
+        prefs.edit().putString(recoveryKey(weekStart, eventId), eventId).apply()
+    }
+
     fun clear(date: LocalDate) {
         prefs
             .edit()
@@ -41,10 +49,14 @@ class ReplanSuggestionStore(context: Context, prefsName: String = PREFS_NAME) {
 
     private fun declinedKey(date: LocalDate): String = "$KEY_DECLINED_PREFIX$date"
 
+    private fun recoveryKey(weekStart: LocalDate, eventId: String): String =
+        "$KEY_RECOVERY_DECLINED_PREFIX${weekStart}_$eventId"
+
     companion object {
         const val PREFS_NAME = "meucoach_replan_suggestions"
         private const val KEY_SUPPRESSED_DATE = "suppressedDate"
         private const val KEY_DECLINED_PREFIX = "declined_"
+        private const val KEY_RECOVERY_DECLINED_PREFIX = "declinedRecovery_"
 
         /** Stable identity of one proposal: a new version or input set is a new proposal. */
         fun suggestionKey(suggestion: ReplanSuggestion): String =

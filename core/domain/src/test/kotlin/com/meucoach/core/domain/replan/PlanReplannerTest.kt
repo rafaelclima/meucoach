@@ -2,9 +2,11 @@ package com.meucoach.core.domain.replan
 
 import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.RacePlan
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
@@ -1087,6 +1089,92 @@ class PlanReplannerTest {
         assertThat(base).isNotEqualTo(event)
     }
 
+    @Test
+    fun `suggests a recovery revision when the persisted week still has quality`() {
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.QUALITY, 40),
+            session(saturday, WorkoutType.LONG, 90),
+        )
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.TEN_K, monday.minusDays(1)),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                recovery = recovery,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    profile(defaultAvailability()).weeklyAvailability,
+                ),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
+        val suggestion = (result as ReplanResult.Suggest).suggestion
+        assertThat(suggestion.trigger).isEqualTo(ReplanTrigger.RACE_COMPLETED)
+        assertThat(suggestion.causes).contains(ReplanCause.RACE_COMPLETED)
+        assertThat(suggestion.recoveryEventId).isEqualTo("race-1")
+        val candidate = result.candidate
+        assertThat(candidate.qualityCount).isZero()
+        val wednesdaySession = candidate.sessions.first { it.date == wednesday }
+        assertThat(wednesdaySession.type).isEqualTo(WorkoutType.EASY)
+        assertThat(wednesdaySession.durationMin).isEqualTo(30)
+        assertThat(wednesdaySession.ruleIds).contains("R-RACE-04")
+    }
+
+    @Test
+    fun `does not suggest when the persisted week already respects recovery`() {
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 30),
+            session(wednesday, WorkoutType.EASY, 30),
+            session(saturday, WorkoutType.LONG, 30),
+        )
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.TEN_K, monday.minusDays(1)),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                recovery = recovery,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    profile(defaultAvailability()).weeklyAvailability,
+                ),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat((result as ReplanResult.NoChange).reason).contains("Nenhum desvio elegível")
+    }
+
+    @Test
+    fun `does not suggest recovery after the window ended`() {
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.QUALITY, 40),
+            session(saturday, WorkoutType.LONG, 90),
+        )
+        val recovery = RecoveryWindow(
+            CompletedRace("race-1", RaceDistance.FIVE_K, monday.minusDays(5)),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                recovery = recovery,
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    profile(defaultAvailability()).weeklyAvailability,
+                ),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+    }
+
     private fun input(
         current: WeeklyPlan,
         today: LocalDate,
@@ -1106,6 +1194,7 @@ class PlanReplannerTest {
         currentTemporalContextHash: String? = null,
         race: RacePlan? = null,
         eventDates: Set<LocalDate> = emptySet(),
+        recovery: RecoveryWindow? = null,
     ) = ReplanInput(
         currentPlan = current,
         currentVersion = currentVersion,
@@ -1123,6 +1212,7 @@ class PlanReplannerTest {
         nonTrainablePastDates = nonTrainablePastDates,
         race = race,
         eventDates = eventDates,
+        recovery = recovery,
         missedSessionThreshold = missedSessionThreshold,
         today = today,
     )

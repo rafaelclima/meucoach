@@ -63,6 +63,7 @@ fun SemanticsNodeInteraction.captureStableScreenshot(
  *
  * Vico can stay blank for longer than 500 ms when the full golden suite runs;
  * one second keeps the gate deterministic without changing any expected image.
+ * The residual flake is tracked in the stabilization backlog.
  */
 const val CHART_SETTLE_MILLIS = 1_000L
 

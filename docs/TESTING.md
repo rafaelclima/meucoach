@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.10 · **Data:** 11/11/2026 · Atualiza a evidência de testes e cobre o burn-in do PMC (BUG-03), o z-score de HRV em log (BUG-04) e a estabilização do gate visual.
+**Versão:** 1.11 · **Data:** 12/11/2026 · Atualiza a evidência de testes e cobre a recuperação pós-prova (C3-07): janela por distância, tetos, bloqueio de qualidade/longão e sugestão `RACE_COMPLETED`.
 
 ## 1. Princípios
 
@@ -91,7 +91,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (11/11/2026):
 
-- 1.440 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 543 em `core:domain`, 162 em `core:data`, 696 em `:app`).
+- 1.467 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 566 em `core:domain`, 162 em `core:data`, 700 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,63% de linhas, 81,42% de branches, 96,30% de instruções.
@@ -155,8 +155,11 @@ Evidência atual (11/11/2026):
 - `HealthConnectViewModelTest`: status, permissões faltantes, sync, indisponibilidade e erro.
 - `HealthConnectContentTest`: estados do card, autorização e sincronização.
 - `WorkoutRecommenderTest`: guardrails, fácil Z2 calibrado, RPE, ACWR e duração.
-- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia.
+- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia; recuperação pós-prova bloqueia qualidade/longão, aplica tetos por fase e volta ao normal depois da janela.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
+- `RecoveryWindowTest`: janela 2/3/5/10, borda inclusiva, dia da prova fora, tetos por distância, `blocks`, `dayOfWindow`, `intersects`, escolha da prova mais recente e invariantes.
+- `DailyPrescriptionEngineTest`: dentro da janela, `QUALITY`/`LONG` viram fácil com teto, fácil acima do teto é reduzido, dia `DONE` não é reescrito e fora da janela nada muda.
+- `PlanReplannerTest`: `RACE_COMPLETED` sugere revisão quando a semana persistida viola a janela, `NoChange` quando já está compatível e depois da janela.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
 - `TodayReplanTest`: selo de versão, botão explícito, diff “o que mudou” e aceitar/recusar/suprimir na tela Hoje.
 - `SessionBriefingEngineTest`: fidelidade de cada campo à prescrição, determinismo, RPE sem calibração, ausência de blocos/intervalos/alternativas, `DONE`/`CLOSED` sem briefing, downgrade `QUALITY → EASY` e IDs preservados.
@@ -364,6 +367,10 @@ Goldens de D6-B (ADR 0036): os mesmos `profile-race-{dark,light}` e `today-race-
 Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre).
 
 Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 1 s real inicial; o helper não faz nada quando nenhum modo do Roborazzi está ativo. Isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
+
+Goldens de C3-07: **nenhum golden novo**. A recuperação só aparece quando existe prova `COMPLETED` com janela ativa e o estado de demo não tem janela; `TodayRecoveryTest` cobre a linha “Recuperação após a prova · dia N de M · até dd/mm” no card e o downgrade da prescrição.
+
+Flake residual de Vico: em execuções completas, um gráfico pode sair com o canvas vazio mesmo com os nós `mc-chart-ready` e sem `mc-chart-loading`; o flake troca de gráfico entre execuções (`health-recovery-dark`, `health-charts-dark`, `trends-volume-dark`). Aumentar a espera real para 2 s ou 4 s não o eliminou, então a constante voltou para 1 s. Não regrave golden para “resolver” isso: reexecute o teste isolado e mantenha o item no backlog de estabilização.
 
 Goldens de calibração: `calibration-{dark,light}` cobrem a tela com a ação “Estimar pelos meus treinos” e o resultado Tier A; `calibration-tier-b-{dark,light}` rolam até o resultado Tier B e capturam o rótulo de estimativa, a copy honesta, VDOT/LTHR/ritmo e o salvamento explícito.
 

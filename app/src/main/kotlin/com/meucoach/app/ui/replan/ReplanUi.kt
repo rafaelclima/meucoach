@@ -62,6 +62,7 @@ private fun ReplanSuggestion.headline(): String = when {
     causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) -> "Seu fuso mudou"
     trigger == ReplanTrigger.PROFILE_CHANGED -> "Seu perfil mudou"
     trigger == ReplanTrigger.USER_REQUEST -> "Reorganizar o resto da semana?"
+    trigger == ReplanTrigger.RACE_COMPLETED -> "Ajustar o resto da semana após a prova?"
     trigger == ReplanTrigger.MISSED_SESSIONS -> "Dá para ajustar o resto da semana"
     else -> "Sua disponibilidade mudou"
 }
@@ -87,6 +88,10 @@ private fun ReplanSuggestion.body(): String = when {
         "$missedSentence Posso reorganizar só os próximos dias, " +
             "sem repor carga e sem mexer no que já passou."
 
+    trigger == ReplanTrigger.RACE_COMPLETED ->
+        "Você concluiu a prova. Posso encurtar os próximos dias e tirar o treino forte " +
+            "durante a recuperação, sem repor carga e sem mexer no que já passou."
+
     else ->
         "Posso reorganizar só os próximos dias com os horários que você tem agora, " +
             "sem aumentar a carga e sem mexer no que já passou."
@@ -98,6 +103,7 @@ private fun ReplanCause.label(): String = when (this) {
     ReplanCause.MISSED_SESSIONS -> "treinos não concluídos"
     ReplanCause.AVAILABILITY_CHANGED -> "disponibilidade"
     ReplanCause.USER_REQUEST -> "pedido seu"
+    ReplanCause.RACE_COMPLETED -> "recuperação após a prova"
 }
 
 internal fun ReplanChange.toUi(): ReplanChangeUi = ReplanChangeUi(

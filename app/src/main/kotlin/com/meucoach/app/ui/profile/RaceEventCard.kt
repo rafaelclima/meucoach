@@ -62,6 +62,9 @@ import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+private val RECOVERY_UNTIL_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")
 
 /**
  * The explicit race surface of the profile (ADR 0030).
@@ -78,6 +81,7 @@ internal fun RaceEventCard(
     projection: RaceTargetProjection?,
     prediction: RacePredictionResult?,
     message: String?,
+    recovery: RaceRecoveryUi? = null,
     onSave: (RaceDistance, LocalDate, Int?) -> Unit,
     onComplete: (String?) -> Unit,
     onCancel: () -> Unit,
@@ -214,6 +218,14 @@ internal fun RaceEventCard(
                                 onClick = { onUndoAutoCompletion(event.id) },
                                 trailingArrow = false,
                                 modifier = Modifier.testTag("race-undo-auto-${event.id}"),
+                            )
+                        }
+                        if (event.status == RaceStatus.COMPLETED && recovery?.eventId == event.id) {
+                            Text(
+                                text = "Recuperação até ${RECOVERY_UNTIL_DATE.format(recovery.until)}",
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                                modifier = Modifier.testTag("race-recovery-${event.id}"),
                             )
                         }
                     }

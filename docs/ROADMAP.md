@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.31 · **Data:** 11/11/2026 · **Mudança:** D6-B concluído (previsão de prova por VDOT/Riegel, Room 17); BUG-06 validado em dados reais e fatia 2 ligada aos treinos; BUG-04 corrigido; BUG-03 e FR-011 concluídos.
+**Versão:** 1.32 · **Data:** 12/11/2026 · **Mudança:** C3-07 concluído — recuperação pós-prova (FR-207, janela 2/3/5/10 dias, `R-RACE-04`, sugestão `RACE_COMPLETED`); D6-B, BUG-06, BUG-03/04 e FR-011 seguem concluídos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -424,9 +424,11 @@ FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/
 | **C3-05** | Implementação do evento de prova e taper 2A, sem `WorkoutType.RACE` | **Concluído em 10/11/2026:** modelo/domínio, `TodayDecision`, Room 15, repositório, taper/cutoff, adesão, troca, `GetTodayDecision`, notificação e UI de Perfil/Hoje/Plano com goldens |
 | **C3-G2** | Revisão de fontes/copy de F4 | **Concluído e implementado em 10/11/2026:** ADR 0029 aceito (fontes ACSM 2007/NATA 2017/Thomas 2016 revisadas; `EV-NATA-2017` corrige a citação do PRD), copy aprovada em `COMMUNICATION.md` §6.10 e seções de hidratação/alimentação no sheet de briefing com testes de regressão e goldens |
 | **C3-06** | Auto-conclusão da prova e referência da meta (pace/faixa/passagens) | **Concluído em 11/11/2026:** ADR 0032, regra 90–110% com uma única candidata, `completionSource`/Room 16, undo com recusa persistida, referência aritmética no Perfil/Hoje, testes de domínio/dados/app/UI e goldens de prova atualizados |
+| **C3-07** | Recuperação pós-prova (FR-207) | **Concluído em 12/11/2026:** ADR 0037, janela 2/3/5/10 dias por distância, sessões fáceis com teto, sem qualidade/longão, `R-RACE-04` LIMITED, sugestão de revisão `RACE_COMPLETED` com recusa lembrada por semana+evento, Hoje/Plano/Perfil; sem migração |
 
-Fora do escopo implementável: recuperação pós-prova (FR-207) e limite de longão por
-fração da distância (FR-206). D6-B foi implementado pelo ADR 0036 em 11/11/2026.
+Fora do escopo implementável: limite de longão por fração da distância (FR-206).
+A recuperação pós-prova (FR-207) foi concluída em 12/11/2026 pelo ADR 0037.
+D6-B foi implementado pelo ADR 0036 em 11/11/2026.
 N-03 continua sem entrega; o PRD v0.2 apenas definiu a direção de evento/taper que
 a implementação C3-05/C3-06 seguiu.
 
@@ -456,13 +458,12 @@ comparação por splits seguem pendentes.
 
 ### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
 
-**Status:** registrado em 06/11/2026; fora do ciclo 1.
+**Status:** recuperação pós-prova concluída em 12/11/2026 ([ADR 0037](adr/0037-post-race-recovery.md)); os demais itens continuam no backlog.
 
-- Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão.
-- Tratar a prova como evento explícito (dia sem treino depois).
-- Adicionar recuperação pós-prova (1–2 semanas, sem qualidade, conforme distância).
-- Rever a relação entre taper e deload.
-- Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
+- [x] Adicionar recuperação pós-prova (1–2 semanas conforme distância, sem qualidade) — implementada como janela determinística 2/3/5/10 dias com sessões curtas e sem longão.
+- [ ] Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão.
+- [ ] Rever a relação entre taper e deload.
+- [ ] Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
 
 ### N-05 — Backfill do Health Connect (backlog de integração)
 

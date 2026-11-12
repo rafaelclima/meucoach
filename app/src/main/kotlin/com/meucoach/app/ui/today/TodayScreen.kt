@@ -207,6 +207,7 @@ fun TodayScreen(
                     canComplete = hasPlannedSessionToday,
                     canCorrectManual = canCorrectManual,
                     completionMessage = state.completionMessage,
+                    recovery = state.recovery,
                     onSwapClick = { swapOpen = true },
                     onStartClick = { startOpen = true },
                     onCompleteClick = { completionOpen = true },
@@ -227,6 +228,7 @@ fun TodayScreen(
                     replan = replan,
                     raceEvent = raceEvent,
                     eventDates = state.eventDates,
+                    recovery = state.recovery,
                     onSkip = onSkipSession,
                     onExplain = { openExplanation(ExplanationSource.PLAN) },
                     onReplan = onReplanRequest,
@@ -533,6 +535,7 @@ private fun NextWorkoutCard(
     canComplete: Boolean,
     canCorrectManual: Boolean,
     completionMessage: String?,
+    recovery: RecoveryUi? = null,
     onSwapClick: () -> Unit,
     onStartClick: () -> Unit,
     onCompleteClick: () -> Unit,
@@ -586,6 +589,16 @@ private fun NextWorkoutCard(
                     }
                 }
             }
+        }
+        recovery?.let { info ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Recuperação após a prova · dia ${info.dayOfWindow} de ${info.totalDays} " +
+                    "· até ${RECOVERY_DATE.format(info.until)}",
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("today-recovery"),
+            )
         }
         when {
             done -> {
@@ -1037,6 +1050,7 @@ private fun PlanWeekCard(
     replan: ReplanUiState,
     raceEvent: com.meucoach.core.model.RaceEvent?,
     eventDates: Set<LocalDate>,
+    recovery: RecoveryUi? = null,
     onSkip: (LocalDate, String) -> Unit,
     onExplain: () -> Unit,
     onReplan: () -> Unit,
@@ -1061,6 +1075,14 @@ private fun PlanWeekCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (recovery != null) {
+                    McPill(
+                        text = "Recuperação",
+                        containerColor = colors.warning.copy(alpha = 0.12f),
+                        contentColor = colors.warning,
+                        modifier = Modifier.testTag("plan-recovery"),
+                    )
+                }
                 McPill(
                     text = "v${replan.planVersion}",
                     containerColor = colors.surfaceInset,
@@ -1907,6 +1929,9 @@ private fun formatPlanDay(date: LocalDate): String {
     val label = date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, PLAN_LOCALE)
     return label.replaceFirstChar { it.uppercaseChar() }.trimEnd('.')
 }
+
+private val RECOVERY_DATE: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("dd/MM")
 
 /** Evidence is part of the label; a click from the past is never shown as verified. */
 private fun sessionStatusLabel(session: com.meucoach.core.domain.prescription.PlannedSession): String? =

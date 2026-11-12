@@ -303,3 +303,21 @@ Proibições: “bom/ruim”, “falhou”, “treino perdido”, “forte demai
 streak, culpa ou recomendação de treino. “Acima do planejado” é direção, não
 julgamento. Os IDs (`R-FEEDBACK-01`, `EV-DANIELS-2014`, `EV-FRIEL-2018`) ficam fora
 da superfície comum, conforme §6.5.
+
+### 6.13 Recuperação pós-prova (12/11/2026)
+
+Depois de uma prova concluída, o app encurta os próximos dias sem tirar a rotina
+(ADR 0037, `R-RACE-04`). A copy é descritiva, sem prometer recuperação fisiológica,
+sem culpa e sem transformar a janela em nota.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Hoje — linha no card | `Recuperação após a prova · dia 2 de 5 · até 14/11` | Situa o dia dentro da janela e mostra quando ela termina. |
+| Hoje — título da sessão | `Recuperação: fácil e curto` | Deixa claro o formato sem jargão. |
+| Plano da semana | `Recuperação` (pill) | Marca a semana sem alterar as sessões já concluídas. |
+| Perfil — histórico da prova | `Recuperação até 14/11` | Fecha a leitura do evento concluído. |
+| Sugestão de revisão | `Ajustar o resto da semana após a prova?` | Pede aceite; não reescreve a semana sozinho. |
+
+Proibições: “você precisa descansar”, “o corpo exige”, percentuais de recuperação,
+diagnóstico, prazo médico ou “volte aos treinos fortes em X dias”. A janela é uma
+convenção de produto `LIMITED`, não uma prescrição clínica.

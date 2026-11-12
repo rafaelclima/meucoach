@@ -52,7 +52,13 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         val availabilityTriggered = input.currentAvailabilityHash != null &&
             input.currentAvailabilityHash != availabilityHash
         val userRequested = input.trigger == ReplanTrigger.USER_REQUEST
-        if (!userRequested && !missedTriggered && !availabilityTriggered && !t4Triggered) {
+        // T5 (ADR 0037): the persisted week still has a strong/long or over-cap
+        // session inside an active post-race recovery window.
+        val recoveryViolations = recoveryViolations(input)
+        val recoveryTriggered = recoveryViolations.isNotEmpty()
+        if (!userRequested && !missedTriggered && !availabilityTriggered && !t4Triggered &&
+            !recoveryTriggered
+        ) {
             // A missing baseline is captured for the future, never inferred as a change.
             val reason = if (input.currentAvailabilityHash == null) {
                 "Disponibilidade atual registrada como referência; ainda não há histórico para comparar."
@@ -88,6 +94,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 weekNumberInBlock = input.weekNumberInBlock,
                 race = input.race,
                 eventDates = input.eventDates,
+                recovery = input.recovery,
             ),
         )
         val raceDates = input.eventDates + listOfNotNull(input.race?.targetDate)
@@ -123,6 +130,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
             temporalChanged = temporalChanged,
             missedTriggered = missedTriggered,
             availabilityTriggered = availabilityTriggered,
+            recoveryTriggered = recoveryTriggered,
         )
         val trigger = activeTrigger(causes)
         val rationale = rationale(trigger, causes, missed.size)
@@ -161,6 +169,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 ruleIds = suggestionRules,
                 evidenceIds = generated.evidenceIds,
                 confidence = generated.confidence,
+                recoveryEventId = input.recovery?.race?.eventId,
             ),
             candidate = candidate,
         )
@@ -178,6 +187,19 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 availabilityHash = availabilityHash,
             ),
         )
+
+    /**
+     * Future `PLANNED` sessions that violate an active recovery window (ADR 0037).
+     * A week already compatible with the window produces no suggestion.
+     */
+    private fun recoveryViolations(input: ReplanInput): List<PlannedSession> {
+        val recovery = input.recovery ?: return emptyList()
+        return input.currentPlan.sessions.filter { session ->
+            session.status == SessionStatus.PLANNED &&
+                session.date.isAfter(input.today) &&
+                recovery.blocks(session.type, session.date, session.durationMin)
+        }
+    }
 
     /**
      * T1 counts `PLANNED` sessions of the week that are already in the past and
@@ -208,6 +230,11 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
             }
             if (session.type == WorkoutType.QUALITY && input.race?.allowsQuality(session.date) == false) {
                 return "Sem treino forte na semana da prova nem dentro do corte conservador."
+            }
+            if (input.recovery != null &&
+                input.recovery.blocks(session.type, session.date, session.durationMin)
+            ) {
+                return "Recuperação após a prova: sem treino forte, longão ou sessão acima do teto."
             }
         }
         val effective = sessions.filter {
@@ -275,10 +302,12 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         temporalChanged: Boolean,
         missedTriggered: Boolean,
         availabilityTriggered: Boolean,
+        recoveryTriggered: Boolean,
     ): List<ReplanCause> = buildList {
         if (userRequested) add(ReplanCause.USER_REQUEST)
         if (profileChanged) add(ReplanCause.PROFILE_CHANGED)
         if (temporalChanged) add(ReplanCause.TIMEZONE_CONTEXT_CHANGED)
+        if (recoveryTriggered) add(ReplanCause.RACE_COMPLETED)
         if (missedTriggered) add(ReplanCause.MISSED_SESSIONS)
         if (availabilityTriggered) add(ReplanCause.AVAILABILITY_CHANGED)
     }.distinct()
@@ -288,6 +317,8 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
 
         ReplanCause.PROFILE_CHANGED in causes ||
             ReplanCause.TIMEZONE_CONTEXT_CHANGED in causes -> ReplanTrigger.PROFILE_CHANGED
+
+        ReplanCause.RACE_COMPLETED in causes -> ReplanTrigger.RACE_COMPLETED
 
         ReplanCause.MISSED_SESSIONS in causes -> ReplanTrigger.MISSED_SESSIONS
 
@@ -317,6 +348,10 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
             ReplanTrigger.MISSED_SESSIONS ->
                 "Treinos elegíveis sem conclusão: $missedCount. " +
                     "O restante da semana foi reorganizado sem repor carga."
+
+            ReplanTrigger.RACE_COMPLETED ->
+                "A prova foi concluída. O restante da semana foi encurtado para a recuperação, " +
+                    "sem treino forte, sem repor carga e sem mexer no que já passou."
 
             ReplanTrigger.AVAILABILITY_CHANGED ->
                 "Sua disponibilidade mudou. O restante da semana foi reorganizado sem aumentar a carga."
@@ -367,6 +402,7 @@ private fun ReplanCause.label(): String = when (this) {
     ReplanCause.MISSED_SESSIONS -> "treinos não concluídos"
     ReplanCause.AVAILABILITY_CHANGED -> "disponibilidade"
     ReplanCause.USER_REQUEST -> "pedido seu"
+    ReplanCause.RACE_COMPLETED -> "recuperação após a prova"
 }
 
 private fun PlannedSession.projection(): SessionProjection = SessionProjection(
@@ -404,6 +440,9 @@ private fun ReplanInput.canonical(): String = buildString {
         race?.let { "${it.eventId},${it.distance.name},${it.targetDate}" } ?: "null",
     )
     append(";eventDates=").append(eventDates.sorted().joinToString(","))
+    append(";recovery=").append(
+        recovery?.let { "${it.race.eventId},${it.race.distance.name},${it.race.raceDate}" } ?: "null",
+    )
     append(";threshold=").append(missedSessionThreshold)
     append(";sessions=").append(currentPlan.sessions.joinToString("|") { it.canonical() })
 }

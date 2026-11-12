@@ -2,6 +2,7 @@ package com.meucoach.core.domain.replan
 
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.RacePlan
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
@@ -26,6 +27,9 @@ enum class ReplanTrigger {
 
     /** T4 — the planning fingerprint or temporal context differs from the evaluated checkpoint. */
     PROFILE_CHANGED,
+
+    /** T5 — a completed race started a recovery window the persisted week does not respect. */
+    RACE_COMPLETED,
 }
 
 /** Every reason that contributed to a revision; a suggestion may have more than one. */
@@ -35,6 +39,7 @@ enum class ReplanCause {
     MISSED_SESSIONS,
     AVAILABILITY_CHANGED,
     USER_REQUEST,
+    RACE_COMPLETED,
 }
 
 /**
@@ -66,6 +71,8 @@ data class ReplanSuggestion(
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
     val confidence: DataConfidence,
+    /** Completed race that caused a recovery revision; used only to remember a decline. */
+    val recoveryEventId: String? = null,
 ) {
     init {
         require(causes.isNotEmpty()) { "Suggestion must record at least one cause" }
@@ -131,6 +138,8 @@ data class ReplanInput(
     val race: RacePlan? = null,
     /** Every event date that must not receive an ordinary session. */
     val eventDates: Set<LocalDate> = emptySet(),
+    /** Post-race recovery window (ADR 0037). */
+    val recovery: RecoveryWindow? = null,
     /** Product heuristic: how many eligible missed sessions trigger T1. */
     val missedSessionThreshold: Int = PlanReplanner.PRODUCT_MISSED_SESSION_THRESHOLD,
     val today: LocalDate,

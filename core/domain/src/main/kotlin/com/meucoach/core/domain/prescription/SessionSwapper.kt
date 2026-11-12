@@ -21,10 +21,15 @@ object SessionSwapper {
         today: LocalDate,
         /** Event dates never receive an ordinary session (ADR 0030). */
         raceDates: Set<LocalDate> = emptySet(),
+        /** Post-race recovery days do not enter the swap (ADR 0037). */
+        recovery: RecoveryWindow? = null,
     ): SwapResult {
         if (firstDate == secondDate) return SwapResult.Rejected("Escolha outro dia.")
         if (firstDate in raceDates || secondDate in raceDates) {
             return SwapResult.Rejected("Dia de prova não entra na troca de treinos.")
+        }
+        if (recovery != null && (recovery.isActive(firstDate) || recovery.isActive(secondDate))) {
+            return SwapResult.Rejected("Dia de recuperação após a prova não entra na troca.")
         }
         val first = plan.sessions.firstOrNull { it.date == firstDate }
             ?: return SwapResult.Rejected("Sessão de hoje não encontrada.")

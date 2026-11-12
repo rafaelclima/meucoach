@@ -165,6 +165,11 @@ class ReplanViewModel @Inject constructor(
         val suggestion = pending ?: return
         val today = timeProvider.currentDate()
         store.decline(today, suggestion.suggestion)
+        // ADR 0037: recovery proposals are remembered per week+event, so the same
+        // change is not offered again every day of the window.
+        suggestion.suggestion.recoveryEventId?.let { eventId ->
+            store.declineRecovery(suggestion.suggestion.weekStart, eventId)
+        }
         pending = null
         mutableState.update { it.copy(suggestion = null, message = null) }
     }
@@ -203,8 +208,15 @@ class ReplanViewModel @Inject constructor(
         when (result) {
             is EvaluateReplanResult.Suggestion -> {
                 val key = ReplanSuggestionStore.suggestionKey(result.suggestion)
+                val recoveryDeclined = result.suggestion.recoveryEventId?.let { eventId ->
+                    store.declinedRecovery(result.suggestion.weekStart, eventId)
+                } ?: false
                 val blocked = !explicit &&
-                    (store.isSuppressed(today) || store.declinedSuggestion(today) == key)
+                    (
+                        store.isSuppressed(today) ||
+                            store.declinedSuggestion(today) == key ||
+                            recoveryDeclined
+                        )
                 pending = result
                 mutableState.update {
                     it.copy(

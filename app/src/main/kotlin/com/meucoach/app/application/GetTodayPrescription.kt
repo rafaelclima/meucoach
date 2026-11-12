@@ -6,6 +6,7 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
+import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.readiness.ReadinessResult
@@ -21,6 +22,8 @@ data class TodayPrescriptionRequest(
     val load: LoadSnapshot? = null,
     val heatLevel: HeatLevel = HeatLevel.NONE,
     val plan: WeeklyPlan? = null,
+    /** Post-race recovery window (ADR 0037). */
+    val recovery: RecoveryWindow? = null,
 )
 
 /**
@@ -67,6 +70,7 @@ class GetTodayPrescription @Inject constructor(private val repository: DailyPres
             },
             sessionStatus = todaySession?.status,
             planConfidence = plan?.confidence,
+            recovery = request.recovery,
         )
         val fresh = engine.prescribe(input)
         // Never write a retrospective decision for a day that already ended.
