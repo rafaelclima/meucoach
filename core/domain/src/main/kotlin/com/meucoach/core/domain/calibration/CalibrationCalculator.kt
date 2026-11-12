@@ -20,6 +20,8 @@ enum class CalibrationWarning {
     NO_RECENT_PERFORMANCE,
     NO_EFFORT_HEART_RATE,
     PERFORMANCE_DURATION_OUT_OF_RANGE,
+    NO_SUSTAINED_EFFORT,
+    EFFORT_PACE_OUT_OF_RANGE,
 }
 
 data class CalibrationPerformance(
@@ -42,6 +44,7 @@ data class CalibrationInput(
     val today: LocalDate,
     val performance: CalibrationPerformance? = null,
     val recentActivitiesWithHeartRateAndPace: Int = 0,
+    val trainingEfforts: List<CalibrationPerformance> = emptyList(),
 ) {
     init {
         require(recentActivitiesWithHeartRateAndPace >= 0) {
@@ -69,6 +72,12 @@ data class CalibrationResult(
  * at 88% of VDOT. LTHR uses the effort's average heart rate only for efforts
  * between 25 and 35 minutes; outside that window the app does not invent a
  * threshold.
+ *
+ * Tier B (ADR 0035): without a recent performance, the fastest sustained
+ * training effort of 20–35 minutes with heart rate estimates the threshold
+ * pace; VDOT is derived from it and LTHR comes from that same effort only
+ * within the 25–35 minute window. Efforts outside the criteria keep the
+ * labeled Tier B without estimates.
  */
 object CalibrationCalculator {
     private const val RECENT_DAYS = 56L
@@ -78,6 +87,11 @@ object CalibrationCalculator {
     private const val X = 0.000104
     private const val Y = 0.182258
     private const val Z = 4.60
+    private const val MIN_TIER_B_EFFORTS = 3
+    private const val MIN_SUSTAINED_SEC = 20 * 60
+    private const val MAX_SUSTAINED_SEC = 35 * 60
+    private const val MIN_LTHR_SEC = 25 * 60
+    private const val MAX_LTHR_SEC = 35 * 60
 
     fun calibrate(input: CalibrationInput): CalibrationResult {
         val performance = input.performance
@@ -101,12 +115,7 @@ object CalibrationCalculator {
         val lthr = lthrFrom(usable)
         if (lthr == null) warnings += CalibrationWarning.NO_EFFORT_HEART_RATE
 
-        input.profile.maxHeartRateObserved?.let { maxHeartRate ->
-            val effortHeartRate = usable.averageHeartRate
-            if (effortHeartRate != null && effortHeartRate > maxHeartRate * 0.95) {
-                warnings += CalibrationWarning.MAX_HEART_RATE_INCONSISTENT
-            }
-        }
+        checkMaxHeartRate(input.profile, usable.averageHeartRate, warnings)
 
         return CalibrationResult(
             tier = CalibrationTier.A,
@@ -169,28 +178,97 @@ object CalibrationCalculator {
         input: CalibrationInput,
         warnings: MutableSet<CalibrationWarning>,
     ): CalibrationResult {
-        val tier = if (input.recentActivitiesWithHeartRateAndPace >= 3) {
-            CalibrationTier.B
+        val efforts = input.trainingEfforts
+        val gate = if (efforts.isEmpty()) {
+            input.recentActivitiesWithHeartRateAndPace >= MIN_TIER_B_EFFORTS
         } else {
-            CalibrationTier.C
+            efforts.count { it.averageHeartRate != null && isRecent(it, input.today) } >= MIN_TIER_B_EFFORTS
         }
+        if (!gate) {
+            return CalibrationResult(
+                tier = CalibrationTier.C,
+                vdot = null,
+                thresholdPace = null,
+                lthr = null,
+                confidence = DataConfidence.LOW,
+                ruleId = "R-CAL-02",
+                evidenceIds = EVIDENCE,
+                warnings = warnings,
+                recommendation = "Complete 2 semanas de base e faça um teste de 30 min guiado " +
+                    "antes de prescrever intensidade.",
+            )
+        }
+        if (efforts.isEmpty()) {
+            return labeledTierB(warnings)
+        }
+
+        val candidate = efforts
+            .asSequence()
+            .filter { it.averageHeartRate != null && isRecent(it, input.today) && isUsable(it, warnings) }
+            .filter { it.durationSec in MIN_SUSTAINED_SEC..MAX_SUSTAINED_SEC }
+            .minWithOrNull(
+                compareBy<CalibrationPerformance> { paceSecondsPerKm(it) }.thenByDescending { it.date },
+            )
+        if (candidate == null) {
+            warnings += CalibrationWarning.NO_SUSTAINED_EFFORT
+            return labeledTierB(warnings)
+        }
+
+        val paceSecPerKm = paceSecondsPerKm(candidate)
+        val velocity = 60_000.0 / paceSecPerKm
+        val vo2 = -Z + Y * velocity + X * velocity * velocity
+        val vdot = vo2 / THRESHOLD_VDOT_FRACTION
+        if (!vdot.isFinite() || vdot !in MIN_VDOT..MAX_VDOT) {
+            warnings += CalibrationWarning.EFFORT_PACE_OUT_OF_RANGE
+            return labeledTierB(warnings)
+        }
+
+        val lthr = if (candidate.durationSec in MIN_LTHR_SEC..MAX_LTHR_SEC) candidate.averageHeartRate else null
+        if (lthr == null) warnings += CalibrationWarning.NO_EFFORT_HEART_RATE
+        checkMaxHeartRate(input.profile, candidate.averageHeartRate, warnings)
+
         return CalibrationResult(
-            tier = tier,
-            vdot = null,
-            thresholdPace = null,
-            lthr = null,
-            confidence = if (tier == CalibrationTier.B) DataConfidence.MEDIUM else DataConfidence.LOW,
+            tier = CalibrationTier.B,
+            vdot = vdot,
+            thresholdPace = Pace.fromSecondsPerKm(paceSecPerKm),
+            lthr = lthr,
+            confidence = DataConfidence.MEDIUM,
             ruleId = "R-CAL-02",
             evidenceIds = EVIDENCE,
             warnings = warnings,
-            recommendation = if (tier == CalibrationTier.B) {
-                "Faça um teste de 30 min para estimar seu limite de esforço e seu ritmo de limiar. " +
-                    "Até lá, use a FC e o esforço percebido."
-            } else {
-                "Complete 2 semanas de base e faça um teste de 30 min guiado antes de prescrever intensidade."
-            },
+            recommendation = "Estimativa pelo seu melhor esforço sustentado de 20–35 min. " +
+                "Confirme com um teste de 30 min quando possível; até lá, ajuste pelo esforço percebido.",
         )
     }
+
+    private fun labeledTierB(warnings: MutableSet<CalibrationWarning>): CalibrationResult = CalibrationResult(
+        tier = CalibrationTier.B,
+        vdot = null,
+        thresholdPace = null,
+        lthr = null,
+        confidence = DataConfidence.MEDIUM,
+        ruleId = "R-CAL-02",
+        evidenceIds = EVIDENCE,
+        warnings = warnings,
+        recommendation = "Faça um teste de 30 min para estimar seu limite de esforço e seu ritmo de limiar. " +
+            "Até lá, use a FC e o esforço percebido.",
+    )
+
+    private fun checkMaxHeartRate(
+        profile: AthleteProfile,
+        effortHeartRate: Int?,
+        warnings: MutableSet<CalibrationWarning>,
+    ) {
+        profile.maxHeartRateObserved?.let { maxHeartRate ->
+            if (effortHeartRate != null && effortHeartRate > maxHeartRate * 0.95) {
+                warnings += CalibrationWarning.MAX_HEART_RATE_INCONSISTENT
+            }
+        }
+    }
+
+    /** Average pace of the effort in seconds per kilometer, matching `ActivitySummary.calculatedPace`. */
+    private fun paceSecondsPerKm(performance: CalibrationPerformance): Int =
+        (performance.durationSec / (performance.distanceM / 1_000.0)).roundToInt()
 
     private val EVIDENCE = listOf("EV-DANIELS-2014", "EV-FRIEL-2018")
 }

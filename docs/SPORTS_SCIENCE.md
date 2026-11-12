@@ -51,7 +51,7 @@ Cada regra declara `strength` (`STRONG`, `MODERATE`, `LIMITED`) e as evidências
 | Tier | Condição | Método | Confiança |
 |---|---|---|---|
 | **A** | Prova ou TT ≤ 8 semanas | VDOT pela performance; LTHR pela FC média do esforço de 30 min | Alta |
-| **B** | ≥ 3 treinos com FC + pace, sem prova recente | Melhor esforço sustentado + curva pace×FC; LTHR estimada | Média |
+| **B** | ≥ 3 treinos com FC + pace, sem prova recente | Pace de limiar pelo melhor esforço sustentado de 20–35 min com FC; VDOT derivado (a 88%); LTHR só na janela 25–35 min | Média; confirmação com teste de 30 min |
 | **C** | Iniciante ou < 3 treinos | 2 semanas de base + teste de 30 min guiado | Baixa → Alta após teste |
 
 **TT de 30 min (protocolo):** 10 min de aquecimento fácil + 30 min em esforço forte e constante (não sprint) + 10 min de desaquecimento. LTHR = FC média do esforço (ou dos últimos 20 min). Pace de limiar = pace médio do esforço (ou dos últimos 20 min). Não fazer se doente, lesionado ou com sono < 6 h.
@@ -63,6 +63,14 @@ Cada regra declara `strength` (`STRONG`, `MODERATE`, `LIMITED`) e as evidências
   `%VO2max = 0,8 + 0,1894393·e^(−0,012778·t) + 0,2989558·e^(−0,1932605·t)` (t em min).
   `VDOT = VO2 / %VO2max`.
 - Pace de limiar = velocidade a 88% do VDOT, obtida invertendo a equação do VO2.
+- **Tier B (ADR 0035):** sem prova recente, o melhor esforço sustentado de
+  20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de
+  limiar (pace médio do treino, que subestima o limiar real — direção
+  conservadora). O VDOT é derivado assumindo o esforço como limiar
+  (`VDOT = VO2(v) / 0,88`), com os limites 10–90. A LTHR vem da FC média desse
+  esforço **apenas** na janela 25–35 min; fora dela não há LTHR. Confiança
+  média e confirmação explícita no salvamento. A regressão pace×FC com
+  remoção de outliers fica para uma evolução com seleção de treinos por tipo.
 - LTHR = FC média de um esforço de 25–35 min (TT de 30 min ou prova curta); fora
   dessa janela não há LTHR estimada.
 - O LTHR pode ser informado manualmente no perfil (100–230 bpm, acima da FC de
@@ -516,7 +524,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | ID | Regra | Evidências | Força |
 |---|---|---|---|
 | `R-CAL-01` | Prova/TT ≤ 8 semanas define VDOT e LTHR (Tier A) | DANIELS, FRIEL | STRONG |
-| `R-CAL-02` | Sem prova, ≥ 3 treinos com FC+pace permitem Tier B; senão Tier C | DANIELS, FRIEL | MODERATE |
+| `R-CAL-02` | Sem prova, ≥ 3 treinos com FC+pace permitem Tier B; senão Tier C. Tier B estima pace de limiar pelo melhor esforço sustentado de 20–35 min (VDOT derivado a 88%; LTHR só na janela 25–35 min), com confiança média e confirmação explícita | DANIELS, FRIEL | LIMITED |
 | `R-CAL-03` | Nunca estimar FC máxima por 220−idade | FRIEL, BUCHHEIT | STRONG |
 | `R-ZONE-01` | Zonas de FC por LTHR; paces por VDOT | FRIEL, DANIELS | STRONG |
 | `R-ZONE-02` | Distribuição medida em 3 zonas; alvo ~80/20 por tempo | SEILER | MODERATE |

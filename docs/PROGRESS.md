@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (BUG-06 fatia 1 concluída: Tier B estima pelo melhor esforço sustentado, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.405 testes no total (682 em `:app`, 161 em `core:data`, 523 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,63% de linhas (4.491/4.600), 81,42% de branches (3.327/4.086), 96,30% de instruções (31.172/32.370)
+- **Testes:** 1.414 testes no total (682 em `:app`, 161 em `core:data`, 532 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,65% de linhas (4.536/4.645), 81,43% de branches (3.355/4.120), 96,31% de instruções (31.402/32.606)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -32,6 +32,7 @@
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
+- **Tier B estima (ADR 0035, fatia 1):** sem prova recente, o melhor esforço sustentado de 20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de limiar; VDOT é derivado assumindo o esforço como limiar (a 88%, limites 10–90) e a LTHR vem do mesmo esforço só na janela 25–35 min. Confiança média; sem candidato ou com pace implausível, Tier B continua rotulado sem números, com aviso e o teste de 30 min como recomendação. A lista de esforços (`trainingEfforts`) ainda não é alimentada pelo app (fatia 2).
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão. A CTL/ATL é alimentada com até 180 dias anteriores à janela exibida (BUG-03); sem histórico, a série começa honestamente em zero.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
@@ -73,6 +74,40 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — BUG-06 fatia 1: Tier B estima pelo melhor esforço sustentado
+
+**Objetivo:** dar à calibração Tier B o que o §4.2 promete — estimar pace de limiar, VDOT e LTHR a partir de treinos recentes com FC + pace, quando não há prova/TT — sem inventar número quando os dados não sustentam. Decisões D1–D7 aprovadas pelo usuário 0 e registradas no [ADR 0035](adr/0035-tier-b-calibration-estimates.md).
+
+### Concluído
+
+- **Domínio:** `CalibrationInput` ganhou `trainingEfforts: List<CalibrationPerformance>` (resumos; default vazio preserva o comportamento atual até o wiring do app). Com lista não vazia, o gate do Tier B deriva da própria lista (esforços com FC, ≤ 56 dias); sem lista, mantém o campo de contagem.
+- **Algoritmo:** o melhor esforço sustentado — o mais rápido entre os de 20–35 min com FC; empate resolve pelo mais recente — estima o pace de limiar (pace médio do treino, direção conservadora por subestimar o limiar real). O VDOT é derivado assumindo o esforço como limiar (`VDOT = VO2(v) / 0,88`), coerente com `thresholdPaceForVdot`, com os limites 10–90. A LTHR vem da FC média do candidato apenas na janela 25–35 min (regra de LTHR intacta).
+- **Honestidade:** sem candidato elegível → aviso novo `NO_SUSTAINED_EFFORT` e Tier B rotulado sem números; pace derivado fora dos limites do modelo → `EFFORT_PACE_OUT_OF_RANGE`, também sem números. Recomendação do teste de 30 min preservada.
+- **Reuso:** a verificação de `MAX_HEART_RATE_INCONSISTENT` contra `maxHeartRateObserved` virou helper compartilhado entre Tier A e Tier B.
+- **UI existente:** `CalibrationScreen.warningLabel` ganhou a copy das duas advertências novas (o `when` passou a exigir os ramos); nada mais mudou na tela.
+- **Docs:** ADR 0035; `SPORTS_SCIENCE` §4.2 (linha do Tier B) e §4.3 (método exato, com a regressão pace×FC marcada como evolução); `R-CAL-02` passou de MODERATE para LIMITED; PRD §0.4 (BUG-06) e §FR-006; `ROADMAP` 1.28 (P1-02); `DECISIONS` 1.13.
+- **Testes:** +9 em `CalibrationCalculatorTest` — estimativa pelo mais rápido (pace 300 s/km → VDOT 40,9223), gate derivado da lista, esforços sem FC fora do gate, esforços velhos → Tier C, janela 20–35 sem candidato, candidato de 22 min sem LTHR, FC inconsistente no Tier B, pace implausível sem inventar VDOT e candidato ignorando esforço velho/fora da janela. Nenhum assert existente foi reduzido.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e gate FIT).
+- **1.414 testes**, 0 falhas e 0 `@Ignore` (682 `:app`, 161 `core:data`, 532 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,65% de linhas (4.536/4.645), 81,43% de branches (3.355/4.120), 96,31% de instruções (31.402/32.606); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova, mudança de schema ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Conservador por construção:** um treino de resumo não prova esforço máximo; subestimar o limiar gera alvos mais fáceis, nunca mais arriscados. A precisão real depende da qualidade do treino, que o resumo não mostra — daí `MEDIUM` e confirmação explícita no salvamento.
+- **Regressão pace×FC deferida:** resumos de treinos heterogêneos misturam regimes fisiológicos; remover outliers sem samples seria inventar método. Fica para uma evolução com seleção de treinos por tipo (ADR 0035 §4).
+- **VDOT pela via do limiar:** usar a fórmula de performance (Tier A) num treino de treino produziria VDOT sistematicamente baixo propagado a todas as zonas; assumir o esforço como limiar (0,88) é coerente com o que ele representa.
+- **Força da regra:** `R-CAL-02` desceu para `LIMITED` — a evidência sustenta a aproximação por esforço sustentado, não a precisão do número.
+
+### Próximo passo
+
+1. Fatia 2: `CalibrationViewModel` mapeia os resumos (`recentEffortCount` já filtra FC + pace + 56 dias) para `trainingEfforts`, a tela mostra a estimativa com copy honesta e goldens da calibração.
+2. Validar em aparelho com os dados reais do usuário 0 (Rafael tem treinos com FC + pace recentes; comparar a estimativa com o VDOT de prova conhecido).
+3. D6-B (previsão VDOT/Riegel) e validações manuais pendentes continuam no backlog.
 
 ## Sessão 2026-11-11 — BUG-04: HRV em espaço logarítmico
 

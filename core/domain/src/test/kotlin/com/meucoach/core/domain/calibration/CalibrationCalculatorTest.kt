@@ -149,15 +149,189 @@ class CalibrationCalculatorTest {
         assertThat(result.warnings).contains(CalibrationWarning.NO_RECENT_PERFORMANCE)
     }
 
+    @Test
+    fun `tier b estimates from the fastest sustained effort`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    effort(distanceM = 9_000.0, durationSec = 3_600, averageHeartRate = 150),
+                    effort(distanceM = 5_600.0, durationSec = 1_680, averageHeartRate = 174),
+                    effort(distanceM = 6_000.0, durationSec = 1_920, averageHeartRate = 168),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result.vdot).isCloseTo(40.9223, within(0.001))
+        assertThat(result.thresholdPace?.secondsPerKm).isEqualTo(300)
+        assertThat(result.lthr).isEqualTo(174)
+        assertThat(result.confidence).isEqualTo(DataConfidence.MEDIUM)
+        assertThat(result.ruleId).isEqualTo("R-CAL-02")
+        assertThat(result.warnings).doesNotContain(CalibrationWarning.NO_SUSTAINED_EFFORT)
+    }
+
+    @Test
+    fun `tier b gate derives from the effort list`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                recentActivitiesWithHeartRateAndPace = 0,
+                trainingEfforts = listOf(
+                    effort(distanceM = 9_000.0, durationSec = 3_600),
+                    effort(distanceM = 5_600.0, durationSec = 1_680),
+                    effort(distanceM = 6_000.0, durationSec = 1_920),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result.thresholdPace?.secondsPerKm).isEqualTo(300)
+    }
+
+    @Test
+    fun `tier b ignores efforts without heart rate for the gate`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    effort(distanceM = 9_000.0, durationSec = 3_600),
+                    effort(distanceM = 5_600.0, durationSec = 1_680),
+                    effort(distanceM = 6_000.0, durationSec = 1_920, averageHeartRate = null),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.C)
+        assertThat(result.thresholdPace).isNull()
+    }
+
+    @Test
+    fun `stale efforts do not qualify for tier b`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    effort(distanceM = 5_600.0, durationSec = 1_680, date = LocalDate.of(2026, 8, 1)),
+                    effort(distanceM = 6_000.0, durationSec = 1_920, date = LocalDate.of(2026, 8, 2)),
+                    effort(distanceM = 9_000.0, durationSec = 3_600, date = LocalDate.of(2026, 8, 3)),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.C)
+        assertThat(result.thresholdPace).isNull()
+    }
+
+    @Test
+    fun `tier b without a sustained effort reports it honestly`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    effort(distanceM = 9_000.0, durationSec = 3_600, averageHeartRate = 150),
+                    effort(distanceM = 10_000.0, durationSec = 3_900, averageHeartRate = 152),
+                    effort(distanceM = 8_000.0, durationSec = 3_300, averageHeartRate = 148),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result.vdot).isNull()
+        assertThat(result.thresholdPace).isNull()
+        assertThat(result.lthr).isNull()
+        assertThat(result.warnings).contains(CalibrationWarning.NO_SUSTAINED_EFFORT)
+    }
+
+    @Test
+    fun `tier b skips lthr for a candidate below 25 minutes`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    effort(distanceM = 9_000.0, durationSec = 3_600, averageHeartRate = 150),
+                    effort(distanceM = 4_400.0, durationSec = 1_320, averageHeartRate = 176),
+                    effort(distanceM = 6_000.0, durationSec = 1_920, averageHeartRate = 168),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result.thresholdPace?.secondsPerKm).isEqualTo(300)
+        assertThat(result.lthr).isNull()
+        assertThat(result.warnings).contains(CalibrationWarning.NO_EFFORT_HEART_RATE)
+    }
+
+    @Test
+    fun `tier b flags an inconsistent max heart rate`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                profile = profile(maxHeartRateObserved = 180),
+                trainingEfforts = listOf(
+                    effort(distanceM = 9_000.0, durationSec = 3_600, averageHeartRate = 150),
+                    effort(distanceM = 5_600.0, durationSec = 1_680, averageHeartRate = 178),
+                    effort(distanceM = 6_000.0, durationSec = 1_920, averageHeartRate = 168),
+                ),
+            ),
+        )
+
+        assertThat(result.warnings).contains(CalibrationWarning.MAX_HEART_RATE_INCONSISTENT)
+    }
+
+    @Test
+    fun `tier b rejects an implausible sustained pace without inventing vdot`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    effort(distanceM = 1_500.0, durationSec = 1_500, averageHeartRate = 150),
+                    effort(distanceM = 1_400.0, durationSec = 1_400, averageHeartRate = 152),
+                    effort(distanceM = 1_600.0, durationSec = 1_500, averageHeartRate = 148),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result.vdot).isNull()
+        assertThat(result.thresholdPace).isNull()
+        assertThat(result.warnings).contains(CalibrationWarning.EFFORT_PACE_OUT_OF_RANGE)
+    }
+
+    @Test
+    fun `tier b ignores stale or short efforts when picking the candidate`() {
+        val result = CalibrationCalculator.calibrate(
+            input(
+                trainingEfforts = listOf(
+                    // 300 s/km, mas fora da janela de 20–35 min e mais antigo que 8 semanas
+                    effort(distanceM = 5_600.0, durationSec = 1_680, date = LocalDate.of(2026, 8, 1)),
+                    effort(distanceM = 9_000.0, durationSec = 3_600, averageHeartRate = 150),
+                    effort(distanceM = 10_000.0, durationSec = 3_900, averageHeartRate = 152),
+                    effort(distanceM = 5_600.0, durationSec = 1_680, averageHeartRate = 174),
+                ),
+            ),
+        )
+
+        assertThat(result.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result.thresholdPace?.secondsPerKm).isEqualTo(300)
+        assertThat(result.lthr).isEqualTo(174)
+    }
+
     private fun input(
         profile: AthleteProfile = profile(),
         performance: CalibrationPerformance? = null,
         recentActivitiesWithHeartRateAndPace: Int = 0,
+        trainingEfforts: List<CalibrationPerformance> = emptyList(),
     ) = CalibrationInput(
         profile = profile,
         today = today,
         performance = performance,
         recentActivitiesWithHeartRateAndPace = recentActivitiesWithHeartRateAndPace,
+        trainingEfforts = trainingEfforts,
+    )
+
+    private fun effort(
+        distanceM: Double,
+        durationSec: Int,
+        date: LocalDate = LocalDate.of(2026, 10, 26),
+        averageHeartRate: Int? = 172,
+    ) = CalibrationPerformance(
+        distanceM = distanceM,
+        durationSec = durationSec,
+        date = date,
+        averageHeartRate = averageHeartRate,
     )
 
     private fun race() = CalibrationPerformance(

@@ -410,6 +410,12 @@ private fun warningLabel(warning: CalibrationWarning): String = when (warning) {
 
     CalibrationWarning.PERFORMANCE_DURATION_OUT_OF_RANGE ->
         "A performance está fora da faixa válida (1–100 km, 8–180 min)."
+
+    CalibrationWarning.NO_SUSTAINED_EFFORT ->
+        "Nenhum treino recente de 20–35 min com FC pôde estimar o limite; faça um teste de 30 min."
+
+    CalibrationWarning.EFFORT_PACE_OUT_OF_RANGE ->
+        "O treino sustentado tem ritmo fora da faixa válida; nada foi estimado."
 }
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")
