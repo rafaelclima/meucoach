@@ -96,6 +96,7 @@
 - **1.440 testes**, 0 falhas e 0 `@Ignore` (696 `:app`, 162 `core:data`, 543 `core:domain`, 39 `core:model`).
 - `core:domain`: 97,62% de linhas (4.632/4.745), 80,94% de branches (3.426/4.233), 96,24% de instruções (32.026/33.278).
 - Schema v17; nenhuma dependência nova e nenhum dado real no diff.
+- **Migração real no aparelho:** o APK do D6-B foi instalado por cima da build anterior; o banco migrou para v17 e preservou 1 perfil, 6 atividades, 38 dias de métricas, 9 check-ins e 1 prova. O perfil já tinha o VDOT 30,6 salvo pela build anterior (fatia 2), sem proveniência; por isso o card de prova mostra “sem previsão” até recalibrar — exatamente a regra de legado do ADR 0036.
 - **Flakiness observada:** `MetricsImportViewModelTest` estourou o timeout de 30 s numa execução completa e passou isolado; é a mesma família já registrada, sem relação com o D6-B.
 
 ### Decisões e observações
@@ -107,7 +108,7 @@
 
 ### Próximo passo
 
-1. Instalar o build no aparelho e conferir a previsão ao lado da meta no Perfil e no dia da prova.
+1. Recalibrar no aparelho (salvar a estimativa ou uma prova/TT) para registrar a proveniência e ver a previsão no card da prova.
 2. Manter a regressão pace×FC (ADR 0035 §4) e a validação de previsões futuras no backlog.
 3. Revisar a faixa de Riegel para meia se houver dados reais suficientes; hoje é apenas checagem.
 
