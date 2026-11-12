@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.14 · **Data:** 11/11/2026
+**Versão:** 1.15 · **Data:** 11/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -15,6 +15,7 @@
 > Revisão 1.12 (11/11/2026): ADR 0034 aceito e implementado — consolidação semanal determinística no domínio e card em Tendências (FR-011), com `R-REVIEW-01`, sem migração e sem LLM.
 > Revisão 1.13 (11/11/2026): ADR 0035 aceito — Tier B estima pace de limiar, VDOT e LTHR pelo melhor esforço sustentado de 20–35 min (BUG-06, fatia 1 no domínio); regressão pace×FC deferida e wiring do app pendente (fatia 2).
 > Revisão 1.14 (11/11/2026): BUG-06 fatia 2 implementada — a estimativa Tier B usa os treinos recentes no `CalibrationViewModel`, a tela oferece “Estimar pelos meus treinos” e mostra a copy honesta; nenhuma decisão do ADR 0035 mudou.
+> Revisão 1.15 (11/11/2026): BUG-06 validado em dados reais — estimativa ~3% acima do VDOT de prova (30,6 vs 29,63); nenhuma decisão do ADR 0035 mudou.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -52,7 +53,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0032](adr/0032-race-autocompletion-and-target-projection.md) | Auto-conclusão da prova e projeção aritmética da meta | Aceito — implementado em C3-06 (regra 90–110%, `completionSource`/Room 16, undo e referência no Perfil/Hoje) | 11/11/2026 |
 | [0033](adr/0033-planned-vs-executed-comparison.md) | Comparação planejado × executado descritiva (FR-010) | Aceito — implementado em 11/11/2026 (calculadora pura, card no detalhe, treino livre sem alvo) | 11/11/2026 |
 | [0034](adr/0034-weekly-review-consolidation.md) | Revisão semanal determinística (FR-011) | Aceito — implementado em 11/11/2026 (domínio puro + card em Tendências, até 3 observações, goldens, sem LLM) | 11/11/2026 |
-| [0035](adr/0035-tier-b-calibration-estimates.md) | Estimativas Tier B pelo melhor esforço sustentado (BUG-06) | Aceito — fatias 1 (domínio) e 2 (app) implementadas em 11/11/2026; validação com dados reais pendente | 11/11/2026 |
+| [0035](adr/0035-tier-b-calibration-estimates.md) | Estimativas Tier B pelo melhor esforço sustentado (BUG-06) | Aceito — fatias 1 (domínio) e 2 (app) implementadas e validadas em dados reais em 11/11/2026 (estimativa ~3% acima do VDOT de prova) | 11/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
@@ -76,7 +77,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Semana da prova:** sem `QUALITY` na semana local e cutoff de última qualidade de 10/14 dias como política `LIMITED` de produto, não consenso científico (ADR 0030).
 - **Planejado × executado:** comparação descritiva, derivada da prescrição do dia e só quando a corrida é a evidência do treino; tolerâncias de 10% (duração/distância) e 1 ponto de RPE são convenção de produto; nada é persistido e treino livre não inventa alvo (ADR 0033, implementado).
 - **Revisão semanal:** consolidação determinística de adesão, volume, intensidade, prontidão e sono, com no máximo 3 observações que citam regra/evidência; dado ausente continua ausente, sem nota, streak ou LLM (ADR 0034, implementado no domínio e no card de Tendências).
-- **Tier B conservador:** sem prova recente, o pace de limiar vem do melhor esforço sustentado de 20–35 min com FC; VDOT é derivado a 88% e LTHR só na janela 25–35 min; confiança média, salvamento explícito e regressão pace×FC deferida. Os treinos que alimentam a estimativa são os mesmos do contador na tela, e a ação “Estimar pelos meus treinos” só aparece com ≥ 3 esforços (ADR 0035, fatias 1–2).
+- **Tier B conservador:** sem prova recente, o pace de limiar vem do melhor esforço sustentado de 20–35 min com FC; VDOT é derivado a 88% e LTHR só na janela 25–35 min; confiança média, salvamento explícito e regressão pace×FC deferida. Os treinos que alimentam a estimativa são os mesmos do contador na tela, e a ação “Estimar pelos meus treinos” só aparece com ≥ 3 esforços; no usuário 0 a estimativa ficou ~3% acima do VDOT de prova (ADR 0035, fatias 1–2, validado em 11/11/2026).
 - **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).
 - **Exclusão:** lixeira de 7 dias para atividade; “apagar tudo” imediato, sem recibo, com época de dados que invalida workers em voo; Health Connect não é apagado (ADR-0025).
 - **Carga/qualidade:** ACWR desconhecido, cobertura insuficiente ou fonte desatualizada bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR-0026, implementado em C1-02).

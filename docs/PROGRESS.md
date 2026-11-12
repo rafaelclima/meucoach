@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (BUG-06 fatia 2 concluída: a estimativa Tier B chega à tela com os treinos recentes e ação explícita; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (BUG-06 fatia 2 concluída e validada em dados reais: a estimativa Tier B chega à tela e ficou ~3% acima do VDOT de prova; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -32,7 +32,7 @@
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
-- **Tier B estima (ADR 0035, fatias 1–2):** sem prova recente, o melhor esforço sustentado de 20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de limiar; VDOT é derivado assumindo o esforço como limiar (a 88%, limites 10–90) e a LTHR vem do mesmo esforço só na janela 25–35 min. Confiança média; sem candidato ou com pace implausível, Tier B continua rotulado sem números, com aviso e o teste de 30 min como recomendação. O app alimenta `trainingEfforts` com os mesmos treinos do contador e oferece “Estimar pelos meus treinos” quando há ≥ 3 esforços recentes com FC e ritmo; a estimativa só entra no perfil após salvar.
+- **Tier B estima (ADR 0035, fatias 1–2):** sem prova recente, o melhor esforço sustentado de 20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de limiar; VDOT é derivado assumindo o esforço como limiar (a 88%, limites 10–90) e a LTHR vem do mesmo esforço só na janela 25–35 min. Confiança média; sem candidato ou com pace implausível, Tier B continua rotulado sem números, com aviso e o teste de 30 min como recomendação. O app alimenta `trainingEfforts` com os mesmos treinos do contador e oferece “Estimar pelos meus treinos” quando há ≥ 3 esforços recentes com FC e ritmo; a estimativa só entra no perfil após salvar. Validada em 11/11/2026 com o usuário 0: 30,6 de VDOT e 6:18/km contra 29,63 e 6:28/km do VDOT de prova (5k ~31 min), ~3% acima.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão. A CTL/ATL é alimentada com até 180 dias anteriores à janela exibida (BUG-03); sem histórico, a série começa honestamente em zero.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
@@ -74,6 +74,34 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — BUG-06: validação da estimativa Tier B em dados reais
+
+**Objetivo:** comparar a estimativa Tier B do app com o VDOT de prova conhecido do usuário 0, usando os treinos reais já importados no aparelho, sem alterar a regra nem salvar nada no perfil.
+
+### Resultado da comparação
+
+| Origem | VDOT | Pace de limiar | LTHR |
+|---|---|---|---|
+| Estimativa Tier B (6 treinos elegíveis) | 30,6 | 6:18/km | 168 bpm |
+| Referência de prova (5k ~31 min) | 29,63 | 6:28/km | — |
+| Calibração salva no perfil | 27,09 | 6:56/km | 163 bpm |
+
+- A estimativa ficou **3,3% acima do VDOT de prova** e **10 s/km mais rápida** no pace de limiar — dentro da confiança média e da confirmação explícita previstas no ADR 0035.
+- A calibração salva (27,09 / 6:56) coincide com a aplicação da fórmula de performance a um treino de 34 min, não com a prova; ela é conservadora e não serve como referência de validação.
+- O candidato escolhido foi um treino forte de ~32 min com FC média a ~90% da máxima, não um teste controlado. A estimativa continuou plausível, mas confirma o risco já registrado no ADR 0035 §4: o “mais rápido” pode ser um esforço acima do limiar.
+- A estimativa não foi salva; o perfil permanece com a calibração anterior.
+
+### Conclusão
+
+- **Validação aprovada** para a tolerância de uma estimativa de confiança média: o número não é inventado, fica próximo da prova e é conservador o suficiente para não justificar uma mudança de método agora.
+- O viés residual (esforço forte tratado como limiar, sem samples para detectar intervalados) continua documentado como limitação, não como bug.
+- Nenhuma mudança de código, teste, schema ou dependência nesta validação.
+
+### Próximo passo
+
+1. D6-B (previsão VDOT/Riegel): redigir o ADR próprio antes do código.
+2. Manter a regressão pace×FC como evolução futura (ADR 0035 §4).
 
 ## Sessão 2026-11-11 — BUG-06 fatia 2: estimativa Tier B chega à tela
 

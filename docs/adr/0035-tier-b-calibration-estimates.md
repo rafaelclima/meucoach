@@ -90,6 +90,13 @@ qualidade do treino, que o resumo não mostra).
 - **Limites:** sem samples não há validação de estabilidade do esforço
   (drift de FC, pausas); a confiança média reflete isso. Treino de esteira é
   válido (modalidade aceita pelo projeto).
+- **Validação em dados reais (11/11/2026):** com o usuário 0, a estimativa
+  ficou em VDOT 30,6 / 6:18/km / 168 bpm contra VDOT 29,63 / 6:28/km da prova
+  de 5k (~31 min), ~3% acima e 10 s/km mais rápida. O candidato era um treino
+  forte recente, não um teste; a estimativa permaneceu plausível. A calibração
+  salva (27,09 / 6:56) coincidia com a fórmula de performance aplicada a um
+  treino de 34 min e era conservadora, não uma referência de prova. Nenhuma
+  mudança de método foi necessária; o viés residual segue documentado em §4.
 
 ## 6. Testes
 
@@ -112,8 +119,8 @@ qualidade do treino, que o resumo não mostra).
 | **FR-006** | Alvos de pace disponíveis sem prova recente, com confirmação explícita no salvamento. |
 | **BL-006** | Primeira metade do backlog; validação com dados reais fica para depois do wiring (fatia 2). |
 
-Pendente fora desta entrega: regressão pace×FC e validação com os dados reais
-do usuário 0.
+Pendente fora desta entrega: regressão pace×FC. Validação com os dados reais
+do usuário 0 concluída em 11/11/2026 (ver §5).
 
 ## 8. Referências
 
