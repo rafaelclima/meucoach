@@ -246,5 +246,8 @@ ADR e **revoga parcialmente** dois pontos, por decisão do usuário 0:
   passagens por km. Continua proibido virar pace prescrito, alvo de treino,
   previsão de desempenho ou promessa.
 
-Permanecem válidos: `TodayDecision`, `COMPLETED` sem atividade, ausência de
-recuperação automática, uma única prova `PLANNED`, F4/F404, FR-206 e FR-207.
+Permanecem válidos: `TodayDecision`, `COMPLETED` sem atividade, uma única prova
+`PLANNED`, F4/F404 e FR-206. O FR-207 (recuperação pós-prova) foi implementado pelo
+[ADR 0037](0037-post-race-recovery.md) em 2026-11-12; a restrição do §2 de não
+automatizar recuperação fica limitada ao Ciclo 3 v0.2 e a recuperação passa a ser
+determinística, sem LLM e com sugestão explícita de revisão.

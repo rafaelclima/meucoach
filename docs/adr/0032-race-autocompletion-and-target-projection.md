@@ -129,9 +129,10 @@ de independência provam que o plano e a prescrição são idênticos com e sem
 | `COMMUNICATION.md` §6.9 | “Nunca deriva pace, faixa ou previsão” | Atualizado para “não vira pace prescrito, alvo de execução ou garantia; pode aparecer como referência da meta”. |
 | `RaceEvent` KDoc | “nunca vira pace, faixa ou previsão” | Atualizado com a mesma distinção. |
 
-**Não revogado:** FR-206 (limite de longão), FR-207 (recuperação pós-prova),
-`COMPLETED` sem atividade, ausência de recuperação automática, evento no dia como
-autoridade única e F4/ADR 0029 (o ramo de prova continua sem briefing).
+**Não revogado:** FR-206 (limite de longão), `COMPLETED` sem atividade, ausência de
+recuperação automática, evento no dia como autoridade única e F4/ADR 0029 (o ramo de
+prova continua sem briefing). O FR-207 (recuperação pós-prova) foi implementado
+depois pelo [ADR 0037](0037-post-race-recovery.md) em 2026-11-12.
 
 ## 6. Catálogo e evidência
 
