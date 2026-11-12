@@ -14,11 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,12 +34,11 @@ import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModel
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.compose.cartesian.data.ColumnCartesianLayerModel
-import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
-import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
+import com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel
 import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
@@ -131,18 +126,17 @@ fun McLineChart(
         return
     }
 
-    val modelProducer = remember { CartesianChartModelProducer() }
-    var isReady by remember { mutableStateOf(false) }
-    LaunchedEffect(lineSpecs) {
-        isReady = false
-        modelProducer.runTransaction {
-            lineModel {
+    // A manually built model is rendered synchronously, unlike a model producer
+    // whose transaction is applied on another dispatcher. Screenshot tests and
+    // Compose previews therefore never capture a chart with axes but no series.
+    val chartModel = remember(lineSpecs) {
+        CartesianChartModel(
+            LineCartesianLayerModel.build {
                 lineSpecs.forEach { spec ->
                     series(x = spec.x, y = spec.y)
                 }
-            }
-        }
-        isReady = true
+            },
+        )
     }
 
     val lines = lineSpecs.map { spec ->
@@ -215,7 +209,7 @@ fun McLineChart(
     val chartModifier = modifier
         .fillMaxWidth()
         .height(height)
-        .testTag(if (isReady) "mc-chart-ready" else "mc-chart-loading")
+        .testTag("mc-chart-ready")
         .then(
             if (contentDescription == null) {
                 Modifier
@@ -264,14 +258,12 @@ fun McLineChart(
             marker = marker,
             markerController = CartesianMarkerController.rememberToggleOnTap(),
         ),
-        modelProducer = modelProducer,
+        model = chartModel,
         modifier = chartModifier,
         scrollState = rememberVicoScrollState(
             scrollEnabled = scrollable,
             initialScroll = if (scrollable) Scroll.Absolute.End else Scroll.Absolute.Start,
         ),
-        animationSpec = null,
-        initialAnimationSpec = null,
         chartAreaHeight = height,
     )
 }
@@ -323,19 +315,15 @@ fun McBarChart(
         return
     }
 
-    val modelProducer = remember { CartesianChartModelProducer() }
-    var isReady by remember { mutableStateOf(false) }
-    LaunchedEffect(columns) {
-        isReady = false
-        modelProducer.runTransaction {
-            columnModel {
+    val chartModel = remember(columns) {
+        CartesianChartModel(
+            ColumnCartesianLayerModel.build {
                 series(
                     x = columns.map { it.first },
                     y = columns.map { it.second },
                 )
-            }
-        }
-        isReady = true
+            },
+        )
     }
 
     val highlightColumn = rememberLineComponent(
@@ -397,7 +385,7 @@ fun McBarChart(
     val chartModifier = modifier
         .fillMaxWidth()
         .height(height)
-        .testTag(if (isReady) "mc-chart-ready" else "mc-chart-loading")
+        .testTag("mc-chart-ready")
         .then(
             if (contentDescription == null) {
                 Modifier
@@ -446,14 +434,12 @@ fun McBarChart(
             marker = marker,
             markerController = CartesianMarkerController.rememberToggleOnTap(),
         ),
-        modelProducer = modelProducer,
+        model = chartModel,
         modifier = chartModifier,
         scrollState = rememberVicoScrollState(
             scrollEnabled = scrollable,
             initialScroll = if (scrollable) Scroll.Absolute.End else Scroll.Absolute.Start,
         ),
-        animationSpec = null,
-        initialAnimationSpec = null,
         chartAreaHeight = height,
     )
 }

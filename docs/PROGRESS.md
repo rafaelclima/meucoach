@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 12/11/2026 (C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 12/11/2026 (gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.467 testes no total (700 em `:app`, 162 em `core:data`, 566 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.469 testes no total (702 em `:app`, 162 em `core:data`, 566 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,56% de linhas (4.762/4.881), 81,13% de branches (3.582/4.415), 96,23% de instruções (32.952/34.244)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -76,6 +76,39 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+- **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-12 — Gate visual: gráficos Vico síncronos
+
+**Objetivo:** eliminar o flake residual do gate de goldens, em que um gráfico saía com eixos e legendas mas sem a série, trocando de gráfico entre execuções e podendo gravar um golden vazio.
+
+### Concluído
+
+- **Reprodução:** com o gate completo sob carga de CPU, **2 de 5** execuções falharam (`healthChartsDark`, `healthRecoveryChartsDark`). O diff confirmou eixos desenhados e a camada de linha/área ausente. Esperas de 1–4 s, avanço de frames e drenagem do main looper/clock do Robolectric não eliminaram o problema.
+- **Causa:** `CartesianChartModelProducer.runTransaction` aplica o modelo fora do dispatcher de composição. O `mc-chart-ready` marcava “transação concluída”, não “série pintada”; o Roborazzi podia capturar o frame anterior.
+- **Correção:** `McLineChart`/`McBarChart` montam `CartesianChartModel` manual com `LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build` e passam `model` ao `CartesianChartHost`, caminho que o Vico renderiza sincronamente. Saíram o producer, o `LaunchedEffect` e o estado `isReady`; `mc-chart-ready` existe desde a primeira composição e não há mais `mc-chart-loading`.
+- **Regressão:** `ChartRenderTest` compõe linha e barra com uma cor exclusiva e exige >20 pixels dessa cor após `waitForIdle`, travando tanto um retorno ao caminho assíncrono quanto um golden silenciosamente vazio.
+- **Sem mudança visual:** os 66 goldens passaram sem regravação; nenhum dado real, schema, migração ou dependência nova.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e build).
+- `./gradlew :core:domain:koverVerify` — verde; parser FIT **93,01%** de branches (572/615).
+- **5 execuções completas** de `:app:verifyRoborazziDebug --tests "*ScreenshotTest"` com carga de CPU — **5 verdes**, 66 goldens, nenhum regravado. Antes da correção: 2 falhas em 5.
+- **1.469 testes**, 0 falhas e 0 `@Ignore` (702 `:app`, 162 `core:data`, 566 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,56% de linhas (4.762/4.881), 81,13% de branches (3.582/4.415), 96,23% de instruções (32.952/34.244).
+
+### Decisões e observações
+
+- **Modelo síncrono em vez de seam de teste:** o caminho manual é documentado pelo Vico e usado nos testes de screenshot dele. Os gráficos são pequenos e estáticos, o `remember` evita reconstrução e as animações já estavam desligadas; não foi preciso bifurcar produção e teste.
+- **Tag de carregamento removida:** não existe mais estado assíncrono de modelo. Testes que esperam `mc-chart-ready` continuam válidos; a checagem de ausência de `mc-chart-loading` deixou de fazer sentido e foi removida.
+- **`captureStableScreenshot` mantido:** a espera por quadros idênticos segue protegendo fontes, imagens e conteúdo assíncrono do restante da tela, não mais o Vico.
+
+### Próximo passo
+
+1. Validar C3-07 no aparelho (concluir prova, janela, sugestão e undo).
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: N-03 (reconciliar taper com a evidência), T-02/T-03/T-04, FR-206, U-01..U-04 e N-05.
 
 ## Sessão 2026-11-12 — C3-07: recuperação pós-prova (FR-207)
 

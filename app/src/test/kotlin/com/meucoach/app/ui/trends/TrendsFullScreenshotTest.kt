@@ -89,7 +89,7 @@ class TrendsFullScreenshotTest {
         compose.onRoot().captureStableScreenshot(compose, file, initialSettleMillis = CHART_SETTLE_MILLIS)
     }
 
-    /** Vico builds the model off the composition; give it a moment before capturing. */
+    /** Charts are synchronous; let fonts and the rest of the screen settle before capturing. */
     private fun settle() {
         compose.waitForIdle()
         repeat(8) {

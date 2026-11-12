@@ -8,14 +8,14 @@ import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 
 /**
- * Vico paints on its own dispatcher. Under a loaded suite the model can be ready
- * while the canvas is still mid-frame, so the golden catches anti-aliasing noise
- * from a partially drawn chart.
+ * A screen can paint in stages (fonts, images, async content). Waits (bounded)
+ * for several consecutive identical captures before writing the golden, which
+ * covers a frame that briefly looks stable between two paints. A genuinely
+ * different screen still differs and fails the comparison; only the race
+ * between capture and paint is removed.
  *
- * Waits (bounded) for several consecutive identical captures before writing the
- * golden, which covers a frame that briefly looks stable between two paints.
- * A genuinely different screen still differs and fails the comparison; only the
- * race between capture and paint is removed.
+ * Charts no longer need this race: `McLineChart`/`McBarChart` build their model
+ * synchronously, so the series is present from the first composition.
  */
 fun SemanticsNodeInteraction.captureStableScreenshot(
     compose: ComposeTestRule,
@@ -24,8 +24,8 @@ fun SemanticsNodeInteraction.captureStableScreenshot(
     initialSettleMillis: Long = 0L,
 ) {
     if (!roborazziEnabled()) return
-    // Vico builds and paints off the composition; under a loaded suite the
-    // canvas can stay blank for longer than the frame sampler expects.
+    // Defensive real-time window before sampling; charts are synchronous now,
+    // but the rest of the screen can still settle asynchronously.
     if (initialSettleMillis > 0) {
         compose.waitForIdle()
         Thread.sleep(initialSettleMillis)
@@ -59,15 +59,15 @@ fun SemanticsNodeInteraction.captureStableScreenshot(
 }
 
 /**
- * Real-time window for the chart dispatcher before sampling frames.
+ * Real-time window before sampling frames for screens with charts.
  *
- * Vico can stay blank for longer than 500 ms when the full golden suite runs;
- * one second keeps the gate deterministic without changing any expected image.
- * The residual flake is tracked in the stabilization backlog.
+ * Charts are synchronous, so this is a defensive settle for the rest of the
+ * screen (fonts and async content). One second keeps the gate deterministic
+ * without changing any expected image.
  */
 const val CHART_SETTLE_MILLIS = 1_000L
 
-/** ~700 ms of an unchanged frame: long enough for Vico to finish a paint. */
+/** ~700 ms of an unchanged frame: enough for font and content layout to settle. */
 private const val STABLE_FRAMES = 8
 private const val STABLE_FRAME_DELAY_MILLIS = 100L
 

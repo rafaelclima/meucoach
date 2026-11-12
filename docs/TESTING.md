@@ -24,6 +24,7 @@
 | UI | Compose UI Test + Robolectric | Estados, acessibilidade básica | JVM, cada PR |
 | Screenshot | Roborazzi | Regressão visual dark/light | JVM, cada PR |
 | Gráficos | Roborazzi + Vico | Eixos, unidades, lacunas e cores de nível nas telas Tendências e Saúde | JVM, cada PR |
+| Render de gráficos | Compose UI Test + pixels | Série realmente pintada após a composição (linha e barra), sem depender do producer assíncrono | JVM, cada PR |
 | Instrumentado | Compose UI Test + AndroidX Test | Fluxos reais, Health Connect fake | **0 hoje**; só se houver distribuição |
 | E2E | Fluxo import → hoje | Aceitação do MVP | Manual (P1-12); sem suíte automatizada |
 
@@ -42,7 +43,7 @@ core/domain/src/test/
   parser/                     # FIT, TCX, GPX, CSV
   golden/                     # cenários JSON
 core/data/src/test/           # Room, migrações, repositórios, export, época
-app/src/test/                 # ViewModels, casos de uso, workers, formatadores, screenshots
+app/src/test/                 # ViewModels, casos de uso, workers, formatadores, screenshots e render de gráficos
 fixtures/
   fit/                        # fixtures sanitizadas/sintéticas
   tcx/
@@ -89,12 +90,12 @@ Para cada formato:
 
 O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX reais sanitizados em `fixtures/tcx/` cobrem laps, trackpoints, FC, cadência e resumo; posição, múltiplos laps e XML inválido são cobertos por fixtures sintéticas. Nenhum teste pode depender de rede.
 
-Evidência atual (11/11/2026):
+Evidência atual (12/11/2026):
 
-- 1.467 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 566 em `core:domain`, 162 em `core:data`, 700 em `:app`).
+- 1.469 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 566 em `core:domain`, 162 em `core:data`, 702 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
-- `core:domain`: 97,63% de linhas, 81,42% de branches, 96,30% de instruções.
+- `core:domain`: 97,56% de linhas, 81,13% de branches, 96,23% de instruções.
 - Comando: `./gradlew :core:domain:verifyParserBranchCoverage`.
 - A task falha o build se o pacote FIT ficar abaixo de 90% de branches; ela roda em `check` e `koverVerify`.
 - `ActivityDeduplicatorTest` cobre prioridade, tolerância de ±1 s/±2 s/±1% e escolha por samples.
@@ -357,8 +358,8 @@ Screenshots atuais (66 goldens em `app/src/test/screenshots/`, Roborazzi + Robol
 `./gradlew :app:recordRoborazziDebug` atualiza os goldens;
 `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` falha se a tela mudar.
 `check` **não** verifica goldens: o gate visual é explícito e roda em invocação própria,
-sem competir com a suíte lógica pelo dispatcher do Vico. O CI roda a verificação e
-publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
+para não disputar frames com a suíte lógica. O CI roda a verificação e publica o diff em
+artifacts. Não há dados de saúde nas imagens (fixture sintética).
 
 Goldens de C3-06: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}` foram regravados com o bloco “Referência da meta” e os mesmos fixtures sintéticos.
 
@@ -366,19 +367,18 @@ Goldens de D6-B (ADR 0036): os mesmos `profile-race-{dark,light}` e `today-race-
 
 Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre).
 
-Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 1 s real inicial; o helper não faz nada quando nenhum modo do Roborazzi está ativo. Isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
+Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 1 s real inicial; o helper não faz nada quando nenhum modo do Roborazzi está ativo. É uma proteção geral de captura; o flake de gráficos foi eliminado na raiz pelo modelo síncrono (abaixo).
 
 Goldens de C3-07: **nenhum golden novo**. A recuperação só aparece quando existe prova `COMPLETED` com janela ativa e o estado de demo não tem janela; `TodayRecoveryTest` cobre a linha “Recuperação após a prova · dia N de M · até dd/mm” no card e o downgrade da prescrição.
 
-Flake residual de Vico: em execuções completas, um gráfico pode sair com o canvas vazio mesmo com os nós `mc-chart-ready` e sem `mc-chart-loading`; o flake troca de gráfico entre execuções (`health-recovery-dark`, `health-charts-dark`, `trends-volume-dark`). Aumentar a espera real para 2 s ou 4 s não o eliminou, então a constante voltou para 1 s. Não regrave golden para “resolver” isso: reexecute o teste isolado e mantenha o item no backlog de estabilização.
+Gráficos síncronos (12/11/2026): `McLineChart`/`McBarChart` montam um `CartesianChartModel` com `LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build` e passam `model` ao `CartesianChartHost`. O Vico renderiza esse caminho de forma síncrona; o antigo `CartesianChartModelProducer` aplicava o modelo em outro dispatcher e o Roborazzi podia capturar eixos sem série (`health-charts-dark`, `health-recovery-dark`). O componente não expõe mais `mc-chart-loading`: `mc-chart-ready` está presente desde a primeira composição. `ChartRenderTest` compõe linha e barra com uma cor exclusiva e exige pixels dessa cor após `waitForIdle`, travando a regressão.
 
 Goldens de calibração: `calibration-{dark,light}` cobrem a tela com a ação “Estimar pelos meus treinos” e o resultado Tier A; `calibration-tier-b-{dark,light}` rolam até o resultado Tier B e capturam o rótulo de estimativa, a copy honesta, VDOT/LTHR/ritmo e o salvamento explícito.
 
-Gráficos Vico desenham depois do primeiro layout. `McLineChart`/`McBarChart` expõem a tag
-`mc-chart-ready` quando o modelo foi aplicado; testes de screenshot devem esperar por ela
-(`waitUntil` + `onAllNodesWithTag`) antes de `captureRoboImage`. O gate visual roda em
-invocação própria (`verifyRoborazziDebug --tests "*ScreenshotTest"`), porque a suíte inteira
-pode deixar o canvas do Vico sem pintar.
+`McLineChart`/`McBarChart` expõem `mc-chart-ready` desde a primeira composição; testes de
+screenshot podem esperar pela tag para garantir que o gráfico entrou na árvore. O gate visual
+roda em invocação própria (`verifyRoborazziDebug --tests "*ScreenshotTest"`), porque a suíte
+inteira pode disputar frames com o Compose/Roborazzi.
 
 ## 9. Health Connect
 
@@ -397,7 +397,7 @@ pode deixar o canvas do Vico sem pintar.
 - JDK 17, SDK 37, build-tools 37.
 - Cache Gradle.
 - `check` cobre a lógica; o gate de goldens é a invocação própria de `verifyRoborazziDebug`
-  com os testes de screenshot, para não herdar a contenção de frames do Vico.
+  com os testes de screenshot, para não disputar frames com a suíte lógica.
 - Relatórios de teste, Kover e lint como artifacts em toda execução (`if: always()`); o diff do Roborazzi também é publicado.
 - **Não há** nightly de emulador nem `connectedDebugAndroidTest`; instrumentados dependem de decisão de distribuição (TEST-01).
 - Branch protection: CI verde obrigatório.
@@ -406,7 +406,7 @@ pode deixar o canvas do Vico sem pintar.
 
 | Módulo | Meta | Verificação |
 |---|---|---|
-| `core:domain` | ≥ 85% linhas (atual 97,69%) | Kover `:core:domain:koverVerify` |
+| `core:domain` | ≥ 85% linhas (atual 97,56%) | Kover `:core:domain:koverVerify` |
 | Pacote `parser.fit` | ≥ 90% branches (atual 93,01%) | `verifyParserBranchCoverage` (XML do Kover) |
 | `core:model` | ≥ 90% (**proposta**, sem gate) | Não configurado |
 | `core:data` | ≥ 75% (**proposta**, sem gate) | Não configurado |

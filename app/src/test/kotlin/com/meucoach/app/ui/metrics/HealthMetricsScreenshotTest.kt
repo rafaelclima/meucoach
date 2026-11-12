@@ -5,7 +5,6 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
@@ -159,8 +158,7 @@ class HealthMetricsScreenshotTest {
                 compose.onAllNodes(
                     hasTestTag("mc-chart-ready") and hasContentDescription(description, substring = true),
                 ).fetchSemanticsNodes().isNotEmpty()
-            } &&
-                compose.onAllNodesWithTag("mc-chart-loading").fetchSemanticsNodes().isEmpty()
+            }
         }
         compose.waitForIdle()
     }
@@ -182,8 +180,7 @@ class HealthMetricsScreenshotTest {
         }
         compose.mainClock.advanceTimeBy(1_000)
         compose.waitForIdle()
-        // Vico draws on its own dispatcher; under a loaded suite the model can be
-        // ready while the canvas is still blank. Give the real thread a moment.
+        // Charts are synchronous; give fonts and the rest of the screen a moment.
         Thread.sleep(300)
         compose.waitForIdle()
     }

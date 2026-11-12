@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.32 · **Data:** 12/11/2026 · **Mudança:** C3-07 concluído — recuperação pós-prova (FR-207, janela 2/3/5/10 dias, `R-RACE-04`, sugestão `RACE_COMPLETED`); D6-B, BUG-06, BUG-03/04 e FR-011 seguem concluídos.
+**Versão:** 1.33 · **Data:** 12/11/2026 · **Mudança:** gate visual estabilizado — gráficos Vico passam a usar `CartesianChartModel` síncrono, com `ChartRenderTest` e 5 execuções completas verdes sob carga; C3-07 (FR-207), D6-B, BUG-06, BUG-03/04 e FR-011 seguem concluídos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -599,6 +599,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | T-07 | Migração para MapLibre | Fase 2 |
 | T-08 | i18n (pt-BR base, en futuro) | Fase 2 |
 | T-09 | Fuso e cidade em lista fixa do Brasil: avaliar campo livre ou lista completa | Fase 2 |
+| T-10 | Gate de goldens estável: `CartesianChartModel` síncrono no Vico e `ChartRenderTest` com asserção de pixels; sem flake em 5 execuções sob carga | **Concluído em 12/11/2026** |
 
 ## Critérios de saída do MVP
 
@@ -610,6 +611,6 @@ Capacidade entregue; a aceitação final depende de P1-12 (4 semanas de uso real
 - [x] Prescreve a semana e o treino do dia com rationale.
 - [x] Funciona offline e sem conta (exceto tiles do mapa do story, opt-in).
 - [x] Exporta e apaga todos os dados (T-06; lixeira de 7 dias e reset com época).
-- [x] Testes verdes, cobertura ≥ 85% no domínio (97,69% de linhas).
+- [x] Testes verdes, cobertura ≥ 85% no domínio (97,56% de linhas).
 - [x] Nenhum dado real no repositório (fixtures sanitizadas/sintéticas).
 - [ ] P1-12: validação E2E com 4 semanas de uso real.
