@@ -309,6 +309,8 @@ fonte de carga neste ciclo.
 
 `id`, `fileName`, `sha256`, `mime`, `sizeBytes`, `status` (`QUEUED`, `PARSING`, `DONE`, `FAILED`, `DUPLICATE`, `TRASH_CONFLICT`), `parserVersion`, `activityId`, `errorCode`, `errorMessage`, `createdAt`, `finishedAt`.
 
+O job nasce em `PARSING` (uma única escrita) e só o pipeline o move para um estado terminal; `ImportJobGuard` fecha como `FAILED` qualquer erro inesperado depois da criação e a leitura da lista fecha `QUEUED`/`PARSING` com mais de 1 h (processo morto). `QUEUED` permanece no enum para linhas antigas.
+
 ## 4. Deduplicação e merge
 
 1. Hash do arquivo igual ⇒ duplicata exata; ignorar.

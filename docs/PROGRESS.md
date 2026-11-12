@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 12/11/2026 (FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 12/11/2026 (BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.497 testes no total (704 em `:app`, 162 em `core:data`, 592 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.515 testes no total (717 em `:app`, 167 em `core:data`, 592 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,57% de linhas (4.943/5.066), 81,08% de branches (3.719/4.587), 96,24% de instruções (34.133/35.467)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -27,6 +27,7 @@
 - **Recuperação pós-prova (C3-07, concluído):** `RecoveryWindow` puro deriva a janela da prova concluída (5k 2, 10k 3, meia 5, maratona 10 dias) e bloqueia qualidade/longão com sessões fáceis de até 30 min (45/60 na 2ª metade). O gerador e o replanejador recebem a janela; a prescrição do dia aplica defesa em profundidade (`QUALITY`/`LONG` → `EASY`, `EASY` → teto), `daily-prescription-v4` e `weekly-plan-v2`. Semana persistida que ainda viola a janela gera sugestão `RACE_COMPLETED` (aceitar/recusar, lembrada por semana+evento). Hoje/Plano/Perfil mostram a recuperação; `CANCELLED`/`NO_SHOW` e meta legada não iniciam janela; sem migração (`R-RACE-04`, LIMITED).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
+- **Importação resiliente (BUG-11):** o job é gravado já como `PARSING` em uma única escrita e `ImportJobGuard` fecha como `FAILED` qualquer erro inesperado que escape do pipeline; `ImportFailurePolicy` não retenta arquivo sumido, caminho inválido, acesso negado, erro de programa ou `ImportStagingException`, e limita `IOException` transitória a 3 tentativas. Falha sem job gera notificação própria, erro de notificação não reprocessa um import concluído, e `ActivityRepository` fecha jobs `QUEUED`/`PARSING` com mais de 1 h ao observar a lista (morte de processo).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
 - **Detalhe da atividade:** hero, métricas, gráfico pace × FC (Canvas), splits, rota offline e insights com `ruleId`/`evidenceId`/confiança.
 - **Perfil e onboarding:** formulário em 3 passos (dados, objetivo/disponibilidade, rotina), validação, persistência e edição.
@@ -77,6 +78,40 @@
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-12 — BUG-11: importação nunca fica presa
+
+**Objetivo:** garantir que todo job de importação chegue a um estado terminal e que falhas permanentes não entrem em retry infinito, sem migração.
+
+### Concluído
+
+- **Job em uma única escrita:** `ImportService` grava o job já como `PARSING`; a segunda escrita, que podia falhar entre o `insert` e a flag e deixar a linha em `QUEUED`, foi removida.
+- **Terminalidade garantida (`ImportJobGuard`):** qualquer `Throwable` que escape do pipeline depois da criação do job é registrado como `FAILED`/`STORAGE_ERROR` com mensagem honesta e o import retorna `Failed`; `CancellationException` continua propagando e a marcação é best effort (banco indisponível ⇒ o worker ainda reporta).
+- **Falha antes do job:** se nem o insert do job acontecer, o import retorna `Failed` em vez de estourar para o WorkManager; nenhuma linha fantasma fica na lista.
+- **Retry com limite (`ImportFailurePolicy`):** arquivo sumido, caminho inválido, acesso negado, erro de programação e `ImportStagingException` não são retentados; `IOException` transitória tenta até 3 vezes e depois desiste.
+- **Feedback sem job:** a falha que ocorre antes da criação do job gera a notificação “Não foi possível importar” com a mesma copy do `ImportResult.Failed`; erro de notificação nunca transforma um import concluído em retry.
+- **Reconciliação de processo morto:** `ActivityRepository` fecha jobs `QUEUED`/`PARSING` com mais de 1 h ao observar a lista (`ImportJobDao.failInterrupted`), cobrindo o caso em que o worker nem chega a rodar de novo.
+- **Testes:** 18 novos — `ImportFailurePolicyTest` (8), `ImportWorkerTest` (4), `ImportJobGuardTest` (3), mais um em `ImportServiceTest`, um em `ActivityRepositoryTest` e um em `ImportNotificationTest`.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e build).
+- **1.515 testes**, 0 falhas e 0 `@Ignore` (717 `:app`, 167 `core:data`, 592 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,57% de linhas, 81,08% de branches e 96,24% de instruções (inalterado; nenhum arquivo do domínio foi tocado).
+- Schema permanece **v17**; nenhuma migração, dependência nova ou dado real no diff.
+
+### Decisões e observações
+
+- **Corte de 1 h:** um parse leva segundos; um job vivo termina bem antes do corte e a escrita terminal dele vence a reconciliação, então não há corrida.
+- **Reconciliar em vez de apagar:** esconder o job sumiria com a trilha de auditoria; marcá-lo `FAILED` conta a verdade e explica o próximo passo.
+- **Só `QUEUED`/`PARSING` na query:** um estado não-terminal novo, adicionado no futuro, não é reescrito por engano.
+- **Terminalidade no serviço, não no worker:** o worker não conhece o id do job; a guarda vive onde o job existe.
+
+### Próximo passo
+
+1. Validar em aparelho: matar o app durante um import e reabrir a lista (job deve aparecer como “Falhou”, sem “Lendo” eterno).
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: N-03 (qualidade no taper), BUG-08 (meta de prova sem data), T-02/T-03/T-04, FR-206, U-01..U-04 e N-05.
 
 ## Sessão 2026-11-12 — FR-004 / N-07: progressão de volume a partir do realizado
 

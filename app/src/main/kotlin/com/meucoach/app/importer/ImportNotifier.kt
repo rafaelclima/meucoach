@@ -43,6 +43,15 @@ class ImportNotifier @Inject constructor(@ApplicationContext context: Context) {
 
     fun notify(result: ImportResult, fileName: String) {
         if (result is ImportResult.Skipped) return
+        show(ImportNotification.message(result, fileName))
+    }
+
+    /** Reports a failure that never produced a job row, so the runner is not kept in the dark. */
+    fun notifyFailure(fileName: String, message: String) {
+        show(ImportNotification.failure(fileName, message))
+    }
+
+    private fun show(message: ImportNotificationMessage) {
         ensureChannel()
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -51,7 +60,6 @@ class ImportNotifier @Inject constructor(@ApplicationContext context: Context) {
         ) {
             return
         }
-        val message = ImportNotification.message(result, fileName)
         val intent = Intent(appContext, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             data = Uri.parse(message.deepLink)

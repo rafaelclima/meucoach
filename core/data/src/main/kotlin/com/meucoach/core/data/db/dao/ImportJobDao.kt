@@ -25,6 +25,20 @@ interface ImportJobDao {
     @Query("SELECT * FROM import_jobs ORDER BY createdAt DESC")
     suspend fun getAll(): List<ImportJobEntity>
 
+    /**
+     * Closes jobs that a killed process left mid-import. Only the two
+     * non-terminal states are touched, so a new terminal state added later is
+     * never rewritten by accident.
+     */
+    @Query(
+        """
+        UPDATE import_jobs
+        SET status = 'FAILED', errorCode = :errorCode, errorMessage = :message, finishedAt = :finishedAt
+        WHERE status IN ('QUEUED', 'PARSING') AND createdAt < :createdBefore
+        """,
+    )
+    suspend fun failInterrupted(createdBefore: Long, finishedAt: Long, errorCode: String, message: String): Int
+
     @Query("DELETE FROM import_jobs WHERE activityId = :activityId")
     suspend fun deleteForActivity(activityId: String): Int
 

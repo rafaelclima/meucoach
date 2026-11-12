@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ImportJobStatus
+import com.meucoach.core.data.db.testJob
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.model.ActivitySource
 import kotlinx.coroutines.runBlocking
@@ -276,6 +277,30 @@ class ImportServiceTest {
     fun `hashes bytes with sha256`() {
         assertThat(Sha256.hex("abc".toByteArray()))
             .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
+
+    @Test
+    fun `reports a failure instead of a queued job when the job cannot be written`() {
+        runBlocking {
+            database.importJobDao().insert(testJob(activityId = null))
+            val colliding =
+                ImportService(
+                    database = database,
+                    repository = repository,
+                    clock = fixedClock,
+                    jobIdGenerator = { "job-1" },
+                )
+
+            val result = colliding.import(
+                ImportRequest(fixture("/fit/Zepp20261022195619.fit"), "run.fit"),
+            )
+
+            assertThat(result).isInstanceOf(ImportResult.Failed::class.java)
+            assertThat((result as ImportResult.Failed).code).isEqualTo(ImportErrorCode.STORAGE_ERROR)
+            assertThat(database.importJobDao().getAll()).hasSize(1)
+            assertThat(database.importJobDao().findById("job-1")?.status).isEqualTo(ImportJobStatus.DONE)
+            assertThat(repository.listActivitySummaries()).isEmpty()
+        }
     }
 
     private fun fixture(path: String): ByteArray {

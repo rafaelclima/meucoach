@@ -114,6 +114,10 @@ Evidência atual (12/11/2026):
 ## 5.2 Testes de importação e detalhe
 
 - `ImportServiceTest`: FIT/TCX/GPX, hash exato, substituição e alternates.
+- `ImportWorkerTest` (BUG-11): arquivo staged ausente e caminho inválido terminam em `failure` com notificação, nunca em retry infinito; caminho feliz continua gravando `DONE`.
+- `ImportFailurePolicyTest` (BUG-11): tabela de decisão entre retry transitório, orçamento de 3 tentativas e falha permanente (arquivo sumido, acesso negado, erro de programação).
+- `ImportJobGuardTest` (BUG-11): erro inesperado fecha o job como `FAILED`; cancelamento preserva o job para o WorkManager; sucesso não altera o status.
+- `ImportJobDao`/`ActivityRepositoryTest` (BUG-11): jobs `QUEUED`/`PARSING` com mais de 1 h são fechados ao observar a lista; job recente permanece intacto.
 - `RealFixturesDetailTest`: importa e abre os 4 FIT + 3 TCX reais sanitizados; valida resumo, laps, samples e ausência de `sampleWarning` (TCX confere distância, duração e cadência).
 - `ActivityInsightsCalculatorTest`: `R-ACT-01` (negative split, ritmo constante, queda), `R-ACT-02` (drift e limites) e ausência de dados.
 - `ActivityDetailViewModelTest`: carregamento, atividade ausente e id obrigatório.

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.34 · **Data:** 12/11/2026 · **Mudança:** progressão de volume a partir do realizado (FR-004/N-07, ADR 0038): `R-PLAN-01` passa a ser emitida e o plano cresce no máximo 6% com guardrails; `weekly-plan-v3`, sem migração.
+**Versão:** 1.35 · **Data:** 12/11/2026 · **Mudança:** importação resiliente (BUG-11): job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; sem migração.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -601,6 +601,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | T-08 | i18n (pt-BR base, en futuro) | Fase 2 |
 | T-09 | Fuso e cidade em lista fixa do Brasil: avaliar campo livre ou lista completa | Fase 2 |
 | T-10 | Gate de goldens estável: `CartesianChartModel` síncrono no Vico e `ChartRenderTest` com asserção de pixels; sem flake em 5 execuções sob carga | **Concluído em 12/11/2026** |
+| T-11 | Importação resiliente (BUG-11): job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job | **Concluído em 12/11/2026** |
 
 ## Critérios de saída do MVP
 

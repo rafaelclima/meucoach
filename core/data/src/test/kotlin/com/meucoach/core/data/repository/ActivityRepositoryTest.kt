@@ -24,6 +24,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -351,6 +352,31 @@ class ActivityRepositoryTest {
             assertThat(job.status).isEqualTo(ImportJobStatus.DONE)
             assertThat(job.activityId).isNull()
             assertThat(repository.listImportJobs()).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `closes jobs interrupted by a killed process`() {
+        runBlocking {
+            val stale = testJob(activityId = null).copy(
+                id = "job-stale",
+                status = ImportJobStatus.PARSING,
+                createdAt = fixedClock.instant().minus(Duration.ofHours(2)).toEpochMilli(),
+                finishedAt = null,
+            )
+            val recent = stale.copy(
+                id = "job-recent",
+                createdAt = fixedClock.instant().minus(Duration.ofMinutes(5)).toEpochMilli(),
+            )
+            database.importJobDao().insert(stale)
+            database.importJobDao().insert(recent)
+
+            val jobs = repository.observeImportJobs().first().associateBy { it.id }
+
+            assertThat(jobs.getValue("job-stale").status).isEqualTo(ImportJobStatus.FAILED)
+            assertThat(jobs.getValue("job-stale").errorMessage).contains("interrompida")
+            assertThat(jobs.getValue("job-stale").finishedAt).isEqualTo(fixedClock.instant())
+            assertThat(jobs.getValue("job-recent").status).isEqualTo(ImportJobStatus.PARSING)
         }
     }
 

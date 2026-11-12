@@ -43,15 +43,14 @@ class ImportService(
         }
         val epoch = epochStore?.current()
         val sha256 = Sha256.hex(request.bytes)
-        val jobId = jobIdGenerator()
         val createdAt = clock.instant()
-        val initialJob = ImportJobEntity(
-            id = jobId,
+        val job = ImportJobEntity(
+            id = jobIdGenerator(),
             fileName = request.fileName,
             sha256 = sha256,
             mime = request.mime,
             sizeBytes = request.bytes.size.toLong(),
-            status = ImportJobStatus.QUEUED,
+            status = ImportJobStatus.PARSING,
             parserVersion = null,
             activityId = null,
             errorCode = null,
@@ -59,42 +58,50 @@ class ImportService(
             createdAt = createdAt.toEpochMilli(),
             finishedAt = null,
         )
-        val started = if (epochStore != null && writeMutex != null) {
-            writeMutex.mutex.withLock {
-                if (epochStore.current() != epoch) {
-                    false
-                } else {
-                    insertInitialJob(initialJob)
-                    true
-                }
-            }
-        } else {
-            insertInitialJob(initialJob)
-            true
-        }
-        if (!started) return ImportResult.Skipped
+        when (startJob(job, epoch)) {
+            JobStart.SKIPPED -> return ImportResult.Skipped
 
+            JobStart.FAILED -> return ImportResult.Failed(
+                jobId = job.id,
+                code = ImportErrorCode.STORAGE_ERROR,
+                message = START_FAILED_MESSAGE,
+            )
+
+            JobStart.STARTED -> Unit
+        }
+        // A job already exists, so every exit must leave it in a terminal state.
+        return ImportJobGuard(database.importJobDao(), clock).run(job) {
+            importJob(job, request, sha256, epoch)
+        }
+    }
+
+    private suspend fun importJob(
+        job: ImportJobEntity,
+        request: ImportRequest,
+        sha256: String,
+        epoch: String?,
+    ): ImportResult {
         database.activityDao().findBySha256IncludingDeleted(sha256)?.let { existing ->
             if (existing.deletedAt != null) {
-                markTrashConflict(initialJob, existing.id)
-                return ImportResult.TrashConflict(jobId = jobId, activityId = existing.id)
+                markTrashConflict(job, existing.id)
+                return ImportResult.TrashConflict(jobId = job.id, activityId = existing.id)
             }
-            markDuplicate(initialJob, existing.id)
-            return ImportResult.Duplicate(jobId = jobId, activityId = existing.id)
+            markDuplicate(job, existing.id)
+            return ImportResult.Duplicate(jobId = job.id, activityId = existing.id)
         }
         database.activityAlternateDao().findBySha256(sha256)?.let { alternate ->
             val parent = database.activityDao().findByIdIncludingDeleted(alternate.activityId)
             if (parent?.deletedAt != null) {
-                markTrashConflict(initialJob, alternate.activityId)
-                return ImportResult.TrashConflict(jobId = jobId, activityId = alternate.activityId)
+                markTrashConflict(job, alternate.activityId)
+                return ImportResult.TrashConflict(jobId = job.id, activityId = alternate.activityId)
             }
-            markDuplicate(initialJob, alternate.activityId)
-            return ImportResult.Duplicate(jobId = jobId, activityId = alternate.activityId)
+            markDuplicate(job, alternate.activityId)
+            return ImportResult.Duplicate(jobId = job.id, activityId = alternate.activityId)
         }
 
         val format = ImportFormat.detect(request)
             ?: return fail(
-                initialJob,
+                job,
                 ImportErrorCode.UNSUPPORTED_FORMAT,
                 "Formato não suportado. Use FIT, TCX ou GPX.",
             )
@@ -105,7 +112,7 @@ class ImportService(
             throw error
         } catch (_: Exception) {
             return fail(
-                initialJob,
+                job,
                 ImportErrorCode.PARSE_ERROR,
                 "Não foi possível ler este arquivo ${format.name}. " +
                     "Verifique se ele está completo e não está corrompido.",
@@ -128,9 +135,9 @@ class ImportService(
             if (saved == null) return ImportResult.Skipped
             when (saved) {
                 is SaveActivityResult.Saved -> {
-                    markDone(initialJob, parsed.activity, saved.id)
+                    markDone(job, parsed.activity, saved.id)
                     ImportResult.Imported(
-                        jobId = jobId,
+                        jobId = job.id,
                         activityId = saved.id,
                         source = parsed.activity.source,
                         warnings = parsed.warnings,
@@ -138,9 +145,9 @@ class ImportService(
                 }
 
                 is SaveActivityResult.Replaced -> {
-                    markDone(initialJob, parsed.activity, saved.id)
+                    markDone(job, parsed.activity, saved.id)
                     ImportResult.Imported(
-                        jobId = jobId,
+                        jobId = job.id,
                         activityId = saved.id,
                         source = parsed.activity.source,
                         warnings = parsed.warnings,
@@ -149,9 +156,9 @@ class ImportService(
                 }
 
                 is SaveActivityResult.Restored -> {
-                    markDone(initialJob, parsed.activity, saved.id)
+                    markDone(job, parsed.activity, saved.id)
                     ImportResult.Imported(
-                        jobId = jobId,
+                        jobId = job.id,
                         activityId = saved.id,
                         source = parsed.activity.source,
                         warnings = parsed.warnings,
@@ -160,29 +167,50 @@ class ImportService(
                 }
 
                 is SaveActivityResult.ConflictingTrash -> {
-                    markTrashConflict(initialJob, saved.id)
-                    ImportResult.TrashConflict(jobId = jobId, activityId = saved.id)
+                    markTrashConflict(job, saved.id)
+                    ImportResult.TrashConflict(jobId = job.id, activityId = saved.id)
                 }
 
                 is SaveActivityResult.Duplicate -> {
-                    markDuplicate(initialJob, saved.id)
-                    ImportResult.Duplicate(jobId = jobId, activityId = saved.id)
+                    markDuplicate(job, saved.id)
+                    ImportResult.Duplicate(jobId = job.id, activityId = saved.id)
                 }
             }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
             fail(
-                initialJob,
+                job,
                 ImportErrorCode.STORAGE_ERROR,
                 "Não foi possível salvar a atividade. Tente importar o arquivo de novo.",
             )
         }
     }
 
-    private suspend fun insertInitialJob(job: ImportJobEntity) {
-        database.importJobDao().insert(job)
-        database.importJobDao().update(job.copy(status = ImportJobStatus.PARSING))
+    /**
+     * Writes the job already as PARSING in a single statement. A second write
+     * between the insert and the flag could fail and leave a job that never
+     * leaves the queue.
+     */
+    private suspend fun startJob(job: ImportJobEntity, epoch: String?): JobStart = try {
+        val written = if (epochStore != null && writeMutex != null) {
+            writeMutex.mutex.withLock {
+                if (epochStore.current() != epoch) {
+                    false
+                } else {
+                    database.importJobDao().insert(job)
+                    true
+                }
+            }
+        } else {
+            database.importJobDao().insert(job)
+            true
+        }
+        if (written) JobStart.STARTED else JobStart.SKIPPED
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        JobStart.FAILED
     }
 
     private fun parse(format: ImportFormat, bytes: ByteArray): ParsedImport = when (format) {
@@ -245,8 +273,11 @@ class ImportService(
 
     private data class ParsedImport(val activity: ImportedActivity, val warnings: List<String> = emptyList())
 
+    private enum class JobStart { STARTED, SKIPPED, FAILED }
+
     private companion object {
         const val MAX_ERROR_MESSAGE_LENGTH = 500
+        const val START_FAILED_MESSAGE = "Não foi possível iniciar a importação. Importe o arquivo de novo."
     }
 }
 

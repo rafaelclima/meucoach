@@ -9,6 +9,7 @@ import com.meucoach.core.data.db.entity.ImportJobStatus
 import com.meucoach.core.data.db.entity.LapEntity
 import com.meucoach.core.data.db.entity.SampleBlobEntity
 import com.meucoach.core.data.id.UuidV7
+import com.meucoach.core.data.importer.ImportErrorCode
 import com.meucoach.core.data.samples.SampleBlobCodec
 import com.meucoach.core.data.samples.SampleBlobException
 import com.meucoach.core.domain.importer.ActivityDeduplicator
@@ -24,6 +25,7 @@ import com.meucoach.core.model.Sport
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -100,12 +102,33 @@ class ActivityRepository(
     fun observeImportJobs(): Flow<List<ImportJobSummary>> = database
         .importJobDao()
         .observeAll()
+        .onStart { runCatching { failInterruptedImportJobs() } }
         .map { jobs -> jobs.map { it.toSummary() } }
 
-    suspend fun listImportJobs(): List<ImportJobSummary> = database
-        .importJobDao()
-        .getAll()
-        .map { it.toSummary() }
+    suspend fun listImportJobs(): List<ImportJobSummary> {
+        runCatching { failInterruptedImportJobs() }
+        return database
+            .importJobDao()
+            .getAll()
+            .map { it.toSummary() }
+    }
+
+    /**
+     * A job only leaves `QUEUED`/`PARSING` from inside the import pipeline. A
+     * process killed mid-import never gets there, so the row would show "Lendo"
+     * forever and a retry would pile up more ghosts. Readers close them first;
+     * a job that is still running finishes long before the cutoff and its own
+     * terminal write wins anyway.
+     */
+    suspend fun failInterruptedImportJobs(): Int {
+        val now = clock.instant()
+        return database.importJobDao().failInterrupted(
+            createdBefore = now.minus(INTERRUPTED_IMPORT_AFTER).toEpochMilli(),
+            finishedAt = now.toEpochMilli(),
+            errorCode = ImportErrorCode.STORAGE_ERROR.name,
+            message = INTERRUPTED_IMPORT_MESSAGE,
+        )
+    }
 
     suspend fun saveImportedActivity(
         imported: ImportedActivity,
@@ -599,3 +622,7 @@ private fun ActivityEntity.toTrashed() = TrashedActivity(
 )
 
 private const val DEDUP_START_TOLERANCE_MS = 1_000L
+
+/** A parse takes seconds; anything older than this was interrupted, not slow. */
+private val INTERRUPTED_IMPORT_AFTER: Duration = Duration.ofHours(1)
+private const val INTERRUPTED_IMPORT_MESSAGE = "A importação foi interrompida. Importe o arquivo de novo."

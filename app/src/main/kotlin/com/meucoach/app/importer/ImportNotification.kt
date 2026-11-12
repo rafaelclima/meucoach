@@ -37,11 +37,7 @@ object ImportNotification {
             deepLink = "$DEEP_LINK_ACTIVITY/${result.activityId}",
         )
 
-        is ImportResult.Failed -> ImportNotificationMessage(
-            title = "Não foi possível importar",
-            body = "$fileName: ${result.message}",
-            deepLink = DEEP_LINK_ACTIVITIES,
-        )
+        is ImportResult.Failed -> failure(fileName, result.message)
 
         is ImportResult.TrashConflict -> ImportNotificationMessage(
             title = "Atividade na lixeira",
@@ -55,4 +51,11 @@ object ImportNotification {
             deepLink = DEEP_LINK_ACTIVITIES,
         )
     }
+
+    /** Same copy for a failure that never reached a job (staged file lost, timeout). */
+    fun failure(fileName: String, message: String): ImportNotificationMessage = ImportNotificationMessage(
+        title = "Não foi possível importar",
+        body = "$fileName: $message",
+        deepLink = DEEP_LINK_ACTIVITIES,
+    )
 }

@@ -8,6 +8,19 @@ import org.junit.Test
 
 class ImportNotificationTest {
     @Test
+    fun `failures without a job still explain themselves`() {
+        val message = ImportNotification.failure(
+            fileName = "corrida.gpx",
+            message = ImportFailurePolicy.GIVE_UP_MESSAGE,
+        )
+
+        assertThat(message.title).isEqualTo("Não foi possível importar")
+        assertThat(message.body)
+            .isEqualTo("corrida.gpx: Não foi possível ler o arquivo. Importe o arquivo de novo.")
+        assertThat(message.deepLink).isEqualTo("meucoach://activities")
+    }
+
+    @Test
     fun `opens the imported activity`() {
         val message = ImportNotification.message(
             ImportResult.Imported(
