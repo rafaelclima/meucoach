@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Density
 import com.meucoach.app.ui.common.TargetTimeParts
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.calibration.CalibrationPerformance
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.model.DataConfidence
@@ -63,6 +64,7 @@ class CalibrationScreenTest {
             .performScrollToNode(hasText("CALIBRAÇÃO POR PROVA RECENTE"))
         compose.onNodeWithText("CALIBRAÇÃO POR PROVA RECENTE").assertIsDisplayed()
         compose.onNodeWithText("R-CAL-01", substring = true).assertDoesNotExist()
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasText("6:28"))
         compose.onNodeWithText("29,6").assertIsDisplayed()
         compose.onAllNodesWithText("181")[0].assertIsDisplayed()
         compose.onNodeWithText("6:28").assertIsDisplayed()
@@ -113,6 +115,62 @@ class CalibrationScreenTest {
     }
 
     @Test
+    fun `offers the training estimate only with enough recent efforts`() {
+        var estimated = false
+        setContent(
+            state = loadedState().copy(trainingEfforts = efforts(count = 3)),
+            onEstimate = { estimated = true },
+        )
+
+        compose.onNodeWithTag("calibration-list")
+            .performScrollToNode(hasTestTag("calibration-estimate"))
+        compose.onNodeWithTag("calibration-estimate").performClick()
+
+        assertThat(estimated).isTrue()
+    }
+
+    @Test
+    fun `hides the training estimate without enough recent efforts`() {
+        setContent(state = loadedState().copy(trainingEfforts = efforts(count = 2)))
+
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasText("Calcular"))
+        compose.onNodeWithTag("calibration-estimate").assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows the tier B estimate with honest copy and no technical ids`() {
+        setContent(state = loadedState().copy(result = tierBResult()))
+
+        compose.onNodeWithTag("calibration-list")
+            .performScrollToNode(hasText("Estimativa pelo seu melhor treino sustentado", substring = true))
+        compose.onNodeWithText("ESTIMATIVA PELOS SEUS TREINOS").assertIsDisplayed()
+        compose.onNodeWithText(
+            "Estimativa pelo seu melhor treino sustentado",
+            substring = true,
+        ).assertIsDisplayed()
+        compose.onNodeWithText("R-CAL-02", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `labels a tier B without numbers as a missing estimate`() {
+        setContent(
+            state = loadedState().copy(
+                result = tierBResult().copy(
+                    vdot = null,
+                    thresholdPace = null,
+                    lthr = null,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("calibration-list")
+            .performScrollToNode(hasText("TREINOS RECENTES SEM ESTIMATIVA"))
+        compose.onNodeWithText("TREINOS RECENTES SEM ESTIMATIVA").assertIsDisplayed()
+        compose.onNodeWithTag("calibration-save").assertDoesNotExist()
+    }
+
+    @Test
     fun `shows form errors`() {
         setContent(
             state = loadedState().copy(
@@ -135,6 +193,7 @@ class CalibrationScreenTest {
                     onUpdate = { transform -> state = state.copy(form = transform(state.form)) },
                     onCalculate = {},
                     onSave = {},
+                    onEstimate = {},
                     onBack = {},
                 )
             }
@@ -163,6 +222,7 @@ class CalibrationScreenTest {
                         onUpdate = {},
                         onCalculate = {},
                         onSave = {},
+                        onEstimate = {},
                         onBack = {},
                     )
                 }
@@ -176,7 +236,12 @@ class CalibrationScreenTest {
         compose.onNodeWithTag("calibration-date").assertIsDisplayed()
     }
 
-    private fun setContent(state: CalibrationUiState, onCalculate: () -> Unit = {}, onSave: () -> Unit = {}) {
+    private fun setContent(
+        state: CalibrationUiState,
+        onCalculate: () -> Unit = {},
+        onSave: () -> Unit = {},
+        onEstimate: () -> Unit = {},
+    ) {
         compose.setContent {
             McTheme(darkTheme = true) {
                 CalibrationContent(
@@ -184,6 +249,7 @@ class CalibrationScreenTest {
                     onUpdate = {},
                     onCalculate = onCalculate,
                     onSave = onSave,
+                    onEstimate = onEstimate,
                     onBack = {},
                 )
             }
@@ -200,6 +266,15 @@ class CalibrationScreenTest {
         ),
     )
 
+    private fun efforts(count: Int) = List(count) { index ->
+        CalibrationPerformance(
+            distanceM = 6_000.0,
+            durationSec = 1_800,
+            date = java.time.LocalDate.parse("2026-10-24"),
+            averageHeartRate = 170 + index,
+        )
+    }
+
     private fun result() = CalibrationResult(
         tier = CalibrationTier.A,
         vdot = 29.6477,
@@ -210,5 +285,16 @@ class CalibrationScreenTest {
         evidenceIds = listOf("EV-DANIELS-2014", "EV-FRIEL-2018"),
         warnings = emptySet(),
         recommendation = "Use as paces E/M/T/I/R e recalibre em 6–8 semanas.",
+    )
+
+    private fun tierBResult() = result().copy(
+        tier = CalibrationTier.B,
+        vdot = 40.9223,
+        thresholdPace = Pace.fromSecondsPerKm(300),
+        lthr = 174,
+        confidence = DataConfidence.MEDIUM,
+        ruleId = "R-CAL-02",
+        recommendation = "Estimativa pelo seu melhor esforço sustentado de 20–35 min. " +
+            "Confirme com um teste de 30 min quando possível; até lá, ajuste pelo esforço percebido.",
     )
 }

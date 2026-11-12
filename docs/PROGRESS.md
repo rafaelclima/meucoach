@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (BUG-06 fatia 1 concluída: Tier B estima pelo melhor esforço sustentado, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (BUG-06 fatia 2 concluída: a estimativa Tier B chega à tela com os treinos recentes e ação explícita; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.414 testes no total (682 em `:app`, 161 em `core:data`, 532 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.424 testes no total (692 em `:app`, 161 em `core:data`, 532 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,65% de linhas (4.536/4.645), 81,43% de branches (3.355/4.120), 96,31% de instruções (31.402/32.606)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -32,7 +32,7 @@
 - **Calibração:** VDOT/LTHR/pace de limiar por prova ou TT ≤ 8 semanas, com tiers A/B/C e tela de resultado.
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
-- **Tier B estima (ADR 0035, fatia 1):** sem prova recente, o melhor esforço sustentado de 20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de limiar; VDOT é derivado assumindo o esforço como limiar (a 88%, limites 10–90) e a LTHR vem do mesmo esforço só na janela 25–35 min. Confiança média; sem candidato ou com pace implausível, Tier B continua rotulado sem números, com aviso e o teste de 30 min como recomendação. A lista de esforços (`trainingEfforts`) ainda não é alimentada pelo app (fatia 2).
+- **Tier B estima (ADR 0035, fatias 1–2):** sem prova recente, o melhor esforço sustentado de 20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de limiar; VDOT é derivado assumindo o esforço como limiar (a 88%, limites 10–90) e a LTHR vem do mesmo esforço só na janela 25–35 min. Confiança média; sem candidato ou com pace implausível, Tier B continua rotulado sem números, com aviso e o teste de 30 min como recomendação. O app alimenta `trainingEfforts` com os mesmos treinos do contador e oferece “Estimar pelos meus treinos” quando há ≥ 3 esforços recentes com FC e ritmo; a estimativa só entra no perfil após salvar.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão. A CTL/ATL é alimentada com até 180 dias anteriores à janela exibida (BUG-03); sem histórico, a série começa honestamente em zero.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
@@ -74,6 +74,40 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — BUG-06 fatia 2: estimativa Tier B chega à tela
+
+**Objetivo:** ligar a estimativa Tier B do domínio (ADR 0035) aos treinos reais do usuário, com uma ação explícita e copy honesta na calibração — sem depender de uma prova recente e sem aplicar números sem confirmação.
+
+### Concluído
+
+- **Fonte única:** `recentEffortActivities` filtra FC + pace + ≤ 56 dias uma vez; `recentEffortCount` e `toCalibrationEfforts` derivam da mesma lista. `CalibrationUiState.trainingEfforts` guarda os esforços e `recentEfforts` é a contagem derivada, então o contador e a estimativa não divergem.
+- **Mapeamento:** cada `ActivitySummary` vira `CalibrationPerformance` com distância, duração, data local e FC média; resumo sem distância positiva é descartado em vez de virar zero.
+- **ViewModel:** `calculate()` usa a lista para `CalibrationInput.trainingEfforts` e `recentActivitiesWithHeartRateAndPace = trainingEfforts.size`; `estimateFromTraining()` calcula o Tier B com `performance = null` usando os mesmos esforços.
+- **UI:** botão secundário “Estimar pelos meus treinos” aparece só com ≥ 3 esforços recentes (`CalibrationCalculator.MIN_TIER_B_EFFORTS`), com a explicação de que a estimativa usa o melhor treino sustentado de 20–35 min. O resultado Tier B estimado é rotulado “ESTIMATIVA PELOS SEUS TREINOS” e ganha a copy “Estimativa pelo seu melhor treino sustentado; confirme com um teste de 30 min.”; Tier B sem números usa “TREINOS RECENTES SEM ESTIMATIVA”. Nenhum `R-`/`EV-` na superfície.
+- **Testes:** +3 no `CalibrationViewModelTest` (mapeamento + estimativa, gate honesto com 2 esforços e salvamento do Tier B no perfil), +4 no `CalibrationScreenTest` (ação só com esforços suficientes, copy sem IDs e rótulo sem números), +1 no `CalibrationFormTest` (distância zero descartada) e +2 goldens (`calibration-tier-b-dark/light`); os goldens dark/light existentes foram regravados pela copy e pelo botão novos.
+- **Doc extra:** `TESTING.md` atualizado com os 66 goldens (inclui `onboarding-goal-dark`, que faltava na tabela).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint e Kover).
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` — calibração verde; `health-recovery-dark` saiu com o gráfico Vico em branco numa execução sob carga e passou isolado, a mesma flakiness visual já registrada e sem relação com o diff.
+- **1.424 testes**, 0 falhas e 0 `@Ignore` (692 `:app`, 161 `core:data`, 532 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,65% de linhas (4.536/4.645), 81,43% de branches (3.355/4.120), 96,31% de instruções (31.402/32.606); parser FIT 93,01% de branches.
+- Nenhuma migração, dependência nova, mudança de schema ou dado real no diff. Schema permanece v16.
+
+### Decisões e observações
+
+- **Ação explícita em vez de estimar ao abrir:** a tela continua com “Calcular” para prova/teste; a estimativa por treinos vira um segundo botão, visível só quando o gate permite. Calcular ao abrir pareceria resultado já aplicado e misturaria os dois caminhos.
+- **Botão escondido com menos de 3 esforços:** o domínio devolveria Tier C honestamente, mas oferecer uma ação que não pode estimar é pior UX; o contador segue visível e o teste de 30 min continua a recomendação.
+- **Esteira incluída, caminhada não filtrada:** o app aceita esteira como modalidade e o filtro herdado (FC + pace + janela) não separa esporte; um treino de caminhada rápido pode entrar no melhor esforço. Fica registrado como limitação a revisar junto da regressão pace×FC (ADR 0035 §4).
+- **Sem números sem evidência:** sem candidato de 20–35 min o Tier B permanece sem valores e com aviso; o salvamento só existe quando há pelo menos um valor estimado.
+
+### Próximo passo
+
+1. Validar em aparelho com os dados reais do usuário 0: comparar a estimativa Tier B com o VDOT de prova conhecido e revisar a janela 20–35 min se necessário.
+2. D6-B (previsão VDOT/Riegel) exige ADR próprio antes do código.
+3. Manter o flake de gráficos Vico no backlog de estabilização; nenhum assert foi reduzido.
 
 ## Sessão 2026-11-11 — BUG-06 fatia 1: Tier B estima pelo melhor esforço sustentado
 

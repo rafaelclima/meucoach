@@ -138,13 +138,30 @@ class CalibrationFormTest {
         assertThat(recentEffortCount(activities, ZoneId.of("America/Sao_Paulo"), today)).isEqualTo(2)
     }
 
-    private fun activity(daysAgo: Int, heartRate: Int?, pace: Int?) = ActivitySummary(
+    @Test
+    fun `maps recent efforts and drops summaries without distance`() {
+        val zoneId = ZoneId.of("America/Sao_Paulo")
+        val activities = listOf(
+            activity(daysAgo = 10, heartRate = 150, pace = 360),
+            activity(daysAgo = 20, heartRate = 155, pace = 350, distanceM = 0.0),
+        )
+
+        val efforts = recentEffortActivities(activities, zoneId, today).toCalibrationEfforts(zoneId)
+
+        assertThat(efforts).hasSize(1)
+        assertThat(efforts.single().distanceM).isEqualTo(5_000.0)
+        assertThat(efforts.single().durationSec).isEqualTo(1_800)
+        assertThat(efforts.single().date).isEqualTo(today.minusDays(10))
+        assertThat(efforts.single().averageHeartRate).isEqualTo(150)
+    }
+
+    private fun activity(daysAgo: Int, heartRate: Int?, pace: Int?, distanceM: Double = 5_000.0) = ActivitySummary(
         id = "activity-$daysAgo-$heartRate-$pace",
         source = ActivitySource.FIT,
         sport = Sport.RUNNING,
         startTime = today.minusDays(daysAgo.toLong()).atTime(8, 0).atZone(ZoneId.of("America/Sao_Paulo")).toInstant(),
         durationSec = 1_800,
-        distance = Distance(5_000.0),
+        distance = Distance(distanceM),
         averageHeartRate = heartRate,
         averagePace = pace?.let { Pace.fromSecondsPerKm(it) },
     )

@@ -49,6 +49,7 @@ import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.calibration.CalibrationCalculator
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.domain.calibration.CalibrationWarning
@@ -79,6 +80,7 @@ fun CalibrationScreen(
         onUpdate = viewModel::update,
         onCalculate = viewModel::calculate,
         onSave = viewModel::save,
+        onEstimate = viewModel::estimateFromTraining,
         onBack = onBack,
         modifier = modifier,
     )
@@ -90,6 +92,7 @@ internal fun CalibrationContent(
     onUpdate: ((CalibrationForm) -> CalibrationForm) -> Unit,
     onCalculate: () -> Unit,
     onSave: () -> Unit,
+    onEstimate: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -148,7 +151,8 @@ internal fun CalibrationContent(
                         )
                         Text(
                             text = "Use uma prova ou um teste de 30 min recente. " +
-                                "Sem dados válidos, o app não inventa um resultado.",
+                                "Sem isso, o app estima pelos seus treinos — e não inventa resultado " +
+                                "quando não há dados.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -239,11 +243,29 @@ internal fun CalibrationContent(
                     }
                 }
                 item {
-                    McPrimaryButton(
-                        text = "Calcular",
-                        onClick = onCalculate,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        McPrimaryButton(
+                            text = "Calcular",
+                            onClick = onCalculate,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (state.recentEfforts >= CalibrationCalculator.MIN_TIER_B_EFFORTS) {
+                            McSecondaryButton(
+                                text = "Estimar pelos meus treinos",
+                                onClick = onEstimate,
+                                enabled = !state.isSaving,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("calibration-estimate"),
+                            )
+                            Text(
+                                text = "Sem prova recente, a estimativa usa seu melhor treino sustentado " +
+                                    "de 20–35 min com FC e ritmo.",
+                                style = McTextStyles.caption,
+                                color = colors.textTertiary,
+                            )
+                        }
+                    }
                 }
                 state.result?.let { result ->
                     item { CalibrationResultCard(result) }
@@ -271,7 +293,7 @@ private fun CalibrationResultCard(result: CalibrationResult) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.ELEVATED) {
         Text(
-            text = tierLabel(result.tier),
+            text = tierLabel(result),
             style = McTextStyles.overline,
             color = colors.accentText,
         )
@@ -287,6 +309,15 @@ private fun CalibrationResultCard(result: CalibrationResult) {
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
+        if (result.tier == CalibrationTier.B && result.hasEstimate) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Estimativa pelo seu melhor treino sustentado; " +
+                    "confirme com um teste de 30 min.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             McStat(
@@ -386,11 +417,20 @@ private fun CalibrationField(
     }
 }
 
-private fun tierLabel(tier: CalibrationTier): String = when (tier) {
+private fun tierLabel(result: CalibrationResult): String = when (result.tier) {
     CalibrationTier.A -> "CALIBRAÇÃO POR PROVA RECENTE"
-    CalibrationTier.B -> "CALIBRAÇÃO POR TREINOS RECENTES"
+
+    CalibrationTier.B -> if (result.hasEstimate) {
+        "ESTIMATIVA PELOS SEUS TREINOS"
+    } else {
+        "TREINOS RECENTES SEM ESTIMATIVA"
+    }
+
     CalibrationTier.C -> "BASE INICIAL"
 }
+
+private val CalibrationResult.hasEstimate: Boolean
+    get() = vdot != null || lthr != null || thresholdPace != null
 
 private fun confidenceLabel(confidence: DataConfidence): String = when (confidence) {
     DataConfidence.HIGH -> "Confiança alta"

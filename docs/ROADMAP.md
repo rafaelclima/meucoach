@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.28 · **Data:** 11/11/2026 · **Mudança:** BUG-06 fatia 1 (estimativas Tier B no domínio, ADR 0035); BUG-04 corrigido (HRV em espaço logarítmico); BUG-03 e FR-011 concluídos.
+**Versão:** 1.29 · **Data:** 11/11/2026 · **Mudança:** BUG-06 fatia 2 (estimativa Tier B ligada aos treinos e à tela); BUG-06 fatia 1 (ADR 0035); BUG-04 corrigido (HRV em espaço logarítmico); BUG-03 e FR-011 concluídos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -159,7 +159,7 @@
 
 ### P1-02 · Calibração
 
-**Status:** concluído em 30/10/2026; ampliado em 03/11/2026; Tier B estima em 11/11/2026 (ADR 0035, fatia 1 no domínio)
+**Status:** concluído em 30/10/2026; ampliado em 03/11/2026; Tier B estima e chega à tela em 11/11/2026 (ADR 0035, fatias 1–2)
 
 - [x] Tier A/B/C por performance recente e treinos com FC+pace.
 - [x] VDOT, pace de limiar e LTHR com fórmulas documentadas.
@@ -169,9 +169,9 @@
 - [x] LTHR manual no perfil, com validação contra FC de repouso e máxima vista.
 - [x] “Usar esta corrida para calibrar” apenas em esforço elegível, com formulário preenchido e confirmação explícita.
 - [x] Tier B (BUG-06/FR-006, fatia 1): sem prova recente, pace de limiar pelo melhor esforço sustentado de 20–35 min com FC, VDOT derivado a 88% e LTHR na janela 25–35 min, confiança média, avisos e confirmação explícita (`ADR 0035`).
-- [ ] Tier B fatia 2: wiring na `CalibrationViewModel`/UI, copy honesta e goldens.
+- [x] Tier B fatia 2: `CalibrationViewModel` alimenta `trainingEfforts` com os treinos do contador, a tela oferece “Estimar pelos meus treinos” (≥ 3 esforços), mostra a estimativa com copy honesta, sem IDs técnicos, e mantém goldens dark/light e de Tier B.
 
-**Aceite:** performance recente gera VDOT/LTHR/pace; ausência de dados não inventa valores; perfil mantém a calibração.
+**Aceite:** performance recente gera VDOT/LTHR/pace; ausência de dados não inventa valores; perfil mantém a calibração; a estimativa por treinos só chega ao perfil após confirmação explícita.
 
 ### P1-03 · Motor de carga
 

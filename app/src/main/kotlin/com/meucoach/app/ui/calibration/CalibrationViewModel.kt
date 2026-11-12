@@ -16,6 +16,7 @@ import com.meucoach.core.domain.calibration.CalibrationCalculator
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.calibration.CalibrationInput
+import com.meucoach.core.domain.calibration.CalibrationPerformance
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.model.AthleteProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,11 +35,15 @@ data class CalibrationUiState(
     val form: CalibrationForm = CalibrationForm(),
     val errors: CalibrationFormErrors = CalibrationFormErrors(),
     val result: CalibrationResult? = null,
-    val recentEfforts: Int = 0,
+    val trainingEfforts: List<CalibrationPerformance> = emptyList(),
     val prefilledFrom: CalibrationCandidate? = null,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
-)
+) {
+    /** The training efforts are the single source of truth for both the count and the estimate. */
+    val recentEfforts: Int
+        get() = trainingEfforts.size
+}
 
 @HiltViewModel
 class CalibrationViewModel @Inject constructor(
@@ -59,7 +64,7 @@ class CalibrationViewModel @Inject constructor(
             val summaries = activityRepository.listActivitySummaries()
             val zone = timeProvider.zoneId.value
             val today = timeProvider.currentDate()
-            val recent = recentEffortCount(summaries, zone, today)
+            val efforts = recentEffortActivities(summaries, zone, today).toCalibrationEfforts(zone)
             val candidate = activityId
                 ?.let { activityRepository.openActivity(it) }
                 ?.let { CalibrationCandidateDetector.detect(it.imported, it.localDate, today) }
@@ -68,7 +73,7 @@ class CalibrationViewModel @Inject constructor(
                 profile = profile,
                 form = candidate?.let { prefillForm(it) } ?: CalibrationForm(),
                 prefilledFrom = candidate,
-                recentEfforts = recent,
+                trainingEfforts = efforts,
             )
         }
     }
@@ -90,14 +95,45 @@ class CalibrationViewModel @Inject constructor(
             return
         }
         val result = CalibrationCalculator.calibrate(
-            CalibrationInput(
-                profile = state.profile ?: return,
+            calibrationInput(
+                state = state,
                 today = today,
                 performance = CalibrationFormValidator.toPerformance(state.form, today),
-                recentActivitiesWithHeartRateAndPace = state.recentEfforts,
-            ),
+            ) ?: return,
         )
         _uiState.value = state.copy(errors = CalibrationFormErrors(), result = result)
+    }
+
+    /**
+     * Tier B (R-CAL-02): without a recent performance, estimate threshold pace,
+     * VDOT and LTHR from the best sustained training effort already loaded.
+     */
+    fun estimateFromTraining() {
+        val state = _uiState.value
+        val result = CalibrationCalculator.calibrate(
+            calibrationInput(
+                state = state,
+                today = timeProvider.currentDate(),
+                performance = null,
+            ) ?: return,
+        )
+        _uiState.value = state.copy(errors = CalibrationFormErrors(), result = result)
+    }
+
+    private fun calibrationInput(
+        state: CalibrationUiState,
+        today: LocalDate,
+        performance: CalibrationPerformance?,
+    ): CalibrationInput? {
+        val profile = state.profile ?: return null
+        return CalibrationInput(
+            profile = profile,
+            today = today,
+            performance = performance,
+            // Same list, so the gate and the estimate cannot disagree.
+            recentActivitiesWithHeartRateAndPace = state.trainingEfforts.size,
+            trainingEfforts = state.trainingEfforts,
+        )
     }
 
     fun save() {

@@ -87,7 +87,9 @@ object CalibrationCalculator {
     private const val X = 0.000104
     private const val Y = 0.182258
     private const val Z = 4.60
-    private const val MIN_TIER_B_EFFORTS = 3
+
+    /** Minimum recent efforts with heart rate and pace required to label Tier B (R-CAL-02). */
+    const val MIN_TIER_B_EFFORTS = 3
     private const val MIN_SUSTAINED_SEC = 20 * 60
     private const val MAX_SUSTAINED_SEC = 35 * 60
     private const val MIN_LTHR_SEC = 25 * 60

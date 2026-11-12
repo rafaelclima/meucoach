@@ -332,16 +332,16 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (63 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (66 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
 | Atividade | `activity-detail-dark`, `activity-detail-light`, `activity-comparison-dark`, `activity-comparison-light`, `activity-comparison-free-dark` |
-| Calibração | `calibration-dark`, `calibration-light` |
+| Calibração | `calibration-dark`, `calibration-light`, `calibration-tier-b-dark`, `calibration-tier-b-light` |
 | Check-in | `checkin-dark`, `checkin-light` |
 | Dados | `data-management-dark`, `data-management-light` (lixeira e opção de backup) |
 | Saúde | `health-dark`, `health-light`, `health-narrow-dark`, `health-charts-dark`, `health-recovery-dark`, `health-sources-dark`, `health-today-hint-dark` |
-| Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-routine-dark` |
+| Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-goal-dark`, `onboarding-routine-dark` |
 | Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light`, `profile-race-dark`, `profile-race-light` |
 | Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
 | Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
@@ -360,7 +360,9 @@ Goldens de C3-06: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-d
 
 Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre).
 
-Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 500 ms reais iniciais; o helper não faz nada quando nenhum modo do Roborazzi está ativo. Isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
+Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 1 s real inicial; o helper não faz nada quando nenhum modo do Roborazzi está ativo. Isso removeu o flake de gráficos Vico sob carga sem mudar nenhum golden.
+
+Goldens de calibração: `calibration-{dark,light}` cobrem a tela com a ação “Estimar pelos meus treinos” e o resultado Tier A; `calibration-tier-b-{dark,light}` rolam até o resultado Tier B e capturam o rótulo de estimativa, a copy honesta, VDOT/LTHR/ritmo e o salvamento explícito.
 
 Gráficos Vico desenham depois do primeiro layout. `McLineChart`/`McBarChart` expõem a tag
 `mc-chart-ready` quando o modelo foi aplicado; testes de screenshot devem esperar por ela

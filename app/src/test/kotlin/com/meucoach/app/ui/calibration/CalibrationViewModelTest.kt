@@ -102,6 +102,91 @@ class CalibrationViewModelTest {
 
         assertThat(state.profile?.id).isEqualTo("athlete-1")
         assertThat(state.recentEfforts).isEqualTo(1)
+        assertThat(state.trainingEfforts).hasSize(1)
+        assertThat(state.trainingEfforts.single().averageHeartRate).isEqualTo(150)
+    }
+
+    @Test
+    fun `estimates tier B from the recent efforts loaded into the state`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 2, distanceM = 5_600.0, durationSec = 1_680, heartRate = 174),
+            "sha-fast",
+        )
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 5, distanceM = 6_000.0, durationSec = 1_920, heartRate = 168),
+            "sha-steady",
+        )
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 9, distanceM = 9_000.0, durationSec = 3_600, heartRate = 150),
+            "sha-long",
+        )
+
+        val viewModel = viewModel()
+        val loaded = viewModel.uiState.first { !it.isLoading }
+        assertThat(loaded.trainingEfforts).hasSize(3)
+
+        viewModel.estimateFromTraining()
+
+        val result = viewModel.uiState.value.result
+        assertThat(result?.tier).isEqualTo(CalibrationTier.B)
+        assertThat(result?.thresholdPace?.secondsPerKm).isEqualTo(300)
+        assertThat(result?.lthr).isEqualTo(174)
+        assertThat(result?.vdot).isNotNull
+        assertThat(result?.recommendation).contains("teste de 30 min")
+    }
+
+    @Test
+    fun `estimation without enough efforts stays tier C without numbers`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 2, distanceM = 5_600.0, durationSec = 1_680, heartRate = 174),
+            "sha-fast",
+        )
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 5, distanceM = 6_000.0, durationSec = 1_920, heartRate = 168),
+            "sha-steady",
+        )
+
+        val viewModel = viewModel()
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.estimateFromTraining()
+
+        val result = viewModel.uiState.value.result
+        assertThat(result?.tier).isEqualTo(CalibrationTier.C)
+        assertThat(result?.vdot).isNull()
+        assertThat(result?.thresholdPace).isNull()
+        assertThat(result?.lthr).isNull()
+    }
+
+    @Test
+    fun `saving a tier B estimate writes the estimated values into the profile`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 2, distanceM = 5_600.0, durationSec = 1_680, heartRate = 174),
+            "sha-fast",
+        )
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 5, distanceM = 6_000.0, durationSec = 1_920, heartRate = 168),
+            "sha-steady",
+        )
+        activities.saveImportedActivity(
+            sustainedEffort(daysAgo = 9, distanceM = 9_000.0, durationSec = 3_600, heartRate = 150),
+            "sha-long",
+        )
+
+        val viewModel = viewModel()
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.estimateFromTraining()
+        assertThat(viewModel.uiState.value.result?.tier).isEqualTo(CalibrationTier.B)
+
+        viewModel.save()
+        withTimeout(5_000) { viewModel.uiState.first { it.isSaved } }
+
+        val saved = profiles.getProfile()
+        assertThat(saved?.vdot).isNotNull
+        assertThat(saved?.thresholdPace?.secondsPerKm).isEqualTo(300)
+        assertThat(saved?.lactateThresholdHeartRate).isEqualTo(174)
     }
 
     @Test
@@ -278,6 +363,16 @@ class CalibrationViewModelTest {
         distanceM = 5_000.0,
         averageHeartRate = 150,
         averagePace = Pace.fromSecondsPerKm(360),
+    )
+
+    private fun sustainedEffort(daysAgo: Long, distanceM: Double, durationSec: Int, heartRate: Int) = ImportedActivity(
+        source = ActivitySource.TCX,
+        sport = Sport.RUNNING,
+        startTime = Instant.now().minusSeconds(daysAgo * 24 * 3_600),
+        durationSec = durationSec,
+        distanceM = distanceM,
+        averageHeartRate = heartRate,
+        averagePace = Pace.fromSecondsPerKm(300),
     )
 
     private fun effortActivity(durationSec: Int = 30 * 60) = ImportedActivity(

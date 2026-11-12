@@ -1,10 +1,14 @@
 package com.meucoach.app.ui.calibration
 
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.app.ui.common.TargetTimeParts
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.calibration.CalibrationPerformance
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.model.DataConfidence
@@ -33,7 +37,25 @@ class CalibrationScreenshotTest {
         capture(darkTheme = false, file = "src/test/screenshots/calibration-light.png")
     }
 
-    private fun capture(darkTheme: Boolean, file: String) {
+    @Test
+    fun calibrationTierBDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/calibration-tier-b-dark.png",
+            result = tierBResult(),
+        )
+    }
+
+    @Test
+    fun calibrationTierBLight() {
+        capture(
+            darkTheme = false,
+            file = "src/test/screenshots/calibration-tier-b-light.png",
+            result = tierBResult(),
+        )
+    }
+
+    private fun capture(darkTheme: Boolean, file: String, result: CalibrationResult = result()) {
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 CalibrationContent(
@@ -45,17 +67,28 @@ class CalibrationScreenshotTest {
                             date = "24102026",
                             averageHeartRate = "181",
                         ),
-                        recentEfforts = 4,
-                        result = result(),
+                        trainingEfforts = List(4) { index ->
+                            CalibrationPerformance(
+                                distanceM = 6_000.0,
+                                durationSec = 1_800,
+                                date = java.time.LocalDate.parse("2026-10-24"),
+                                averageHeartRate = 170 + index,
+                            )
+                        },
+                        result = result,
                     ),
                     onUpdate = {},
                     onCalculate = {},
                     onSave = {},
+                    onEstimate = {},
                     onBack = {},
                 )
             }
         }
 
+        if (result.tier == CalibrationTier.B) {
+            compose.onNodeWithTag("calibration-list").performScrollToNode(hasText("Salvar no perfil"))
+        }
         compose.onRoot().captureRoboImage(file)
     }
 
@@ -70,5 +103,16 @@ class CalibrationScreenshotTest {
         warnings = emptySet(),
         recommendation = "Use os ritmos de treino e as zonas de FC pelo seu limite de esforço. " +
             "Recalibre em 6–8 semanas.",
+    )
+
+    private fun tierBResult() = result().copy(
+        tier = CalibrationTier.B,
+        vdot = 40.9223,
+        thresholdPace = Pace.fromSecondsPerKm(300),
+        lthr = 174,
+        confidence = DataConfidence.MEDIUM,
+        ruleId = "R-CAL-02",
+        recommendation = "Estimativa pelo seu melhor esforço sustentado de 20–35 min. " +
+            "Confirme com um teste de 30 min quando possível; até lá, ajuste pelo esforço percebido.",
     )
 }

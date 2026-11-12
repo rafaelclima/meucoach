@@ -100,13 +100,43 @@ object CalibrationFormValidator {
     private const val MAX_EFFORT_SEC = 180 * 60
 }
 
+/**
+ * Activities within the last 8 weeks that have both heart rate and pace. The
+ * count shown on screen and the calibration efforts come from this same list,
+ * so the two never diverge.
+ */
+fun recentEffortActivities(
+    activities: List<ActivitySummary>,
+    zoneId: ZoneId,
+    today: LocalDate,
+): List<ActivitySummary> = activities.filter { activity ->
+    if (activity.averageHeartRate == null || activity.averagePace == null) return@filter false
+    val date = activity.startTime.atZone(zoneId).toLocalDate()
+    val days = ChronoUnit.DAYS.between(date, today)
+    days in 0..RECENT_DAYS
+}
+
 /** Counts activities within the last 8 weeks that have both heart rate and pace. */
 fun recentEffortCount(activities: List<ActivitySummary>, zoneId: ZoneId, today: LocalDate): Int =
-    activities.count { activity ->
-        if (activity.averageHeartRate == null || activity.averagePace == null) return@count false
-        val date = activity.startTime.atZone(zoneId).toLocalDate()
-        val days = ChronoUnit.DAYS.between(date, today)
-        days in 0..RECENT_DAYS
+    recentEffortActivities(activities, zoneId, today).size
+
+/**
+ * Maps recent effort summaries to the calibration input. A summary without a
+ * positive distance cannot estimate a pace, so it is dropped instead of being
+ * defaulted to zero.
+ */
+fun List<ActivitySummary>.toCalibrationEfforts(zoneId: ZoneId): List<CalibrationPerformance> = mapNotNull { activity ->
+    val distanceM = activity.distance.meters
+    if (distanceM <= 0.0) {
+        null
+    } else {
+        CalibrationPerformance(
+            distanceM = distanceM,
+            durationSec = activity.durationSec,
+            date = activity.startTime.atZone(zoneId).toLocalDate(),
+            averageHeartRate = activity.averageHeartRate,
+        )
     }
+}
 
 private const val RECENT_DAYS = 56L

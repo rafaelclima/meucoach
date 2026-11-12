@@ -1,6 +1,6 @@
 # ADR 0035 — Estimativas de calibração Tier B (BUG-06)
 
-**Status:** Aceito em 2026-11-11; fatia 1 (domínio) implementada na mesma data
+**Status:** Aceito em 2026-11-11; fatias 1 (domínio) e 2 (app) implementadas na mesma data
 **Data:** 2026-11-11
 **Escopo:** BUG-06/FR-006 (BL-006), `CalibrationCalculator` em `core:domain`; sem migração, sem dependência nova
 **Relacionados:** ADR 0025 (contexto de calibração, se aplicável), PRD §BUG-06/§FR-006, `SPORTS_SCIENCE.md` §4.2/§4.3, `R-CAL-02`
@@ -78,9 +78,12 @@ qualidade do treino, que o resumo não mostra).
 - **Domínio:** `CalibrationInput` ganha `trainingEfforts` (default vazio, sem
   quebrar chamadas existentes); dois avisos novos; documentação do objeto
   atualizada. `core:domain` continua puro.
-- **App (fatia 2, pendente):** `CalibrationViewModel` mapeia os resumos para
-  `CalibrationPerformance` e passa a lista; a tela mostra a estimativa com
-  confiança e a copy honesta ("estimativa; confirme com um teste").
+- **App (fatia 2, implementado):** `CalibrationViewModel` mapeia os resumos
+  recentes (FC + pace + ≤ 56 dias) para `CalibrationPerformance` e passa a lista
+  em `trainingEfforts`, com o contador derivado da mesma lista. A tela oferece
+  “Estimar pelos meus treinos” quando há ≥ 3 esforços, mostra a estimativa com
+  confiança e a copy honesta (“estimativa; confirme com um teste”) e mantém o
+  salvamento explícito; sem candidato, o rótulo continua sem números.
 - **Ciência:** `SPORTS_SCIENCE.md` §4.2/§4.3 descreve o método exato do Tier B
   e o que continua sem estimativa.
 - **Dados:** nenhuma migração; export/reset inalterados.
@@ -96,6 +99,9 @@ qualidade do treino, que o resumo não mostra).
   candidato de 22 min sem LTHR, `MAX_HEART_RATE_INCONSISTENT` no Tier B,
   comportamento preservado com lista vazia, e pace implausível →
   `EFFORT_PACE_OUT_OF_RANGE` sem inventar número.
+- `CalibrationViewModelTest`/`CalibrationScreenTest` (fatia 2): mapeamento da
+  lista, estimativa Tier B, gate honesto abaixo de 3 esforços, salvamento
+  explícito e copy sem IDs técnicos; goldens `calibration-tier-b-{dark,light}`.
 - Casos existentes continuam verdes sem mudança de assert.
 
 ## 7. Relação com o PRD
@@ -106,8 +112,8 @@ qualidade do treino, que o resumo não mostra).
 | **FR-006** | Alvos de pace disponíveis sem prova recente, com confirmação explícita no salvamento. |
 | **BL-006** | Primeira metade do backlog; validação com dados reais fica para depois do wiring (fatia 2). |
 
-Pendente fora desta entrega: regressão pace×FC, wiring da ViewModel/UI
-(fatia 2) e validação com os dados reais do usuário 0.
+Pendente fora desta entrega: regressão pace×FC e validação com os dados reais
+do usuário 0.
 
 ## 8. Referências
 
