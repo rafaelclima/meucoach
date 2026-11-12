@@ -17,7 +17,9 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.race.RaceReference
 import com.meucoach.core.domain.race.RaceTargetProjector
+import com.meucoach.core.domain.race.RaceTimePredictor
 import com.meucoach.core.domain.today.TodayDecision
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.RaceCompletionSource
@@ -44,6 +46,52 @@ class TodayRaceTest {
     private val today = LocalDate.of(2026, 11, 2)
 
     @Test
+    fun `computes the race prediction from the profile provenance`() {
+        val event = raceEvent(today)
+        val state = todayState(
+            checkIn = null,
+            profile = calibratedProfile(),
+            today = today,
+            decision = TodayDecision.Competition(event),
+        )
+
+        val prediction = state.racePrediction as? com.meucoach.core.domain.race.RacePredictionResult.Available
+        assertThat(prediction).isNotNull()
+        assertThat(prediction?.prediction?.confidence).isEqualTo(DataConfidence.HIGH)
+        assertThat(prediction?.prediction?.predictedSec).isEqualTo(3_867)
+    }
+
+    private fun calibratedProfile() = com.meucoach.core.model.AthleteProfile(
+        id = "athlete-1",
+        birthDate = LocalDate.of(1988, 1, 1),
+        sex = com.meucoach.core.model.Sex.MALE,
+        vdot = 29.6477,
+        vdotSource = com.meucoach.core.model.VdotSource.PERFORMANCE,
+        vdotCalibratedAt = today,
+        vdotReferenceDistanceM = 5_000.0,
+        vdotReferenceDurationSec = 1_859,
+    )
+
+    @Test
+    fun `shows the vdot prediction on race day`() {
+        val event = raceEvent(today)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = competitionState(event),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("race-prediction"))
+        compose.onNodeWithText("PREVISÃO DE REFERÊNCIA").assertIsDisplayed()
+        compose.onNodeWithText("1:04:27").assertIsDisplayed()
+        compose.onNodeWithText("1:02:31–1:06:23").assertIsDisplayed()
+        compose.onNodeWithText("Confiança alta").assertIsDisplayed()
+    }
+
+    @Test
     fun `competition replaces the training card and hides the briefing`() {
         val event = raceEvent(today)
         compose.setContent {
@@ -59,6 +107,7 @@ class TodayRaceTest {
         compose.onNodeWithTag("race-day-card").assertIsDisplayed()
         compose.onNodeWithText("PROVA DE HOJE").assertIsDisplayed()
         compose.onNodeWithText("10 km").assertIsDisplayed()
+        compose.onNodeWithTag("today-list").performScrollToNode(hasText("Concluir prova"))
         compose.onNodeWithText("Concluir prova").assertIsDisplayed()
 
         compose.onAllNodesWithText("TREINO DE HOJE").assertCountEquals(0)
@@ -258,6 +307,14 @@ class TodayRaceTest {
         prescription = null,
         briefing = null,
         raceProjection = RaceTargetProjector.project(event.distance, event.targetTimeSec),
+        racePrediction = RaceTimePredictor.predict(
+            vdot = 29.6477,
+            confidence = DataConfidence.HIGH,
+            calibratedAt = today,
+            reference = RaceReference(distanceM = 5_000.0, durationSec = 1_859),
+            distance = event.distance,
+            today = today,
+        ),
         eventDates = setOf(event.targetDate),
     )
 

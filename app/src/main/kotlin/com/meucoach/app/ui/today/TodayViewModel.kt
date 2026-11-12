@@ -738,6 +738,11 @@ internal fun todayState(
     val raceProjection = (decision as? TodayDecision.Competition)?.event?.let { event ->
         com.meucoach.core.domain.race.RaceTargetProjector.project(event.distance, event.targetTimeSec)
     }
+    val racePrediction = (decision as? TodayDecision.Competition)?.event?.let { event ->
+        profile?.let {
+            com.meucoach.core.domain.race.RaceTimePredictor.predict(it, event.distance, today)
+        }
+    }
     val raceActivityAvailable = (decision as? TodayDecision.Competition)?.event?.activityId?.let { id ->
         activities.any { it.id == id }
     } ?: false
@@ -756,6 +761,7 @@ internal fun todayState(
         briefing = briefing,
         decision = decision,
         raceProjection = raceProjection,
+        racePrediction = racePrediction,
         raceActivityAvailable = raceActivityAvailable,
         eventDates = eventDates,
         explanation = explanation,

@@ -92,6 +92,8 @@ data class TodayUiState(
     val decision: com.meucoach.core.domain.today.TodayDecision? = null,
     /** Arithmetic reference of the declared race goal; never a training target (ADR 0032). */
     val raceProjection: com.meucoach.core.domain.race.RaceTargetProjection? = null,
+    /** VDOT/Riegel prediction of today's race; never a prescription (ADR 0036). */
+    val racePrediction: com.meucoach.core.domain.race.RacePredictionResult? = null,
     /** False when the linked run is in the trash or was purged; the link is suspended. */
     val raceActivityAvailable: Boolean = false,
     /** Every event date in the visible week, including resolved history. */

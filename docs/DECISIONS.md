@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.15 · **Data:** 11/11/2026
+**Versão:** 1.17 · **Data:** 11/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -17,6 +17,7 @@
 > Revisão 1.14 (11/11/2026): BUG-06 fatia 2 implementada — a estimativa Tier B usa os treinos recentes no `CalibrationViewModel`, a tela oferece “Estimar pelos meus treinos” e mostra a copy honesta; nenhuma decisão do ADR 0035 mudou.
 > Revisão 1.15 (11/11/2026): BUG-06 validado em dados reais — estimativa ~3% acima do VDOT de prova (30,6 vs 29,63); nenhuma decisão do ADR 0035 mudou.
 > Revisão 1.16 (11/11/2026): ADR 0036 proposto para o D6-B (previsão de prova por VDOT/Riegel), sem código; decisões P1–P7 aguardam aprovação.
+> Revisão 1.17 (11/11/2026): ADR 0036 aceito e implementado — previsão por VDOT com faixa, Riegel 5k–meia, proveniência em Room 17 e cards de prova do Perfil/Hoje.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -55,7 +56,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0033](adr/0033-planned-vs-executed-comparison.md) | Comparação planejado × executado descritiva (FR-010) | Aceito — implementado em 11/11/2026 (calculadora pura, card no detalhe, treino livre sem alvo) | 11/11/2026 |
 | [0034](adr/0034-weekly-review-consolidation.md) | Revisão semanal determinística (FR-011) | Aceito — implementado em 11/11/2026 (domínio puro + card em Tendências, até 3 observações, goldens, sem LLM) | 11/11/2026 |
 | [0035](adr/0035-tier-b-calibration-estimates.md) | Estimativas Tier B pelo melhor esforço sustentado (BUG-06) | Aceito — fatias 1 (domínio) e 2 (app) implementadas e validadas em dados reais em 11/11/2026 (estimativa ~3% acima do VDOT de prova) | 11/11/2026 |
-| [0036](adr/0036-race-time-prediction-vdot-riegel.md) | Previsão de tempo de prova por VDOT/Riegel (D6-B) | **Proposto** — sem código; decisões P1–P7 aguardam aprovação | 11/11/2026 |
+| [0036](adr/0036-race-time-prediction-vdot-riegel.md) | Previsão de tempo de prova por VDOT/Riegel (D6-B) | Aceito — implementado em 11/11/2026 (VDOT + faixa, Riegel 5k–meia, Room 17 e cards de prova) | 11/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
@@ -80,6 +81,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Planejado × executado:** comparação descritiva, derivada da prescrição do dia e só quando a corrida é a evidência do treino; tolerâncias de 10% (duração/distância) e 1 ponto de RPE são convenção de produto; nada é persistido e treino livre não inventa alvo (ADR 0033, implementado).
 - **Revisão semanal:** consolidação determinística de adesão, volume, intensidade, prontidão e sono, com no máximo 3 observações que citam regra/evidência; dado ausente continua ausente, sem nota, streak ou LLM (ADR 0034, implementado no domínio e no card de Tendências).
 - **Tier B conservador:** sem prova recente, o pace de limiar vem do melhor esforço sustentado de 20–35 min com FC; VDOT é derivado a 88% e LTHR só na janela 25–35 min; confiança média, salvamento explícito e regressão pace×FC deferida. Os treinos que alimentam a estimativa são os mesmos do contador na tela, e a ação “Estimar pelos meus treinos” só aparece com ≥ 3 esforços; no usuário 0 a estimativa ficou ~3% acima do VDOT de prova (ADR 0035, fatias 1–2, validado em 11/11/2026).
+- **Previsão de prova:** o VDOT calibrado (Tier A com confiança alta; Tier B com média) prevê o tempo por inversão de Daniels, com faixa ±3%/±5%; Riegel entra só como checagem de faixa em 5k–meia. A previsão aparece apenas nos cards de prova do Perfil/Hoje, nunca no plano/prescrição, e calibração vencida (>56 dias) ou sem origem não gera número (ADR 0036, implementado).
 - **Conclusão:** `DONE` exige evidência `ACTIVITY`, `GUIDED` ou `MANUAL`; descanso, doença e não realizado têm estados próprios; adesão ≠ execução comprovada (ADR-0024).
 - **Exclusão:** lixeira de 7 dias para atividade; “apagar tudo” imediato, sem recibo, com época de dados que invalida workers em voo; Health Connect não é apagado (ADR-0025).
 - **Carga/qualidade:** ACWR desconhecido, cobertura insuficiente ou fonte desatualizada bloqueiam qualidade; ACWR é flag, nunca diagnóstico (ADR-0026, implementado em C1-02).

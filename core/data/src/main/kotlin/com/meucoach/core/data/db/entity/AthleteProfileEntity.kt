@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Units
+import com.meucoach.core.model.VdotSource
 
 @Entity(tableName = "athlete_profile")
 data class AthleteProfileEntity(
@@ -18,6 +19,10 @@ data class AthleteProfileEntity(
     val lactateThresholdHeartRate: Int?,
     val thresholdPaceSecPerKm: Int?,
     val vdot: Double?,
+    val vdotSource: VdotSource? = null,
+    val vdotCalibratedAt: String? = null,
+    val vdotReferenceDistanceM: Double? = null,
+    val vdotReferenceDurationSec: Int? = null,
     val experience: Experience,
     val timezone: String,
     val availabilityJson: String,

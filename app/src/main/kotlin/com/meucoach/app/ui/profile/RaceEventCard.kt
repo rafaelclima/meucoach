@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.meucoach.app.ui.common.DateMask
 import com.meucoach.app.ui.common.DateVisualTransformation
+import com.meucoach.app.ui.common.RacePredictionBlock
 import com.meucoach.app.ui.common.RaceTargetProjectionBlock
 import com.meucoach.app.ui.common.TargetTimeField
 import com.meucoach.app.ui.common.TargetTimeUnit
@@ -54,6 +55,7 @@ import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.race.RacePredictionResult
 import com.meucoach.core.domain.race.RaceTargetProjection
 import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceDistance
@@ -74,6 +76,7 @@ internal fun RaceEventCard(
     events: List<RaceEvent>,
     activities: List<RaceActivityOption>,
     projection: RaceTargetProjection?,
+    prediction: RacePredictionResult?,
     message: String?,
     onSave: (RaceDistance, LocalDate, Int?) -> Unit,
     onComplete: (String?) -> Unit,
@@ -133,6 +136,10 @@ internal fun RaceEventCard(
             if (projection != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 RaceTargetProjectionBlock(projection = projection)
+            }
+            prediction?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                RacePredictionBlock(result = it)
             }
             Spacer(modifier = Modifier.height(12.dp))
             McPrimaryButton(

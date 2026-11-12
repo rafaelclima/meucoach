@@ -18,7 +18,9 @@ import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.calibration.CalibrationInput
 import com.meucoach.core.domain.calibration.CalibrationPerformance
 import com.meucoach.core.domain.calibration.CalibrationResult
+import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.VdotSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -145,11 +147,34 @@ class CalibrationViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true)
+            val today = timeProvider.currentDate()
+            val performance = if (result.tier == CalibrationTier.A) {
+                runCatching { CalibrationFormValidator.toPerformance(state.form, today) }.getOrNull()
+            } else {
+                null
+            }
+            val source = when (result.tier) {
+                CalibrationTier.A -> VdotSource.PERFORMANCE
+                CalibrationTier.B -> VdotSource.TRAINING_ESTIMATE
+                CalibrationTier.C -> null
+            }
             profileRepository.saveProfile(
                 profile.copy(
                     lactateThresholdHeartRate = result.lthr ?: profile.lactateThresholdHeartRate,
                     thresholdPace = result.thresholdPace ?: profile.thresholdPace,
                     vdot = result.vdot ?: profile.vdot,
+                    vdotSource = if (result.vdot != null) source else profile.vdotSource,
+                    vdotCalibratedAt = if (result.vdot != null) today else profile.vdotCalibratedAt,
+                    vdotReferenceDistanceM = if (result.vdot != null) {
+                        performance?.distanceM
+                    } else {
+                        profile.vdotReferenceDistanceM
+                    },
+                    vdotReferenceDurationSec = if (result.vdot != null) {
+                        performance?.durationSec
+                    } else {
+                        profile.vdotReferenceDurationSec
+                    },
                 ),
             )
             // Calibration changes target inputs, so it participates in T4.

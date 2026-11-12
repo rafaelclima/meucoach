@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.meucoach.app.ui.common.RacePredictionBlock
 import com.meucoach.app.ui.common.RaceTargetProjectionBlock
 import com.meucoach.app.ui.common.raceDateLabel
 import com.meucoach.app.ui.common.raceDistanceLabel
@@ -33,6 +34,7 @@ import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.race.RacePredictionResult
 import com.meucoach.core.domain.race.RaceTargetProjection
 import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceEvent
@@ -48,6 +50,7 @@ import com.meucoach.core.model.RaceStatus
 internal fun RaceDayCard(
     event: RaceEvent,
     projection: RaceTargetProjection?,
+    prediction: RacePredictionResult?,
     activityAvailable: Boolean,
     suggestions: List<ActivitySuggestionUi>,
     completionMessage: String?,
@@ -105,6 +108,10 @@ internal fun RaceDayCard(
         if (projection != null) {
             Spacer(modifier = Modifier.height(14.dp))
             RaceTargetProjectionBlock(projection = projection)
+        }
+        prediction?.let {
+            Spacer(modifier = Modifier.height(14.dp))
+            RacePredictionBlock(result = it)
         }
         Spacer(modifier = Modifier.height(14.dp))
         Text(

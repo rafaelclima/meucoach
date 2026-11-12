@@ -175,7 +175,8 @@ class CalibrationViewModelTest {
             "sha-long",
         )
 
-        val viewModel = viewModel()
+        val timeProvider = FakeTimeProvider()
+        val viewModel = viewModel(timeProvider = timeProvider)
         viewModel.uiState.first { !it.isLoading }
         viewModel.estimateFromTraining()
         assertThat(viewModel.uiState.value.result?.tier).isEqualTo(CalibrationTier.B)
@@ -187,6 +188,10 @@ class CalibrationViewModelTest {
         assertThat(saved?.vdot).isNotNull
         assertThat(saved?.thresholdPace?.secondsPerKm).isEqualTo(300)
         assertThat(saved?.lactateThresholdHeartRate).isEqualTo(174)
+        assertThat(saved?.vdotSource).isEqualTo(com.meucoach.core.model.VdotSource.TRAINING_ESTIMATE)
+        assertThat(saved?.vdotCalibratedAt).isEqualTo(timeProvider.currentDate())
+        assertThat(saved?.vdotReferenceDistanceM).isNull()
+        assertThat(saved?.vdotReferenceDurationSec).isNull()
     }
 
     @Test
@@ -238,6 +243,10 @@ class CalibrationViewModelTest {
         assertThat(saved?.lactateThresholdHeartRate).isEqualTo(181)
         assertThat(saved?.thresholdPace).isNotNull
         assertThat(saved?.maxHeartRateObserved).isEqualTo(187)
+        assertThat(saved?.vdotSource).isEqualTo(com.meucoach.core.model.VdotSource.PERFORMANCE)
+        assertThat(saved?.vdotCalibratedAt).isNotNull
+        assertThat(saved?.vdotReferenceDistanceM).isEqualTo(5_000.0)
+        assertThat(saved?.vdotReferenceDurationSec).isEqualTo(1_859)
     }
 
     @Test

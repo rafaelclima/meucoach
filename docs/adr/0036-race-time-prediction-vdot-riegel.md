@@ -1,10 +1,9 @@
 # ADR 0036 — Previsão de prova por VDOT/Riegel (D6-B)
 
-**Status:** Proposto em 2026-11-11; nenhum código nesta entrega
+**Status:** Aceito e implementado em 2026-11-11; decisões P1–P7 aprovadas pelo usuário 0 na mesma data
 **Data:** 2026-11-11
-**Escopo:** `R-RACE-03`, previsão de tempo de prova nos cards de prova do Perfil e do Hoje; `core:domain` puro; possível Room 17 para proveniência da calibração
+**Escopo:** `R-RACE-03`, previsão de tempo de prova nos cards de prova do Perfil e do Hoje; `core:domain` puro; Room 17 para proveniência da calibração
 **Relacionados:** ADR 0032 (D6/D6-B, referência aritmética da meta), ADR 0035 (Tier B da calibração), `SPORTS_SCIENCE.md` §8.10, PRD FR-208/FR-210, `EV-DANIELS-2014`, `EV-RIEGEL-1981`
-**Decisões P1–P7 propostas; aguardando aprovação do usuário 0**
 
 ---
 
@@ -107,13 +106,30 @@ treino.
 | **FR-208/FR-210** | A meta continua declarada pelo usuário; a previsão é leitura separada, sem alterar o evento. |
 | **R-RACE-03** | Sai de “fora da fase” para `LIMITED`, com faixa, confiança e ausência explícita. |
 
-## 8. Perguntas para aprovação
+## 8. Decisões aprovadas
 
-1. **Proveniência persistida (P2):** aceitar Room 17 com colunas nullable para origem/data da calibração, ou limitar a previsão a uma sessão de calibração recém-feita (sem migração)?
-2. **Riegel (P4):** manter apenas como checagem de faixa 5k–meia, ou adiar para uma segunda fase e entregar só VDOT agora?
-3. **Faixa (P6):** ±3% (Tier A) e ±5% (Tier B) são aceitáveis como convenção de produto?
+1. **Proveniência persistida (P2):** Room 17 com colunas nullable (`vdotSource`, `vdotCalibratedAt`, `vdotReferenceDistanceM`, `vdotReferenceDurationSec`); legado `NULL` não gera previsão.
+2. **Riegel (P4):** usado apenas como checagem de faixa para 5k–meia, com performance de referência Tier A.
+3. **Faixa (P6):** ±3% para Tier A e ±5% para Tier B, como convenção de produto documentada.
 
-## 9. Referências
+## 9. Implementação
+
+- **Modelo/dados:** `VdotSource` e proveniência em `AthleteProfile`; Room 17 e
+  migração 16→17 testada com perfil legado (proveniência `NULL` preservada);
+  export JSON inclui os campos novos.
+- **Domínio:** `RaceTimePredictor` puro; inversão monotônica do VDOT via busca
+  binária, faixas por confiança, Riegel limitado a 5k–meia e ausência explícita
+  (`NO_VDOT`, `STALE_CALIBRATION`, `LOW_CONFIDENCE`).
+- **App:** `CalibrationViewModel` grava origem/data (e a performance de
+  referência no Tier A); Perfil e Hoje montam a previsão a partir do perfil;
+  `RacePredictionBlock` mostra tempo, faixa, confiança, fonte e “não garantia”,
+  sem IDs técnicos.
+- **Catálogo:** `R-RACE-03` e `EV-RIEGEL-1981` registrados.
+- **Testes:** `RaceTimePredictionTest` (11 casos), migração 16→17, proveniência
+  no `CalibrationViewModelTest`, bloco de previsão no Perfil/Hoje e goldens
+  `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}`.
+
+## 10. Referências
 
 - ADR 0032: referência aritmética da meta e limites de escopo.
 - ADR 0035: VDOT por prova/TT e por treinos, confiança e validação real.

@@ -65,14 +65,27 @@ class ProfileScreenshotTest {
 
     private fun captureRace(darkTheme: Boolean, file: String) {
         val event = raceEvent()
+        val calibrated = profile().copy(
+            vdot = 29.6477,
+            vdotSource = com.meucoach.core.model.VdotSource.PERFORMANCE,
+            vdotCalibratedAt = LocalDate.of(2026, 11, 6),
+            vdotReferenceDistanceM = 5_000.0,
+            vdotReferenceDurationSec = 1_859,
+        )
         compose.setContent {
             McTheme(darkTheme = darkTheme) {
                 ProfileContent(
                     state = state().copy(
+                        profile = calibrated,
                         raceEvents = listOf(event),
                         raceProjection = com.meucoach.core.domain.race.RaceTargetProjector.project(
                             event.distance,
                             event.targetTimeSec,
+                        ),
+                        racePrediction = com.meucoach.core.domain.race.RaceTimePredictor.predict(
+                            calibrated,
+                            event.distance,
+                            LocalDate.of(2026, 11, 6),
                         ),
                     ),
                     onEdit = {},

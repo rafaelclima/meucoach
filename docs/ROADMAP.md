@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.30 · **Data:** 11/11/2026 · **Mudança:** BUG-06 validado em dados reais (estimativa ~3% acima do VDOT de prova); fatia 2 ligada aos treinos e à tela; BUG-06 fatia 1 (ADR 0035); BUG-04 corrigido; BUG-03 e FR-011 concluídos.
+**Versão:** 1.31 · **Data:** 11/11/2026 · **Mudança:** D6-B concluído (previsão de prova por VDOT/Riegel, Room 17); BUG-06 validado em dados reais e fatia 2 ligada aos treinos; BUG-04 corrigido; BUG-03 e FR-011 concluídos.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -349,6 +349,17 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 **Aceite:** o usuário entende por que o dia atual ainda não aparece e consegue abrir o Health Connect sem sair da aba.
 
+### P1-17 · Previsão de prova por VDOT/Riegel (D6-B)
+
+**Status:** concluído em 11/11/2026 ([ADR 0036](adr/0036-race-time-prediction-vdot-riegel.md))
+
+- [x] `RaceTimePredictor` puro: tempo previsto por inversão de Daniels, faixa ±3%/±5% e Riegel como checagem 5k–meia.
+- [x] Proveniência da calibração (`PERFORMANCE`/`TRAINING_ESTIMATE`, data e performance de referência) em Room 17, com migração 16→17 testada.
+- [x] Calibração grava origem/data; Perfil e Hoje mostram “Previsão de referência” com confiança, fonte e ausência explícita.
+- [x] `R-RACE-03`/`EV-RIEGEL-1981` no catálogo, testes de domínio/dados/app e goldens de prova regravados.
+
+**Aceite:** a previsão não inventa número sem VDOT/calibração recente, nunca entra em plano/prescrição e é rotulada como referência, não promessa.
+
 ---
 
 ## Ciclo 1 — Correções críticas (concluído em 06/11/2026)
@@ -414,11 +425,10 @@ FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/
 | **C3-G2** | Revisão de fontes/copy de F4 | **Concluído e implementado em 10/11/2026:** ADR 0029 aceito (fontes ACSM 2007/NATA 2017/Thomas 2016 revisadas; `EV-NATA-2017` corrige a citação do PRD), copy aprovada em `COMMUNICATION.md` §6.10 e seções de hidratação/alimentação no sheet de briefing com testes de regressão e goldens |
 | **C3-06** | Auto-conclusão da prova e referência da meta (pace/faixa/passagens) | **Concluído em 11/11/2026:** ADR 0032, regra 90–110% com uma única candidata, `completionSource`/Room 16, undo com recusa persistida, referência aritmética no Perfil/Hoje, testes de domínio/dados/app/UI e goldens de prova atualizados |
 
-Fora do escopo implementável: recuperação pós-prova (FR-207), previsão de tempo por
-VDOT/Riegel (D6-B; [ADR 0036](adr/0036-race-time-prediction-vdot-riegel.md)
-proposto em 11/11/2026, sem código até aprovação) e limite de longão por fração da
-distância (FR-206). N-03 continua sem entrega; o PRD v0.2 apenas definiu a direção
-de evento/taper que a implementação C3-05/C3-06 seguiu.
+Fora do escopo implementável: recuperação pós-prova (FR-207) e limite de longão por
+fração da distância (FR-206). D6-B foi implementado pelo ADR 0036 em 11/11/2026.
+N-03 continua sem entrega; o PRD v0.2 apenas definiu a direção de evento/taper que
+a implementação C3-05/C3-06 seguiu.
 
 ### FR-010 — Comparação planejado × executado (concluído em 11/11/2026)
 

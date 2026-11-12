@@ -82,7 +82,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun raceEventDao(): RaceEventDao
 
     companion object {
-        const val VERSION = 16
+        const val VERSION = 17
         const val NAME = "meucoach.db"
 
         /**
@@ -530,6 +530,21 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 17 adds calibration provenance for race prediction (ADR 0036).
+         *
+         * All columns are nullable: a legacy VDOT has unknown source/date and
+         * therefore does not generate a prediction until the user recalibrates.
+         */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `athlete_profile` ADD COLUMN `vdotSource` TEXT")
+                db.execSQL("ALTER TABLE `athlete_profile` ADD COLUMN `vdotCalibratedAt` TEXT")
+                db.execSQL("ALTER TABLE `athlete_profile` ADD COLUMN `vdotReferenceDistanceM` REAL")
+                db.execSQL("ALTER TABLE `athlete_profile` ADD COLUMN `vdotReferenceDurationSec` INTEGER")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -548,6 +563,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_13_14,
                 MIGRATION_14_15,
                 MIGRATION_15_16,
+                MIGRATION_16_17,
             )
             .build()
     }

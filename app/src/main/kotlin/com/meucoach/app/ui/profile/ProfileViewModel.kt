@@ -76,6 +76,8 @@ data class ProfileUiState(
     val raceActivities: List<RaceActivityOption> = emptyList(),
     /** Arithmetic reference of the planned goal; null when there is no target time (ADR 0032). */
     val raceProjection: com.meucoach.core.domain.race.RaceTargetProjection? = null,
+    /** VDOT/Riegel prediction of the planned race; never a prescription (ADR 0036). */
+    val racePrediction: com.meucoach.core.domain.race.RacePredictionResult? = null,
     val raceMessage: String? = null,
 )
 
@@ -153,6 +155,11 @@ class ProfileViewModel @Inject constructor(
             raceActivities = raceActivities,
             raceProjection = planned?.let {
                 com.meucoach.core.domain.race.RaceTargetProjector.project(it.distance, it.targetTimeSec)
+            },
+            racePrediction = planned?.let { event ->
+                profile?.let {
+                    com.meucoach.core.domain.race.RaceTimePredictor.predict(it, event.distance, today)
+                }
             },
             raceMessage = race.second,
         )

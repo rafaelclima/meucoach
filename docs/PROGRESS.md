@@ -1,17 +1,17 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (D6-B com ADR 0036 proposto, sem código; BUG-06 fatia 2 concluída e validada em dados reais: a estimativa Tier B ficou ~3% acima do VDOT de prova; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.424 testes no total (692 em `:app`, 161 em `core:data`, 532 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,65% de linhas (4.536/4.645), 81,43% de branches (3.355/4.120), 96,31% de instruções (31.402/32.606)
+- **Testes:** 1.440 testes no total (696 em `:app`, 162 em `core:data`, 543 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,62% de linhas (4.632/4.745), 80,94% de branches (3.426/4.233), 96,24% de instruções (32.026/33.278)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
-- **Persistência:** Room 2.8.5, schema v16 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano, fingerprint/checkpoint de planejamento, evento de prova e origem da conclusão), migrações 1→2 até 15→16 testadas.
+- **Persistência:** Room 2.8.5, schema v17 (prescrição diária, execução/evidência de sessão, vínculo com atividade, revisões versionadas do plano, fingerprint/checkpoint de planejamento, evento de prova, origem da conclusão e proveniência da calibração), migrações 1→2 até 16→17 testadas.
 - **Prescrição diária:** `DailyPrescriptionEngine` é a autoridade do dia (`KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`), persistida e versionada em `daily_prescriptions`; `TodayViewModel` só coleta o estado e não chama mais o recomendador. A guarda `R-PRESC-04` rebaixa `QUALITY → EASY` para perfil `BEGINNER` apenas na sessão de hoje `PLANNED`; `DONE`/`CLOSED` preservam prescrição, execução e histórico.
 - **Conclusão com evidência:** `DONE` só existe com `ACTIVITY`, `GUIDED` (contrato) ou `MANUAL`; `LEGACY_UNVERIFIED` preserva o passado sem reescrevê-lo. A UI vincula corrida ou registra “fiz sem registro”, e descanso/doença encerram a sessão como `CLOSED` com motivo.
 - **Vínculo 1:1:** `session_executions` e índices únicos impedem duas atividades na mesma sessão ou uma atividade em duas sessões; a lixeira suspende a evidência, restaurar devolve e expurgar remove o vínculo.
@@ -33,6 +33,7 @@
 - **LTHR manual:** campo no perfil (100–230 bpm, acima da FC de repouso e abaixo da FC máxima vista) para quem já conhece o valor; o app não estima a partir de qualquer corrida.
 - **Calibrar por uma corrida:** corridas de 25–35 min com FC sustentada podem pré-preencher a calibração; o botão só aparece quando o arquivo passa nos critérios e o salvamento exige confirmação explícita.
 - **Tier B estima (ADR 0035, fatias 1–2):** sem prova recente, o melhor esforço sustentado de 20–35 min com FC (o mais rápido; empate → mais recente) estima o pace de limiar; VDOT é derivado assumindo o esforço como limiar (a 88%, limites 10–90) e a LTHR vem do mesmo esforço só na janela 25–35 min. Confiança média; sem candidato ou com pace implausível, Tier B continua rotulado sem números, com aviso e o teste de 30 min como recomendação. O app alimenta `trainingEfforts` com os mesmos treinos do contador e oferece “Estimar pelos meus treinos” quando há ≥ 3 esforços recentes com FC e ritmo; a estimativa só entra no perfil após salvar. Validada em 11/11/2026 com o usuário 0: 30,6 de VDOT e 6:18/km contra 29,63 e 6:28/km do VDOT de prova (5k ~31 min), ~3% acima.
+- **Previsão de prova (ADR 0036, D6-B):** com VDOT calibrado, o app prevê o tempo da prova planejada por inversão da equação de Daniels, com faixa ±3% (Tier A) ou ±5% (Tier B) e Riegel apenas como checagem de faixa em 5k–meia. A proveniência (`PERFORMANCE`/`TRAINING_ESTIMATE`), a data e a performance de referência ficam no perfil (Room 17); sem VDOT, calibração vencida (>56 dias) ou origem legada, aparece “sem previsão” em vez de número. A previsão fica só nos cards de prova do Perfil/Hoje e nunca entra em plano, prescrição ou briefing.
 - **Zonas:** distribuição de tempo por zona de FC no detalhe, usando o LTHR calibrado.
 - **Carga:** série diária TRIMP/rTSS, CTL/ATL/TSB, ACWR, monotonia e tela de Tendências com PMC; TRIMP em minutos e card explicando Base, Fadiga, Balanço, Carga, Aumento e Variedade. ACWR só existe com fonte fresca (≤14 dias) e ≥8 dias com carga em 28; ausência vira `INSUFFICIENT`/`STALE`, nunca permissão. A CTL/ATL é alimentada com até 180 dias anteriores à janela exibida (BUG-03); sem histórico, a série começa honestamente em zero.
 - **Check-in:** 4 perguntas (sono, fadiga, dor, estresse) + sinais de doença/lesão e calor autorreportado, persistidos por data, usados na prontidão/prescrição e resumidos em um histórico dos últimos 7 check-ins com Hooper.
@@ -74,6 +75,41 @@
 - **Treino de hoje concluído:** o card principal mostra o selo “Concluído”, o resumo do que foi feito (duração, distância, pace e RPE quando existem), mantém o planejado como contexto, esconde iniciar/trocar/concluir e oferece “Ver corrida” quando há vínculo. “Feito · sem registro” ganhou explicação no card e no plano: conta adesão, mas não entra em volume, carga ou zonas.
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
+
+## Sessão 2026-11-11 — D6-B: previsão de prova por VDOT/Riegel
+
+**Objetivo:** entregar a previsão de tempo de prova prometida pelo ADR 0032 (D6-B) a partir do VDOT calibrado, com faixa, confiança, proveniência e ausência explícita — sem virar prescrição, garantia ou mudança de plano. Decisões P1–P7 aprovadas pelo usuário 0 e registradas no [ADR 0036](adr/0036-race-time-prediction-vdot-riegel.md).
+
+### Concluído
+
+- **Modelo e dados:** `VdotSource` (`PERFORMANCE`/`TRAINING_ESTIMATE`) e proveniência no `AthleteProfile` (`vdotCalibratedAt`, distância/duração da performance de referência). Room 17 com colunas nullable; migração 16→17 testada preservando perfil legado com proveniência `NULL`; export JSON inclui os campos.
+- **Domínio:** `RaceTimePredictor` puro. Prevê o tempo invertendo a equação de Daniels por busca binária monotônica; faixa ±3% (Tier A) e ±5% (Tier B); Riegel (`T^1,06`) apenas como checagem de faixa em 5k–meia a partir de performance de referência Tier A; sem VDOT, confiança baixa, calibração vencida (>56 dias) ou sem data → `Unavailable` com motivo, nunca número.
+- **App:** `CalibrationViewModel.save()` grava origem/data (e a performance de referência no Tier A); Perfil e Hoje montam a previsão a partir do perfil; `RacePredictionBlock` mostra tempo, faixa, confiança, fonte e “não prescrição nem garantia”, sem IDs técnicos. O bloco só aparece em evento `PLANNED` e não toca plano, prescrição, briefing ou troca.
+- **Catálogo:** `R-RACE-03` e `EV-RIEGEL-1981` registrados.
+- **Testes:** +11 no `RaceTimePredictionTest` (inversão 5k/10k/meia/maratona, faixas, Riegel, limites, ausência), +1 na migração 16→17, proveniência no `CalibrationViewModelTest`, bloco de previsão no Perfil/Hoje e 5 goldens regravados (`profile-race-{dark,light}`, `today-race-{dark,light,narrow-dark}`).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint e Kover).
+- `./gradlew koverVerify` — verde; parser FIT 93,01% de branches.
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` — verde (66 testes de golden).
+- **1.440 testes**, 0 falhas e 0 `@Ignore` (696 `:app`, 162 `core:data`, 543 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,62% de linhas (4.632/4.745), 80,94% de branches (3.426/4.233), 96,24% de instruções (32.026/33.278).
+- Schema v17; nenhuma dependência nova e nenhum dado real no diff.
+- **Flakiness observada:** `MetricsImportViewModelTest` estourou o timeout de 30 s numa execução completa e passou isolado; é a mesma família já registrada, sem relação com o D6-B.
+
+### Decisões e observações
+
+- **VDOT como método principal:** a inversão de Daniels reaproveita as fórmulas já testadas e mantém o resultado coerente com a calibração; Riegel entra só como segundo limite de faixa, sem pesos inventados.
+- **Riegel limitado:** 5k–meia e referência entre 5k e meia. Maratona não é extrapolada de referência curta; a previsão de maratona usa apenas o VDOT.
+- **Proveniência obrigatória:** sem origem/data, o app mostra “sem previsão” em vez de assumir confiança. Isso protege o perfil legado (VDOT antigo) até recalibrar.
+- **Sem contaminação:** a previsão é um objeto de UI; testes de independência de plano/prescrição continuam valendo e nenhum motor de treino a lê.
+
+### Próximo passo
+
+1. Instalar o build no aparelho e conferir a previsão ao lado da meta no Perfil e no dia da prova.
+2. Manter a regressão pace×FC (ADR 0035 §4) e a validação de previsões futuras no backlog.
+3. Revisar a faixa de Riegel para meia se houver dados reais suficientes; hoje é apenas checagem.
 
 ## Sessão 2026-11-11 — BUG-06: validação da estimativa Tier B em dados reais
 

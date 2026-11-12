@@ -167,6 +167,17 @@ class TodayScreenshotTest {
                     event.distance,
                     event.targetTimeSec,
                 ),
+                racePrediction = com.meucoach.core.domain.race.RaceTimePredictor.predict(
+                    vdot = 29.6477,
+                    confidence = com.meucoach.core.model.DataConfidence.HIGH,
+                    calibratedAt = today,
+                    reference = com.meucoach.core.domain.race.RaceReference(
+                        distanceM = 5_000.0,
+                        durationSec = 1_859,
+                    ),
+                    distance = event.distance,
+                    today = today,
+                ),
                 eventDates = setOf(event.targetDate),
             )
         } ?: baseState

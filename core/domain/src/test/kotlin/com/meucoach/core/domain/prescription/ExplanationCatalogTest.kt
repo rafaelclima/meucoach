@@ -31,6 +31,7 @@ class ExplanationCatalogTest {
             "R-PRESC-04",
             "R-RACE-01",
             "R-RACE-02",
+            "R-RACE-03",
             "R-FEEDBACK-01",
             "R-REVIEW-01",
         )
@@ -46,6 +47,7 @@ class ExplanationCatalogTest {
         val ids = listOf(
             "EV-SEILER-2010",
             "EV-DANIELS-2014",
+            "EV-RIEGEL-1981",
             "EV-SAW-2016",
             "EV-GABBETT-2016",
             "EV-IMPELLIZZERI-2020",

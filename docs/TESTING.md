@@ -91,7 +91,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (11/11/2026):
 
-- 1.405 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 523 em `core:domain`, 161 em `core:data`, 682 em `:app`).
+- 1.440 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 543 em `core:domain`, 162 em `core:data`, 696 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,63% de linhas, 81,42% de branches, 96,30% de instruções.
@@ -179,6 +179,7 @@ Evidência atual (11/11/2026):
 - `UserDataRepositoryTest` (C3-06): export inclui `completionSource`; reset remove eventos e recusas.
 - `RacePlanTest` (C3-06): `targetTimeSec` não altera a projeção de planejamento.
 - `MeuCoachDatabaseMigrationTest` (14→15): `race_events` vazia, dados legados preservados e schema validado.
+- `MeuCoachDatabaseMigrationTest` (16→17): perfil legado recebe proveniência de calibração `NULL`; Room 17 e export a preservam.
 - `SessionComparisonCalculatorTest`: tolerância inclusiva de 10%, direções de duração/distância/pace/FC/RPE, FC sem teto, ausência de um dos lados, pace derivado, treino livre, plano a partir de prescrição/sessão e `REST`.
 - `GetSessionComparisonTest`: prescrição preferida à sessão, fallback da semana, vínculo por execução, corrida não vinculada em dia com plano e corrida sem plano.
 - `ActivityComparisonFormatTest`: linhas, omissão de dado ausente, notas factuais, resumo “tudo dentro” e treino livre com “—”.
@@ -357,6 +358,8 @@ sem competir com a suíte lógica pelo dispatcher do Vico. O CI roda a verifica�
 publica o diff em artifacts. Não há dados de saúde nas imagens (fixture sintética).
 
 Goldens de C3-06: `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}` foram regravados com o bloco “Referência da meta” e os mesmos fixtures sintéticos.
+
+Goldens de D6-B (ADR 0036): os mesmos `profile-race-{dark,light}` e `today-race-{dark,light,narrow-dark}` foram regravados com o bloco “Previsão de referência” (tempo, faixa, confiança, fonte e aviso de não garantia), ainda com fixtures sintéticos.
 
 Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre).
 

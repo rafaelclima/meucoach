@@ -30,6 +30,19 @@ enum class GoalType {
     CUSTOM,
 }
 
+/**
+ * Where the persisted VDOT came from (ADR 0036).
+ *
+ * `PERFORMANCE` is a race/time trial entered explicitly; `TRAINING_ESTIMATE` is
+ * the Tier B sustained-effort estimate. A legacy profile with `null` has no
+ * trustworthy provenance and does not generate race predictions until
+ * recalibrated.
+ */
+enum class VdotSource {
+    PERFORMANCE,
+    TRAINING_ESTIMATE,
+}
+
 /** Planned running minutes per weekday. Missing days mean "not available". */
 data class WeeklyAvailability(val minutesByDay: Map<DayOfWeek, Int> = emptyMap()) {
     init {
@@ -72,6 +85,13 @@ data class AthleteProfile(
     val lactateThresholdHeartRate: Int? = null,
     val thresholdPace: Pace? = null,
     val vdot: Double? = null,
+    /** Provenance of [vdot] (ADR 0036); `null` means legacy/unknown. */
+    val vdotSource: VdotSource? = null,
+    /** Local date of the calibration that produced [vdot] (ADR 0036). */
+    val vdotCalibratedAt: LocalDate? = null,
+    /** Reference performance behind [vdot], used only for the Riegel check. */
+    val vdotReferenceDistanceM: Double? = null,
+    val vdotReferenceDurationSec: Int? = null,
     val experience: Experience = Experience.BEGINNER,
     val timezone: String = "UTC",
     val weeklyAvailability: WeeklyAvailability = WeeklyAvailability(),
@@ -100,6 +120,18 @@ data class AthleteProfile(
             "Lactate threshold heart rate out of range"
         }
         require(vdot == null || vdot > 0.0) { "VDOT must be positive" }
+        require(vdotReferenceDistanceM == null || vdotReferenceDistanceM > 0.0) {
+            "VDOT reference distance must be positive"
+        }
+        require(vdotReferenceDurationSec == null || vdotReferenceDurationSec > 0) {
+            "VDOT reference duration must be positive"
+        }
+        require((vdotReferenceDistanceM == null) == (vdotReferenceDurationSec == null)) {
+            "VDOT reference distance and duration must be provided together"
+        }
+        require(vdotSource != VdotSource.PERFORMANCE || vdotReferenceDistanceM != null) {
+            "A performance calibration requires its reference performance"
+        }
         require(runCatching { ZoneId.of(timezone) }.isSuccess) {
             "Timezone must be a valid IANA zone"
         }

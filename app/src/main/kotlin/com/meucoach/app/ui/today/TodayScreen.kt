@@ -184,6 +184,7 @@ fun TodayScreen(
                 RaceDayCard(
                     event = raceEvent,
                     projection = state.raceProjection,
+                    prediction = state.racePrediction,
                     activityAvailable = state.raceActivityAvailable,
                     suggestions = state.activitySuggestions,
                     completionMessage = state.completionMessage,

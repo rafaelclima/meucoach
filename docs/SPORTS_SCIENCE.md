@@ -361,9 +361,14 @@ segunda→domingo:
 - Referência aritmética da meta (ADR 0032): pace médio, faixa ±3% e passagens por
   km derivados de `targetTimeSec`. É referência de leitura, não prescrição de
   treino nem garantia de resultado; a faixa é convenção de produto.
-- Previsão por VDOT/Riegel (`R-RACE-03`) **não é implementada nesta fase**. Se
-  entrar, usa `EV-DANIELS-2014`/`EV-RIEGEL-1981`, exige calibração explícita,
-  confiança e ausência quando não houver dados; Riegel é referência, nunca promessa.
+- Previsão por VDOT/Riegel (`R-RACE-03`, ADR 0036): com o VDOT calibrado
+  (Tier A ou B), o app inverte a equação de Daniels para a distância-alvo. A faixa
+  é ±3% para prova/TT e ±5% para estimativa por treinos. Riegel
+  (`T2 = T1 · (D2/D1)^1,06`) entra apenas como checagem de faixa para 5k–meia e
+  com performance de referência Tier A; maratona não é extrapolada de referência
+  curta. Sem VDOT, calibração vencida (> 56 dias) ou origem desconhecida, não há
+  número — o card diz por quê. É referência, nunca promessa, prescrição ou
+  garantia; não entra em plano, taper, prescrição ou briefing.
 - Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
 - Recuperação: 1 dia fácil por 3 km de prova (heurística), mínimo 3 dias sem qualidade após 5k/10k.
 
@@ -550,6 +555,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-10` | Sem `QUALITY` na semana civil da prova e corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) antes dela; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
+| `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |
 | `R-FEEDBACK-01` | Comparação planejado × executado é descritiva: usa o alvo prescrito do dia, tolera 10% em duração/distância e 1 ponto de RPE, mostra dado ausente como ausente e não julga qualidade nem prescreve; treino livre não inventa alvo | ADR 0033; DANIELS, FRIEL | STRONG como política de produto/copy |
 | `R-REVIEW-01` | A revisão semanal consolida adesão, volume, intensidade, prontidão e sono a partir de valores já calculados; reporta no máximo 3 observações determinísticas que citam regra/evidência, com dado ausente como ausente, sem LLM, sem nota, streak ou prescrição | ADR 0034; política de produto | STRONG como política de produto/copy |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |

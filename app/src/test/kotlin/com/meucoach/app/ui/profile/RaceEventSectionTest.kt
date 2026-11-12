@@ -13,14 +13,17 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.race.RacePredictionResult
 import com.meucoach.core.domain.race.RaceTargetProjection
 import com.meucoach.core.domain.race.RaceTargetProjector
+import com.meucoach.core.domain.race.RaceTimePredictor
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.RaceCompletionSource
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
 import com.meucoach.core.model.Sex
+import com.meucoach.core.model.VdotSource
 import com.meucoach.core.model.WeeklyAvailability
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
@@ -41,6 +44,61 @@ class RaceEventSectionTest {
     val compose = createComposeRule()
 
     private val today = LocalDate.of(2026, 11, 6)
+
+    @Test
+    fun `shows the vdot race prediction with range and confidence`() {
+        val event = plannedEvent()
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(
+                        events = listOf(event),
+                        projection = RaceTargetProjector.project(event.distance, event.targetTimeSec),
+                        prediction = RaceTimePredictor.predict(calibratedProfile(), event.distance, today),
+                        athlete = calibratedProfile(),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-prediction"))
+        compose.onNodeWithText("PREVISÃO DE REFERÊNCIA").assertIsDisplayed()
+        compose.onNodeWithText("Tempo previsto").assertIsDisplayed()
+        compose.onNodeWithText("1:04:27").assertIsDisplayed()
+        compose.onNodeWithText("1:02:31–1:06:23").assertIsDisplayed()
+        compose.onNodeWithText("Confiança alta").assertIsDisplayed()
+        compose.onNodeWithText("Previsão de referência, não", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("R-RACE-03", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `explains when the race prediction is unavailable`() {
+        val event = plannedEvent()
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(
+                        events = listOf(event),
+                        prediction = RaceTimePredictor.predict(profile(), event.distance, today),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-prediction-unavailable"))
+        compose.onNodeWithText("Sem previsão: calibre com uma prova", substring = true).assertIsDisplayed()
+    }
 
     @Test
     fun `shows the planned race and its declared target reference`() {
@@ -303,12 +361,26 @@ class RaceEventSectionTest {
         assertThat(undone).isEqualTo("race-1")
     }
 
-    private fun state(events: List<RaceEvent>, projection: RaceTargetProjection? = null) = ProfileUiState(
+    private fun state(
+        events: List<RaceEvent>,
+        projection: RaceTargetProjection? = null,
+        prediction: RacePredictionResult? = null,
+        athlete: AthleteProfile = profile(),
+    ) = ProfileUiState(
         isLoading = false,
-        profile = profile(),
+        profile = athlete,
         today = today,
         raceEvents = events,
         raceProjection = projection,
+        racePrediction = prediction,
+    )
+
+    private fun calibratedProfile() = profile().copy(
+        vdot = 29.6477,
+        vdotSource = VdotSource.PERFORMANCE,
+        vdotCalibratedAt = today,
+        vdotReferenceDistanceM = 5_000.0,
+        vdotReferenceDurationSec = 1_859,
     )
 
     private fun plannedEvent() = RaceEvent(

@@ -47,6 +47,10 @@ object ExplanationCatalog {
             "R-RACE-02",
             "Ritmo e passagens de referência a partir da meta",
         ),
+        "R-RACE-03" to RuleExplanation(
+            "R-RACE-03",
+            "Previsão de tempo por VDOT, com faixa e checagem de Riegel",
+        ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",
             "Planejado × executado descreve a diferença, sem julgar",
@@ -67,6 +71,11 @@ object ExplanationCatalog {
             "EV-DANIELS-2014",
             "Ritmos e economia de corrida",
             "Daniels, Daniels' Running Formula, 2014",
+        ),
+        "EV-RIEGEL-1981" to EvidenceExplanation(
+            "EV-RIEGEL-1981",
+            "Predição de prova",
+            "Riegel, American Scientist 1981",
         ),
         "EV-SAW-2016" to EvidenceExplanation(
             "EV-SAW-2016",

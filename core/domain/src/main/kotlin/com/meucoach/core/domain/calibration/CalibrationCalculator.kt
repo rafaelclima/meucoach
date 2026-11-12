@@ -134,7 +134,14 @@ object CalibrationCalculator {
     }
 
     /** Daniels: VO2max = -4.6 + 0.182258·v + 0.000104·v², v em m/min. */
-    fun vdot(distanceM: Double, durationSec: Int): Double? {
+    fun vdot(distanceM: Double, durationSec: Int): Double? =
+        vdotRaw(distanceM, durationSec)?.takeIf { it.isFinite() && it in MIN_VDOT..MAX_VDOT }
+
+    /**
+     * Unclamped Daniels VDOT, shared with the race predictor's inverse search.
+     * The public [vdot] keeps the 10–90 sanity limits for calibration.
+     */
+    internal fun vdotRaw(distanceM: Double, durationSec: Int): Double? {
         if (distanceM <= 0.0 || durationSec <= 0) return null
         val minutes = durationSec / 60.0
         val velocity = distanceM / minutes
@@ -145,7 +152,7 @@ object CalibrationCalculator {
                 0.2989558 * exp(-0.1932605 * minutes)
         if (percent <= 0.0) return null
         val value = vo2 / percent
-        return value.takeIf { it.isFinite() && it in MIN_VDOT..MAX_VDOT }
+        return value.takeIf { it.isFinite() }
     }
 
     /** Inverts the VO2 equation at 88% of VDOT to get threshold velocity. */
