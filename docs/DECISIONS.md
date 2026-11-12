@@ -16,6 +16,7 @@
 > Revisão 1.13 (11/11/2026): ADR 0035 aceito — Tier B estima pace de limiar, VDOT e LTHR pelo melhor esforço sustentado de 20–35 min (BUG-06, fatia 1 no domínio); regressão pace×FC deferida e wiring do app pendente (fatia 2).
 > Revisão 1.14 (11/11/2026): BUG-06 fatia 2 implementada — a estimativa Tier B usa os treinos recentes no `CalibrationViewModel`, a tela oferece “Estimar pelos meus treinos” e mostra a copy honesta; nenhuma decisão do ADR 0035 mudou.
 > Revisão 1.15 (11/11/2026): BUG-06 validado em dados reais — estimativa ~3% acima do VDOT de prova (30,6 vs 29,63); nenhuma decisão do ADR 0035 mudou.
+> Revisão 1.16 (11/11/2026): ADR 0036 proposto para o D6-B (previsão de prova por VDOT/Riegel), sem código; decisões P1–P7 aguardam aprovação.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -54,6 +55,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0033](adr/0033-planned-vs-executed-comparison.md) | Comparação planejado × executado descritiva (FR-010) | Aceito — implementado em 11/11/2026 (calculadora pura, card no detalhe, treino livre sem alvo) | 11/11/2026 |
 | [0034](adr/0034-weekly-review-consolidation.md) | Revisão semanal determinística (FR-011) | Aceito — implementado em 11/11/2026 (domínio puro + card em Tendências, até 3 observações, goldens, sem LLM) | 11/11/2026 |
 | [0035](adr/0035-tier-b-calibration-estimates.md) | Estimativas Tier B pelo melhor esforço sustentado (BUG-06) | Aceito — fatias 1 (domínio) e 2 (app) implementadas e validadas em dados reais em 11/11/2026 (estimativa ~3% acima do VDOT de prova) | 11/11/2026 |
+| [0036](adr/0036-race-time-prediction-vdot-riegel.md) | Previsão de tempo de prova por VDOT/Riegel (D6-B) | **Proposto** — sem código; decisões P1–P7 aguardam aprovação | 11/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

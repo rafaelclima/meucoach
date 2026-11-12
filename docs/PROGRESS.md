@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 11/11/2026 (BUG-06 fatia 2 concluída e validada em dados reais: a estimativa Tier B chega à tela e ficou ~3% acima do VDOT de prova; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 11/11/2026 (D6-B com ADR 0036 proposto, sem código; BUG-06 fatia 2 concluída e validada em dados reais: a estimativa Tier B ficou ~3% acima do VDOT de prova; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -100,7 +100,7 @@
 
 ### Próximo passo
 
-1. D6-B (previsão VDOT/Riegel): redigir o ADR próprio antes do código.
+1. D6-B (previsão VDOT/Riegel): [ADR 0036](../adr/0036-race-time-prediction-vdot-riegel.md) proposto em 11/11/2026; aguarda aprovação das decisões P1–P7 (proveniência/Room 17, uso do Riegel e faixas) antes do código.
 2. Manter a regressão pace×FC como evolução futura (ADR 0035 §4).
 
 ## Sessão 2026-11-11 — BUG-06 fatia 2: estimativa Tier B chega à tela

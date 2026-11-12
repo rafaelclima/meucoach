@@ -415,9 +415,10 @@ FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/
 | **C3-06** | Auto-conclusão da prova e referência da meta (pace/faixa/passagens) | **Concluído em 11/11/2026:** ADR 0032, regra 90–110% com uma única candidata, `completionSource`/Room 16, undo com recusa persistida, referência aritmética no Perfil/Hoje, testes de domínio/dados/app/UI e goldens de prova atualizados |
 
 Fora do escopo implementável: recuperação pós-prova (FR-207), previsão de tempo por
-VDOT/Riegel (D6-B, exige ADR próprio com calibração e confiança) e limite de longão
-por fração da distância (FR-206). N-03 continua sem entrega; o PRD v0.2 apenas
-definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu.
+VDOT/Riegel (D6-B; [ADR 0036](adr/0036-race-time-prediction-vdot-riegel.md)
+proposto em 11/11/2026, sem código até aprovação) e limite de longão por fração da
+distância (FR-206). N-03 continua sem entrega; o PRD v0.2 apenas definiu a direção
+de evento/taper que a implementação C3-05/C3-06 seguiu.
 
 ### FR-010 — Comparação planejado × executado (concluído em 11/11/2026)
 
