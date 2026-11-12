@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.33 · **Data:** 12/11/2026 · **Mudança:** gate visual estabilizado — gráficos Vico passam a usar `CartesianChartModel` síncrono, com `ChartRenderTest` e 5 execuções completas verdes sob carga; C3-07 (FR-207), D6-B, BUG-06, BUG-03/04 e FR-011 seguem concluídos.
+**Versão:** 1.34 · **Data:** 12/11/2026 · **Mudança:** progressão de volume a partir do realizado (FR-004/N-07, ADR 0038): `R-PLAN-01` passa a ser emitida e o plano cresce no máximo 6% com guardrails; `weekly-plan-v3`, sem migração.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -201,7 +201,7 @@
 
 ### P1-05 · Prescrição
 
-**Status:** em andamento — recomendação diária concluída em 30/10/2026
+**Status:** em andamento — recomendação diária concluída em 30/10/2026; progressão de volume concluída em 12/11/2026 (ADR 0038)
 
 - [x] Guardrails: doença/vermelho, sono curto/âmbar, ACWR > 1,5.
 - [x] Fácil Z2 com pace E e FC Z2 quando calibrado; RPE sem calibração.
@@ -212,6 +212,7 @@
 - [x] Progressão por dose de qualidade, com disponibilidade como teto (ADR 0010).
 - [ ] Blocos/periodização.
 - [x] Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida).
+- [x] Progressão de volume a partir do realizado (FR-004/N-07, ADR 0038): base é o maior volume concluído com evidência nas últimas 4 semanas, +6% somente com semana anterior ≥ 80%, prontidão verde e ACWR conhecido; disponibilidade continua teto; sem histórico, volume pela agenda com aviso; `R-PLAN-01` passa a ser emitida.
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
 - [x] Prescrição única do dia persistida e versionada; plano como intenção (C1-03, ADR 0023).
 - [ ] Exibir no plano o limite de 2 treinos fortes por semana (regra implementada; o histórico de conclusão já está em Tendências).

@@ -11,10 +11,12 @@ import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanTrigger
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.Experience
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -295,5 +297,32 @@ class EvaluateReplanTest {
         assertThat(result).isInstanceOf(EvaluateReplanResult.Unavailable::class.java)
         assertThat((result as EvaluateReplanResult.Unavailable).reason)
             .contains("semana planejada")
+    }
+
+    @Test
+    fun `the context carries the persisted weeks for volume progression`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        checkIns.save(replanCheckIn())
+        plans.saveWeek(replanPlan())
+        val previousStart = REPLAN_WEEK_START.minusWeeks(1)
+        plans.saveWeek(
+            replanPlan(
+                weekStart = previousStart,
+                createdOn = previousStart,
+                sessions = listOf(
+                    easySession(
+                        previousStart,
+                        durationMin = 40,
+                        status = SessionStatus.DONE,
+                        evidence = CompletionEvidence.MANUAL,
+                    ),
+                ),
+            ),
+        )
+
+        val context = contexts.build(explicit = true)!!
+
+        assertThat(context.input.previousWeek?.weekStart).isEqualTo(previousStart)
+        assertThat(context.input.recentWeeks.map { it.weekStart }).containsExactly(previousStart)
     }
 }

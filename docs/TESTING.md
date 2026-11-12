@@ -92,7 +92,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (12/11/2026):
 
-- 1.469 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 566 em `core:domain`, 162 em `core:data`, 702 em `:app`).
+- 1.497 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 592 em `core:domain`, 162 em `core:data`, 704 em `:app`).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,56% de linhas, 81,13% de branches, 96,23% de instruções.
@@ -156,11 +156,12 @@ Evidência atual (12/11/2026):
 - `HealthConnectViewModelTest`: status, permissões faltantes, sync, indisponibilidade e erro.
 - `HealthConnectContentTest`: estados do card, autorização e sincronização.
 - `WorkoutRecommenderTest`: guardrails, fácil Z2 calibrado, RPE, ACWR e duração.
-- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia; recuperação pós-prova bloqueia qualidade/longão, aplica tetos por fase e volta ao normal depois da janela.
+- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia; recuperação pós-prova bloqueia qualidade/longão, aplica tetos por fase e volta ao normal depois da janela; volume parte do concluído (base 120 → 128), mantém abaixo de 80%, não cresce em deload/taper/prova/recuperação, respeita o teto da agenda e limita a distância ao alvo depois da escala.
+- `VolumeProgressionTest`: sem histórico → teto; +6% sobre a semana anterior; semana < 80% mantém; base antiga não cresce; deload/taper/prova/recuperação; prontidão/carga/ACWR; teto da agenda; plano parcial e janela de 4 semanas; empate pela mais recente; só evidência forte conta.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `RecoveryWindowTest`: janela 2/3/5/10, borda inclusiva, dia da prova fora, tetos por distância, `blocks`, `dayOfWindow`, `intersects`, escolha da prova mais recente e invariantes.
 - `DailyPrescriptionEngineTest`: dentro da janela, `QUALITY`/`LONG` viram fácil com teto, fácil acima do teto é reduzido, dia `DONE` não é reescrito e fora da janela nada muda.
-- `PlanReplannerTest`: `RACE_COMPLETED` sugere revisão quando a semana persistida viola a janela, `NoChange` quando já está compatível e depois da janela.
+- `PlanReplannerTest`: `RACE_COMPLETED` sugere revisão quando a semana persistida viola a janela, `NoChange` quando já está compatível e depois da janela; hash muda com o histórico de volume e a candidata respeita a base concluída.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
 - `TodayReplanTest`: selo de versão, botão explícito, diff “o que mudou” e aceitar/recusar/suprimir na tela Hoje.
 - `SessionBriefingEngineTest`: fidelidade de cada campo à prescrição, determinismo, RPE sem calibração, ausência de blocos/intervalos/alternativas, `DONE`/`CLOSED` sem briefing, downgrade `QUALITY → EASY` e IDs preservados.

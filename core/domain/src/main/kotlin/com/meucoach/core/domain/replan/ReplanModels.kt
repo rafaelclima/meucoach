@@ -132,6 +132,8 @@ data class ReplanInput(
     val readiness: ReadinessResult,
     val load: LoadSnapshot? = null,
     val previousWeek: WeeklyPlan? = null,
+    /** Previous persisted weeks used by the volume base (ADR 0038). */
+    val recentWeeks: List<WeeklyPlan> = emptyList(),
     val weekNumberInBlock: Int = 1,
     val nonTrainablePastDates: Set<LocalDate> = emptySet(),
     /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */

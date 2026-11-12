@@ -59,7 +59,7 @@ O PRD continua sendo um retrato datado; onde ele divergir do código, vale o có
 | BUG-09 / NFR-005 — tempo congelado | Resolvido em C1-01: `TimeProvider`/`Clock` injetados, fuso do perfil e virada de dia/semana (`ADR 0022`). |
 | N-04 / FR-004/005 — carga ausente liberando qualidade | Gate implementado em C1-02: `LoadCoverage`/`LoadDataState`, frescor de 14 dias, mínimo de 8 dias com carga; iniciante ainda pendente (`ADR 0026`, parcial). |
 | ARCH-01/ARCH-04 / DEBT-04 — docs × código | Resolvido no C1-06: `ARCHITECTURE.md`, `DATA_MODEL.md`, `TESTING.md`, `README.md`, `PRODUCT.md`, `ROADMAP.md` e este PRD reconciliados com o schema v12. |
-| FR-004 (progressão por volume) | **Pendente**: o plano ainda parte da disponibilidade; `R-PLAN-01` promete 5–8% sem executar. Exige ADR próprio. |
+| FR-004 (progressão por volume) | **Resolvido em 12/11/2026** (`ADR 0038`): o plano usa como base o maior volume concluído com evidência forte nas últimas 4 semanas, cresce no máximo 6% (faixa 5–8%) só com semana anterior ≥ 80%, prontidão verde, carga conhecida e ACWR 0,8–1,3, e mantém o volume quando o dado não sustenta aumento. A disponibilidade continua sendo teto; sem histórico, o volume vem da agenda com aviso. `R-PLAN-01` passa a ser emitida pelo gerador e o catálogo foi corrigido (N-07). |
 | FR-005 (qualidade para iniciante) | **Pendente**: depende de histórico de evidência forte e validação dos limiares do ADR 0026. |
 | FR-002/FR-007/FR-008/FR-011..FR-018 | **Pendentes**, conforme prioridade original. FR-010 foi implementado em 11/11/2026 (ADR 0033). |
 
@@ -798,7 +798,7 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
   4. O plano cita `R-PLAN-01` e mostra a base usada.
   5. Testes cobrem progressão, manutenção, redução, ausência de histórico e disponibilidade como teto.
 - **Prioridade:** P1 · **Dependências:** FR-001; histórico de atividades; `PlanCompletionCalculator` · **Evidência:** `WeeklyPlanGenerator.kt:161-168`; `SPORTS_SCIENCE.md:250-265`.
-- **Reconciliação:** o gate de cobertura/frescor de carga entrou em C1-02 (`ADR 0026`); a progressão de volume a partir do histórico ainda **não** foi implementada e exige ADR próprio.
+- **Reconciliação:** o gate de cobertura/frescor de carga entrou em C1-02 (`ADR 0026`); a progressão de volume a partir do histórico foi implementada em 12/11/2026 pelo [ADR 0038](../adr/0038-volume-progression-from-completed.md). Base = maior volume concluído com evidência forte em até 4 semanas; +6% só com semana anterior ≥ 80%, prontidão verde, carga conhecida e ACWR 0,8–1,3; disponibilidade segue como teto; `R-PLAN-01` emitida; `weekly-plan-v3`.
 
 ### FR-005 — Progressão de qualidade para iniciantes
 

@@ -73,7 +73,7 @@ class DailyPrescriptionEngineTest {
         assertThat(prescription.rationale).contains("Planejado:")
         assertThat(prescription.ruleIds).contains("R-PRESC-04", "R-PRESC-02")
         assertThat(prescription.evidenceIds).isNotEmpty
-        assertThat(prescription.confidence).isEqualTo(DataConfidence.MEDIUM)
+        assertThat(prescription.confidence).isEqualTo(DataConfidence.LOW)
         assertThat(ExplanationCatalog.hasRule("R-PRESC-04")).isTrue()
     }
 
@@ -700,7 +700,6 @@ class DailyPrescriptionEngineTest {
             load = load(acwr = 1.0),
             weekStart = monday,
             today = monday,
-            previousWeek = completedWeek(),
         ),
     )
 
@@ -713,29 +712,6 @@ class DailyPrescriptionEngineTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
     )
-
-    private fun completedWeek(): WeeklyPlan {
-        val previousMonday = monday.minusWeeks(1)
-        val sessions = (0..3).map { index ->
-            easySession(30).copy(
-                date = previousMonday.plusDays(index.toLong()),
-                status = SessionStatus.DONE,
-                completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
-                activityId = "previous-$index",
-            )
-        }
-        return WeeklyPlan(
-            weekStart = previousMonday,
-            sessions = sessions,
-            weeklyMinutes = 120,
-            longRunMinutes = null,
-            qualityCount = 0,
-            rationale = "Semana anterior.",
-            confidence = DataConfidence.MEDIUM,
-            ruleIds = listOf("R-ZONE-01"),
-            evidenceIds = listOf("EV-SEILER-2010"),
-        )
-    }
 
     private fun readiness(
         level: ReadinessLevel,

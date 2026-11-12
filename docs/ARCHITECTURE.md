@@ -158,7 +158,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 | `HeartRateZoneCalculator` / `PaceZoneCalculator` | LTHR, pace de limiar | 5 zonas de FC, 5 de pace, 3 zonas polarizadas |
 | `TrainingLoadEngine` | atividades + frescor da fonte | TRIMP, rTSS, CTL, ATL, TSB, ACWR, monotonia, `LoadCoverage`/`LoadDataState` |
 | `ReadinessCalculator` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
-| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today`, prova, janela de recuperação | semana conservadora (até 2 qualidades, longão, taper, deload, recuperação pós-prova) |
+| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today`, semanas anteriores, prova, janela de recuperação | semana conservadora (até 2 qualidades, longão, taper, deload, recuperação pós-prova) com volume +6% sobre o concluído |
+| `VolumeProgression` | semanas anteriores, teto de disponibilidade, prontidão/carga/ACWR | alvo de minutos, base e motivo de manutenção (ADR 0038) |
 | `RecoveryWindow` | prova concluída (`distância`/`data`) e data consultada | janela ativa, teto de duração, bloqueio de qualidade/longão |
 | `PlanReplanner` | plano versionado, perfil, prontidão, carga, `today`, datas não treináveis, recuperação | `Suggest` (futuro mesclado) ou `NoChange`, sem tocar hoje/passado/protegidas |
 | `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil, recuperação | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
@@ -186,7 +187,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 ### 6.4 Replanejamento da semana (ADR 0028)
 
-- **Fluxo:** `ReplanContextBuilder` lê o `StoredWeeklyPlan` (versão/hashes, proveniência/checkpoint), perfil, prontidão, carga, semana anterior, bloco e check-ins de doença; captura o baseline de disponibilidade e o checkpoint de perfil quando desconhecidos, usando um snapshot coerente de instante + fuso. `EvaluateReplan` delega ao `PlanReplanner` puro e devolve `Suggestion` (candidato + diff), `NoChange` ou `Unavailable`; `NoChange` persiste somente o checkpoint avaliado.
+- **Fluxo:** `ReplanContextBuilder` lê o `StoredWeeklyPlan` (versão/hashes, proveniência/checkpoint), perfil, prontidão, carga, até quatro semanas anteriores, bloco e check-ins de doença; captura o baseline de disponibilidade e o checkpoint de perfil quando desconhecidos, usando um snapshot coerente de instante + fuso. `EvaluateReplan` delega ao `PlanReplanner` puro e devolve `Suggestion` (candidato + diff), `NoChange` ou `Unavailable`; `NoChange` persiste somente o checkpoint avaliado.
 - **Proteções:** só sessões `date > today` e `PLANNED` entram no diff/substituição. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` são copiadas; a prescrição do dia não é recalculada pelo aceite.
 - **Aceite:** `ApplyReplan` relê o estado, exige `expectedVersion`, recalcula o `inputsHash` e chama `TrainingPlanRepository.applyReplan` com validação dentro da transação. A mesma transação relê o perfil persistido, recalcula o fingerprint/contexto temporal e retorna `Stale` se algo divergiu; conflito protegido produz `Rejected`.
 - **UI:** `ReplanViewModel` avalia no resume, respeita recusa por proposta (`weekStart` + versão + hash) e supressão até o fim do dia em `ReplanSuggestionStore` (SharedPreferences), e oferece aceitar/recusar/suprimir. O card do plano mostra o selo `v{n}`, o botão explícito e “Ver o que mudou” a partir de `getLatestRevision` + `PlanJson`.
@@ -375,6 +376,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0035](adr/0035-tier-b-calibration-estimates.md) — estimativas Tier B da calibração
 - [ADR-0036](adr/0036-race-time-prediction-vdot-riegel.md) — previsão de prova por VDOT/Riegel
 - [ADR-0037](adr/0037-post-race-recovery.md) — recuperação pós-prova e janela por distância
+- [ADR-0038](adr/0038-volume-progression-from-completed.md) — progressão de volume a partir do concluído
 
 > Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
 

@@ -15,6 +15,7 @@ import com.meucoach.core.model.ReadinessLevel
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -114,6 +115,11 @@ data class WeeklyPlanInput(
     val eventDates: Set<LocalDate> = emptySet(),
     /** Post-race recovery window (ADR 0037); caps sessions and blocks quality/long run. */
     val recovery: RecoveryWindow? = null,
+    /**
+     * Previous persisted weeks, most recent first or any order (ADR 0038).
+     * The volume base is derived from their strong-evidence completions.
+     */
+    val recentWeeks: List<WeeklyPlan> = emptyList(),
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
@@ -123,10 +129,12 @@ data class WeeklyPlanInput(
 /**
  * Builds a conservative week from the profile availability.
  *
- * The plan never increases volume without completion history. It allows at most
- * two quality sessions, only on a green day with calibration-adjacent guardrails,
- * and keeps them away from the long run. Every fourth consecutive week is a
- * deload. A taper always takes precedence over the deload.
+ * The availability is a hard ceiling. Volume grows at most 6% over the highest
+ * recently completed week and only with a green, evidenced, known-load week
+ * (ADR 0038); otherwise it is maintained. The plan allows at most two quality
+ * sessions, only on a green day with calibration-adjacent guardrails, and keeps
+ * them away from the long run. Every fourth consecutive week is a deload. A
+ * taper always takes precedence over the deload.
  */
 class WeeklyPlanGenerator {
     fun generate(input: WeeklyPlanInput): WeeklyPlan {
@@ -204,7 +212,7 @@ class WeeklyPlanGenerator {
             loadTrusted &&
             acwrInRange &&
             days.size >= 3
-        val completionRatio = input.previousWeek?.completionRatio() ?: 0.0
+        val completionRatio = input.previousWeek?.strongCompletionRatio() ?: 0.0
         val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
         val deload = input.weekNumberInBlock % DELOAD_EVERY_WEEKS == 0
         val qualityCandidateDays = days.filter { day ->
@@ -312,7 +320,25 @@ class WeeklyPlanGenerator {
             }
         }
         val taperActive = race?.isInTaperWindow(input.today) == true
-        val adjusted = limitedLong.map { session ->
+        val availabilityCeiling = limitedLong.sumOf { it.durationMin ?: 0 }
+        val volumeDecision = VolumeProgression().decide(
+            targetWeekStart = weekStart,
+            availabilityCeilingMinutes = availabilityCeiling,
+            references = (input.recentWeeks + listOfNotNull(input.previousWeek)).distinctBy { it.weekStart },
+            gates = VolumeGates(
+                targetWeekBlock = volumeWeekBlock(race, recoveryActive, deload, weekStart, days),
+                readinessGreen = input.readiness.level == ReadinessLevel.GREEN &&
+                    input.readiness.flags.none {
+                        it == ReadinessFlag.ILLNESS_OR_INJURY ||
+                            it == ReadinessFlag.SHORT_SLEEP ||
+                            it == ReadinessFlag.NO_QUALITY
+                    },
+                loadKnown = loadTrusted,
+                acwrInRange = acwrInRange,
+            ),
+        )
+        val volumeAdjusted = fitToVolume(limitedLong, volumeDecision.minutes)
+        val adjusted = volumeAdjusted.sessions.map { session ->
             when {
                 race != null && race.isInTaperWindow(session.date) && session.durationMin != null ->
                     session.copy(durationMin = scaledMinutes(session, race.taperFactor(session.date)))
@@ -322,12 +348,20 @@ class WeeklyPlanGenerator {
 
                 else -> session
             }
-        }
+        }.map { it.withTargetsForDuration(input.profile) }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
         val qualityCount = adjusted.count { it.type == WorkoutType.QUALITY }
         val baseConfidence = cappedConfidence(input.readiness.confidence, DataConfidence.MEDIUM)
-        val confidence = if (loadTrusted) baseConfidence else downgrade(baseConfidence)
+        val confidence = when {
+            // Without a volume base the week still comes from availability; the
+            // rationale says so, and confidence must not claim otherwise.
+            !volumeDecision.hasHistory -> DataConfidence.LOW
+
+            !loadTrusted -> downgrade(baseConfidence)
+
+            else -> baseConfidence
+        }
         val rationale = buildString {
             if (recoveryActive) {
                 append(
@@ -351,6 +385,8 @@ class WeeklyPlanGenerator {
                         "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
                 )
             }
+            append(volumeRationale(volumeDecision, volumeAdjusted.droppedSessions))
+            append(" ")
             if (eventDaysSkipped) {
                 append("Dias de prova não recebem sessão de treino. ")
             }
@@ -403,6 +439,7 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-02")
                 add("R-PLAN-03")
                 add("R-PLAN-06")
+                if (volumeDecision.hasHistory) add("R-PLAN-01")
                 if (!loadTrusted) add("R-DATA-01")
                 if (loadTrusted && !acwrInRange) add("R-LOAD-03")
                 if (recoveryActive) add("R-RACE-04")
@@ -414,6 +451,7 @@ class WeeklyPlanGenerator {
                 add("EV-SEILER-2010")
                 add("EV-DANIELS-2014")
                 add("EV-PFITZINGER-2008")
+                if (volumeDecision.hasHistory) add("EV-GABBETT-2016")
                 if (!loadTrusted || (loadTrusted && !acwrInRange)) {
                     add("EV-IMPELLIZZERI-2020")
                 }
@@ -425,17 +463,6 @@ class WeeklyPlanGenerator {
             },
             createdOn = input.today,
         )
-    }
-
-    private fun WeeklyPlan.completionRatio(): Double {
-        val planned = sessions
-            .filter { it.type != WorkoutType.REST }
-            .filterNot { it.status == SessionStatus.CLOSED && it.closureReason?.isNonTrainable == true }
-        if (planned.isEmpty()) return 0.0
-        // Only strong evidence unlocks progression (ADR 0024): a click cannot.
-        return planned.count {
-            it.status == SessionStatus.DONE && it.completionEvidence?.isStrong == true
-        }.toDouble() / planned.size
     }
 
     private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek?, maxQualities: Int): Set<DayOfWeek> {
@@ -495,11 +522,129 @@ class WeeklyPlanGenerator {
         return available.coerceIn(MIN_LONG_MIN, cap)
     }
 
+    /**
+     * Distance targets are derived from duration; after volume/taper/deload
+     * scaling they must be rebuilt so the session never shows a stale distance.
+     */
+    private fun PlannedSession.withTargetsForDuration(profile: AthleteProfile): PlannedSession =
+        copy(targets = PrescriptionPolicy.targets(type, profile, durationMin))
+
     /** Volume-only reduction; intensity is preserved by keeping the session type. */
     private fun scaledMinutes(session: PlannedSession, factor: Double): Int {
         val current = requireNotNull(session.durationMin) { "Scaled session must have a duration" }
         val floor = if (session.type == WorkoutType.QUALITY) MIN_QUALITY_MIN else MIN_EASY_MIN
         return maxOf(floor, (current * factor).roundToInt())
+    }
+
+    /**
+     * Scales the availability layout down to the volume target (ADR 0038).
+     * Proportional scaling keeps the type mix and the long-run share. When the
+     * type floors do not fit the target, the shortest easy days leave the week:
+     * the demonstrated volume is the dose, availability is only a ceiling.
+     */
+    private fun fitToVolume(sessions: List<PlannedSession>, targetMinutes: Int): FittedVolume {
+        val current = sessions.sumOf { it.durationMin ?: 0 }
+        if (current == 0 || targetMinutes >= current) return FittedVolume(sessions, droppedSessions = 0)
+        val factor = targetMinutes.toDouble() / current
+        var scaled = sessions.map { session ->
+            val minutes = session.durationMin ?: return@map session
+            val floor = when (session.type) {
+                WorkoutType.QUALITY -> MIN_QUALITY_MIN
+                WorkoutType.LONG -> MIN_LONG_MIN
+                else -> MIN_EASY_MIN
+            }
+            session.copy(durationMin = maxOf(floor, (minutes * factor).roundToInt()))
+        }
+        var total = scaled.sumOf { it.durationMin ?: 0 }
+        var dropped = 0
+        // Keep at least one easy day; quality and the long run are never dropped.
+        val easyByDuration = scaled
+            .filter { it.type == WorkoutType.EASY }
+            .sortedBy { it.durationMin ?: 0 }
+        for (easy in easyByDuration) {
+            if (total <= targetMinutes) break
+            if (scaled.count { it.type == WorkoutType.EASY } <= 1) break
+            scaled = scaled.filterNot { it.date == easy.date }
+            total -= easy.durationMin ?: 0
+            dropped++
+        }
+        return FittedVolume(scaled.sortedBy { it.date }, droppedSessions = dropped)
+    }
+
+    private data class FittedVolume(val sessions: List<PlannedSession>, val droppedSessions: Int)
+
+    /**
+     * A deload, taper, race or recovery week never grows. A race week is labeled
+     * first because it is also inside the taper window.
+     */
+    private fun volumeWeekBlock(
+        race: RacePlan?,
+        recoveryActive: Boolean,
+        deload: Boolean,
+        weekStart: LocalDate,
+        days: List<DayOfWeek>,
+    ): VolumeGrowthBlock {
+        if (race != null && race.targetDate in weekStart..weekStart.plusDays(6)) {
+            return VolumeGrowthBlock.RACE_WEEK
+        }
+        val dates = days.map { weekStart.plusDays((it.value - 1).toLong()) }
+        if (race != null && dates.any { race.isInTaperWindow(it) }) return VolumeGrowthBlock.TAPER
+        if (recoveryActive) return VolumeGrowthBlock.RECOVERY
+        if (deload) return VolumeGrowthBlock.DELOAD
+        return VolumeGrowthBlock.NONE
+    }
+
+    private fun volumeRationale(decision: VolumeDecision, droppedSessions: Int): String {
+        val base = decision.baseMinutes
+        val week = decision.baseWeekStart?.format(WEEK_LABEL)
+        val droppedHint = if (droppedSessions > 0) {
+            " A sua disponibilidade permite mais dias; esta semana usa o volume que cabe nela."
+        } else {
+            ""
+        }
+        if (base == null || week == null) {
+            return "Volume definido pela sua disponibilidade: ainda não há semana concluída " +
+                "com evidência para ajustar."
+        }
+        val specialWeek = decision.block in SPECIAL_VOLUME_BLOCKS
+        if (specialWeek) {
+            return "Volume: base de $base min concluídos na semana de $week; sem aumento nesta " +
+                "semana${volumeBlockHint(decision.block)}.$droppedHint"
+        }
+        if (decision.cappedByAvailability) {
+            return "Volume: base de $base min concluídos na semana de $week; limitado pela sua " +
+                "disponibilidade em ${decision.minutes} min."
+        }
+        if (decision.growthPercent > 0) {
+            return "Volume: base de $base min concluídos na semana de $week; " +
+                "+${decision.growthPercent}% nesta semana, alvo de ${decision.minutes} min.$droppedHint"
+        }
+        return "Volume: base de $base min concluídos na semana de $week; alvo mantido em " +
+            "${decision.minutes} min${volumeBlockHint(decision.block)}.$droppedHint"
+    }
+
+    private fun volumeBlockHint(block: VolumeGrowthBlock): String = when (block) {
+        VolumeGrowthBlock.NONE,
+        VolumeGrowthBlock.NO_HISTORY,
+        -> ""
+
+        VolumeGrowthBlock.NO_PREVIOUS_WEEK -> " (sem semana anterior concluída)"
+
+        VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80 -> " (semana anterior abaixo de 80%)"
+
+        VolumeGrowthBlock.PREVIOUS_WEEK_SPECIAL -> " (semana anterior de descarga ou prova)"
+
+        VolumeGrowthBlock.DELOAD -> " (descarga)"
+
+        VolumeGrowthBlock.TAPER, VolumeGrowthBlock.RACE_WEEK -> " (prova)"
+
+        VolumeGrowthBlock.RECOVERY -> " (recuperação após a prova)"
+
+        VolumeGrowthBlock.READINESS -> " (prontidão não está alta)"
+
+        VolumeGrowthBlock.LOAD_UNKNOWN -> " (dados de carga insuficientes)"
+
+        VolumeGrowthBlock.ACWR_OUT_OF_RANGE -> " (carga recente fora da faixa)"
     }
 
     private fun cappedConfidence(confidence: DataConfidence, cap: DataConfidence): DataConfidence {
@@ -514,7 +659,7 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v2"
+        const val ENGINE_VERSION = "weekly-plan-v3"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MIN_EASY_MIN = 20
@@ -528,6 +673,13 @@ class WeeklyPlanGenerator {
         private const val ACWR_MAX = 1.3
         private const val DELOAD_EVERY_WEEKS = 4
         private const val DELOAD_FACTOR = 0.75
+        private val SPECIAL_VOLUME_BLOCKS = setOf(
+            VolumeGrowthBlock.DELOAD,
+            VolumeGrowthBlock.TAPER,
+            VolumeGrowthBlock.RACE_WEEK,
+            VolumeGrowthBlock.RECOVERY,
+        )
         private val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
+        private val WEEK_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM", PT_BR)
     }
 }

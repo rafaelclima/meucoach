@@ -156,6 +156,32 @@ class TodayViewModelPersistTest {
     }
 
     @Test
+    fun `uses the completed volume as the week base`(): Unit = runBlocking {
+        val timeProvider = FakeTimeProvider(
+            instant = Instant.parse("2026-10-26T12:00:00Z"),
+            zone = ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today, experience = com.meucoach.core.model.Experience.INTERMEDIATE))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
+        seedLoad(today)
+
+        val viewModel = createViewModel(timeProvider)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan?.rationale?.contains("Volume: base de 120 min") == true }
+        }
+
+        assertThat(state.plan?.weeklyMinutes).isEqualTo(128)
+        assertThat(state.plan?.ruleIds).contains("R-PLAN-01")
+    }
+
+    @Test
     fun `deloads after three consecutive planned weeks`(): Unit = runBlocking {
         val today = LocalDate.now()
         val weekStart = today.with(

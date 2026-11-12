@@ -104,6 +104,7 @@ class TodayViewModel @Inject constructor(
     private val completionMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private data class PlanHistory(
         val previousWeek: WeeklyPlan?,
+        val recentWeeks: List<WeeklyPlan>,
         val weekNumberInBlock: Int,
         val isReady: Boolean,
         val weekStart: LocalDate,
@@ -135,9 +136,11 @@ class TodayViewModel @Inject constructor(
         .distinctUntilChanged()
         .flatMapLatest { weekStart ->
             flow {
+                val recentWeeks = planRepository.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
                 emit(
                     PlanHistory(
-                        previousWeek = planRepository.getWeek(weekStart.minusWeeks(1)),
+                        previousWeek = recentWeeks.firstOrNull { it.weekStart == weekStart.minusWeeks(1) },
+                        recentWeeks = recentWeeks,
                         weekNumberInBlock = planRepository.consecutiveWeeksBefore(weekStart) + 1,
                         isReady = true,
                         weekStart = weekStart,
@@ -212,6 +215,7 @@ class TodayViewModel @Inject constructor(
                         weekStart = weekStart,
                         today = context.today,
                         previousWeek = history.previousWeek,
+                        recentWeeks = history.recentWeeks,
                         weekNumberInBlock = history.weekNumberInBlock,
                         race = race,
                         eventDates = eventDates,

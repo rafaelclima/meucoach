@@ -29,7 +29,10 @@ object ExplanationCatalog {
         "R-PLAN-08" to RuleExplanation("R-PLAN-08", "Esteira vale como opção no calor"),
         "R-CAL-02" to RuleExplanation("R-CAL-02", "Sem calibração, prescrever pelo esforço percebido"),
         "R-SAFE-01" to RuleExplanation("R-SAFE-01", "Sinal de alerta interrompe o treino"),
-        "R-PLAN-01" to RuleExplanation("R-PLAN-01", "Disponibilidade define os dias de treino"),
+        "R-PLAN-01" to RuleExplanation(
+            "R-PLAN-01",
+            "Volume cresce no máximo 6% e só com semana concluída e guardrails verdes",
+        ),
         "R-PLAN-09" to RuleExplanation("R-PLAN-09", "Mudança de perfil gera revisão sugerida, nunca automática"),
         "R-PLAN-10" to RuleExplanation(
             "R-PLAN-10",

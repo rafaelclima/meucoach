@@ -266,15 +266,24 @@ A musculação é rotina do usuário e **não é prescrita** pelo app; o check-i
 
 ### 8.3 Progressão
 
-Aumentar volume semanal em **5–8%** somente se:
+O volume cresce no máximo **6%** — o meio da faixa de 5–8% — sobre uma base que o
+atleta já demonstrou (`R-PLAN-01`, ADR 0038). A base é o maior volume **concluído
+com evidência forte** nas últimas 4 semanas completas, excluindo plano criado no
+meio da semana, deload, taper e recuperação pós-prova.
 
-- Prontidão verde;
-- ACWR entre 0,8 e 1,3;
-- Sono médio ≥ 6,5 h;
-- Sem dor > 2/10;
-- Semana anterior concluída ≥ 80%.
+Crescer exige **todas** as condições:
 
-Caso contrário, manter. Nunca aumentar duas semanas seguidas após falha.
+- a base é a semana imediatamente anterior e ela foi concluída ≥ 80% com
+  evidência forte (um clique não conta, `ADR 0024`);
+- prontidão verde, sem doença/lesão, sono curto ou `NO_QUALITY`;
+- carga conhecida e ACWR entre 0,8 e 1,3 (`R-LOAD-03`);
+- a semana de destino não é deload, taper, semana de prova ou recuperação.
+
+Fora disso o alvo é **mantido**; uma semana fraca nunca reduz o plano por conta
+própria (a prescrição do dia já reduz a dose quando necessário). A disponibilidade
+continua sendo teto rígido: se o alvo não couber na agenda, vale o que cabe, e
+quando os mínimos por sessão não couberem a semana usa menos dias. Sem histórico,
+o volume vem da disponibilidade, com aviso explícito.
 
 **Deload:** a cada 4ª semana consecutiva de plano, reduzir o volume em **20–30%**
 (o motor usa −25%) mantendo o tipo/intensidade das sessões (`R-PLAN-04`,
@@ -311,7 +320,7 @@ Aquecimento 10–15 min + mobilidade; desaquecimento 5–10 min. Qualidade nunca
 Precedência determinística do `WorkoutRecommender`:
 
 1. Doença/lesão ou prontidão vermelha ⇒ **descanso** (`R-SAFE-01`, `R-READY-03`).
-2. Dia sem disponibilidade explícita ⇒ **descanso** (`R-PLAN-01`).
+2. Dia sem disponibilidade explícita ⇒ **descanso** (`R-DATA-01`).
 3. Sono < 6 h, prontidão âmbar ou `NO_QUALITY` ⇒ **fácil**, sem qualidade (`R-READY-03`, `R-READY-04`).
 4. ACWR > 1,5 ⇒ **fácil**, sem aumento de carga (`R-LOAD-03`).
 5. Dia verde ⇒ **fácil em Z2**, com pace E e FC Z2 quando houver calibração (`R-ZONE-01`).
@@ -550,7 +559,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
 | `R-READY-04` | Sono <6 h ⇒ sem qualidade; <6,5 h por 3 dias ⇒ sem aumento de volume | WALSH, WATSON | STRONG |
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
-| `R-PLAN-01` | Volume semanal +5–8% só se verde, ACWR 0,8–1,3 e sono ok | SEILER, GABBETT | MODERATE |
+| `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume concluído com evidência nas últimas 4 semanas, e só com a semana anterior ≥ 80% concluída, prontidão verde, carga conhecida e ACWR 0,8–1,3; a disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT; ADR 0038 | MODERATE |
 | `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
 | `R-PLAN-03` | Longão 25–30% do volume; iniciante ≤150 min | PFITZINGER, DANIELS | MODERATE |
 | `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |

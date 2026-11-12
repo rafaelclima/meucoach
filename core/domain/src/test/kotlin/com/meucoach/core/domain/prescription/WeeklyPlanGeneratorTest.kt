@@ -693,6 +693,353 @@ class WeeklyPlanGeneratorTest {
         assertThat(easy.targets.distanceKm).isNull()
     }
 
+    // --- Volume progression (ADR 0038, FR-004) -------------------------------
+
+    @Test
+    fun `grows six percent over the completed week instead of the availability`() {
+        val profile = profile(
+            experience = Experience.INTERMEDIATE,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.FRIDAY to 40,
+                DayOfWeek.SUNDAY to 90,
+            ),
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isEqualTo(128)
+        assertThat(plan.rationale).contains("base de 120 min", "+6%", "alvo de 127 min")
+        assertThat(plan.ruleIds).contains("R-PLAN-01")
+        assertThat(plan.evidenceIds).contains("EV-GABBETT-2016")
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.durationMin).isEqualTo(30)
+        assertThat(quality.targets).isEqualTo(
+            PrescriptionPolicy.targets(WorkoutType.QUALITY, profile, quality.durationMin),
+        )
+    }
+
+    @Test
+    fun `does not jump to the new availability`() {
+        val availability = DayOfWeek.entries
+            .filter { it != DayOfWeek.SUNDAY }
+            .associateWith { 60 }
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isEqualTo(126)
+        assertThat(plan.sessions).hasSize(5)
+        assertThat(plan.rationale).contains("base de 120 min", "permite mais dias")
+    }
+
+    @Test
+    fun `maintains volume when the previous week is below eighty percent`() {
+        val previous = previousWeek(completed = 2, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isEqualTo(75)
+        assertThat(plan.rationale).contains("alvo mantido em 60 min", "abaixo de 80%")
+        assertThat(plan.rationale).doesNotContain("+6%")
+    }
+
+    @Test
+    fun `keeps the availability volume without a completed week`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isEqualTo(171)
+        assertThat(plan.rationale).contains("ainda não há semana concluída")
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-01")
+        assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
+    }
+
+    @Test
+    fun `does not grow during a deload week`() {
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                weekNumberInBlock = 4,
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isLessThan(128)
+        assertThat(plan.rationale).contains("sem aumento nesta semana (descarga)")
+        assertThat(plan.rationale).doesNotContain("+6%")
+    }
+
+    @Test
+    fun `does not grow during the race week or the taper`() {
+        val profile = profile(
+            Experience.INTERMEDIATE,
+            mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.FRIDAY to 40,
+                DayOfWeek.SUNDAY to 90,
+            ),
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val raceWeek = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(5)),
+            ),
+        )
+        val taper = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(10)),
+            ),
+        )
+
+        assertThat(raceWeek.rationale).contains("sem aumento nesta semana (prova)")
+        assertThat(taper.rationale).contains("sem aumento nesta semana (prova)")
+        assertThat(raceWeek.rationale).doesNotContain("+6%")
+        assertThat(taper.rationale).doesNotContain("+6%")
+    }
+
+    @Test
+    fun `does not grow during post-race recovery`() {
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                recovery = recovery(RaceDistance.TEN_K),
+            ),
+        )
+
+        assertThat(plan.rationale).contains("sem aumento nesta semana (recuperação após a prova)")
+        assertThat(plan.rationale).doesNotContain("+6%")
+    }
+
+    @Test
+    fun `does not grow with amber readiness`() {
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.AMBER, setOf(ReadinessFlag.NO_QUALITY)),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        assertThat(plan.rationale).contains("alvo mantido em 120 min", "prontidão não está alta")
+    }
+
+    @Test
+    fun `does not grow with high ACWR or stale load`() {
+        val previous = previousWeek(completed = 4, total = 4)
+        val highAcwr = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.6),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+        val staleLoad = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0, sourceFresh = false),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        assertThat(highAcwr.rationale).contains("carga recente fora da faixa")
+        assertThat(staleLoad.rationale).contains("dados de carga insuficientes")
+        assertThat(highAcwr.weeklyMinutes).isEqualTo(120)
+        assertThat(staleLoad.weeklyMinutes).isEqualTo(120)
+    }
+
+    @Test
+    fun `caps the volume at the availability ceiling`() {
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 30,
+                        DayOfWeek.WEDNESDAY to 30,
+                        DayOfWeek.SATURDAY to 40,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        assertThat(plan.weeklyMinutes).isEqualTo(90)
+        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 90 min")
+        assertThat(plan.ruleIds).contains("R-PLAN-01")
+    }
+
+    @Test
+    fun `an older completed week sets a bounded base`() {
+        val previous = previousWeek(completed = 2, total = 4)
+        val older = volumeWeek(monday.minusWeeks(2), List(5) { 40 })
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    Experience.INTERMEDIATE,
+                    mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous, older),
+            ),
+        )
+
+        assertThat(plan.rationale).contains("base de 200 min")
+        assertThat(plan.weeklyMinutes).isEqualTo(171)
+        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 171 min")
+    }
+
+    private fun volumeWeek(weekStart: LocalDate, durations: List<Int>): WeeklyPlan {
+        val sessions = durations.mapIndexed { index, minutes ->
+            PlannedSession(
+                date = weekStart.plusDays(index.toLong()),
+                type = WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = minutes,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = SessionStatus.DONE,
+                completionEvidence = CompletionEvidence.ACTIVITY,
+                activityId = "previous-$index",
+            )
+        }
+        return WeeklyPlan(
+            weekStart = weekStart,
+            sessions = sessions,
+            weeklyMinutes = durations.sum(),
+            longRunMinutes = null,
+            qualityCount = 0,
+            rationale = "Semana anterior.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+        )
+    }
+
     private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
@@ -995,6 +1342,7 @@ class WeeklyPlanGeneratorTest {
         weekStart: LocalDate = monday,
         today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
+        recentWeeks: List<WeeklyPlan> = emptyList(),
         weekNumberInBlock: Int = 1,
         race: RacePlan? = null,
         eventDates: Set<LocalDate> = emptySet(),
@@ -1006,6 +1354,7 @@ class WeeklyPlanGeneratorTest {
         weekStart = weekStart,
         today = today,
         previousWeek = previousWeek,
+        recentWeeks = recentWeeks,
         weekNumberInBlock = weekNumberInBlock,
         race = race,
         eventDates = eventDates,

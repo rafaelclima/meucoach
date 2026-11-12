@@ -1090,6 +1090,82 @@ class PlanReplannerTest {
     }
 
     @Test
+    fun `inputs hash changes when the completed volume history changes`() {
+        val current = planOf(session(monday, WorkoutType.EASY, 40))
+        val previous = completedPreviousWeek()
+        val older = completedPreviousWeek().let { week ->
+            week.copy(
+                weekStart = week.weekStart.minusWeeks(1),
+                sessions = week.sessions.map { it.copy(date = it.date.minusWeeks(1)) },
+            )
+        }
+
+        val without = PlanReplanner.inputsHash(input(current = current, today = monday))
+        val withPrevious = PlanReplanner.inputsHash(
+            input(
+                current = current,
+                today = monday,
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+        val withOlder = PlanReplanner.inputsHash(
+            input(
+                current = current,
+                today = monday,
+                previousWeek = previous,
+                recentWeeks = listOf(previous, older),
+            ),
+        )
+
+        assertThat(without).isNotEqualTo(withPrevious)
+        assertThat(withPrevious).isNotEqualTo(withOlder)
+    }
+
+    @Test
+    fun `the candidate week respects the completed volume base`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 60,
+            DayOfWeek.TUESDAY to 60,
+            DayOfWeek.WEDNESDAY to 60,
+            DayOfWeek.THURSDAY to 60,
+            DayOfWeek.FRIDAY to 60,
+            DayOfWeek.SATURDAY to 60,
+            DayOfWeek.SUNDAY to 120,
+        )
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(tuesday, WorkoutType.QUALITY, 45),
+            session(wednesday, WorkoutType.EASY, 60),
+            session(thursday, WorkoutType.QUALITY, 45),
+            session(friday, WorkoutType.EASY, 60),
+            session(saturday, WorkoutType.EASY, 60),
+            session(sunday, WorkoutType.LONG, 120),
+        )
+        val history = completedPreviousWeek()
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = monday,
+                trigger = ReplanTrigger.USER_REQUEST,
+                profile = profile(availability),
+                previousWeek = history,
+                recentWeeks = listOf(history),
+                currentAvailabilityHash = PlanReplanner.availabilityHash(
+                    WeeklyAvailability(availability),
+                ),
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
+        val candidate = (result as ReplanResult.Suggest).candidate
+        assertThat(candidate.weeklyMinutes).isLessThan(220)
+        assertThat(candidate.weeklyMinutes).isGreaterThan(120)
+        assertThat(candidate.ruleIds).contains("R-PLAN-01")
+    }
+
+    @Test
     fun `suggests a recovery revision when the persisted week still has quality`() {
         val current = planOf(
             session(monday, WorkoutType.EASY, 40),
@@ -1183,6 +1259,7 @@ class PlanReplannerTest {
         readiness: ReadinessResult = readiness(),
         load: LoadSnapshot? = knownLoad(),
         previousWeek: WeeklyPlan? = null,
+        recentWeeks: List<WeeklyPlan> = emptyList(),
         weekNumberInBlock: Int = 1,
         nonTrainablePastDates: Set<LocalDate> = emptySet(),
         missedSessionThreshold: Int = PlanReplanner.PRODUCT_MISSED_SESSION_THRESHOLD,
@@ -1208,6 +1285,7 @@ class PlanReplannerTest {
         readiness = readiness,
         load = load,
         previousWeek = previousWeek,
+        recentWeeks = recentWeeks,
         weekNumberInBlock = weekNumberInBlock,
         nonTrainablePastDates = nonTrainablePastDates,
         race = race,

@@ -89,7 +89,7 @@ class WorkoutRecommender {
                 pace = null,
                 heartRate = null,
                 rationale = "Hoje não há disponibilidade registrada. Descansar também é treino.",
-                ruleIds = listOf("R-PLAN-01", "R-DATA-01"),
+                ruleIds = listOf("R-DATA-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 confidence = DataConfidence.HIGH,
             )

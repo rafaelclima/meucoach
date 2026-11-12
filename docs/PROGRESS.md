@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 12/11/2026 (gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 12/11/2026 (FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.469 testes no total (702 em `:app`, 162 em `core:data`, 566 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,56% de linhas (4.762/4.881), 81,13% de branches (3.582/4.415), 96,23% de instruções (32.952/34.244)
+- **Testes:** 1.497 testes no total (704 em `:app`, 162 em `core:data`, 592 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,57% de linhas (4.943/5.066), 81,08% de branches (3.719/4.587), 96,24% de instruções (34.133/35.467)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -48,7 +48,7 @@
 - **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30%, taper por prova e deload a cada 4ª semana; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
-- **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade; volume segue limitado pela disponibilidade (ADR 0010).
+- **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade e o volume cresce no máximo 6% sobre o maior volume concluído com evidência nas últimas 4 semanas; a disponibilidade continua teto e semana fraca mantém a dose (FR-004/N-07, ADR 0038).
 - **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
 - **Tendências de atividades:** volume semanal, consistência com heatmap, relação pace×FC com gráfico de eficiência (m/batimento), filtro de período (6/12/26 semanas) e recordes pessoais (maior distância, melhor pace ≥ 3 km e maior tempo) no `ActivityTrendsCalculator`.
@@ -77,6 +77,72 @@
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-12 — FR-004 / N-07: progressão de volume a partir do realizado
+
+**Objetivo:** trocar o plano estático por uma progressão conservadora que parte do volume
+que o atleta já concluiu, aplica a faixa de 5–8% prometida por `R-PLAN-01` e mantém a
+disponibilidade como teto — sem migração, dependência nova nem saltos quando a agenda muda.
+
+### Concluído
+
+- **ADR 0038:** base = maior volume **concluído com evidência forte** nas últimas 4 semanas
+  completas; +6% (ponto médio da faixa) só quando a base é a semana imediatamente anterior
+  com ≥ 80% concluído, prontidão verde, carga conhecida e ACWR 0,8–1,3; fora disso mantém,
+  nunca reduz por semana fraca. Deload, taper, prova e recuperação nunca crescem.
+- **Domínio:** `VolumeProgression`/`VolumeDecision`/`VolumeGates`/`VolumeGrowthBlock` puros;
+  plano criado no meio da semana, deload, taper, prova e recuperação ficam fora da base;
+  a disponibilidade continua sendo teto; `strongCompletionRatio` passou a ser compartilhado
+  com a progressão de qualidade (sem duplicar a conta).
+- **Gerador:** escala as sessões ao alvo, usa **menos dias** quando os pisos por tipo não
+  cabem no volume demonstrado, recalcula a distância dos alvos depois da escala/taper/deload
+  (corrige distância defasada), emite `R-PLAN-01`/`EV-GABBETT-2016` e escreve base, alvo e
+  motivo no rationale; `ENGINE_VERSION` → `weekly-plan-v3`.
+- **Replanejamento:** `recentWeeks` em `WeeklyPlanInput`/`ReplanInput`, incluído no
+  `inputsHash`; a regra “não repor carga” continua impedindo aumento no meio da semana.
+- **App:** `TodayViewModel`, `TutorialViewModel` e `ReplanContextBuilder` leem até quatro
+  semanas anteriores do repositório; `WorkoutRecommender` deixa de citar `R-PLAN-01` para
+  “sem disponibilidade” e passa a citar `R-DATA-01`; catálogo corrigido.
+- **Docs:** `SPORTS_SCIENCE` §8.3/§8.7/§14, `DECISIONS`, `ROADMAP` 1.34, PRD FR-004/N-07,
+  `TESTING` e `README`.
+- **Testes:** +13 `VolumeProgressionTest`, +11 `WeeklyPlanGeneratorTest`, +2 `PlanReplannerTest`,
+  +1 `TodayViewModelPersistTest` e +1 `EvaluateReplanTest`; a fixture do
+  `DailyPrescriptionEngineTest` deixou de depender do histórico de volume.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e build).
+- **1.497 testes**, 0 falhas e 0 `@Ignore` (704 `:app`, 162 `core:data`, 592 `core:domain`, 39 `core:model`).
+- `core:domain`: 97,57% de linhas (4.943/5.066), 81,08% de branches (3.719/4.587),
+  96,24% de instruções (34.133/35.467); parser FIT 93,01% de branches.
+- Schema permanece **v17**; nenhuma dependência nova; nenhum dado real no diff.
+- Goldens inalterados: os estados de screenshot são estáticos e não carregam histórico.
+- **Flakiness observada:** uma execução completa falhou em `MetricsImportViewModelTest`
+  (`TimeoutCancellationException` de 30 s), a mesma família já registrada no D6-B; passou
+  isolada e na execução seguinte, sem relação com o diff.
+
+### Decisões e observações
+
+- **Base é o concluído, não o planejado:** um plano de 171 min com 50% de conclusão não
+  prova 171 min de capacidade. Só `ACTIVITY`/`GUIDED` contam (ADR 0024).
+- **+6% em vez de faixa:** um único número determinístico no meio da faixa de 5–8% evita
+  média inventada e mantém o golden estável.
+- **Semana fraca mantém:** reduzir o plano inteiro por uma falha seria punição sem
+  evidência; a prescrição do dia e os guardrails já reduzem a dose.
+- **Menos dias quando necessário:** com base de 120 min e agenda 6×60, o plano usa 5 dias
+  (~126 min) em vez de 6 sessões espremidas nos pisos. O rationale explica a escolha.
+- **`R-PLAN-01` volta a significar a regra 5–8%** e passa a ser emitida; o ADR 0010 mantém
+  a disponibilidade como teto, mas a parte de volume foi substituída por este ADR.
+- **Distância alvo recalculada:** a escala de volume (e o taper/deload já existente)
+  mudava a duração sem atualizar `targets.distanceKm`; agora o alvo acompanha a duração.
+
+### Próximo passo
+
+1. Validar em aparelho com os dados reais do usuário 0 (semanas reais, agenda alterada e
+   semana fraca) e confirmar que o volume não salta.
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: N-03 (qualidade no taper), BUG-08 (meta de prova sem data), BUG-11 (import
+   travado), T-02/T-03/T-04, FR-206, U-01..U-04 e N-05.
 
 ## Sessão 2026-11-12 — Gate visual: gráficos Vico síncronos
 

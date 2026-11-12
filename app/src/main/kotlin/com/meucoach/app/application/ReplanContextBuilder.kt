@@ -93,6 +93,7 @@ class ReplanContextBuilder @Inject constructor(
             ),
         )
         val previousWeek = plans.getWeek(weekStart.minusWeeks(1))
+        val recentWeeks = plans.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
         val weekNumberInBlock = plans.consecutiveWeeksBefore(weekStart) + 1
         val nonTrainablePastDates = nonTrainablePastDates(
             record = record,
@@ -128,6 +129,7 @@ class ReplanContextBuilder @Inject constructor(
             readiness = readiness,
             load = load,
             previousWeek = previousWeek,
+            recentWeeks = recentWeeks,
             weekNumberInBlock = weekNumberInBlock,
             nonTrainablePastDates = nonTrainablePastDates,
             race = race,

@@ -190,7 +190,8 @@ class TutorialViewModel @Inject constructor(
             ),
         )
         val weekStart = today.weekStart()
-        val previousWeek = planRepository.getWeek(weekStart.minusWeeks(1))
+        val recentWeeks = planRepository.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
+        val previousWeek = recentWeeks.firstOrNull { it.weekStart == weekStart.minusWeeks(1) }
         val weekNumber = planRepository.consecutiveWeeksBefore(weekStart) + 1
         val plan = planRepository.getWeek(weekStart) ?: planGenerator.generate(
             WeeklyPlanInput(
@@ -200,6 +201,7 @@ class TutorialViewModel @Inject constructor(
                 weekStart = weekStart,
                 today = today,
                 previousWeek = previousWeek,
+                recentWeeks = recentWeeks,
                 weekNumberInBlock = weekNumber,
             ),
         ).also { planRepository.saveWeek(it) }

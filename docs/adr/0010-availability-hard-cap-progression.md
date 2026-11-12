@@ -1,6 +1,11 @@
 # ADR 0010 — Disponibilidade como teto e progressão por qualidade
 
-**Status:** aceito em 30/10/2026
+**Status:** aceito em 30/10/2026; **volume substituído pelo ADR 0038 em 12/11/2026** — a disponibilidade continua teto rígido, mas a progressão por volume passou a partir do realizado.
+
+> O ponto de volume deste ADR (aumento só ao atualizar a disponibilidade) deixou de valer
+> com o [ADR 0038](0038-volume-progression-from-completed.md), quando passou a existir
+> histórico confiável de conclusão. O teto de disponibilidade e a progressão por qualidade
+> continuam válidos.
 
 ## Contexto
 

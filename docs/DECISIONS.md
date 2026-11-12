@@ -59,6 +59,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0035](adr/0035-tier-b-calibration-estimates.md) | Estimativas Tier B pelo melhor esforço sustentado (BUG-06) | Aceito — fatias 1 (domínio) e 2 (app) implementadas e validadas em dados reais em 11/11/2026 (estimativa ~3% acima do VDOT de prova) | 11/11/2026 |
 | [0036](adr/0036-race-time-prediction-vdot-riegel.md) | Previsão de tempo de prova por VDOT/Riegel (D6-B) | Aceito — implementado em 11/11/2026 (VDOT + faixa, Riegel 5k–meia, Room 17 e cards de prova) | 11/11/2026 |
 | [0037](adr/0037-post-race-recovery.md) | Recuperação pós-prova (C3-07 / FR-207) | Aceito — implementado em 12/11/2026 (janela 2/3/5/10, sessões curtas, `R-RACE-04` LIMITED, sugestão por `RACE_COMPLETED`, sem migração) | 12/11/2026 |
+| [0038](adr/0038-volume-progression-from-completed.md) | Progressão de volume a partir do realizado (FR-004 / N-07) | Aceito — implementado em 12/11/2026 (`R-PLAN-01` emitida, base de 4 semanas, +6%, disponibilidade como teto, `weekly-plan-v3`, sem migração) | 12/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
