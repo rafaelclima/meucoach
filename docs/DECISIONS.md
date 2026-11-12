@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.19 · **Data:** 12/11/2026
+**Versão:** 1.20 · **Data:** 12/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -20,6 +20,7 @@
 > Revisão 1.17 (11/11/2026): ADR 0036 aceito e implementado — previsão por VDOT com faixa, Riegel 5k–meia, proveniência em Room 17 e cards de prova do Perfil/Hoje.
 > Revisão 1.18 (12/11/2026): ADR 0037 aceito e implementado — recuperação pós-prova (FR-207/C3-07) com janela 2/3/5/10 dias, sessões curtas, `R-RACE-04` LIMITED, sugestão de revisão por `RACE_COMPLETED` e sem migração.
 > Revisão 1.19 (12/11/2026): BUG-11 corrigido sem ADR — robustez operacional do import (job sempre terminal, retry só para falha transitória, reconciliação por idade). Não muda modelo, schema nem regra de treino.
+> Revisão 1.20 (12/11/2026): BUG-08 resolvido sem ADR — data de prova segue opcional e a consequência (sem redução de volume) passa a ser explícita via `R-PLAN-11`, com copy sem “taper”. Não muda volume, schema nem prescrição.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

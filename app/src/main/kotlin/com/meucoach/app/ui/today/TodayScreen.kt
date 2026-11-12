@@ -1108,6 +1108,15 @@ private fun PlanWeekCard(
                 modifier = Modifier.testTag("plan-low-confidence-note"),
             )
         }
+        if ("R-PLAN-11" in plan.ruleIds) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Sua meta é uma prova sem data: a semana não tem redução antes da prova.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+                modifier = Modifier.testTag("plan-no-race-date-note"),
+            )
+        }
         Spacer(modifier = Modifier.height(10.dp))
         val weekEnd = plan.weekStart.plusDays(6)
         val weekEvents = eventDates.filter { !it.isBefore(plan.weekStart) && !it.isAfter(weekEnd) }

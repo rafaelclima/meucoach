@@ -51,6 +51,7 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceStatus
+import com.meucoach.core.model.isRace
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -282,15 +283,30 @@ private fun ProfileDetails(
                     SummaryRow("Tempo alvo", targetTimeLabel(profile.goal?.targetTimeSec))
                 }
                 SummaryRow("Disponibilidade", availabilityLabel(profile))
-                if (raceEvents.any { it.status == RaceStatus.PLANNED }) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "A prova planejada abaixo é o objetivo ativo do plano. " +
-                            "Esta meta legada não gera taper nem dia de prova.",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                        modifier = Modifier.testTag("legacy-goal-note"),
-                    )
+                val plannedRace = raceEvents.any { it.status == RaceStatus.PLANNED }
+                when {
+                    plannedRace -> {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "A prova abaixo é a que vale para o plano: ela define o dia e a " +
+                                "redução de volume nas semanas anteriores. Sua meta anterior fica " +
+                                "só como registro.",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                            modifier = Modifier.testTag("legacy-goal-note"),
+                        )
+                    }
+
+                    profile.goal?.targetDate == null && profile.goal?.type?.isRace == true -> {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Sua meta é uma prova, mas está sem data. Sem a data, o app não " +
+                                "sabe quando reduzir o volume antes da prova — adicione a prova abaixo.",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                            modifier = Modifier.testTag("goal-missing-date-note"),
+                        )
+                    }
                 }
             }
         }

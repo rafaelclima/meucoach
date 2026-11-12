@@ -349,6 +349,7 @@ segunda→domingo:
 - Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
 - Fácil entre 20–60 min; qualidade entre 25–45 min, como "Tempo" (intermediário) ou "Intervalos" (avançado).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
+- Sem data de prova, não há taper: a meta de prova sem data não define quando reduzir o volume. O plano mantém o volume normal e diz isso explicitamente, sem inventar uma data (`R-PLAN-11`, BUG-08).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
 - Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão (ADR 0013, `R-PLAN-02`, `R-PLAN-03`).
@@ -569,6 +570,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-08` | Esteira válida para qualidade no calor; prescrever por velocidade/inclinação | ELY, DANIELS | LIMITED |
 | `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
 | `R-PLAN-10` | Sem `QUALITY` na semana civil da prova e corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) antes dela; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
+| `R-PLAN-11` | Meta de prova sem data não agenda redução de volume: o plano mantém o volume normal e declara a ausência da data na UI, sem inventar uma data | BUG-08; `R-DATA-01` (dado ausente é ausente) | LIMITED — regra de transparência de produto, sem alegação fisiológica |
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |

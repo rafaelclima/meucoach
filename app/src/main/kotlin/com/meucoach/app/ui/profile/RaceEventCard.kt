@@ -113,8 +113,8 @@ internal fun RaceEventCard(
         Spacer(modifier = Modifier.height(8.dp))
         if (planned == null) {
             Text(
-                text = "Nenhuma prova planejada. Ao adicionar, o plano respeita o taper e não " +
-                    "cria treino no dia da prova.",
+                text = "Nenhuma prova planejada. Ao adicionar, o app reduz o volume nas semanas " +
+                    "anteriores e não cria treino no dia da prova.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )

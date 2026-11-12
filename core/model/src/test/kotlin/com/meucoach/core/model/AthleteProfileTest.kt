@@ -30,6 +30,16 @@ class AthleteProfileTest {
     }
 
     @Test
+    fun `knows which goals name a race distance`() {
+        assertThat(GoalType.FIVE_K.isRace).isTrue()
+        assertThat(GoalType.TEN_K.isRace).isTrue()
+        assertThat(GoalType.HALF_MARATHON.isRace).isTrue()
+        assertThat(GoalType.MARATHON.isRace).isTrue()
+        assertThat(GoalType.GENERAL_FITNESS.isRace).isFalse()
+        assertThat(GoalType.CUSTOM.isRace).isFalse()
+    }
+
+    @Test
     fun `defaults to UTC and general fitness without data`() {
         val profile = AthleteProfile(
             id = "athlete-1",

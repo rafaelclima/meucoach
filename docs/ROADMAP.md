@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.35 · **Data:** 12/11/2026 · **Mudança:** importação resiliente (BUG-11): job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; sem migração.
+**Versão:** 1.36 · **Data:** 12/11/2026 · **Mudança:** meta de prova sem data passa a declarar que não há redução de volume (BUG-08, `R-PLAN-11`), com aviso no Perfil, linha no plano do Hoje e dado ausente na explicação; “taper” sai da UI; sem migração.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -586,6 +586,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | U-11 | Tutorial Fase B: 3 cenas com plano/prontidão reais, primeiro passo dinâmico e checklist “Complete seu setup” no Hoje. | Concluído em 05/11/2026 |
 | U-12 | Tutorial Fase C: primeira vitória, dicas contextuais únicas, medição local exportável e versionamento do tutorial. | Concluído em 05/11/2026 |
 | U-13 | Aplicar o padrão de `DESIGN_SYSTEM.md` §7.3 a todos os campos de data/duração: unificar a máscara de data, migrar tempo alvo do onboarding e data/tempo da Calibração. | Concluído em 11/11/2026 |
+| U-14 | Meta de prova sem data: explicar no Perfil e no plano que não há redução de volume antes da prova, sem usar “taper”. | Concluído em 12/11/2026 |
 
 ## Backlog técnico
 

@@ -16,6 +16,9 @@ import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.GoalType
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
+import com.meucoach.core.model.RaceStatus
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.TrainingGoal
 import com.meucoach.core.model.WeeklyAvailability
@@ -292,6 +295,65 @@ class ProfileScreenTest {
         compose.onNodeWithTag("replan-dismiss-message").performClick()
 
         assertThat(dismissed).isTrue()
+    }
+
+    @Test
+    fun `explains that a race goal without a date has no volume reduction`() {
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile().copy(
+                    goal = TrainingGoal(type = GoalType.TEN_K, targetDate = null),
+                ),
+                today = LocalDate.of(2026, 11, 6),
+            ),
+            onEdit = {},
+        )
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("Sua meta é uma prova, mas está sem data", substring = true))
+        compose.onNodeWithTag("goal-missing-date-note").assertIsDisplayed()
+    }
+
+    @Test
+    fun `does not warn about the date when the goal has one`() {
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile(),
+                today = LocalDate.of(2026, 11, 6),
+            ),
+            onEdit = {},
+        )
+
+        compose.onNodeWithTag("goal-missing-date-note").assertDoesNotExist()
+    }
+
+    @Test
+    fun `explains that the planned race is the one the plan uses`() {
+        setContent(
+            state = ProfileUiState(
+                isLoading = false,
+                profile = profile(),
+                today = LocalDate.of(2026, 11, 6),
+                raceEvents = listOf(
+                    RaceEvent(
+                        id = "event-1",
+                        distance = RaceDistance.FIVE_K,
+                        targetDate = LocalDate.of(2026, 12, 6),
+                        status = RaceStatus.PLANNED,
+                        createdAt = Instant.parse("2026-11-01T12:00:00Z"),
+                        updatedAt = Instant.parse("2026-11-01T12:00:00Z"),
+                    ),
+                ),
+            ),
+            onEdit = {},
+        )
+
+        val list = compose.onNodeWithTag("profile-list")
+        list.performScrollToNode(hasText("A prova abaixo é a que vale para o plano", substring = true))
+        compose.onNodeWithTag("legacy-goal-note").assertIsDisplayed()
+        compose.onNodeWithTag("goal-missing-date-note").assertDoesNotExist()
     }
 
     private fun setContent(state: ProfileUiState, onEdit: () -> Unit) {

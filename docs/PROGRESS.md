@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 12/11/2026 (BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 12/11/2026 (BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.515 testes no total (717 em `:app`, 167 em `core:data`, 592 em `core:domain`, 39 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,57% de linhas (4.943/5.066), 81,08% de branches (3.719/4.587), 96,24% de instruções (34.133/35.467)
+- **Testes:** 1.526 testes no total (724 em `:app`, 167 em `core:data`, 595 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,58% de linhas (4.954/5.077), 81,13% de branches (3.736/4.605), 96,25% de instruções (34.196/35.530)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -26,6 +26,7 @@
 - **Referência da meta (C3-06, concluído):** `RaceTargetProjector` puro deriva pace médio, faixa ±3% e passagens por km de `RaceEvent.distance`/`targetTimeSec`; sem meta, nada é inventado. A referência aparece só nos cards de prova do Perfil/Hoje, nunca em prescrição, plano, briefing ou troca, e é rotulada “referência da meta, não prescrição nem garantia”.
 - **Recuperação pós-prova (C3-07, concluído):** `RecoveryWindow` puro deriva a janela da prova concluída (5k 2, 10k 3, meia 5, maratona 10 dias) e bloqueia qualidade/longão com sessões fáceis de até 30 min (45/60 na 2ª metade). O gerador e o replanejador recebem a janela; a prescrição do dia aplica defesa em profundidade (`QUALITY`/`LONG` → `EASY`, `EASY` → teto), `daily-prescription-v4` e `weekly-plan-v2`. Semana persistida que ainda viola a janela gera sugestão `RACE_COMPLETED` (aceitar/recusar, lembrada por semana+evento). Hoje/Plano/Perfil mostram a recuperação; `CANCELLED`/`NO_SHOW` e meta legada não iniciam janela; sem migração (`R-RACE-04`, LIMITED).
 - **Fonte de fontes:** `ActivitySummary.sources` expõe todos os formatos que contribuíram (ex.: `FIT · TCX · GPX`).
+- **Meta de prova sem data (BUG-08):** o objetivo de prova continua aceitando data opcional, mas sem data o app não finge que existe taper: o card de Objetivo no Perfil avisa que o volume não será reduzido e aponta o card de prova; o plano no Hoje mostra uma linha própria e “Por que este plano?” cita `R-PLAN-11` e lista “Data da prova” entre os dados ausentes. A UI não usa “taper”: fala em “redução de volume nas semanas antes da prova”.
 - **Importação real:** `ImportStaging`, `StagedImportProcessor`, `ImportWorker` (`@HiltWorker`), `ImportCoordinator` e `ShareIntentReader`. WorkManager 2.12.0 com `HiltWorkerFactory` (manifest sem `WorkManagerInitializer`).
 - **Importação resiliente (BUG-11):** o job é gravado já como `PARSING` em uma única escrita e `ImportJobGuard` fecha como `FAILED` qualquer erro inesperado que escape do pipeline; `ImportFailurePolicy` não retenta arquivo sumido, caminho inválido, acesso negado, erro de programa ou `ImportStagingException`, e limita `IOException` transitória a 3 tentativas. Falha sem job gera notificação própria, erro de notificação não reprocessa um import concluído, e `ActivityRepository` fecha jobs `QUEUED`/`PARSING` com mais de 1 h ao observar a lista (morte de processo).
 - **UI de atividades:** `ActivitiesScreen`, `ActivitiesViewModel`, `ActivityFormatters` (`sourcesLabel`) e `ImportJobCard`.
@@ -78,6 +79,39 @@
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-12 — BUG-08: meta de prova sem data fala a verdade
+
+**Objetivo:** manter a data de prova opcional, mas parar de desligar a redução de volume em silêncio; comunicar sem jargão (“taper” não é palavra de usuário).
+
+### Concluído
+
+- **Domínio:** `GoalType.isRace` em `core:model` substitui a lista privada do onboarding e alimenta o gerador; `WeeklyPlanGenerator` detecta meta de prova sem data (sem evento ativo) e emite `R-PLAN-11`, com rationale próprio — sem inventar data e sem alterar volume.
+- **Explicação:** `R-PLAN-11` no catálogo (“Meta de prova sem data não reduz o volume antes da prova”); “Por que este plano?” lista “Data da prova” como dado ausente.
+- **Hoje:** linha curta sob o título do plano (“Sua meta é uma prova sem data: a semana não tem redução antes da prova”).
+- **Perfil:** o card de Objetivo avisa que sem data o app não sabe reduzir o volume e aponta o card de prova; quando há prova planejada, a nota explica que é ela que vale para o plano. A copy trocou “taper” por “redução de volume nas semanas anteriores” também no card de prova.
+- **Testes:** +11 — 3 no gerador (`WeeklyPlanGeneratorTest`), 1 no catálogo, 1 em `AthleteProfileTest`, 2 em `TodayPlanTest`, 2 em `TodayExplanationPlanTest` (novo) e 2 em `ProfileScreenTest`; goldens não mudaram.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover, Roborazzi e build).
+- **1.526 testes**, 0 falhas e 0 `@Ignore` (724 `:app`, 167 `core:data`, 595 `core:domain`, 40 `core:model`).
+- `core:domain`: 97,58% de linhas, 81,13% de branches, 96,25% de instruções.
+- Schema **v17**, sem migração, sem dependência nova e nenhum dado real no diff.
+
+### Decisões e observações
+
+- **Data opcional, consequência explícita:** exigir a data bloquearia quem ainda não marcou a prova; o valor está em dizer o que acontece, não em impedir (decisão do usuário 0).
+- **`R-PLAN-11` LIMITED sem evidência:** é regra de transparência de produto, como `R-PRESC-04`/`R-RACE-04`; nenhuma alegação fisiológica.
+- **Sem “taper”/“deload” na UI:** `COMMUNICATION.md` §6.3 já traduzia; a varredura agora não encontra o termo em `app/src/main`.
+- **Só quando o objetivo viraria taper:** com evento planejado ou data preenchida, a nota não aparece — evita alarme falso.
+- **Plano persistido mantém o que foi montado:** uma semana gerada antes desta versão só ganha `R-PLAN-11` e a linha no Hoje na próxima geração (ou numa revisão aceita); o aviso do Perfil já vale na hora.
+
+### Próximo passo
+
+1. Validar no aparelho: criar conta com meta 10 km sem data e conferir Perfil, plano do Hoje e “Por que este plano?”.
+2. Backlog: N-03 (reconciliar taper com a evidência na documentação), T-02/T-03/T-04, FR-206, U-01..U-04 e N-05.
+3. P1-12 fica para depois das 4 semanas de uso real, por decisão do usuário 0.
 
 ## Sessão 2026-11-12 — BUG-11: importação nunca fica presa
 

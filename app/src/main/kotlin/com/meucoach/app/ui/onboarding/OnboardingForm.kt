@@ -13,16 +13,10 @@ import com.meucoach.core.model.Sex
 import com.meucoach.core.model.TrainingGoal
 import com.meucoach.core.model.Units
 import com.meucoach.core.model.WeeklyAvailability
+import com.meucoach.core.model.isRace
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
-
-private val RACE_GOAL_TYPES = setOf(
-    GoalType.FIVE_K,
-    GoalType.TEN_K,
-    GoalType.HALF_MARATHON,
-    GoalType.MARATHON,
-)
 
 enum class OnboardingField {
     NAME,
@@ -60,7 +54,7 @@ data class OnboardingForm(
     val treadmillAccess: Boolean = false,
 ) {
     val isRaceGoal: Boolean
-        get() = goalType in RACE_GOAL_TYPES
+        get() = goalType.isRace
 }
 
 data class OnboardingValidation(val errors: Map<OnboardingField, String> = emptyMap()) {
@@ -176,7 +170,7 @@ object OnboardingValidator {
 
     private fun validateGoal(form: OnboardingForm, today: LocalDate): OnboardingValidation {
         val errors = mutableMapOf<OnboardingField, String>()
-        if (form.goalType in RACE_GOAL_TYPES && form.targetDate.isNotBlank()) {
+        if (form.goalType.isRace && form.targetDate.isNotBlank()) {
             val date = DateMask.parse(form.targetDate)
             when {
                 date == null -> errors[OnboardingField.TARGET_DATE] = "Use dd/mm/aaaa."

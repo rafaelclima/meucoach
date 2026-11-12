@@ -133,6 +133,9 @@ internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
         if ("R-DATA-01" in plan.ruleIds && plan.sessions.isNotEmpty()) {
             add("Carga recente para liberar treino forte")
         }
+        if ("R-PLAN-11" in plan.ruleIds) {
+            add("Data da prova (a meta é de prova, mas está sem data)")
+        }
     }.distinct()
 
     return TodayExplanationUi(

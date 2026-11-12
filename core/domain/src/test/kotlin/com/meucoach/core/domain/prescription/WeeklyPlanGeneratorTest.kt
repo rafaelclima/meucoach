@@ -287,6 +287,57 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `says a race goal without a date has no volume reduction`() {
+        val raceProfile = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+        ).copy(
+            goal = com.meucoach.core.model.TrainingGoal(
+                type = com.meucoach.core.model.GoalType.TEN_K,
+                targetDate = null,
+            ),
+        )
+
+        val plan = generator.generate(input(profile = raceProfile, readiness = readiness(ReadinessLevel.GREEN)))
+
+        assertThat(plan.rationale).contains("Sua meta é uma prova, mas está sem data")
+        assertThat(plan.ruleIds).contains("R-PLAN-11")
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
+    }
+
+    @Test
+    fun `does not claim a missing date when general fitness is the goal`() {
+        val general = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40),
+        ).copy(
+            goal = com.meucoach.core.model.TrainingGoal(type = com.meucoach.core.model.GoalType.GENERAL_FITNESS),
+        )
+
+        val plan = generator.generate(input(profile = general, readiness = readiness(ReadinessLevel.GREEN)))
+
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-11")
+        assertThat(plan.rationale).doesNotContain("sem data")
+    }
+
+    @Test
+    fun `does not claim a missing date when the goal already has one`() {
+        val dated = profile(
+            experience = Experience.BEGINNER,
+            availability = mapOf(DayOfWeek.MONDAY to 40),
+        ).copy(
+            goal = com.meucoach.core.model.TrainingGoal(
+                type = com.meucoach.core.model.GoalType.TEN_K,
+                targetDate = monday.plusDays(40),
+            ),
+        )
+
+        val plan = generator.generate(input(profile = dated, readiness = readiness(ReadinessLevel.GREEN)))
+
+        assertThat(plan.ruleIds).doesNotContain("R-PLAN-11")
+    }
+
+    @Test
     fun `reduces volume during taper`() {
         val baseProfile = profile(
             experience = Experience.BEGINNER,

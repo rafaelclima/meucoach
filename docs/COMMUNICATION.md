@@ -130,6 +130,7 @@ Mas para a reformulação da comunicação, vou criar um arquivo de referência 
 | `VDOT` | `Aptidão` / `Índice de aptidão` |
 | `RPE` | `esforço percebido` / `esforço 8 de 10` |
 | `Taper` / `Deload` | `semana de prova` / `semana de descarga` |
+| Meta de prova sem data | “Sua meta é uma prova, mas está sem data. Sem a data, o app não sabe quando reduzir o volume antes da prova — adicione a prova abaixo.” Nunca usar “taper” na UI. |
 | `TT de 30 min` | `teste de 30 min` |
 | `Qualidade` | `treino forte` |
 | `Pace` / `Split` | `ritmo` / `trecho` |

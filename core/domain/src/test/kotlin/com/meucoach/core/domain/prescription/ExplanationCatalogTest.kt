@@ -25,6 +25,7 @@ class ExplanationCatalogTest {
             "R-PLAN-01",
             "R-PLAN-09",
             "R-PLAN-10",
+            "R-PLAN-11",
             "R-PRESC-01",
             "R-PRESC-02",
             "R-PRESC-03",

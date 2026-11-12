@@ -31,6 +31,17 @@ enum class GoalType {
 }
 
 /**
+ * Goal types that name a race distance. Without a date the plan cannot schedule
+ * the volume reduction before the race, so the UI has to say so instead of
+ * silently skipping it (BUG-08).
+ */
+val GoalType.isRace: Boolean
+    get() = when (this) {
+        GoalType.FIVE_K, GoalType.TEN_K, GoalType.HALF_MARATHON, GoalType.MARATHON -> true
+        GoalType.GENERAL_FITNESS, GoalType.CUSTOM -> false
+    }
+
+/**
  * Where the persisted VDOT came from (ADR 0036).
  *
  * `PERFORMANCE` is a race/time trial entered explicitly; `TRAINING_ESTIMATE` is

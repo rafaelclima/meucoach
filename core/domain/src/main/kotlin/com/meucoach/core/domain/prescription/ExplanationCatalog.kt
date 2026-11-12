@@ -38,6 +38,10 @@ object ExplanationCatalog {
             "R-PLAN-10",
             "Sem treino forte na semana da prova e corte conservador antes dela",
         ),
+        "R-PLAN-11" to RuleExplanation(
+            "R-PLAN-11",
+            "Meta de prova sem data não reduz o volume antes da prova",
+        ),
         "R-PRESC-01" to RuleExplanation("R-PRESC-01", "A prescrição do dia mantém o plano"),
         "R-PRESC-02" to RuleExplanation("R-PRESC-02", "Ajuste do dia reduz, nunca aumenta"),
         "R-PRESC-03" to RuleExplanation("R-PRESC-03", "Uma decisão por dia, a mesma em todas as telas"),

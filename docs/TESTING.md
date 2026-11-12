@@ -118,6 +118,9 @@ Evidência atual (12/11/2026):
 - `ImportFailurePolicyTest` (BUG-11): tabela de decisão entre retry transitório, orçamento de 3 tentativas e falha permanente (arquivo sumido, acesso negado, erro de programação).
 - `ImportJobGuardTest` (BUG-11): erro inesperado fecha o job como `FAILED`; cancelamento preserva o job para o WorkManager; sucesso não altera o status.
 - `ImportJobDao`/`ActivityRepositoryTest` (BUG-11): jobs `QUEUED`/`PARSING` com mais de 1 h são fechados ao observar a lista; job recente permanece intacto.
+- `WeeklyPlanGeneratorTest` (BUG-08): meta de prova sem data emite `R-PLAN-11`, explica a ausência e não finge taper; meta com data ou “saúde geral” não emitem a regra.
+- `TodayExplanationPlanTest` e `TodayPlanTest` (BUG-08): a explicação lista “Data da prova” como ausente e o plano mostra a linha própria só quando `R-PLAN-11` está presente.
+- `ProfileScreenTest` (BUG-08): aviso “sem data” só com meta de prova sem data e sem prova planejada; nota do plano aparece quando há prova planejada.
 - `RealFixturesDetailTest`: importa e abre os 4 FIT + 3 TCX reais sanitizados; valida resumo, laps, samples e ausência de `sampleWarning` (TCX confere distância, duração e cadência).
 - `ActivityInsightsCalculatorTest`: `R-ACT-01` (negative split, ritmo constante, queda), `R-ACT-02` (drift e limites) e ausência de dados.
 - `ActivityDetailViewModelTest`: carregamento, atividade ausente e id obrigatório.

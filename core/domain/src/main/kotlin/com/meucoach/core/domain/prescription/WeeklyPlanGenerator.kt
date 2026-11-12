@@ -12,6 +12,7 @@ import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.PaceZone
 import com.meucoach.core.model.ReadinessLevel
+import com.meucoach.core.model.isRace
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -172,6 +173,12 @@ class WeeklyPlanGenerator {
         val race = input.race ?: RacePlan.from(input.profile.goal)
             .takeIf { input.eventDates.isEmpty() }
         val eventDates = input.eventDates + listOfNotNull(race?.targetDate)
+        // BUG-08: a race goal without a date cannot schedule the volume reduction.
+        // The plan says it out loud instead of silently skipping the taper.
+        val raceGoalWithoutDate = race == null &&
+            input.eventDates.isEmpty() &&
+            input.profile.goal?.targetDate == null &&
+            input.profile.goal?.type?.isRace == true
         // A race day never receives an ordinary session. The rest of the race
         // week stays free too: recovery is out of scope, so the app does not
         // invent post-race training (ADR 0030).
@@ -387,6 +394,12 @@ class WeeklyPlanGenerator {
             }
             append(volumeRationale(volumeDecision, volumeAdjusted.droppedSessions))
             append(" ")
+            if (raceGoalWithoutDate) {
+                append(
+                    "Sua meta é uma prova, mas está sem data: o plano não reduz o volume antes " +
+                        "dela. Com a data, o app ajusta as semanas anteriores. ",
+                )
+            }
             if (eventDaysSkipped) {
                 append("Dias de prova não recebem sessão de treino. ")
             }
@@ -443,6 +456,7 @@ class WeeklyPlanGenerator {
                 if (!loadTrusted) add("R-DATA-01")
                 if (loadTrusted && !acwrInRange) add("R-LOAD-03")
                 if (recoveryActive) add("R-RACE-04")
+                if (raceGoalWithoutDate) add("R-PLAN-11")
                 if (taperActive) add("R-PLAN-05")
                 if (taperActive) add("R-PLAN-10")
                 if (deload && !taperActive) add("R-PLAN-04")

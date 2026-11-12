@@ -284,6 +284,44 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `explains a plan without a race date`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today).copy(
+                            ruleIds = listOf("R-ZONE-01", "R-PLAN-11"),
+                            rationale = "Sua meta é uma prova, mas está sem data: o plano não " +
+                                "reduz o volume antes dela.",
+                        ),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Sua meta é uma prova sem data", substring = true))
+        compose.onNodeWithTag("plan-no-race-date-note").assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the race-date note when the plan has a date`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = planWith(today)),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("plan-no-race-date-note").assertDoesNotExist()
+    }
+
+    @Test
     fun `opens the workout explanation`() {
         val today = LocalDate.of(2026, 11, 2)
         val explanation = TodayExplanationUi(
