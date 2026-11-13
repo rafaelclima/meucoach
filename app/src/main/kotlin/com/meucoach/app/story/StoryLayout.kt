@@ -4,9 +4,10 @@ package com.meucoach.app.story
  * Shared 9:16 geometry for the story renderer.
  *
  * Instagram Stories cover roughly 13% of a 1080×1920 video at the top and at
- * the bottom with its own UI. Every anchored element (header, route square,
- * card, attribution) is positioned from these fractions so the brand, the
- * numbers and the map attribution stay visible after posting.
+ * the bottom with its own UI, but Reels covers ~420 px (22%) at the bottom and
+ * TikTok reaches ~484 px. Every anchored element (header, route square, card,
+ * attribution) is positioned from these fractions so the brand, the numbers
+ * and the map attribution stay visible after posting.
  *
  * Positions are fractions of the frame height; horizontal margins scale with
  * the width, like the text sizes in [StoryFrameRenderer].
@@ -18,8 +19,8 @@ object StoryLayout {
     /** Fraction of the height hidden by the Instagram header. */
     const val SAFE_TOP_FRACTION = 0.13f
 
-    /** Fraction of the height hidden by the Instagram footer. */
-    const val SAFE_BOTTOM_FRACTION = 0.87f
+    /** Fraction of the height hidden by the Reels/TikTok footer (≈420 px). */
+    const val SAFE_BOTTOM_FRACTION = 0.78f
 
     private const val LOGO_TOP = 174f / REFERENCE_HEIGHT
     private const val LOGO_HEIGHT = 38f / REFERENCE_HEIGHT
@@ -27,13 +28,14 @@ object StoryLayout {
     private const val METRIC_BASELINE = 292f / REFERENCE_HEIGHT
 
     private const val ROUTE_EXTENT_TOP = 340f / REFERENCE_HEIGHT
-    private const val ROUTE_EXTENT_BOTTOM = 920f / REFERENCE_HEIGHT
+    private const val ROUTE_EXTENT_BOTTOM = 0.76f
     private const val ROUTE_MARGIN = 56f
 
-    private const val CARD_TOP = 0.66f
-    private const val CARD_BOTTOM = 0.84f
+    private const val CARD_TOP = 0.62f
+    private const val CARD_BOTTOM = 0.78f
 
-    private const val ATTRIBUTION_BASELINE = 1105f / REFERENCE_HEIGHT
+    /** Attribution sits in the gap above the card, never under the Reels UI. */
+    private const val ATTRIBUTION_GAP = 10f / REFERENCE_HEIGHT
 
     fun safeTop(height: Float): Float = height * SAFE_TOP_FRACTION
     fun safeBottom(height: Float): Float = height * SAFE_BOTTOM_FRACTION
@@ -51,7 +53,7 @@ object StoryLayout {
     fun cardTop(height: Float): Float = height * CARD_TOP
     fun cardBottom(height: Float): Float = height * CARD_BOTTOM
 
-    fun attributionBaseline(height: Float): Float = height * ATTRIBUTION_BASELINE
+    fun attributionBaseline(height: Float): Float = height * (CARD_TOP - ATTRIBUTION_GAP)
 
     /** Square where the route is projected and where the map camera centres the bounds. */
     data class RouteSquare(val left: Float, val top: Float, val side: Float) {

@@ -58,9 +58,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meucoach.app.story.StoryBranding
 import com.meucoach.app.story.StoryFrameRenderer
-import com.meucoach.app.story.StoryMapStyle
-import com.meucoach.app.story.StoryPlan
-import com.meucoach.app.story.StorySegmentType
 import com.meucoach.app.story.toStoryPalette
 import com.meucoach.app.ui.activities.formatDateTime
 import com.meucoach.app.ui.activities.formatDuration
@@ -81,6 +78,9 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.StoryMapStyle
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StorySegmentType
 import com.meucoach.core.domain.story.StoryVerdict
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -94,7 +94,7 @@ fun ActivityDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var storyStyle by rememberSaveable { mutableStateOf(StoryMapStyle.CLASSIC) }
+    var storyStyle by rememberSaveable { mutableStateOf(StoryMapStyle.MEUCOACH_DARK) }
     val palette = McTheme.colors.toStoryPalette(storyStyle)
 
     LaunchedEffect(state.deleted) {
@@ -130,7 +130,7 @@ internal fun ActivityDetailContent(
     onShareStory: (Uri) -> Unit = {},
     onDelete: () -> Unit = {},
     onClearDeleteError: () -> Unit = {},
-    storyStyle: StoryMapStyle = StoryMapStyle.CLASSIC,
+    storyStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
     onStoryStyleChange: (StoryMapStyle) -> Unit = {},
     onDismissStoryIntro: () -> Unit = {},
 ) {
@@ -562,9 +562,9 @@ private fun StoryCard(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Vídeo de 30 s com a rota colorida pela FC, um card por km com ritmo, FC e calorias, " +
-                "e um encerramento com os destaques da corrida. O mapa baixa tiles do OpenStreetMap " +
-                "via OpenFreeMap; nenhuma coordenada exata é enviada.",
+            text = "Vídeo 9:16 com a rota colorida pela FC, um card por km e um encerramento com distância, " +
+                "ritmo médio e tempo total. O mapa baixa tiles do OpenStreetMap via OpenFreeMap; " +
+                "nenhuma coordenada exata é enviada.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
@@ -580,8 +580,8 @@ private fun StoryCard(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Satélite ou " +
-                                "Terreno, a imagem de satélite ou o relevo. Depois o app usa o cache. " +
+                            text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Terreno, " +
+                                "o relevo. Depois o app usa o cache. " +
                                 "Nenhuma coordenada exata sai do aparelho.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
@@ -606,20 +606,20 @@ private fun StoryCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     StoryStyleButton(
-                        text = "Clássico",
-                        selected = storyStyle == StoryMapStyle.CLASSIC,
-                        onClick = { onStoryStyleChange(StoryMapStyle.CLASSIC) },
+                        text = "Escuro",
+                        selected = storyStyle == StoryMapStyle.MEUCOACH_DARK,
+                        onClick = { onStoryStyleChange(StoryMapStyle.MEUCOACH_DARK) },
                         modifier = Modifier
                             .weight(1f)
-                            .testTag("story-style-classic"),
+                            .testTag("story-style-dark"),
                     )
                     StoryStyleButton(
-                        text = "Satélite",
-                        selected = storyStyle == StoryMapStyle.SATELLITE,
-                        onClick = { onStoryStyleChange(StoryMapStyle.SATELLITE) },
+                        text = "Claro",
+                        selected = storyStyle == StoryMapStyle.MEUCOACH_LIGHT,
+                        onClick = { onStoryStyleChange(StoryMapStyle.MEUCOACH_LIGHT) },
                         modifier = Modifier
                             .weight(1f)
-                            .testTag("story-style-satellite"),
+                            .testTag("story-style-light"),
                     )
                     StoryStyleButton(
                         text = "Terreno",
@@ -630,26 +630,13 @@ private fun StoryCard(
                             .testTag("story-style-terrain"),
                     )
                 }
-                when (storyStyle) {
-                    StoryMapStyle.TERRAIN -> {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Relevo do terreno via Mapzen · baixa na primeira vez.",
-                            style = McTextStyles.caption,
-                            color = colors.textTertiary,
-                        )
-                    }
-
-                    StoryMapStyle.SATELLITE -> {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Imagem de satélite (Esri) · baixa na primeira vez.",
-                            style = McTextStyles.caption,
-                            color = colors.textTertiary,
-                        )
-                    }
-
-                    StoryMapStyle.CLASSIC -> Unit
+                if (storyStyle == StoryMapStyle.TERRAIN) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Relevo do terreno via Mapzen · baixa na primeira vez.",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 McPrimaryButton(

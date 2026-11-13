@@ -1,4 +1,4 @@
-package com.meucoach.app.ui.activitydetail
+package com.meucoach.core.domain.story
 
 import com.meucoach.core.model.ActivitySample
 import kotlin.math.abs
@@ -6,6 +6,7 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
 
+/** One normalized route vertex: x and y in [0,1], canvas coordinates. */
 data class RoutePoint(val x: Float, val y: Float)
 
 data class RouteData(val points: List<RoutePoint>) {
@@ -17,7 +18,9 @@ data class RouteData(val points: List<RoutePoint>) {
  * Projects GPS samples into normalized [0,1] coordinates for an offline drawing.
  *
  * Uses an equirectangular approximation, which is accurate enough for a single
- * run and avoids map tiles, network access or a new map dependency.
+ * run and avoids map tiles, network access or a new map dependency. The pure
+ * projection lives in the domain so the story planner, the preview and the
+ * detail screen share the exact same geometry.
  */
 fun routeData(samples: List<ActivitySample>, maxPoints: Int = 400): RouteData? {
     require(maxPoints > 1) { "maxPoints must be greater than one" }

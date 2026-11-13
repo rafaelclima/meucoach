@@ -1,8 +1,13 @@
 package com.meucoach.app.story
 
 import android.graphics.Matrix
-import com.meucoach.app.ui.activitydetail.RouteData
-import com.meucoach.app.ui.activitydetail.RoutePoint
+import com.meucoach.core.domain.story.RouteData
+import com.meucoach.core.domain.story.RoutePoint
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StorySegment
+import com.meucoach.core.domain.story.StorySegmentType
+import com.meucoach.core.domain.story.StorySplit
+import com.meucoach.core.domain.story.StorySplitBarCalculator
 import com.meucoach.core.model.Pace
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
@@ -81,20 +86,30 @@ class StoryCameraCoverageTest {
         }
     }
 
-    private fun plan(route: List<RoutePoint>) = StoryPlan(
-        route = RouteData(route),
-        splits = listOf(StorySplit(1, Pace.fromSecondsPerKm(360), 145, 60, 1f)),
-        segments = listOf(
-            StorySegment(0f, 10f, StorySegmentType.MOVE, 0f, 1f),
-            StorySegment(10f, 12f, StorySegmentType.CARD, 1f, 1f),
-            StorySegment(12f, 15f, StorySegmentType.FINAL, 1f, 1f),
-        ),
-        durationSec = 15f,
-        distanceKm = 1.0,
-        durationTotalSec = 900,
-        calories = 60,
-        averagePace = Pace.fromSecondsPerKm(360),
-        averageHeartRate = 145,
-        boundingBox = null,
-    )
+    private fun plan(route: List<RoutePoint>): StoryPlan {
+        val split = StorySplit(
+            km = 1,
+            pace = Pace.fromSecondsPerKm(360),
+            heartRate = 145,
+            progress = 1f,
+        )
+        return StoryPlan(
+            route = RouteData(route),
+            splits = listOf(split),
+            allSplits = listOf(split),
+            splitBar = StorySplitBarCalculator.calculate(listOf(split), setOf(1)),
+            segments = listOf(
+                StorySegment(0f, 10f, StorySegmentType.MOVE, 0f, 1f),
+                StorySegment(10f, 12f, StorySegmentType.CARD, 1f, 1f),
+                StorySegment(12f, 15f, StorySegmentType.FINAL, 1f, 1f),
+            ),
+            durationSec = 15f,
+            distanceKm = 1.0,
+            durationTotalSec = 900,
+            calories = 60,
+            averagePace = Pace.fromSecondsPerKm(360),
+            averageHeartRate = 145,
+            boundingBox = null,
+        )
+    }
 }

@@ -1,5 +1,16 @@
 # Story do treino v2 — “O Veredito”
 
+> **Banner de decisão (13/11/2026):** este documento descreve a visão da v2 e
+> fica como registro histórico. O caminho aprovado para o MVP é o do
+> [`STORY_V3_PLANO_DE_ACAO.md`](STORY_V3_PLANO_DE_ACAO.md) e do
+> [`ADR 0040`](adr/0040-story-v3-recipe-and-map.md): vídeo **sem áudio**, **sem
+> máscara de privacidade**, **OpenFreeMap + estilo autoral** (Google proibido
+> por licença; satélite fora), **3 essenciais fixas + até 2 extras**, **sem
+> calorias por km**, **9:16 Reels-safe + pôster 4:5**, **1080p30 H.264 High
+> 16 Mbps BT.709/SDR/limited**. As seções de áudio, privacidade, 4:5 em vídeo,
+> satélite e 60 fps abaixo **não** entram no MVP; o que divergir do plano/ADR
+> está superado.
+
 **Status:** Fases A e B implementadas em 03/11/2026 · câmera v2 (zoom por card + pitch/yaw) em 03/11/2026 · geração em segundo plano e cancelamento real em 04/11/2026 (`ADR 0018`) · vídeo público sem julgamento de plano e mapa Terreno em 04/11/2026 (§16) · Fases C–D propostas
 **Data:** 03/11/2026
 **Não implementado:** áudio, morph rota → logo e auto-seleção dos kms (Fases C/D). Nenhuma linha deste documento altera o motor determinístico.

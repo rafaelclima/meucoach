@@ -4,6 +4,9 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StoryPlanCalculator
+import com.meucoach.core.domain.story.StoryRecipe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
@@ -45,22 +48,22 @@ class StoryPlanLoader @Inject constructor(
     private val profiles: ProfileRepository,
     private val sessions: StorySessionResolver,
 ) {
-    suspend fun load(activityId: String): StoryPlan? {
+    suspend fun load(activityId: String, recipe: StoryRecipe = StoryRecipe()): StoryPlan? {
         val stored = repository.openActivity(activityId) ?: return null
         val planned = sessions.resolve(stored.localDate)
         return withContext(Dispatchers.Default) {
             StoryPlanCalculator.calculate(
                 activity = stored.imported,
-                targetDurationSec = TARGET_DURATION_SEC,
+                targetDurationSec = recipe.targetDurationSec(stored.imported.distanceM / 1_000.0),
                 lthrBpm = profiles.getProfile()?.lactateThresholdHeartRate,
                 session = planned.current,
                 nextSession = planned.next,
-            )
+            )?.copy(localDate = stored.localDate)
         }
     }
 
     companion object {
-        /** Story copy shared by the UI and the background export stay in one place. */
-        const val TARGET_DURATION_SEC = 30
+        /** Recipe used when no preference or worker payload is available. */
+        val DEFAULT_RECIPE = StoryRecipe()
     }
 }

@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.StoryMapStyle
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,7 +22,8 @@ internal object OpenFreeMapStyle {
     private const val SATELLITE_TILES =
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
-    fun customize(json: String, style: StoryMapStyle = StoryMapStyle.CLASSIC): String {
+    @Suppress("DEPRECATION")
+    fun customize(json: String, style: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK): String {
         val root = JSONObject(json)
         val source = root.optJSONArray("layers") ?: return json
         val satellite = style == StoryMapStyle.SATELLITE
@@ -32,32 +34,42 @@ internal object OpenFreeMapStyle {
             val type = layer.optString("type")
             // Satellite imagery replaces the vector base; labels stay on top.
             if (satellite && type != "symbol") continue
-            if (type == "symbol") {
-                val layout = layer.optJSONObject("layout")
-                if (layout != null && layout.has("text-field")) {
-                    labelFor(layer.optString("id"))?.let { label ->
-                        layout.put("text-size", label.size)
-                        val paint = layer.optJSONObject("paint") ?: JSONObject().also { layer.put("paint", it) }
-                        if (satellite) {
-                            paint.put("text-color", "#F4F6F7")
-                            paint.put("text-halo-color", "#0B0D10")
-                        } else {
-                            label.color?.let { paint.put("text-color", it) }
-                            paint.put("text-halo-color", "#FFFFFF")
-                        }
-                        paint.put("text-halo-width", 1.8)
-                    }
-                }
-            }
+            if (type == "symbol") customizeLabel(layer, satellite)
             layers.put(layer)
         }
-        val result = when (style) {
-            StoryMapStyle.SATELLITE -> withSatellite(root, layers)
-            StoryMapStyle.TERRAIN -> withTerrain(root, layers)
-            StoryMapStyle.CLASSIC -> layers
-        }
+        val result = styledLayers(style, root, layers)
         root.put("layers", result)
         return root.toString()
+    }
+
+    private fun customizeLabel(layer: JSONObject, satellite: Boolean) {
+        val layout = layer.optJSONObject("layout") ?: return
+        if (!layout.has("text-field")) return
+        val label = labelFor(layer.optString("id")) ?: return
+        layout.put("text-size", label.size)
+        val paint = layer.optJSONObject("paint") ?: JSONObject().also { layer.put("paint", it) }
+        if (satellite) {
+            paint.put("text-color", "#F4F6F7")
+            paint.put("text-halo-color", "#0B0D10")
+        } else {
+            label.color?.let { paint.put("text-color", it) }
+            paint.put("text-halo-color", "#FFFFFF")
+        }
+        paint.put("text-halo-width", 1.8)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun styledLayers(style: StoryMapStyle, root: JSONObject, layers: JSONArray): JSONArray = when (style) {
+        StoryMapStyle.SATELLITE -> withSatellite(root, layers)
+
+        StoryMapStyle.TERRAIN -> withTerrain(root, layers)
+
+        // The autoral dark/light styles arrive in Sprint B (MAP-04); until
+        // then they use the trimmed liberty geometry.
+        StoryMapStyle.CLASSIC,
+        StoryMapStyle.MEUCOACH_DARK,
+        StoryMapStyle.MEUCOACH_LIGHT,
+        -> layers
     }
 
     /**

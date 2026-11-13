@@ -1,13 +1,208 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (Story V3 Sprint A — domínio: D0.2/D0.3, `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com motivo, timeline por esforço, 8 cards + barra com 10 km, codec/store e `StoryRenderSpec`; renderer com 1–3 slots no card e 3+2 no encerramento; antes: ADR 0040, safe area de Reels 13/22/5,5 com card em 62–78% e atribuição acima do card, encode BT.709/SDR/limited + H.264 High/4.1 condicional + 16 Mbps VBR, números tabulares e fim da legenda no card, e modelo puro do story em `core:domain/story`; antes: polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+
+## Sessão 2026-11-13 — Story V3 Sprint A: domínio, receita e slots
+
+**Objetivo:** fechar o núcleo determinístico do Story V3 (DOM-02..DOM-08), corrigir
+os documentos de decisão e fazer o renderer consumir uma receita de verdade:
+três essenciais fixas, até duas extras, 10 km com 8 cards e 10 segmentos na
+barra, sem nenhuma métrica virando `0` por ausência.
+
+### Concluído
+
+- **D0.2 — ADR 0015 corrigido:** o Google é **bloqueio legal** (não custo), o
+  `MapSnapshot` expõe `pixelForLatLng`/`latLngForPixel` (o `MapSnapshotter` é
+  que não expõe `Projection`), o app segue em **12.3.1 OpenGL** e o
+  `android-sdk-opengl:13.7.1` é decisão **pendente do Sprint B** — o ADR não
+  afirma que o upgrade já foi feito. Satélite fica fora do MVP; o valor do
+  enum permanece só para jobs antigos. Addendum novo no fim do arquivo.
+- **D0.3 — banners de decisão:** `STORY_V3_ANALISE_E_DIRECIONAMENTO.md` ganhou o
+  banner completo (áudio, privacidade, OpenFreeMap/Protomaps, 3+2, 9:16
+  Reels-safe + 4:5, encode e MapLibre 13.7.1 pendente); `STORY_V2.md` ganhou o
+  mesmo aviso no topo, marcando áudio/privacidade/4:5/satélite/60 fps como fora
+  do MVP.
+- **DOM-02 — catálogo de métricas** (`core/domain/story/StoryMetrics.kt`):
+  `StoryEssential` (DISTANCE, AVG_PACE, TOTAL_TIME), `StoryExtra` (7 opções),
+  `StoryMetricValues`, `StoryMetricAvailability`/`StoryMetricReason` e
+  `StoryMetricCatalog` com disponibilidade, rótulo, formatação e `perKm`.
+  Calorias por km **não existem**: `StorySplit.calories` foi removido;
+  `CALORIES_TOTAL` é só extra de resumo. Ausência fica `null` + motivo
+  (“sem FC”, “sem elevação”, “sem calorias”), nunca `0`; zero medido (ex.:
+  elevação 0 m) continua disponível.
+- **DOM-03 — receita e presets** (`StoryRecipe.kt`): `StoryRecipe` com
+  essenciais fixas, extras ≤ 2, duração, mapa e qualidade; `StoryPreset`
+  (Essencial, Performance, Fisiológico, Completo, Personalizado) que só liga o
+  subconjunto disponível; `StoryDuration` (AUTO/15/30/45/60; AUTO =
+  `clamp(15,45, 8 + min(km,12)*2)`), `StoryMapStyle` movido para o domínio com
+  ordinais legados preservados (CLASSIC 0, SATELLITE 1, TERRAIN 2,
+  MEUCOACH_DARK 3, MEUCOACH_LIGHT 4) e `StoryQuality` (1080p30 padrão; 60 fps
+  definido, não exposto).
+- **DOM-04 — timeline por esforço** (`StoryTimeline.kt`): card base 1,8 s,
+  +0,6 s no km mais rápido, +0,3 s no km de maior FC, −0,3 s no mais lento,
+  clamp 1,2–3,0 s e encerramento de 3,0 s dentro da duração alvo. Sobra de
+  tempo vai para o movimento da rota; quando o alvo não cabe no clamp, o
+  planner remove cards interiores preservando os obrigatórios e nunca corta o
+  encerramento.
+- **DOM-05 — cards e barra** (`StoryCardSelector.kt` + `StoryPlanCalculator`):
+  até 8 cards, sempre primeiro km, último km completo, mais rápido e mais
+  lento, com preenchimento uniforme; a barra de splits usa **todos** os kms
+  (10 km → 10 segmentos) e agrupa 21+ km em blocos de 2–5 km com rótulo.
+  `StoryPlan` ganhou `allSplits`, `splitBar`, FC máxima, cadência e elevação
+  por km; `StoryElevation` usa histerese de 1 m e mínimo de 10 amostras.
+- **DOM-06 — store e codec** (`StoryRecipeCodec.kt`, `StoryRecipeStore.kt`):
+  JSON v1 em `SharedPreferences` (`meucoach_story`), chaves desconhecidas
+  ignoradas, extras duplicados/em excesso e JSON corrompido caem em
+  `StoryRecipe()`; o payload tem teste de ≤ 2 KB; o reset de dados limpa a
+  receita. O worker já recebe `recipeJson` no `Data` (sem bitmap) e repassa a
+  receita ao exporter.
+- **DOM-07 — render spec** (`StoryRenderSpec.kt`): `StoryRenderSpec`,
+  `ResolvedMetric`, `StoryCardSpec`, `StoryMetricValuesResolver` e
+  `StoryRenderSpecResolver` a partir de atividade + `localDate` + receita.
+  Header com 2 slots, card com 1–3, encerramento com 3 essenciais + até 2
+  extras; extras sem dado são omitidos; `DATE` formata “13 nov”.
+- **VIS-02..VIS-04 (parcial/concluído):** o renderer consome o
+  `StoryRenderSpec`: card com 1–3 slots, encerramento 3+2 (layout compacto
+  para 4–5 métricas), selo “KM MAIS RÁPIDO” só quando a receita escolhe
+  `FASTEST_KM`, barra com todos os kms e ticks com todos os splits. Dois
+  goldens novos: card com 2 extras e encerramento com 5 métricas.
+- **QA-01/DOM-08:** 5 novos arquivos de teste de domínio (catálogo, receita,
+  timeline, seleção de cards, render spec) e 2 de app (codec, store), além de
+  atualizações nos testes de plano/highlights/câmera/processor/coordinator.
+
+### Testes
+
+- `:core:domain:test`, `check`, `:app:assembleDebug`, `spotlessCheck` e
+  `koverVerify` verdes.
+- **1.642 testes**, 0 falhas e 0 `@Ignore` (747 `:app`, 687 `core:domain`,
+  168 `core:data`, 40 `core:model`).
+- `core:domain`: **97,20% de linhas** (5.826/5.994) e **79,72% de branches**
+  (4.198/5.266); gate ≥85% de linhas; parser FIT 93,01% de branches.
+  `:app`: **78,13% de linhas**; gate ≥78%.
+- `:app:verifyRoborazziDebug --tests "*StoryFrameScreenshotTest"` verde; os 8
+  goldens antigos do story foram regravados e 2 novos foram adicionados, todos
+  revisados. **Nenhum golden fora do story foi alterado.**
+- Observação: a execução de `--tests "*ScreenshotTest"` ainda acusa 7 goldens
+  **não-story** desatualizados (linha de RPE em `activity-comparison-*` e
+  `health-*`), um diff anterior a esta sessão e fora do escopo do Story; os
+  arquivos não foram regravados.
+
+### Evidências
+
+- Diff sem dados reais de saúde; nenhuma migração de Room (schema v17);
+  nenhuma dependência nova; nenhum áudio, satélite, máscara de privacidade,
+  LLM ou 3D terrain adicionado.
+- `core:domain/story` não importa `android.*`; a UI segue sem calcular regra.
+- O worker agora carrega `recipeJson` (string, ≤ 2 KB) e o processador passa a
+  receita ao exporter; o mapa continua staged por caminho, nunca bitmap no
+  `Data`.
+
+### Próximo passo
+
+1. **UI-01..UI-05 + VIS-06** — Story Studio modal, chips de essenciais/extras
+   com motivo, presets, duração/mapa/qualidade, prévia de 3 frames e
+   “Salvar como padrão”; a prévia passa a usar a receita salva.
+2. **ENC-05/ENC-08** — cache/manifesto do mapa no worker, memória da prévia e
+   reciclagem de bitmaps.
+3. **VIS-05/VIS-08/QA-02** — pôster 4:5, goldens de presets, 0/1/2 extras e
+   dark/light.
+4. **Sprint B** — MapLibre 13.7.1 OpenGL + `pixelForLatLng`, estilo
+   `MeuCoach Dark`, 3 keyframes e cache de mapa; validar em aparelho.
+
+## Sessão 2026-11-13 — Story V3 Sprint A: receita, safe area e encode
+
+**Objetivo:** iniciar a Etapa 1 do Story V3 com os quick wins que mudam o
+vídeo no aparelho antes da refatoração maior: ADR, safe area de Reels, encode
+declarado, números tabulares, fim da legenda e modelo puro no domínio.
+
+### Concluído
+
+- **D0.1 — ADR 0040** (`docs/adr/0040-story-v3-recipe-and-map.md`): receita
+  com três essenciais + até dois extras (sem calorias/km), vídeo mudo, sem
+  máscara de privacidade, OpenFreeMap + estilo autoral, 9:16 Reels-safe +
+  pôster 4:5 e encode BT.709/SDR/limited + H.264 High/4.1 + 16 Mbps VBR.
+  Indexado em `docs/DECISIONS.md` (revisão 1.25).
+- **VIS-01 — safe area de Reels** (`StoryLayout`): topo 13%, base 22% e lados
+  5,5%; card em 62–78%; atribuição imediatamente acima do card (nunca abaixo
+  de 78%, o plano permite “dentro do card ou acima dele”). A moldura da rota
+  foi recalculada para 26–76% e o `COVERAGE_SCALE` subiu de 1,15 para 1,20
+  para o quadro maior continuar sem borda preta. Goldens do story regravados.
+- **ENC-01 — encode de publicação** (`StoryVideoExporter`): 16 Mbps VBR,
+  BT.709/SDR/limited sempre declarados; perfil High/level 4.1 e modo VBR só
+  quando o encoder do aparelho reporta suporte (senão o padrão do encoder
+  segue valendo). Nome do arquivo e áudio/GPS ficam para ENC-03.
+- **VIS-02 (parcial) — legibilidade**: todos os textos do story usam figuras
+  tabulares (`fontFeatureSettings = "tnum"`); a legenda
+  “Ritmo = tempo por km…” saiu do card; a barra de splits desceu para o novo
+  rodapé e o card final foi compactado para caber em 62–78% sem colisão.
+- **DOM-01 — domínio puro**: `StoryPlan`, `StoryPlanCalculator`,
+  `StoryHighlightsCalculator`, `StorySplit`, `StorySegment`, `StoryZoneRun`,
+  `BoundingBox`, `StoryGeoPoint`, `RouteData`/`RoutePoint`/`routeData` e o
+  formatador `formatStoryDuration` vivem em `core:domain/story`; `:app` mantém
+  render, mapa, encode, WorkManager e UI. Testes puros movidos junto, sem
+  `android.*` no domínio.
+
+### Testes
+
+- `StoryLayoutTest` (6): safe area 13/22/5,5, card 62–78%, atribuição acima do
+  card e nova moldura da rota (TDD: falhou antes da implementação).
+- `StoryTypographyTest` (3): `tnum` em texto normal e negrito e paint
+  antialiased.
+- `StoryEncoderSettingsTest` (4): BT.709/SDR/limited, 16 Mbps, High/4.1 e VBR
+  condicionais, com fallback sem perfil quando o encoder não suporta.
+- Domínio: `StoryPlanCalculatorTest` (11), `StoryHighlightsCalculatorTest`
+  (5), `RouteProjectionTest` (5) e `StoryFormattersTest` (3) movidos/novos;
+  `StoryMapCameraTest` e `StoryCameraCoverageTest` atualizados à geometria
+  nova.
+- `check`, `:app:assembleDebug`, `spotlessCheck` e `koverVerify` verdes;
+  **1.578 testes**, 0 falhas e 0 `@Ignore` (731 `:app`, 639 `core:domain`,
+  168 `core:data`, 40 `core:model`).
+- `core:domain`: 97,34% de linhas (5.344/5.490) e 80,68% de branches
+  (3.925/4.865); gate ≥85% de linhas; parser FIT 93,01% de branches. `:app`:
+  78,13% de linhas; gate ≥78%.
+- `:app:verifyRoborazziDebug --tests "*StoryFrameScreenshotTest"` verde; os 8
+  goldens do story foram regravados e revisados, nenhum outro golden mudou.
+
+### Evidências
+
+- Diff sem dados reais de saúde; nenhuma migração de Room (schema v17);
+  nenhuma dependência nova; nenhum áudio, satellite, máscara de privacidade ou
+  LLM adicionado.
+- O único risco novo é o `COVERAGE_SCALE` 1,20: o enquadramento do mapa fica
+  ~4% mais próximo para cobrir o quadro maior; validar no aparelho junto com
+  o safe area.
+
+### Próximo passo
+
+1. **DOM-02..DOM-07** — catálogo de métricas, `StoryRecipe`/presets, timeline
+   por esforço, seleção de cards, codec e `StoryRenderSpec`.
+2. **VIS-02..VIS-04** — slots dinâmicos de métricas, card por km e
+   encerramento com 3 essenciais + até 2 extras.
+3. **UI-01..UI-05 / VIS-06 / ENC-05 / ENC-08** — Story Studio, prévia de 3
+   frames e receita no worker.
+4. **MapLibre 13.7.1 OpenGL + `pixelForLatLng`** no Sprint B; se quebrar,
+   voltar para 12.3.1 e registrar no ADR 0015.
+
+## Sessão 2026-11-13 — Story V3: análise e plano (sem código de produção)
+
+- **Análise profunda:** `docs/STORY_V3_ANALISE_E_DIRECIONAMENTO.md` — auditoria
+  do story atual, evidências do MapLibre (`pixelForLatLng`), termos de
+  provedores, safe area de Reels e gaps de encode.
+- **Plano executável:** `docs/STORY_V3_PLANO_DE_ACAO.md` — decisões, escopo do
+  MVP, arquitetura, tarefas com IDs, dependências, aceite e ordem de sessão.
+- **Decisões do usuário 0:** OpenFreeMap + estilo autoral agora (Protomaps
+  depois); vídeo **sem áudio**; **sem máscara de privacidade**; distância,
+  ritmo médio e tempo total fixos + até **2 extras**; calorias por km removidas
+  e calorias totais como extra; Sprint A (controle/qualidade) primeiro.
+- **Próximo passo:** `D0.1` (ADR 0040) + quick wins `VIS-01` (safe area de
+  Reels) e `ENC-01` (BT.709/High/16 Mbps).
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.566 testes no total (743 em `:app`, 168 em `core:data`, 615 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,56% de linhas (5.030/5.156), 81,11% de branches (3.805/4.691), 96,24% de instruções (34.730/36.087)
+- **Testes:** 1.642 testes no total (747 em `:app`, 168 em `core:data`, 687 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,20% de linhas (5.826/5.994), 79,72% de branches (4.198/5.266), 95,64% de instruções (40.403/42.246)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético

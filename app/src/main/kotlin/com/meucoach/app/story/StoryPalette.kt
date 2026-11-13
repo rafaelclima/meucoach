@@ -2,6 +2,7 @@ package com.meucoach.app.story
 
 import androidx.compose.ui.graphics.toArgb
 import com.meucoach.core.designsystem.theme.McColors
+import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.model.HeartRateZone
 
 data class StoryPalette(
@@ -23,7 +24,7 @@ data class StoryPalette(
     val zone3: Int,
     val zone4: Int,
     val zone5: Int,
-    val mapStyle: StoryMapStyle = StoryMapStyle.CLASSIC,
+    val mapStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
 ) {
     fun zoneColor(zone: HeartRateZone): Int = when (zone) {
         HeartRateZone.Z1 -> zone1
@@ -34,7 +35,7 @@ data class StoryPalette(
     }
 }
 
-fun McColors.toStoryPalette(mapStyle: StoryMapStyle = StoryMapStyle.CLASSIC) = StoryPalette(
+fun McColors.toStoryPalette(mapStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK) = StoryPalette(
     background = background.toArgb(),
     surface = surface.toArgb(),
     surfaceInset = surfaceInset.toArgb(),

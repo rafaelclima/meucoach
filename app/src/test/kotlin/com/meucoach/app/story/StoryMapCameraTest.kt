@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.BoundingBox
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.Test
@@ -72,20 +73,28 @@ class StoryMapCameraTest {
     fun `keeps the route square proportional at preview size`() {
         val square = StoryMapCameraCalculator.routeSquare(360f, 640f)
 
-        assertThat(square.side).isCloseTo(241.7f, within(0.1f))
+        assertThat(square.side).isCloseTo(263.7f, within(0.1f))
         assertThat(square.centerX).isCloseTo(180f, within(0.1f))
-        assertThat(square.centerY).isCloseTo(315f, within(0.1f))
-        assertThat(square.left).isCloseTo(59.2f, within(0.1f))
-        assertThat(square.top).isCloseTo(194.2f, within(0.1f))
+        assertThat(square.centerY).isCloseTo(328.2f, within(0.1f))
+        assertThat(square.left).isCloseTo(48.2f, within(0.1f))
+        assertThat(square.top).isCloseTo(196.4f, within(0.1f))
     }
 
     @Test
-    fun `uses the top half of the frame for the map center`() {
-        val camera = StoryMapCameraCalculator.calculate(bounds, 720, 1280)
+    fun `centres the map on the route square`() {
+        val width = 720
+        val height = 1280
+        val camera = StoryMapCameraCalculator.calculate(bounds, width, height)
+        val square = StoryMapCameraCalculator.routeSquare(width.toFloat(), height.toFloat())
 
-        // The route square sits above the frame center, so the camera target is south of it.
+        // The camera target moves opposite to the square offset so the bounds
+        // land on the square, whether it sits above or below the frame centre.
         val boundsCenterLat = (bounds.minLat + bounds.maxLat) / 2.0
-        assertThat(camera.latitude).isLessThan(boundsCenterLat)
+        if (square.centerY < height / 2f) {
+            assertThat(camera.latitude).isLessThan(boundsCenterLat)
+        } else {
+            assertThat(camera.latitude).isGreaterThan(boundsCenterLat)
+        }
         assertThat(abs(camera.longitude - (bounds.minLon + bounds.maxLon) / 2.0)).isLessThan(1e-9)
     }
 

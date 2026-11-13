@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.BoundingBox
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import kotlin.math.abs

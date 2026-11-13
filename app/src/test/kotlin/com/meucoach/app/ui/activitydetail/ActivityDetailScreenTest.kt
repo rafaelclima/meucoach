@@ -11,10 +11,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import com.meucoach.app.story.StoryMapStyle
-import com.meucoach.app.story.StoryPlanCalculator
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.StoryMapStyle
+import com.meucoach.core.domain.story.StoryPlanCalculator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -205,7 +205,7 @@ class ActivityDetailScreenTest {
             ActivityDetailContent(
                 state = ActivityDetailTestData.state().copy(storyIntroSeen = false),
                 onBack = {},
-                storyStyle = StoryMapStyle.CLASSIC,
+                storyStyle = StoryMapStyle.MEUCOACH_DARK,
             )
         }
 
@@ -216,7 +216,9 @@ class ActivityDetailScreenTest {
 
         list.performScrollToNode(hasText("Terreno"))
         compose.onNodeWithText("Terreno").assertExists()
-        compose.onNodeWithText("Satélite").assertExists()
+        compose.onNodeWithText("Escuro").assertExists()
+        compose.onNodeWithText("Claro").assertExists()
+        compose.onNodeWithText("Satélite").assertDoesNotExist()
     }
 
     @Test

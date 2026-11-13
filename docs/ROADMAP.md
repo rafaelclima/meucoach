@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.43 · **Data:** 13/11/2026 · **Mudança:** polimento U-01/U-02/U-03 — fuso compartilhado deixa de mostrar só "Fortaleza" para quem está em Natal (`Natal · Fortaleza`), termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção, `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`). A versão 1.42 registrou o FR-013 concluído.
+**Versão:** 1.45 · **Data:** 13/11/2026 · **Mudança:** Story V3 Sprint A avançou para o domínio — `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com disponibilidade/motivo, timeline por esforço, 8 cards + barra com todos os kms, codec/store em `meucoach_story` e `StoryRenderSpec`; ADR 0015 corrigido (Google é bloqueio legal, `pixelForLatLng` existe e MapLibre 13.7.1 OpenGL é decisão pendente do Sprint B). A versão 1.44 registrou D0.1, VIS-01, ENC-01, VIS-02 parcial e DOM-01.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -525,17 +525,31 @@ Sem migração.
 
 **Proposta de evolução:** `docs/STORY_V2.md` — “O Veredito”. Fases A (área segura, câmera, film look, 30 fps e capa), B (veredito por km, rota por zona) e câmera v2 (zoom por card + pitch/yaw) concluídas em 03/11/2026; fase C (áudio/morph) pendente.
 
+**Story V3 — Sprint A (Etapa 1, em andamento desde 13/11/2026):** plano em
+`docs/STORY_V3_PLANO_DE_ACAO.md` e decisão em `docs/adr/0040-story-v3-recipe-and-map.md`.
+Concluído: D0.1 (ADR 0040), D0.2 (correção do ADR 0015), D0.3 (banners de
+decisão), VIS-01 (safe area de Reels 13/22/5,5, card 62–78%, atribuição acima
+do card), ENC-01 (BT.709/SDR/limited, H.264 High/4.1 condicional e 16 Mbps
+VBR), VIS-02 parcial (`tnum` e fim da legenda), DOM-01 (modelo puro em
+`core:domain/story`) e DOM-02..DOM-07 (catálogo de métricas, receita/presets,
+timeline por esforço, seleção de cards, codec/store e render spec). O renderer
+já consome o spec: card com 1–3 slots, encerramento com 3 essenciais + até 2
+extras, selo do km mais rápido só quando a receita pede e barra com todos os
+kms. Próximo: Story Studio (UI-01..UI-05), prévia de 3 frames (VIS-06),
+memória (ENC-08), receita no worker além do já encaminhado, golden 4:5,
+MapLibre 13.7.1 OpenGL (Sprint B) e validação em aparelho.
+
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com validação pendente em aparelho real.
 
 - [x] Planejador de rota, splits por km e timeline de 30 s.
-- [x] Renderer 9:16 com rota, progresso e card por km (pace, FC, kcal).
+- [x] Renderer 9:16 com rota, progresso e card por km (pace + até 2 extras por km; calorias por km removidas).
 - [x] Exportação MP4 720×1280/24 fps via MediaCodec, sem EGL nem dependência nova.
 - [x] Galeria no Android 10+ e compartilhamento via `ACTION_SEND`/FileProvider.
 - [x] Preview do vídeo antes de exportar.
 - [x] Validação de desempenho e qualidade em aparelho real (`resposta 8`).
 - [x] Exportar em 1080×1920 (8 Mbps); validar tempo de export no aparelho.
 - [x] Mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) como background estático no vídeo (`ADR-0015`).
-- [x] Frame final (3 s) com dados do treino (`distância`, `tempo`, `pace`, `FC média`, `kcal`) e branding `MeuCoach` (`ADR-0015`, entrega 1).
+- [x] Frame final (3 s) com as três essenciais (`distância`, `ritmo médio`, `tempo total`), até 2 extras e branding `MeuCoach` (`ADR-0015`, entrega 1; `ADR-0040` §2.1).
 - [x] `BoundingBox` geográfico no `StoryPlan` para o mapa (`ADR-0015`).
 - [ ] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`).
 - [x] Story v2 — Fase A: área segura do Instagram, câmera com zoom/rotação, film look, 30 fps e capa PNG (`docs/STORY_V2.md`).
@@ -543,6 +557,21 @@ Sem migração.
 - [x] Story v2 — câmera v2: flyover com follow do corredor, zoom por card, rotação pela direção da rota e pitch/yaw via homografia no mapa e na rota (`docs/STORY_V2.md` §12).
 - [x] Logo `MeuCoach` no rodapé do story (asset recortado em `core:designsystem`, prévia e vídeo).
 - [ ] Refinar a logo com prompt estruturado (`resposta 3`).
+- [x] Story V3 — D0.1: ADR 0040 com receita, métricas, mapa, safe area e encode.
+- [x] Story V3 — D0.2: ADR 0015 corrigido (bloqueio legal do Google, `pixelForLatLng`, satélite fora e MapLibre 13.7.1 OpenGL pendente do Sprint B).
+- [x] Story V3 — D0.3: banners de decisão na análise V3 e no STORY_V2.
+- [x] Story V3 — VIS-01: safe area de Reels 13/22/5,5, card 62–78% e atribuição acima do card.
+- [x] Story V3 — ENC-01: BT.709/SDR/limited, H.264 High/4.1 condicional e 16 Mbps VBR.
+- [x] Story V3 — VIS-02 parcial: números tabulares (`tnum`) e remoção da legenda do card.
+- [x] Story V3 — DOM-01: modelo puro do story em `core:domain/story`.
+- [x] Story V3 — DOM-02: `StoryEssential`/`StoryExtra`/`StoryMetricCatalog` com disponibilidade, motivo e formatação; sem calorias/km.
+- [x] Story V3 — DOM-03: `StoryRecipe` + presets; essenciais fixas, extras ≤2, duração/mapa/qualidade no domínio.
+- [x] Story V3 — DOM-04: timeline por esforço com auto/15/30/45/60, bônus do km rápido/FC, clamp 1,2–3,0 s e encerramento de 3,0 s.
+- [x] Story V3 — DOM-05: seleção de até 8 cards (primeiro/último/mais rápido/mais lento) e barra com todos os kms.
+- [x] Story V3 — DOM-06: `StoryRecipeStore`/`StoryRecipeCodec` em `meucoach_story`, JSON v1 e reset.
+- [x] Story V3 — DOM-07: `StoryRenderSpec`/`ResolvedMetric` a partir de atividade + data + receita.
+- [x] Story V3 — VIS-02..VIS-04 (parcial): card com 1–3 slots, encerramento 3+2, selo condicionado à receita e barra de 10 km.
+- [ ] Story V3 — Story Studio, prévia de 3 frames, receita no worker (ENC-05), memória (ENC-08) e goldens 4:5.
 
 **Descrição da feature (proposta inicial):**
 

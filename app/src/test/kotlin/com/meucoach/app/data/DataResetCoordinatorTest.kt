@@ -23,6 +23,7 @@ import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryIntroStore
 import com.meucoach.app.story.StoryNotifier
+import com.meucoach.app.story.StoryRecipeStore
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.epoch.DataEpochStore
@@ -39,6 +40,8 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.SaveActivityResult
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.data.repository.UserDataRepository
+import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
@@ -88,6 +91,7 @@ class DataResetCoordinatorTest {
     private lateinit var firstRunTips: FirstRunTipStore
     private lateinit var storyFailures: StoryExportFailureStore
     private lateinit var storyIntro: StoryIntroStore
+    private lateinit var storyRecipe: StoryRecipeStore
     private lateinit var importedRunPrompts: ImportedRunPromptStore
     private lateinit var raceAutoCompletions: RaceAutoCompletionStore
     private lateinit var replanSuggestions: ReplanSuggestionStore
@@ -125,6 +129,7 @@ class DataResetCoordinatorTest {
         firstRunTips = FirstRunTipStore(context, prefsName = "reset-tips-${System.nanoTime()}")
         storyFailures = StoryExportFailureStore(context)
         storyIntro = StoryIntroStore(context)
+        storyRecipe = StoryRecipeStore(context)
         importedRunPrompts = ImportedRunPromptStore(context, "reset-import-prompts-${System.nanoTime()}")
         raceAutoCompletions = RaceAutoCompletionStore(context, "reset-race-auto-${System.nanoTime()}")
         replanSuggestions = ReplanSuggestionStore(context, "reset-replan-${System.nanoTime()}")
@@ -161,6 +166,7 @@ class DataResetCoordinatorTest {
             firstRunTips = firstRunTips,
             storyFailures = storyFailures,
             storyIntro = storyIntro,
+            storyRecipe = storyRecipe,
             healthSync = healthSync,
             reminderNotifier = ReminderNotifier(context),
             importNotifier = ImportNotifier(context),
@@ -198,6 +204,7 @@ class DataResetCoordinatorTest {
         assertThat(raceAutoCompletions.declinedActivityIds()).isEmpty()
         assertThat(replanSuggestions.isSuppressed(LocalDate.of(2026, 11, 6))).isFalse()
         assertThat(storyIntro.seen()).isFalse()
+        assertThat(storyRecipe.load()).isEqualTo(StoryRecipe())
         assertThat(storyFailures.messageFor("activity-1")).isNull()
         assertThat(healthStore.lastSyncedDate()).isNull()
         assertThat(healthSync.state.value.lastSyncedAt).isNull()
@@ -273,6 +280,7 @@ class DataResetCoordinatorTest {
         replanSuggestions.suppress(LocalDate.of(2026, 11, 6))
         storyFailures.save("activity-1", "erro")
         storyIntro.markSeen()
+        storyRecipe.save(StoryRecipe(extras = listOf(StoryExtra.DATE)))
         healthStore.markSynced(Instant.parse("2026-11-06T10:00:00Z"), LocalDate.of(2026, 11, 6))
         healthSync.syncNow()
     }
@@ -284,6 +292,7 @@ class DataResetCoordinatorTest {
         replanSuggestions.reset()
         storyFailures.clearAll()
         storyIntro.reset()
+        storyRecipe.reset()
         healthStore.reset()
     }
 

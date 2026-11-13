@@ -19,6 +19,9 @@ import android.view.Surface
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import com.meucoach.core.designsystem.R
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StorySegmentType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +37,45 @@ import kotlin.math.roundToInt
 data class StoryExportResult(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null)
 
 /**
+ * Publication settings shared by the story encoder. Instagram re-encodes
+ * everything; a 1080p30 master at 16 Mbps with declared BT.709/SDR survives
+ * that pass visibly better than the old 10 Mbps file with implicit color.
+ */
+internal object StoryEncoderSettings {
+    const val BITRATE = 16_000_000
+}
+
+/**
+ * Applies the publication contract to the encoder format.
+ *
+ * Profile/level and VBR are only declared when the device encoder reports
+ * support; otherwise the encoder keeps its defaults and the export still
+ * runs. Color keys are always present because they describe the Canvas input.
+ */
+internal fun MediaFormat.applyStoryEncoderSettings(supportsHighProfile41: Boolean, supportsVbr: Boolean) {
+    setInteger(MediaFormat.KEY_BIT_RATE, StoryEncoderSettings.BITRATE)
+    setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
+    setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
+    setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
+    if (supportsHighProfile41) {
+        setInteger(
+            MediaFormat.KEY_PROFILE,
+            MediaCodecInfo.CodecProfileLevel.AVCProfileHigh,
+        )
+        setInteger(
+            MediaFormat.KEY_LEVEL,
+            MediaCodecInfo.CodecProfileLevel.AVCLevel41,
+        )
+    }
+    if (supportsVbr) {
+        setInteger(
+            MediaFormat.KEY_BITRATE_MODE,
+            MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR,
+        )
+    }
+}
+
+/**
  * Contract for rendering the story MP4 out of a [StoryPlan]. An interface so
  * the background export (ADR 0018) can be tested without the codec pipeline.
  */
@@ -46,6 +88,7 @@ interface StoryVideoExporter {
     suspend fun export(
         plan: StoryPlan,
         palette: StoryPalette,
+        recipe: StoryRecipe = StoryRecipe(),
         mapBackground: Bitmap? = null,
         overviewMap: Bitmap? = null,
         isCancelled: () -> Boolean = { false },
@@ -88,6 +131,7 @@ class CanvasStoryVideoExporter @Inject constructor(
     override suspend fun export(
         plan: StoryPlan,
         palette: StoryPalette,
+        recipe: StoryRecipe,
         mapBackground: Bitmap?,
         overviewMap: Bitmap?,
         isCancelled: () -> Boolean,
@@ -104,6 +148,7 @@ class CanvasStoryVideoExporter @Inject constructor(
                 exportOnEncoderThread(
                     plan,
                     palette,
+                    recipe,
                     mapBackground,
                     overviewMap,
                     isCancelled,
@@ -118,6 +163,7 @@ class CanvasStoryVideoExporter @Inject constructor(
     private suspend fun exportOnEncoderThread(
         plan: StoryPlan,
         palette: StoryPalette,
+        recipe: StoryRecipe,
         mapBackground: Bitmap?,
         overviewMap: Bitmap?,
         isCancelled: () -> Boolean,
@@ -134,9 +180,9 @@ class CanvasStoryVideoExporter @Inject constructor(
             profiles.getProfile()?.avatarPath?.let { photos.load(it, maxSize = 256) }
         }.getOrNull()
         return try {
-            encode(plan, palette, mapBackground, overviewMap, output, cancelled, onProgress, avatar)
+            encode(plan, palette, recipe, mapBackground, overviewMap, output, cancelled, onProgress, avatar)
             val cover = runCatching {
-                writeCover(plan, palette, mapBackground, overviewMap, directory, stamp, avatar)
+                writeCover(plan, palette, recipe, mapBackground, overviewMap, directory, stamp, avatar)
             }.getOrNull()
             publish(output, cover)
         } catch (error: Throwable) {
@@ -154,6 +200,7 @@ class CanvasStoryVideoExporter @Inject constructor(
     private fun writeCover(
         plan: StoryPlan,
         palette: StoryPalette,
+        recipe: StoryRecipe,
         mapBackground: Bitmap?,
         overviewMap: Bitmap?,
         directory: File,
@@ -167,7 +214,7 @@ class CanvasStoryVideoExporter @Inject constructor(
                 ?: (plan.durationSec - 1f).coerceAtLeast(0f)
             val timeSec = finalStart + 1f
             val canvas = Canvas(bitmap)
-            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar, overviewMap)
+            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar, overviewMap, recipe)
                 .render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
             StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
             file.outputStream().use { output ->
@@ -184,6 +231,7 @@ class CanvasStoryVideoExporter @Inject constructor(
     private suspend fun encode(
         plan: StoryPlan,
         palette: StoryPalette,
+        recipe: StoryRecipe,
         mapBackground: Bitmap?,
         overviewMap: Bitmap?,
         output: File,
@@ -207,6 +255,7 @@ class CanvasStoryVideoExporter @Inject constructor(
             mapBackground,
             avatar,
             overviewMap,
+            recipe,
         )
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
         val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
@@ -264,9 +313,12 @@ class CanvasStoryVideoExporter @Inject constructor(
                         MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
                     },
                 )
-                setInteger(MediaFormat.KEY_BIT_RATE, BITRATE)
                 setInteger(MediaFormat.KEY_FRAME_RATE, FPS)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
+                applyStoryEncoderSettings(
+                    supportsHighProfile41 = supportsHighProfile41(codecInfo),
+                    supportsVbr = supportsVbr(codecInfo),
+                )
             }
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             if (useSurface) {
@@ -358,6 +410,19 @@ class CanvasStoryVideoExporter @Inject constructor(
 
     private fun supportsFlexibleYuv(info: MediaCodecInfo): Boolean =
         info.colorFormats().contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+
+    /** Some encoders list High at 4.0/4.2 but not 4.1; only declare an exact match. */
+    private fun supportsHighProfile41(info: MediaCodecInfo): Boolean = runCatching {
+        info.getCapabilitiesForType(MIME).profileLevels.any {
+            it.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileHigh &&
+                it.level == MediaCodecInfo.CodecProfileLevel.AVCLevel41
+        }
+    }.getOrDefault(false)
+
+    private fun supportsVbr(info: MediaCodecInfo): Boolean = runCatching {
+        info.getCapabilitiesForType(MIME).encoderCapabilities
+            ?.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR) == true
+    }.getOrDefault(false)
 
     private fun MediaCodecInfo.colorFormats(): IntArray = getCapabilitiesForType(MIME).colorFormats
 
@@ -544,9 +609,6 @@ class CanvasStoryVideoExporter @Inject constructor(
     companion object {
         private const val MIME = "video/avc"
         private const val FPS = 30
-
-        // Instagram re-encodes to 30 fps; 10 Mbps keeps street labels crisp.
-        private const val BITRATE = 10_000_000
 
         /** Progress callback stays cheap for the encoder loop; callers throttle further. */
         private const val PROGRESS_EVERY_FRAMES = 12

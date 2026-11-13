@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.story.RoutePoint
+import com.meucoach.core.domain.story.routeData
 import com.meucoach.core.model.ActivitySample
 
 @Composable

@@ -9,9 +9,10 @@ class StoryLayoutTest {
     private val height = 1920f
 
     @Test
-    fun `reserves the instagram header and footer`() {
+    fun `reserves the reels header and footer`() {
         assertThat(StoryLayout.safeTop(height)).isCloseTo(249.6f, within(0.1f))
-        assertThat(StoryLayout.safeBottom(height)).isCloseTo(1670.4f, within(0.1f))
+        // Reels covers ~420 px at the bottom of a 1920 px video: 22% safe base.
+        assertThat(StoryLayout.safeBottom(height)).isCloseTo(1497.6f, within(0.1f))
     }
 
     @Test
@@ -21,7 +22,19 @@ class StoryLayoutTest {
         assertThat(StoryLayout.cardTop(height)).isGreaterThan(StoryLayout.routeTop(height))
         // The route may slide under the opaque card; the card is drawn on top.
         assertThat(StoryLayout.routeBottom(height)).isGreaterThan(StoryLayout.cardTop(height))
-        assertThat(StoryLayout.cardBottom(height)).isLessThan(StoryLayout.safeBottom(height))
+        assertThat(StoryLayout.cardBottom(height)).isLessThanOrEqualTo(StoryLayout.safeBottom(height))
+    }
+
+    @Test
+    fun `card occupies sixty two to seventy eight percent of the frame`() {
+        assertThat(StoryLayout.cardTop(height)).isCloseTo(height * 0.62f, within(0.1f))
+        assertThat(StoryLayout.cardBottom(height)).isCloseTo(height * 0.78f, within(0.1f))
+    }
+
+    @Test
+    fun `attribution stays above the card instead of the reels footer`() {
+        assertThat(StoryLayout.attributionBaseline(height)).isLessThan(StoryLayout.cardTop(height))
+        assertThat(StoryLayout.attributionBaseline(height)).isGreaterThan(StoryLayout.routeTop(height))
         assertThat(StoryLayout.attributionBaseline(height)).isLessThan(StoryLayout.safeBottom(height))
     }
 
@@ -29,11 +42,11 @@ class StoryLayoutTest {
     fun `projects the route into the square between header and card`() {
         val square = StoryLayout.routeSquare(720f, 1280f)
 
-        assertThat(square.side).isCloseTo(483.3f, within(0.1f))
-        assertThat(square.left).isCloseTo(118.3f, within(0.1f))
-        assertThat(square.top).isCloseTo(388.3f, within(0.1f))
+        assertThat(square.side).isCloseTo(527.3f, within(0.1f))
+        assertThat(square.left).isCloseTo(96.3f, within(0.1f))
+        assertThat(square.top).isCloseTo(392.7f, within(0.1f))
         assertThat(square.centerX).isCloseTo(360f, within(0.1f))
-        assertThat(square.centerY).isCloseTo(630f, within(0.1f))
+        assertThat(square.centerY).isCloseTo(656.4f, within(0.1f))
     }
 
     @Test

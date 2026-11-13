@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
+import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryRecipe
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Before
@@ -42,22 +44,32 @@ class StoryExportCoordinatorTest {
     }
 
     @Test
-    fun `builds the input with palette and optional map`() {
-        val withMap = StoryExportCoordinator.buildInput("a-1", "present.png", testPalette())
+    fun `builds the input with palette recipe and optional map`() {
+        val recipe = StoryRecipe(extras = listOf(StoryExtra.DATE))
+        val withMap = StoryExportCoordinator.buildInput("a-1", recipe, "present.png", testPalette())
         assertThat(withMap.getString(StoryExportWorker.KEY_ACTIVITY_ID)).isEqualTo("a-1")
         assertThat(withMap.getString(StoryExportWorker.KEY_MAP_PATH)).isEqualTo("present.png")
+        assertThat(withMap.getString(StoryExportWorker.KEY_RECIPE_JSON))
+            .isEqualTo(StoryRecipeCodec.encode(recipe))
+        assertThat(withMap.getString(StoryExportWorker.KEY_RECIPE_JSON)!!.toByteArray().size)
+            .isLessThanOrEqualTo(StoryRecipeCodec.MAX_PAYLOAD_BYTES)
         assertThat(
             withMap.getIntArray(StoryPaletteCodec.KEY),
         ).isEqualTo(StoryPaletteCodec.encode(testPalette()))
 
-        val withoutMap = StoryExportCoordinator.buildInput("a-1", null, testPalette())
+        val withoutMap = StoryExportCoordinator.buildInput("a-1", recipe, null, testPalette())
         assertThat(withoutMap.getString(StoryExportWorker.KEY_MAP_PATH)).isNull()
     }
 
     @Test
     fun `stages the preview map and enqueues tagged work`() {
         runBlocking {
-            coordinator.start("activity-1", Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), testPalette())
+            coordinator.start(
+                "activity-1",
+                StoryRecipe(),
+                Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888),
+                testPalette(),
+            )
         }
 
         val staged = File(context.cacheDir, "stories/story-map-activity-1.png")
@@ -81,6 +93,7 @@ class StoryExportCoordinatorTest {
         runBlocking {
             coordinator.start(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 mapBackground = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888),
                 palette = testPalette(),
                 isCancelled = { true },

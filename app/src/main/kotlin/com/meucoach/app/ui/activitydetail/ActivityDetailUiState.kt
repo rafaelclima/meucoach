@@ -2,11 +2,11 @@ package com.meucoach.app.ui.activitydetail
 
 import android.graphics.Bitmap
 import android.net.Uri
-import com.meucoach.app.story.StoryPlan
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.feedback.SessionComparison
 import com.meucoach.core.domain.insights.ActivityInsight
+import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryVerdict
 import com.meucoach.core.domain.zones.HrZoneDistribution
 

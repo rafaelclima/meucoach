@@ -20,6 +20,7 @@ import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryIntroStore
 import com.meucoach.app.story.StoryNotifier
+import com.meucoach.app.story.StoryRecipeStore
 import com.meucoach.app.ui.tutorial.TutorialStore
 import com.meucoach.core.data.epoch.DataEpochStore
 import com.meucoach.core.data.epoch.DataWriteMutex
@@ -70,6 +71,7 @@ class DataResetCoordinator @Inject constructor(
     private val firstRunTips: FirstRunTipStore,
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
+    private val storyRecipe: StoryRecipeStore,
     private val healthSync: HealthSyncCoordinator,
     private val reminderNotifier: ReminderNotifier,
     private val importNotifier: ImportNotifier,
@@ -99,6 +101,7 @@ class DataResetCoordinator @Inject constructor(
             cleanup("dicas de primeiro uso") { firstRunTips.reset() }?.let(failures::add)
             cleanup("falhas de story") { storyFailures.clearAll() }?.let(failures::add)
             cleanup("aviso de story") { storyIntro.reset() }?.let(failures::add)
+            cleanup("receita de story") { storyRecipe.reset() }?.let(failures::add)
             healthSync.resetState()
             reminderNotifier.cancelAll()
             importNotifier.cancel()

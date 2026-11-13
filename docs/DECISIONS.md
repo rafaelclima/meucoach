@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.21 · **Data:** 12/11/2026
+**Versão:** 1.25 · **Data:** 13/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -25,6 +25,7 @@
 > Revisão 1.22 (13/11/2026): ADR 0039 aceito — sRPE de Foster entra como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera": progressão de volume e qualidade exigem carga objetiva. `daily-prescription-v5`/`weekly-plan-v5`; sem migração.
 > Revisão 1.23 (13/11/2026): FR-013 fatia 2 — RPE opcional no fechamento com corrida vinculada persiste em `session_executions.rpe`; `TrainingSignalSource` passa a alimentar Hoje, Tendências, tutorial e replanejamento com a mesma série (incluindo execuções manuais e o frescor dual). Sem migração.
 > Revisão 1.24 (13/11/2026): FR-013 concluído — fatia 3 fecha a superfície: nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade (mesmo sem alvo de esforço) e `R-LOAD-04`/dado ausente no sheet "Por que este treino?". Sem migração.
+> Revisão 1.26 (13/11/2026): ADR 0015 corrigido — o Google é bloqueio legal (não custo), o `MapSnapshot` expõe `pixelForLatLng`, o MapLibre 13.7.1 OpenGL é decisão pendente do Sprint B (não implementado) e satélite fica fora do MVP. Story V3 avançou em DOM-02..DOM-07: catálogo de métricas, receita/presets, timeline por esforço, 8 cards + barra com todos os kms, codec/store e `StoryRenderSpec`; o renderer já usa slots de 1–3 no card e 3+2 no encerramento.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -44,7 +45,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0012](adr/0012-story-video.md) | Story de treino ao ar livre (vídeo com animação do percurso) — planejamento com Canvas+MediaCodec | Substituído parcialmente por ADR-0015 | 31/10/2026 |
 | [0013](adr/0013-manual-session-swap.md) | Troca manual de sessões subordinada aos guardrails | Aceito | 31/10/2026 |
 | [0014](adr/0014-incremental-health-sync.md) | Sync incremental do Health Connect via WorkManager | Aceito | 31/10/2026 |
-| [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito — implementado; validação em aparelho pendente | 02/11/2026 |
+| [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito — implementado; corrigido em 13/11/2026 (projeção do `MapSnapshot`, bloqueio legal do Google, satélite fora e MapLibre 13.7.1 OpenGL pendente); validação em aparelho pendente | 02/11/2026 |
 | [0016](adr/0016-daily-metrics-merge.md) | Mescla de métricas diárias por campo, com precedência de origem | Aceito | 03/11/2026 |
 | [0018](adr/0018-story-export-background.md) | Geração do story em segundo plano e cancelamento real | Aceito — implementado | 04/11/2026 |
 | [0019](adr/0019-story-camera-projection.md) | Câmera 3D real no snapshot do story (port da projeção do MapLibre) | Aceito — implementado | 04/11/2026 |
@@ -67,6 +68,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0037](adr/0037-post-race-recovery.md) | Recuperação pós-prova (C3-07 / FR-207) | Aceito — implementado em 12/11/2026 (janela 2/3/5/10, sessões curtas, `R-RACE-04` LIMITED, sugestão por `RACE_COMPLETED`, sem migração) | 12/11/2026 |
 | [0038](adr/0038-volume-progression-from-completed.md) | Progressão de volume a partir do realizado (FR-004 / N-07) | Aceito — implementado em 12/11/2026 (`R-PLAN-01` emitida, base de 4 semanas, +6%, disponibilidade como teto, `weekly-plan-v3`, sem migração) | 12/11/2026 |
 | [0039](adr/0039-load-from-subjective-srpe.md) | Carga subjetiva por sRPE (FR-013 / BL-022) | Aceito — implementado em 13/11/2026 nas três fatias (`LoadMetric.SRPE` como 3º nível, fonte dual de frescor, RPE opcional no fechamento com corrida vinculada, `TrainingSignalSource` único, nota e RPE no detalhe, `R-LOAD-04` no catálogo e na explicação, `daily-prescription-v5`/`weekly-plan-v5`, schema v17 sem migração) | 13/11/2026 |
+| [0040](adr/0040-story-v3-recipe-and-map.md) | Story V3: receita, métricas, safe area e mapa autoral | Aceito — Sprint A em andamento em 13/11/2026 (D0.1–D0.3, VIS-01, ENC-01, VIS-02 parcial, DOM-01 e DOM-02..DOM-07 implementados; renderer com slots 1–3/3+2; 3 essenciais + até 2 extras, sem calorias/km, vídeo mudo, sem máscara, OpenFreeMap/estilo autoral, 9:16 Reels-safe + pôster 4:5, BT.709/SDR/limited + H.264 High/4.1 + 16 Mbps VBR) | 13/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

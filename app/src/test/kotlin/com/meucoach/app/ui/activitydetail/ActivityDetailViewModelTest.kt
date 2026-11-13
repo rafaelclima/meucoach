@@ -9,14 +9,13 @@ import androidx.work.Data
 import androidx.work.WorkInfo
 import androidx.work.workDataOf
 import com.meucoach.app.application.GetSessionComparison
-import com.meucoach.app.story.BoundingBox
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryIntroStore
-import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryPalette
+import com.meucoach.app.story.StoryRecipeStore
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.app.time.FakeTimeProvider
@@ -33,6 +32,8 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.story.BoundingBox
+import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -260,6 +261,7 @@ class ActivityDetailViewModelTest {
                 FakeStoryExportCoordinator(),
                 StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
                 StoryIntroStore(ApplicationProvider.getApplicationContext()),
+                StoryRecipeStore(ApplicationProvider.getApplicationContext()),
                 com.meucoach.app.profile.ProfilePhotoStore(
                     ApplicationProvider.getApplicationContext(),
                 ),
@@ -289,6 +291,7 @@ class ActivityDetailViewModelTest {
         storyCoordinator = coordinator,
         storyFailures = failures,
         storyIntro = intro,
+        storyRecipe = StoryRecipeStore(ApplicationProvider.getApplicationContext()),
         profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
             ApplicationProvider.getApplicationContext(),
         ),
@@ -834,17 +837,20 @@ class ActivityDetailViewModelTest {
     private class FakeStoryExportCoordinator : StoryExportCoordinator {
         val infos = MutableStateFlow<List<WorkInfo>>(emptyList())
         var startedActivityId: String? = null
+        var startedRecipe: com.meucoach.core.domain.story.StoryRecipe? = null
         var startedPalette: StoryPalette? = null
         var startedMap: Bitmap? = null
         var cancelledActivityId: String? = null
 
         override suspend fun start(
             activityId: String,
+            recipe: com.meucoach.core.domain.story.StoryRecipe,
             mapBackground: Bitmap?,
             palette: StoryPalette,
             isCancelled: () -> Boolean,
         ) {
             startedActivityId = activityId
+            startedRecipe = recipe
             startedMap = mapBackground
             startedPalette = palette
         }

@@ -1,5 +1,7 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.StoryMapStyle
+
 /**
  * Packs [StoryPalette] into the flat forms WorkManager input Data supports
  * (ints only — no Android types survive into the work payload).
@@ -52,7 +54,7 @@ object StoryPaletteCodec {
             zone3 = values[14],
             zone4 = values[15],
             zone5 = values[16],
-            mapStyle = StoryMapStyle.entries.getOrNull(values[17]) ?: StoryMapStyle.CLASSIC,
+            mapStyle = StoryMapStyle.entries.getOrNull(values[17]) ?: StoryMapStyle.MEUCOACH_DARK,
         )
     }
 }

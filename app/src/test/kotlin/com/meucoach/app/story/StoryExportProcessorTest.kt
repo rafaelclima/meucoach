@@ -8,6 +8,12 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.story.BoundingBox
+import com.meucoach.core.domain.story.StoryDuration
+import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryMapStyle
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
@@ -81,6 +87,7 @@ class StoryExportProcessorTest {
 
             val outcome = processor.export(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 palette = testPalette(),
                 mapPath = null,
                 onProgress = { _, _ -> },
@@ -101,6 +108,7 @@ class StoryExportProcessorTest {
 
             val outcome = processor.export(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 palette = testPalette(),
                 mapPath = staged.absolutePath,
                 onProgress = { _, _ -> },
@@ -122,6 +130,7 @@ class StoryExportProcessorTest {
 
             val outcome = processor.export(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 palette = testPalette(),
                 mapPath = File(context.cacheDir, "stories/missing.png").absolutePath,
                 onProgress = { _, _ -> },
@@ -140,6 +149,7 @@ class StoryExportProcessorTest {
 
             val outcome = processor.export(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 palette = testPalette(),
                 mapPath = null,
                 onProgress = { _, _ -> },
@@ -159,6 +169,7 @@ class StoryExportProcessorTest {
 
             val outcome = processor.export(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 palette = testPalette(),
                 mapPath = null,
                 onProgress = { _, _ -> },
@@ -179,6 +190,7 @@ class StoryExportProcessorTest {
 
             processor.export(
                 activityId = "activity-1",
+                recipe = StoryRecipe(),
                 palette = testPalette(),
                 mapPath = stagedMap().absolutePath,
                 onProgress = { fraction, etaSec -> updates += fraction to etaSec },
@@ -188,6 +200,31 @@ class StoryExportProcessorTest {
             assertThat(updates.map { it.first }).containsExactly(0.25f, 0.5f)
             // First sample has no rate yet; second: rate 0.5/s → 1 s remaining.
             assertThat(updates).containsExactly(0.25f to null, 0.5f to 1)
+        }
+    }
+
+    @Test
+    fun `exports with the recipe passed by the worker`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeExporter(listOf(1f))
+            val processor = processor(exporter)
+            val recipe = StoryRecipe(
+                extras = listOf(StoryExtra.DATE),
+                duration = StoryDuration.SEC_45,
+            )
+
+            val outcome = processor.export(
+                activityId = "activity-1",
+                recipe = recipe,
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(exporter.renderedRecipe).isEqualTo(recipe)
+            assertThat(exporter.renderedPlan?.durationSec).isEqualTo(45f)
         }
     }
 
@@ -217,18 +254,21 @@ class StoryExportProcessorTest {
 
     private class FakeExporter(private val fractions: List<Float>) : StoryVideoExporter {
         var renderedPlan: StoryPlan? = null
+        var renderedRecipe: StoryRecipe? = null
         var renderedBackground: Bitmap? = null
         var renderedOverview: Bitmap? = null
 
         override suspend fun export(
             plan: StoryPlan,
             palette: StoryPalette,
+            recipe: StoryRecipe,
             mapBackground: Bitmap?,
             overviewMap: Bitmap?,
             isCancelled: () -> Boolean,
             onProgress: suspend (progress: Float) -> Unit,
         ): StoryExportResult {
             renderedPlan = plan
+            renderedRecipe = recipe
             renderedBackground = mapBackground
             renderedOverview = overviewMap
             fractions.forEach { onProgress(it) }

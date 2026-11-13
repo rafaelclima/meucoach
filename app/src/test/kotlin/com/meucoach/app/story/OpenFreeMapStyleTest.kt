@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.StoryMapStyle
 import org.assertj.core.api.Assertions.assertThat
 import org.json.JSONObject
 import org.junit.Test

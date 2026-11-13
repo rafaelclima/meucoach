@@ -17,8 +17,12 @@ object StoryPerspective {
     private const val PITCH_VERTICAL_STRENGTH = 0.12f
     private const val YAW_STRENGTH = 0.25f
 
-    /** Extra safety scale so the rotated/tilted snapshot always covers the frame. */
-    const val COVERAGE_SCALE = 1.15f
+    /**
+     * Extra safety scale so the rotated/tilted snapshot always covers the
+     * frame. The 62–78% card enlarged the route square, so the margin grew
+     * with it; the coverage test sweeps the whole timeline at 720p and 1080p.
+     */
+    const val COVERAGE_SCALE = 1.20f
 
     /**
      * Full map/route transform: perspective, then the camera translation,

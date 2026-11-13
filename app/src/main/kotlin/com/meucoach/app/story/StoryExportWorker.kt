@@ -44,13 +44,14 @@ class StoryExportWorker @AssistedInject constructor(
         val activityId = inputData.getString(KEY_ACTIVITY_ID) ?: return Result.failure()
         val palette = StoryPaletteCodec.decode(inputData.getIntArray(StoryPaletteCodec.KEY))
             ?: return Result.failure()
+        val recipe = StoryRecipeCodec.decode(inputData.getString(KEY_RECIPE_JSON))
         val mapPath = inputData.getString(KEY_MAP_PATH)
         val epoch = epochStore.current()
         failures.clear(activityId)
         enterForeground(activityId)
 
         val outcome = try {
-            processor.export(activityId, palette, mapPath, onProgress = ::publishProgress)
+            processor.export(activityId, recipe, palette, mapPath, onProgress = ::publishProgress)
         } catch (error: CancellationException) {
             // Cancellation is not a failure: the user cancelled the export.
             throw error
@@ -145,6 +146,7 @@ class StoryExportWorker @AssistedInject constructor(
 
         const val KEY_ACTIVITY_ID = "activityId"
         const val KEY_MAP_PATH = "mapPath"
+        const val KEY_RECIPE_JSON = "recipeJson"
 
         const val KEY_PROGRESS = "progress"
         const val KEY_ETA_SEC = "etaSec"

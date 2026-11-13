@@ -11,11 +11,9 @@ import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryIntroStore
-import com.meucoach.app.story.StoryMapStyle
 import com.meucoach.app.story.StoryMessages
 import com.meucoach.app.story.StoryPalette
-import com.meucoach.app.story.StoryPlanCalculator
-import com.meucoach.app.story.StoryPlanLoader
+import com.meucoach.app.story.StoryRecipeStore
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
 import com.meucoach.app.time.TimeProvider
@@ -23,6 +21,9 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.domain.story.StoryMapStyle
+import com.meucoach.core.domain.story.StoryPlanCalculator
+import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -47,6 +48,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyCoordinator: StoryExportCoordinator,
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
+    private val storyRecipe: StoryRecipeStore,
     private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
     private val timeProvider: TimeProvider,
     private val comparisons: GetSessionComparison,
@@ -77,7 +79,9 @@ class ActivityDetailViewModel @Inject constructor(
                 withContext(Dispatchers.Default) {
                     StoryPlanCalculator.calculate(
                         activity = stored.imported,
-                        targetDurationSec = StoryPlanLoader.TARGET_DURATION_SEC,
+                        targetDurationSec = StoryRecipe().targetDurationSec(
+                            stored.imported.distanceM / 1_000.0,
+                        ),
                         lthrBpm = lthr,
                         session = planned.current,
                         nextSession = planned.next,
@@ -118,18 +122,19 @@ class ActivityDetailViewModel @Inject constructor(
         const val ARG_ACTIVITY_ID = "activityId"
     }
 
-    fun createStory(style: StoryMapStyle = StoryMapStyle.CLASSIC) {
+    fun createStory(style: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK) {
         val state = _uiState.value
         val stored = state.activity ?: return
         val current = state.storyExport
         if (current is StoryExportUiState.Generating || current is StoryExportUiState.PreparingMap) return
         _uiState.update { it.copy(storyExport = StoryExportUiState.PreparingMap) }
+        val recipe = storyRecipe.load().copy(mapStyle = style)
         viewModelScope.launch {
             val planned = sessions.resolve(stored.localDate)
             val plan = withContext(Dispatchers.Default) {
                 StoryPlanCalculator.calculate(
                     activity = stored.imported,
-                    targetDurationSec = StoryPlanLoader.TARGET_DURATION_SEC,
+                    targetDurationSec = recipe.targetDurationSec(stored.imported.distanceM / 1_000.0),
                     lthrBpm = state.lthr,
                     session = planned.current,
                     nextSession = planned.next,
@@ -189,6 +194,7 @@ class ActivityDetailViewModel @Inject constructor(
             runCatching {
                 storyCoordinator.start(
                     activityId = activityId,
+                    recipe = storyRecipe.load(),
                     mapBackground = preview.mapBackground,
                     palette = palette,
                     isCancelled = { activeExport !== token },

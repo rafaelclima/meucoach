@@ -1,7 +1,10 @@
 package com.meucoach.app.story
 
-import com.meucoach.app.ui.activitydetail.RouteData
-import com.meucoach.app.ui.activitydetail.RoutePoint
+import com.meucoach.core.domain.story.RouteData
+import com.meucoach.core.domain.story.RoutePoint
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StorySegment
+import com.meucoach.core.domain.story.StorySegmentType
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos

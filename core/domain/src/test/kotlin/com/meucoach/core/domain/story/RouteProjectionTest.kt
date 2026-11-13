@@ -1,11 +1,11 @@
-package com.meucoach.app.ui.activitydetail
+package com.meucoach.core.domain.story
 
 import com.meucoach.core.model.ActivitySample
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
 
-class RouteDataTest {
+class RouteProjectionTest {
     @Test
     fun `returns null without two positioned samples`() {
         assertThat(routeData(emptyList())).isNull()

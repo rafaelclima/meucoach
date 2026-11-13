@@ -1,6 +1,6 @@
 # ADR 0015 — Mapa real no story de treino (OpenStreetMap + MapLibre)
 
-**Status:** aceito para implementação — substitui a decisão de rota apenas offline em `ADR-0012`.
+**Status:** aceito para implementação — substitui a decisão de rota apenas offline em `ADR-0012`; corrigido em 2026-11-13 (projeção do `MapSnapshot`, bloqueio legal do Google, satélite fora do MVP e MapLibre 13.7.1 OpenGL como decisão pendente).
 **Data:** 2026-11-02
 **Responsável:** planejamento com Rafael (usuário 0)
 
@@ -32,7 +32,7 @@ A mudança é significativa porque:
 - **Precisão:** as coordenadas GPS (`latitude`/`longitude`) da atividade são usadas diretamente para calcular o `bounding box` e o nível de zoom (`zoom` derivado da extensão da rota). A região renderizada corresponde exatamente ao treino.
 - **Sem dados pessoais enviados:** o `bounding box` é calculado localmente; nenhuma API recebe coordenadas exatas do usuário (apenas o pedido de tiles para uma região aproximada, sem identificação).
 
-**Alternativa rejeitada — `Mapbox` / Google Maps SDK:** exige chave de API, tem limite gratuito baixo e gera custo após o limite. Não atende ao requisito "sem custo".
+**Alternativa rejeitada — `Mapbox` / Google Maps SDK:** o Mapbox exige chave de API, tem limite gratuito baixo e gera custo após o limite. O Google Maps é rejeitado por **bloqueio legal**, não por custo: os Termos da plataforma proíbem exportar/extrair o conteúdo para uso fora do serviço, e um MP4 com tiles do Google é exatamente essa exportação. O `GoogleMap.snapshot()` existe tecnicamente, mas não pode alimentar um vídeo compartilhável (ADR 0040 §2.4).
 
 **Alternativa rejeitada — `FFmpeg` com filtro `overlay`:** `FFmpeg` não renderiza tiles de mapa; exigiria uma solução complexa de captura de frames externos, pesada e frágil para o MVP.
 
@@ -49,6 +49,8 @@ A mudança é significativa porque:
 - **Validado pelo mercado:** usado por apps como `Komoot`, `Organic Maps`, `BikeComputer`.
 
 **Consequência:** a dependência será adicionada ao `gradle/libs.versions.toml` e ao `build.gradle.kts` do `:app`. Se a versão mais recente tiver incompatibilidade com `minSdk 26` ou `compileSdk 37`, avaliaremos uma versão anterior (`11.x` ou `10.x`) em um `ADR` futuro (`0016`?).
+
+**Versão em uso e decisão pendente:** o app está em `org.maplibre.gl:android-sdk:12.3.1` (linha OpenGL). O `android-sdk-opengl:13.7.1` (menor, com `pixelForLatLng`, PMTiles e color-relief) é o alvo do **Sprint B** e **ainda não foi aplicado** — depende de spike e validação em aparelho (ADR 0040 §2.4 e MAP-01 do plano). Se o upgrade quebrar, a contingência é permanecer em 12.3.1 com o port de projeção como caminho de produção.
 
 ---
 
@@ -289,6 +291,13 @@ A proposta completa está em `docs/STORY_V2.md`. A Fase A entrega a camada visua
 
 ## Addendum — 2026-11-04: limite do tilt nativo no snapshotter
 
+> **Correção de 2026-11-13:** a conclusão abaixo de que “não há projeção” vale
+> apenas para o `MapSnapshotter`. O **`MapSnapshot` entregue no callback** expõe
+> `pixelForLatLng(LatLng): PointF` e `latLngForPixel(PointF): LatLng`
+> (confirmado por `javap` no AAR 12.3.1). A rota pode usar a matriz exata do
+> mapa, inclusive em snapshot inclinado; o port `StoryMapProjection` fica como
+> fallback/teste. Ver o addendum de 2026-11-13 no fim deste arquivo.
+
 O story usa **um** snapshot do `MapLibre` e aplica uma homografia (`StoryPerspective`) sobre mapa **e** rota, o que mantém o traçado alinhado às ruas.
 
 Ao avaliar um tilt nativo (pitch real de 40–55°, "tipo Strava"), verificamos o `MapSnapshotter` da versão em uso (`org.maplibre.gl:android-sdk:12.3.1`):
@@ -310,6 +319,11 @@ O story ganhou um segundo estilo de mapa, `StoryMapStyle.TERRAIN`. Ele mantém o
 
 ## Addendum — 2026-11-04: estilo Satélite (World Imagery)
 
+> **Fora do MVP desde 2026-11-13:** o satélite Esri/World Imagery sai da UI e do
+> fluxo padrão por licença comercial em revisão (ADR 0040 §2.4 e MAP-08). O
+> valor `SATELLITE` permanece no enum apenas para não quebrar jobs antigos; o
+> estilo padrão passa a ser o `MeuCoach Dark`, ainda no Sprint B.
+
 Para o público do story ("onde eu corri"), o estilo com melhor leitura é **satélite**, não relevo: em cidades planas como Natal o hillshade quase não aparece.
 
 - **Fonte:** Esri World Imagery (`server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}`), raster JPEG, `maxzoom` 19.
@@ -317,3 +331,32 @@ Para o público do story ("onde eu corri"), o estilo com melhor leitura é **sat
 - **Tratamento:** `raster-brightness-max` 0,92, `raster-contrast` 0,15 e `raster-saturation` −0,2 aproximam a imagem do tom do app.
 - **Atribuição:** “Imagery © Esri · Data © OpenStreetMap” no frame.
 - **Licença (atenção para produção):** o uso pessoal do World Imagery com atribuição é aceitável para o MVP; antes de publicar o app, revisar os termos da Esri ou migrar para um provedor com chave e restrição por pacote (MapTiler/Mapbox). O `StoryMapStyle` isola essa troca em um único ponto.
+
+## Addendum — 2026-11-13: correções de projeção, licença e versão do mapa
+
+Este addendum corrige três conclusões que envelheceram mal neste ADR. Nenhuma
+coordenada muda de lugar; ele apenas alinha a documentação ao que existe no
+código e às decisões do ADR 0040.
+
+1. **Projeção:** o `MapSnapshotter` não expõe `Projection`, mas o objeto
+   `MapSnapshot` entregue no callback expõe
+   `pixelForLatLng(LatLng): PointF` e `latLngForPixel(PointF): LatLng`
+   (confirmado por `javap` no AAR 12.3.1 em 13/11/2026). A rota pode ser
+   desenhada com a matriz exata do mapa, inclusive em snapshot inclinado. O
+   port `StoryMapProjection` deixa de ser o caminho principal e fica apenas
+   como fallback/teste de paridade (MAP-02/MAP-03 do plano).
+2. **Google Maps:** a rejeição é **legal**, não de custo. Os Termos do Google
+   Maps Platform proíbem exportar/extrair o conteúdo para uso fora do serviço;
+   um MP4 é exatamente isso. O caminho do MVP é OSM/OpenFreeMap + estilo
+   autoral; Mapbox e MapTiler também ficam fora do MVP (ADR 0040 §2.4).
+3. **Versão do MapLibre:** o app continua em **12.3.1 (OpenGL)**. O
+   `android-sdk-opengl:13.7.1` é a decisão **pendente do Sprint B** (menor
+   `.so`, `pixelForLatLng`, PMTiles), condicionada a spike e validação em
+   aparelho. Este ADR **não** afirma que o upgrade já foi feito; se ele falhar,
+   a contingência é permanecer em 12.3.1 com o port de projeção.
+4. **Satélite:** o estilo Esri fica **fora do MVP** por licença comercial em
+   revisão. Nenhuma opção de satélite aparece no fluxo padrão; o valor do enum
+   permanece apenas para compatibilidade de jobs antigos.
+5. **Formato e duração:** 9:16 continua sendo o vídeo do MVP; o pôster 4:5 é
+   uma composição separada. Duração e métricas passam a vir da `StoryRecipe`
+   (ADR 0040 §2.1), não desta decisão de arquitetura.

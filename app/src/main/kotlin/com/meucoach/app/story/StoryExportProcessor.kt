@@ -3,6 +3,9 @@ package com.meucoach.app.story
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.SystemClock
+import com.meucoach.core.domain.story.StoryMapStyle
+import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StoryRecipe
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,12 +41,13 @@ class StoryExportProcessor @Inject constructor(
      */
     suspend fun export(
         activityId: String,
+        recipe: StoryRecipe,
         palette: StoryPalette,
         mapPath: String?,
         onProgress: suspend (fraction: Float, etaSec: Int?) -> Unit,
         atMs: () -> Long = { SystemClock.elapsedRealtime() },
     ): StoryExportOutcome {
-        val plan = planLoader.load(activityId) ?: return StoryExportOutcome.Failed(StoryMessages.MISSING_GPS)
+        val plan = planLoader.load(activityId, recipe) ?: return StoryExportOutcome.Failed(StoryMessages.MISSING_GPS)
         val mapBackground = mapBackground(
             plan,
             mapPath,
@@ -67,6 +71,7 @@ class StoryExportProcessor @Inject constructor(
         val result = exporter.export(
             plan = plan,
             palette = palette,
+            recipe = recipe,
             mapBackground = mapBackground,
             overviewMap = overviewMap,
         ) { fraction ->

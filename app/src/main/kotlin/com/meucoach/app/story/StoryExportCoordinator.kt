@@ -8,6 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.meucoach.core.domain.story.StoryRecipe
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,7 @@ interface StoryExportCoordinator {
      */
     suspend fun start(
         activityId: String,
+        recipe: StoryRecipe,
         mapBackground: Bitmap?,
         palette: StoryPalette,
         isCancelled: () -> Boolean = { false },
@@ -43,9 +45,15 @@ interface StoryExportCoordinator {
         fun uniqueName(activityId: String): String = "story-export-$activityId"
 
         /** Work input as a pure function: WorkInfo does not expose it for tests. */
-        internal fun buildInput(activityId: String, mapPath: String?, palette: StoryPalette): Data = Data.Builder()
+        internal fun buildInput(
+            activityId: String,
+            recipe: StoryRecipe,
+            mapPath: String?,
+            palette: StoryPalette,
+        ): Data = Data.Builder()
             .putString(StoryExportWorker.KEY_ACTIVITY_ID, activityId)
             .putString(StoryExportWorker.KEY_MAP_PATH, mapPath)
+            .putString(StoryExportWorker.KEY_RECIPE_JSON, StoryRecipeCodec.encode(recipe))
             .putIntArray(StoryPaletteCodec.KEY, StoryPaletteCodec.encode(palette))
             .build()
     }
@@ -66,6 +74,7 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
 ) : StoryExportCoordinator {
     override suspend fun start(
         activityId: String,
+        recipe: StoryRecipe,
         mapBackground: Bitmap?,
         palette: StoryPalette,
         isCancelled: () -> Boolean,
@@ -77,7 +86,7 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
             return
         }
         val request = OneTimeWorkRequestBuilder<StoryExportWorker>()
-            .setInputData(StoryExportCoordinator.buildInput(activityId, mapFile?.absolutePath, palette))
+            .setInputData(StoryExportCoordinator.buildInput(activityId, recipe, mapFile?.absolutePath, palette))
             // The retry path re-downloads the map; dictionary backoff suits a tile fetch.
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_MS, TimeUnit.MILLISECONDS)
             .addTag(StoryExportWorker.TAG)

@@ -6,6 +6,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
+import com.meucoach.core.domain.story.BoundingBox
+import com.meucoach.core.domain.story.StoryMapStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +34,7 @@ interface MapBackgroundRenderer {
         boundingBox: BoundingBox,
         width: Int,
         height: Int,
-        style: StoryMapStyle = StoryMapStyle.CLASSIC,
+        style: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
         pitchDegrees: Float = StoryMapScript.FOLLOW_PITCH_DEGREES,
         bearingDegrees: Float = 0f,
     ): Bitmap

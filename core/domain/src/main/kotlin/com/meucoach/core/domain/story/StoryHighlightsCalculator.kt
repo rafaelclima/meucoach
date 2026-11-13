@@ -1,4 +1,4 @@
-package com.meucoach.app.story
+package com.meucoach.core.domain.story
 
 import com.meucoach.core.model.Pace
 import java.util.Locale
@@ -25,11 +25,11 @@ object StoryHighlightsCalculator {
     private const val CONSISTENT_SPREAD = 0.05
 
     fun calculate(plan: StoryPlan): StoryHighlights {
-        val splits = plan.splits.filter { it.pace.secondsPerKm > 0 }
+        val splits = plan.allSplits.ifEmpty { plan.splits }.filter { it.pace.secondsPerKm > 0 }
         if (splits.size < 2) {
             return StoryHighlights(
                 headline = "CORRIDA CONCLUÍDA",
-                proof = plan.durationTotalSec.takeIf { it > 0 }?.let { "em ${formatDuration(it)}" },
+                proof = plan.durationTotalSec.takeIf { it > 0 }?.let { "em ${formatStoryDuration(it)}" },
                 fastestKm = splits.firstOrNull()?.km,
                 fastestPace = splits.firstOrNull()?.pace,
                 closingLine = "Cada corrida conta.",
@@ -73,10 +73,4 @@ object StoryHighlightsCalculator {
     }
 
     private fun Pace.format(): String = String.format(PT_BR, "%d:%02d/km", secondsPerKm / 60, secondsPerKm % 60)
-
-    private fun formatDuration(totalSec: Int): String {
-        val minutes = totalSec / 60
-        val seconds = totalSec % 60
-        return String.format(PT_BR, "%d:%02d", minutes, seconds)
-    }
 }

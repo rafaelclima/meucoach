@@ -1,4 +1,4 @@
-package com.meucoach.app.story
+package com.meucoach.core.domain.story
 
 import com.meucoach.core.model.Pace
 import org.assertj.core.api.Assertions.assertThat
@@ -74,22 +74,24 @@ class StoryHighlightsCalculatorTest {
 
     private fun plan(splits: List<Pair<Int, Int>>, averagePace: Int): StoryPlan {
         val distanceKm = splits.size.toDouble()
+        val storySplits = splits.map { (km, seconds) ->
+            StorySplit(
+                km = km,
+                pace = Pace.fromSecondsPerKm(seconds),
+                heartRate = 150,
+                progress = km / distanceKm.toFloat(),
+            )
+        }
         return StoryPlan(
-            route = com.meucoach.app.ui.activitydetail.RouteData(
+            route = RouteData(
                 points = listOf(
-                    com.meucoach.app.ui.activitydetail.RoutePoint(0f, 0f),
-                    com.meucoach.app.ui.activitydetail.RoutePoint(1f, 1f),
+                    RoutePoint(0f, 0f),
+                    RoutePoint(1f, 1f),
                 ),
             ),
-            splits = splits.map { (km, seconds) ->
-                StorySplit(
-                    km = km,
-                    pace = Pace.fromSecondsPerKm(seconds),
-                    heartRate = 150,
-                    calories = 60,
-                    progress = km / distanceKm.toFloat(),
-                )
-            },
+            splits = storySplits,
+            allSplits = storySplits,
+            splitBar = StorySplitBarCalculator.calculate(storySplits, storySplits.map { it.km }.toSet()),
             segments = emptyList(),
             durationSec = 30f,
             distanceKm = distanceKm,

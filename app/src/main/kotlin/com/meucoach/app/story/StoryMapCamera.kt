@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.BoundingBox
 import kotlin.math.PI
 import kotlin.math.atan
 import kotlin.math.exp

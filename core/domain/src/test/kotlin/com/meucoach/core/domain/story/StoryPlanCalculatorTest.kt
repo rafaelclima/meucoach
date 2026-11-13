@@ -1,8 +1,7 @@
-package com.meucoach.app.story
+package com.meucoach.core.domain.story
 
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WorkoutType
-import com.meucoach.core.domain.story.StoryVerdictTone
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.HeartRateZone
@@ -33,9 +32,11 @@ class StoryPlanCalculatorTest {
 
         assertThat(plan).isNotNull
         assertThat(plan!!.splits).hasSize(2)
+        assertThat(plan.allSplits).hasSize(2)
+        assertThat(plan.splitBar.segments).hasSize(2)
+        assertThat(plan.splitBar.segments.map { it.hasCard }).containsOnly(true)
         assertThat(plan.splits.first().pace).isEqualTo(Pace.fromSecondsPerKm(360))
         assertThat(plan.splits.first().heartRate).isEqualTo(148)
-        assertThat(plan.splits.first().calories).isEqualTo(70)
         assertThat(plan.splits[1].progress).isGreaterThan(0.99f)
         assertThat(plan.segments.count { it.type == StorySegmentType.CARD }).isEqualTo(2)
         assertThat(plan.segments.first().startSec).isEqualTo(0f)
