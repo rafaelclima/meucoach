@@ -78,6 +78,45 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `subjective-only load downgrades planned quality citing perceived effort (ADR 0039)`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, subjectiveDaysInWindow = 12),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.rationale).contains("esforço percebido")
+        assertThat(prescription.ruleIds).contains("R-LOAD-04")
+        assertThat(prescription.ruleIds).contains("R-DATA-01")
+        assertThat(ExplanationCatalog.hasRule("R-LOAD-04")).isTrue()
+    }
+
+    @Test
+    fun `an easy day with subjective-only load cites the perceived-effort rule (ADR 0039)`() {
+        val prescription = engine.prescribe(
+            input(
+                planned = easySession(durationMin = 40),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, subjectiveDaysInWindow = 12),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.ruleIds).contains("R-LOAD-04")
+    }
+
+    @Test
     fun `non beginner planned quality today keeps the strong session`() {
         val plan = planWithQuality()
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
@@ -753,7 +792,12 @@ class DailyPrescriptionEngineTest {
         weeklyAvailability = WeeklyAvailability(availability),
     )
 
-    private fun load(acwr: Double?, daysWithLoad: Int = 12, sourceFresh: Boolean = true): LoadSnapshot {
+    private fun load(
+        acwr: Double?,
+        daysWithLoad: Int = 12,
+        sourceFresh: Boolean = true,
+        subjectiveDaysInWindow: Int = 0,
+    ): LoadSnapshot {
         val daysWithoutActivity = if (sourceFresh) 28 - daysWithLoad else 0
         val daysWithoutData = if (sourceFresh) 0 else 28 - daysWithLoad
         return LoadSnapshot(
@@ -776,6 +820,7 @@ class DailyPrescriptionEngineTest {
                 lastActivityAt = null,
                 sourceFresh = sourceFresh,
             ),
+            subjectiveDaysInWindow = subjectiveDaysInWindow,
         )
     }
 }

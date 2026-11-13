@@ -753,6 +753,36 @@ class WeeklyPlanGeneratorTest {
     // --- Volume progression (ADR 0038, FR-004) -------------------------------
 
     @Test
+    fun `subjective-only load conserves volume and never grows it (ADR 0039)`() {
+        val profile = profile(
+            experience = Experience.INTERMEDIATE,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.FRIDAY to 40,
+                DayOfWeek.SUNDAY to 90,
+            ),
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, subjectiveDaysInWindow = 12),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        // D5: sRPE conserves — the base week is kept, never accelerated.
+        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        assertThat(plan.rationale).doesNotContain("+6%")
+        assertThat(plan.rationale).contains("esforço percebido")
+        assertThat(plan.ruleIds).contains("R-LOAD-04")
+        assertThat(ExplanationCatalog.hasRule("R-LOAD-04")).isTrue()
+    }
+
+    @Test
     fun `grows six percent over the completed week instead of the availability`() {
         val profile = profile(
             experience = Experience.INTERMEDIATE,
@@ -1610,7 +1640,12 @@ class WeeklyPlanGeneratorTest {
         treadmillAccess = treadmillAccess,
     )
 
-    private fun load(acwr: Double?, daysWithLoad: Int = 12, sourceFresh: Boolean = true) = LoadSnapshot(
+    private fun load(
+        acwr: Double?,
+        daysWithLoad: Int = 12,
+        sourceFresh: Boolean = true,
+        subjectiveDaysInWindow: Int = 0,
+    ) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
         atlSeries = emptyList(),
@@ -1623,6 +1658,7 @@ class WeeklyPlanGeneratorTest {
         monotony = null,
         missingDays = 28 - daysWithLoad,
         coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
+        subjectiveDaysInWindow = subjectiveDaysInWindow,
     )
 
     private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {

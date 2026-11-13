@@ -152,7 +152,7 @@ O app exibe 5 zonas, mas mede a distribuição em 3 para o alvo 80/20.
 | **Monotonia** | `média diária / desvio-padrão` | Semana monótona = risco |
 | **Strain** | `carga semanal × monotonia` | Combinação de volume e monotonia |
 
-**Importante:** TRIMP e rTSS medem coisas diferentes e não são somados. O app mostra os dois e usa TRIMP como principal quando a FC é confiável; rTSS quando só o pace é confiável. Na série diária do PMC, cada dia recebe um único métrico: TRIMP se houver FC válida; caso contrário, rTSS; sem nenhum dos dois, o dia fica sem carga (não vira zero silencioso).
+**Importante:** TRIMP e rTSS medem coisas diferentes e não são somados. O app mostra os dois e usa TRIMP como principal quando a FC é confiável; rTSS quando só o pace é confiável. Na série diária do PMC, cada dia recebe um único métrico: TRIMP se houver FC válida; caso contrário, rTSS; caso contrário, **sRPE de Foster (`RPE × minutos`, `R-LOAD-04`, `EV-FOSTER-2001`, ADR 0039)** quando houver execução com RPE registrada e nenhuma métrica objetiva no dia; sem nenhum, o dia fica sem carga (não vira zero silencioso). A carga sRPE é **subjetiva**: conserva (alimenta ACWR e guardrails de redução), mas nunca libera aumento de volume ou qualidade — essas decisões exigem carga objetiva (`objectiveDataState`), e a fração subjetiva da janela de 28 dias é declarada (`subjectiveDaysInWindow`).
 
 Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pontos ≈ 1 hora no limiar para o rTSS; no TRIMP, uma hora fácil rende menos e uma hora forte rende mais. O número serve para comparar o atleta com ele mesmo ao longo do tempo, nunca entre pessoas diferentes.
 
@@ -276,7 +276,7 @@ Crescer exige **todas** as condições:
 - a base é a semana imediatamente anterior e ela foi concluída ≥ 80% com
   evidência forte (um clique não conta, `ADR 0024`);
 - prontidão verde, sem doença/lesão, sono curto ou `NO_QUALITY`;
-- carga conhecida e ACWR entre 0,8 e 1,3 (`R-LOAD-03`);
+- carga **objetiva** conhecida (TRIMP/rTSS) e ACWR entre 0,8 e 1,3 (`R-LOAD-03`); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039);
 - a semana de destino não é deload, taper, semana de prova ou recuperação.
 
 Fora disso o alvo é **mantido**; uma semana fraca nunca reduz o plano por conta
@@ -557,6 +557,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
 | `R-LOAD-03` | ACWR é flag, nunca meta; fora de 0,8–1,3 bloqueia qualidade/progressão; >1,5 é alerta | GABBETT, IMPELLIZZERI | LIMITED |
+| `R-LOAD-04` | sRPE (`RPE × min`) preenche o dia sem FC/pace; subjetiva: conserva, nunca libera aumento | FOSTER | LIMITED |
 | `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
 | `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |

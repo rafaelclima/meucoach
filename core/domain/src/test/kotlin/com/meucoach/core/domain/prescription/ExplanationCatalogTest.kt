@@ -13,6 +13,7 @@ class ExplanationCatalogTest {
             "R-READY-03",
             "R-READY-04",
             "R-LOAD-03",
+            "R-LOAD-04",
             "R-PLAN-02",
             "R-PLAN-03",
             "R-PLAN-04",

@@ -59,7 +59,7 @@ data class PrescriptionTargets(
  * prescription, so the plan intent and the day decision cannot disagree.
  */
 internal object PrescriptionPolicy {
-    const val ENGINE_VERSION = "daily-prescription-v4"
+    const val ENGINE_VERSION = "daily-prescription-v5"
     const val MIN_EASY_MINUTES = 20
     const val REDUCE_FACTOR = 0.8
     const val DOWNGRADE_FACTOR = 0.7

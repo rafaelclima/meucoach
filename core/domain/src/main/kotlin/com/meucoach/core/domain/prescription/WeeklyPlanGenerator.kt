@@ -211,7 +211,10 @@ class WeeklyPlanGenerator {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
         } || input.readiness.level != ReadinessLevel.GREEN
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
-        val loadTrusted = loadState == LoadDataState.KNOWN
+        // D5 (ADR 0039): trust for quality/progression is objective load only.
+        // Subjective sRPE keeps ACWR and guardrails alive but never licenses
+        // quality or volume growth.
+        val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
         val acwr = input.load?.acwr
         val acwrInRange = acwr != null && acwr in ACWR_MIN..ACWR_MAX
         val qualityAllowed = !safetyBlock &&
@@ -423,6 +426,10 @@ class WeeklyPlanGenerator {
                             "faltam dados de carga: são necessários ${LoadSnapshot.MIN_DAYS_WITH_LOAD} " +
                                 "dias com carga em 28."
 
+                        loadState == LoadDataState.KNOWN && !loadTrusted ->
+                            "sua carga recente vem do esforço percebido: treino forte precisa " +
+                                "de carga medida por FC ou ritmo."
+
                         acwr != null && acwr > ACWR_MAX -> "sua carga subiu rápido."
 
                         acwr != null && acwr < ACWR_MIN -> "sua carga recente está baixa."
@@ -455,6 +462,7 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-06")
                 if (volumeDecision.hasHistory) add("R-PLAN-01")
                 if (!loadTrusted) add("R-DATA-01")
+                if (loadState == LoadDataState.KNOWN && !loadTrusted) add("R-LOAD-04")
                 if (loadTrusted && !acwrInRange) add("R-LOAD-03")
                 if (recoveryActive) add("R-RACE-04")
                 if (raceGoalWithoutDate) add("R-PLAN-11")
@@ -470,6 +478,7 @@ class WeeklyPlanGenerator {
                 if (!loadTrusted || (loadTrusted && !acwrInRange)) {
                     add("EV-IMPELLIZZERI-2020")
                 }
+                if (loadState == LoadDataState.KNOWN && !loadTrusted) add("EV-FOSTER-2001")
                 if (taperActive) {
                     add("EV-BOSQUET-2007")
                     add("EV-MUJIKA-2003")
@@ -739,7 +748,7 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v4"
+        const val ENGINE_VERSION = "weekly-plan-v5"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MIN_EASY_MIN = 20

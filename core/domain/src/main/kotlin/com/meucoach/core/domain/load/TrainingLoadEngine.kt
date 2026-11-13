@@ -22,6 +22,20 @@ data class LoadActivity(
 enum class LoadMetric {
     RTSS,
     TRIMP,
+    SRPE,
+}
+
+/**
+ * A subjectively logged execution (ADR 0039): duration in whole minutes and the
+ * perceived effort (RPE 1-10) the athlete reported. It feeds the SRPE tier of
+ * the load series — `sRPE = RPE × minutes` (Foster, EV-FOSTER-2001) — and never
+ * replaces an objective metric.
+ */
+data class LoadExecution(val date: LocalDate, val durationMin: Int, val rpe: Int) {
+    init {
+        require(durationMin > 0) { "Execution duration must be positive" }
+        require(rpe in 1..10) { "RPE must be between 1 and 10" }
+    }
 }
 
 /** Whether the load series can be trusted for a quality/progression decision. */
@@ -34,10 +48,16 @@ enum class LoadDataState {
 /**
  * Freshness of the activity source. A day without activity is only rest when
  * the source is fresh; otherwise it is missing data, not a physiological zero.
+ *
+ * The source has two lifelines (ADR 0039): the last import **or** the last
+ * subjectively logged execution with RPE. Either within [maxAgeDays] of
+ * [checkedAt] keeps the source fresh — declaring effort is declaring what
+ * happened, even if less precisely than a file import.
  */
 data class ActivitySourceStatus(
     val lastImportedAt: Instant?,
     val checkedAt: Instant,
+    val lastSubjectiveLogAt: Instant? = null,
     val maxAgeDays: Long = DEFAULT_MAX_AGE_DAYS,
 ) {
     init {
@@ -45,8 +65,15 @@ data class ActivitySourceStatus(
     }
 
     val isFresh: Boolean
-        get() = lastImportedAt != null &&
-            !lastImportedAt.isBefore(checkedAt.minus(Duration.ofDays(maxAgeDays)))
+        get() {
+            val lastEvent = when {
+                lastImportedAt == null -> lastSubjectiveLogAt
+                lastSubjectiveLogAt == null -> lastImportedAt
+                else -> maxOf(lastImportedAt, lastSubjectiveLogAt)
+            }
+            return lastEvent != null &&
+                !lastEvent.isBefore(checkedAt.minus(Duration.ofDays(maxAgeDays)))
+        }
 
     companion object {
         const val DEFAULT_MAX_AGE_DAYS = 14L
@@ -100,8 +127,18 @@ data class LoadSnapshot(
     val monotony: Double?,
     val missingDays: Int,
     val coverage: LoadCoverage,
+    /** Days in the 28-day window whose load came from subjective sRPE (ADR 0039). */
+    val subjectiveDaysInWindow: Int = 0,
 ) {
     val hasData: Boolean get() = daily.any { it.metric != null }
+
+    /**
+     * Days with an objective metric (TRIMP/rTSS). Subjective load conserves —
+     * it never licenses progression — so quality and volume gates decide on
+     * this number, not on [LoadCoverage.daysWithLoad] (ADR 0039).
+     */
+    val objectiveDaysWithLoad: Int
+        get() = coverage.daysWithLoad - subjectiveDaysInWindow
 
     /**
      * ACWR is never a permission. When coverage or freshness is missing the
@@ -121,6 +158,19 @@ data class LoadSnapshot(
             else -> LoadDataState.KNOWN
         }
 
+    /**
+     * [dataState] restricted to objective metrics. Subjective-only load keeps
+     * guardrails alive ([dataState] can be KNOWN) but never satisfies the
+     * objective bar for quality or volume growth (ADR 0039, D5).
+     */
+    val objectiveDataState: LoadDataState
+        get() = when {
+            subjectiveDaysInWindow == 0 -> dataState
+            !coverage.sourceFresh -> LoadDataState.STALE
+            objectiveDaysWithLoad < MIN_DAYS_WITH_LOAD -> LoadDataState.INSUFFICIENT
+            else -> LoadDataState.KNOWN
+        }
+
     /** Daily training stress balance: base minus fatigue, same unit as the other PMC series. */
     val tsbSeries: List<Double>
         get() = ctlSeries.zip(atlSeries) { ctl, atl -> TrainingLoadCalculator.tsb(ctl, atl) }
@@ -134,9 +184,10 @@ data class LoadSnapshot(
 /**
  * Builds the daily load series for the PMC.
  *
- * rTSS is preferred when pace and threshold pace exist; TRIMP is the fallback
- * when heart-rate reserve data is available. The two metrics are never summed
- * in the same day (R-LOAD-01).
+ * One metric per day, never summed (R-LOAD-01), in this order: TRIMP when
+ * heart-rate reserve data is available; rTSS when only pace and threshold pace
+ * exist; SRPE (`RPE × minutes`, Foster) only when neither objective metric
+ * applies (ADR 0039) — subjective load conserves, it never licenses progression.
  *
  * CTL/ATL are exponential moving averages: their value depends on the load
  * before the displayed window. The engine therefore feeds a bounded warm-up
@@ -156,17 +207,28 @@ class TrainingLoadEngine {
         sourceStatus: ActivitySourceStatus,
         days: Int = 42,
         warmupDays: Int = DEFAULT_WARMUP_DAYS,
+        executions: List<LoadExecution> = emptyList(),
     ): LoadSnapshot {
         require(days >= 28) { "Load series needs at least 28 days" }
         require(warmupDays >= 0) { "Warm-up days must not be negative" }
         val displayStart = today.minusDays(days - 1L)
         val seriesStart = displayStart.minusDays(warmupDays.toLong())
-        val filtered = activities.filter { !it.date.isBefore(seriesStart) && !it.date.isAfter(today) }
+        val inWindow: (LocalDate) -> Boolean = { date ->
+            !date.isBefore(seriesStart) && !date.isAfter(today)
+        }
+        val filtered = activities.filter { inWindow(it.date) }
         val byDate = filtered.groupBy { it.date }
+        val filteredExecutions = executions.filter { inWindow(it.date) }
+        val executionsByDate = filteredExecutions.groupBy { it.date }
 
         val fullSeries = (0 until days + warmupDays).map { offset ->
             val date = seriesStart.plusDays(offset.toLong())
-            estimate(byDate[date].orEmpty(), profile, date)
+            estimate(
+                activities = byDate[date].orEmpty(),
+                executions = executionsByDate[date].orEmpty(),
+                profile = profile,
+                date = date,
+            )
         }
         val daily = fullSeries.takeLast(days)
         val loads = fullSeries.map { it.load }
@@ -190,6 +252,7 @@ class TrainingLoadEngine {
         } else {
             null
         }
+        val subjectiveDaysInWindow = coverageCount(daily, today) { it.metric == LoadMetric.SRPE }
 
         return LoadSnapshot(
             daily = daily,
@@ -204,7 +267,13 @@ class TrainingLoadEngine {
             monotony = TrainingLoadCalculator.monotony(last7),
             missingDays = daily.count { it.metric == null },
             coverage = coverage,
+            subjectiveDaysInWindow = subjectiveDaysInWindow,
         )
+    }
+
+    private fun coverageCount(daily: List<DailyLoad>, today: LocalDate, predicate: (DailyLoad) -> Boolean): Int {
+        val windowStart = today.minusDays(COVERAGE_DAYS - 1L)
+        return daily.count { !it.date.isBefore(windowStart) && predicate(it) }
     }
 
     private fun coverage(
@@ -242,7 +311,12 @@ class TrainingLoadEngine {
         )
     }
 
-    private fun estimate(activities: List<LoadActivity>, profile: AthleteProfile, date: LocalDate): DailyLoad {
+    private fun estimate(
+        activities: List<LoadActivity>,
+        executions: List<LoadExecution>,
+        profile: AthleteProfile,
+        date: LocalDate,
+    ): DailyLoad {
         val resting = profile.restingHeartRate
         val max = profile.maxHeartRateObserved
         val trimp = if (resting == null || max == null) {
@@ -283,8 +357,16 @@ class TrainingLoadEngine {
                 .takeIf { it.isNotEmpty() }
                 ?.sum()
         }
-        return if (rtss != null) {
-            DailyLoad(date, rtss, LoadMetric.RTSS)
+        if (rtss != null) return DailyLoad(date, rtss, LoadMetric.RTSS)
+
+        // Third tier (ADR 0039): perceived effort fills the day only when no
+        // objective metric does — never on top of TRIMP/rTSS (R-LOAD-01).
+        val srpe = executions
+            .map { TrainingLoadCalculator.srpe(rpe = it.rpe, durationMin = it.durationMin) }
+            .takeIf { it.isNotEmpty() }
+            ?.sum()
+        return if (srpe != null) {
+            DailyLoad(date, srpe, LoadMetric.SRPE)
         } else {
             DailyLoad(date, 0.0, null)
         }

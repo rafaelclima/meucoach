@@ -5,10 +5,12 @@
 ADR 0026 (limiares de carga) · ADR 0038 (progressão de volume) · ADR 0033 (comparação planejado × executado)
 **Código atual:** `TrainingLoadCalculator.srpe()` existe e é testada, mas nenhuma execução alimenta o motor de carga.
 
-> **Não implementar antes do usuário 0 aprovar as decisões D1–D9.** Cada decisão
-> traz opções com consequência explícita; a recomendação é a leitura do
-> desenho, não a palavra final. O gate de aprovação vale como nas entregas
-> anteriores (C3-07, D6-B).
+> **✅ APROVADO pelo usuário 0 em 13/11/2026:** D1–D9 conforme recomendado, com
+> duas confirmações explícitas: (1) D5 — sRPE só conserva, nunca acelera;
+> (2) D2 — coletar RPE opcional no fechamento com corrida vinculada, porque
+> "se o arquivo não contém a informação, é importante saber como o usuário
+> *sentiu* a intensidade". Implementação segue em fatias; ADR 0039 registra
+> as decisões.
 
 ---
 

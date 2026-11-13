@@ -20,6 +20,10 @@ object ExplanationCatalog {
         "R-READY-03" to RuleExplanation("R-READY-03", "Prontidão limita a intensidade"),
         "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
         "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
+        "R-LOAD-04" to RuleExplanation(
+            "R-LOAD-04",
+            "Carga estimada pelo esforço percebido: conserva, nunca libera aumento",
+        ),
         "R-PLAN-02" to RuleExplanation("R-PLAN-02", "No máximo 2 treinos fortes por semana"),
         "R-PLAN-03" to RuleExplanation("R-PLAN-03", "Longão entre 25–30% do volume semanal"),
         "R-PLAN-04" to RuleExplanation("R-PLAN-04", "Semana de descarga a cada 4 semanas"),
@@ -102,6 +106,11 @@ object ExplanationCatalog {
             "EV-IMPELLIZZERI-2020",
             "Limitações do ACWR",
             "Impellizzeri et al., Sports Med 2020",
+        ),
+        "EV-FOSTER-2001" to EvidenceExplanation(
+            "EV-FOSTER-2001",
+            "Carga pelo esforço percebido (sRPE)",
+            "Foster et al., JSCR 2001",
         ),
         "EV-ELY-2007" to EvidenceExplanation(
             "EV-ELY-2007",

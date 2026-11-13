@@ -288,12 +288,17 @@ A regra de auto-conclusão é do domínio (`RaceAutoCompletionRule`), não da ta
 `completionSource` audita a inferência; `reopenAutoCompleted` volta a `PLANNED` e
 limpa o vínculo. A corrida vinculada continua uma `Activity` normal.
 
-### 3.9 `SessionFeedback` — **planejado, não implementado**
+### 3.9 RPE e carga subjetiva (ADR 0039)
 
-`activityId`, `rpe` (1–10), `feeling` (1–5), `notes`, `createdAt`. Não existe
-tabela no schema v14; o RPE coletado hoje é o de `SessionExecution` (`MANUAL`) e
-o RPE pós-treino por atividade segue no roadmap (FR-013). sRPE não é usado como
-fonte de carga neste ciclo.
+O RPE vive em `session_executions.rpe` (1–10, nullable; obrigatório em
+`MANUAL` — ADR 0024) e alimenta a série de carga como **sRPE** (`RPE × min`,
+Foster): terceiro nível de carga (`TRIMP > rTSS > SRPE`), usado apenas quando
+não há FC/pace objetivos no dia, declarado em `LoadSnapshot.subjectiveDaysInWindow`
+e governado por `R-LOAD-04` — subjetivo **conserva, nunca libera aumento**. A
+coleção de RPE no fechamento com corrida vinculada (fatia 2) grava nessa mesma
+coluna, sem migração. A tabela `SessionFeedback` (`activityId`, `rpe`, `feeling`,
+`notes`, `createdAt`) segue **planejada, não implementada**; se o fluxo atual de
+execuções continuar suficiente, pode não existir nunca.
 
 ### 3.10 Evidências e regras
 

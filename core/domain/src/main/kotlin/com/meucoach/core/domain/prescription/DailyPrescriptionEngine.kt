@@ -60,9 +60,15 @@ class DailyPrescriptionEngine {
         }
 
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
-        val loadTrusted = loadState == LoadDataState.KNOWN
+        // D5 (ADR 0039): trust for quality is objective load only; subjective
+        // sRPE keeps ACWR and reduction guardrails alive but never unlocks a
+        // strong session.
+        val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
+        val subjectiveOnlyLoad = loadState == LoadDataState.KNOWN && !loadTrusted
         val acwr = input.load?.acwr
-        val acwrHigh = loadTrusted && acwr != null && acwr > ACWR_MAX
+        // ACWR comes from the full series (objective + subjective): a high
+        // subjective load must still trigger the reduction guardrail.
+        val acwrHigh = loadState == LoadDataState.KNOWN && acwr != null && acwr > ACWR_MAX
         val acwrBlocked = loadTrusted && (acwr == null || acwr !in ACWR_MIN..ACWR_MAX)
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         // Missing data lowers confidence and blocks quality, but it is not bad
@@ -91,7 +97,7 @@ class DailyPrescriptionEngine {
             safetyReduce || absenceOnly || !loadTrusted || acwrBlocked || acwrHigh ||
                 beginnerGuard || recoveryGuard
         val safetyReasons = safetyReasons(input, shortSleep, negativeReadiness, absenceOnly)
-        val qualityReasons = qualityReasons(loadState, acwrHigh, acwrBlocked)
+        val qualityReasons = qualityReasons(loadState, loadTrusted, acwrHigh, acwrBlocked)
         val guardReasons = buildList {
             if (beginnerGuard) add(BEGINNER_REASON)
             if (recoveryGuard && recoveryReason != null) add(recoveryReason)
@@ -104,6 +110,10 @@ class DailyPrescriptionEngine {
         if (!loadTrusted) {
             rules += "R-DATA-01"
             evidence += "EV-IMPELLIZZERI-2020"
+        }
+        if (subjectiveOnlyLoad) {
+            rules += "R-LOAD-04"
+            evidence += "EV-FOSTER-2001"
         }
 
         return when (planned.type) {
@@ -444,16 +454,24 @@ class DailyPrescriptionEngine {
         if (absenceOnly) add("faltam dados de recuperação")
     }
 
-    private fun qualityReasons(loadState: LoadDataState, acwrHigh: Boolean, acwrBlocked: Boolean): List<String> =
-        buildList {
-            when (loadState) {
-                LoadDataState.STALE -> add("dados de carga desatualizados")
-                LoadDataState.INSUFFICIENT -> add("faltam dados de carga das últimas 4 semanas")
-                LoadDataState.KNOWN -> Unit
-            }
-            if (acwrHigh) add("sua carga subiu rápido")
-            if (acwrBlocked && loadState == LoadDataState.KNOWN) add("a carga recente está fora da faixa segura")
+    private fun qualityReasons(
+        loadState: LoadDataState,
+        loadTrusted: Boolean,
+        acwrHigh: Boolean,
+        acwrBlocked: Boolean,
+    ): List<String> = buildList {
+        when (loadState) {
+            LoadDataState.STALE -> add("dados de carga desatualizados")
+
+            LoadDataState.INSUFFICIENT -> add("faltam dados de carga das últimas 4 semanas")
+
+            // Subjective-only load (ADR 0039): the series is known, but it is
+            // perceived effort, not an objective metric.
+            LoadDataState.KNOWN -> if (!loadTrusted) add("carga recente vem do esforço percebido")
         }
+        if (acwrHigh) add("sua carga subiu rápido")
+        if (acwrBlocked && loadState == LoadDataState.KNOWN) add("a carga recente está fora da faixa segura")
+    }
 
     private fun readinessRules(negativeReadiness: Boolean, shortSleep: Boolean): List<String> = buildList {
         if (negativeReadiness) add("R-READY-03")

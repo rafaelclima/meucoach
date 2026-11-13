@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.39 · **Data:** 13/11/2026 · **Mudança:** gates de qualidade de build concluídos (T-02/T-03/T-05): Detekt bloqueante com baseline por módulo, Kover em `core:data` e `:app` e fuzz leve do parser FIT, tudo em `check`. A versão 1.38 registrou o limite de 2 treinos fortes no plano.
+**Versão:** 1.40 · **Data:** 13/11/2026 · **Mudança:** FR-013 fatia 1 concluída — sRPE de Foster entra como 3º nível de carga (`TRIMP > rTSS > SRPE`), com a assimetria "subjetivo conserva, nunca acelera": a trava de volume +6% e a liberação de qualidade passam a exigir carga objetiva; `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039). A versão 1.39 registrou os gates de qualidade de build (T-02/T-03/T-05).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -465,15 +465,25 @@ comparação por splits seguem pendentes.
 - [ ] Rever a relação entre taper e deload.
 - [ ] Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
 
-### FR-013 — Carga subjetiva (sRPE): desenho proposto, aguardando decisão (13/11/2026)
+### FR-013 — Carga subjetiva (sRPE): fatia 1 concluída, fatias 2–3 pendentes (13/11/2026)
 
-Documento de decisões D1–D9 em [`docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`](PLANO_FR013_SRPE_CARGA_SUBJETIVA.md):
-sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`), fonte dual de frescor
-(importação ou execução com RPE), sRPE conta como dia com carga mas **nunca libera
-aumento** (a trava de volume +6% passa a exigir carga objetiva). Sem migração
-(`session_executions.rpe` já existe no v17); versão da prescrição sobe para
-`daily-prescription-v5`. Implementação em 3 fatias **só depois da aprovação do
-usuário 0**. ADR segue na aprovação.
+Decisões D1–D9 **aprovadas pelo usuário 0** em 13/11/2026
+([`docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`](PLANO_FR013_SRPE_CARGA_SUBJETIVA.md));
+[ADR 0039](adr/0039-load-from-subjective-srpe.md) registra a decisão.
+
+**Fatia 1 — motor (concluída):** `LoadMetric.SRPE` como 3º nível
+(`TRIMP > rTSS > SRPE`, uma métrica por dia), `LoadExecution(date, durationMin, rpe)`
+na entrada do `TrainingLoadEngine`, fonte dual de frescor (importação OU execução
+com RPE, teto 14 dias), `subjectiveDaysInWindow`/`objectiveDataState` no snapshot,
+trava objetiva no volume +6% e na qualidade (D5), regra `R-LOAD-04` no catálogo,
+`daily-prescription-v5`/`weekly-plan-v5`, schema v17 sem migração. TDD em
+`core:domain`; `check`/`assembleDebug`/`spotlessCheck`/Kover verdes.
+
+**Pendente:** fatia 2 — coleção de RPE opcional no fechamento com corrida
+vinculada + wiring de `SessionExecution`/executions no `buildLoadSnapshot`
+(`TrainingSignals.kt`, sem migração); fatia 3 — UI/copy (nota "carga estimada
+pelo esforço que você sentiu" no card de carga, RPE no detalhe, `R-LOAD-04` no
+sheet de explicação).
 
 ### N-05 — Backfill do Health Connect (backlog de integração)
 
