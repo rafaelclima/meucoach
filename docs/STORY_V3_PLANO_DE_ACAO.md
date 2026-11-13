@@ -493,7 +493,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] VIS-03 | Card por km | Ritmo + extras por km; “KM 3 · 5:02”; selo quando `FASTEST_KM`; barra com todos os kms | `StoryFrameRenderer.kt` | VIS-02, DOM-05 | G | Sem calorias/km; 10 km → 10 segmentos |
 | [x] VIS-04 | Encerramento | 3 essenciais + 2 extras; manchete/prova; logo/tagline | `StoryFrameRenderer.kt` | VIS-02 | M | 3 essenciais sempre; 2 extras quando escolhidos |
 | [ ] VIS-05 | Pôster 4:5 + capa 9:16 | Rota como arte, tipografia, data, marca | `StoryPosterRenderer.kt` | VIS-01 | M | 1080×1350; sem crop no feed; PNG |
-| [ ] VIS-06 | Prévia 3 frames + scrubber | 540×960; frames abertura/card/final; sem bitmap 42 MB | `StoryStudioScreen.kt`, ViewModel | VIS-02 | M | Troca de frame <100 ms; memória <20 MB |
+| [x] VIS-06 | Prévia 3 frames + scrubber | 540×960; frames abertura/card/final; sem bitmap 42 MB | `StoryStudioSheet.kt`, ViewModel | VIS-02 | M | Troca de frame <100 ms; memória <20 MB |
 | [ ] VIS-07 | Refatorar renderer | `StoryHeaderRenderer`, `StoryCardRenderer`, `StoryFinalRenderer`, `StoryPosterRenderer` | `app/.../story/render/*` | VIS-02 | G | Arquivos <300 linhas; goldens passam |
 | [ ] VIS-08 | Goldens | Essencial/Performance/Fisiológico; 9:16/4:5; 0/1/2 extras; dark/light | `app/src/test/screenshots/*` | VIS-01..05 | M | Roborazzi verde; revisão visual |
 | [ ] VIS-09 | Copy do vídeo | Remover “pronta para o feed” do frame 9:16; 4:5 é a capa | UI strings | VIS-05 | P | Copy correta |
@@ -516,22 +516,22 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 
 | ID | Tarefa | Entrega | Arquivos | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|---|
-| [ ] UI-01 | Story Studio (modal) | Entrada no card, tela com preview e opções | `StoryStudioScreen.kt`, nav | VIS-06 | G | Abre/fecha; back; estado |
-| [ ] UI-02 | Essenciais + extras | Chips fixos; extras 0/2; motivos; presets | `StoryStudioViewModel.kt` | DOM-03, UI-01 | G | 3ª extra bloqueada; dados ausentes |
-| [ ] UI-03 | Duração/mapa/qualidade | Auto/15/30/45/60; Dark/Light/Terrain; Padrão 1080p30 (Suave só após `DEV-04`) | UI | UI-02 | M | Persistência; preview atualiza |
-| [ ] UI-04 | Salvar padrão/reset | Preferência JSON; “restaurar padrão” | `StoryRecipeStore.kt` | DOM-06 | P | Sobrevive a reinício; reset limpa |
-| [ ] UI-05 | Gerar/compartilhar | Preparing/Generating/Done/Error; cancelar; share vídeo/capa/pôster | UI + ViewModel | ENC-07 | G | Fluxo completo; notificação |
+| [x] UI-01 | Story Studio (modal) | Entrada no card, tela com preview e opções | `StoryStudioSheet.kt`, nav | VIS-06 | G | Abre/fecha; back; estado |
+| [x] UI-02 | Essenciais + extras | Chips fixos; extras 0/2; motivos; presets | `ActivityDetailViewModel.kt` | DOM-03, UI-01 | G | 3ª extra bloqueada; dados ausentes |
+| [~] UI-03 | Duração/mapa/qualidade | Auto/15/30/45/60; Dark/Light/Terrain; Padrão 1080p30 (Suave só após `DEV-04`) | UI | UI-02 | M | Persistência ok; prévia desenha a rota (mapa entra no vídeo) |
+| [x] UI-04 | Salvar padrão/reset | Preferência JSON; “restaurar padrão” | `StoryRecipeStore.kt` | DOM-06 | P | Sobrevive a reinício; reset limpa |
+| [~] UI-05 | Gerar/compartilhar | Preparing/Generating/Done/Error; cancelar; share vídeo/capa/pôster | UI + ViewModel | ENC-07 | G | Fluxo completo; pôster 4:5 pendente |
 | [ ] UI-06 | Acessibilidade | 48 dp; TalkBack; seleção anunciada; contraste | UI | UI-04 | M | Testes de a11y; sem cor como único sinal |
 | [ ] UI-07 | Copy | Sem áudio/privacidade; “métricas extras”; “capa 4:5” | strings | UI-05 | P | Revisão de texto |
-| [ ] UI-08 | Remover opções inline antigas | Card só abre o Studio | `ActivityDetailScreen.kt` | UI-01 | P | Sem duplicação |
-| [ ] UI-09 | Testes de UI | Loading/empty/error; presets; 0/1/2 extras | `app/src/test/...` | UI-01..08 | M | Roborazzi/semantics verdes |
+| [x] UI-08 | Remover opções inline antigas | Card só abre o Studio | `ActivityDetailScreen.kt` | UI-01 | P | Sem duplicação |
+| [~] UI-09 | Testes de UI | Loading/empty/error; presets; 0/1/2 extras | `app/src/test/...` | UI-01..08 | M | Studio 0/2 e 2/2 cobertos; falta 4:5 |
 
 ### EPIC 6 — QA e gates
 
 | ID | Tarefa | Entrega | Arquivos | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|---|
 | [x] QA-01 | Testes de domínio | Receita, catálogo, timeline, cards, codec | `core/domain/src/test/.../story/*` | DOM-08 | M | ≥85% linhas |
-| [ ] QA-02 | Goldens | 9:16/4:5; presets; extras; dark/light | screenshots | VIS-08 | M | `verifyRoborazziDebug` verde |
+| [~] QA-02 | Goldens | 9:16/4:5; presets; extras; dark/light | screenshots | VIS-08 | M | Studio dark/light e 0/2 cobertos; 4:5 pendente |
 | [ ] QA-03 | Worker/coordinator | Receita, cache, retry, cancelamento | `app/src/test/.../story/*` | ENC-05 | M | Testes verdes |
 | [ ] QA-04 | Gates | `check`, `spotlessCheck`, `koverVerify`, detekt | — | tudo | P | 0 erros; sem novo baseline |
 | [ ] QA-05 | Roteiro de aparelho | S24 Ultra + mid-range 4 GB | `docs/RUNBOOK` ou anexo | ENC-08 | M | Tempo/memória/cor alinhados |

@@ -2,10 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Typeface
 import android.net.Uri
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
@@ -41,23 +36,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.res.ResourcesCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.meucoach.app.story.StoryBranding
-import com.meucoach.app.story.StoryFrameRenderer
 import com.meucoach.app.story.toStoryPalette
 import com.meucoach.app.ui.activities.formatDateTime
 import com.meucoach.app.ui.activities.formatDuration
@@ -65,7 +53,6 @@ import com.meucoach.app.ui.activities.paceLabel
 import com.meucoach.app.ui.activities.sourcesLabel
 import com.meucoach.app.ui.activities.sportLabel
 import com.meucoach.core.data.repository.StoredActivity
-import com.meucoach.core.designsystem.R
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
@@ -78,9 +65,10 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.StoryDuration
+import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
-import com.meucoach.core.domain.story.StoryPlan
-import com.meucoach.core.domain.story.StorySegmentType
+import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryVerdict
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -94,8 +82,7 @@ fun ActivityDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var storyStyle by rememberSaveable { mutableStateOf(StoryMapStyle.MEUCOACH_DARK) }
-    val palette = McTheme.colors.toStoryPalette(storyStyle)
+    val palette = McTheme.colors.toStoryPalette(state.storyStudio.recipe.mapStyle)
 
     LaunchedEffect(state.deleted) {
         if (state.deleted) onBack()
@@ -105,18 +92,44 @@ fun ActivityDetailScreen(
         state = state,
         onBack = onBack,
         onCalibrate = onCalibrate,
-        onCreateStory = { viewModel.createStory(storyStyle) },
-        onExportStory = { viewModel.exportStory(palette) },
         onCancelStory = viewModel::cancelStory,
         onShareStory = { uri -> shareStory(context, uri) },
         onDelete = viewModel::deleteActivity,
         onClearDeleteError = viewModel::clearDeleteError,
-        storyStyle = storyStyle,
-        onStoryStyleChange = { storyStyle = it },
-        onDismissStoryIntro = viewModel::dismissStoryIntro,
+        storyActions = StoryStudioActions(
+            onOpen = viewModel::openStoryStudio,
+            onClose = viewModel::closeStoryStudio,
+            onPreset = viewModel::selectStoryPreset,
+            onToggleExtra = viewModel::toggleStoryExtra,
+            onDuration = viewModel::selectStoryDuration,
+            onMapStyle = viewModel::selectStoryMapStyle,
+            onSaveAsDefault = viewModel::setStorySaveAsDefault,
+            onReset = viewModel::resetStoryRecipe,
+            onGenerate = { viewModel.generateStory(palette) },
+            onRetry = { viewModel.retryStory(palette) },
+            onDismissIntro = viewModel::dismissStoryIntro,
+        ),
         modifier = modifier,
     )
 }
+
+/**
+ * Story Studio callbacks grouped so the detail content does not grow one
+ * parameter per recipe control. Defaults keep the composable testable.
+ */
+internal data class StoryStudioActions(
+    val onOpen: () -> Unit = {},
+    val onClose: () -> Unit = {},
+    val onPreset: (StoryPreset) -> Unit = {},
+    val onToggleExtra: (StoryExtra) -> Unit = {},
+    val onDuration: (StoryDuration) -> Unit = {},
+    val onMapStyle: (StoryMapStyle) -> Unit = {},
+    val onSaveAsDefault: (Boolean) -> Unit = {},
+    val onReset: () -> Unit = {},
+    val onGenerate: () -> Unit = {},
+    val onRetry: () -> Unit = {},
+    val onDismissIntro: () -> Unit = {},
+)
 
 @Composable
 internal fun ActivityDetailContent(
@@ -124,15 +137,11 @@ internal fun ActivityDetailContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onCalibrate: (String) -> Unit = {},
-    onCreateStory: () -> Unit = {},
-    onExportStory: () -> Unit = {},
     onCancelStory: () -> Unit = {},
     onShareStory: (Uri) -> Unit = {},
     onDelete: () -> Unit = {},
     onClearDeleteError: () -> Unit = {},
-    storyStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
-    onStoryStyleChange: (StoryMapStyle) -> Unit = {},
-    onDismissStoryIntro: () -> Unit = {},
+    storyActions: StoryStudioActions = StoryStudioActions(),
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -204,13 +213,10 @@ internal fun ActivityDetailContent(
                         item {
                             StoryCard(
                                 state = state,
-                                onCreateStory = onCreateStory,
-                                onExportStory = onExportStory,
+                                onOpenStudio = storyActions.onOpen,
                                 onCancelStory = onCancelStory,
+                                onRetryStory = storyActions.onRetry,
                                 onShareStory = onShareStory,
-                                storyStyle = storyStyle,
-                                onStoryStyleChange = onStoryStyleChange,
-                                onDismissStoryIntro = onDismissStoryIntro,
                             )
                         }
                     }
@@ -223,6 +229,23 @@ internal fun ActivityDetailContent(
                 }
             }
         }
+    }
+
+    if (state.storyStudio.isOpen) {
+        StoryStudioSheet(
+            state = state.storyStudio,
+            avatar = state.avatar,
+            introSeen = state.storyIntroSeen,
+            onDismiss = storyActions.onClose,
+            onDismissIntro = storyActions.onDismissIntro,
+            onPreset = storyActions.onPreset,
+            onToggleExtra = storyActions.onToggleExtra,
+            onDuration = storyActions.onDuration,
+            onMapStyle = storyActions.onMapStyle,
+            onSaveAsDefault = storyActions.onSaveAsDefault,
+            onReset = storyActions.onReset,
+            onGenerate = storyActions.onGenerate,
+        )
     }
 
     if (confirmDelete) {
@@ -545,13 +568,10 @@ private fun CalibrationCandidateCard(candidate: CalibrationCandidate, onCalibrat
 @Composable
 private fun StoryCard(
     state: ActivityDetailUiState,
-    onCreateStory: () -> Unit,
-    onExportStory: () -> Unit,
+    onOpenStudio: () -> Unit,
     onCancelStory: () -> Unit,
+    onRetryStory: () -> Unit,
     onShareStory: (Uri) -> Unit,
-    storyStyle: StoryMapStyle,
-    onStoryStyleChange: (StoryMapStyle) -> Unit,
-    onDismissStoryIntro: () -> Unit,
 ) {
     val colors = McTheme.colors
     McCard {
@@ -568,108 +588,22 @@ private fun StoryCard(
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = state.storyStudio.recipe.summaryLine(),
+            style = McTextStyles.caption,
+            color = colors.textPrimary,
+        )
         Spacer(modifier = Modifier.height(14.dp))
         when (val story = state.storyExport) {
-            StoryExportUiState.Idle -> {
-                if (!state.storyIntroSeen) {
-                    McCard(variant = McCardVariant.INSET) {
-                        Text(
-                            text = "Antes de gerar",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = colors.textPrimary,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Terreno, " +
-                                "o relevo. Depois o app usa o cache. " +
-                                "Nenhuma coordenada exata sai do aparelho.",
-                            style = McTextStyles.caption,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        McSecondaryButton(
-                            text = "Entendi",
-                            onClick = onDismissStoryIntro,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("story-intro-dismiss"),
-                            minHeight = 44.dp,
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-                Text(
-                    text = "MAPA",
-                    style = McTextStyles.caption,
-                    color = colors.textTertiary,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StoryStyleButton(
-                        text = "Escuro",
-                        selected = storyStyle == StoryMapStyle.MEUCOACH_DARK,
-                        onClick = { onStoryStyleChange(StoryMapStyle.MEUCOACH_DARK) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("story-style-dark"),
-                    )
-                    StoryStyleButton(
-                        text = "Claro",
-                        selected = storyStyle == StoryMapStyle.MEUCOACH_LIGHT,
-                        onClick = { onStoryStyleChange(StoryMapStyle.MEUCOACH_LIGHT) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("story-style-light"),
-                    )
-                    StoryStyleButton(
-                        text = "Terreno",
-                        selected = storyStyle == StoryMapStyle.TERRAIN,
-                        onClick = { onStoryStyleChange(StoryMapStyle.TERRAIN) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("story-style-terrain"),
-                    )
-                }
-                if (storyStyle == StoryMapStyle.TERRAIN) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Relevo do terreno via Mapzen · baixa na primeira vez.",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                McPrimaryButton(
-                    text = "Criar story",
-                    onClick = onCreateStory,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("story-create"),
-                    minHeight = 48.dp,
-                )
-            }
-
-            is StoryExportUiState.Preview -> {
-                StoryPreview(
-                    plan = story.plan,
-                    mapBackground = story.mapBackground,
-                    style = storyStyle,
-                    avatar = state.avatar,
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    McPrimaryButton(
-                        text = "Gerar vídeo",
-                        onClick = onExportStory,
-                        modifier = Modifier.weight(1f),
-                    )
-                    McSecondaryButton(
-                        text = "Cancelar",
-                        onClick = onCancelStory,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
+            StoryExportUiState.Idle -> McPrimaryButton(
+                text = "Story Studio",
+                onClick = onOpenStudio,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("story-studio-open"),
+                minHeight = 48.dp,
+            )
 
             StoryExportUiState.PreparingMap -> Text(
                 text = "Baixando o mapa do OpenStreetMap…",
@@ -738,7 +672,7 @@ private fun StoryCard(
                     )
                     McSecondaryButton(
                         text = "Gerar outro",
-                        onClick = onCreateStory,
+                        onClick = onOpenStudio,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -753,69 +687,11 @@ private fun StoryCard(
                 Spacer(modifier = Modifier.height(10.dp))
                 McSecondaryButton(
                     text = "Tentar novamente",
-                    onClick = onCreateStory,
+                    onClick = onRetryStory,
+                    modifier = Modifier.testTag("story-retry"),
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun StoryStyleButton(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    if (selected) {
-        McPrimaryButton(
-            text = text,
-            onClick = onClick,
-            modifier = modifier,
-            minHeight = 44.dp,
-            horizontalPadding = 10.dp,
-        )
-    } else {
-        McSecondaryButton(
-            text = text,
-            onClick = onClick,
-            modifier = modifier,
-            minHeight = 44.dp,
-            horizontalPadding = 10.dp,
-        )
-    }
-}
-
-@Composable
-private fun StoryPreview(plan: StoryPlan, mapBackground: Bitmap?, style: StoryMapStyle, avatar: Bitmap?) {
-    val context = LocalContext.current
-    val colors = McTheme.colors
-    val bitmap = remember(plan, mapBackground, colors, style, avatar) {
-        val typeface = ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
-        val previewTime = plan.segments
-            .firstOrNull { it.type == StorySegmentType.CARD }
-            ?.let { it.startSec + 1f }
-            ?: (plan.durationSec / 2f)
-        StoryFrameRenderer(
-            colors.toStoryPalette(style),
-            typeface,
-            StoryBranding.logo(context),
-            mapBackground,
-            avatar,
-        )
-            .render(plan, timeSec = previewTime, width = 360, height = 640)
-    }
-    Text(
-        text = "Prévia do story",
-        style = McTextStyles.caption,
-        color = colors.textTertiary,
-    )
-    Spacer(modifier = Modifier.height(6.dp))
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = "Prévia do story",
-            modifier = Modifier
-                .height(260.dp)
-                .aspectRatio(9f / 16f)
-                .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Fit,
-        )
     }
 }
 

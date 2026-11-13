@@ -1,6 +1,72 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (Story V3 Sprint A — domínio: D0.2/D0.3, `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com motivo, timeline por esforço, 8 cards + barra com 10 km, codec/store e `StoryRenderSpec`; renderer com 1–3 slots no card e 3+2 no encerramento; antes: ADR 0040, safe area de Reels 13/22/5,5 com card em 62–78% e atribuição acima do card, encode BT.709/SDR/limited + H.264 High/4.1 condicional + 16 Mbps VBR, números tabulares e fim da legenda no card, e modelo puro do story em `core:domain/story`; antes: polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (Story V3 Sprint A — Story Studio: UI-01..UI-04/UI-08 com essenciais fixas, extras ≤2 com motivo, presets, duração, mapa e “salvar como padrão”; prévia de 3 frames em 540×960 (VIS-06); card só abre o Studio e a geração usa a receita; goldens do Studio em dark/light e 0/2 extras; antes: domínio: D0.2/D0.3, `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com motivo, timeline por esforço, 8 cards + barra com 10 km, codec/store e `StoryRenderSpec`; renderer com 1–3 slots no card e 3+2 no encerramento; antes: ADR 0040, safe area de Reels 13/22/5,5 com card em 62–78% e atribuição acima do card, encode BT.709/SDR/limited + H.264 High/4.1 condicional + 16 Mbps VBR, números tabulares e fim da legenda no card, e modelo puro do story em `core:domain/story`; antes: polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+
+## Sessão 2026-11-13 — Story V3 Sprint A: Story Studio e prévia de 3 frames
+
+**Objetivo:** transformar a receita do story em controle na tela (UI-01..UI-04,
+UI-08) e dar prévia real de três frames (VIS-06), sem duplicar opções no card e
+sem que a UI calcule regra de treino.
+
+### Concluído
+
+- **Story Studio (UI-01..UI-04, UI-08):** modal aberto pelo card “Story do
+  treino”, com prévia 9:16, presets (Essencial, Performance, Fisiológico,
+  Completo), extras com disponibilidade e motivo, contador 0/2, duração
+  (Auto/15/30/45/60), mapa (Escuro/Claro/Terreno) e qualidade fixa 1080p30.
+  - Essenciais fixas; extras ≤2; a terceira opção fica desabilitada.
+  - Extra sem dado fica desabilitado com o motivo do `StoryMetricCatalog`
+    (“sem FC”, “sem cadência”…), nunca vira zero.
+  - “Salvar como padrão” grava a receita em `meucoach_story`; “Restaurar
+    padrão” limpa a preferência e volta ao default.
+  - O card do detalhe mostra só o resumo da receita e abre o Studio; as opções
+    inline de mapa e o botão “Criar story” saíram.
+- **Estado e fluxo:** a receita vive no `ActivityDetailUiState.storyStudio` e é
+  carregada no `init`; o plano do story é resolvido no view model (a UI só
+  desenha). “Gerar vídeo” fecha o Studio, baixa/renderiza o mapa e enfileira o
+  worker com a receita. O estado intermediário `Preview` do card foi removido,
+  porque a prévia agora é o próprio Studio.
+- **VIS-06:** prévia em 540×960 com os frames Abertura, Km e Final, um bitmap
+  por vez; a troca de frame re-renderiza com a receita atual. A prévia desenha
+  a rota sobre o fundo do tema — o mapa escolhido entra no vídeo (nota
+  explícita na tela), porque o cache de mapa ainda é Sprint B.
+- **Domínio:** `StoryRecipe.toggleExtra()` mantém a ordem de seleção, alterna
+  para `CUSTOM` e ignora uma terceira extra em vez de lançar.
+- **Acessibilidade/copy:** chips com estado `selected` exposto ao TalkBack,
+  alvos ≥44 dp (CTA 48 dp), labels de extras sem sigla crua, “Até 2 extras.
+  Sem dado, a métrica fica de fora — nunca vira zero.” e nota de mapa.
+- **Goldens:** `story-studio-0-extras-dark.png`,
+  `story-studio-2-extras-dark.png` e `story-studio-0-extras-light.png`,
+  revisados; a prévia usa o fundo do tema (dark-first).
+
+### Testes
+
+- 1.679 testes, 0 falhas e 0 `@Ignore` (780 `:app`, 691 `core:domain`,
+  168 `core:data`, 40 `core:model`).
+- `core:domain`: 97,20% de linhas (5.830/5.998) e 79,73% de branches
+  (4.202/5.270); gate ≥85% de linhas; parser FIT 93,01%.
+- `:app`: 78,26% de linhas; gate ≥78%.
+- `:app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"` verde; os
+  três goldens novos foram revisados.
+- `check`, `spotlessCheck`, `koverVerify` e detekt verdes.
+
+
+### Evidências
+
+- A receita da UI é a mesma que vai ao worker (`StoryExportCoordinator`);
+  nenhum cálculo de regra foi movido para o Compose.
+- Nenhuma migração de Room, nenhuma dependência nova e nenhum dado real.
+- O worker continua recebendo `recipeJson` (≤ 2 KB) e o mapa staged por
+  caminho; a prévia mantém no máximo um bitmap 540×960 por vez.
+
+### Próximo passo
+
+1. **VIS-05/ENC-07** — pôster 4:5, capa 9:16 e share dos três arquivos.
+2. **ENC-05/ENC-08** — cache/manifesto do mapa no worker, memória e prévia
+   com o mapa (o estilo escolhido só aparece no vídeo hoje).
+3. **Sprint B** — MapLibre 13.7.1 OpenGL + `pixelForLatLng`, estilo
+   `MeuCoach Dark`, 3 keyframes e cache de mapa; validar em aparelho.
+4. **QA-05/QA-06** — roteiro em S24 Ultra e mid-range 4 GB + upload real.
 
 ## Sessão 2026-11-13 — Story V3 Sprint A: domínio, receita e slots
 

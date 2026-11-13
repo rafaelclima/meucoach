@@ -114,6 +114,18 @@ data class StoryRecipe(
 
     fun withExtras(extras: List<StoryExtra>): StoryRecipe = copy(preset = StoryPreset.CUSTOM, extras = extras)
 
+    /**
+     * Toggles one extra and moves the recipe to [StoryPreset.CUSTOM]. A third
+     * extra is ignored instead of thrown: the Studio disables the chip, and a
+     * stale tap must never crash the screen. The order of selection is kept,
+     * because it is also the order used by the card and closing frame.
+     */
+    fun toggleExtra(extra: StoryExtra): StoryRecipe = when {
+        extra in extras -> copy(preset = StoryPreset.CUSTOM, extras = extras - extra)
+        extras.size >= MAX_EXTRAS -> this
+        else -> copy(preset = StoryPreset.CUSTOM, extras = extras + extra)
+    }
+
     fun targetDurationSec(distanceKm: Double?): Int = duration.targetSeconds(distanceKm)
 
     companion object {

@@ -13,8 +13,12 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.StoryDuration
+import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPlanCalculator
+import com.meucoach.core.domain.story.StoryPreset
+import com.meucoach.core.domain.story.StoryRecipe
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -176,49 +180,47 @@ class ActivityDetailScreenTest {
     }
 
     @Test
-    fun `previews a story before exporting`() {
-        val activity = ActivityDetailTestData.state().activity!!.imported
-        val plan = StoryPlanCalculator.calculate(activity)!!
-        var exported = false
+    fun `opens the story studio from the card`() {
+        var opened = false
         setContent {
             ActivityDetailContent(
-                state = ActivityDetailTestData.state().copy(
-                    storyExport = StoryExportUiState.Preview(plan),
-                ),
+                state = ActivityDetailTestData.state(),
                 onBack = {},
-                onExportStory = { exported = true },
+                storyActions = StoryStudioActions(onOpen = { opened = true }),
             )
         }
 
         val list = compose.onNodeWithTag("activity-detail-list")
-        list.performScrollToNode(hasContentDescription("Prévia do story"))
-        compose.onNodeWithContentDescription("Prévia do story").assertIsDisplayed()
-        list.performScrollToNode(hasText("Gerar vídeo"))
-        compose.onNodeWithText("Gerar vídeo").performClick()
+        list.performScrollToNode(hasTestTag("story-studio-open"))
+        compose.onNodeWithTag("story-studio-open").performClick()
 
-        assertThat(exported).isTrue()
+        assertThat(opened).isTrue()
     }
 
     @Test
-    fun `offers the terrain map style and the first-run notice`() {
+    fun `summarizes the recipe and keeps the options inside the studio`() {
         setContent {
             ActivityDetailContent(
-                state = ActivityDetailTestData.state().copy(storyIntroSeen = false),
+                state = ActivityDetailTestData.state().copy(
+                    storyStudio = StoryStudioUiState(
+                        recipe = StoryRecipe(
+                            preset = StoryPreset.CUSTOM,
+                            extras = listOf(StoryExtra.AVG_HR),
+                            duration = StoryDuration.SEC_30,
+                            mapStyle = StoryMapStyle.MEUCOACH_LIGHT,
+                        ),
+                    ),
+                ),
                 onBack = {},
-                storyStyle = StoryMapStyle.MEUCOACH_DARK,
             )
         }
 
         val list = compose.onNodeWithTag("activity-detail-list")
-        list.performScrollToNode(hasText("Antes de gerar"))
-        compose.onNodeWithText("Antes de gerar").assertIsDisplayed()
-        compose.onNodeWithText("Entendi").assertExists()
-
-        list.performScrollToNode(hasText("Terreno"))
-        compose.onNodeWithText("Terreno").assertExists()
-        compose.onNodeWithText("Escuro").assertExists()
-        compose.onNodeWithText("Claro").assertExists()
-        compose.onNodeWithText("Satélite").assertDoesNotExist()
+        list.performScrollToNode(hasText("Três essenciais + FC média · 30 s · mapa claro."))
+        compose.onNodeWithText("Três essenciais + FC média · 30 s · mapa claro.").assertIsDisplayed()
+        compose.onNodeWithTag("story-style-dark").assertDoesNotExist()
+        compose.onNodeWithTag("story-style-light").assertDoesNotExist()
+        compose.onNodeWithTag("story-style-terrain").assertDoesNotExist()
     }
 
     @Test

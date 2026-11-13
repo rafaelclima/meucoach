@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.45 · **Data:** 13/11/2026 · **Mudança:** Story V3 Sprint A avançou para o domínio — `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com disponibilidade/motivo, timeline por esforço, 8 cards + barra com todos os kms, codec/store em `meucoach_story` e `StoryRenderSpec`; ADR 0015 corrigido (Google é bloqueio legal, `pixelForLatLng` existe e MapLibre 13.7.1 OpenGL é decisão pendente do Sprint B). A versão 1.44 registrou D0.1, VIS-01, ENC-01, VIS-02 parcial e DOM-01.
+**Versão:** 1.46 · **Data:** 13/11/2026 · **Mudança:** Story Studio (UI-01..UI-04, UI-08) com essenciais fixas, extras ≤2 com motivo, presets, duração, mapa, “salvar como padrão” e prévia de 3 frames em 540×960 (VIS-06); o card do detalhe não duplica mais as opções e a geração usa a receita do Studio. A versão 1.45 registrou o domínio do Story V3 (receita, catálogo de métricas, timeline, cards, codec/store e `StoryRenderSpec`).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -571,7 +571,9 @@ MapLibre 13.7.1 OpenGL (Sprint B) e validação em aparelho.
 - [x] Story V3 — DOM-06: `StoryRecipeStore`/`StoryRecipeCodec` em `meucoach_story`, JSON v1 e reset.
 - [x] Story V3 — DOM-07: `StoryRenderSpec`/`ResolvedMetric` a partir de atividade + data + receita.
 - [x] Story V3 — VIS-02..VIS-04 (parcial): card com 1–3 slots, encerramento 3+2, selo condicionado à receita e barra de 10 km.
-- [ ] Story V3 — Story Studio, prévia de 3 frames, receita no worker (ENC-05), memória (ENC-08) e goldens 4:5.
+- [x] Story V3 — UI-01..UI-04/UI-08: Story Studio modal com receita, presets, extras com motivo, duração, mapa, “salvar como padrão” e geração a partir da receita; card só abre o Studio.
+- [x] Story V3 — VIS-06: prévia de 3 frames (abertura/km/final) em 540×960, um bitmap por vez.
+- [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); pôster 4:5 (VIS-05), receita no worker além do já encaminhado (ENC-05), memória (ENC-08) e goldens 4:5 seguem pendentes.
 
 **Descrição da feature (proposta inicial):**
 

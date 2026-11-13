@@ -33,7 +33,11 @@ import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.story.BoundingBox
+import com.meucoach.core.domain.story.StoryDuration
+import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
+import com.meucoach.core.domain.story.StoryPreset
+import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -84,6 +88,8 @@ class ActivityDetailViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences(StoryRecipeStore.PREFERENCES, Context.MODE_PRIVATE)
+            .edit().clear().commit()
         database =
             Room
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
@@ -300,15 +306,16 @@ class ActivityDetailViewModelTest {
     )
 
     @Test
-    fun `forwards the terrain style to the map renderer`() {
+    fun `forwards the selected map style to the renderer`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
             val renderer = FakeMapBackgroundRenderer()
             val viewModel = viewModel("activity-1", renderer)
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory(StoryMapStyle.TERRAIN)
-            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+            viewModel.selectStoryMapStyle(StoryMapStyle.TERRAIN)
+            viewModel.generateStory(testPalette())
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Generating }
 
             assertThat(renderer.style).isEqualTo(StoryMapStyle.TERRAIN)
         }
@@ -356,13 +363,13 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
-    fun `reports missing gps when creating a story`() {
+    fun `reports missing gps when generating a story`() {
         runBlocking {
             repository.saveImportedActivity(importedActivity(), "sha")
             val viewModel = viewModel("activity-1")
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory()
+            viewModel.generateStory(testPalette())
             val state = viewModel.uiState.first { it.storyExport is StoryExportUiState.Error }
 
             assertThat((state.storyExport as StoryExportUiState.Error).message)
@@ -371,23 +378,222 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
-    fun `prepares a story preview before exporting`() {
+    fun `builds the studio plan when the activity loads`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.storyStudio.plan?.splits).isNotEmpty()
+            assertThat(state.storyStudio.plan?.distanceKm).isGreaterThan(0.0)
+            assertThat(state.storyStudio.recipe).isEqualTo(StoryRecipe())
+        }
+    }
+
+    @Test
+    fun `disables extras that the activity does not measure`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val studio = viewModel("activity-1").uiState.first { !it.isLoading }.storyStudio
+
+            val heartRate = studio.extras.first { it.extra == StoryExtra.AVG_HR }
+            val cadence = studio.extras.first { it.extra == StoryExtra.CADENCE }
+
+            assertThat(heartRate.isAvailable).isTrue()
+            assertThat(cadence.isAvailable).isFalse()
+            assertThat(cadence.reason).isEqualTo("sem cadência")
+        }
+    }
+
+    @Test
+    fun `opens and closes the studio without losing the recipe`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
             val viewModel = viewModel("activity-1")
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory()
-            val preview = viewModel.uiState.first {
-                it.storyExport is StoryExportUiState.Preview
-            }.storyExport as StoryExportUiState.Preview
+            viewModel.openStoryStudio()
+            viewModel.toggleStoryExtra(StoryExtra.AVG_HR)
+            assertThat(viewModel.uiState.value.storyStudio.isOpen).isTrue()
 
-            assertThat(preview.plan.splits).isNotEmpty()
-            assertThat(preview.plan.distanceKm).isGreaterThan(0.0)
-            assertThat(preview.mapBackground).isNotNull
+            viewModel.closeStoryStudio()
 
-            viewModel.cancelStory()
-            assertThat(viewModel.uiState.value.storyExport).isEqualTo(StoryExportUiState.Idle)
+            assertThat(viewModel.uiState.value.storyStudio.isOpen).isFalse()
+            assertThat(viewModel.uiState.value.storyStudio.recipe.extras).containsExactly(StoryExtra.AVG_HR)
+        }
+    }
+
+    @Test
+    fun `opening the studio drops extras this activity cannot show`() {
+        runBlocking {
+            StoryRecipeStore(ApplicationProvider.getApplicationContext()).save(
+                StoryRecipe(extras = listOf(StoryExtra.AVG_HR, StoryExtra.CADENCE)),
+            )
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.openStoryStudio()
+
+            assertThat(viewModel.uiState.value.storyStudio.recipe.extras)
+                .containsExactly(StoryExtra.AVG_HR)
+        }
+    }
+
+    @Test
+    fun `save as default can be turned back on`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.setStorySaveAsDefault(false)
+            viewModel.setStorySaveAsDefault(true)
+
+            assertThat(viewModel.uiState.value.storyStudio.saveAsDefault).isTrue()
+        }
+    }
+
+    @Test
+    fun `toggles an available extra and marks the recipe custom`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.toggleStoryExtra(StoryExtra.AVG_HR)
+
+            val recipe = viewModel.uiState.value.storyStudio.recipe
+            assertThat(recipe.extras).containsExactly(StoryExtra.AVG_HR)
+            assertThat(recipe.preset).isEqualTo(StoryPreset.CUSTOM)
+        }
+    }
+
+    @Test
+    fun `blocks a third extra and unavailable extras`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.toggleStoryExtra(StoryExtra.AVG_HR)
+            viewModel.toggleStoryExtra(StoryExtra.DATE)
+            viewModel.toggleStoryExtra(StoryExtra.MAX_HR)
+            viewModel.toggleStoryExtra(StoryExtra.CADENCE)
+
+            val recipe = viewModel.uiState.value.storyStudio.recipe
+            assertThat(recipe.extras).containsExactly(StoryExtra.AVG_HR, StoryExtra.DATE)
+        }
+    }
+
+    @Test
+    fun `a preset only turns on the extras this activity has`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.selectStoryPreset(StoryPreset.PHYSIOLOGICAL)
+
+            val recipe = viewModel.uiState.value.storyStudio.recipe
+            assertThat(recipe.preset).isEqualTo(StoryPreset.PHYSIOLOGICAL)
+            assertThat(recipe.extras).containsExactly(StoryExtra.AVG_HR)
+        }
+    }
+
+    @Test
+    fun `changing the duration rebuilds the timeline`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.selectStoryDuration(StoryDuration.SEC_45)
+            val plan = viewModel.uiState.first { it.storyStudio.plan?.durationSec == 45f }.storyStudio.plan
+
+            assertThat(plan?.durationSec).isEqualTo(45f)
+        }
+    }
+
+    @Test
+    fun `ignores the satellite style outside the mvp`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.selectStoryMapStyle(StoryMapStyle.SATELLITE)
+
+            assertThat(viewModel.uiState.value.storyStudio.recipe.mapStyle)
+                .isEqualTo(StoryMapStyle.MEUCOACH_DARK)
+        }
+    }
+
+    @Test
+    fun `loads the saved recipe into the studio`() {
+        runBlocking {
+            val saved = StoryRecipe(
+                preset = StoryPreset.COMPLETE,
+                extras = listOf(StoryExtra.DATE),
+                duration = StoryDuration.SEC_30,
+                mapStyle = StoryMapStyle.MEUCOACH_LIGHT,
+            )
+            StoryRecipeStore(ApplicationProvider.getApplicationContext()).save(saved)
+            repository.saveImportedActivity(gpsActivity(), "sha")
+
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.storyStudio.recipe).isEqualTo(saved)
+            assertThat(state.storyStudio.plan?.durationSec).isEqualTo(30f)
+        }
+    }
+
+    @Test
+    fun `resetting the recipe clears the saved default`() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val store = StoryRecipeStore(context)
+            store.save(StoryRecipe(duration = StoryDuration.SEC_30, mapStyle = StoryMapStyle.MEUCOACH_LIGHT))
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.resetStoryRecipe()
+
+            assertThat(viewModel.uiState.value.storyStudio.recipe).isEqualTo(StoryRecipe())
+            assertThat(store.load()).isEqualTo(StoryRecipe())
+        }
+    }
+
+    @Test
+    fun `generating saves the recipe as the new default`() {
+        runBlocking {
+            val store = StoryRecipeStore(ApplicationProvider.getApplicationContext())
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.toggleStoryExtra(StoryExtra.AVG_HR)
+            viewModel.generateStory(testPalette())
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Generating }
+
+            assertThat(store.load().extras).containsExactly(StoryExtra.AVG_HR)
+        }
+    }
+
+    @Test
+    fun `generating does not save when the user declines`() {
+        runBlocking {
+            val store = StoryRecipeStore(ApplicationProvider.getApplicationContext())
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.setStorySaveAsDefault(false)
+            viewModel.toggleStoryExtra(StoryExtra.AVG_HR)
+            viewModel.generateStory(testPalette())
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Generating }
+
+            assertThat(store.load()).isEqualTo(StoryRecipe())
         }
     }
 
@@ -405,19 +611,13 @@ class ActivityDetailViewModelTest {
             )
             repository.saveImportedActivity(gpsActivity(), "sha")
             saveEasyPlan()
-            val viewModel = viewModel("activity-1")
-            viewModel.uiState.first { !it.isLoading }
+            val plan = viewModel("activity-1").uiState.first { !it.isLoading }.storyStudio.plan
 
-            viewModel.createStory()
-            val preview = viewModel.uiState.first {
-                it.storyExport is StoryExportUiState.Preview
-            }.storyExport as StoryExportUiState.Preview
-
-            assertThat(preview.plan.verdict).isNotNull
-            assertThat(preview.plan.verdict?.tone).isNotNull
-            assertThat(preview.plan.verdict?.coachLine).isNotBlank()
-            assertThat(preview.plan.splits.map { it.verdict }).doesNotContainNull()
-            assertThat(preview.plan.zoneRuns).isNotEmpty()
+            assertThat(plan?.verdict).isNotNull()
+            assertThat(plan?.verdict?.tone).isNotNull()
+            assertThat(plan?.verdict?.coachLine).isNotBlank()
+            assertThat(plan?.splits?.map { it.verdict }).doesNotContainNull()
+            assertThat(plan?.zoneRuns).isNotEmpty()
         }
     }
 
@@ -434,17 +634,11 @@ class ActivityDetailViewModelTest {
                 ),
             )
             repository.saveImportedActivity(gpsActivity(), "sha")
-            val viewModel = viewModel("activity-1")
-            viewModel.uiState.first { !it.isLoading }
+            val plan = viewModel("activity-1").uiState.first { !it.isLoading }.storyStudio.plan
 
-            viewModel.createStory()
-            val preview = viewModel.uiState.first {
-                it.storyExport is StoryExportUiState.Preview
-            }.storyExport as StoryExportUiState.Preview
-
-            assertThat(preview.plan.verdict?.tone).isNull()
-            assertThat(preview.plan.verdict?.coachLine).isEqualTo("Cada corrida conta.")
-            assertThat(preview.plan.splits.map { it.verdict }).containsOnlyNulls()
+            assertThat(plan?.verdict?.tone).isNull()
+            assertThat(plan?.verdict?.coachLine).isEqualTo("Cada corrida conta.")
+            assertThat(plan?.splits?.map { it.verdict }).containsOnlyNulls()
         }
     }
 
@@ -456,8 +650,8 @@ class ActivityDetailViewModelTest {
             val viewModel = viewModel("activity-1", renderer)
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory()
-            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
+            viewModel.generateStory(testPalette())
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Generating }
 
             assertThat(renderer.width).isEqualTo(StoryVideoExporter.mapWidth())
             assertThat(renderer.height).isEqualTo(StoryVideoExporter.mapHeight())
@@ -482,7 +676,7 @@ class ActivityDetailViewModelTest {
             )
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory()
+            viewModel.generateStory(testPalette())
             val state = viewModel.uiState.first { it.storyExport is StoryExportUiState.Error }
 
             assertThat((state.storyExport as StoryExportUiState.Error).message)
@@ -491,22 +685,50 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
-    fun `exporting hands the preview and palette to the background coordinator`() {
+    fun `generating hands the studio recipe and palette to the coordinator`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
             val coordinator = FakeStoryExportCoordinator()
             val viewModel = viewModel("activity-1", coordinator = coordinator)
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory()
-            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
-            viewModel.exportStory(testPalette())
+            viewModel.selectStoryDuration(StoryDuration.SEC_30)
+            viewModel.selectStoryMapStyle(StoryMapStyle.TERRAIN)
+            viewModel.toggleStoryExtra(StoryExtra.AVG_HR)
+            viewModel.generateStory(testPalette())
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Generating }
 
             assertThat(viewModel.uiState.value.storyExport)
                 .isEqualTo(StoryExportUiState.Generating(progress = 0f))
             assertThat(coordinator.startedActivityId).isEqualTo("activity-1")
             assertThat(coordinator.startedPalette).isEqualTo(testPalette())
             assertThat(coordinator.startedMap).isNotNull()
+            assertThat(coordinator.startedRecipe).isEqualTo(
+                StoryRecipe(
+                    preset = StoryPreset.CUSTOM,
+                    extras = listOf(StoryExtra.AVG_HR),
+                    duration = StoryDuration.SEC_30,
+                    mapStyle = StoryMapStyle.TERRAIN,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `reports a failure when the export cannot be staged`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val coordinator = FakeStoryExportCoordinator(
+                startError = IllegalStateException("cache cheio"),
+            )
+            val viewModel = viewModel("activity-1", coordinator = coordinator)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.generateStory(testPalette())
+            val state = viewModel.uiState.first { it.storyExport is StoryExportUiState.Error }
+
+            assertThat((state.storyExport as StoryExportUiState.Error).message)
+                .isEqualTo("cache cheio")
         }
     }
 
@@ -518,9 +740,8 @@ class ActivityDetailViewModelTest {
             val viewModel = viewModel("activity-1", coordinator = coordinator)
             viewModel.uiState.first { !it.isLoading }
 
-            viewModel.createStory()
-            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
-            viewModel.exportStory(testPalette())
+            viewModel.generateStory(testPalette())
+            viewModel.uiState.first { it.storyExport is StoryExportUiState.Generating }
             viewModel.cancelStory()
 
             assertThat(coordinator.cancelledActivityId).isEqualTo("activity-1")
@@ -600,30 +821,6 @@ class ActivityDetailViewModelTest {
 
             assertThat((viewModel.uiState.value.storyExport as StoryExportUiState.Error).message)
                 .isEqualTo("Encoder sem buffer de entrada.")
-        }
-    }
-
-    @Test
-    fun `ignores stale outputs when the user has moved on`() {
-        runBlocking {
-            repository.saveImportedActivity(gpsActivity(), "sha")
-            val viewModel = viewModel("activity-1")
-            viewModel.uiState.first { !it.isLoading }
-
-            viewModel.createStory()
-            viewModel.uiState.first { it.storyExport is StoryExportUiState.Preview }
-
-            viewModel.applyWorkInfo(
-                workInfo(
-                    state = WorkInfo.State.SUCCEEDED,
-                    outputData = workDataOf(
-                        StoryExportWorker.KEY_VIDEO_URI to "content://media/external/video/media/42",
-                    ),
-                ),
-            )
-
-            // The user was in Preview: a finished export from before must not replace it.
-            assertThat(viewModel.uiState.value.storyExport).isInstanceOf(StoryExportUiState.Preview::class.java)
         }
     }
 
@@ -834,7 +1031,7 @@ class ActivityDetailViewModelTest {
         }
     }
 
-    private class FakeStoryExportCoordinator : StoryExportCoordinator {
+    private class FakeStoryExportCoordinator(private val startError: Throwable? = null) : StoryExportCoordinator {
         val infos = MutableStateFlow<List<WorkInfo>>(emptyList())
         var startedActivityId: String? = null
         var startedRecipe: com.meucoach.core.domain.story.StoryRecipe? = null
@@ -849,6 +1046,7 @@ class ActivityDetailViewModelTest {
             palette: StoryPalette,
             isCancelled: () -> Boolean,
         ) {
+            startError?.let { throw it }
             startedActivityId = activityId
             startedRecipe = recipe
             startedMap = mapBackground

@@ -151,6 +151,50 @@ class StoryRecipeTest {
         assertThat(recipe.extras).containsExactly(StoryExtra.DATE)
     }
 
+    @Test
+    fun `toggling an extra adds it in selection order and marks the recipe custom`() {
+        val first = StoryRecipe().toggleExtra(StoryExtra.AVG_HR)
+        val second = first.toggleExtra(StoryExtra.CADENCE)
+
+        assertThat(first.preset).isEqualTo(StoryPreset.CUSTOM)
+        assertThat(first.extras).containsExactly(StoryExtra.AVG_HR)
+        assertThat(second.extras).containsExactly(StoryExtra.AVG_HR, StoryExtra.CADENCE)
+    }
+
+    @Test
+    fun `toggling a selected extra removes it`() {
+        val recipe = StoryRecipe(extras = listOf(StoryExtra.AVG_HR, StoryExtra.CADENCE))
+
+        val withoutHr = recipe.toggleExtra(StoryExtra.AVG_HR)
+
+        assertThat(withoutHr.extras).containsExactly(StoryExtra.CADENCE)
+        assertThat(withoutHr.preset).isEqualTo(StoryPreset.CUSTOM)
+    }
+
+    @Test
+    fun `toggling a third extra is ignored instead of throwing`() {
+        val full = StoryRecipe(extras = listOf(StoryExtra.AVG_HR, StoryExtra.CADENCE))
+
+        val unchanged = full.toggleExtra(StoryExtra.DATE)
+
+        assertThat(unchanged).isEqualTo(full)
+    }
+
+    @Test
+    fun `toggling preserves duration map and quality`() {
+        val base = StoryRecipe(
+            duration = StoryDuration.SEC_45,
+            mapStyle = StoryMapStyle.TERRAIN,
+            quality = StoryQuality.STANDARD_1080P30,
+        )
+
+        val toggled = base.toggleExtra(StoryExtra.DATE)
+
+        assertThat(toggled.duration).isEqualTo(StoryDuration.SEC_45)
+        assertThat(toggled.mapStyle).isEqualTo(StoryMapStyle.TERRAIN)
+        assertThat(toggled.quality).isEqualTo(StoryQuality.STANDARD_1080P30)
+    }
+
     private fun allValues() = StoryMetricValues(
         distanceKm = 10.0,
         totalTimeSec = 3_000,
