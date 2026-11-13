@@ -337,6 +337,7 @@ fun TodayScreen(
                 },
                 explanation = it,
                 onDismiss = { explanationSource = null },
+                confidenceContext = if (source == ExplanationSource.PLAN) "Plano" else null,
             )
         }
     }
@@ -1034,7 +1035,7 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = if (done) {
-                        "Sono, dor e energia registrados. Você pode revisar."
+                        "Sono, dor e energia registrados."
                     } else {
                         "15 s para calibrar sono, dor e energia."
                     },
@@ -1367,7 +1368,12 @@ private fun PlanWeekCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExplanationSheet(title: String, explanation: TodayExplanationUi, onDismiss: () -> Unit) {
+private fun ExplanationSheet(
+    title: String,
+    explanation: TodayExplanationUi,
+    onDismiss: () -> Unit,
+    confidenceContext: String? = null,
+) {
     val colors = McTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showTechnicalDetails by remember { mutableStateOf(false) }
@@ -1392,7 +1398,10 @@ private fun ExplanationSheet(title: String, explanation: TodayExplanationUi, onD
                         .weight(1f)
                         .testTag("explanation-title"),
                 )
-                McConfidenceBadge(confidence = explanation.confidence)
+                McConfidenceBadge(
+                    confidence = explanation.confidence,
+                    owner = confidenceContext,
+                )
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(

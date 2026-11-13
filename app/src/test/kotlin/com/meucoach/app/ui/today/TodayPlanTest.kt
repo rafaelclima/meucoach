@@ -261,7 +261,7 @@ class TodayPlanTest {
         compose.onNodeWithTag("plan-explanation-link").performClick()
 
         compose.onNodeWithTag("explanation-title").assertTextEquals("Por que este plano?")
-        compose.onNodeWithText("Confiança baixa").assertIsDisplayed()
+        compose.onNodeWithText("Plano · confiança baixa").assertIsDisplayed()
         compose
             .onNodeWithText("A confiança é calculada quando a semana é montada", substring = true)
             .assertIsDisplayed()
@@ -832,6 +832,23 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("CARGA DA SEMANA"))
         compose.onNodeWithTag("load-subjective-note").assertIsDisplayed()
         compose.onNodeWithText("esforço que você sentiu", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `keeps the done check-in card to one line`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)).copy(hasCheckedIn = true),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Sono, dor e energia registrados."))
+        compose.onNodeWithText("Sono, dor e energia registrados.").assertIsDisplayed()
+        compose.onNodeWithText("Você pode revisar", substring = true).assertDoesNotExist()
     }
 
     @Test

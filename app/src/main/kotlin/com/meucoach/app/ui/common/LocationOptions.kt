@@ -15,7 +15,7 @@ val AVAILABLE_TIMEZONES: List<TimezoneOption> = listOf(
     TimezoneOption("America/Rio_Branco", "Rio Branco"),
     TimezoneOption("America/Manaus", "Manaus"),
     TimezoneOption("America/Belem", "Belém"),
-    TimezoneOption("America/Fortaleza", "Fortaleza"),
+    TimezoneOption("America/Fortaleza", "Natal · Fortaleza"),
     TimezoneOption("America/Recife", "Recife"),
     TimezoneOption("America/Maceio", "Maceió"),
     TimezoneOption("America/Araguaina", "Araguaína"),

@@ -78,7 +78,7 @@ class HealthMetricsScreenshotTest {
         }
         compose.onNodeWithTag("metrics-import-list")
             .performScrollToNode(hasTestTag("health-card-hrv"))
-        awaitChart("HRV nos últimos 30 dias")
+        awaitChart("Variabilidade cardíaca nos últimos 30 dias")
         settle()
         // Capture the root: a sub-node capture can miss Vico's canvas layer
         // under Robolectric, while the root still guards the card and chart.

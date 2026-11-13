@@ -201,7 +201,7 @@ Regras:
 | `McStat` | label/sm + valor display/md + unidade body/md + delta opcional |
 | `McMetricRow` | 3–4 métricas com divisores |
 | `McGauge` | anel de 220° com score, nível e confiança; espessura 10 dp |
-| `McConfidenceBadge` | HIGH/MEDIUM/LOW com ponto + label; nunca só cor |
+| `McConfidenceBadge` | HIGH/MEDIUM/LOW com ponto + label; nunca só cor. `owner` opcional quando a confiança não é óbvia na tela (ex.: `Plano · confiança baixa`) |
 | `McSparkline` | linha 2 dp, área 12% opacidade, sem eixos |
 | `McLineChart` | Vico 3.3.1; eixos com unidade, tooltip, legenda, `contentDescription`; lacunas quebram a linha |
 | `McBarChart` | Vico 3.3.1; barras com raio 6, gaps 8, destaque da semana atual ou cor por nível |

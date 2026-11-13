@@ -43,7 +43,7 @@ class HealthMetricsContentTest {
             .onNodeWithContentDescription("FC de repouso nos últimos 30 dias", substring = true)
             .assertExists()
         compose
-            .onNodeWithContentDescription("HRV nos últimos 30 dias", substring = true)
+            .onNodeWithContentDescription("Variabilidade cardíaca nos últimos 30 dias", substring = true)
             .assertExists()
         compose
             .onNodeWithContentDescription("Oxigenação nos últimos 30 dias", substring = true)

@@ -96,7 +96,8 @@ private fun HealthMetricsEmptyCard() {
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = "Conecte o Health Connect ou importe um CSV abaixo. Assim que houver sono, " +
-                "FC de repouso, HRV ou SpO₂, os gráficos aparecem aqui e passam a explicar sua " +
+                "FC de repouso, variabilidade cardíaca (HRV) ou oxigenação (SpO₂), os gráficos " +
+                "aparecem aqui e passam a explicar sua " +
                 "prontidão.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
@@ -189,7 +190,8 @@ private fun RecoveryHeroCard(trends: DailyMetricsTrends) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Sono, FC de repouso, HRV e oxigenação dos últimos ${trends.windowDays} dias. " +
+            text = "Sono, FC de repouso, variabilidade cardíaca e oxigenação dos últimos " +
+                "${trends.windowDays} dias. " +
                 "A prontidão usa esses sinais junto com o check-in.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
@@ -522,7 +524,8 @@ private fun metricPresentation(
         },
         targetText = { trend -> trend.baseline?.let { "Base ${String.format(PT_BR, "%.0f", it)} ms" } },
         contentDescription = { trends, trend ->
-            "HRV nos últimos ${trends.windowDays} dias: ${trend.points.size} noites medidas, " +
+            "Variabilidade cardíaca nos últimos ${trends.windowDays} dias: " +
+                "${trend.points.size} noites medidas, " +
                 "média de 7 dias ${trend.average7d?.roundToInt() ?: "sem dados"} milissegundos."
         },
     )

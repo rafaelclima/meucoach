@@ -18,7 +18,12 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.model.DataConfidence
 
 @Composable
-fun McConfidenceBadge(confidence: DataConfidence, modifier: Modifier = Modifier) {
+fun McConfidenceBadge(
+    confidence: DataConfidence,
+    modifier: Modifier = Modifier,
+    /** Optional owner of the confidence (e.g. "Plano"), so it is not read as readiness. */
+    owner: String? = null,
+) {
     val colors = McTheme.colors
     val (label, color) = when (confidence) {
         DataConfidence.HIGH -> "Confiança alta" to colors.success
@@ -38,7 +43,11 @@ fun McConfidenceBadge(confidence: DataConfidence, modifier: Modifier = Modifier)
                 .size(6.dp)
                 .background(color = color, shape = CircleShape),
         )
-        Text(text = label, style = McTextStyles.caption, color = colors.textSecondary)
+        Text(
+            text = owner?.let { "$it · ${label.lowercase()}" } ?: label,
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
     }
 }
 

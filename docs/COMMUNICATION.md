@@ -139,7 +139,8 @@ Mas para a reformulação da comunicação, vou criar um arquivo de referência 
 | `Hooper` | `Recuperação` |
 | `SWC` / `baseline` | `acima`/`abaixo da média` / `comparada à sua média` |
 | `Z2` sozinho | `Z2 · leve` na pill; `Fácil · Z1–Z2` nas legendas; rótulos por zona no detalhe |
-| `HRV` / `SpO2` | `variabilidade cardíaca (HRV)` / `oxigenação (SpO2)` na primeira menção |
+| `HRV` / `SpO2` | `variabilidade cardíaca (HRV)` / `oxigenação (SpO₂)` na primeira menção |
+| Fuso compartilhado por cidades | duas cidades-âncora da mesma zona, ex.: `Natal · Fortaleza`; nunca atribuir ao usuário a cidade que ele não escolheu |
 
 ### 6.4 Onde a auditoria continua
 

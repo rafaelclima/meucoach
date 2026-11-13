@@ -143,7 +143,7 @@ internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
     }.distinct()
     val missing = buildList {
         if (plan.confidence == DataConfidence.LOW) {
-            add("Dados objetivos de recuperação (sono, FC de repouso ou HRV)")
+            add("Dados objetivos de recuperação (sono, FC de repouso ou variabilidade cardíaca)")
         }
         if ("R-DATA-01" in plan.ruleIds && plan.sessions.isNotEmpty()) {
             add("Carga recente para liberar treino forte")
