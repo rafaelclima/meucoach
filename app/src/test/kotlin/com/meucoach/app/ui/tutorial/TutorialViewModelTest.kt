@@ -3,6 +3,7 @@ package com.meucoach.app.ui.tutorial
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -13,6 +14,7 @@ import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.GoalType
@@ -60,6 +62,7 @@ class TutorialViewModelTest {
     private lateinit var metricsRepository: DailyMetricsRepository
     private lateinit var activityRepository: ActivityRepository
     private lateinit var planRepository: TrainingPlanRepository
+    private lateinit var executionRepository: SessionExecutionRepository
 
     @Before
     fun setUp() {
@@ -80,6 +83,7 @@ class TutorialViewModelTest {
         metricsRepository = DailyMetricsRepository(database)
         activityRepository = ActivityRepository(database)
         planRepository = TrainingPlanRepository(database)
+        executionRepository = SessionExecutionRepository(database)
     }
 
     @After
@@ -168,10 +172,13 @@ class TutorialViewModelTest {
         store = store,
         metrics = metrics,
         profileRepository = profileRepository,
-        checkInRepository = checkInRepository,
-        metricsRepository = metricsRepository,
-        activityRepository = activityRepository,
         planRepository = planRepository,
+        signalSource = TrainingSignalSource(
+            checkIns = checkInRepository,
+            metrics = metricsRepository,
+            activities = activityRepository,
+            executions = executionRepository,
+        ),
         healthSource = FakeHealthSource(healthConnected),
         timeProvider = timeProvider,
     )

@@ -23,6 +23,7 @@
 > Revisão 1.20 (12/11/2026): BUG-08 resolvido sem ADR — data de prova segue opcional e a consequência (sem redução de volume) passa a ser explícita via `R-PLAN-11`, com copy sem “taper”. Não muda volume, schema nem prescrição.
 > Revisão 1.21 (12/11/2026): N-03 concluído sem ADR — a qualidade no taper já era encurtada pelo fator de volume; o gerador passou a derivar o bloco da duração real (25–45 min), a manter o tipo e o esforço e a só declarar redução quando ela aconteceu. `weekly-plan-v4`; sem migração nem schema.
 > Revisão 1.22 (13/11/2026): ADR 0039 aceito — sRPE de Foster entra como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera": progressão de volume e qualidade exigem carga objetiva. `daily-prescription-v5`/`weekly-plan-v5`; sem migração.
+> Revisão 1.23 (13/11/2026): FR-013 fatia 2 — RPE opcional no fechamento com corrida vinculada persiste em `session_executions.rpe`; `TrainingSignalSource` passa a alimentar Hoje, Tendências, tutorial e replanejamento com a mesma série (incluindo execuções manuais e o frescor dual). Sem migração.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -64,7 +65,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0036](adr/0036-race-time-prediction-vdot-riegel.md) | Previsão de tempo de prova por VDOT/Riegel (D6-B) | Aceito — implementado em 11/11/2026 (VDOT + faixa, Riegel 5k–meia, Room 17 e cards de prova) | 11/11/2026 |
 | [0037](adr/0037-post-race-recovery.md) | Recuperação pós-prova (C3-07 / FR-207) | Aceito — implementado em 12/11/2026 (janela 2/3/5/10, sessões curtas, `R-RACE-04` LIMITED, sugestão por `RACE_COMPLETED`, sem migração) | 12/11/2026 |
 | [0038](adr/0038-volume-progression-from-completed.md) | Progressão de volume a partir do realizado (FR-004 / N-07) | Aceito — implementado em 12/11/2026 (`R-PLAN-01` emitida, base de 4 semanas, +6%, disponibilidade como teto, `weekly-plan-v3`, sem migração) | 12/11/2026 |
-| [0039](adr/0039-load-from-subjective-srpe.md) | Carga subjetiva por sRPE (FR-013 / BL-022) | Aceito — fatia 1 (motor) implementada em 13/11/2026 (`LoadMetric.SRPE` como 3º nível, fonte dual de frescor, `R-LOAD-04`, `daily-prescription-v5`/`weekly-plan-v5`, schema v17 sem migração; fatias 2–3 pendentes) | 13/11/2026 |
+| [0039](adr/0039-load-from-subjective-srpe.md) | Carga subjetiva por sRPE (FR-013 / BL-022) | Aceito — fatias 1 (motor) e 2 (coleção + wiring) implementadas em 13/11/2026 (`LoadMetric.SRPE` como 3º nível, fonte dual de frescor, RPE opcional no fechamento com corrida vinculada, `TrainingSignalSource` único, `R-LOAD-04`, `daily-prescription-v5`/`weekly-plan-v5`, schema v17 sem migração; fatia 3 pendente) | 13/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

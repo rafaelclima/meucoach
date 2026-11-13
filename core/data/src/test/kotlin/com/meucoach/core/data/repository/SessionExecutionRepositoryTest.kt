@@ -96,6 +96,27 @@ class SessionExecutionRepositoryTest {
     }
 
     @Test
+    fun `stores the optional RPE of a linked run and exposes all executions`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+
+        val outcome = executions.recordActivityExecution(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = "activity-1",
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+            rpe = 7,
+        )
+
+        val execution = (outcome as CompletionOutcome.Recorded).execution
+        assertThat(execution.rpe).isEqualTo(7)
+        val all = executions.observeAll().first()
+        assertThat(all.map { it.id }).containsExactly(execution.id)
+        assertThat(all.single().rpe).isEqualTo(7)
+    }
+
+    @Test
     fun `records a manual execution without inventing distance`(): Unit = runBlocking {
         plans.saveWeek(plan())
 

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.40 · **Data:** 13/11/2026 · **Mudança:** FR-013 fatia 1 concluída — sRPE de Foster entra como 3º nível de carga (`TRIMP > rTSS > SRPE`), com a assimetria "subjetivo conserva, nunca acelera": a trava de volume +6% e a liberação de qualidade passam a exigir carga objetiva; `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039). A versão 1.39 registrou os gates de qualidade de build (T-02/T-03/T-05).
+**Versão:** 1.41 · **Data:** 13/11/2026 · **Mudança:** FR-013 fatia 2 concluída — RPE opcional no fechamento com corrida vinculada (persistido em `session_executions.rpe`, sem migração) e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga, incluindo execuções manuais e o frescor dual. Resta a fatia 3 (UI/copy). A versão 1.40 registrou a fatia 1 (motor sRPE).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -465,7 +465,7 @@ comparação por splits seguem pendentes.
 - [ ] Rever a relação entre taper e deload.
 - [ ] Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
 
-### FR-013 — Carga subjetiva (sRPE): fatia 1 concluída, fatias 2–3 pendentes (13/11/2026)
+### FR-013 — Carga subjetiva (sRPE): fatias 1–2 concluídas, fatia 3 pendente (13/11/2026)
 
 Decisões D1–D9 **aprovadas pelo usuário 0** em 13/11/2026
 ([`docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`](PLANO_FR013_SRPE_CARGA_SUBJETIVA.md));
@@ -477,13 +477,17 @@ na entrada do `TrainingLoadEngine`, fonte dual de frescor (importação OU execu
 com RPE, teto 14 dias), `subjectiveDaysInWindow`/`objectiveDataState` no snapshot,
 trava objetiva no volume +6% e na qualidade (D5), regra `R-LOAD-04` no catálogo,
 `daily-prescription-v5`/`weekly-plan-v5`, schema v17 sem migração. TDD em
-`core:domain`; `check`/`assembleDebug`/`spotlessCheck`/Kover verdes.
+`core:domain`.
 
-**Pendente:** fatia 2 — coleção de RPE opcional no fechamento com corrida
-vinculada + wiring de `SessionExecution`/executions no `buildLoadSnapshot`
-(`TrainingSignals.kt`, sem migração); fatia 3 — UI/copy (nota "carga estimada
-pelo esforço que você sentiu" no card de carga, RPE no detalhe, `R-LOAD-04` no
-sheet de explicação).
+**Fatia 2 — coleção e wiring (concluída):** campo de RPE opcional no fechamento
+com corrida vinculada ("Como foi o esforço?"), persistido em
+`session_executions.rpe` (sem migração); `TrainingSignalSource` único alimenta
+Hoje, Tendências, tutorial e replanejamento com a mesma série (execuções manuais
+viram sRPE, RPE recente aquece a fonte); testes de app e de repositório.
+
+**Pendente:** fatia 3 — UI/copy (nota "carga estimada pelo esforço que você
+sentiu" no card de carga, RPE no detalhe da atividade, `R-LOAD-04` no sheet de
+explicação).
 
 ### N-05 — Backfill do Health Connect (backlog de integração)
 

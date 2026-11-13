@@ -3,6 +3,7 @@ package com.meucoach.app.ui.trends
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
@@ -11,6 +12,7 @@ import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -63,6 +65,8 @@ class TrendsViewModelTest {
     private lateinit var raceEvents: RaceEventRepository
     private lateinit var checkIns: CheckInRepository
     private lateinit var metrics: DailyMetricsRepository
+    private lateinit var executionRepository: SessionExecutionRepository
+    private lateinit var signals: TrainingSignalSource
 
     @Before
     fun setUp() {
@@ -79,6 +83,7 @@ class TrendsViewModelTest {
         raceEvents = RaceEventRepository(database, clock)
         checkIns = CheckInRepository(database, clock)
         metrics = DailyMetricsRepository(database, clock)
+        executionRepository = SessionExecutionRepository(database, clock)
         activities =
             ActivityRepository(
                 database = database,
@@ -86,6 +91,7 @@ class TrendsViewModelTest {
                 zoneId = zone,
                 idGenerator = { "activity-${System.nanoTime()}" },
             )
+        signals = TrainingSignalSource(checkIns, metrics, activities, executionRepository)
     }
 
     @After
@@ -104,8 +110,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
-            checkIns,
-            metrics,
+            signals,
             FakeTimeProvider(),
         ).uiState.first {
             !it.isLoading
@@ -125,8 +130,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
-            checkIns,
-            metrics,
+            signals,
             FakeTimeProvider(),
         ).uiState.first {
             !it.isLoading
@@ -145,8 +149,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
-            checkIns,
-            metrics,
+            signals,
             FakeTimeProvider(),
         ).uiState.first {
             !it.isLoading
@@ -175,8 +178,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
-            checkIns,
-            metrics,
+            signals,
             FakeTimeProvider(),
         ).uiState.first {
             !it.isLoading
@@ -206,8 +208,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
-            checkIns,
-            metrics,
+            signals,
             FakeTimeProvider(),
         ).uiState.first {
             !it.isLoading
@@ -248,8 +249,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
-            checkIns,
-            metrics,
+            signals,
             FakeTimeProvider(),
         ).uiState.first {
             !it.isLoading
@@ -288,7 +288,14 @@ class TrendsViewModelTest {
         )
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, eventDate))
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, FakeTimeProvider())
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            signals,
+            FakeTimeProvider(),
+        )
             .uiState.first { !it.isLoading }
 
         assertThat(state.planCompletion?.planned).isEqualTo(1)
@@ -299,7 +306,15 @@ class TrendsViewModelTest {
     @Test
     fun `reloads activity trends with the selected period`(): Unit = runBlocking {
         profiles.saveProfile(profile())
-        val viewModel = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, FakeTimeProvider())
+        val viewModel =
+            TrendsViewModel(
+                profiles,
+                activities,
+                plans,
+                raceEvents,
+                signals,
+                FakeTimeProvider(),
+            )
         val initial = viewModel.uiState.first { !it.isLoading }
 
         assertThat(initial.period).isEqualTo(TrendsPeriod.WEEKS_6)
@@ -350,7 +365,14 @@ class TrendsViewModelTest {
             },
         )
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, fixedTime())
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            signals,
+            fixedTime(),
+        )
             .uiState.first { !it.isLoading }
 
         val review = state.weeklyReview
@@ -378,7 +400,14 @@ class TrendsViewModelTest {
         val today = LocalDate.of(2026, 10, 30)
         val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, fixedTime())
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            signals,
+            fixedTime(),
+        )
             .uiState.first { !it.isLoading }
 
         assertThat(state.weeklyReview?.weekStart).isEqualTo(monday.minusWeeks(1))
@@ -398,7 +427,14 @@ class TrendsViewModelTest {
             "sha",
         )
 
-        val state = TrendsViewModel(profiles, activities, plans, raceEvents, checkIns, metrics, fixedTime())
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            signals,
+            fixedTime(),
+        )
             .uiState.first { !it.isLoading }
 
         val review = state.weeklyReview

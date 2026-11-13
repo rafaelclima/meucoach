@@ -51,6 +51,11 @@ class SessionExecutionRepository(
         executions.observeLinkedActivityIds(),
     ) { fromSessions, fromExecutions -> (fromSessions + fromExecutions).toSet() }
 
+    /** All executions, oldest first. Used to feed subjective load (ADR 0039). */
+    fun observeAll(): Flow<List<SessionExecution>> = executions
+        .observeAll()
+        .map { rows -> rows.map { it.toModel() } }
+
     suspend fun getExecution(id: String): SessionExecution? = executions.findById(id)?.toModel()
 
     suspend fun getForSession(plannedSessionId: String): SessionExecution? =
@@ -66,6 +71,12 @@ class SessionExecutionRepository(
         startedAt: Instant,
         durationSec: Int,
         distanceM: Double?,
+        /**
+         * Optional perceived effort (ADR 0039). The activity file does not carry
+         * how the athlete felt; when it has no usable HR/pace, this becomes the
+         * day's load. Never overrides an objective metric.
+         */
+        rpe: Int? = null,
     ): CompletionOutcome = runCatching {
         database.withTransaction {
             val session = sessions.getSession(plannedSessionId)
@@ -96,7 +107,7 @@ class SessionExecutionRepository(
                 endedAt = startedAt.plusSeconds(durationSec.toLong()),
                 durationSec = durationSec,
                 distanceM = distanceM,
-                rpe = null,
+                rpe = rpe,
                 source = ExecutionSource.ACTIVITY,
                 createdAt = clock.instant(),
             )

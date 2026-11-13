@@ -2,8 +2,7 @@ package com.meucoach.app.ui.tutorial
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.meucoach.app.application.buildLoadSnapshot
-import com.meucoach.app.application.readinessResult
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.firstrun.FirstActionType
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.time.TimeProvider
@@ -16,12 +15,8 @@ import com.meucoach.app.ui.today.WorkoutUi
 import com.meucoach.app.ui.today.todayState
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
-import com.meucoach.core.data.repository.ActivityRepository
-import com.meucoach.core.data.repository.CheckInRepository
-import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
-import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
@@ -91,10 +86,8 @@ class TutorialViewModel @Inject constructor(
     private val store: TutorialStore,
     private val metrics: FirstRunMetricsStore,
     private val profileRepository: ProfileRepository,
-    private val checkInRepository: CheckInRepository,
-    private val metricsRepository: DailyMetricsRepository,
-    private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
+    private val signalSource: TrainingSignalSource,
     private val healthSource: HealthDailySource,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
@@ -176,19 +169,12 @@ class TutorialViewModel @Inject constructor(
     private suspend fun buildState(): LoadedState {
         val profile = profileRepository.getProfile() ?: error("Perfil não encontrado.")
         val today = timeProvider.currentDate()
-        val checkIn = checkInRepository.get(today)
-        val metrics = metricsRepository.getAll()
-        val activities = activityRepository.listActivitySummaries()
-        val readiness = readinessResult(checkIn, metrics, today)
-        val load = buildLoadSnapshot(
-            activities = activities,
-            profile = profile,
-            today = today,
-            sourceStatus = ActivitySourceStatus(
-                lastImportedAt = activityRepository.lastImportedAt(),
-                checkedAt = timeProvider.now(),
-            ),
-        )
+        val signals = signalSource.snapshot(profile, today, timeProvider.now())
+        val checkIn = signals.checkIn
+        val metrics = signals.metrics
+        val activities = signals.activities
+        val readiness = signals.readiness
+        val load = signals.load
         val weekStart = today.weekStart()
         val recentWeeks = planRepository.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
         val previousWeek = recentWeeks.firstOrNull { it.weekStart == weekStart.minusWeeks(1) }

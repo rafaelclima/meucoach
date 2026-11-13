@@ -27,6 +27,9 @@ interface SessionExecutionDao {
     @Query("SELECT * FROM session_executions ORDER BY createdAt")
     suspend fun getAll(): List<SessionExecutionEntity>
 
+    @Query("SELECT * FROM session_executions ORDER BY createdAt")
+    fun observeAll(): Flow<List<SessionExecutionEntity>>
+
     @Query("SELECT activityId FROM session_executions WHERE activityId IS NOT NULL")
     fun observeLinkedActivityIds(): Flow<List<String>>
 

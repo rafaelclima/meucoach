@@ -2,14 +2,11 @@ package com.meucoach.app.application
 
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
-import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
-import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.StoredWeeklyPlan
 import com.meucoach.core.data.repository.TrainingPlanRepository
-import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.RecoveryWindow
@@ -36,8 +33,7 @@ class ReplanContextBuilder @Inject constructor(
     private val plans: TrainingPlanRepository,
     private val profiles: ProfileRepository,
     private val checkIns: CheckInRepository,
-    private val metrics: DailyMetricsRepository,
-    private val activities: ActivityRepository,
+    private val signals: TrainingSignalSource,
     private val raceEvents: RaceEventRepository,
     private val timeProvider: TimeProvider,
 ) {
@@ -80,18 +76,9 @@ class ReplanContextBuilder @Inject constructor(
             record = plans.getWeekRecord(weekStart) ?: record
         }
 
-        val checkIn = checkIns.get(today)
-        val readiness = readinessResult(checkIn, metrics.getAll(), today)
-        val summaries = activities.listActivitySummaries()
-        val load = buildLoadSnapshot(
-            activities = summaries,
-            profile = profile,
-            today = today,
-            sourceStatus = ActivitySourceStatus(
-                lastImportedAt = activities.lastImportedAt(),
-                checkedAt = now,
-            ),
-        )
+        val signalsSnapshot = signals.snapshot(profile, today, now)
+        val readiness = signalsSnapshot.readiness
+        val load = signalsSnapshot.load
         val previousWeek = plans.getWeek(weekStart.minusWeeks(1))
         val recentWeeks = plans.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
         val weekNumberInBlock = plans.consecutiveWeeksBefore(weekStart) + 1

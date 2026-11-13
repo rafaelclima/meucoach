@@ -215,6 +215,43 @@ class CompleteSessionTest {
     }
 
     @Test
+    fun `links an imported run with the optional perceived effort`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+
+        val result = useCase(
+            request(
+                evidence = CompletionEvidence.ACTIVITY,
+                activityId = "activity-1",
+                rpe = 7,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(CompleteSessionResult.Completed::class.java)
+        val execution = (result as CompleteSessionResult.Completed).execution
+        assertThat(execution.rpe).isEqualTo(7)
+        assertThat(execution.activityId).isEqualTo("activity-1")
+    }
+
+    @Test
+    fun `an invalid perceived effort on a linked run is rejected`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+
+        val result = useCase(
+            request(
+                evidence = CompletionEvidence.ACTIVITY,
+                activityId = "activity-1",
+                rpe = 11,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(CompleteSessionResult.Rejected::class.java)
+        assertThat((result as CompleteSessionResult.Rejected).message).contains("1 e 10")
+        assertThat(session(today).status).isEqualTo(SessionStatus.PLANNED)
+    }
+
+    @Test
     fun `an activity already linked to another session is rejected`(): Unit = runBlocking {
         plans.saveWeek(
             plan().copy(sessions = listOf(session(today), session(today.plusDays(1)))),

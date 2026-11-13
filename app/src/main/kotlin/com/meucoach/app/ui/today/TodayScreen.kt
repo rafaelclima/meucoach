@@ -98,7 +98,7 @@ fun TodayScreen(
     onHealthClick: () -> Unit = {},
     checklistState: FirstRunChecklistState = FirstRunChecklistState(isLoading = false, dismissed = true),
     onChecklistDismiss: () -> Unit = {},
-    onCompleteWithActivity: (LocalDate, String) -> Unit = { _, _ -> },
+    onCompleteWithActivity: (LocalDate, String, Int?) -> Unit = { _, _, _ -> },
     onCompleteManually: (LocalDate, Int, Int) -> Unit = { _, _, _ -> },
     onReplaceWithActivity: (LocalDate, String) -> Unit = { _, _ -> },
     onSkipSession: (LocalDate, String) -> Unit = { _, _ -> },
@@ -301,8 +301,8 @@ fun TodayScreen(
             suggestions = state.activitySuggestions,
             prescribedDurationMin = state.prescription?.prescribedDurationMin,
             onDismiss = { completionOpen = false },
-            onLinkActivity = { activityId ->
-                onCompleteWithActivity(today, activityId)
+            onLinkActivity = { activityId, rpe ->
+                onCompleteWithActivity(today, activityId, rpe)
                 completionOpen = false
             },
             onManual = { durationMin, rpe ->
@@ -1673,7 +1673,7 @@ private fun CompleteSessionDialog(
     suggestions: List<ActivitySuggestionUi>,
     prescribedDurationMin: Int?,
     onDismiss: () -> Unit,
-    onLinkActivity: (String) -> Unit,
+    onLinkActivity: (String, Int?) -> Unit,
     onManual: (Int, Int) -> Unit,
 ) {
     val colors = McTheme.colors
@@ -1682,6 +1682,7 @@ private fun CompleteSessionDialog(
         mutableStateOf(prescribedDurationMin?.toString().orEmpty())
     }
     var rpe by remember { mutableStateOf<Int?>(null) }
+    var linkedRpe by remember { mutableStateOf<Int?>(null) }
     val duration = durationInput.toIntOrNull()
     val manualValid = duration != null && duration > 0 && rpe != null
 
@@ -1749,9 +1750,29 @@ private fun CompleteSessionDialog(
                         }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
+                    if (selectedActivityId != null) {
+                        Text(
+                            text = "Como foi o esforço? (opcional)",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                        )
+                        Text(
+                            text = "Se a corrida não tiver FC ou ritmo, seu relato vira a carga do dia. " +
+                                "Se não souber, deixe em branco.",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        RpeChips(
+                            selected = linkedRpe,
+                            onSelect = { value -> linkedRpe = if (value == linkedRpe) null else value },
+                            tagPrefix = "linked-rpe",
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
                     McTextButton(
                         text = "Vincular corrida",
-                        onClick = { selectedActivityId?.let(onLinkActivity) },
+                        onClick = { selectedActivityId?.let { onLinkActivity(it, linkedRpe) } },
                         trailingArrow = false,
                         enabled = selectedActivityId != null,
                         modifier = Modifier.testTag("link-activity"),
@@ -1780,29 +1801,11 @@ private fun CompleteSessionDialog(
                     color = colors.textSecondary,
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                (1..10).chunked(5).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        row.forEach { value ->
-                            val selected = rpe == value
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .testTag("rpe-$value")
-                                    .clip(CircleShape)
-                                    .background(if (selected) colors.accent else colors.surfaceInset)
-                                    .clickable { rpe = value },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = value.toString(),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = if (selected) colors.onAccent else colors.textSecondary,
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                }
+                RpeChips(
+                    selected = rpe,
+                    onSelect = { value -> rpe = if (value == rpe) null else value },
+                    tagPrefix = "rpe",
+                )
                 Text(
                     text = "Sem registro não entra em volume, carga ou zonas — só conta a adesão.",
                     style = McTextStyles.caption,
@@ -1827,6 +1830,36 @@ private fun CompleteSessionDialog(
             )
         },
     )
+}
+
+@Composable
+private fun RpeChips(selected: Int?, onSelect: (Int) -> Unit, tagPrefix: String) {
+    val colors = McTheme.colors
+    Column {
+        (1..10).chunked(5).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { value ->
+                    val isSelected = selected == value
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .testTag("$tagPrefix-$value")
+                            .clip(CircleShape)
+                            .background(if (isSelected) colors.accent else colors.surfaceInset)
+                            .clickable { onSelect(value) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = value.toString(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isSelected) colors.onAccent else colors.textSecondary,
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+    }
 }
 
 @Composable

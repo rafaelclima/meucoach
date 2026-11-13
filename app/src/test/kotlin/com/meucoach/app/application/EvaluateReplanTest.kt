@@ -3,6 +3,7 @@ package com.meucoach.app.application
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
@@ -10,6 +11,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.replan.PlanReplanner
@@ -59,8 +61,12 @@ class EvaluateReplanTest {
             plans = plans,
             profiles = profiles,
             checkIns = checkIns,
-            metrics = metrics,
-            activities = activities,
+            signals = TrainingSignalSource(
+                checkIns = checkIns,
+                metrics = metrics,
+                activities = activities,
+                executions = SessionExecutionRepository(database, clock),
+            ),
             raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )
@@ -104,8 +110,12 @@ class EvaluateReplanTest {
             plans = plans,
             profiles = profiles,
             checkIns = checkIns,
-            metrics = DailyMetricsRepository(database, clock),
-            activities = ActivityRepository(database = database, clock = clock, zoneId = ZoneOffset.UTC),
+            signals = TrainingSignalSource(
+                checkIns = checkIns,
+                metrics = DailyMetricsRepository(database, clock),
+                activities = ActivityRepository(database = database, clock = clock, zoneId = ZoneOffset.UTC),
+                executions = SessionExecutionRepository(database, clock),
+            ),
             raceEvents = RaceEventRepository(database, clock),
             timeProvider = utcProvider,
         )

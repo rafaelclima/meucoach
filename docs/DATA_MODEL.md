@@ -295,10 +295,13 @@ O RPE vive em `session_executions.rpe` (1–10, nullable; obrigatório em
 Foster): terceiro nível de carga (`TRIMP > rTSS > SRPE`), usado apenas quando
 não há FC/pace objetivos no dia, declarado em `LoadSnapshot.subjectiveDaysInWindow`
 e governado por `R-LOAD-04` — subjetivo **conserva, nunca libera aumento**. A
-coleção de RPE no fechamento com corrida vinculada (fatia 2) grava nessa mesma
-coluna, sem migração. A tabela `SessionFeedback` (`activityId`, `rpe`, `feeling`,
-`notes`, `createdAt`) segue **planejada, não implementada**; se o fluxo atual de
-execuções continuar suficiente, pode não existir nunca.
+coleção acontece no fechamento: o diálogo "Concluir treino" oferece RPE
+opcional ao vincular uma corrida ("se o arquivo não contém a informação…") e
+grava na mesma coluna, sem migração; o `TrainingSignalSource` traduz as
+execuções em `LoadExecution` e aquece o frescor da fonte. A tabela
+`SessionFeedback` (`activityId`, `rpe`, `feeling`, `notes`, `createdAt`) segue
+**planejada, não implementada**; se o fluxo atual de execuções continuar
+suficiente, pode não existir nunca.
 
 ### 3.10 Evidências e regras
 

@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.EvaluateReplan
 import com.meucoach.app.application.EvaluateReplanResult
 import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.application.easySession
 import com.meucoach.app.application.qualitySession
 import com.meucoach.app.application.replanPlan
@@ -21,6 +22,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.model.ActivitySample
@@ -326,8 +328,12 @@ class CalibrationViewModelTest {
             plans = plans,
             profiles = profiles,
             checkIns = checkIns,
-            metrics = metrics,
-            activities = activities,
+            signals = TrainingSignalSource(
+                checkIns = checkIns,
+                metrics = metrics,
+                activities = activities,
+                executions = SessionExecutionRepository(database, clock),
+            ),
             raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )

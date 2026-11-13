@@ -64,6 +64,7 @@ import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
+import com.meucoach.core.model.SessionExecution
 import com.meucoach.core.model.Sport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -169,15 +170,16 @@ class TodayViewModel @Inject constructor(
             ) { checkIn, metrics, profile, activities, lastImportedAt ->
                 ContextInputs(checkIn, metrics, profile, activities, lastImportedAt)
             }
-            combine(inputs, executionRepository.observeLinkedActivityIds()) { base, linkedActivityIds ->
+            combine(inputs, executionRepository.observeLinkedActivityIds(), executionRepository.observeAll()) {
+                    base,
+                    linkedActivityIds,
+                    executions,
+                ->
                 buildContext(
-                    today = today,
-                    checkIn = base.checkIn,
-                    metrics = base.metrics,
-                    profile = base.profile,
-                    activities = base.activities,
-                    lastImportedAt = base.lastImportedAt,
+                    inputs = base,
                     linkedActivityIds = linkedActivityIds,
+                    executions = executions,
+                    today = today,
                     checkedAt = checkedAt,
                 )
             }
@@ -402,21 +404,24 @@ class TodayViewModel @Inject constructor(
     }
 
     private fun buildContext(
-        today: LocalDate,
-        checkIn: DailyCheckIn?,
-        metrics: List<DailyMetrics>,
-        profile: AthleteProfile?,
-        activities: List<ActivitySummary>,
-        lastImportedAt: java.time.Instant?,
+        inputs: ContextInputs,
         linkedActivityIds: Set<String>,
+        executions: List<SessionExecution>,
+        today: LocalDate,
         checkedAt: java.time.Instant,
     ): TodayContext {
+        val checkIn = inputs.checkIn
+        val metrics = inputs.metrics
+        val profile = inputs.profile
+        val activities = inputs.activities
+        val lastImportedAt = inputs.lastImportedAt
         val load = profile?.let {
             buildLoadSnapshot(
                 activities = activities,
                 profile = it,
                 today = today,
                 sourceStatus = ActivitySourceStatus(lastImportedAt = lastImportedAt, checkedAt = checkedAt),
+                executions = executions,
             )
         }
         val zone = timeProvider.zoneId.value
@@ -455,12 +460,13 @@ class TodayViewModel @Inject constructor(
         )
     }
 
-    fun completeWithActivity(date: LocalDate, activityId: String) {
+    fun completeWithActivity(date: LocalDate, activityId: String, rpe: Int? = null) {
         val state = uiState.value
         complete(
             date = date,
             evidence = CompletionEvidence.ACTIVITY,
             activityId = activityId,
+            rpe = rpe,
             prescription = state.prescription,
             illnessOrInjury = state.illnessOrInjury,
         )

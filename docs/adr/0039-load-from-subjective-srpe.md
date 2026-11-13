@@ -1,6 +1,6 @@
 # ADR 0039 — Carga subjetiva por sRPE (FR-013 / BL-022)
 
-**Status:** Aceito em 2026-11-13 (aprovação do usuário 0) e implementado no mesmo dia (fatia 1).
+**Status:** Aceito em 2026-11-13 (aprovação do usuário 0). Fatias 1 (motor) e 2 (coleção + wiring) implementadas no mesmo dia; fatia 3 (UI/copy) pendente.
 **Data:** 2026-11-13
 **Escopo:** PRD FR-013/BL-022, `ROADMAP` P1; integra o esforço percebido ao motor de carga.
 **Relacionados:** ADR 0024 (evidência de conclusão), ADR 0026 (cobertura de carga), ADR 0038 (progressão de volume), ADR 0029 (copy educativa). Fonte: `EV-FOSTER-2001` (sRPE de Foster).
@@ -69,8 +69,14 @@ dia, **só quando nenhum nível objetivo se aplica**.
 duração positiva que não tenham atividade com métrica objetiva no dia:
 `MANUAL` (RPE obrigatório) e `ACTIVITY`/`GUIDED` quando o usuário registra RPE
 e a corrida vinculada não tem FC/pace útil. A corrida com FC satisfaz nível 1–2
-e o sRPE do dia é ignorado. **Nunca os dois no mesmo dia.** A coleção de RPE no
-fechamento com corrida vinculada é a fatia 2.
+e o sRPE do dia é ignorado. **Nunca os dois no mesmo dia.**
+
+A coleção acompanha o fechamento: o diálogo "Concluir treino" mostra o campo
+**"Como foi o esforço? (opcional)"** quando uma corrida é selecionada, grava em
+`session_executions.rpe` (coluna existente, sem migração) e o app traduz as
+execuções em `LoadExecution` no `buildLoadSnapshot` — a data vem do início da
+corrida ou do `plannedSessionId` (registro manual). O RPE também aquece o
+frescor da fonte (`lastSubjectiveLogAt`).
 
 ### 3.3 Cobertura e frescor (D3/D4)
 
@@ -138,9 +144,17 @@ Schema permanece **v17**, sem migração.
 - `ExplanationCatalogTest`: `R-LOAD-04` catalogada.
 
 **App (fatias 2–3)**
-- Coleção de RPE opcional no fechamento com corrida vinculada; wiring de
-  `SessionExecution` → `LoadExecution` no `buildLoadSnapshot`; nota no card de
-  carga; RPE no detalhe da atividade.
+- `TrainingSignalsTest`: execução manual vira dia `SRPE`; corrida com FC mantém
+  TRIMP e ignora o RPE; corrida sem métrica objetiva usa o RPE; log recente
+  mantém a fonte fresca; execução sem RPE não cria carga.
+- `CompleteSessionTest` / `SessionExecutionRepositoryTest`: RPE opcional no
+  fechamento com corrida vinculada é persistido e `observeAll()` o expõe; valor
+  fora de 1–10 é rejeitado.
+- `TodayPlanTest`: o campo opcional aparece ao selecionar a corrida e o valor é
+  enviado ao vincular.
+- `TrendsViewModelTest`/`TutorialViewModelTest`/`ReplanContextBuilder`: todos os
+  consumidores leem o mesmo `TrainingSignalSource` (com as execuções).
+- Pendente (fatia 3): nota no card de carga e RPE no detalhe da atividade.
 
 ---
 
@@ -158,8 +172,6 @@ Schema permanece **v17**, sem migração.
 
 ## 7. Fora de escopo (nesta fatia)
 
-- Fatia 2: coleção de RPE no fechamento com corrida vinculada e wiring de
-  `SessionExecution`/`executions` no `buildLoadSnapshot` (`TrainingSignals.kt`).
 - Fatia 3: UI/copy (nota no card de carga, RPE no detalhe, sheet de explicação).
 - `SessionFeedback` (tabela planejada no DATA_MODEL §3.9) — o RPE de execuções
   já cobre o fluxo atual.
@@ -169,9 +181,12 @@ Schema permanece **v17**, sem migração.
 
 ## 8. Consequências
 
-- Quem treina sem FC e registra RPE passa a ter série de carga, ACWR e
-  guardrails vivos — e mensagens honestas sobre a fonte do dado.
+- Quem treina sem FC e registra RPE — manualmente ou ao vincular uma corrida —
+  passa a ter série de carga, ACWR e guardrails vivos, com mensagens honestas
+  sobre a fonte do dado.
 - O sRPE **conserva**: reduz e protege, nunca acelera. A progressão de volume
   e a qualidade continuam exigindo evidência objetiva.
 - `ENGINE_VERSION` → `daily-prescription-v5` / `weekly-plan-v5`; schema **v17**,
-  sem migração; nenhuma dependência nova.
+  sem migração; nenhuma dependência nova. Tendências, tutorial, replanejamento e
+  Hoje compartilham o mesmo `TrainingSignalSource`, então a série é única em
+  todas as telas.

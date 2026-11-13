@@ -119,6 +119,9 @@ class CompleteSession @Inject constructor(
     ): CompleteSessionResult {
         val activityId = request.activityId
             ?: return CompleteSessionResult.Rejected("Escolha a corrida que corresponde ao treino.")
+        if (request.rpe != null && request.rpe !in 1..10) {
+            return CompleteSessionResult.Rejected("O esforço percebido deve ficar entre 1 e 10.")
+        }
         val activity = activityRepository.getActivitySummary(activityId)
             ?: return CompleteSessionResult.Rejected("Corrida não encontrada ou na lixeira.")
         if (activity.sport != Sport.RUNNING && activity.sport != Sport.TREADMILL) {
@@ -134,6 +137,7 @@ class CompleteSession @Inject constructor(
                 startedAt = activity.startTime,
                 durationSec = activity.durationSec,
                 distanceM = activity.distance.meters.takeIf { it > 0.0 },
+                rpe = request.rpe,
             )
         ) {
             is CompletionOutcome.Recorded -> CompleteSessionResult.Completed(

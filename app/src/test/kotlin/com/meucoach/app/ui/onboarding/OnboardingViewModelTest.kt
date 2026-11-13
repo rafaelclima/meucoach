@@ -8,6 +8,7 @@ import com.meucoach.app.application.EvaluateReplanResult
 import com.meucoach.app.application.REPLAN_TODAY
 import com.meucoach.app.application.REPLAN_WEEK_START
 import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.application.easySession
 import com.meucoach.app.application.qualitySession
 import com.meucoach.app.application.replanPlan
@@ -22,6 +23,7 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.model.AthleteProfile
@@ -240,8 +242,12 @@ class OnboardingViewModelTest {
             plans = plans,
             profiles = repository,
             checkIns = checkIns,
-            metrics = metrics,
-            activities = activities,
+            signals = TrainingSignalSource(
+                checkIns = checkIns,
+                metrics = metrics,
+                activities = activities,
+                executions = SessionExecutionRepository(database, clock),
+            ),
             raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )

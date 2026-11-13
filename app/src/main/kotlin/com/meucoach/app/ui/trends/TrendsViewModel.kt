@@ -2,21 +2,16 @@ package com.meucoach.app.ui.trends
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
-import com.meucoach.core.data.repository.CheckInRepository
-import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
-import com.meucoach.core.domain.load.ActivitySourceStatus
-import com.meucoach.core.domain.load.LoadActivity
 import com.meucoach.core.domain.load.LoadSnapshot
-import com.meucoach.core.domain.load.TrainingLoadEngine
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionCalculator
 import com.meucoach.core.domain.prescription.WorkoutType
-import com.meucoach.core.domain.readiness.ReadinessHistoryCalculator
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewCalculator
 import com.meucoach.core.domain.trends.ActivityTrends
@@ -63,15 +58,12 @@ class TrendsViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
     private val raceEventRepository: RaceEventRepository,
-    private val checkInRepository: CheckInRepository,
-    private val metricsRepository: DailyMetricsRepository,
+    private val signalSource: TrainingSignalSource,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
-    private val engine = TrainingLoadEngine()
     private val trendsCalculator = ActivityTrendsCalculator()
     private val intensityCalculator = IntensityDistributionCalculator()
     private val planCompletionCalculator = PlanCompletionCalculator()
-    private val readinessCalculator = ReadinessHistoryCalculator()
     private val weeklyReviewCalculator = WeeklyReviewCalculator()
     private val _uiState = MutableStateFlow(TrendsUiState())
     val uiState: StateFlow<TrendsUiState> = _uiState.asStateFlow()
@@ -100,20 +92,8 @@ class TrendsViewModel @Inject constructor(
                 return@launch
             }
             val zone = timeProvider.zoneId.value
-            val summaries = activityRepository.listActivitySummaries()
-            val sourceStatus = ActivitySourceStatus(
-                lastImportedAt = activityRepository.lastImportedAt(),
-                checkedAt = timeProvider.now(),
-            )
-            val activities = summaries.map { summary ->
-                LoadActivity(
-                    date = summary.startTime.atZone(zone).toLocalDate(),
-                    durationSec = summary.durationSec,
-                    averageHeartRate = summary.averageHeartRate,
-                    averagePace = summary.averagePace,
-                    startTime = summary.startTime,
-                )
-            }
+            val signals = signalSource.snapshot(profile, today, timeProvider.now())
+            val summaries = signals.activities
             val completion = completion(today)
             val intensitySessions = intensitySessions(summaries, today, zone)
             val intensity = profile.lactateThresholdHeartRate?.let { lthr ->
@@ -141,12 +121,7 @@ class TrendsViewModel @Inject constructor(
             _uiState.value = TrendsUiState(
                 isLoading = false,
                 profile = profile,
-                snapshot = engine.calculate(
-                    activities = activities,
-                    profile = profile,
-                    today = today,
-                    sourceStatus = sourceStatus,
-                ),
+                snapshot = signals.load,
                 activityTrends = trendsCalculator.calculate(
                     activities = summaries,
                     today = today,
@@ -212,14 +187,9 @@ class TrendsViewModel @Inject constructor(
         val weekEnd = weekStart.plusDays(6)
         val plan = planRepository.getWeek(weekStart)
         val completionWeek = completion.weeks.firstOrNull { it.weekStart == weekStart }
-        val checkIns = checkInRepository.getAll()
-        val metrics = metricsRepository.getAll()
-        val readiness = readinessCalculator.calculate(
-            checkIns = checkIns,
-            metrics = metrics,
-            today = today,
-            days = REVIEW_HEALTH_WINDOW_DAYS,
-        )
+        val checkIns = signalSource.allCheckIns()
+        val metrics = signalSource.allMetrics()
+        val readiness = signalSource.readinessHistory(today, REVIEW_HEALTH_WINDOW_DAYS)
         val executedMin = summaries
             .filter { it.sport == Sport.RUNNING || it.sport == Sport.TREADMILL }
             .filter { summary ->

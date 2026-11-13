@@ -176,7 +176,7 @@ class TodayPlanTest {
     @Test
     fun `links a suggested activity as evidence`() {
         val today = LocalDate.now()
-        var linked: Pair<LocalDate, String>? = null
+        var linked: Triple<LocalDate, String, Int?>? = null
         compose.setContent {
             McTheme(darkTheme = true) {
                 TodayScreen(
@@ -193,7 +193,7 @@ class TodayPlanTest {
                             ),
                         ),
                     ),
-                    onCompleteWithActivity = { date, activityId -> linked = date to activityId },
+                    onCompleteWithActivity = { date, activityId, rpe -> linked = Triple(date, activityId, rpe) },
                 )
             }
         }
@@ -202,9 +202,44 @@ class TodayPlanTest {
         list.performScrollToNode(hasText("Concluir treino"))
         compose.onNodeWithTag("complete-today").performClick()
         compose.onNodeWithTag("suggestion-activity-1").performClick()
-        compose.onNodeWithTag("link-activity").performClick()
+        compose.onNodeWithTag("link-activity").performScrollTo().performClick()
 
-        assertThat(linked).isEqualTo(today to "activity-1")
+        assertThat(linked).isEqualTo(Triple(today, "activity-1", null))
+    }
+
+    @Test
+    fun `links an activity with the optional perceived effort`() {
+        val today = LocalDate.now()
+        var linked: Triple<LocalDate, String, Int?>? = null
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today),
+                        activitySuggestions = listOf(
+                            ActivitySuggestionUi(
+                                id = "activity-1",
+                                title = "Corrida de rua",
+                                subtitle = "hoje · 07:00",
+                                distance = "6,1 km",
+                                duration = "40:00",
+                            ),
+                        ),
+                    ),
+                    onCompleteWithActivity = { date, activityId, rpe -> linked = Triple(date, activityId, rpe) },
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Concluir treino"))
+        compose.onNodeWithTag("complete-today").performClick()
+        compose.onNodeWithTag("suggestion-activity-1").performClick()
+        compose.onNodeWithTag("linked-rpe-7").performScrollTo().performClick()
+        compose.onNodeWithTag("link-activity").performScrollTo().performClick()
+
+        assertThat(linked).isEqualTo(Triple(today, "activity-1", 7))
     }
 
     @Test
