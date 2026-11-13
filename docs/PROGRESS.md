@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (desenho do FR-013 (sRPE) proposto e aguardando decisão do usuário 0 — documento D1–D9, sem código; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -82,6 +82,43 @@
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
 
+## Sessão 2026-11-13 — FR-013: desenho da carga subjetiva (sRPE), sem código
+
+**Objetivo:** preparar a decisão de engenharia do FR-013 antes de implementar —
+o plano do ciclo 2 exige desenho próprio para integrar sRPE à entrada de carga,
+e a implementação às cegas repetiria correções como BUG-08.
+
+### Concluído
+
+- **Documento de decisões:** [`docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`](PLANO_FR013_SRPE_CARGA_SUBJETIVA.md)
+  com 9 decisões (D1–D9), cada uma com opções, consequência explícita e
+  recomendação, prontas para a aprovação do usuário 0.
+- **Diagnóstico verificado no código:** `srpe()` existe e é testada mas não é
+  alimentada; o motor de carga só usa corridas importadas (`TRIMP`/`rTSS`);
+  execuções manuais não entram em `LoadActivity`; frescor é só de importação;
+  `session_executions.rpe` já existe no schema v17 — **nenhuma migração**.
+- **Assimetria central proposta:** sRPE pode *reduzir* carga (guardrails,
+  ACWR alto) e **nunca liberar aumento** — a trava de volume +6% do ADR 0038
+  passa a exigir carga objetiva conhecida. Prontidão e evidência forte de
+  progressão permanecem intocadas.
+- **Efeitos mapeados:** R-LOAD-04 nova no catálogo, `daily-prescription-v5`,
+  fonte dual de frescor (importação ou execução com RPE, teto de 14 dias),
+  fração subjetiva exposta no snapshot, implementação em 3 fatias.
+
+### Evidências
+
+- Nenhum código mudou; nenhum teste rodou. Docs: ROADMAP (seção FR-013
+  proposta) e PROGRESS atualizados. Schema v17, nenhum dado real no diff.
+
+### Próximo passo
+
+1. Aprovar (ou ajustar) as decisões D1–D9 de FR-013 em
+   `docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`; com aprovação, abrir o ADR e
+   implementar a fatia 1 (motor, TDD em `core:domain`).
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: T-04 (property tests), U-01..U-04, N-05 e a relação taper ×
+   deload/periodização (exige ADR próprio).
+
 ## Sessão 2026-11-13 — T-02/T-03/T-05: gates de build
 
 **Objetivo:** preparar o build para o período de uso real (P1-12) sem mudar
@@ -137,6 +174,15 @@ Android e robustez do parser contra entradas hostis.
 
 1. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
 2. Desenho do FR-013 (RPE/sRPE) quando ~2 semanas de dados reais existirem.
+3. Backlog: T-04 (property tests), U-01..U-04, N-05 e a relação taper ×
+   deload/periodização (exige ADR próprio).
+
+### Próximo passo
+
+1. Aprovar (ou ajustar) as decisões D1–D9 de FR-013 em
+   `docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`; com aprovação, abrir o ADR e
+   implementar a fatia 1 (motor, TDD em `core:domain`).
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
 3. Backlog: T-04 (property tests), U-01..U-04, N-05 e a relação taper ×
    deload/periodização (exige ADR próprio).
 

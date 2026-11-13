@@ -465,6 +465,16 @@ comparação por splits seguem pendentes.
 - [ ] Rever a relação entre taper e deload.
 - [ ] Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
 
+### FR-013 — Carga subjetiva (sRPE): desenho proposto, aguardando decisão (13/11/2026)
+
+Documento de decisões D1–D9 em [`docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`](PLANO_FR013_SRPE_CARGA_SUBJETIVA.md):
+sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`), fonte dual de frescor
+(importação ou execução com RPE), sRPE conta como dia com carga mas **nunca libera
+aumento** (a trava de volume +6% passa a exigir carga objetiva). Sem migração
+(`session_executions.rpe` já existe no v17); versão da prescrição sobe para
+`daily-prescription-v5`. Implementação em 3 fatias **só depois da aprovação do
+usuário 0**. ADR segue na aprovação.
+
 ### N-05 — Backfill do Health Connect (backlog de integração)
 
 **Status:** registrado em 06/11/2026; fora do ciclo 1.
