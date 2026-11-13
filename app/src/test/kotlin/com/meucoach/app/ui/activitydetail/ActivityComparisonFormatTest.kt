@@ -43,10 +43,30 @@ class ActivityComparisonFormatTest {
                     targets = PrescriptionTargets(),
                 ),
                 activity = activity(heartRate = null, averagePace = null, distanceM = 0.0),
+                rpe = null,
             ),
         )
 
         assertThat(rows.map { it.label }).containsExactly("Duração")
+    }
+
+    @Test
+    fun `shows the reported effort even without an RPE target`() {
+        val rows = comparisonRows(
+            comparison(
+                plan = ComparisonPlan(
+                    title = "Fácil",
+                    type = WorkoutType.EASY,
+                    durationMin = 30,
+                    targets = PrescriptionTargets(),
+                ),
+                rpe = 7,
+            ),
+        )
+
+        val effort = rows.first { it.label == "Esforço" }
+        assertThat(effort.planned).isEqualTo("—")
+        assertThat(effort.actual).isEqualTo("RPE 7")
     }
 
     @Test
@@ -89,6 +109,7 @@ class ActivityComparisonFormatTest {
         val freeRun = comparison(
             plan = null,
             activity = activity(heartRate = null, averagePace = null, distanceM = 0.0),
+            rpe = null,
         )
 
         assertThat(freeRunSummary(freeRun)).isEqualTo(
@@ -100,10 +121,23 @@ class ActivityComparisonFormatTest {
 
     @Test
     fun `shows the actual values of a free run when they exist`() {
-        val freeRun = comparison(plan = null, activity = activity(durationSec = 1_740, distanceM = 5_200.0))
+        val freeRun = comparison(
+            plan = null,
+            activity = activity(durationSec = 1_740, distanceM = 5_200.0),
+            rpe = null,
+        )
 
         assertThat(freeRunSummary(freeRun)).isEqualTo(
             "Duração 29 min · Distância 5,20 km · Ritmo 5:35/km · FC média 150 bpm",
+        )
+    }
+
+    @Test
+    fun `adds the perceived effort to a free run when it was reported`() {
+        val freeRun = comparison(plan = null, activity = activity(), rpe = 7)
+
+        assertThat(freeRunSummary(freeRun)).isEqualTo(
+            "Duração 30 min · Distância 5,00 km · Ritmo 6:00/km · FC média 150 bpm · Esforço RPE 7",
         )
     }
 

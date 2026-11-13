@@ -1,6 +1,6 @@
 # ADR 0039 — Carga subjetiva por sRPE (FR-013 / BL-022)
 
-**Status:** Aceito em 2026-11-13 (aprovação do usuário 0). Fatias 1 (motor) e 2 (coleção + wiring) implementadas no mesmo dia; fatia 3 (UI/copy) pendente.
+**Status:** Aceito em 2026-11-13 (aprovação do usuário 0) e implementado no mesmo dia nas três fatias (motor, coleção/wiring, UI/copy).
 **Data:** 2026-11-13
 **Escopo:** PRD FR-013/BL-022, `ROADMAP` P1; integra o esforço percebido ao motor de carga.
 **Relacionados:** ADR 0024 (evidência de conclusão), ADR 0026 (cobertura de carga), ADR 0038 (progressão de volume), ADR 0029 (copy educativa). Fonte: `EV-FOSTER-2001` (sRPE de Foster).
@@ -150,11 +150,17 @@ Schema permanece **v17**, sem migração.
 - `CompleteSessionTest` / `SessionExecutionRepositoryTest`: RPE opcional no
   fechamento com corrida vinculada é persistido e `observeAll()` o expõe; valor
   fora de 1–10 é rejeitado.
-- `TodayPlanTest`: o campo opcional aparece ao selecionar a corrida e o valor é
-  enviado ao vincular.
+- `TodayPlanTest`: o campo opcional aparece ao selecionar a corrida, o valor é
+  enviado ao vincular e a nota "carga estimada pelo esforço que você sentiu"
+  aparece no card quando o dia é `SRPE`.
+- `ActivityComparisonFormatTest`: o RPE registrado aparece no detalhe mesmo sem
+  alvo de esforço (linha "Esforço" com "—" no planejado; resumo de treino livre
+  ganha "Esforço RPE n").
+- `TodayExplanationLoadTest`: o sheet declara "Esforço percebido (RPE)" em dados
+  usados, "FC ou ritmo para medir a carga objetivamente" em dados ausentes e
+  cita `R-LOAD-04` com o título do catálogo.
 - `TrendsViewModelTest`/`TutorialViewModelTest`/`ReplanContextBuilder`: todos os
   consumidores leem o mesmo `TrainingSignalSource` (com as execuções).
-- Pendente (fatia 3): nota no card de carga e RPE no detalhe da atividade.
 
 ---
 
@@ -170,9 +176,8 @@ Schema permanece **v17**, sem migração.
 
 ---
 
-## 7. Fora de escopo (nesta fatia)
+## 7. Fora de escopo
 
-- Fatia 3: UI/copy (nota no card de carga, RPE no detalhe, sheet de explicação).
 - `SessionFeedback` (tabela planejada no DATA_MODEL §3.9) — o RPE de execuções
   já cobre o fluxo atual.
 - Nota factual da revisão semanal sobre dias subjetivos.

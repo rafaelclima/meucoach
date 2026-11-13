@@ -44,20 +44,47 @@ internal fun buildExplanation(
     result: ReadinessResult,
     prescription: DailyPrescription,
     load: LoadSnapshot?,
-): TodayExplanationUi {
-    val used = buildList {
-        if (checkIn != null) add("Check-in de hoje")
-        if (inputs.sleep != null) add("Sono recente")
-        if (inputs.hrv != null) add("Variabilidade cardíaca")
-        if (inputs.restingHeartRate != null) add("FC de repouso")
-        if (load?.dataState == LoadDataState.KNOWN) add("Carga das últimas semanas")
-        if (prescription.targets.pace != null) add("Ritmo no limite calibrado")
-        if (prescription.targets.heartRate != null) add("FC no limite calibrada")
-        if ("R-PLAN-08" in prescription.ruleIds) add("Acesso a esteira")
-        if (checkIn?.heatLevel == HeatLevel.HOT) add("Calor informado")
-        if (prescription.plannedType != null) add("Plano da semana")
-    }.distinct()
-    val missing = buildList {
+): TodayExplanationUi = TodayExplanationUi(
+    rationale = prescription.rationale,
+    confidence = prescription.confidence,
+    usedData = usedData(checkIn, inputs, prescription, load),
+    missingData = missingData(result, prescription, load),
+    rules = prescription.ruleIds.distinct().map { id ->
+        val rule = ExplanationCatalog.rule(id)
+        ExplanationRuleUi(id = rule.id, title = rule.title)
+    },
+    evidence = prescription.evidenceIds.distinct().map { id ->
+        val item = ExplanationCatalog.evidence(id)
+        ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
+    },
+    planComparison = planComparison(prescription),
+)
+
+private fun usedData(
+    checkIn: DailyCheckIn?,
+    inputs: ReadinessInputs,
+    prescription: DailyPrescription,
+    load: LoadSnapshot?,
+): List<String> = buildList {
+    if (checkIn != null) add("Check-in de hoje")
+    if (inputs.sleep != null) add("Sono recente")
+    if (inputs.hrv != null) add("Variabilidade cardíaca")
+    if (inputs.restingHeartRate != null) add("FC de repouso")
+    if (load?.dataState == LoadDataState.KNOWN) {
+        add("Carga das últimas semanas")
+        if (load.subjectiveDaysInWindow > 0 && load.objectiveDataState != LoadDataState.KNOWN) {
+            add("Esforço percebido (RPE)")
+        }
+    }
+    if (prescription.targets.pace != null) add("Ritmo no limite calibrado")
+    if (prescription.targets.heartRate != null) add("FC no limite calibrada")
+    if ("R-PLAN-08" in prescription.ruleIds) add("Acesso a esteira")
+    if (checkIn?.heatLevel == HeatLevel.HOT) add("Calor informado")
+    if (prescription.plannedType != null) add("Plano da semana")
+}.distinct()
+
+private fun missingData(result: ReadinessResult, prescription: DailyPrescription, load: LoadSnapshot?): List<String> =
+    buildList {
         result.missing.forEach { add(it.label()) }
         if (!prescription.isRest && prescription.targets.pace == null) {
             add("Ritmo no limite (sem calibração)")
@@ -70,24 +97,12 @@ internal fun buildExplanation(
             LoadDataState.INSUFFICIENT, null -> add("Histórico de carga das últimas 4 semanas")
             LoadDataState.KNOWN -> Unit
         }
+        if (load != null && load.dataState == LoadDataState.KNOWN &&
+            load.objectiveDataState != LoadDataState.KNOWN
+        ) {
+            add("FC ou ritmo para medir a carga objetivamente")
+        }
     }.distinct()
-
-    return TodayExplanationUi(
-        rationale = prescription.rationale,
-        confidence = prescription.confidence,
-        usedData = used,
-        missingData = missing,
-        rules = prescription.ruleIds.distinct().map { id ->
-            val rule = ExplanationCatalog.rule(id)
-            ExplanationRuleUi(id = rule.id, title = rule.title)
-        },
-        evidence = prescription.evidenceIds.distinct().map { id ->
-            val item = ExplanationCatalog.evidence(id)
-            ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
-        },
-        planComparison = planComparison(prescription),
-    )
-}
 
 private fun planComparison(prescription: DailyPrescription): String? {
     val plannedType = prescription.plannedType ?: return null

@@ -74,6 +74,7 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadDataState
+import com.meucoach.core.domain.load.LoadMetric
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
@@ -846,6 +847,15 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
     val hasDistance = (state.weeklyLoadKm ?: 0.0) > 0.0
     McCard {
         Text(text = "CARGA DA SEMANA", style = McTextStyles.overline, color = colors.textTertiary)
+        if (state.loadMetric == LoadMetric.SRPE) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Hoje: carga estimada pelo esforço que você sentiu.",
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("load-subjective-note"),
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         if (!hasLoad && !hasDistance) {
             val stale = state.loadDataState == LoadDataState.STALE

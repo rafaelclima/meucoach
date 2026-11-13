@@ -1,12 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; antes: FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.557 testes no total (734 em `:app`, 168 em `core:data`, 615 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Testes:** 1.562 testes no total (739 em `:app`, 168 em `core:data`, 615 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
 - **Cobertura `core:domain`:** 97,56% de linhas (5.030/5.156), 81,11% de branches (3.805/4.691), 96,24% de instruções (34.730/36.087)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
@@ -82,6 +82,45 @@
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
 
+## Sessão 2026-11-13 — FR-013 fatia 3: UI/copy da carga subjetiva
+
+**Objetivo:** tornar o sRPE legível na superfície — sem jargão, sem número de
+regra na tela — fechando o FR-013.
+
+### Concluído
+
+- **Card de carga (Hoje):** quando a métrica do dia é `SRPE`, o card mostra
+  "Hoje: carga estimada pelo esforço que você sentiu." (novo
+  `TodayUiState.loadMetric`, preenchido pelo snapshot). Os dias continuam
+  alimentando Base/Fadiga/Balanço normalmente.
+- **Detalhe da atividade:** o RPE registrado aparece na comparação mesmo quando
+  o plano não tinha alvo de esforço (linha "Esforço" com "—" no planejado) e no
+  resumo de treino livre ("Esforço RPE n").
+- **Sheet "Por que este treino?":** `R-LOAD-04` já entrava pelo catálogo; agora
+  os dados usados declaram "Esforço percebido (RPE)" e os ausentes declaram
+  "FC ou ritmo para medir a carga objetivamente" quando a carga é só-subjetiva.
+- **Detekt:** `buildExplanation` estourou complexidade com as condições novas;
+  os blocos de dados usados/ausentes foram extraídos para funções privadas — sem
+  supressão nem baseline novo.
+
+### Testes (TDD)
+
+- `TodayPlanTest` (+1): nota do esforço percebido aparece no card de carga.
+- `ActivityComparisonFormatTest` (+2): RPE sem alvo planejado e resumo de treino
+  livre com RPE.
+- `TodayExplanationLoadTest` (2): explicação declara a carga subjetiva, o dado
+  ausente e o título de `R-LOAD-04`; não declara quando a carga é objetiva.
+- `check`, `assembleDebug`, `spotlessCheck` e Kover verdes; 1.562 testes, 0
+  falhas.
+
+### Próximo passo
+
+1. **FR-013 fechado** nas três fatias. P1-12 segue no ritmo do usuário; a
+   validação em aparelho pode conferir a nota no card, o RPE no detalhe e o
+   sheet após vincular uma corrida sem FC com RPE.
+2. Backlog: T-04 (property tests), U-01..U-04, N-05 e a relação taper ×
+   deload/periodização (exige ADR próprio).
+
 ## Sessão 2026-11-13 — FR-013 fatia 2: coleção de RPE e wiring da carga
 
 **Objetivo:** fechar o laço do sRPE no app — coletar o esforço percebido no
@@ -123,7 +162,7 @@ série de carga em todas as telas.
 
 1. **Fatia 3 — UI/copy:** nota "carga estimada pelo esforço que você sentiu" no
    card de carga, RPE no detalhe da atividade e `R-LOAD-04` no sheet de
-   explicação, com goldens de tema.
+   explicação. *(Concluída na sessão seguinte.)*
 2. P1-12 segue no ritmo do usuário; a validação em aparelho agora pode cobrir
    "vincular corrida sem FC + registrar RPE" e conferir o card de carga.
 

@@ -10,8 +10,9 @@ import kotlin.math.roundToInt
 internal data class ComparisonRowUi(val label: String, val planned: String, val actual: String)
 
 /**
- * Rows exist only when both sides exist. A missing value is omitted instead of
- * being shown as zero; the card then says there are not enough targets.
+ * Rows exist only when the actual value exists; a missing plan target is shown
+ * as "—" instead of hiding a recorded value (e.g. the perceived effort the
+ * athlete reported on a run without an RPE target — ADR 0039).
  */
 internal fun comparisonRows(comparison: SessionComparison): List<ComparisonRowUi> {
     val plan = comparison.plan ?: return emptyList()
@@ -53,10 +54,14 @@ internal fun comparisonRows(comparison: SessionComparison): List<ComparisonRowUi
                 add(ComparisonRowUi(label = "FC média", planned = range, actual = "$actual bpm"))
             }
         }
-        plan.targets.rpe?.let { planned ->
-            comparison.actualRpe?.let { actual ->
-                add(ComparisonRowUi(label = "Esforço", planned = "RPE $planned", actual = "RPE $actual"))
-            }
+        comparison.actualRpe?.let { actual ->
+            add(
+                ComparisonRowUi(
+                    label = "Esforço",
+                    planned = plan.targets.rpe?.let { "RPE $it" } ?: "—",
+                    actual = "RPE $actual",
+                ),
+            )
         }
     }
 }
@@ -105,8 +110,9 @@ internal fun freeRunSummary(comparison: SessionComparison): String {
         ?: "—"
     val pace = comparison.actualAveragePace?.let { "${paceLabel(it)}/km" } ?: "—"
     val heartRate = comparison.actualAverageHeartRate?.let { "$it bpm" } ?: "—"
+    val effort = comparison.actualRpe?.let { " · Esforço RPE $it" }.orEmpty()
     return "Duração ${comparison.actualDurationSec.toMinutes()} min · Distância $distance · " +
-        "Ritmo $pace · FC média $heartRate"
+        "Ritmo $pace · FC média $heartRate$effort"
 }
 
 private fun Int.toMinutes(): Int = (this / 60.0).roundToInt()

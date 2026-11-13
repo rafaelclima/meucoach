@@ -799,6 +799,7 @@ internal fun todayState(
         tsb = load?.tsb?.roundToInt(),
         acwr = load?.acwr,
         loadDataState = load?.dataState,
+        loadMetric = load?.daily?.lastOrNull()?.metric,
         hasCheckedIn = checkIn != null,
         plan = plan,
         days = days,

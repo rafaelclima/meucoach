@@ -1,6 +1,7 @@
 package com.meucoach.app.ui.today
 
 import com.meucoach.core.domain.load.LoadDataState
+import com.meucoach.core.domain.load.LoadMetric
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.ReadinessLevel
 import java.time.LocalDate
@@ -112,6 +113,8 @@ data class TodayUiState(
     val acwr: Double? = null,
     /** Explains why load/ACWR are missing or outdated; null when no load snapshot exists. */
     val loadDataState: LoadDataState? = null,
+    /** Load metric of today; `SRPE` means the day is estimated from perceived effort (ADR 0039). */
+    val loadMetric: LoadMetric? = null,
     val avatarPath: String? = null,
     /** Imported runs compatible with today's planned session; never auto-linked. */
     val activitySuggestions: List<ActivitySuggestionUi> = emptyList(),

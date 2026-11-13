@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadDataState
+import com.meucoach.core.domain.load.LoadMetric
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -810,6 +811,27 @@ class TodayPlanTest {
         }
 
         compose.onAllNodesWithText("Aumento", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `notes when today's load comes from perceived effort`() {
+        val state = demoTodayUiState(LocalDate.of(2026, 11, 2)).copy(
+            loadMetric = LoadMetric.SRPE,
+            ctl = 12,
+            atl = 10,
+            tsb = 2,
+            weeklyLoadKm = 5.0,
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(onDemoAction = {}, state = state)
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("CARGA DA SEMANA"))
+        compose.onNodeWithTag("load-subjective-note").assertIsDisplayed()
+        compose.onNodeWithText("esforço que você sentiu", substring = true).assertIsDisplayed()
     }
 
     @Test

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.41 · **Data:** 13/11/2026 · **Mudança:** FR-013 fatia 2 concluída — RPE opcional no fechamento com corrida vinculada (persistido em `session_executions.rpe`, sem migração) e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga, incluindo execuções manuais e o frescor dual. Resta a fatia 3 (UI/copy). A versão 1.40 registrou a fatia 1 (motor sRPE).
+**Versão:** 1.42 · **Data:** 13/11/2026 · **Mudança:** FR-013 concluído — fatia 3 fecha a superfície do sRPE: nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade (mesmo sem alvo de esforço) e `R-LOAD-04` + dado ausente no sheet "Por que este treino?". A versão 1.41 registrou a coleção e o wiring (fatia 2).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -465,7 +465,7 @@ comparação por splits seguem pendentes.
 - [ ] Rever a relação entre taper e deload.
 - [ ] Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
 
-### FR-013 — Carga subjetiva (sRPE): fatias 1–2 concluídas, fatia 3 pendente (13/11/2026)
+### FR-013 — Carga subjetiva (sRPE): concluído (13/11/2026)
 
 Decisões D1–D9 **aprovadas pelo usuário 0** em 13/11/2026
 ([`docs/PLANO_FR013_SRPE_CARGA_SUBJETIVA.md`](PLANO_FR013_SRPE_CARGA_SUBJETIVA.md));
@@ -485,9 +485,12 @@ com corrida vinculada ("Como foi o esforço?"), persistido em
 Hoje, Tendências, tutorial e replanejamento com a mesma série (execuções manuais
 viram sRPE, RPE recente aquece a fonte); testes de app e de repositório.
 
-**Pendente:** fatia 3 — UI/copy (nota "carga estimada pelo esforço que você
-sentiu" no card de carga, RPE no detalhe da atividade, `R-LOAD-04` no sheet de
-explicação).
+**Fatia 3 — UI/copy (concluída):** nota "Hoje: carga estimada pelo esforço que
+você sentiu" no card de carga quando o dia é `SRPE`; RPE registrado aparece no
+detalhe da atividade mesmo sem alvo de esforço (comparação e treino livre);
+sheet "Por que este treino?" declara "Esforço percebido (RPE)" nos dados usados,
+"FC ou ritmo para medir a carga objetivamente" nos ausentes e cita `R-LOAD-04`.
+Sem migração.
 
 ### N-05 — Backfill do Health Connect (backlog de integração)
 
