@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -28,6 +30,37 @@ android {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// Gate: line coverage never regresses below the value measured when the gate was
+// introduced (85.15% on 13/11/2026). Raise it as coverage improves; never lower it.
+kover {
+    reports {
+        verify {
+            rule {
+                minBound(85)
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("koverVerify")
+}
+
+// Detekt (T-02): análise estática de build, sem dependência de runtime no APK.
+// Dívida pré-existente vive no baseline; código novo não adiciona achados.
+detekt {
+    // O gate cobre só código de produção; testes seguem o processo de review usual.
+    source.setFrom("src/main/kotlin", "src/main/java")
+    buildUponDefaultConfig = true
+    parallel = true
+    config.from(rootProject.files("config/detekt/detekt.yml"))
+    baseline = file("config/detekt/baseline.xml")
+}
+
+tasks.named("check") {
+    dependsOn(tasks.matching { it.name == "detekt" || it.name == "detektDebug" })
 }
 
 dependencies {

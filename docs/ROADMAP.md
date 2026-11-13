@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.38 · **Data:** 13/11/2026 · **Mudança:** limite de 2 treinos fortes agora aparece no card do plano quando a semana atinge o teto (pendência do P1-05); nenhuma mudança de regra. A versão 1.37 concluiu o N-03 (`weekly-plan-v4`).
+**Versão:** 1.39 · **Data:** 13/11/2026 · **Mudança:** gates de qualidade de build concluídos (T-02/T-03/T-05): Detekt bloqueante com baseline por módulo, Kover em `core:data` e `:app` e fuzz leve do parser FIT, tudo em `check`. A versão 1.38 registrou o limite de 2 treinos fortes no plano.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -592,10 +592,10 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | ID | Item | Quando |
 |---|---|---|
 | T-01 | Convention plugins Gradle | quando houver > 6 módulos |
-| T-02 | Detekt + baseline | Fase 1 |
-| T-03 | Kover para Android modules | Fase 1 |
+| T-02 | Detekt + baseline — **concluído em 13/11/2026**: bloqueante em `check` nos 5 módulos, `config/detekt/detekt.yml` compartilhado, `maxIssues: 0`, baseline por módulo e gate restrito a fontes de produção | Fase 1 |
+| T-03 | Kover para Android modules — **concluído em 13/11/2026**: `core:data` gate em 85% linhas (medido 85,15%) e `:app` em 78% (medido 78,44%); política de subir, nunca baixar | Fase 1 |
 | T-04 | Property-based tests (Kotest) | Fase 1 |
-| T-05 | Fuzz leve do parser FIT | Fase 0/1 |
+| T-05 | Fuzz leve do parser FIT — **concluído em 13/11/2026**: `FitParserFuzzTest` determinístico sobre os 4 fixtures reais + lixo aleatório, contrato de superfície de erro controlada, sem dependência externa | Fase 0/1 |
 | T-06 | Export JSON e "apagar todos os dados" na UI — **concluído em 03/11/2026**; ZIP descartado (os arquivos brutos não ficam guardados); o reset também zera a marca d'água do Health Connect | Fase 1 |
 | T-07 | Migração para MapLibre | Fase 2 |
 | T-08 | i18n (pt-BR base, en futuro) | Fase 2 |

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -38,4 +39,19 @@ dependencies {
     implementation(libs.vico.compose)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+// Detekt (T-02): análise estática de build, sem dependência de runtime no APK.
+// Dívida pré-existente vive no baseline; código novo não adiciona achados.
+detekt {
+    // O gate cobre só código de produção; testes seguem o processo de review usual.
+    source.setFrom("src/main/kotlin", "src/main/java")
+    buildUponDefaultConfig = true
+    parallel = true
+    config.from(rootProject.files("config/detekt/detekt.yml"))
+    baseline = file("config/detekt/baseline.xml")
+}
+
+tasks.named("check") {
+    dependsOn(tasks.matching { it.name == "detekt" || it.name == "detektDebug" })
 }

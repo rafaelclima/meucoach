@@ -1,0 +1,73 @@
+# Configuração compartilhada do Detekt (T-02).
+# Política: pegar drift de código (bugs, exceções engolidas, complexidade crescente)
+# sem brigar com convenções de Compose nem duplicar o que o lint Android já cobre.
+build:
+  # Qualquer achado falha a build; dívida pré-existente vive no baseline por módulo.
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+output-reports:
+  active: true
+  exclude:
+    - "HtmlOutputReport"
+    - "MdOutputReport"
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 120
+    ignoreAnnotated: [ "Composable", "Preview" ]
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 8
+    ignoreDefaultParameters: true
+    ignoreAnnotated: [ "Composable", "Preview" ]
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 20
+    ignoreAnnotated: [ "Composable" ]
+  TooManyFunctions:
+    active: false
+
+exceptions:
+  SwallowedException:
+    active: true
+  TooGenericExceptionCaught:
+    active: true
+    # Catches genéricos nos nomes `e`/`error`/`expected`/`_` são a convenção de borda
+    # do projeto (workers e ViewModels registram a falha, não a engolem — BUG-11).
+    # Engolidas silenciosas seguem flagadas por SwallowedException.
+    allowedExceptionNameRegex: "^(e|error|expected|_).*"
+
+naming:
+  FunctionNaming:
+    active: true
+    # Composables seguem PascalCase (padrão oficial de Compose).
+    ignoreAnnotated: [ "Composable", "Preview" ]
+  BooleanPropertyNaming:
+    active: false
+  MatchingDeclarationName:
+    # Enums/objetos declarados junto do componente principal (McCard.kt → McCardVariant).
+    active: false
+
+style:
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: false
+  ReturnCount:
+    active: true
+    max: 4
+    excludedFunctions: [ "equals" ]
+    excludeGuardClauses: true
+  UnusedPrivateMember:
+    active: true
+    ignoreAnnotated: [ "Preview", "Composable" ]

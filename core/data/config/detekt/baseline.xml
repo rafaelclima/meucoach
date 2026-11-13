@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:PrescriptionJson.kt$PrescriptionJson$fast != null &amp;&amp; slow != null &amp;&amp; fast &gt; 0 &amp;&amp; slow &gt;= fast</ID>
+    <ID>CyclomaticComplexMethod:HealthSyncService.kt$HealthSyncService$private suspend fun syncLocked(now: Instant = clock.instant()): HealthSyncResult</ID>
+    <ID>CyclomaticComplexMethod:ImportService.kt$ImportService$private suspend fun importJob( job: ImportJobEntity, request: ImportRequest, sha256: String, epoch: String?, ): ImportResult</ID>
+    <ID>CyclomaticComplexMethod:TrainingPlanRepository.kt$TrainingPlanRepository$suspend fun applyReplan( suggestion: ReplanSuggestion, candidate: WeeklyPlan, today: LocalDate, currentInputsHash: String? = null, ): ReplanApplyOutcome</ID>
+    <ID>LongMethod:TrainingPlanRepository.kt$TrainingPlanRepository$suspend fun applyReplan( suggestion: ReplanSuggestion, candidate: WeeklyPlan, today: LocalDate, currentInputsHash: String? = null, ): ReplanApplyOutcome</ID>
+    <ID>LongParameterList:ActivityRepository.kt$ActivityRepository$( activityId: String, source: ActivitySource, sourceId: String?, sourceFileSha256: String?, rawFilePath: String?, parserVersion: String, importedAt: Instant, sampleCount: Int, durationSec: Int, distanceM: Double, )</ID>
+    <ID>LongParameterList:TrainingPlanDao.kt$TrainingPlanDao$( id: String, type: WorkoutType, title: String, durationMin: Int?, rationale: String, ruleIdsJson: String, evidenceIdsJson: String, targetsJson: String, )</ID>
+    <ID>ReturnCount:HealthSyncService.kt$HealthSyncService$private suspend fun syncLocked(now: Instant = clock.instant()): HealthSyncResult</ID>
+    <ID>ReturnCount:ImportService.kt$ImportFormat.Companion$fun detect(request: ImportRequest): ImportFormat?</ID>
+    <ID>ReturnCount:ImportService.kt$ImportService$private suspend fun importJob( job: ImportJobEntity, request: ImportRequest, sha256: String, epoch: String?, ): ImportResult</ID>
+    <ID>SwallowedException:ActivityRepository.kt$ActivityRepository$error: SampleBlobException</ID>
+    <ID>ThrowsCount:SampleBlobCodec.kt$SampleBlobCodec$fun decode(bytes: ByteArray, startTime: Instant? = null): List&lt;ActivitySample&gt;</ID>
+    <ID>ThrowsCount:SampleBlobCodec.kt$SampleBlobCodec$private fun readDeveloperFields(input: DataInputStream, sampleCount: Int, mask: Int): List&lt;Map&lt;String, Double&gt;&gt;?</ID>
+  </CurrentIssues>
+</SmellBaseline>

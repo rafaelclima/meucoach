@@ -90,6 +90,8 @@ Para cada formato:
 
 O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os 4 arquivos FIT reais sanitizados em `fixtures/fit/`. Os 3 TCX reais sanitizados em `fixtures/tcx/` cobrem laps, trackpoints, FC, cadência e resumo; posição, múltiplos laps e XML inválido são cobertos por fixtures sintéticas. Nenhum teste pode depender de rede.
 
+**Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
+
 Evidência atual (12/11/2026):
 
 - 1.497 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 592 em `core:domain`, 162 em `core:data`, 704 em `:app`).
@@ -414,16 +416,31 @@ inteira pode disputar frames com o Compose/Roborazzi.
 
 | Módulo | Meta | Verificação |
 |---|---|---|
-| `core:domain` | ≥ 85% linhas (atual 97,56%) | Kover `:core:domain:koverVerify` |
+| `core:domain` | ≥ 85% linhas (atual 97,55%) | Kover `:core:domain:koverVerify` |
 | Pacote `parser.fit` | ≥ 90% branches (atual 93,01%) | `verifyParserBranchCoverage` (XML do Kover) |
-| `core:model` | ≥ 90% (**proposta**, sem gate) | Não configurado |
-| `core:data` | ≥ 75% (**proposta**, sem gate) | Não configurado |
-| `app`/features | ≥ 60% (**proposta**, sem gate) | Não configurado |
+| `core:data` | ≥ 85% linhas (atual 85,15%) | Kover `:core:data:koverVerify` em `check` (T-03, 13/11/2026) |
+| `app` | ≥ 78% linhas (atual 78,44%) | Kover `:app:koverVerify` em `check` (T-03, 13/11/2026) |
+| `core:model` | sem gate | — |
+| `core:designsystem` | sem gate | — |
 
-Só `core:domain` e o pacote FIT têm gate bloqueante hoje. As demais metas são
-intenção de roadmap (T-03), não promessa cumprida. Exclusões permitidas: código
+`core:domain`, o pacote FIT, `core:data` e `:app` têm gate bloqueante hoje. Os gates
+Android foram introduzidos em 13/11/2026 no valor medido então; a política é subir a
+meta conforme a cobertura melhora e nunca baixá-la. Exclusões permitidas: código
 gerado, `data class` triviais, `MainActivity`, previews. Toda exclusão é
 justificada no build.
+
+## 11.2 Detekt (T-02, 13/11/2026)
+
+Análise estática bloqueante em `check` para os 5 módulos (`detekt.yml` compartilhado
+em `config/detekt/`). Política: `maxIssues: 0`; a dívida pré-existente vive no
+baseline por módulo (`config/detekt/baseline.xml` de cada módulo) e código novo
+não pode adicionar achados. O gate cobre só fontes de produção (`src/main`); testes
+ficam fora. Configuração ajustada para Compose: `FunctionNaming` e limites de
+assinatura ignoram `@Composable`, `MagicNumber` e `MatchingDeclarationName`
+desligados (convenções do projeto), `TooGenericExceptionCaught` permite os nomes de
+catch `e`/`error`/`expected`/`_` (convenção de borda do import — a falha é
+registrada, não engolida; `SwallowedException` segue ativa). Justificativa de
+dependência (regra 8): ferramenta de build, zero impacto no APK, Apache-2.0.
 
 ## 11.1 Teste manual de notificações
 

@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.roborazzi)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -112,4 +114,35 @@ dependencies {
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.androidx.work.testing)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// Gate: line coverage never regresses below the value measured when the gate was
+// introduced (78.44% on 13/11/2026). Raise it as coverage improves; never lower it.
+kover {
+    reports {
+        verify {
+            rule {
+                minBound(78)
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("koverVerify")
+}
+
+// Detekt (T-02): análise estática de build, sem dependência de runtime no APK.
+// Dívida pré-existente vive no baseline; código novo não adiciona achados.
+detekt {
+    // O gate cobre só código de produção; testes seguem o processo de review usual.
+    source.setFrom("src/main/kotlin", "src/main/java")
+    buildUponDefaultConfig = true
+    parallel = true
+    config.from(rootProject.files("config/detekt/detekt.yml"))
+    baseline = file("config/detekt/baseline.xml")
+}
+
+tasks.named("check") {
+    dependsOn(tasks.matching { it.name == "detekt" || it.name == "detektDebug" })
 }

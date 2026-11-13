@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -57,6 +57,8 @@
 - **80/20 por tempo:** `IntensityDistributionCalculator` soma tempo em Z1–Z2, Z3 e Z4–Z5 a partir dos samples, com quebra semanal, confiança por cobertura e card próprio em Tendências.
 - **Ações do plano:** concluir com evidência (corrida vinculada ou registro manual) ou pular sessão com motivo, persistido por sessão; prévia de cronômetro que não substitui a evidência; trocar o conteúdo de duas sessões planejadas da semana com validação de guardrails.
 - **Explicabilidade:** bottom sheet “Por que este treino?” com rationale, regras, evidências, confiança e dados usados/ausentes; o catálogo de rótulos mantém o `ruleId`/`evidenceId` bruto auditável.
+- **Fuzz leve do FIT (T-05):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento, flips de bit, substituição, inserção/duplicação de blocos, zeramento) com seeds determinísticas e 200 rodadas de lixo aleatório; o parser deve responder com resultado ou `FitParseException` codificada, nunca outra exceção, e parse repetido é determinístico. Sem dependência externa.
+- **Gates de build (T-02/T-03):** Detekt bloqueante em `check` nos 5 módulos (`config/detekt/detekt.yml`, `maxIssues: 0`, baseline por módulo, só fontes de produção, config ajustado para Compose e para a convenção de catch de borda); Kover com gate em `core:data` (≥ 85% linhas) e `:app` (≥ 78%), fixados no valor medido em 13/11/2026 com política de subir e nunca baixar. Justificativa da dependência (regra 8): ferramenta de build, zero impacto no APK, Apache-2.0.
 - **Story de treino (P3-05, protótipo):** planejador de rota/splits/timeline, renderer Canvas 9:16 com mapa vetorial (`MapLibre` + `OpenFreeMap`, dados OSM) e frame final de 3 s (distância, tempo, ritmo médio, FC média, kcal e logo), export MP4 1080×1920 via MediaCodec, com galeria e compartilhamento; validado em aparelho real (mapa vetorial pendente de validação).
 - **Mapa do story:** snapshot 1080×1920 gerado no preview e reaproveitado no vídeo, com estilo vetorial OpenFreeMap (`liberty`) filtrado em tempo de execução (POIs, transporte e aeroportos ocultos) e labels ampliados; fallback para raster OSM; câmera calculada localmente a partir do `BoundingBox`, halo de foco na rota, ticks por km, atribuição OSM no frame e permissões de localização do SDK removidas. `MapLibre` 12.3.1 (última linha OpenGL), ABIs `arm64-v8a`/`x86_64`; snapshot em 2,25× (2430×4320), vídeo 1080p a 10 Mbps e 30 fps.
 - **Story v2 — Fase A:** área segura do Instagram, câmera com zoom/rotação alinhada à rota, grão/vinheta/grade de cor, 30 fps, snapshot supersampleado e capa PNG do frame final.
@@ -79,6 +81,64 @@
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-13 — T-02/T-03/T-05: gates de build
+
+**Objetivo:** preparar o build para o período de uso real (P1-12) sem mudar
+comportamento do app: análise estática bloqueante, gate de cobertura nos módulos
+Android e robustez do parser contra entradas hostis.
+
+### Concluído
+
+- **Detekt (T-02):** plugin 1.23.8 aplicado nos 5 módulos, `config/detekt/detekt.yml`
+  compartilhado e `maxIssues: 0`. Baselines por módulo congelam a dívida atual
+  (`:app` 39, `core:domain` 36, `core:data` 13; `designsystem` e `model` sem achados).
+  O gate cobre só `src/main`; config ajustado: regras de assinatura ignoram
+  `@Composable`, `MagicNumber` e `MatchingDeclarationName` desligados,
+  `TooGenericExceptionCaught` permite os nomes de catch da convenção de borda
+  (`e`/`error`/`expected`/`_`) e `SwallowedException` segue ativa.
+- **Kover nos módulos Android (T-03):** plugin aplicado em `core:data` e `:app`
+  com `koverVerify` no `check`, mesmo padrão de `core:domain`. Gates fixados no
+  valor medido na introdução — `core:data` ≥ 85% linhas (85,15%), `:app` ≥ 78%
+  (78,44%) — com política de subir, nunca baixar.
+- **Fuzz leve do FIT (T-05):** `FitParserFuzzTest` com 4 testes e sem dependência
+  externa. Mutações determinísticas sobre os 4 fixtures reais sanitizados
+  (150 seeds × truncamento/flips/substituição/inserção/duplicação/zeramento),
+  200 rodadas de lixo aleatório, prefixos do header de 1 a 15 bytes e um teste de
+  determinismo (parse duas vezes → mesma classe de resultado). Contrato verificado:
+  qualquer entrada produz resultado ou `FitParseException` com código; nenhuma
+  outra exceção escapa. Falhou zero rodadas — o parser passou no fuzz de primeira.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde com os três gates ativos
+  (detekt × 5 módulos, koverVerify × 3 módulos, parser FIT 93,01% branches).
+- **1.538 testes**, 0 falhas e 0 skipped (726 `:app`, 167 `core:data`,
+  605 `core:domain`, 40 `core:model`); +4 testes de fuzz.
+- `spotlessCheck` verde; schema permanece **v17**; nenhuma migração; nenhum dado
+  real no diff. Goldens não rodados nesta sessão (nenhuma mudança de UI).
+
+### Decisões e observações
+
+- **Gates no valor medido, não em promessas:** 85% e 78% refletem a cobertura
+  real do dia; a meta sobe conforme o código melhora e nunca cai — o gate bloqueia
+  regressão, não exige testes retroativos.
+- **Testes fora do detekt:** testes longos são normais e o review já os cobre;
+  incluir `src/test` geraria ruído (40 dos achados iniciais eram de teste) sem
+  proteger mais.
+- **Fuzz determinístico, não dependência nova:** Kotest/prophecy ficariam pesados
+  para o objetivo; seeds fixas garantem reprodução em qualquer máquina e no CI,
+  e a mensagem de falha carrega fixture+seed para reproduzir.
+- **Baseline é dívida visível, não perdão:** as 88 entradas existentes são o
+  inventário do que o Detekt considera suspeito hoje; novas violações falham o
+  build na hora.
+
+### Próximo passo
+
+1. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+2. Desenho do FR-013 (RPE/sRPE) quando ~2 semanas de dados reais existirem.
+3. Backlog: T-04 (property tests), U-01..U-04, N-05 e a relação taper ×
+   deload/periodização (exige ADR próprio).
 
 ## Sessão 2026-11-13 — Limite de 2 treinos fortes no plano
 

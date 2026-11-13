@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$recoveryActive &amp;&amp; recoveryCap != null &amp;&amp; reduced != null &amp;&amp; reduced &gt; recoveryCap</ID>
+    <ID>ComplexCondition:PlanReplanner.kt$PlanReplanner$!userRequested &amp;&amp; !missedTriggered &amp;&amp; !availabilityTriggered &amp;&amp; !t4Triggered &amp;&amp; !recoveryTriggered</ID>
+    <ID>CyclomaticComplexMethod:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$fun prescribe(input: DailyPrescriptionInput): DailyPrescription</ID>
+    <ID>CyclomaticComplexMethod:FitParser.kt$FitParser$fun parse(bytes: ByteArray): FitParseResult</ID>
+    <ID>CyclomaticComplexMethod:FitReader.kt$FitBaseType$private fun decodeOne(bytes: ByteArray, offset: Int, order: ByteOrder): Double?</ID>
+    <ID>CyclomaticComplexMethod:FitReader.kt$FitReader$private fun readData(header: Int, compressed: Boolean)</ID>
+    <ID>CyclomaticComplexMethod:PlanReplanner.kt$PlanReplanner$fun evaluate(input: ReplanInput): ReplanResult</ID>
+    <ID>CyclomaticComplexMethod:SessionSwapper.kt$SessionSwapper$fun swap( plan: WeeklyPlan, firstDate: LocalDate, secondDate: LocalDate, today: LocalDate, /** Event dates never receive an ordinary session (ADR 0030). */ raceDates: Set&lt;LocalDate&gt; = emptySet(), /** Post-race recovery days do not enter the swap (ADR 0037). */ recovery: RecoveryWindow? = null, ): SwapResult</ID>
+    <ID>CyclomaticComplexMethod:WeeklyPlanGenerator.kt$WeeklyPlanGenerator$fun generate(input: WeeklyPlanInput): WeeklyPlan</ID>
+    <ID>CyclomaticComplexMethod:WeeklyReview.kt$WeeklyReviewCalculator$fun calculate( weekStart: LocalDate, today: LocalDate, hasPlan: Boolean = false, completion: PlanCompletionWeek? = null, plannedDurationMin: Int? = null, executedDurationMin: Int? = null, intensity: WeeklyIntensity? = null, intensitySessions: Int = 0, readinessDays: List&lt;ReadinessHistoryDay&gt; = emptyList(), metrics: List&lt;DailyMetrics&gt; = emptyList(), checkIns: List&lt;DailyCheckIn&gt; = emptyList(), ): WeeklyReview</ID>
+    <ID>CyclomaticComplexMethod:WorkoutRecommender.kt$WorkoutRecommender$fun recommend(input: PrescriptionInput): WorkoutRecommendation</ID>
+    <ID>LongMethod:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$fun prescribe(input: DailyPrescriptionInput): DailyPrescription</ID>
+    <ID>LongMethod:FitParser.kt$FitParser$fun parse(bytes: ByteArray): FitParseResult</ID>
+    <ID>LongMethod:PlanReplanner.kt$PlanReplanner$fun evaluate(input: ReplanInput): ReplanResult</ID>
+    <ID>LongMethod:WeeklyPlanGenerator.kt$WeeklyPlanGenerator$fun generate(input: WeeklyPlanInput): WeeklyPlan</ID>
+    <ID>LongMethod:WeeklyReview.kt$WeeklyReviewCalculator$fun calculate( weekStart: LocalDate, today: LocalDate, hasPlan: Boolean = false, completion: PlanCompletionWeek? = null, plannedDurationMin: Int? = null, executedDurationMin: Int? = null, intensity: WeeklyIntensity? = null, intensitySessions: Int = 0, readinessDays: List&lt;ReadinessHistoryDay&gt; = emptyList(), metrics: List&lt;DailyMetrics&gt; = emptyList(), checkIns: List&lt;DailyCheckIn&gt; = emptyList(), ): WeeklyReview</ID>
+    <ID>LongParameterList:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$( input: DailyPrescriptionInput, planned: PlannedSession?, type: WorkoutType, title: String, durationMin: Int?, targets: PrescriptionTargets, adjustment: PrescriptionAdjustment, rationale: String, rules: List&lt;String&gt;, evidence: List&lt;String&gt;, confidence: DataConfidence, )</ID>
+    <ID>LoopWithTooManyJumpStatements:FitParser.kt$FitParser$for</ID>
+    <ID>LoopWithTooManyJumpStatements:FitReader.kt$FitReader$for</ID>
+    <ID>LoopWithTooManyJumpStatements:GpxParser.kt$GpxParser$for</ID>
+    <ID>LoopWithTooManyJumpStatements:TcxParser.kt$TcxParser$for</ID>
+    <ID>LoopWithTooManyJumpStatements:WeeklyPlanGenerator.kt$WeeklyPlanGenerator$for</ID>
+    <ID>NestedBlockDepth:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$fun prescribe(input: DailyPrescriptionInput): DailyPrescription</ID>
+    <ID>ReturnCount:CalibrationCalculator.kt$CalibrationCalculator$private fun withoutPerformance( input: CalibrationInput, warnings: MutableSet&lt;CalibrationWarning&gt;, ): CalibrationResult</ID>
+    <ID>ReturnCount:CalibrationCandidateDetector.kt$CalibrationCandidateDetector$fun detect(activity: ImportedActivity, date: LocalDate, today: LocalDate): CalibrationCandidate?</ID>
+    <ID>ReturnCount:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$fun prescribe(input: DailyPrescriptionInput): DailyPrescription</ID>
+    <ID>ReturnCount:PlanReplanner.kt$PlanReplanner$fun evaluate(input: ReplanInput): ReplanResult</ID>
+    <ID>ReturnCount:PlanReplanner.kt$PlanReplanner$private fun validationFailure( sessions: List&lt;PlannedSession&gt;, future: List&lt;PlannedSession&gt;, input: ReplanInput, ): String?</ID>
+    <ID>ReturnCount:RaceAutoCompletionRule.kt$RaceAutoCompletionRule$fun evaluate(input: RaceAutoCompletionInput): RaceAutoCompletionDecision</ID>
+    <ID>ReturnCount:RaceTimePrediction.kt$RaceTimePredictor$private fun timeFor(vdot: Double, distanceM: Double): Int?</ID>
+    <ID>ReturnCount:WeeklyPlanGenerator.kt$WeeklyPlanGenerator$private fun volumeRationale(decision: VolumeDecision, droppedSessions: Int): String</ID>
+    <ID>ThrowsCount:FitReader.kt$FitReader$private fun readDefinition(header: Int)</ID>
+    <ID>ThrowsCount:FitReader.kt$FitReader$private fun validateHeader(): Int</ID>
+    <ID>ThrowsCount:GpxParser.kt$GpxParser$fun parse(bytes: ByteArray): ImportedActivity</ID>
+    <ID>ThrowsCount:TcxParser.kt$TcxParser$fun parse(bytes: ByteArray): ImportedActivity</ID>
+    <ID>UnusedParameter:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$input: DailyPrescriptionInput</ID>
+  </CurrentIssues>
+</SmellBaseline>
