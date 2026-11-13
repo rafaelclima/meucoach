@@ -247,7 +247,7 @@ class WeeklyPlanGenerator {
                         type = WorkoutType.QUALITY,
                         title = qualityTitle(input.profile.experience),
                         durationMin = duration,
-                        rationale = qualityRationale(input.profile),
+                        rationale = qualityRationale(input.profile, duration, null),
                         ruleIds = buildList {
                             add("R-PLAN-02")
                             add("R-PLAN-06")
@@ -346,7 +346,7 @@ class WeeklyPlanGenerator {
         )
         val volumeAdjusted = fitToVolume(limitedLong, volumeDecision.minutes)
         val adjusted = volumeAdjusted.sessions.map { session ->
-            when {
+            val scaled = when {
                 race != null && race.isInTaperWindow(session.date) && session.durationMin != null ->
                     session.copy(durationMin = scaledMinutes(session, race.taperFactor(session.date)))
 
@@ -355,6 +355,7 @@ class WeeklyPlanGenerator {
 
                 else -> session
             }
+            scaled.withQualityCopy(input.profile, race, deload, session.durationMin)
         }.map { it.withTargetsForDuration(input.profile) }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
@@ -492,20 +493,55 @@ class WeeklyPlanGenerator {
 
     private fun qualityTitle(experience: Experience): String = when (experience) {
         Experience.ADVANCED -> "Intervalos"
-        else -> "Tempo"
+        else -> "Ritmo forte"
     }
 
-    private fun qualityRationale(profile: AthleteProfile): String {
-        val base = when (profile.experience) {
-            Experience.ADVANCED ->
-                "5×3 min forte (Z4–Z5) com 2 min de trote entre eles, em dia separado do longão."
-
-            else ->
-                "20 min contínuos em esforço moderado a forte (Z3–Z4), com aquecimento e " +
-                    "desaquecimento, em dia separado do longão."
+    /**
+     * Quality sessions are described from their real duration, never from a
+     * fixed block (N-03). Ten minutes are reserved for the warm-up; the
+     * continuous block uses the rest minus a five-minute cool-down, and
+     * intervals use 3 min of work with 2 min of easy running, scaled between
+     * three and five repetitions. This is a product convention derived from
+     * the examples in SPORTS_SCIENCE §8.4, not a new physiological claim.
+     *
+     * The taper note only appears when the session was actually shortened: a
+     * 25-minute quality is already at the floor and must not claim a cut.
+     */
+    private fun qualityRationale(profile: AthleteProfile, durationMin: Int, reduction: QualityReduction?): String {
+        require(durationMin >= MIN_QUALITY_MIN) {
+            "Quality duration must be at least $MIN_QUALITY_MIN minutes"
         }
-        if (!profile.treadmillAccess) return base
-        return base + " Na esteira (opção para calor): 5–10% de inclinação em esforço 8 de 10" +
+        val advanced = profile.experience == Experience.ADVANCED
+        val base = if (advanced) {
+            val reps = intervalRepetitions(durationMin)
+            "Aqueça $QUALITY_WARMUP_MIN min em ritmo leve, faça $reps repetições de " +
+                "$INTERVAL_WORK_MIN min fortes com $INTERVAL_RECOVERY_MIN min leves entre elas " +
+                "e complete o restante em ritmo leve."
+        } else {
+            val work = durationMin - QUALITY_WARMUP_MIN - QUALITY_COOLDOWN_MIN
+            "Aqueça $QUALITY_WARMUP_MIN min em ritmo leve, corra $work min em esforço " +
+                "moderado a forte e termine com $QUALITY_COOLDOWN_MIN min em ritmo leve."
+        }
+        val note = when (reduction) {
+            QualityReduction.TAPER -> "Semana de prova: ${qualityReductionNote(advanced)}"
+            QualityReduction.DELOAD -> "Semana de descarga: ${qualityReductionNote(advanced)}"
+            null -> null
+        }
+        return listOfNotNull(note, base, treadmillQualityHint(profile)).joinToString(" ")
+    }
+
+    private fun qualityReductionNote(advanced: Boolean): String =
+        if (advanced) "menos repetições, mesmo esforço." else "bloco mais curto, mesmo esforço."
+
+    private fun intervalRepetitions(durationMin: Int): Int {
+        val available = durationMin - QUALITY_WARMUP_MIN
+        val cycle = INTERVAL_WORK_MIN + INTERVAL_RECOVERY_MIN
+        return ((available + INTERVAL_RECOVERY_MIN) / cycle).coerceIn(MIN_INTERVALS, MAX_INTERVALS)
+    }
+
+    private fun treadmillQualityHint(profile: AthleteProfile): String? {
+        if (!profile.treadmillAccess) return null
+        return "Na esteira, se preferir: use inclinação de 5% a 10% em esforço 8 de 10" +
             treadmillSpeedHint(profile.thresholdPace) + "."
     }
 
@@ -519,7 +555,35 @@ class WeeklyPlanGenerator {
         val threshold = PaceZoneCalculator.ranges(pace).first { it.zone == PaceZone.T }
         val slowKmh = 3_600.0 / threshold.maxSecPerKm
         val fastKmh = 3_600.0 / threshold.minSecPerKm
-        return String.format(PT_BR, " ou %.1f–%.1f km/h a 1%%", slowKmh, fastKmh)
+        return String.format(PT_BR, " ou %.1f–%.1f km/h com inclinação de 1%%", slowKmh, fastKmh)
+    }
+
+    /**
+     * Rebuilds the plan text after volume, taper or deload scaling. The plan
+     * must not keep a block that no longer fits the final duration (N-03).
+     */
+    private fun PlannedSession.withQualityCopy(
+        profile: AthleteProfile,
+        race: RacePlan?,
+        deload: Boolean,
+        originalDurationMin: Int?,
+    ): PlannedSession {
+        if (type != WorkoutType.QUALITY || durationMin == null) return this
+        val inTaper = race?.isInTaperWindow(date) == true
+        val reduction = when {
+            originalDurationMin == null || durationMin >= originalDurationMin -> null
+            inTaper -> QualityReduction.TAPER
+            deload -> QualityReduction.DELOAD
+            else -> null
+        }
+        val weekRules = buildList {
+            if (inTaper) add("R-PLAN-05")
+            if (deload && !inTaper) add("R-PLAN-04")
+        }
+        return copy(
+            rationale = qualityRationale(profile, durationMin, reduction),
+            ruleIds = (ruleIds + weekRules).distinct(),
+        )
     }
 
     private fun adjacentDays(a: DayOfWeek, b: DayOfWeek): Boolean {
@@ -586,6 +650,8 @@ class WeeklyPlanGenerator {
     }
 
     private data class FittedVolume(val sessions: List<PlannedSession>, val droppedSessions: Int)
+
+    private enum class QualityReduction { TAPER, DELOAD }
 
     /**
      * A deload, taper, race or recovery week never grows. A race week is labeled
@@ -673,13 +739,19 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v3"
+        const val ENGINE_VERSION = "weekly-plan-v4"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MIN_EASY_MIN = 20
         private const val MAX_EASY_MIN = 60
         private const val MIN_QUALITY_MIN = 25
         private const val MAX_QUALITY_MIN = 45
+        private const val QUALITY_WARMUP_MIN = 10
+        private const val QUALITY_COOLDOWN_MIN = 5
+        private const val INTERVAL_WORK_MIN = 3
+        private const val INTERVAL_RECOVERY_MIN = 2
+        private const val MIN_INTERVALS = 3
+        private const val MAX_INTERVALS = 5
         private const val MIN_LONG_MIN = 30
         private const val LONG_SHARE_RATIO = 3.0 / 7.0
         private const val PROGRESSION_COMPLETION = 0.80

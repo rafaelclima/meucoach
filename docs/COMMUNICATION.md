@@ -133,7 +133,9 @@ Mas para a reformulação da comunicação, vou criar um arquivo de referência 
 | Meta de prova sem data | “Sua meta é uma prova, mas está sem data. Sem a data, o app não sabe quando reduzir o volume antes da prova — adicione a prova abaixo.” Nunca usar “taper” na UI. |
 | `TT de 30 min` | `teste de 30 min` |
 | `Qualidade` | `treino forte` |
+| `Tempo` (nome do treino) | `Ritmo forte` |
 | `Pace` / `Split` | `ritmo` / `trecho` |
+| `Z3–Z4` sozinho | `Forte · Z3–Z4` na pill; `esforço moderado a forte` no texto corrido |
 | `Hooper` | `Recuperação` |
 | `SWC` / `baseline` | `acima`/`abaixo da média` / `comparada à sua média` |
 | `Z2` sozinho | `Z2 · leve` na pill; `Fácil · Z1–Z2` nas legendas; rótulos por zona no detalhe |
@@ -322,3 +324,25 @@ sem culpa e sem transformar a janela em nota.
 Proibições: “você precisa descansar”, “o corpo exige”, percentuais de recuperação,
 diagnóstico, prazo médico ou “volte aos treinos fortes em X dias”. A janela é uma
 convenção de produto `LIMITED`, não uma prescrição clínica.
+
+### 6.14 Qualidade no taper e na duração (12/11/2026)
+
+O nome e a descrição do treino forte passaram a ser derivados da duração real e a
+dizer, sem jargão, o que fazer. O texto nunca promete mais tempo de trabalho do que
+a sessão tem, e a nota de redução só aparece quando a duração realmente caiu.
+
+| Onde | Texto | Intenção |
+|---|---|---|
+| Título (intermediário) | `Ritmo forte` | Substitui “Tempo”, que exige conhecer o termo de corrida. |
+| Título (avançado) | `Intervalos` | Mantém o nome conhecido; a descrição explica as repetições. |
+| 25 min | `Aqueça 10 min em ritmo leve, corra 10 min em esforço moderado a forte e termine com 5 min em ritmo leve.` | Aquecimento + bloco + desaquecimento somam exatamente a duração. |
+| 45 min | `Aqueça 10 min em ritmo leve, corra 30 min em esforço moderado a forte e termine com 5 min em ritmo leve.` | O bloco cresce com o tempo disponível. |
+| Intervalos | `Aqueça 10 min em ritmo leve, faça 4 repetições de 3 min fortes com 2 min leves entre elas e complete o restante em ritmo leve.` | Repetições calculadas pela duração (3–5), sem “trote” nem “VO2max”. |
+| Taper | `Semana de prova: bloco mais curto, mesmo esforço.` / `menos repetições, mesmo esforço.` | Explica a redução; só aparece quando a duração realmente caiu. |
+| Descarga | `Semana de descarga: bloco mais curto, mesmo esforço.` | Mesma honestidade no deload. |
+| Esteira | `Na esteira, se preferir: use inclinação de 5% a 10% em esforço 8 de 10 ou a velocidade da sua faixa de limiar com inclinação de 1%.` | Opção clara; a velocidade vem do limiar calibrado, sem “Z3–Z4” no texto corrido. |
+| Pill do treino | `Forte · Z3–Z4` | Rótulo simples antes do código de zona. |
+
+Proibições: “Tempo” no nome do treino, “trote”, “VO2max”, “Z3–Z4” no texto corrido,
+“taper”, IDs de regra/evidência e blocos que não caibam na duração. A nota de
+taper/descarga não aparece quando o piso de 25 min impediu a redução.

@@ -435,7 +435,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(intermediate.sessions.first { it.type == WorkoutType.QUALITY }.title)
-            .isEqualTo("Tempo")
+            .isEqualTo("Ritmo forte")
         assertThat(advanced.sessions.first { it.type == WorkoutType.QUALITY }.title)
             .isEqualTo("Intervalos")
     }
@@ -529,7 +529,11 @@ class WeeklyPlanGeneratorTest {
         )
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
-        assertThat(quality.rationale).contains("esteira", "5–10% de inclinação", "9,7–10,0 km/h a 1%")
+        assertThat(quality.rationale).contains(
+            "Na esteira, se preferir",
+            "inclinação de 5% a 10%",
+            "9,7–10,0 km/h com inclinação de 1%",
+        )
         assertThat(quality.ruleIds).contains("R-PLAN-08")
         assertThat(quality.evidenceIds).contains("EV-ELY-2007")
     }
@@ -625,7 +629,9 @@ class WeeklyPlanGeneratorTest {
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(quality.durationMin).isEqualTo(30)
-        assertThat(quality.title).isEqualTo("Tempo")
+        assertThat(quality.title).isEqualTo("Ritmo forte")
+        assertThat(quality.rationale)
+            .contains("Semana de descarga: bloco mais curto, mesmo esforço.")
         assertThat(plan.ruleIds).contains("R-PLAN-04")
     }
 
@@ -1202,6 +1208,163 @@ class WeeklyPlanGeneratorTest {
         val wednesdaySession = plan.sessions.first { it.date == monday.plusDays(2) }
         assertThat(mondaySession.durationMin).isEqualTo(22)
         assertThat(wednesdaySession.durationMin).isEqualTo(20)
+    }
+
+    @Test
+    fun `quality copy fits a 25 minute session and avoids zone codes`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 25,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.durationMin).isEqualTo(25)
+        assertThat(quality.title).isEqualTo("Ritmo forte")
+        assertThat(quality.rationale).contains("Aqueça 10 min em ritmo leve")
+        assertThat(quality.rationale).contains("corra 10 min em esforço moderado a forte")
+        assertThat(quality.rationale).contains("termine com 5 min em ritmo leve")
+        assertThat(quality.rationale).doesNotContain("20 min")
+        assertThat(quality.rationale).doesNotContain("Z3–Z4")
+    }
+
+    @Test
+    fun `quality copy fits a 45 minute session`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 45,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.durationMin).isEqualTo(45)
+        assertThat(quality.rationale).contains("corra 30 min em esforço moderado a forte")
+    }
+
+    @Test
+    fun `advanced quality scales repetitions with the session duration`() {
+        fun qualityFor(minutes: Int): PlannedSession {
+            val plan = generator.generate(
+                input(
+                    profile = profile(
+                        experience = Experience.ADVANCED,
+                        availability = mapOf(
+                            DayOfWeek.MONDAY to minutes,
+                            DayOfWeek.WEDNESDAY to 40,
+                            DayOfWeek.SATURDAY to 90,
+                        ),
+                    ),
+                    readiness = readiness(ReadinessLevel.GREEN),
+                    load = load(1.0),
+                ),
+            )
+            return plan.sessions.first { it.type == WorkoutType.QUALITY }
+        }
+
+        val short = qualityFor(25)
+        val long = qualityFor(45)
+
+        assertThat(short.title).isEqualTo("Intervalos")
+        assertThat(short.rationale).contains("3 repetições de 3 min fortes")
+        assertThat(long.rationale).contains("5 repetições de 3 min fortes")
+        assertThat(short.rationale).doesNotContain("trote")
+    }
+
+    @Test
+    fun `tapered quality is shorter and explains the reduction`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(12)),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.durationMin).isEqualTo(25)
+        assertThat(quality.title).isEqualTo("Ritmo forte")
+        assertThat(quality.rationale)
+            .contains("Semana de prova: bloco mais curto, mesmo esforço.")
+        assertThat(quality.rationale).contains("corra 10 min em esforço moderado a forte")
+        assertThat(quality.ruleIds).contains("R-PLAN-05")
+        assertThat(quality.targets.zone).isEqualTo("Z3–Z4")
+    }
+
+    @Test
+    fun `tapered quality that cannot shrink does not claim a reduction`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 25,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(12)),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.durationMin).isEqualTo(25)
+        assertThat(quality.rationale).doesNotContain("bloco mais curto")
+        assertThat(quality.rationale).contains("corra 10 min em esforço moderado a forte")
+        assertThat(quality.ruleIds).contains("R-PLAN-05")
+    }
+
+    @Test
+    fun `treadmill quality copy explains the option without zone codes`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                    treadmillAccess = true,
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.rationale).contains("Na esteira, se preferir")
+        assertThat(quality.rationale).contains("inclinação de 5% a 10%")
+        assertThat(quality.rationale).contains("esforço 8 de 10")
+        assertThat(quality.rationale).contains("com inclinação de 1%")
+        assertThat(quality.rationale).doesNotContain("Z3–Z4")
     }
 
     @Test

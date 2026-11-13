@@ -1,13 +1,13 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 12/11/2026 (BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 12/11/2026 (N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
 - **Fase:** 1 — Coach (em andamento)
 - **Build:** verde (`./gradlew check :app:assembleDebug`)
-- **Testes:** 1.526 testes no total (724 em `:app`, 167 em `core:data`, 595 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
-- **Cobertura `core:domain`:** 97,58% de linhas (4.954/5.077), 81,13% de branches (3.736/4.605), 96,25% de instruções (34.196/35.530)
+- **Testes:** 1.532 testes no total (724 em `:app`, 167 em `core:data`, 601 em `core:domain`, 40 em `core:model`), 0 falhas e 0 `@Ignore`.
+- **Cobertura `core:domain`:** 97,55% de linhas (4.979/5.104), 81,07% de branches (3.761/4.639), 96,23% de instruções (34.410/35.759)
 - **Parser FIT:** 93,01% de branches (572/615); gate próprio exige ≥ 90% de branches
 - **Lint:** 0 erros; avisos não bloqueantes de versão, KTX, naming, ícone e dependências
 - **Dados reais:** 4 FIT e 3 TCX sanitizados; GPX apenas sintético
@@ -49,7 +49,7 @@
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não; calor informado desacelera o pace em 3% e reduz a confiança.
 - **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30%, taper por prova e deload a cada 4ª semana; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
-- **Taper e qualidade:** redução de 45–55% nas semanas de prova e qualidade nomeada por experiência (tempo/intervalos).
+- **Taper e qualidade:** redução de 45–55% nas semanas de prova; a qualidade fora do corte é encurtada com o tipo e o esforço mantidos, e o texto deriva aquecimento/bloco/desaquecimento da duração real (N-03).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade e o volume cresce no máximo 6% sobre o maior volume concluído com evidência nas últimas 4 semanas; a disponibilidade continua teto e semana fraca mantém a dose (FR-004/N-07, ADR 0038).
 - **Deload:** a 4ª semana consecutiva de plano reduz o volume em 25%, mantendo o tipo/intensidade das sessões e citando `R-PLAN-04`/`EV-ISSURIN-2010`; taper tem precedência (ADR 0011).
 - **Conclusão do plano:** `PlanCompletionCalculator` resume as últimas 8 semanas (feitas, puladas e pendentes passadas) e a tela Tendências mostra a adesão semanal sem streak ou culpa.
@@ -79,6 +79,42 @@
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-12 — N-03: qualidade coerente no taper e na duração
+
+**Objetivo:** fechar a última pendência do taper (N-03) e fazer a qualidade falar a verdade: o bloco descrito precisa caber na duração real, o taper/descarga só declara redução quando ela aconteceu, e o texto não pode exigir que o usuário conheça “tempo run”, “trote” ou zonas.
+
+### Concluído
+
+- **Domínio:** `WeeklyPlanGenerator` deriva a descrição da qualidade de `durationMin` em vez de repetir “20 min contínuos” ou “5×3 min” em qualquer sessão. No contínuo, 10 min de aquecimento, bloco de `duração − 15 min` e 5 min de desaquecimento; nos intervalos, 3 min fortes com 2 min leves, de 3 a 5 repetições, e o restante em ritmo leve. Nenhum texto promete mais trabalho do que cabe.
+- **Taper e descarga:** o fator de volume já alcançava a qualidade; agora a sessão só diz “Semana de prova: bloco mais curto, mesmo esforço” (ou “menos repetições”) quando a duração realmente caiu. Uma qualidade de 25 min, que está no piso, não finge redução. O tipo, a zona e o esforço permanecem; `R-PLAN-05`/`R-PLAN-04` entram nas regras da sessão.
+- **Comunicação:** o título do treino intermediário passou de “Tempo” para “Ritmo forte”; a pill do Hoje mostra “Forte · Z3–Z4”, com o rótulo simples antes do código de zona. O texto corrido abandonou “Z3–Z4”, “trote” e “VO2max”.
+- **Esteira:** a opção ficou “Na esteira, se preferir: use inclinação de 5% a 10% em esforço 8 de 10 ou 9,7–10,0 km/h com inclinação de 1%”, com a velocidade calculada como antes.
+- **Docs:** `SPORTS_SCIENCE` §8.4/§8.6/§8.8, `COMMUNICATION` §6.3/§6.14, `ROADMAP` (N-03 concluído) e `DECISIONS` (revisão 1.21).
+- **Versão:** `WeeklyPlanGenerator.ENGINE_VERSION` → `weekly-plan-v4`; sem migração, schema ou dependência nova.
+- **Testes:** +6 no `WeeklyPlanGeneratorTest` (25 min, 45 min, intervalos por duração, taper com redução, taper no piso sem redução, esteira com copy clara); 3 testes existentes atualizados para o novo título e a nova copy.
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint, Kover e build).
+- **1.532 testes**, 0 falhas e 0 `@Ignore` (724 `:app`, 167 `core:data`, 601 `core:domain`, 40 `core:model`).
+- `core:domain`: 97,55% de linhas (4.979/5.104), 81,07% de branches (3.761/4.639), 96,23% de instruções (34.410/35.759); parser FIT 93,01% de branches.
+- Schema permanece **v17**; nenhuma migração, dependência nova ou dado real no diff.
+- `:app:verifyRoborazziDebug --tests "*ScreenshotTest"` — verde (66 goldens). Quatro goldens de perfil (`profile-dark`, `profile-light`, `profile-race-dark`, `profile-race-light`) estavam defasados desde o BUG-08, ainda com a palavra “taper” no card de prova; foram regravados com a copy vigente. Nenhum golden de treino ou qualidade mudou.
+
+### Decisões e observações
+
+- **Piso de 25 min é honesto, não um bug:** a qualidade já está no mínimo; o app mantém o esforço e não inventa uma redução que não aconteceu.
+- **Bloco derivado, não nova fisiologia:** 10 min de aquecimento, 5 min de desaquecimento e 3–5 repetições são convenção de produto derivada dos exemplos de `SPORTS_SCIENCE` §8.4; a zona e o pace/FC continuam os mesmos.
+- **Título mais claro:** “Ritmo forte” substitui “Tempo” sem mudar o tipo `QUALITY` nem a lógica de troca, replanejamento ou adesão.
+- **Sessões antigas preservadas:** planos persistidos mantêm o texto com que foram criados; a nova copy vale para novas gerações e revisões.
+- **Notificação:** o rationale continua sendo o corpo do lembrete; a nota de taper/descarga é curta e só aparece quando há redução real.
+
+### Próximo passo
+
+1. Validar em aparelho: gerar uma semana com qualidade, abrir o lembrete e conferir a copy de 25/45 min e de semana de prova.
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: FR-013 (RPE/sRPE), T-02/T-03/T-04, U-01..U-04, N-05 e a relação taper × deload/periodização.
 
 ## Sessão 2026-11-12 — BUG-08: meta de prova sem data fala a verdade
 

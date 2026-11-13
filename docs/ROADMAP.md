@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.36 · **Data:** 12/11/2026 · **Mudança:** meta de prova sem data passa a declarar que não há redução de volume (BUG-08, `R-PLAN-11`), com aviso no Perfil, linha no plano do Hoje e dado ausente na explicação; “taper” sai da UI; sem migração.
+**Versão:** 1.37 · **Data:** 12/11/2026 · **Mudança:** qualidade no taper concluída (N-03): o texto deriva o bloco da duração real, mantém o esforço e explica a redução sem jargão; `weekly-plan-v4`, sem migração. A versão 1.36 registrou a meta de prova sem data (`R-PLAN-11`, BUG-08).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -383,7 +383,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 - Revisão humana das tolerâncias de vínculo e da copy de `LEGACY_UNVERIFIED`.
 - Validação dos limiares do ADR 0026 (8 dias/28, frescor de 14 dias, critérios de iniciante) com dados reais.
-- Na conclusão do ciclo 1, `GUIDED` persistente, N-03 e N-05 ficaram para ciclos posteriores; `GUIDED` foi depois proposto para o ciclo 2 (ainda não aprovado). N-03 e N-05 permanecem pendências separadas.
+- Na conclusão do ciclo 1, `GUIDED` persistente, N-03 e N-05 ficaram para ciclos posteriores; `GUIDED` foi depois proposto para o ciclo 2 (ainda não aprovado). N-03 foi concluído em 12/11/2026; N-05 permanece pendência separada.
 
 ### Ciclo 2 — proposta auditada; R-01, R-02 e R-03 implementados (08/11/2026)
 
@@ -394,7 +394,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 | **R — Replanejamento** | R-01: `PlanReplanner` puro; preservar sessões feitas e validar a semana mesclada. R-02: migração `12→13`, snapshots versionados e `applyReplan` transacional. R-03: casos de uso, sugestão por dia, invalidação por versão/hash, selo e diff | Testes primeiro em `core:domain`; R-03 depende dos gates do plano | **R-01 concluído em 08/11/2026** (28 testes); **R-02 concluído em 08/11/2026** (migração/revisões/export-reset); **R-03 concluído em 08/11/2026** (Evaluate/ApplyReplan, sugestão/recusa/supressão, versão e diff, goldens) |
 | **G — Sessão guiada** | Player persistente, cues temporais, TTS opcional e evidência `GUIDED`; RPE sem carga sRPE nesta etapa | Fechar tipo de FGS/distribuição e comportamento diante de doença durante execução; validar em aparelho | Proposto |
 
-FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/2026 (consolidação determinística no domínio e card em Tendências, ADR 0034); replanejamento é relacionado, mas não o substitui. FR-010 foi concluído em 11/11/2026 e passa a ser a base da revisão semanal. N-03 e N-05 permanecem pendências separadas. R foi concluído antes de G; a migração `13→14` da sessão guiada continua isolada. A3/A4/A7 continuam bloqueando G-03.
+FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/2026 (consolidação determinística no domínio e card em Tendências, ADR 0034); replanejamento é relacionado, mas não o substitui. FR-010 foi concluído em 11/11/2026 e passa a ser a base da revisão semanal. N-03 foi concluído em 12/11/2026; N-05 permanece pendência separada. R foi concluído antes de G; a migração `13→14` da sessão guiada continua isolada. A3/A4/A7 continuam bloqueando G-03.
 
 **Regras adotadas no ciclo 1:**
 
@@ -430,8 +430,7 @@ FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/
 Fora do escopo implementável: limite de longão por fração da distância (FR-206).
 A recuperação pós-prova (FR-207) foi concluída em 12/11/2026 pelo ADR 0037.
 D6-B foi implementado pelo ADR 0036 em 11/11/2026.
-N-03 continua sem entrega; o PRD v0.2 apenas definiu a direção de evento/taper que
-a implementação C3-05/C3-06 seguiu.
+N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload e a periodização (FR-012) continuam no backlog.
 
 ### FR-010 — Comparação planejado × executado (concluído em 11/11/2026)
 
@@ -459,10 +458,10 @@ comparação por splits seguem pendentes.
 
 ### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
 
-**Status:** recuperação pós-prova concluída em 12/11/2026 ([ADR 0037](adr/0037-post-race-recovery.md)); os demais itens continuam no backlog.
+**Status:** recuperação pós-prova concluída em 12/11/2026 ([ADR 0037](adr/0037-post-race-recovery.md)); qualidade no taper concluída em 12/11/2026. A relação taper × deload e a periodização continuam no backlog.
 
 - [x] Adicionar recuperação pós-prova (1–2 semanas conforme distância, sem qualidade) — implementada como janela determinística 2/3/5/10 dias com sessões curtas e sem longão.
-- [ ] Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão.
+- [x] Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão — implementado em 12/11/2026: o fator de taper já alcança a qualidade; o texto agora deriva aquecimento/bloco/desaquecimento da duração real, os intervalos escalam de 3 a 5 repetições e a sessão explica a redução sem jargão. `weekly-plan-v4`, sem migração.
 - [ ] Rever a relação entre taper e deload.
 - [ ] Depende de decisão de objetivo/prova (D7) e de periodização; exige ADR próprio.
 

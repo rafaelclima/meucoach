@@ -300,7 +300,7 @@ de planos reinicia o bloco (ADR 0011).
 | **Colinas** | 6×45 s subida forte, caminhada desce | Força específica |
 | **Treadmill** | 6×2 min a 5–10% inclinação, Z4 | Controle de calor/impacto |
 
-Aquecimento 10–15 min + mobilidade; desaquecimento 5–10 min. Qualidade nunca em dia de sono < 6 h.
+Aquecimento de 10 min + mobilidade. A tabela mostra o estímulo canônico; no plano, a duração total da qualidade é 25–45 min e o texto deriva o bloco dessa duração: 10 min de aquecimento; no contínuo, o bloco principal é o restante menos 5 min de desaquecimento (mínimo 10 min); nos intervalos, 3 min fortes com 2 min leves, de 3 a 5 repetições, e o restante em ritmo leve. Sessões curtas usam a dose menor e nenhum texto promete mais trabalho do que cabe. Qualidade nunca em dia de sono < 6 h.
 
 ### 8.5 Longão
 
@@ -313,6 +313,7 @@ Aquecimento 10–15 min + mobilidade; desaquecimento 5–10 min. Qualidade nunca
 
 - Volume −40 a −60%; intensidade mantida em pequenas doses.
 - Última sessão intensa 7–10 dias antes da prova (5k/10k) ou 10–14 dias (meia/maratona).
+- No plano, a qualidade que cai fora do corte de 10 dias (5k/10k) ou 14 dias (meia/maratona) é encurtada pelo mesmo fator de volume, com piso de 25 min; o tipo e o esforço são mantidos e a sessão diz que o bloco ficou mais curto. Dentro do corte e na semana da prova, não há qualidade (`R-PLAN-05`).
 - Sem treino novo, sem tênis novo, sem dieta nova na semana da prova.
 
 ### 8.7 Recomendação diária conservadora
@@ -347,7 +348,8 @@ segunda→domingo:
   explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
   ADR 0026). ACWR desconhecido nunca libera progressão.
 - Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
-- Fácil entre 20–60 min; qualidade entre 25–45 min, como "Tempo" (intermediário) ou "Intervalos" (avançado).
+- Fácil entre 20–60 min; qualidade entre 25–45 min, como "Ritmo forte" (intermediário) ou "Intervalos" (avançado). O texto deriva aquecimento/bloco/desaquecimento da duração real e nunca descreve mais trabalho do que cabe.
+- Taper encurta a qualidade que cai fora do corte (10 dias para 5k/10k, 14 para meia/maratona), mantendo o tipo e o esforço; com piso de 25 min, a sessão só diz que houve redução quando a duração realmente caiu (`R-PLAN-05`).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Sem data de prova, não há taper: a meta de prova sem data não define quando reduzir o volume. O plano mantém o volume normal e diz isso explicitamente, sem inventar uma data (`R-PLAN-11`, BUG-08).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).

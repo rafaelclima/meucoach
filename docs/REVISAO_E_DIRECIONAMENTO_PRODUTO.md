@@ -172,7 +172,7 @@ A revisão, porém, muda três coisas importantes:
 |---|---|---|---|---|---|
 | **N-01** | `PlannedSession` não tem alvos de pace/FC, distância, `activityId` ou `executionId`. A prescrição única precisa enriquecer o modelo, não só unir duas telas. | `WeeklyPlanEntity.kt:35-52`; `PlannedSession` em `WeeklyPlanGenerator.kt:25-41` | A | Alto: o esforço do PRD para FR-001/FR-003 está subestimado | **P0 (dependência)** |
 | **N-02** | O plano gerado no meio da semana inclui sessões de dias já passados; elas não podem ser concluídas nem puladas e entram na adesão como pendentes. | `WeeklyPlanGenerator.kt:106-131` gera a semana inteira; `TodayScreen.kt:803-823` só age em `date == today`; `PlanCompletionCalculator.kt:42-44` conta passadas | A | Alto: quem instala/abre na quinta já começa com adesão impossível | **P0** |
-| **N-03** | O taper reduz duração de fácil/longão, mas **não** reduz a qualidade; não existe evento de prova nem recuperação pós-prova. | `WeeklyPlanGenerator.kt:186-192`; `SPORTS_SCIENCE.md:286-290, 332-337` | A | Alto para quem tem prova; pode manter estímulo forte na semana da prova | **P1 (junto com BUG-05)** |
+| **N-03** | O taper reduz duração de fácil/longão, mas **não** reduz a qualidade; não existe evento de prova nem recuperação pós-prova. | `WeeklyPlanGenerator.kt:186-192`; `SPORTS_SCIENCE.md:286-290, 332-337` | A | Alto para quem tem prova; pode manter estímulo forte na semana da prova | **Resolvido em 12/11/2026:** recuperação pelo ADR 0037 e qualidade no taper pelo N-03 (`weekly-plan-v4`) |
 | **N-04** | ACWR ausente libera qualidade; dias sem dado entram como carga zero no cálculo. | `WeeklyPlanGenerator.kt:111-115` (`acwr == null || ...`); `TrainingLoadEngine.kt:70-89`; `TrainingLoadCalculator.kt:68-77` | A | Alto: contraria “sem dados, não aumentar carga” e pode liberar progressão sem base | **P0** |
 | **N-05** | O Health Connect lê apenas 30 dias na primeira sincronização e não faz backfill de histórico anterior. | `HealthSyncService.kt:78-80` | A | Médio: o “acompanhar ao longo do tempo” automático começa 30 dias antes da instalação, não na vida do atleta | **P2** |
 | **N-06** | Não há registro manual de corrida; `ActivitySource.MANUAL` só aparece em formatador. | `ActivityFormatters.kt:46`; ausência de UI | A | Médio-alto para esteira/sem arquivo; depende da decisão de captura | **P1/P2** |
@@ -1134,7 +1134,7 @@ Cada entrega só é aceita quando:
 |---|---|---|
 | **N-01** — sessão sem alvos/vínculos | Enriquecer `PlannedSession` e derivar alvos na prescrição; vínculo em C1-04 | C1-03/C1-04; ADR 0023/0024 |
 | **N-02** — plano no meio da semana | Gerar somente de hoje até domingo; adesão cortada pela criação do plano | C1-03; ADR 0023 |
-| **N-03** — taper não reduz qualidade; sem recovery | Backlog explícito do ciclo 2 (semana de prova + recuperação) | ROADMAP/P1; não entra em C1 |
+| **N-03** — taper não reduz qualidade; sem recovery | Concluído em 12/11/2026: recuperação pelo ADR 0037 e qualidade no taper pelo N-03 | ROADMAP/P1; `weekly-plan-v4` |
 | **N-04** — ACWR nulo libera qualidade; ausência vira zero | `LoadDataState`, cobertura e frescor; gate de qualidade | C1-02; ADR 0026 |
 | **N-05** — HC sem backfill além de 30 dias | Registrado no ciclo de integração Health Connect; não antecipar | Ciclo 2; ROADMAP |
 

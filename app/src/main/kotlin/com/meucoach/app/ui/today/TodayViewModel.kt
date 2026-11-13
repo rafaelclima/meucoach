@@ -851,7 +851,7 @@ private fun DailyPrescription.toWorkoutUi() = WorkoutUi(
         com.meucoach.core.domain.prescription.WorkoutType.LONG,
         -> "Z2 · leve"
 
-        com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Z3–Z4"
+        com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Forte · Z3–Z4"
 
         com.meucoach.core.domain.prescription.WorkoutType.REST -> "—"
     },
