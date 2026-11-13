@@ -1,6 +1,72 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (Story V3 Sprint A — Story Studio: UI-01..UI-04/UI-08 com essenciais fixas, extras ≤2 com motivo, presets, duração, mapa e “salvar como padrão”; prévia de 3 frames em 540×960 (VIS-06); card só abre o Studio e a geração usa a receita; goldens do Studio em dark/light e 0/2 extras; antes: domínio: D0.2/D0.3, `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com motivo, timeline por esforço, 8 cards + barra com 10 km, codec/store e `StoryRenderSpec`; renderer com 1–3 slots no card e 3+2 no encerramento; antes: ADR 0040, safe area de Reels 13/22/5,5 com card em 62–78% e atribuição acima do card, encode BT.709/SDR/limited + H.264 High/4.1 condicional + 16 Mbps VBR, números tabulares e fim da legenda no card, e modelo puro do story em `core:domain/story`; antes: polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (Story V3 Sprint A — VIS-05/ENC-07: pôster 4:5 em 1080×1350 com a rota como arte, capa 9:16 e pôster publicados em `Pictures/MeuCoach`, compartilhamento separado de vídeo/capa/pôster e falha do pôster sem derrubar o vídeo; antes: Story Studio: UI-01..UI-04/UI-08 com essenciais fixas, extras ≤2 com motivo, presets, duração, mapa e “salvar como padrão”; prévia de 3 frames em 540×960 (VIS-06); card só abre o Studio e a geração usa a receita; goldens do Studio em dark/light e 0/2 extras; antes: domínio: D0.2/D0.3, `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com motivo, timeline por esforço, 8 cards + barra com 10 km, codec/store e `StoryRenderSpec`; renderer com 1–3 slots no card e 3+2 no encerramento; antes: ADR 0040, safe area de Reels 13/22/5,5 com card em 62–78% e atribuição acima do card, encode BT.709/SDR/limited + H.264 High/4.1 condicional + 16 Mbps VBR, números tabulares e fim da legenda no card, e modelo puro do story em `core:domain/story`; antes: polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+
+## Sessão 2026-11-13 — Story V3 Sprint A: pôster 4:5 e compartilhamento
+
+**Objetivo:** fechar VIS-05 e ENC-07 — gerar o pôster 4:5 (1080×1350) e
+permitir compartilhar vídeo, capa 9:16 e pôster sem prometer um envio múltiplo
+que os apps de destino não aceitam.
+
+### Concluído
+
+- **VIS-05 — `StoryPosterRenderer`:** composição própria em 1080×1350, sem
+  crop, com fundo em gradiente da paleta, rota como arte (sem tiles, labels ou
+  rede), distância em tipografia grande, ritmo médio e tempo total na mesma
+  hierarquia, data e marca pequenas. Os valores vêm do `StoryRenderSpec`
+  (`StoryRenderSpecResolver.fromPlan`); o renderer não decide disponibilidade,
+  não formata regra e não inventa número. Sem rota com ≥2 pontos, retorna
+  `null` e o vídeo segue sem pôster.
+- **Data e marca:** a data usa `plan.localDate` (quando existe) e o wordmark é
+  tingido com `textPrimary`, então funciona no dark e no light sem um segundo
+  asset.
+- **ENC-07 — publicação:** `StoryExportResult` ganhou `posterUri`; o exporter
+  grava o pôster depois da capa e publica as duas imagens em
+  `Pictures/MeuCoach` (vídeo continua em `Movies/MeuCoach`). O PNG é escrito
+  em `meucoach-story-<data>-<distância>km-<stamp>-poster-4x5.png`; a capa usa o
+  mesmo padrão com `-capa-9x16.png`.
+- **Degradação honesta:** `writePoster` é envolvido em `runCatching`; falha do
+  PNG ou ausência de rota deixa `posterUri = null`, o vídeo conclui e a UI
+  explica que o pôster não foi gerado. Falha da capa também não invalida o
+  vídeo.
+- **Worker/UI:** `StoryExportWorker.KEY_POSTER_URI` carrega apenas a URI (sem
+  bitmap no `Data`); `StoryExportUiState.Done.posterUri` é preenchido no view
+  model. O card "Story do treino" mostra o estado real ("Vídeo, capa 9:16 e
+  pôster 4:5 salvos…"), oferece **Compartilhar vídeo**, **Pôster 4:5** e
+  **Capa 9:16** separadamente e remove a copy antiga "pronta para o feed"
+  (VIS-09). O envio é `ACTION_SEND` por arquivo; não há "compartilhar tudo"
+  porque a maioria dos destinos escolhe um tipo por vez.
+- **Nomes:** `StoryFileNames` centraliza os três nomes com data e distância,
+  mantendo o prefixo `meucoach-story-`; plan sem data usa `sem-data`.
+
+### Testes
+
+- `StoryPosterRendererTest`: dimensões 1080×1350, bitmap ARGB, presença da cor
+  de accent da paleta, PNG com assinatura válida, `null`/`false` sem rota e
+  render sem data.
+- `StoryPosterScreenshotTest`: goldens `story-poster-5k-dark.png`,
+  `story-poster-5k-light.png` e `story-poster-10k-dark.png`, revisados.
+- `StoryFileNamesTest`: data/distância nos três nomes e fallback `sem-data`.
+- `StoryExportProcessorTest`: `Completed.posterUri` é repassado.
+- `ActivityDetailViewModelTest`: `KEY_POSTER_URI` vira `Done.posterUri`;
+  export antigo sem pôster continua sendo `Done` com `posterUri = null`.
+- `ActivityDetailScreenTest`: vídeo sem pôster mostra o motivo; capa e pôster
+  têm ações e callbacks separados, e a copy antiga não aparece.
+- 1.690 testes, 0 falhas e 0 `@Ignore` (791 `:app`, 691 `core:domain`, 168
+  `core:data`, 40 `core:model`).
+- `:app`: 78,43% de linhas; `core:domain`: 97,20% de linhas; parser FIT 93,01%.
+- `check`, `spotlessCheck`, `koverVerify`, detekt e lint verdes;
+  `:app:verifyRoborazziDebug` dos goldens do pôster, Studio e frames verde.
+- Nenhum dado real, migração ou dependência nova.
+
+### Próximo passo
+
+1. **DEV-07/QA-06** — abrir o pôster no grid do Instagram e confirmar que não
+   há crop; validar o MP4 (1080×1920, 30 fps, BT.709, sem áudio/GPS) no S24
+   Ultra. O aparelho não apareceu no `adb devices` nesta sessão.
+2. **Sprint B** — MapLibre 13.7.1 OpenGL, `pixelForLatLng`, estilo autoral e 3
+   keyframes.
+3. **ENC-05/ENC-08** — cache/manifesto do mapa, memória e prévia com o mapa.
 
 ## Sessão 2026-11-13 — Story V3 Sprint A: Story Studio e prévia de 3 frames
 

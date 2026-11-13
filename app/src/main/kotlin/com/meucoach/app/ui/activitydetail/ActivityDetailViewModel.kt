@@ -420,6 +420,9 @@ class ActivityDetailViewModel @Inject constructor(
                             coverUri = workInfo.outputData
                                 .getString(StoryExportWorker.KEY_COVER_URI)
                                 ?.let { cover -> Uri.parse(cover) },
+                            posterUri = workInfo.outputData
+                                .getString(StoryExportWorker.KEY_POSTER_URI)
+                                ?.let { poster -> Uri.parse(poster) },
                         ),
                     )
                 }

@@ -125,6 +125,11 @@ nitidez do mapa e safe area.
 - **Pôster:** 1080×1350 (4:5) com a rota como arte, tipografia grande, data e
   marca; a capa 9:16 continua sendo o frame final do story. **4:5 em vídeo
   fica fora** — o pôster é uma composição própria, não um crop.
+- **Publicação:** vídeo em `Movies/MeuCoach`; capa e pôster em
+  `Pictures/MeuCoach`. O compartilhamento é individual por arquivo
+  (`ACTION_SEND`), sem `ACTION_SEND_MULTIPLE`: a maioria dos destinos escolhe
+  um tipo por vez e um envio conjunto prometeria o que o app não entrega.
+  Falha do pôster não invalida o vídeo; sem rota, o pôster é `null`.
 
 ### 2.7 Números tabulares e card sem legenda
 

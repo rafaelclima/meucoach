@@ -248,7 +248,7 @@ class ActivityDetailScreenTest {
     }
 
     @Test
-    fun `shares a finished story`() {
+    fun `shares the video and explains a missing poster`() {
         val uri = Uri.parse("content://media/external/video/media/42")
         var shared: Uri? = null
         setContent {
@@ -262,20 +262,24 @@ class ActivityDetailScreenTest {
         }
 
         val list = compose.onNodeWithTag("activity-detail-list")
-        list.performScrollToNode(hasText("Story do treino"))
-        compose.onNodeWithText("Story do treino").assertIsDisplayed()
         list.performScrollToNode(hasText("Vídeo salvo na galeria."))
         compose.onNodeWithText("Vídeo salvo na galeria.").assertIsDisplayed()
-        list.performScrollToNode(hasText("Compartilhar"))
-        compose.onNodeWithText("Compartilhar").performClick()
+        list.performScrollToNode(hasText("O pôster 4:5 não pôde ser gerado; o vídeo está pronto."))
+        compose.onNodeWithText("O pôster 4:5 não pôde ser gerado; o vídeo está pronto.").assertIsDisplayed()
+        list.performScrollToNode(hasTestTag("story-share-video"))
+        compose.onNodeWithTag("story-share-video").performClick()
+        compose.onNodeWithTag("story-share-poster").assertDoesNotExist()
 
         assertThat(shared).isEqualTo(uri)
     }
 
     @Test
-    fun `mentions the cover when the story also saves one`() {
+    fun `shares the cover and the poster separately`() {
         val uri = Uri.parse("content://media/external/video/media/42")
         val cover = Uri.parse("content://media/external/images/media/43")
+        val poster = Uri.parse("content://media/external/images/media/44")
+        var sharedCover: Uri? = null
+        var sharedPoster: Uri? = null
         setContent {
             ActivityDetailContent(
                 state = ActivityDetailTestData.state().copy(
@@ -283,17 +287,31 @@ class ActivityDetailScreenTest {
                         uri = uri,
                         savedToGallery = true,
                         coverUri = cover,
+                        posterUri = poster,
                     ),
                 ),
                 onBack = {},
+                onShareCover = { sharedCover = it },
+                onSharePoster = { sharedPoster = it },
             )
         }
 
         val list = compose.onNodeWithTag("activity-detail-list")
-        list.performScrollToNode(hasText("Vídeo e capa salvos na galeria."))
-        compose.onNodeWithText("Vídeo e capa salvos na galeria.").assertIsDisplayed()
-        list.performScrollToNode(hasText("A capa é o frame final, pronta para o feed."))
-        compose.onNodeWithText("A capa é o frame final, pronta para o feed.").assertIsDisplayed()
+        list.performScrollToNode(hasText("Vídeo, capa 9:16 e pôster 4:5 salvos na galeria."))
+        compose.onNodeWithText("Vídeo, capa 9:16 e pôster 4:5 salvos na galeria.").assertIsDisplayed()
+        list.performScrollToNode(hasText("A capa 9:16 é o frame final, para stories. O pôster 4:5 é a capa do feed."))
+        compose.onNodeWithText(
+            "A capa 9:16 é o frame final, para stories. O pôster 4:5 é a capa do feed.",
+        ).assertIsDisplayed()
+        compose.onNodeWithText("pronta para o feed", substring = true).assertDoesNotExist()
+
+        list.performScrollToNode(hasTestTag("story-share-poster"))
+        compose.onNodeWithTag("story-share-poster").performClick()
+        list.performScrollToNode(hasTestTag("story-share-cover"))
+        compose.onNodeWithTag("story-share-cover").performClick()
+
+        assertThat(sharedPoster).isEqualTo(poster)
+        assertThat(sharedCover).isEqualTo(cover)
     }
 
     @Test

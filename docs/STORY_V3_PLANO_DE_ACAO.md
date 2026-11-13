@@ -295,7 +295,8 @@ Tela modal aberta pelo card “Criar story” no detalhe da atividade:
 - Extras desabilitados com motivo; contador “0/2”.
 - Prévia com 3 frames + scrubber; mapa re-renderizado só se estilo mudar.
 - “Salvar como padrão” em `SharedPreferences` (`meucoach_story`).
-- Após gerar: “Compartilhar vídeo”, “Compartilhar capa 4:5”, “Gerar outro”.
+- Após gerar: “Compartilhar vídeo”, “Pôster 4:5”, “Capa 9:16” e “Gerar outro”,
+  cada arquivo em um `ACTION_SEND` próprio (sem prometer envio múltiplo).
 
 ---
 
@@ -492,11 +493,11 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] VIS-02 | Slots dinâmicos de métricas | Header 2, card 1–3, final 3+2; tabular numerals; sem legenda | `StoryFrameRenderer.kt` | DOM-07 | G | 0/1/2 extras sem overflow; `tnum` |
 | [x] VIS-03 | Card por km | Ritmo + extras por km; “KM 3 · 5:02”; selo quando `FASTEST_KM`; barra com todos os kms | `StoryFrameRenderer.kt` | VIS-02, DOM-05 | G | Sem calorias/km; 10 km → 10 segmentos |
 | [x] VIS-04 | Encerramento | 3 essenciais + 2 extras; manchete/prova; logo/tagline | `StoryFrameRenderer.kt` | VIS-02 | M | 3 essenciais sempre; 2 extras quando escolhidos |
-| [ ] VIS-05 | Pôster 4:5 + capa 9:16 | Rota como arte, tipografia, data, marca | `StoryPosterRenderer.kt` | VIS-01 | M | 1080×1350; sem crop no feed; PNG |
+| [x] VIS-05 | Pôster 4:5 + capa 9:16 | Rota como arte, tipografia, data, marca; PNG | `StoryPosterRenderer.kt` | VIS-01 | M | 1080×1350; PNG; sem crop validado em DEV-07 |
 | [x] VIS-06 | Prévia 3 frames + scrubber | 540×960; frames abertura/card/final; sem bitmap 42 MB | `StoryStudioSheet.kt`, ViewModel | VIS-02 | M | Troca de frame <100 ms; memória <20 MB |
 | [ ] VIS-07 | Refatorar renderer | `StoryHeaderRenderer`, `StoryCardRenderer`, `StoryFinalRenderer`, `StoryPosterRenderer` | `app/.../story/render/*` | VIS-02 | G | Arquivos <300 linhas; goldens passam |
 | [ ] VIS-08 | Goldens | Essencial/Performance/Fisiológico; 9:16/4:5; 0/1/2 extras; dark/light | `app/src/test/screenshots/*` | VIS-01..05 | M | Roborazzi verde; revisão visual |
-| [ ] VIS-09 | Copy do vídeo | Remover “pronta para o feed” do frame 9:16; 4:5 é a capa | UI strings | VIS-05 | P | Copy correta |
+| [x] VIS-09 | Copy do vídeo | Remover “pronta para o feed” do frame 9:16; 4:5 é a capa | UI strings | VIS-05 | P | Copy correta |
 
 ### EPIC 4 — Encode e exportação
 
@@ -504,11 +505,11 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 |---|---|---|---|---|---|---|
 | [x] ENC-01 | Qualidade de encode | BT.709/SDR/limited, High/4.1, 16 Mbps VBR | `StoryVideoExporter.kt` | — | P | `ffprobe` mostra bt709; sem cor lavada |
 | [ ] ENC-02 | Perfis de qualidade | 1080p30 padrão; parâmetro de 60 fps preparado; bitrate por perfil | `StoryQuality.kt`, exporter | ENC-01 | M | 30 fps validado; 60 fps só é exposto após `DEV-04` |
-| [ ] ENC-03 | Sem áudio, sem GPS | Nenhuma trilha AAC; nunca `setLocation`; nome com data/distância | exporter | ENC-01 | P | MP4 só vídeo; sem metadata de local |
+| [x] ENC-03 | Sem áudio, sem GPS | Nenhuma trilha AAC; nunca `setLocation`; nome com data/distância | exporter, `StoryFileNames.kt` | ENC-01 | P | MP4 só vídeo; sem metadata de local |
 | [ ] ENC-04 | Estágio WebP/JPEG | Mapa de prévia e keyframes em WebP/JPEG 95 | Coordinator, cache | MAP-06 | M | Tempo de stage menor; decode ok |
 | [ ] ENC-05 | Receita no worker | `StoryPlanLoader` + `StoryRecipe` + `mapDir`/manifesto | Worker, Processor, Coordinator | DOM-06, MAP-05 | G | Export respeita extras/duração; teste |
 | [ ] ENC-06 | Progresso/ETA multi-snapshot | 0–10% mapa, 10–100% encode; cancelamento | Worker, ETA | ENC-05 | M | ETA estável; cancelar apaga parcial |
-| [ ] ENC-07 | Publicação | Vídeo + capa 9:16 + pôster 4:5 no MediaStore; share múltiplo | exporter, UI | VIS-05 | M | 3 URIs; share sheet |
+| [x] ENC-07 | Publicação | Vídeo em Movies; capa 9:16 + pôster 4:5 em Pictures; share individual | exporter, UI | VIS-05 | M | 3 URIs; share sheet |
 | [ ] ENC-08 | Memória | Reciclar bitmaps; não manter high-res na Preview | ViewModel, exporter | VIS-06 | M | Pico <150 MB em 30 s |
 | [ ] ENC-09 (Sprint 3) | GPU/HardwareRenderer | Spike se export >90 s | exporter | ENC-08 | G | Medição antes/depois; fallback |
 
@@ -520,7 +521,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] UI-02 | Essenciais + extras | Chips fixos; extras 0/2; motivos; presets | `ActivityDetailViewModel.kt` | DOM-03, UI-01 | G | 3ª extra bloqueada; dados ausentes |
 | [~] UI-03 | Duração/mapa/qualidade | Auto/15/30/45/60; Dark/Light/Terrain; Padrão 1080p30 (Suave só após `DEV-04`) | UI | UI-02 | M | Persistência ok; prévia desenha a rota (mapa entra no vídeo) |
 | [x] UI-04 | Salvar padrão/reset | Preferência JSON; “restaurar padrão” | `StoryRecipeStore.kt` | DOM-06 | P | Sobrevive a reinício; reset limpa |
-| [~] UI-05 | Gerar/compartilhar | Preparing/Generating/Done/Error; cancelar; share vídeo/capa/pôster | UI + ViewModel | ENC-07 | G | Fluxo completo; pôster 4:5 pendente |
+| [x] UI-05 | Gerar/compartilhar | Preparing/Generating/Done/Error; cancelar; share vídeo/capa/pôster | UI + ViewModel | ENC-07 | G | Fluxo completo; três shares separados |
 | [ ] UI-06 | Acessibilidade | 48 dp; TalkBack; seleção anunciada; contraste | UI | UI-04 | M | Testes de a11y; sem cor como único sinal |
 | [ ] UI-07 | Copy | Sem áudio/privacidade; “métricas extras”; “capa 4:5” | strings | UI-05 | P | Revisão de texto |
 | [x] UI-08 | Remover opções inline antigas | Card só abre o Studio | `ActivityDetailScreen.kt` | UI-01 | P | Sem duplicação |
@@ -531,7 +532,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | ID | Tarefa | Entrega | Arquivos | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|---|
 | [x] QA-01 | Testes de domínio | Receita, catálogo, timeline, cards, codec | `core/domain/src/test/.../story/*` | DOM-08 | M | ≥85% linhas |
-| [~] QA-02 | Goldens | 9:16/4:5; presets; extras; dark/light | screenshots | VIS-08 | M | Studio dark/light e 0/2 cobertos; 4:5 pendente |
+| [x] QA-02 | Goldens | 9:16/4:5; presets; extras; dark/light | screenshots | VIS-08 | M | Studio dark/light, 0/2 e pôster 5k/10k cobertos |
 | [ ] QA-03 | Worker/coordinator | Receita, cache, retry, cancelamento | `app/src/test/.../story/*` | ENC-05 | M | Testes verdes |
 | [ ] QA-04 | Gates | `check`, `spotlessCheck`, `koverVerify`, detekt | — | tudo | P | 0 erros; sem novo baseline |
 | [ ] QA-05 | Roteiro de aparelho | S24 Ultra + mid-range 4 GB | `docs/RUNBOOK` ou anexo | ENC-08 | M | Tempo/memória/cor alinhados |
@@ -547,7 +548,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [ ] DEV-04 | 60 fps | Encoder suporta? | ENC-02 | P | Se falhar, esconder opção |
 | [ ] DEV-05 | Share real | Reels/TikTok/WhatsApp | UI-05 | M | Sem corte; vídeo mudo aceito |
 | [ ] DEV-06 | Metadados | `ffprobe`/MediaMetadataRetriever | ENC-03 | P | Sem GPS |
-| [ ] DEV-07 | Pôster 4:5 | Grid do Instagram | VIS-05 | P | Sem crop |
+| [~] DEV-07 | Pôster 4:5 | Grid do Instagram | VIS-05 | P | Gerado em 1080×1350; falta validar sem crop no feed |
 
 ---
 

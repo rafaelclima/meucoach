@@ -34,7 +34,12 @@ import java.util.concurrent.Executors
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
-data class StoryExportResult(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null)
+data class StoryExportResult(
+    val uri: Uri,
+    val savedToGallery: Boolean,
+    val coverUri: Uri? = null,
+    val posterUri: Uri? = null,
+)
 
 /**
  * Publication settings shared by the story encoder. Instagram re-encodes
@@ -175,7 +180,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         val cancelled = { !job.isActive }
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val stamp = System.currentTimeMillis()
-        val output = File(directory, "meucoach-story-$stamp.mp4")
+        val output = File(directory, StoryFileNames.video(plan, stamp))
         val avatar = runCatching {
             profiles.getProfile()?.avatarPath?.let { photos.load(it, maxSize = 256) }
         }.getOrNull()
@@ -184,7 +189,12 @@ class CanvasStoryVideoExporter @Inject constructor(
             val cover = runCatching {
                 writeCover(plan, palette, recipe, mapBackground, overviewMap, directory, stamp, avatar)
             }.getOrNull()
-            publish(output, cover)
+            // The poster is an extra: a failure (or a plan without a route)
+            // still leaves a completed video and cover.
+            val poster = runCatching {
+                writePoster(plan, palette, recipe, directory, stamp)
+            }.getOrNull()
+            publish(output, cover, poster)
         } catch (error: Throwable) {
             // A partial MP4 is unreadable: a cancelled or failed export leaves
             // nothing in the cache for the user to stumble on.
@@ -207,7 +217,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         stamp: Long,
         avatar: Bitmap?,
     ): File {
-        val file = File(directory, "meucoach-story-cover-$stamp.png")
+        val file = File(directory, StoryFileNames.cover(plan, stamp))
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         try {
             val finalStart = plan.segments.lastOrNull { it.type == StorySegmentType.FINAL }?.startSec
@@ -226,6 +236,35 @@ class CanvasStoryVideoExporter @Inject constructor(
             bitmap.recycle()
         }
         return file
+    }
+
+    /**
+     * 4:5 poster for the feed (VIS-05). Independent from the codec, so a
+     * poster failure never fails the export; [writePoster] returns null when
+     * the renderer has no route or the PNG cannot be written.
+     */
+    private fun writePoster(
+        plan: StoryPlan,
+        palette: StoryPalette,
+        recipe: StoryRecipe,
+        directory: File,
+        stamp: Long,
+    ): File? {
+        val file = File(directory, StoryFileNames.poster(plan, stamp))
+        return try {
+            val written = file.outputStream().use { output ->
+                StoryPosterRenderer(palette, typeface, defaultLogoBitmap).writePng(plan, recipe, output)
+            }
+            if (written) {
+                file
+            } else {
+                runCatching { file.delete() }
+                null
+            }
+        } catch (error: Throwable) {
+            runCatching { file.delete() }
+            throw error
+        }
     }
 
     private suspend fun encode(
@@ -540,43 +579,59 @@ class CanvasStoryVideoExporter @Inject constructor(
         }
     }
 
-    private fun publish(file: File, cover: File?): StoryExportResult {
-        val coverUri = cover?.let { image -> runCatching { publishCover(image) }.getOrNull() }
+    private fun publish(file: File, cover: File?, poster: File?): StoryExportResult {
+        val coverUri = cover?.let { image -> runCatching { publishImage(image) }.getOrNull() }
+        val posterUri = poster?.let { image -> runCatching { publishImage(image) }.getOrNull() }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val resolver = context.contentResolver
-            val values = ContentValues().apply {
-                put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
-                put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                put(
-                    MediaStore.Video.Media.RELATIVE_PATH,
-                    "${Environment.DIRECTORY_MOVIES}/MeuCoach",
-                )
-                put(MediaStore.Video.Media.IS_PENDING, 1)
-            }
-            val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-                ?: error("Não foi possível reservar o vídeo na galeria.")
-            try {
-                resolver.openOutputStream(uri)?.use { output ->
-                    file.inputStream().use { input -> input.copyTo(output) }
-                } ?: error("Não foi possível gravar o vídeo na galeria.")
-                values.clear()
-                values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
-                return StoryExportResult(uri = uri, savedToGallery = true, coverUri = coverUri)
-            } catch (error: Throwable) {
-                resolver.delete(uri, null, null)
-                throw error
-            }
+            return StoryExportResult(
+                uri = publishVideo(file),
+                savedToGallery = true,
+                coverUri = coverUri,
+                posterUri = posterUri,
+            )
         }
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
             file,
         )
-        return StoryExportResult(uri = uri, savedToGallery = false, coverUri = coverUri)
+        return StoryExportResult(
+            uri = uri,
+            savedToGallery = false,
+            coverUri = coverUri,
+            posterUri = posterUri,
+        )
     }
 
-    private fun publishCover(file: File): Uri {
+    private fun publishVideo(file: File): Uri {
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(
+                MediaStore.Video.Media.RELATIVE_PATH,
+                "${Environment.DIRECTORY_MOVIES}/MeuCoach",
+            )
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+            ?: error("Não foi possível reservar o vídeo na galeria.")
+        try {
+            resolver.openOutputStream(uri)?.use { output ->
+                file.inputStream().use { input -> input.copyTo(output) }
+            } ?: error("Não foi possível gravar o vídeo na galeria.")
+            values.clear()
+            values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            return uri
+        } catch (error: Throwable) {
+            resolver.delete(uri, null, null)
+            throw error
+        }
+    }
+
+    /** Cover and poster share the Pictures/MeuCoach contract. */
+    private fun publishImage(file: File): Uri {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         }
@@ -591,11 +646,11 @@ class CanvasStoryVideoExporter @Inject constructor(
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: error("Não foi possível reservar a capa na galeria.")
+            ?: error("Não foi possível reservar a imagem na galeria.")
         try {
             resolver.openOutputStream(uri)?.use { output ->
                 file.inputStream().use { input -> input.copyTo(output) }
-            } ?: error("Não foi possível gravar a capa na galeria.")
+            } ?: error("Não foi possível gravar a imagem na galeria.")
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
             resolver.update(uri, values, null, null)

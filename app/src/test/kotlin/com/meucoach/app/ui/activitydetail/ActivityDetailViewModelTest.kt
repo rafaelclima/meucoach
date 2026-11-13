@@ -786,6 +786,7 @@ class ActivityDetailViewModelTest {
                         StoryExportWorker.KEY_VIDEO_URI to "content://media/external/video/media/42",
                         StoryExportWorker.KEY_SAVED_TO_GALLERY to true,
                         StoryExportWorker.KEY_COVER_URI to "content://media/external/images/media/43",
+                        StoryExportWorker.KEY_POSTER_URI to "content://media/external/images/media/44",
                     ),
                 ),
             )
@@ -794,6 +795,30 @@ class ActivityDetailViewModelTest {
             assertThat(done.uri.toString()).isEqualTo("content://media/external/video/media/42")
             assertThat(done.savedToGallery).isTrue()
             assertThat(done.coverUri.toString()).isEqualTo("content://media/external/images/media/43")
+            assertThat(done.posterUri.toString()).isEqualTo("content://media/external/images/media/44")
+        }
+    }
+
+    @Test
+    fun `keeps the video when the background export has no poster`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.applyWorkInfo(
+                workInfo(
+                    state = WorkInfo.State.SUCCEEDED,
+                    outputData = workDataOf(
+                        StoryExportWorker.KEY_VIDEO_URI to "content://media/external/video/media/42",
+                        StoryExportWorker.KEY_SAVED_TO_GALLERY to true,
+                        StoryExportWorker.KEY_COVER_URI to "content://media/external/images/media/43",
+                    ),
+                ),
+            )
+
+            val done = viewModel.uiState.value.storyExport as StoryExportUiState.Done
+            assertThat(done.posterUri).isNull()
         }
     }
 

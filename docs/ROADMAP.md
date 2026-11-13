@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.46 · **Data:** 13/11/2026 · **Mudança:** Story Studio (UI-01..UI-04, UI-08) com essenciais fixas, extras ≤2 com motivo, presets, duração, mapa, “salvar como padrão” e prévia de 3 frames em 540×960 (VIS-06); o card do detalhe não duplica mais as opções e a geração usa a receita do Studio. A versão 1.45 registrou o domínio do Story V3 (receita, catálogo de métricas, timeline, cards, codec/store e `StoryRenderSpec`).
+**Versão:** 1.47 · **Data:** 13/11/2026 · **Mudança:** Story V3 Sprint A — pôster 4:5 (VIS-05) em 1080×1350 com a rota como arte, capa 9:16 e pôster publicados em `Pictures/MeuCoach`, compartilhamento separado de vídeo/capa/pôster (ENC-07) e falha do pôster sem derrubar o vídeo. A versão 1.46 registrou o Story Studio (UI-01..UI-04, UI-08), a prévia de 3 frames (VIS-06) e a geração a partir da receita.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -535,9 +535,11 @@ VBR), VIS-02 parcial (`tnum` e fim da legenda), DOM-01 (modelo puro em
 timeline por esforço, seleção de cards, codec/store e render spec). O renderer
 já consome o spec: card com 1–3 slots, encerramento com 3 essenciais + até 2
 extras, selo do km mais rápido só quando a receita pede e barra com todos os
-kms. Próximo: Story Studio (UI-01..UI-05), prévia de 3 frames (VIS-06),
-memória (ENC-08), receita no worker além do já encaminhado, golden 4:5,
-MapLibre 13.7.1 OpenGL (Sprint B) e validação em aparelho.
+kms. O Story Studio (UI-01..UI-04/UI-08) e a prévia de 3 frames (VIS-06) estão
+prontos; VIS-05/ENC-07 acrescentaram o pôster 4:5, os três arquivos no
+MediaStore e o compartilhamento separado. Próximo: memória (ENC-08), receita
+no worker além do já encaminhado (ENC-05), MapLibre 13.7.1 OpenGL (Sprint B) e
+validação em aparelho (DEV-07/QA-06).
 
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com validação pendente em aparelho real.
 
@@ -573,7 +575,11 @@ MapLibre 13.7.1 OpenGL (Sprint B) e validação em aparelho.
 - [x] Story V3 — VIS-02..VIS-04 (parcial): card com 1–3 slots, encerramento 3+2, selo condicionado à receita e barra de 10 km.
 - [x] Story V3 — UI-01..UI-04/UI-08: Story Studio modal com receita, presets, extras com motivo, duração, mapa, “salvar como padrão” e geração a partir da receita; card só abre o Studio.
 - [x] Story V3 — VIS-06: prévia de 3 frames (abertura/km/final) em 540×960, um bitmap por vez.
-- [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); pôster 4:5 (VIS-05), receita no worker além do já encaminhado (ENC-05), memória (ENC-08) e goldens 4:5 seguem pendentes.
+- [x] Story V3 — VIS-05: pôster 4:5 em 1080×1350 com rota como arte, três essenciais, data e marca; PNG e `null` sem rota.
+- [x] Story V3 — ENC-07: vídeo em `Movies/MeuCoach`, capa 9:16 e pôster 4:5 em `Pictures/MeuCoach`; share individual dos três arquivos. Falha do pôster não invalida o vídeo.
+- [x] Story V3 — VIS-09/ENC-03: copy antiga "pronta para o feed" removida e nomes com data/distância.
+- [x] Story V3 — QA-02: goldens do pôster em 5k dark/light e 10k dark, além dos goldens do Studio.
+- [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05), memória (ENC-08) e validação do pôster no feed (DEV-07) seguem pendentes.
 
 **Descrição da feature (proposta inicial):**
 

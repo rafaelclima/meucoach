@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -62,6 +63,7 @@ import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McSectionHeader
 import com.meucoach.core.designsystem.component.McStat
+import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
@@ -93,7 +95,9 @@ fun ActivityDetailScreen(
         onBack = onBack,
         onCalibrate = onCalibrate,
         onCancelStory = viewModel::cancelStory,
-        onShareStory = { uri -> shareStory(context, uri) },
+        onShareStory = { uri -> shareMedia(context, uri, "video/mp4", "Compartilhar vídeo") },
+        onShareCover = { uri -> shareMedia(context, uri, "image/png", "Compartilhar capa 9:16") },
+        onSharePoster = { uri -> shareMedia(context, uri, "image/png", "Compartilhar pôster 4:5") },
         onDelete = viewModel::deleteActivity,
         onClearDeleteError = viewModel::clearDeleteError,
         storyActions = StoryStudioActions(
@@ -139,6 +143,8 @@ internal fun ActivityDetailContent(
     onCalibrate: (String) -> Unit = {},
     onCancelStory: () -> Unit = {},
     onShareStory: (Uri) -> Unit = {},
+    onShareCover: (Uri) -> Unit = {},
+    onSharePoster: (Uri) -> Unit = {},
     onDelete: () -> Unit = {},
     onClearDeleteError: () -> Unit = {},
     storyActions: StoryStudioActions = StoryStudioActions(),
@@ -217,6 +223,8 @@ internal fun ActivityDetailContent(
                                 onCancelStory = onCancelStory,
                                 onRetryStory = storyActions.onRetry,
                                 onShareStory = onShareStory,
+                                onShareCover = onShareCover,
+                                onSharePoster = onSharePoster,
                             )
                         }
                     }
@@ -572,6 +580,8 @@ private fun StoryCard(
     onCancelStory: () -> Unit,
     onRetryStory: () -> Unit,
     onShareStory: (Uri) -> Unit,
+    onShareCover: (Uri) -> Unit,
+    onSharePoster: (Uri) -> Unit,
 ) {
     val colors = McTheme.colors
     McCard {
@@ -646,19 +656,38 @@ private fun StoryCard(
             }
 
             is StoryExportUiState.Done -> {
+                val cover = story.coverUri
+                val poster = story.posterUri
                 Text(
                     text = when {
-                        story.savedToGallery && story.coverUri != null -> "Vídeo e capa salvos na galeria."
+                        story.savedToGallery && cover != null && poster != null ->
+                            "Vídeo, capa 9:16 e pôster 4:5 salvos na galeria."
+
+                        story.savedToGallery && cover != null && poster == null ->
+                            "Vídeo e capa 9:16 salvos na galeria."
+
+                        story.savedToGallery && cover == null && poster != null ->
+                            "Vídeo e pôster 4:5 salvos na galeria."
+
                         story.savedToGallery -> "Vídeo salvo na galeria."
+
                         else -> "Vídeo pronto para compartilhar."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.success,
                 )
-                if (story.coverUri != null) {
+                if (poster == null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "A capa é o frame final, pronta para o feed.",
+                        text = "O pôster 4:5 não pôde ser gerado; o vídeo está pronto.",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                    )
+                }
+                if (cover != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "A capa 9:16 é o frame final, para stories. O pôster 4:5 é a capa do feed.",
                         style = McTextStyles.caption,
                         color = colors.textSecondary,
                     )
@@ -666,14 +695,41 @@ private fun StoryCard(
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     McPrimaryButton(
-                        text = "Compartilhar",
+                        text = "Compartilhar vídeo",
                         onClick = { onShareStory(story.uri) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("story-share-video"),
                     )
-                    McSecondaryButton(
+                    if (poster != null) {
+                        McSecondaryButton(
+                            text = "Pôster 4:5",
+                            onClick = { onSharePoster(poster) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("story-share-poster"),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (cover != null) {
+                        McTextButton(
+                            text = "Capa 9:16",
+                            onClick = { onShareCover(cover) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp)
+                                .testTag("story-share-cover"),
+                        )
+                    }
+                    McTextButton(
                         text = "Gerar outro",
                         onClick = onOpenStudio,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .testTag("story-generate-again"),
                     )
                 }
             }
@@ -745,12 +801,17 @@ private fun SampleWarningCard(warning: String) {
     }
 }
 
-private fun shareStory(context: Context, uri: Uri) {
+/**
+ * Shares one exported file. The video, the 9:16 cover and the 4:5 poster stay
+ * separate on purpose: each destination expects a different aspect ratio, so
+ * there is no "send everything" action that would be rejected by most apps.
+ */
+private fun shareMedia(context: Context, uri: Uri, mimeType: String, title: String) {
     val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "video/mp4"
+        type = mimeType
         putExtra(Intent.EXTRA_STREAM, uri)
         clipData = android.content.ClipData.newRawUri("story", uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(intent, "Compartilhar story"))
+    context.startActivity(Intent.createChooser(intent, title))
 }

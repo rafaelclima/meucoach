@@ -139,6 +139,7 @@ class StoryExportWorker @AssistedInject constructor(
         KEY_VIDEO_URI to result.uri.toString(),
         KEY_SAVED_TO_GALLERY to result.savedToGallery,
         KEY_COVER_URI to result.coverUri?.toString(),
+        KEY_POSTER_URI to result.posterUri?.toString(),
     )
 
     companion object {
@@ -154,6 +155,7 @@ class StoryExportWorker @AssistedInject constructor(
         const val KEY_VIDEO_URI = "videoUri"
         const val KEY_SAVED_TO_GALLERY = "savedToGallery"
         const val KEY_COVER_URI = "coverUri"
+        const val KEY_POSTER_URI = "posterUri"
         const val KEY_ERROR = "error"
 
         private const val PROGRESS_INTERVAL_MS = 600L

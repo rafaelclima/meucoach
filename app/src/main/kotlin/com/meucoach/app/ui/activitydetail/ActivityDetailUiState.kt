@@ -19,7 +19,8 @@ sealed interface StoryExportUiState {
     /** Background export in progress. [etaSec] is null until the estimate is trustworthy (ADR 0018).*/
     data class Generating(val progress: Float, val etaSec: Int? = null) : StoryExportUiState
 
-    data class Done(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null) : StoryExportUiState
+    data class Done(val uri: Uri, val savedToGallery: Boolean, val coverUri: Uri? = null, val posterUri: Uri? = null) :
+        StoryExportUiState
     data class Error(val message: String) : StoryExportUiState
 }
 

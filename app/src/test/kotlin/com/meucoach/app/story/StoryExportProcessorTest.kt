@@ -2,6 +2,7 @@ package com.meucoach.app.story
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -204,6 +205,26 @@ class StoryExportProcessorTest {
     }
 
     @Test
+    fun `forwards the poster with the completed export`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val poster = Uri.parse("content://media/external/images/media/44")
+            val processor = processor(FakeExporter(listOf(1f), poster))
+
+            val outcome = processor.export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            val completed = outcome as StoryExportOutcome.Completed
+            assertThat(completed.result.posterUri).isEqualTo(poster)
+        }
+    }
+
+    @Test
     fun `exports with the recipe passed by the worker`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
@@ -252,7 +273,8 @@ class StoryExportProcessorTest {
         return file
     }
 
-    private class FakeExporter(private val fractions: List<Float>) : StoryVideoExporter {
+    private class FakeExporter(private val fractions: List<Float>, private val posterUri: Uri? = null) :
+        StoryVideoExporter {
         var renderedPlan: StoryPlan? = null
         var renderedRecipe: StoryRecipe? = null
         var renderedBackground: Bitmap? = null
@@ -272,7 +294,11 @@ class StoryExportProcessorTest {
             renderedBackground = mapBackground
             renderedOverview = overviewMap
             fractions.forEach { onProgress(it) }
-            return StoryExportResult(uri = android.net.Uri.parse("content://video/42"), savedToGallery = false)
+            return StoryExportResult(
+                uri = Uri.parse("content://video/42"),
+                savedToGallery = false,
+                posterUri = posterUri,
+            )
         }
     }
 

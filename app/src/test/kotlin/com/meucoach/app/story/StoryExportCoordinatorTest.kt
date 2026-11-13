@@ -59,6 +59,8 @@ class StoryExportCoordinatorTest {
 
         val withoutMap = StoryExportCoordinator.buildInput("a-1", recipe, null, testPalette())
         assertThat(withoutMap.getString(StoryExportWorker.KEY_MAP_PATH)).isNull()
+        // The poster is an output-only URI; no bitmap or URI travels in the input.
+        assertThat(withMap.keyValueMap.keys).doesNotContain(StoryExportWorker.KEY_POSTER_URI)
     }
 
     @Test
