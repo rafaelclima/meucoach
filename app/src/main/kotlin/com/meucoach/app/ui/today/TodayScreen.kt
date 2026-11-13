@@ -1117,6 +1117,15 @@ private fun PlanWeekCard(
                 modifier = Modifier.testTag("plan-no-race-date-note"),
             )
         }
+        if (plan.qualityCount >= 2) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Dois treinos fortes é o máximo desta semana.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+                modifier = Modifier.testTag("plan-quality-cap-note"),
+            )
+        }
         Spacer(modifier = Modifier.height(10.dp))
         val weekEnd = plan.weekStart.plusDays(6)
         val weekEvents = eventDates.filter { !it.isBefore(plan.weekStart) && !it.isAfter(weekEnd) }

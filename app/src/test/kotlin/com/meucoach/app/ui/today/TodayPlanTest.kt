@@ -322,6 +322,43 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows the strong-session cap note when the plan reaches two strong days`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = planWith(today).copy(qualityCount = 2),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Dois treinos fortes", substring = true))
+        compose
+            .onNodeWithText("Dois treinos fortes é o máximo desta semana.")
+            .assertIsDisplayed()
+        compose.onNodeWithTag("plan-quality-cap-note").assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the strong-session cap note below the cap`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = planWith(today)),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("plan-quality-cap-note").assertDoesNotExist()
+    }
+
+    @Test
     fun `opens the workout explanation`() {
         val today = LocalDate.of(2026, 11, 2)
         val explanation = TodayExplanationUi(

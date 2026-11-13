@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.37 · **Data:** 12/11/2026 · **Mudança:** qualidade no taper concluída (N-03): o texto deriva o bloco da duração real, mantém o esforço e explica a redução sem jargão; `weekly-plan-v4`, sem migração. A versão 1.36 registrou a meta de prova sem data (`R-PLAN-11`, BUG-08).
+**Versão:** 1.38 · **Data:** 13/11/2026 · **Mudança:** limite de 2 treinos fortes agora aparece no card do plano quando a semana atinge o teto (pendência do P1-05); nenhuma mudança de regra. A versão 1.37 concluiu o N-03 (`weekly-plan-v4`).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -215,7 +215,7 @@
 - [x] Progressão de volume a partir do realizado (FR-004/N-07, ADR 0038): base é o maior volume concluído com evidência nas últimas 4 semanas, +6% somente com semana anterior ≥ 80%, prontidão verde e ACWR conhecido; disponibilidade continua teto; sem histórico, volume pela agenda com aviso; `R-PLAN-01` passa a ser emitida.
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
 - [x] Prescrição única do dia persistida e versionada; plano como intenção (C1-03, ADR 0023).
-- [ ] Exibir no plano o limite de 2 treinos fortes por semana (regra implementada; o histórico de conclusão já está em Tendências).
+- [x] Exibir no plano o limite de 2 treinos fortes por semana (13/11/2026): o card do plano no Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto; abaixo do teto, nada aparece (o rationale já explica o motivo).
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.
 

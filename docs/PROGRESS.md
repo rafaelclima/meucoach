@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 12/11/2026 (N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
 
 ## Estado geral
 
@@ -47,7 +47,7 @@
 - **Histórico de prontidão:** últimos 14 dias em Tendências, reconstruídos com os dados disponíveis em cada data.
 - **HRV em log:** o z-score usa a média e o desvio de `ln(RMSSD)` em 7 vs 60 noites; a média bruta fica só para exibição e uma baseline plana resulta em z=0. A prescrição é `daily-prescription-v3`.
 - **Recomendação diária:** guardrails (doença/vermelho → descanso, sono curto/âmbar → fácil, ACWR alto → sem aumento), fácil em Z2 com pace/FC quando calibrado e RPE quando não; calor informado desacelera o pace em 3% e reduz a confiança.
-- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30%, taper por prova e deload a cada 4ª semana; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação.
+- **Plano semanal:** distribuição por disponibilidade, até 2 qualidades com progressão, longão 25–30%, taper por prova e deload a cada 4ª semana; com acesso a esteira, a qualidade inclui a alternativa por velocidade/inclinação. Quando a semana atinge o teto de 2 qualidades, o card do plano no Hoje mostra “Dois treinos fortes é o máximo desta semana.” (13/11/2026); abaixo do teto, nada aparece — o rationale já explica por que há menos.
 - **Plano persistido:** a semana é gerada uma vez e salva em Room v7; check-ins não a reescrevem.
 - **Taper e qualidade:** redução de 45–55% nas semanas de prova; a qualidade fora do corte é encurtada com o tipo e o esforço mantidos, e o texto deriva aquecimento/bloco/desaquecimento da duração real (N-03).
 - **Progressão:** com semana anterior ≥80% concluída e guardrails verdes, libera uma segunda qualidade e o volume cresce no máximo 6% sobre o maior volume concluído com evidência nas últimas 4 semanas; a disponibilidade continua teto e semana fraca mantém a dose (FR-004/N-07, ADR 0038).
@@ -79,6 +79,46 @@
 - **Comparação planejado × executado (FR-010):** `SessionComparisonCalculator` puro compara a corrida com a prescrição do dia (fallback para a sessão da semana) apenas quando ela é a evidência do treino. O detalhe mostra “planejado → feito” por duração, distância, pace, FC e RPE, notas factuais de diferença, confiança e “treino livre” sem alvo; dado ausente fica ausente. Nada é persistido e nenhum ID técnico aparece na tela.
 - **Revisão semanal (FR-011):** `WeeklyReviewCalculator` puro consolida a última semana fechada a partir de valores já calculados: adesão com evidência, volume planejado × executado, intensidade medida, prontidão, sono e doença/lesão. Devolve no máximo 3 observações determinísticas com `ruleId`/`evidenceId`/confiança e estados `AVAILABLE`/`EMPTY_NO_PLAN`/`EMPTY_NO_DATA`; dado ausente continua ausente. O card “Revisão da semana” em Tendências mostra adesão, volume, zonas, prontidão, sono e observações, com confiança e estados vazios. Sem LLM, migração ou dependência nova.
 - **Gate visual estável:** `McLineChart`/`McBarChart` usam `CartesianChartModel` manual (`LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build`) e o `CartesianChartHost` síncrono. O producer assíncrono podia renderizar eixos sem série e ser capturado pelo Roborazzi; o flake deixou de aparecer em 5 execuções completas sob carga. `mc-chart-ready` existe desde a primeira composição, e `ChartRenderTest` exige pixels da série em linha e barra.
+
+## Sessão 2026-11-13 — Limite de 2 treinos fortes no plano
+
+**Objetivo:** fechar a pendência exibida do P1-05 — a regra de no máximo 2 treinos fortes por
+semana (`R-PLAN-02`) já era validada pelo gerador, pelo replanejador e pela troca, e o sheet
+“Por que este plano?” sempre a citou; faltava a superfície no card do plano do Hoje.
+
+### Concluído
+
+- **UI:** `PlanWeekCard` mostra “Dois treinos fortes é o máximo desta semana.” quando
+  `plan.qualityCount >= 2`, com testTag `plan-quality-cap-note`, no mesmo padrão das notas de
+  confiança baixa e de `R-PLAN-11`. Abaixo do teto, nada aparece — o rationale da semana já
+  explica por que há menos (progressão, dados ausentes ou guardrail).
+- **Sem mudança de domínio:** a regra, o catálogo e o sheet já existiam; a UI só lê
+  `qualityCount`, que já é exposto pelo plano (o sheet usa o mesmo campo para citar o
+  histórico de conclusão). Sem migração, sem dependência nova, schema permanece v17.
+- **Testes:** +2 em `TodayPlanTest` — nota visível com 2 qualidades e ausente abaixo do teto
+  (TDD: ambos escritos antes do código, o primeiro falhou sem a nota).
+
+### Evidências
+
+- `./gradlew check :app:assembleDebug` — verde (testes, `spotlessCheck`, lint e Kover).
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` — verde, 66 goldens, nenhum
+  regravado (o plano dos screenshots usa `qualityCount = 1` e o estado demo não tem plano).
+- 33 testes no `TodayPlanTest`, 0 falhas.
+
+### Decisões e observações
+
+- **Só no teto:** mostrar o limite em toda semana seria ruído; a semana com 1 treino forte
+  já explica por que não liberou o segundo. O aviso existe para antecipar “por que não um
+  terceiro?” — a mesma pergunta que `SessionSwapper` responde com a mesma regra.
+- **Sem “Z” nem ID técnico na superfície:** a copy usa a palavra da UI (“treino forte”) e o
+  `ruleId` bruto continua visível apenas no sheet de explicação e em “Ver fontes”.
+
+### Próximo passo
+
+1. Validar em aparelho: gerar uma semana com 2 qualidades e conferir a nota no card do plano.
+2. Fechar P1-12 (4 semanas de uso real) e as validações manuais pendentes.
+3. Backlog: FR-013 (RPE/sRPE), T-02/T-03/T-04, U-01..U-04, N-05 e a relação taper ×
+   deload/periodização (exige ADR próprio).
 
 ## Sessão 2026-11-12 — N-03: qualidade coerente no taper e na duração
 
