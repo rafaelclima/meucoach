@@ -16,6 +16,18 @@ import org.json.JSONObject
 internal object OpenFreeMapStyle {
     const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
+    /** Autoral dark: grafite de fundo e água azul-petróleo (MAP-04). */
+    const val DARK_BACKGROUND = "#101418"
+    const val DARK_WATER = "#184A5E"
+    const val DARK_WATER_LINE = "#1E5A74"
+    const val DARK_PARK = "#1E3329"
+    const val DARK_PARK_OUTLINE = "#2A4A3A"
+    const val DARK_LABEL = "#F4F6F7"
+    const val DARK_HALO = "#0B0D10"
+
+    /** Autoral light: fundo quente claro, mesma hierarquia do dark (MAP-04). */
+    const val LIGHT_BACKGROUND = "#F2EFE8"
+
     private const val ELEVATION_TILES =
         "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
@@ -30,11 +42,13 @@ internal object OpenFreeMapStyle {
         val layers = JSONArray()
         for (index in 0 until source.length()) {
             val layer = source.optJSONObject(index) ?: continue
-            if (isClutter(layer.optString("id"))) continue
+            if (isClutter(layer.optString("id"), style)) continue
             val type = layer.optString("type")
             // Satellite imagery replaces the vector base; labels stay on top.
             if (satellite && type != "symbol") continue
-            if (type == "symbol") customizeLabel(layer, satellite)
+            if (type == "symbol") customizeLabel(layer, style)
+            if (style == StoryMapStyle.MEUCOACH_DARK) applyDarkPaint(layer)
+            if (style == StoryMapStyle.MEUCOACH_LIGHT) applyLightPaint(layer)
             layers.put(layer)
         }
         val result = styledLayers(style, root, layers)
@@ -42,15 +56,15 @@ internal object OpenFreeMapStyle {
         return root.toString()
     }
 
-    private fun customizeLabel(layer: JSONObject, satellite: Boolean) {
+    private fun customizeLabel(layer: JSONObject, style: StoryMapStyle) {
         val layout = layer.optJSONObject("layout") ?: return
         if (!layout.has("text-field")) return
         val label = labelFor(layer.optString("id")) ?: return
         layout.put("text-size", label.size)
         val paint = layer.optJSONObject("paint") ?: JSONObject().also { layer.put("paint", it) }
-        if (satellite) {
-            paint.put("text-color", "#F4F6F7")
-            paint.put("text-halo-color", "#0B0D10")
+        if (style == StoryMapStyle.SATELLITE || style == StoryMapStyle.MEUCOACH_DARK) {
+            paint.put("text-color", DARK_LABEL)
+            paint.put("text-halo-color", DARK_HALO)
         } else {
             label.color?.let { paint.put("text-color", it) }
             paint.put("text-halo-color", "#FFFFFF")
@@ -64,13 +78,29 @@ internal object OpenFreeMapStyle {
 
         StoryMapStyle.TERRAIN -> withTerrain(root, layers)
 
-        // The autoral dark/light styles arrive in Sprint B (MAP-04); until
-        // then they use the trimmed liberty geometry.
+        StoryMapStyle.MEUCOACH_DARK -> withMeuCoachDark(layers)
+
+        StoryMapStyle.MEUCOACH_LIGHT -> withMeuCoachLight(layers)
+
+        // Legacy liberty: trimmed geometry only.
         StoryMapStyle.CLASSIC,
-        StoryMapStyle.MEUCOACH_DARK,
-        StoryMapStyle.MEUCOACH_LIGHT,
         -> layers
     }
+
+    /**
+     * MeuCoach Dark: grafite ao fundo, água azul-petróleo, parques verde
+     * dessaturado e vias principais finas e claras. Os layers já chegam sem
+     * POI/transporte/aeroway/vias menores ([isClutter]); aqui só remapeamos
+     * as cores que o liberty desenha claras.
+     */
+    private fun withMeuCoachDark(layers: JSONArray): JSONArray = layers
+
+    /**
+     * MeuCoach Light: mesma hierarquia do dark sobre base clara, com o
+     * contraste AA do liberty (texto escuro sobre fundo claro). O fundo ganha
+     * um tom quente autoral; o restante mantém as cores do liberty.
+     */
+    private fun withMeuCoachLight(layers: JSONArray): JSONArray = layers
 
     /**
      * Satellite imagery with the same vector labels, muted and veiled so the
@@ -186,13 +216,130 @@ internal object OpenFreeMapStyle {
     private const val SATELLITE_SOURCE = "satellite"
 
     /**
-     * POI, transit and airport icons add noise over a 1080 px-wide route, and
-     * their labels are too small to read after the Instagram re-encode.
+     * Grafite, água azul-petróleo e parques dessaturados. As cores do liberty
+     * são claras por padrão; cada fill/line conhecido é remapeado para a
+     * paleta autoral sem tocar em expressões de zoom (só cor/opacidade).
      */
-    private fun isClutter(id: String): Boolean = id.startsWith("poi_") ||
-        id.startsWith("transit_") ||
-        id == "airport" ||
-        id.startsWith("airport_")
+    private fun applyDarkPaint(layer: JSONObject) {
+        val id = layer.optString("id")
+        if (id == "background") {
+            layer.optJSONObject("paint")?.put("background-color", DARK_BACKGROUND)
+            return
+        }
+        if (id == "natural_earth") {
+            layer.optJSONObject("paint")?.put("raster-opacity", 0.12)
+            return
+        }
+        val paint = layer.optJSONObject("paint") ?: return
+        if (paintDarkFill(id, paint)) return
+        paintDarkLine(layer, paint)
+    }
+
+    /** Fill layers; true when [id] was handled. */
+    private fun paintDarkFill(id: String, paint: JSONObject): Boolean {
+        when (id) {
+            "park" -> {
+                paint.put("fill-color", DARK_PARK)
+                paint.put("fill-outline-color", DARK_PARK_OUTLINE)
+            }
+
+            "park_outline" -> paint.put("line-color", DARK_PARK_OUTLINE)
+
+            "landuse_residential" -> paint.put("fill-color", "#161A1F")
+
+            "landcover_wood", "landcover_grass" -> {
+                paint.put("fill-color", "#1C2F26")
+                paint.put("fill-opacity", 0.85)
+            }
+
+            "landcover_ice" -> paint.put("fill-color", "#1B242E")
+
+            "landcover_sand" -> paint.put("fill-color", "#232830")
+
+            "landuse_pitch", "landuse_track" -> paint.put("fill-color", "#1D2A24")
+
+            "landuse_cemetery" -> paint.put("fill-color", "#1A2620")
+
+            "landuse_hospital" -> paint.put("fill-color", "#251E22")
+
+            "landuse_school" -> paint.put("fill-color", "#1F251B")
+
+            "landcover_wetland" -> paint.put("fill-opacity", 0.3)
+
+            "water" -> paint.put("fill-color", DARK_WATER)
+
+            "building" -> {
+                paint.put("fill-color", "#1E242B")
+                paint.put("fill-outline-color", "#2A323B")
+            }
+
+            else -> return false
+        }
+        return true
+    }
+
+    /** Line layers: waterways, boundaries and the arterial road network. */
+    private fun paintDarkLine(layer: JSONObject, paint: JSONObject) {
+        val id = layer.optString("id")
+        val type = layer.optString("type")
+        val sourceLayer = layer.optString("source-layer")
+        if (sourceLayer == "waterway" && type == "line") {
+            paint.put("line-color", DARK_WATER_LINE)
+            return
+        }
+        if (id.startsWith("boundary")) {
+            paint.put("line-color", "#5A6169")
+            return
+        }
+        if (sourceLayer != "transportation" || type != "line") return
+        if (id.contains("casing")) {
+            paint.put("line-color", DARK_HALO)
+            return
+        }
+        paint.put("line-color", roadColor(id))
+    }
+
+    private fun roadColor(id: String): String = when {
+        id.contains("motorway") || id.contains("trunk") || id.contains("primary") -> "#CBD2D9"
+        id.contains("secondary") || id.contains("tertiary") -> "#9AA3AD"
+        else -> "#7D868F"
+    }
+
+    private fun applyLightPaint(layer: JSONObject) {
+        if (layer.optString("id") == "background") {
+            layer.optJSONObject("paint")?.put("background-color", LIGHT_BACKGROUND)
+        }
+    }
+
+    /**
+     * POI, transit and airport icons add noise over a 1080 px-wide route, and
+     * their labels are too small to read after the Instagram re-encode. The
+     * autoral styles also hide rail/transit geometry, aerodromes and minor
+     * streets/links: o mapa mantém cidade, bairro, parques, água, avenidas e
+     * trilhas (path), sem a malha fina que compete com a rota lima.
+     */
+    private fun isClutter(id: String, style: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK): Boolean {
+        if (id.startsWith("poi_") || id.startsWith("transit_") || id.startsWith("airport_")) return true
+        if (id in BASE_CLUTTER) return true
+        if (style != StoryMapStyle.MEUCOACH_DARK && style != StoryMapStyle.MEUCOACH_LIGHT) return false
+        if (id in MINOR_EXACT_CLUTTER) return true
+        return MINOR_PART_CLUTTER.any { part -> id.contains(part) }
+    }
+
+    private val BASE_CLUTTER = setOf("poi_transit", "airport")
+    private val MINOR_EXACT_CLUTTER = setOf(
+        "road_area_pattern",
+        "building-3d",
+        "highway-name-minor",
+    )
+    private val MINOR_PART_CLUTTER = listOf(
+        "aeroway_",
+        "rail",
+        "service_track",
+        "_minor",
+        "_street",
+        "_link",
+    )
 
     private data class Label(val size: Int, val color: String?)
 

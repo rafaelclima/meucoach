@@ -16,7 +16,7 @@ data class StoryPalette(
     val accent: Int,
     val coral: Int,
     val onAccent: Int,
-    /** Dark ring under the route so lime stays readable on the light basemap. */
+    /** Dark ring under the route so lime stays readable on both autoral basemaps. */
     val mapCasing: Int,
     val mapBaseRoute: Int,
     val zone1: Int,
@@ -46,7 +46,8 @@ fun McColors.toStoryPalette(mapStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DAR
     accent = accent.toArgb(),
     coral = coral.toArgb(),
     onAccent = onAccent.toArgb(),
-    // The story basemap is always light (OpenFreeMap liberty), in both app themes.
+    // The autoral basemaps (MAP-04) carry their own palette in the style JSON;
+    // the route casing stays dark so lime pops on both dark and light maps.
     mapCasing = 0xFF08090B.toInt(),
     mapBaseRoute = 0xFF4A545F.toInt(),
     zone1 = zone1.toArgb(),

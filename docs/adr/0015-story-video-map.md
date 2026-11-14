@@ -390,3 +390,24 @@ Este addendum fecha MAP-01..MAP-03 do Sprint B. A contingência de rollback para
   BT.709/tv/limited, labels legíveis, rota alinhada às ruas e logcat sem crash
   nativo crítico. O aviso `libEGL: call to OpenGL ES API with no current
   context` apareceu uma vez por thread e não impediu o snapshot.
+
+## Addendum — 2026-11-14: estilo autoral e 3 keyframes (MAP-04/MAP-05)
+
+- **MAP-04 — `MeuCoach Dark`/`Light`:** `OpenFreeMapStyle.customize` remapeia o
+  `liberty` para a paleta autoral — fundo grafite `#101418`, água
+  azul-petróleo `#184A5E`/`#1E5A74`, parques `#1E3329`, labels brancas com halo
+  escuro no dark e o fundo quente `#F2EFE8` com texto escuro no light. Os dois
+  estilos ocultam POIs, transporte/rail, aerovias, `building-3d` e a malha fina
+  (`minor`/`street`/`link`/`service_track`); avenidas, trilhas (`path`),
+  parques, água e labels de cidade/bairro/rua principal permanecem. O contrato
+  de projeção não muda: `pixelForLatLng` continua sendo a fonte da rota.
+- **MAP-05 — 3 keyframes:** `StoryMapScript` define abertura 30°, follow 42° e
+  final 35° (`StoryKeyframe.OPENING/FOLLOW/FINAL`, seleção por segmento em
+  `keyframeAt`). O processor renderiza o follow (full-res 2,25×, staged da
+  prévia) mais os dois bookends (1,75×); falha de bookend degrada para o follow
+  sem falhar o export. O renderer desenha um snapshot ativo por frame (dissolve
+  radial só na abertura de 0,6 s) e cada keyframe consome seus próprios pixels
+  nativos, então a troca nos cards/final não desloca a rota.
+- **Smoke no aparelho:** pendente — S24 Ultra fora do `adb` nesta sessão.
+  Falta gerar o story escuro e claro no aparelho e conferir logcat
+  (MapLibre/EGL), alinhamento da rota nos 3 pitches e memória (DEV-01/MAP-05).

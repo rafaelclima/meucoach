@@ -95,7 +95,8 @@ interface StoryVideoExporter {
         palette: StoryPalette,
         recipe: StoryRecipe = StoryRecipe(),
         mapBackground: StoryMapSnapshot? = null,
-        overviewMap: StoryMapSnapshot? = null,
+        openingMap: StoryMapSnapshot? = null,
+        finalMap: StoryMapSnapshot? = null,
         isCancelled: () -> Boolean = { false },
         onProgress: suspend (progress: Float) -> Unit = {},
     ): StoryExportResult
@@ -122,8 +123,12 @@ interface StoryVideoExporter {
  */
 private data class StoryRenderJob(val plan: StoryPlan, val palette: StoryPalette, val recipe: StoryRecipe)
 
-/** Follow and overview snapshots, already carrying native route pixels. */
-private data class StoryMapSnapshots(val follow: StoryMapSnapshot?, val overview: StoryMapSnapshot?)
+/** Follow plus the two bookend keyframes, each with native route pixels. */
+private data class StoryMapSnapshots(
+    val follow: StoryMapSnapshot?,
+    val opening: StoryMapSnapshot?,
+    val final: StoryMapSnapshot?,
+)
 
 /**
  * Canvas + MediaCodec MVP for the story video. The encoder uses Image input
@@ -146,7 +151,8 @@ class CanvasStoryVideoExporter @Inject constructor(
         palette: StoryPalette,
         recipe: StoryRecipe,
         mapBackground: StoryMapSnapshot?,
-        overviewMap: StoryMapSnapshot?,
+        openingMap: StoryMapSnapshot?,
+        finalMap: StoryMapSnapshot?,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
     ): StoryExportResult {
@@ -160,7 +166,7 @@ class CanvasStoryVideoExporter @Inject constructor(
             withContext(encoderThread) {
                 exportOnEncoderThread(
                     StoryRenderJob(plan, palette, recipe),
-                    StoryMapSnapshots(mapBackground, overviewMap),
+                    StoryMapSnapshots(mapBackground, openingMap, finalMap),
                     isCancelled,
                     onProgress,
                 )
@@ -229,7 +235,8 @@ class CanvasStoryVideoExporter @Inject constructor(
                 defaultLogoBitmap,
                 maps.follow,
                 avatar,
-                maps.overview,
+                maps.opening,
+                maps.final,
                 renderJob.recipe,
             ).render(canvas, renderJob.plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
             StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
@@ -291,7 +298,8 @@ class CanvasStoryVideoExporter @Inject constructor(
             defaultLogoBitmap,
             maps.follow,
             avatar,
-            maps.overview,
+            maps.opening,
+            maps.final,
             renderJob.recipe,
         )
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2

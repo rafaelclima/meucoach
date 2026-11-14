@@ -97,7 +97,13 @@ class StoryExportProcessorTest {
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
             assertThat(mapRenderer.widths).contains(StoryVideoExporter.mapWidth())
-            assertThat(mapRenderer.widths).contains(StoryMapScript.overviewWidth())
+            assertThat(mapRenderer.widths).contains(StoryMapScript.openingWidth())
+            assertThat(mapRenderer.widths).contains(StoryMapScript.finalWidth())
+            assertThat(mapRenderer.pitches).contains(
+                StoryMapScript.FOLLOW_PITCH_DEGREES,
+                StoryMapScript.OPENING_PITCH_DEGREES,
+                StoryMapScript.FINAL_PITCH_DEGREES,
+            )
         }
     }
 
@@ -117,8 +123,11 @@ class StoryExportProcessorTest {
             )
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
-            // Only the wide overview is re-rendered; the follow shot is staged.
-            assertThat(mapRenderer.widths).containsExactly(StoryMapScript.overviewWidth())
+            // Only the bookends are rendered; the follow shot is staged.
+            assertThat(mapRenderer.widths).containsExactly(
+                StoryMapScript.openingWidth(),
+                StoryMapScript.finalWidth(),
+            )
             // Coordinates do not linger in the cache after the export.
             assertThat(staged.exists()).isFalse()
             assertThat(StoryMapSnapshotStore.routeFile(staged).exists()).isFalse()
@@ -161,7 +170,7 @@ class StoryExportProcessorTest {
             )
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
-            assertThat(mapRenderer.calls).isEqualTo(2)
+            assertThat(mapRenderer.calls).isEqualTo(3)
         }
     }
 
@@ -180,7 +189,7 @@ class StoryExportProcessorTest {
             )
 
             assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
-            assertThat(mapRenderer.calls).isEqualTo(2)
+            assertThat(mapRenderer.calls).isEqualTo(3)
         }
     }
 
@@ -291,6 +300,58 @@ class StoryExportProcessorTest {
         }
     }
 
+    @Test
+    fun `renders three keyframes with their own pitches`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeExporter(listOf(1f))
+            processor(exporter).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(exporter.renderedBackground).isNotNull()
+            assertThat(exporter.renderedOpening).isNotNull()
+            assertThat(exporter.renderedFinal).isNotNull()
+            // Follow is the full-res shot; bookends share the smaller size.
+            assertThat(mapRenderer.widths).containsExactly(
+                StoryVideoExporter.mapWidth(),
+                StoryMapScript.openingWidth(),
+                StoryMapScript.finalWidth(),
+            )
+            assertThat(mapRenderer.pitches).containsExactly(
+                StoryMapScript.FOLLOW_PITCH_DEGREES,
+                StoryMapScript.OPENING_PITCH_DEGREES,
+                StoryMapScript.FINAL_PITCH_DEGREES,
+            )
+        }
+    }
+
+    @Test
+    fun `keeps the export when a bookend render fails`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val flaky = FakeMapRenderer(failPitch = StoryMapScript.FINAL_PITCH_DEGREES)
+            val exporter = FakeExporter(listOf(1f))
+
+            val outcome = processor(exporter, flaky).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(exporter.renderedBackground).isNotNull()
+            assertThat(exporter.renderedOpening).isNotNull()
+            assertThat(exporter.renderedFinal).isNull()
+        }
+    }
+
     private fun processor(
         exporter: StoryVideoExporter,
         mapRenderer: FakeMapRenderer = this.mapRenderer,
@@ -324,21 +385,24 @@ class StoryExportProcessorTest {
         var renderedPlan: StoryPlan? = null
         var renderedRecipe: StoryRecipe? = null
         var renderedBackground: StoryMapSnapshot? = null
-        var renderedOverview: StoryMapSnapshot? = null
+        var renderedOpening: StoryMapSnapshot? = null
+        var renderedFinal: StoryMapSnapshot? = null
 
         override suspend fun export(
             plan: StoryPlan,
             palette: StoryPalette,
             recipe: StoryRecipe,
             mapBackground: StoryMapSnapshot?,
-            overviewMap: StoryMapSnapshot?,
+            openingMap: StoryMapSnapshot?,
+            finalMap: StoryMapSnapshot?,
             isCancelled: () -> Boolean,
             onProgress: suspend (progress: Float) -> Unit,
         ): StoryExportResult {
             renderedPlan = plan
             renderedRecipe = recipe
             renderedBackground = mapBackground
-            renderedOverview = overviewMap
+            renderedOpening = openingMap
+            renderedFinal = finalMap
             fractions.forEach { onProgress(it) }
             return StoryExportResult(
                 uri = Uri.parse("content://video/42"),
@@ -348,12 +412,14 @@ class StoryExportProcessorTest {
         }
     }
 
-    private class FakeMapRenderer(private val error: Throwable? = null) : MapBackgroundRenderer {
+    private class FakeMapRenderer(private val error: Throwable? = null, private val failPitch: Float? = null) :
+        MapBackgroundRenderer {
         var calls: Int = 0
         var width: Int = 0
         var height: Int = 0
         var style: StoryMapStyle? = null
         val widths = mutableListOf<Int>()
+        val pitches = mutableListOf<Float>()
 
         override suspend fun render(
             boundingBox: BoundingBox,
@@ -369,7 +435,11 @@ class StoryExportProcessorTest {
             this.height = height
             this.style = style
             widths += width
+            pitches += pitchDegrees
             error?.let { throw it }
+            failPitch?.let { failing ->
+                if (pitchDegrees == failing) throw IllegalStateException("tile offline")
+            }
             return StoryMapSnapshot(Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), emptyList())
         }
     }

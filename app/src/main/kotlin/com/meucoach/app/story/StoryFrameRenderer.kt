@@ -54,7 +54,8 @@ class StoryFrameRenderer(
     private val logoBitmap: Bitmap? = null,
     private val mapBackground: StoryMapSnapshot? = null,
     private val avatarBitmap: Bitmap? = null,
-    private val overviewMap: StoryMapSnapshot? = null,
+    private val openingMap: StoryMapSnapshot? = null,
+    private val finalMap: StoryMapSnapshot? = null,
     private val recipe: StoryRecipe = StoryRecipe(),
 ) {
     private var cachedSpec: StoryRenderSpec? = null
@@ -101,93 +102,112 @@ class StoryFrameRenderer(
             nativeTilt = true,
         )
         val overlayScale = scale / (camera.scale * StoryPerspective.COVERAGE_SCALE).coerceAtLeast(0.01f)
-        val followRoute = routeSource(plan, mapBackground, width, height, square, mapBackground != null)
         val spec = specFor(plan)
         val highlights = spec.highlights
-        val followBlend = if (overviewMap != null) StoryMapScript.followBlend(timeSec) else 1f
+        // One active keyframe per frame: the opening bookend dissolves into the
+        // follow shot, then hard cuts on card/final boundaries hide the angle
+        // change. Every keyframe draws its own native pixels, so the route
+        // never jumps even though the pitch does.
+        val opening = openingMap ?: mapBackground
+        val closing = finalMap ?: mapBackground
+        val active = when (StoryMapScript.keyframeAt(plan, timeSec)) {
+            StoryKeyframe.OPENING -> opening
+            StoryKeyframe.FOLLOW -> mapBackground
+            StoryKeyframe.FINAL -> closing
+        }
+        val activeRoute = routeSource(plan, active, width, height, square, active != null)
+        val followBlend = if (openingMap != null && mapBackground != null) {
+            StoryMapScript.followBlend(timeSec)
+        } else {
+            1f
+        }
 
         canvas.drawColor(palette.background)
-        var overviewPosition: FloatArray? = null
-        if (overviewMap != null && followBlend < 1f) {
-            val overviewRoute = routeSource(plan, overviewMap, width, height, square, hasMap = true)
+        var marker: FloatArray? = null
+        if (openingMap != null && mapBackground != null && followBlend < 1f) {
+            val openingRoute = routeSource(plan, opening, width, height, square, opening != null)
             withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, overviewMap.bitmap, alpha = 1f)
-                overviewPosition = drawRoute(
+                drawMapLayer(canvas, width, height, opening?.bitmap, alpha = 1f)
+                marker = drawRoute(
                     canvas,
                     plan,
                     timeSec,
                     square,
                     overlayScale,
-                    overviewRoute,
+                    openingRoute,
                     alpha = 1f,
                 )
             }
-        }
-        var followPosition: FloatArray? = null
-        if (followBlend >= 1f) {
+            val followRoute = routeSource(plan, mapBackground, width, height, square, true)
+            if (followBlend > 0f) {
+                // Radial reveal around the runner: the follow shot opens over the
+                // opening without the double exposure of a map crossfade.
+                val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
+                var followPosition: FloatArray? = null
+                withCamera(canvas, cameraMatrix) {
+                    drawMapLayer(canvas, width, height, mapBackground.bitmap, alpha = 1f)
+                    followPosition = drawRoute(
+                        canvas,
+                        plan,
+                        timeSec,
+                        square,
+                        overlayScale,
+                        followRoute,
+                        alpha = 1f,
+                    )
+                }
+                val center = followPosition?.copyOf() ?: floatArrayOf(width / 2f, height / 2f)
+                cameraMatrix.mapPoints(center)
+                val maxRadius = kotlin.math.hypot(
+                    maxOf(center[0], width - center[0]).toDouble(),
+                    maxOf(center[1], height - center[1]).toDouble(),
+                ).toFloat()
+                val radius = (maxRadius * followBlend).coerceAtLeast(1f)
+                val mask = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    shader = RadialGradient(
+                        center[0],
+                        center[1],
+                        radius,
+                        intArrayOf(0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0x00FFFFFF),
+                        floatArrayOf(0f, 0.82f, 1f),
+                        Shader.TileMode.CLAMP,
+                    )
+                    xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+                }
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), mask)
+                canvas.restoreToCount(layer)
+                marker = followPosition
+            } else {
+                // First frames while the blend is still zero: opening only.
+                withCamera(canvas, cameraMatrix) {
+                    drawMapLayer(canvas, width, height, opening?.bitmap, alpha = 1f)
+                    marker = drawRoute(
+                        canvas,
+                        plan,
+                        timeSec,
+                        square,
+                        overlayScale,
+                        openingRoute,
+                        alpha = 1f,
+                    )
+                }
+            }
+        } else {
             withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, mapBackground?.bitmap, alpha = 1f)
-                followPosition = drawRoute(
+                drawMapLayer(canvas, width, height, active?.bitmap, alpha = 1f)
+                marker = drawRoute(
                     canvas,
                     plan,
                     timeSec,
                     square,
                     overlayScale,
-                    followRoute,
+                    activeRoute,
                     alpha = 1f,
                 )
             }
-        } else if (followBlend > 0f) {
-            // Radial reveal around the runner: the follow shot opens over the
-            // overview without the double exposure of a map crossfade.
-            val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
-            withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, mapBackground?.bitmap, alpha = 1f)
-                followPosition = drawRoute(
-                    canvas,
-                    plan,
-                    timeSec,
-                    square,
-                    overlayScale,
-                    followRoute,
-                    alpha = 1f,
-                )
-            }
-            val center = followPosition?.copyOf() ?: floatArrayOf(width / 2f, height / 2f)
-            cameraMatrix.mapPoints(center)
-            val maxRadius = kotlin.math.hypot(
-                maxOf(center[0], width - center[0]).toDouble(),
-                maxOf(center[1], height - center[1]).toDouble(),
-            ).toFloat()
-            val radius = (maxRadius * followBlend).coerceAtLeast(1f)
-            val mask = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                shader = RadialGradient(
-                    center[0],
-                    center[1],
-                    radius,
-                    intArrayOf(0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0x00FFFFFF),
-                    floatArrayOf(0f, 0.82f, 1f),
-                    Shader.TileMode.CLAMP,
-                )
-                xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
-            }
-            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), mask)
-            canvas.restoreToCount(layer)
         }
         // The avatar pin is screen-space on purpose: it must stay upright and
         // legible while the map rotates/zooms under the camera.
-        val overview = overviewPosition
-        val follow = followPosition
-        val marker = when {
-            overview != null && follow != null -> floatArrayOf(
-                overview[0] + (follow[0] - overview[0]) * followBlend,
-                overview[1] + (follow[1] - overview[1]) * followBlend,
-            )
-
-            overview != null -> overview
-
-            else -> follow
-        }
         if (avatarBitmap != null && marker != null) {
             val screen = floatArrayOf(marker[0], marker[1])
             cameraMatrix.mapPoints(screen)
@@ -202,13 +222,15 @@ class StoryFrameRenderer(
             isFinal ->
                 drawFinal(canvas, spec, width, height, scale, highlights)
         }
-        if (mapBackground != null) drawAttribution(canvas, width, height, scale)
+        if (mapBackground != null || openingMap != null || finalMap != null) {
+            drawAttribution(canvas, width, height, scale)
+        }
         drawVignette(canvas, width, height)
         drawOpeningFade(canvas, timeSec, width, height)
     }
 
     /**
-     * The opening fades from the background color while the overview dissolves
+     * The opening fades from the background color while the opening dissolves
      * into the follow shot. Hiding the angle change under the fade removes the
      * "quick cut" at the start without needing a continuous 3D camera.
      */

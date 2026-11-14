@@ -1,6 +1,71 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (Story V3 Sprint B — MAP-01..MAP-03: MapLibre `android-sdk-opengl:13.7.1`, `MapSnapshot.pixelForLatLng` no caminho de produção, port Kotlin só como fallback/teste, paridade medida no S24 Ultra e story escuro validado no aparelho; antes: Sprint A fechado com atribuição OSM no canto inferior esquerdo, pôster 4:5/capa 9:16 e Story Studio)
+**Atualizado:** 14/11/2026 (Story V3 Sprint B — MAP-04/MAP-05 código pronto: estilo autoral `MeuCoach Dark`/`Light` e 3 keyframes 30°/42°/35° com pixels nativos por snapshot; smoke no aparelho pendente — S24 Ultra fora do `adb`; antes: MAP-01..MAP-03 com MapLibre 13.7.1 e projeção exata)
+
+## Sessão 2026-11-14 — Story V3 Sprint B: estilo autoral e 3 keyframes (MAP-04/MAP-05, código)
+
+**Objetivo:** concluir MAP-04 (estilo `MeuCoach Dark`/`Light`) e MAP-05 (3
+keyframes de câmera) sem mexer em pôster, capa, share, layout do card ou
+posição da atribuição OSM.
+
+### Concluído
+
+- **MAP-04 — estilo autoral:** `OpenFreeMapStyle` remapeia o `liberty` para a
+  paleta autoral. Dark: fundo grafite `#101418`, água azul-petróleo
+  `#184A5E`/`#1E5A74`, parques `#1E3329`, labels brancas com halo escuro, vias
+  principais claras. Light: fundo quente `#F2EFE8`, mesma hierarquia e
+  contraste AA do liberty. Ambos ocultam POIs, transporte/rail, aerovias,
+  `building-3d` e malha fina (`minor`/`street`/`link`/`service_track`);
+  mantêm cidade/bairro, parques, água, avenidas, trilhas (`path`) e labels de
+  rua principal. `StoryPalette` só teve o comentário atualizado (o casing
+  escuro da rota vale para os dois basemaps); projeção e snapshot intactos.
+- **MAP-05 — 3 keyframes:** `StoryMapScript` com `OPENING 30°`/`FOLLOW 42°`/
+  `FINAL 35°` (`StoryKeyframe` + `keyframeAt` por segmento: abertura antes do
+  primeiro card, final a partir do encerramento). O processor renderiza follow
+  (2,25×, staged da prévia) + bookends (1,75×); bookend que falha degrada para
+  o follow sem falhar o export. O renderer desenha um snapshot ativo por frame
+  (dissolve radial só nos 0,6 s iniciais) e cada keyframe consome seus próprios
+  `routePixels`, então a troca nos cards não desloca a rota.
+- **Testes novos:** `OpenFreeMapStyleTest` (+4: dark/light, bookends, classic),
+  `StoryMapScriptTest` (pitches, tamanhos, `keyframeAt`),
+  `StoryExportProcessorTest` (+2: três pitches no exporter, fallback de
+  bookend) e `StoryFrameRendererTest` (+2: um snapshot por keyframe, fallback
+  sem bookends).
+
+### Testes
+
+- 1.710 testes, 0 falhas e 0 `@Ignore` (+12 nesta sessão).
+- `:app`: 78,56% de linhas (gate ≥78%, era 78,44%); `core:domain`: 97,20% de
+  linhas (gate ≥85%); parser FIT 93,01%.
+- `check`, `spotlessCheck`, `koverVerify`, detekt verdes.
+- `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest"` verde; nenhum
+  golden existente regravado (os fakes usam grade sintética; o JSON do estilo
+  não afeta os goldens do renderer).
+- `detekt` exigiu quebrar `applyDarkPaint` em `paintDarkFill`/`paintDarkLine`/
+  `roadColor` e trocar o `companion` dentro do `object` por vals diretas.
+
+### Validação no aparelho
+
+- **Pendente:** S24 Ultra fora do `adb` nesta sessão (`adb devices` vazio), sem
+  install/story/logcat. Falta: gerar o story escuro e claro no aparelho,
+  conferir labels/POIs nos 1080×1920, alinhamento da rota nos 3 pitches, 3
+  snapshots sem crash/estouro e `logcat | grep -iE "maplibre|EGL|FATAL"`.
+  Com isso fecha DEV-01 (claro) e o aceite de MAP-05 no aparelho.
+
+### Decisões e observações
+
+- O renderer amostra no máximo 2 bitmaps por frame (1 ativo + dissolve da
+  abertura); os 3 snapshots coexistem transitoriamente no export (follow 2,25×
+  + bookends 1,75×). O low-RAM com 2 keyframes/1,25× fica para MAP-07.
+- Nenhuma migração de Room, nenhum dado real no diff, nenhuma dependência nova
+  e nenhuma mudança em pôster, capa, share ou layout.
+
+### Próximo passo
+
+1. **Smoke no S24 Ultra** (DEV-01/MAP-05): story escuro + claro, logcat, 3
+   snapshots, memória.
+2. **MAP-06/ENC-04** — cache de estilo/snapshots (WebP/JPEG) e manifesto.
+3. **Feedback do usuário 0** no aparelho antes de MAP-06/ENC-04.
 
 ## Sessão 2026-11-13 — Story V3 Sprint B: MapLibre 13.7.1 e projeção exata
 

@@ -478,8 +478,8 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] MAP-01 | Atualizar MapLibre 13.7.1 OpenGL | `libs.versions.toml` + módulo `android-sdk-opengl` | `gradle/libs.versions.toml`, `app/build.gradle.kts` | — | M | Build verde; snapshot escuro em pitch no S24 Ultra; sem Vulkan obrigatório |
 | [x] MAP-02 | Projeção exata via `pixelForLatLng` | `StoryMapSnapshot` com `routePixels`, `start/end` | `MapBackgroundRenderer.kt`, `StoryMapSnapshot.kt` | MAP-01 | G | Rota alinhada em pitch; paridade medida em 0,000244 px; produção usa SDK |
 | [x] MAP-03 | Aposentar `StoryMapProjection` do caminho de produção | Fallback/teste apenas | `StoryMapProjection.kt`, renderer | MAP-02 | M | Nenhum uso no fluxo real; `StoryFrameRendererTest` garante os pixels do snapshot |
-| [ ] MAP-04 | Estilo `MeuCoach Dark`/`Light` | Paleta, filtros de POI/transporte/vias, labels, água/parques | `OpenFreeMapStyle.kt`, `StoryPalette.kt` | MAP-01 | G | Labels legíveis em 1080p; POIs ocultos; golden/screenshot |
-| [ ] MAP-05 | 3 keyframes de câmera | Abertura 30°, follow 42°, final 35°; troca nos cards | `StoryMapScript.kt`, `StoryCameraScript.kt`, renderer | MAP-02 | G | 3 snapshots; rota alinhada; sem salto visível |
+| [x] MAP-04 | Estilo `MeuCoach Dark`/`Light` | Paleta, filtros de POI/transporte/vias, labels, água/parques | `OpenFreeMapStyle.kt`, `StoryPalette.kt` | MAP-01 | G | Labels legíveis em 1080p; POIs ocultos; golden/screenshot |
+| [x] MAP-05 | 3 keyframes de câmera | Abertura 30°, follow 42°, final 35°; troca nos cards | `StoryMapScript.kt`, `StoryCameraScript.kt`, renderer | MAP-02 | G | 3 snapshots; rota alinhada; sem salto visível |
 | [ ] MAP-06 | Cache de estilo e snapshots | Style JSON em disco; manifesto; WebP/JPEG; LRU | `MapLibreBackgroundRenderer.kt`, `StoryMapCache.kt` | MAP-05 | M | Reexport não baixa de novo; cache limpo no reset |
 | [ ] MAP-07 | Low-RAM | `isLowRamDevice` → 1,25×, 2 keyframes | `StoryVideoExporter.kt`, `StoryMapScript.kt` | MAP-05 | P | Export completa em aparelho 4 GB |
 | [ ] MAP-08 | Remover satélite do MVP | Tirar `SATELLITE` da UI e do fluxo; manter o valor no enum como `@Deprecated` para não quebrar ordinais de jobs antigos; retorno só com licença | `StoryMapStyle.kt`, `StoryPaletteCodec.kt`, UI | D0.1 | P | Nenhuma opção Esri no fluxo padrão; decode antigo não quebra |
@@ -617,11 +617,11 @@ gerados no aparelho; ambos com distância/ritmo/tempo e sem corte no Reels.
 Ordem:
 
 1. **Concluído em 13/11/2026:** `MAP-01`–`MAP-03` (MapLibre 13.7.1 + projeção exata).
-2. `MAP-04` (estilo dark/light).
-3. `MAP-05` (3 keyframes) e ajuste de `VIS-03`/`VIS-04` à câmera.
-4. `VIS-05` (pôster 4:5).
-5. `MAP-06` (cache) e `ENC-04` (WebP/JPEG).
-6. `QA-05`, `DEV-01`–`DEV-03`.
+2. **Concluído em 14/11/2026 (código; smoke no aparelho pendente):**
+   `MAP-04` (estilo dark/light) e `MAP-05` (3 keyframes).
+3. `VIS-05` (pôster 4:5) — já fechado no Sprint A; revisar com o estilo autoral.
+4. `MAP-06` (cache) e `ENC-04` (WebP/JPEG).
+5. `QA-05`, `DEV-01`–`DEV-03`.
 
 **Checkpoint:** story de 10 km com 8 cards, barra de 10 km, rota alinhada em
 pitch, 3 keyframes e pôster 4:5.
@@ -814,8 +814,8 @@ respeitam a receita no worker; `check` verde.
 ### 10.5 Ordem do Sprint B (em andamento)
 
 1. **Concluído em 13/11/2026:** `MAP-01` → `MAP-02` → `MAP-03` (projeção).
-2. `MAP-04` (estilo).
-3. `MAP-05` (keyframes).
+2. **Concluído em 14/11/2026 (código; smoke no aparelho pendente):** `MAP-04`
+   (estilo) → `MAP-05` (keyframes).
 4. `VIS-05` (pôster).
 5. `MAP-06`/`ENC-04` (cache/estágio).
 6. `QA-05`/`DEV-01`–`DEV-03`.

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.49 · **Data:** 13/11/2026 · **Mudança:** Sprint B começou e fechou MAP-01..MAP-03: MapLibre `android-sdk-opengl:13.7.1`, `MapSnapshot.pixelForLatLng` no caminho de produção e port Kotlin apenas como fallback/teste; paridade medida no S24 Ultra (máx. 0,000244 px) e story escuro validado no aparelho. A versão 1.48 registrou a atribuição do OpenStreetMap no canto inferior esquerdo, na borda do vídeo.
+**Versão:** 1.50 · **Data:** 14/11/2026 · **Mudança:** Sprint B avançou com MAP-04/MAP-05 em código: estilo autoral `MeuCoach Dark`/`Light` e 3 keyframes 30°/42°/35° com pixels nativos por snapshot; smoke no aparelho pendente (S24 Ultra fora do `adb`). A versão 1.49 registrou MAP-01..MAP-03 (MapLibre 13.7.1 + `pixelForLatLng`).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -537,8 +537,9 @@ já consome o spec: card com 1–3 slots, encerramento com 3 essenciais + até 2
 extras, selo do km mais rápido só quando a receita pede e barra com todos os
 kms. O Story Studio (UI-01..UI-04/UI-08), a prévia de 3 frames (VIS-06),
 VIS-05/ENC-07 (pôster 4:5, três arquivos no MediaStore e share separado) e
-MAP-01..MAP-03 (MapLibre 13.7.1 OpenGL + `pixelForLatLng` na produção) estão
-prontos. Próximo: MAP-04 (estilo autoral), MAP-05 (3 keyframes), memória
+MAP-01..MAP-03 (MapLibre 13.7.1 OpenGL + `pixelForLatLng` na produção) e
+MAP-04/MAP-05 em código (estilo autoral + 3 keyframes 30°/42°/35°, smoke no
+aparelho pendente) estão prontos. Próximo: memória
 (ENC-08), receita no worker além do já encaminhado (ENC-05) e DEV-07/QA-06.
 
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026 e validado no S24 Ultra em 13/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com projeção nativa `pixelForLatLng` a partir do Sprint B.
@@ -583,7 +584,9 @@ prontos. Próximo: MAP-04 (estilo autoral), MAP-05 (3 keyframes), memória
 - [x] Story V3 — MAP-01: MapLibre `org.maplibre.gl:android-sdk-opengl:13.7.1` no version catalog e no build; AAR 15,9 MB, `minSdk 23`, `arm64-v8a`/`x86_64`; sem Vulkan obrigatório.
 - [x] Story V3 — MAP-02: `StoryMapSnapshot` com bitmap + `pixelForLatLng` da rota e início/fim; worker recebe os pixels exatos no PNG + sidecar `.route`; `StoryFrameRenderer` escala os pixels do snapshot.
 - [x] Story V3 — MAP-03: `StoryMapProjection` só fallback/teste; nenhum uso no caminho real do vídeo; teste de regressão garante que o renderer segue os pixels do snapshot.
-- [~] Story V3 — DEV-01: snapshot escuro em pitch 32°/42° validado no S24 Ultra; falta validar o estilo claro depois do MAP-04.
+- [x] Story V3 — MAP-04: estilo autoral `MeuCoach Dark`/`Light` em código (grafite, água azul-petróleo, parques dessaturados, POIs/transporte/vias menores ocultos); smoke no aparelho pendente.
+- [x] Story V3 — MAP-05: 3 keyframes em código (abertura 30°, follow 42°, final 35°, um snapshot com pixels nativos por keyframe, troca nos cards); smoke no aparelho pendente.
+- [~] Story V3 — DEV-01: snapshot escuro em pitch 32°/42° validado no S24 Ultra; falta validar os estilos autorais (escuro e claro) e os 3 pitches no aparelho.
 - [x] Story V3 — DEV-02: rota alinhada às ruas no S24 Ultra; paridade port × SDK medida em 360 pontos (máx. 0,000244 px, média 6,95e-6/3,65e-6 px) — muito abaixo da meta de 2 px.
 - [~] Story V3 — QA-05/DEV-07: pôster 1080×1350 e share sheet validados no S24 Ultra; faltam grid do Instagram/upload real e mid-range 4 GB.
 - [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05) e memória (ENC-08) seguem pendentes.

@@ -50,27 +50,32 @@ class StoryExportProcessor @Inject constructor(
             palette.mapStyle,
             StoryMapScript.FOLLOW_PITCH_DEGREES,
         ) ?: return StoryExportOutcome.Retry(StoryMessages.MAP_UNAVAILABLE)
-        val overviewMap = plan.boundingBox?.let { bounds ->
-            runCatching {
-                withTimeoutOrNull(StoryMessages.MAP_TIMEOUT_MS) {
-                    mapRenderer.render(
-                        bounds,
-                        plan.geoPoints,
-                        StoryMapScript.overviewWidth(),
-                        StoryMapScript.overviewHeight(),
-                        palette.mapStyle,
-                        StoryMapScript.OVERVIEW_PITCH_DEGREES,
-                    )
-                }
-            }.getOrNull()
-        }
+        // Bookends are best-effort: a failed opening/final render falls back to
+        // the follow snapshot in the renderer, which keeps the route aligned.
+        val openingMap =
+            renderBookend(
+                plan,
+                palette.mapStyle,
+                StoryMapScript::openingWidth,
+                StoryMapScript::openingHeight,
+                StoryMapScript.OPENING_PITCH_DEGREES,
+            )
+        val finalMap =
+            renderBookend(
+                plan,
+                palette.mapStyle,
+                StoryMapScript::finalWidth,
+                StoryMapScript::finalHeight,
+                StoryMapScript.FINAL_PITCH_DEGREES,
+            )
         val eta = StoryEtaEstimator()
         val result = exporter.export(
             plan = plan,
             palette = palette,
             recipe = recipe,
             mapBackground = mapBackground,
-            overviewMap = overviewMap,
+            openingMap = openingMap,
+            finalMap = finalMap,
         ) { fraction ->
             onProgress(fraction, eta.remainingSec(fraction, atMs()))
         }
@@ -105,6 +110,35 @@ class StoryExportProcessor @Inject constructor(
                     plan.geoPoints,
                     StoryVideoExporter.mapWidth(),
                     StoryVideoExporter.mapHeight(),
+                    style,
+                    pitchDegrees,
+                )
+            }
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            null
+        }
+    }
+
+    /**
+     * One bookend keyframe (opening/final) with its own native pixels. Never
+     * fails the export: null means the renderer falls back to the follow shot.
+     */
+    private suspend fun renderBookend(
+        plan: StoryPlan,
+        style: StoryMapStyle,
+        width: () -> Int,
+        height: () -> Int,
+        pitchDegrees: Float,
+    ): StoryMapSnapshot? {
+        val bounds = plan.boundingBox ?: return null
+        return runCatching {
+            withTimeoutOrNull(StoryMessages.MAP_TIMEOUT_MS) {
+                mapRenderer.render(
+                    bounds,
+                    plan.geoPoints,
+                    width(),
+                    height(),
                     style,
                     pitchDegrees,
                 )
