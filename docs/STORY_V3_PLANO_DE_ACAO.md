@@ -475,9 +475,9 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 
 | ID | Tarefa | Entrega | Arquivos | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|---|
-| [ ] MAP-01 | Atualizar MapLibre 13.7.1 OpenGL | `libs.versions.toml` + módulo `android-sdk-opengl` | `gradle/libs.versions.toml`, `app/build.gradle.kts` | — | M | Build verde; snapshot em aparelho; sem Vulkan obrigatório |
-| [ ] MAP-02 | Projeção exata via `pixelForLatLng` | `StoryMapSnapshot` com `routePixels`, `start/end` | `MapBackgroundRenderer.kt`, `StoryMapSnapshot.kt` | MAP-01 | G | Rota alinhada em pitch; paridade com o port ≤2 px no device; produção usa SDK |
-| [ ] MAP-03 | Aposentar `StoryMapProjection` do caminho de produção | Fallback/teste apenas | `StoryMapProjection.kt`, renderer | MAP-02 | M | Nenhum uso no fluxo real; teste de paridade documentado |
+| [x] MAP-01 | Atualizar MapLibre 13.7.1 OpenGL | `libs.versions.toml` + módulo `android-sdk-opengl` | `gradle/libs.versions.toml`, `app/build.gradle.kts` | — | M | Build verde; snapshot escuro em pitch no S24 Ultra; sem Vulkan obrigatório |
+| [x] MAP-02 | Projeção exata via `pixelForLatLng` | `StoryMapSnapshot` com `routePixels`, `start/end` | `MapBackgroundRenderer.kt`, `StoryMapSnapshot.kt` | MAP-01 | G | Rota alinhada em pitch; paridade medida em 0,000244 px; produção usa SDK |
+| [x] MAP-03 | Aposentar `StoryMapProjection` do caminho de produção | Fallback/teste apenas | `StoryMapProjection.kt`, renderer | MAP-02 | M | Nenhum uso no fluxo real; `StoryFrameRendererTest` garante os pixels do snapshot |
 | [ ] MAP-04 | Estilo `MeuCoach Dark`/`Light` | Paleta, filtros de POI/transporte/vias, labels, água/parques | `OpenFreeMapStyle.kt`, `StoryPalette.kt` | MAP-01 | G | Labels legíveis em 1080p; POIs ocultos; golden/screenshot |
 | [ ] MAP-05 | 3 keyframes de câmera | Abertura 30°, follow 42°, final 35°; troca nos cards | `StoryMapScript.kt`, `StoryCameraScript.kt`, renderer | MAP-02 | G | 3 snapshots; rota alinhada; sem salto visível |
 | [ ] MAP-06 | Cache de estilo e snapshots | Style JSON em disco; manifesto; WebP/JPEG; LRU | `MapLibreBackgroundRenderer.kt`, `StoryMapCache.kt` | MAP-05 | M | Reexport não baixa de novo; cache limpo no reset |
@@ -543,8 +543,8 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 
 | ID | Tarefa | Entrega | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|
-| [ ] DEV-01 | Smoke MapLibre 13.7.1 | Snapshot dark/light em pitch | MAP-04 | P | Sem crash; labels legíveis |
-| [ ] DEV-02 | Alinhamento da rota | Comparar rota desenhada vs ruas | MAP-02 | P | Erro visual imperceptível |
+| [~] DEV-01 | Smoke MapLibre 13.7.1 | Snapshot dark/light em pitch | MAP-04 | P | Dark validado no S24 Ultra; falta o claro após MAP-04 |
+| [x] DEV-02 | Alinhamento da rota | Comparar rota desenhada vs ruas | MAP-02 | P | Erro visual imperceptível; paridade port × SDK medida |
 | [ ] DEV-03 | Export 5k/10k | Tempo, memória, tamanho | ENC-08 | M | 30 s ≤90 s; pico <150 MB |
 | [ ] DEV-04 | 60 fps | Encoder suporta? | ENC-02 | P | Se falhar, esconder opção |
 | [ ] DEV-05 | Share real | Reels/TikTok/WhatsApp | UI-05 | M | Sem corte; vídeo mudo aceito |
@@ -616,7 +616,7 @@ gerados no aparelho; ambos com distância/ritmo/tempo e sem corte no Reels.
 
 Ordem:
 
-1. `MAP-01`–`MAP-03` (MapLibre 13.7.1 + projeção exata).
+1. **Concluído em 13/11/2026:** `MAP-01`–`MAP-03` (MapLibre 13.7.1 + projeção exata).
 2. `MAP-04` (estilo dark/light).
 3. `MAP-05` (3 keyframes) e ajuste de `VIS-03`/`VIS-04` à câmera.
 4. `VIS-05` (pôster 4:5).
@@ -749,7 +749,7 @@ O MVP está pronto quando **todos** forem verdade:
 
 | Risco | Prob. | Impacto | Mitigação |
 |---|---|---|---|
-| MapLibre 13.7.1 quebra algo | Média | Alto | Spike primeiro; fallback 12.3.1 + `StoryMapProjection` |
+| MapLibre 13.7.1 quebra algo | Média | Alto | Mitigado em 13/11/2026: 13.7.1 validado no S24 Ultra; fallback 12.3.1 + `StoryMapProjection` documentado |
 | Labels ilegíveis no mapa escuro | Média | Alto | Teste em 1080p; aumentar sizes; esconder vias menores |
 | 3 snapshots estouram memória | Média | Alto | 2 vivos; low-RAM 1,25×; WebP/JPEG |
 | Export >90 s | Média | Médio | Perfis; medir; GPU só se necessário |
@@ -811,9 +811,9 @@ cards; 10 segmentos na barra; testes verdes.
 **Critério de saída:** gerar dois stories com receitas diferentes; ambos
 respeitam a receita no worker; `check` verde.
 
-### 10.5 Ordem do Sprint B (depois)
+### 10.5 Ordem do Sprint B (em andamento)
 
-1. `MAP-01` → `MAP-02` → `MAP-03` (projeção).
+1. **Concluído em 13/11/2026:** `MAP-01` → `MAP-02` → `MAP-03` (projeção).
 2. `MAP-04` (estilo).
 3. `MAP-05` (keyframes).
 4. `VIS-05` (pôster).

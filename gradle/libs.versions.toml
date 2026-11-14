@@ -2,7 +2,7 @@
 agp = "9.4.1"
 kotlin = "2.4.21"
 ksp = "2.3.12"
-maplibre = "12.3.1"
+maplibre = "13.7.1"
 vico = "3.3.1"
 composeBom = "2026.09.00"
 coreKtx = "1.19.1"
@@ -39,7 +39,7 @@ androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref =
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 androidx-health-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "healthConnect" }
-maplibre = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
+maplibre = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 vico-compose = { module = "com.patrykandpatrick.vico:compose", version.ref = "vico" }
 
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }

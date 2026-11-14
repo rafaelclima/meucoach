@@ -10,7 +10,7 @@
 
 O story usava **um snapshot top-down** do MapLibre + uma homografia (`StoryPerspective`) para simular inclinação. O resultado lia como "mapa esticado", sem perspectiva real de ruas/prédios — o ponto mais distante do visual "Strava-like".
 
-Avaliamos inclinar o snapshot de verdade (`CameraPosition.tilt`). O obstáculo: o `MapSnapshotter` 12.3.1 **não expõe `Projection`/`getMapAsync`**, então a rota desenhada no `Canvas` não teria como acompanhar a perspectiva e sairia das ruas.
+Avaliamos inclinar o snapshot de verdade (`CameraPosition.tilt`). O obstáculo: o `MapSnapshotter` 12.3.1 **não expõe `Projection`/`getMapAsync`**, então a rota desenhada no `Canvas` não teria como acompanhar a perspectiva e sairia das ruas. (Na versão então em uso; o `MapSnapshot` do MapLibre 13.7.1 expõe `pixelForLatLng`, ver addendum do ADR 0015.)
 
 Alternativas consideradas:
 

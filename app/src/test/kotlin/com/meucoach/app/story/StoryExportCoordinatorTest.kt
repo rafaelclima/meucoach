@@ -69,13 +69,14 @@ class StoryExportCoordinatorTest {
             coordinator.start(
                 "activity-1",
                 StoryRecipe(),
-                Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888),
+                snapshot(),
                 testPalette(),
             )
         }
 
         val staged = File(context.cacheDir, "stories/story-map-activity-1.png")
         assertThat(staged.isFile).isTrue()
+        assertThat(StoryMapSnapshotStore.routeFile(staged).isFile).isTrue()
 
         val work = workManager
             .getWorkInfosForUniqueWork(StoryExportCoordinator.uniqueName("activity-1"))
@@ -96,7 +97,7 @@ class StoryExportCoordinatorTest {
             coordinator.start(
                 activityId = "activity-1",
                 recipe = StoryRecipe(),
-                mapBackground = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888),
+                mapBackground = snapshot(),
                 palette = testPalette(),
                 isCancelled = { true },
             )
@@ -106,7 +107,15 @@ class StoryExportCoordinatorTest {
             workManager.getWorkInfosForUniqueWork(StoryExportCoordinator.uniqueName("activity-1")).get(),
         ).isEmpty()
         assertThat(File(context.cacheDir, "stories/story-map-activity-1.png").exists()).isFalse()
+        assertThat(
+            StoryMapSnapshotStore.routeFile(File(context.cacheDir, "stories/story-map-activity-1.png")).exists(),
+        ).isFalse()
     }
+
+    private fun snapshot(): StoryMapSnapshot = StoryMapSnapshot(
+        Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888),
+        listOf(android.graphics.PointF(1f, 2f)),
+    )
 
     private fun testPalette() = StoryPalette(
         background = 1,

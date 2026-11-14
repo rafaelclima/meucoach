@@ -12,6 +12,7 @@ import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.story.BoundingBox
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryGeoPoint
 import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryRecipe
@@ -120,6 +121,47 @@ class StoryExportProcessorTest {
             assertThat(mapRenderer.widths).containsExactly(StoryMapScript.overviewWidth())
             // Coordinates do not linger in the cache after the export.
             assertThat(staged.exists()).isFalse()
+            assertThat(StoryMapSnapshotStore.routeFile(staged).exists()).isFalse()
+        }
+    }
+
+    @Test
+    fun `staged map carries the exact route pixels into the export`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val staged = stagedMap()
+            val exporter = FakeExporter(listOf(1f))
+
+            processor(exporter).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = staged.absolutePath,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(exporter.renderedBackground?.routePixels)
+                .containsExactly(android.graphics.PointF(1f, 2f))
+        }
+    }
+
+    @Test
+    fun `re-renders when the staged map has no route sidecar`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val staged = stagedMap(withRoute = false)
+            val processor = processor(FakeExporter(listOf(1f)))
+
+            val outcome = processor.export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = staged.absolutePath,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(mapRenderer.calls).isEqualTo(2)
         }
     }
 
@@ -262,12 +304,16 @@ class StoryExportProcessorTest {
         exporter = exporter,
     )
 
-    private fun stagedMap(): File {
+    private fun stagedMap(withRoute: Boolean = true): File {
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val file = File(directory, "staged.png")
         val bitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
-        file.outputStream().use { output ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+        if (withRoute) {
+            StoryMapSnapshotStore.write(file, StoryMapSnapshot(bitmap, listOf(android.graphics.PointF(1f, 2f))))
+        } else {
+            file.outputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+            }
         }
         bitmap.recycle()
         return file
@@ -277,15 +323,15 @@ class StoryExportProcessorTest {
         StoryVideoExporter {
         var renderedPlan: StoryPlan? = null
         var renderedRecipe: StoryRecipe? = null
-        var renderedBackground: Bitmap? = null
-        var renderedOverview: Bitmap? = null
+        var renderedBackground: StoryMapSnapshot? = null
+        var renderedOverview: StoryMapSnapshot? = null
 
         override suspend fun export(
             plan: StoryPlan,
             palette: StoryPalette,
             recipe: StoryRecipe,
-            mapBackground: Bitmap?,
-            overviewMap: Bitmap?,
+            mapBackground: StoryMapSnapshot?,
+            overviewMap: StoryMapSnapshot?,
             isCancelled: () -> Boolean,
             onProgress: suspend (progress: Float) -> Unit,
         ): StoryExportResult {
@@ -311,19 +357,20 @@ class StoryExportProcessorTest {
 
         override suspend fun render(
             boundingBox: BoundingBox,
+            route: List<StoryGeoPoint>,
             width: Int,
             height: Int,
             style: StoryMapStyle,
             pitchDegrees: Float,
             bearingDegrees: Float,
-        ): Bitmap {
+        ): StoryMapSnapshot {
             calls += 1
             this.width = width
             this.height = height
             this.style = style
             widths += width
             error?.let { throw it }
-            return Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+            return StoryMapSnapshot(Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), emptyList())
         }
     }
 

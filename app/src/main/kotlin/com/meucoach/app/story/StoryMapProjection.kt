@@ -7,14 +7,22 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.tan
 
-internal val STORY_MAP_FOV_RADIANS = 2.0 * kotlin.math.atan(1.0 / 3.0)
+/**
+ * Exact screen position of one geographic point under a snapshot camera.
+ * [StoryMapProjection] delegates here; [StoryMapCameraCalculator] uses it only
+ * to fit the bounds while choosing the camera. Route pixels in the production
+ * video come from `MapSnapshot.pixelForLatLng`, not from this pure port
+ * (MAP-02/MAP-03).
+ */
+internal object StoryMapFit {
+    val FOV_RADIANS = 2.0 * kotlin.math.atan(1.0 / 3.0)
 
-class StoryMapProjection(private val camera: StoryMapCamera, private val width: Int, private val height: Int) {
-    private val matrix = mercatorToPixelMatrix(camera, width, height)
-    private val worldSize = TILE_SIZE * 2.0.pow(camera.zoom)
+    private const val TILE_SIZE = 512.0
+    private const val MAX_MERCATOR_LAT = 85.05112878
 
-    /** Screen position (top-left origin, pixels) of a geographic point. */
-    fun project(latitude: Double, longitude: Double): FloatArray {
+    fun project(camera: StoryMapCamera, width: Int, height: Int, latitude: Double, longitude: Double): FloatArray {
+        val matrix = mercatorToPixelMatrix(camera, width, height)
+        val worldSize = TILE_SIZE * 2.0.pow(camera.zoom)
         val x = mercatorX(longitude) * worldSize
         val y = mercatorY(latitude) * worldSize
         val clip = matrix.transform(x, y, 0.0, 1.0)
@@ -24,52 +32,48 @@ class StoryMapProjection(private val camera: StoryMapCamera, private val width: 
         return floatArrayOf(screenX.toFloat(), screenY.toFloat())
     }
 
-    private companion object {
-        const val TILE_SIZE = 512.0
+    private fun mercatorToPixelMatrix(camera: StoryMapCamera, width: Int, height: Int): Mat4 {
+        val worldSize = TILE_SIZE * 2.0.pow(camera.zoom)
+        val centerX = mercatorX(camera.longitude) * worldSize
+        val centerY = mercatorY(camera.latitude) * worldSize
+        val cameraToCenterDistance = 0.5 * height / tan(FOV_RADIANS / 2.0)
+        val pitch = Math.toRadians(camera.pitchDegrees.toDouble())
+        val bearing = Math.toRadians(camera.bearingDegrees.toDouble())
+
+        var m = Mat4.perspective(
+            fovy = FOV_RADIANS,
+            aspect = width.toDouble() / height,
+            near = 1.0,
+            far = 1_000_000.0,
+        )
+        // No center offset (edge insets are not used by the snapshot).
+        m = m * Mat4.scale(1.0, -1.0, 1.0)
+        m = m * Mat4.translate(0.0, 0.0, -cameraToCenterDistance)
+        m = m * Mat4.rotateX(pitch)
+        m = m * Mat4.rotateZ(-bearing)
+        m = m * Mat4.translate(-centerX, -centerY, 0.0)
+        return m
+    }
+
+    private fun mercatorX(longitude: Double): Double = (longitude + 180.0) / 360.0
+
+    private fun mercatorY(latitude: Double): Double {
+        val clamped = latitude.coerceIn(-MAX_MERCATOR_LAT, MAX_MERCATOR_LAT)
+        val radians = Math.toRadians(clamped)
+        return 0.5 - ln(tan(PI / 4.0 + radians / 2.0)) / (2.0 * PI)
     }
 }
 
 /**
- * Mercator → pixel matrix, matching mapbox-gl/maplibre-gl `_calcMatrices`.
- * `x`/`y` are world pixels (mercator × worldSize).
+ * Pure Kotlin port of the MapLibre snapshot projection. Kept as a documented
+ * fallback and for tests; the video route uses the native `pixelForLatLng`
+ * values carried by [StoryMapSnapshot].
  */
-private fun mercatorToPixelMatrix(camera: StoryMapCamera, width: Int, height: Int): Mat4 {
-    val worldSize = 512.0 * 2.0.pow(camera.zoom)
-    val centerX = mercatorX(camera.longitude) * worldSize
-    val centerY = mercatorY(camera.latitude) * worldSize
-    val cameraToCenterDistance = 0.5 * height / tan(STORY_MAP_FOV_RADIANS / 2.0)
-    val pitch = Math.toRadians(camera.pitchDegrees.toDouble())
-    val bearing = Math.toRadians(camera.bearingDegrees.toDouble())
-
-    var m = Mat4.perspective(
-        fovy = STORY_MAP_FOV_RADIANS,
-        aspect = width.toDouble() / height,
-        near = 1.0,
-        far = 1_000_000.0,
-    )
-    // No center offset (edge insets are not used by the snapshot).
-    m = m * Mat4.scale(1.0, -1.0, 1.0)
-    m = m * Mat4.translate(0.0, 0.0, -cameraToCenterDistance)
-    m = m * Mat4.rotateX(pitch)
-    m = m * Mat4.rotateZ(-bearing)
-    m = m * Mat4.translate(-centerX, -centerY, 0.0)
-    return m
+class StoryMapProjection(private val camera: StoryMapCamera, private val width: Int, private val height: Int) {
+    /** Screen position (top-left origin, pixels) of a geographic point. */
+    fun project(latitude: Double, longitude: Double): FloatArray =
+        StoryMapFit.project(camera, width, height, latitude, longitude)
 }
-
-internal fun mercatorX(longitude: Double): Double = (longitude + 180.0) / 360.0
-
-internal fun mercatorY(latitude: Double): Double {
-    val clamped = latitude.coerceIn(-MAX_MERCATOR_LAT, MAX_MERCATOR_LAT)
-    val radians = Math.toRadians(clamped)
-    return 0.5 - ln(tan(PI / 4.0 + radians / 2.0)) / (2.0 * PI)
-}
-
-internal fun inverseMercatorX(x: Double): Double = x * 360.0 - 180.0
-
-internal fun inverseMercatorY(y: Double): Double =
-    Math.toDegrees(2.0 * kotlin.math.atan(kotlin.math.exp(PI * (1.0 - 2.0 * y))) - PI / 2.0)
-
-private const val MAX_MERCATOR_LAT = 85.05112878
 
 /** Minimal column-major 4×4 matrix (gl-matrix semantics). */
 internal class Mat4(
@@ -77,8 +81,7 @@ internal class Mat4(
         it[0] = 1.0
         it[5] = 1.0
         it[10] = 1.0
-        it[15] =
-            1.0
+        it[15] = 1.0
     },
 ) {
     operator fun times(other: Mat4): Mat4 {

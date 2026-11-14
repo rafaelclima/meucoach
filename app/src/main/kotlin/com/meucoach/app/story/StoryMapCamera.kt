@@ -101,8 +101,7 @@ object StoryMapCameraCalculator {
                 pitchDegrees = pitchDegrees,
                 bearingDegrees = bearingDegrees,
             )
-            val projection = StoryMapProjection(camera, width, height)
-            val points = corners.map { projection.project(it.first, it.second) }
+            val points = corners.map { StoryMapFit.project(camera, width, height, it.first, it.second) }
             val minX = points.minOf { it[0] }
             val maxX = points.maxOf { it[0] }
             val minY = points.minOf { it[1] }

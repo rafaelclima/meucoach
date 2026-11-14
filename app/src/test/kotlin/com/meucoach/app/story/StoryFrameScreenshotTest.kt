@@ -143,7 +143,7 @@ class StoryFrameScreenshotTest {
         val storyPlan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
-        val map = fakeMap()
+        val map = fakeMapSnapshot(storyPlan)
         var frame by mutableStateOf<Bitmap?>(null)
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -174,7 +174,7 @@ class StoryFrameScreenshotTest {
         val finalStart = storyPlan.segments.last { it.type == StorySegmentType.FINAL }.startSec
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
-        val map = fakeMap()
+        val map = fakeMapSnapshot(storyPlan)
         var frame by mutableStateOf<Bitmap?>(null)
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -206,7 +206,7 @@ class StoryFrameScreenshotTest {
                 it.type == StorySegmentType.CARD && it.split?.km == 1
             },
         ).startSec
-        val map = fakeMap()
+        val map = fakeMapSnapshot(storyPlan)
         var frame by mutableStateOf<Bitmap?>(null)
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -270,7 +270,7 @@ class StoryFrameScreenshotTest {
                 it.type == StorySegmentType.CARD && it.split?.km == 1
             },
         ).startSec
-        val map = fakeMap()
+        val map = fakeMapSnapshot(storyPlan)
         var frame by mutableStateOf<Bitmap?>(null)
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -395,7 +395,7 @@ class StoryFrameScreenshotTest {
         val storyPlan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
-        val map = fakeMap()
+        val map = fakeMapSnapshot(storyPlan)
         var frame by mutableStateOf<Bitmap?>(null)
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -441,6 +441,23 @@ class StoryFrameScreenshotTest {
         }
         canvas.drawText("R", 64f, 88f, text)
         return bitmap
+    }
+
+    /**
+     * Test-only snapshot: the exact-pixel path is native and cannot run on the
+     * JVM, so the golden frames use the documented Kotlin fallback. Production
+     * uses `MapSnapshot.pixelForLatLng` through [StoryMapSnapshot].
+     */
+    private fun fakeMapSnapshot(plan: StoryPlan): StoryMapSnapshot {
+        val bitmap = fakeMap()
+        val bounds = plan.boundingBox ?: return StoryMapSnapshot(bitmap, emptyList())
+        val camera = StoryMapCameraCalculator.calculateForStory(
+            bounds,
+            bitmap.width,
+            bitmap.height,
+            pitchDegrees = StoryMapScript.FOLLOW_PITCH_DEGREES,
+        )
+        return StoryMapSnapshot.fromFallback(bitmap, camera, plan.geoPoints)
     }
 
     private fun fakeMap(): Bitmap {

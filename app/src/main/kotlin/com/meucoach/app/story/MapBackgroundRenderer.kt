@@ -1,12 +1,12 @@
 package com.meucoach.app.story
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import com.meucoach.core.domain.story.BoundingBox
+import com.meucoach.core.domain.story.StoryGeoPoint
 import com.meucoach.core.domain.story.StoryMapStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -32,12 +32,13 @@ import kotlin.coroutines.resumeWithException
 interface MapBackgroundRenderer {
     suspend fun render(
         boundingBox: BoundingBox,
+        route: List<StoryGeoPoint>,
         width: Int,
         height: Int,
         style: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
         pitchDegrees: Float = StoryMapScript.FOLLOW_PITCH_DEGREES,
         bearingDegrees: Float = 0f,
-    ): Bitmap
+    ): StoryMapSnapshot
 }
 
 /**
@@ -52,12 +53,13 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
 
     override suspend fun render(
         boundingBox: BoundingBox,
+        route: List<StoryGeoPoint>,
         width: Int,
         height: Int,
         style: StoryMapStyle,
         pitchDegrees: Float,
         bearingDegrees: Float,
-    ): Bitmap {
+    ): StoryMapSnapshot {
         if (!hasNetwork()) {
             throw IllegalStateException("Sem conexão para baixar o mapa.")
         }
@@ -93,7 +95,26 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
                 }
                 snapshotter.start(
                     { snapshot ->
-                        if (continuation.isActive) continuation.resume(snapshot.bitmap)
+                        val projected = runCatching {
+                            val bitmap = checkNotNull(snapshot.bitmap) {
+                                "O mapa não retornou um bitmap."
+                            }
+                            val pixels = route.map { point ->
+                                checkNotNull(
+                                    snapshot.pixelForLatLng(LatLng(point.latitude, point.longitude)),
+                                ) { "O mapa não projetou um ponto da rota." }
+                            }
+                            StoryMapSnapshot(bitmap = bitmap, routePixels = pixels)
+                        }
+                        if (!continuation.isActive) return@start
+                        projected.fold(
+                            { snapshotWithRoute -> continuation.resume(snapshotWithRoute) },
+                            { error ->
+                                continuation.resumeWithException(
+                                    IllegalStateException("Falha ao projetar a rota no mapa: $error", error),
+                                )
+                            },
+                        )
                     },
                     { error ->
                         if (continuation.isActive) {

@@ -1,6 +1,6 @@
 # ADR 0015 — Mapa real no story de treino (OpenStreetMap + MapLibre)
 
-**Status:** aceito para implementação — substitui a decisão de rota apenas offline em `ADR-0012`; corrigido em 2026-11-13 (projeção do `MapSnapshot`, bloqueio legal do Google, satélite fora do MVP e MapLibre 13.7.1 OpenGL como decisão pendente).
+**Status:** aceito para implementação — substitui a decisão de rota apenas offline em `ADR-0012`; corrigido em 2026-11-13 (projeção do `MapSnapshot`, bloqueio legal do Google, satélite fora do MVP e MapLibre 13.7.1 OpenGL aplicado no Sprint B).
 **Data:** 2026-11-02
 **Responsável:** planejamento com Rafael (usuário 0)
 
@@ -50,7 +50,7 @@ A mudança é significativa porque:
 
 **Consequência:** a dependência será adicionada ao `gradle/libs.versions.toml` e ao `build.gradle.kts` do `:app`. Se a versão mais recente tiver incompatibilidade com `minSdk 26` ou `compileSdk 37`, avaliaremos uma versão anterior (`11.x` ou `10.x`) em um `ADR` futuro (`0016`?).
 
-**Versão em uso e decisão pendente:** o app está em `org.maplibre.gl:android-sdk:12.3.1` (linha OpenGL). O `android-sdk-opengl:13.7.1` (menor, com `pixelForLatLng`, PMTiles e color-relief) é o alvo do **Sprint B** e **ainda não foi aplicado** — depende de spike e validação em aparelho (ADR 0040 §2.4 e MAP-01 do plano). Se o upgrade quebrar, a contingência é permanecer em 12.3.1 com o port de projeção como caminho de produção.
+**Versão em uso:** `org.maplibre.gl:android-sdk-opengl:13.7.1` desde 13/11/2026 (MAP-01). A versão anterior era `org.maplibre.gl:android-sdk:12.3.1`; o addendum no fim deste arquivo registra a troca, a projeção nativa e a validação em aparelho.
 
 ---
 
@@ -249,7 +249,7 @@ O `mapBitmap` é passado para cada `StoryFrameRenderer.render(...)`.
 
 **Escopo entregue:** mapa real com `MapLibre` + `OpenStreetMap`, gerado uma vez por story e reaproveitado em todos os frames.
 
-- **Versão:** `org.maplibre.gl:android-sdk:12.3.1` — a linha **13.x exige Vulkan** (`uses-feature android.hardware.vulkan.version required=true`), o que restringiria aparelhos compatíveis. `12.3.1` é a última linha OpenGL (minSdk 23) e atende `minSdk 26`/AGP 9.4.1.
+- **Versão (nota histórica):** `org.maplibre.gl:android-sdk:12.3.1` — na época, a linha **13.x padrão exigia Vulkan** (`uses-feature android.hardware.vulkan.version required=true`). **Atualizado em 13/11/2026:** o flavor `android-sdk-opengl:13.7.1` existe, não exige Vulkan e foi adotado (ver addendum final).
 - **Tamanho real:** a AAR adiciona ~13,2 MB (arm64-v8a) e ~13,6 MB (x86_64) de biblioteca nativa, bem acima da estimativa inicial de 3–5 MB. Para conter o APK, `abiFilters` limita o app a `arm64-v8a` e `x86_64`; 32 bits fica fora do MVP. O APK de debug passou de ~24 MB para ~49 MB com as duas ABIs.
 - **Geração:** `MapLibreBackgroundRenderer` usa `MapSnapshotter` com estilo raster OSM inline (sem chave/API), `withLogo(false)`/`withAttribution(false)` e câmera calculada por `StoryMapCameraCalculator`. O snapshot é criado no `createStory` (prévia já mostra o mapa) e guardado no estado `Preview` para o export não baixar tiles duas vezes.
 - **Alinhamento:** `StoryMapCameraCalculator` projeta o `BoundingBox` no mesmo quadrado usado por `drawRoute` (`routeSquare`), com Mercator e o offset vertical do cabeçalho. A matemática é pura e testada sem carregar a biblioteca nativa.
@@ -349,14 +349,44 @@ código e às decisões do ADR 0040.
    Maps Platform proíbem exportar/extrair o conteúdo para uso fora do serviço;
    um MP4 é exatamente isso. O caminho do MVP é OSM/OpenFreeMap + estilo
    autoral; Mapbox e MapTiler também ficam fora do MVP (ADR 0040 §2.4).
-3. **Versão do MapLibre:** o app continua em **12.3.1 (OpenGL)**. O
-   `android-sdk-opengl:13.7.1` é a decisão **pendente do Sprint B** (menor
+3. **Versão do MapLibre:** o app estava em **12.3.1 (OpenGL)**. O
+   `android-sdk-opengl:13.7.1` era a decisão **pendente do Sprint B** (menor
    `.so`, `pixelForLatLng`, PMTiles), condicionada a spike e validação em
-   aparelho. Este ADR **não** afirma que o upgrade já foi feito; se ele falhar,
-   a contingência é permanecer em 12.3.1 com o port de projeção.
+   aparelho. **Atualizado no addendum seguinte:** o 13.7.1 foi aplicado e
+   validado; a contingência de voltar para 12.3.1 não foi necessária.
 4. **Satélite:** o estilo Esri fica **fora do MVP** por licença comercial em
    revisão. Nenhuma opção de satélite aparece no fluxo padrão; o valor do enum
    permanece apenas para compatibilidade de jobs antigos.
 5. **Formato e duração:** 9:16 continua sendo o vídeo do MVP; o pôster 4:5 é
    uma composição separada. Duração e métricas passam a vir da `StoryRecipe`
    (ADR 0040 §2.1), não desta decisão de arquitetura.
+
+## Addendum — 2026-11-13: MapLibre 13.7.1 OpenGL e projeção nativa em produção
+
+Este addendum fecha MAP-01..MAP-03 do Sprint B. A contingência de rollback para
+12.3.1 descrita acima **não** foi necessária.
+
+- **Artefato:** `org.maplibre.gl:android-sdk-opengl:13.7.1` no version catalog e
+  no build. AAR de 15,9 MB, `minSdk 23`, `arm64-v8a`/`x86_64` (e `armeabi-v7a`);
+  `libmaplibre.so` arm64 com 11,0 MB. O flavor é OpenGL, sem exigir Vulkan.
+  `MapLibre.getInstance`, `MapSnapshotter`, `CameraPosition`, `Style` e
+  `MapSnapshot.pixelForLatLng` mantiveram a API usada pelo app.
+- **Contrato do mapa:** `MapBackgroundRenderer.render(...)` recebe a rota
+  amostrada e devolve `StoryMapSnapshot` com o `Bitmap` e os pixels exatos de
+  `MapSnapshot.pixelForLatLng`, incluindo início e fim. O
+  `StoryFrameRenderer` escala esses pixels para o frame; não reprojeta a rota
+  com o port no caminho do vídeo.
+- **Prévia × worker:** a prévia grava o PNG e um sidecar `.route` com os pixels
+  nativos; o worker lê os dois. Se o sidecar estiver ausente ou corrompido, o
+  worker renderiza um snapshot novo em vez de adivinhar a rota. O staging é
+  removido ao fim do export.
+- **Fallback:** `StoryMapProjection` permanece como port puro para a prévia sem
+  mapa, testes e emergência; `StoryFrameRendererTest` garante que, quando há
+  snapshot, mudar apenas `routePixels` muda o frame.
+- **Paridade no S24 Ultra (SM-S928B):** 360 pontos, pitch 42° (follow) e 32°
+  (overview). Diferença máxima port × SDK de **0,000244 px**; média de
+  **6,95e-6 px** e **3,65e-6 px**. Meta era ≤2 px.
+- **Smoke:** story escuro gerado no aparelho, MP4 1080×1920/30 fps
+  BT.709/tv/limited, labels legíveis, rota alinhada às ruas e logcat sem crash
+  nativo crítico. O aviso `libEGL: call to OpenGL ES API with no current
+  context` apareceu uma vez por thread e não impediu o snapshot.

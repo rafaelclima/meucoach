@@ -1,7 +1,6 @@
 package com.meucoach.app.story
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.work.BackoffPolicy
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
@@ -32,7 +31,7 @@ interface StoryExportCoordinator {
     suspend fun start(
         activityId: String,
         recipe: StoryRecipe,
-        mapBackground: Bitmap?,
+        mapBackground: StoryMapSnapshot?,
         palette: StoryPalette,
         isCancelled: () -> Boolean = { false },
     )
@@ -75,14 +74,14 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
     override suspend fun start(
         activityId: String,
         recipe: StoryRecipe,
-        mapBackground: Bitmap?,
+        mapBackground: StoryMapSnapshot?,
         palette: StoryPalette,
         isCancelled: () -> Boolean,
     ) {
         val mapFile = mapBackground?.let { stageMap(it, activityId) }
         if (isCancelled()) {
             // The user cancelled while the preview snapshot was being written.
-            mapFile?.let { runCatching { it.delete() } }
+            mapFile?.let { StoryMapSnapshotStore.delete(it) }
             return
         }
         val request = OneTimeWorkRequestBuilder<StoryExportWorker>()
@@ -105,15 +104,11 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
         workManager.cancelUniqueWork(StoryExportCoordinator.uniqueName(activityId))
     }
 
-    /** The preview snapshot is big (~2106×3744); PNG keeps the stage cheap to decode. */
-    private suspend fun stageMap(bitmap: Bitmap, activityId: String): File = withContext(Dispatchers.IO) {
+    /** The preview snapshot is big (~2430×4320); the route pixels travel in a sidecar. */
+    private suspend fun stageMap(snapshot: StoryMapSnapshot, activityId: String): File = withContext(Dispatchers.IO) {
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val file = File(directory, "story-map-$activityId.png")
-        file.outputStream().use { output ->
-            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
-                StoryMessages.MAP_STAGE_FAILED
-            }
-        }
+        StoryMapSnapshotStore.write(file, snapshot)
         file
     }
 

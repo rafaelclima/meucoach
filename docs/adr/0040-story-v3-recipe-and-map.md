@@ -193,8 +193,7 @@ Não há módulo novo, migração de Room nem dependência nova.
   story; a regravação é intencional e revisada.
 - **Suporte de encoder varia por aparelho:** perfil/level e VBR são
   condicionais; sem suporte, o vídeo ainda é gerado, mas sem a declaração.
-- **MapLibre 13.7.1:** upgrade posterior (Sprint B) pode exigir rollback para
-  12.3.1; o port de projeção fica como contingência.
+- **MapLibre 13.7.1:** upgrade aplicado em 13/11/2026 (MAP-01) e validado no S24 Ultra; sem rollback. O port de projeção fica como fallback/teste, não como caminho de produção.
 - **Sem áudio:** o vídeo é mudo por decisão; a percepção fora do Instagram
   depende do usuário adicionar música.
 - **Sem satélite:** o mapa é vetorial/autoral; não há imagery no MVP.

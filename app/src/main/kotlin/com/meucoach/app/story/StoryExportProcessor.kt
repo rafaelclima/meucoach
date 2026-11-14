@@ -1,14 +1,10 @@
 package com.meucoach.app.story
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.SystemClock
 import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryRecipe
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import javax.inject.Inject
@@ -59,6 +55,7 @@ class StoryExportProcessor @Inject constructor(
                 withTimeoutOrNull(StoryMessages.MAP_TIMEOUT_MS) {
                     mapRenderer.render(
                         bounds,
+                        plan.geoPoints,
                         StoryMapScript.overviewWidth(),
                         StoryMapScript.overviewHeight(),
                         palette.mapStyle,
@@ -79,36 +76,33 @@ class StoryExportProcessor @Inject constructor(
         }
         // The staged snapshot is a picture of the run's region: keep it only
         // while the export needs it.
-        mapPath?.let { staged -> runCatching { File(staged).delete() } }
+        mapPath?.let { staged -> StoryMapSnapshotStore.delete(File(staged)) }
         return StoryExportOutcome.Completed(result)
     }
 
     /**
      * The staged map from the preview is preferred (no duplicate tile fetch);
-     * if the cache entry is gone the snapshot is rendered again.
+     * if the cache entry or its route sidecar is gone, the snapshot is rendered
+     * again with both the bitmap and the exact `pixelForLatLng` pixels.
      */
     private suspend fun mapBackground(
         plan: StoryPlan,
         mapPath: String?,
         style: StoryMapStyle,
         pitchDegrees: Float,
-    ): Bitmap? {
+    ): StoryMapSnapshot? {
         val bounds = plan.boundingBox ?: return null
         mapPath?.let { path ->
             // A staged entry can be evicted between preview and export; skip
             // straight to a fresh snapshot instead of decoding a missing file.
-            if (!File(path).isFile) return@let
-            val decoded = runCatching {
-                withContext(Dispatchers.Default) {
-                    BitmapFactory.decodeFile(path, decodeOptions)
-                }
-            }.getOrNull()
-            if (decoded != null) return decoded
+            val staged = StoryMapSnapshotStore.read(File(path))
+            if (staged != null) return staged
         }
         return runCatching {
             withTimeoutOrNull(StoryMessages.MAP_TIMEOUT_MS) {
                 mapRenderer.render(
                     bounds,
+                    plan.geoPoints,
                     StoryVideoExporter.mapWidth(),
                     StoryVideoExporter.mapHeight(),
                     style,
@@ -120,6 +114,4 @@ class StoryExportProcessor @Inject constructor(
             null
         }
     }
-
-    private val decodeOptions = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.ARGB_8888 }
 }

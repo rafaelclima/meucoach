@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.48 · **Data:** 13/11/2026 · **Mudança:** atribuição do OpenStreetMap fixada no canto inferior esquerdo, na borda do vídeo, por decisão explícita do usuário 0 (pode ficar sob a UI do Reels), com o card de volta a 62–78%. A versão 1.47 registrou o pôster 4:5 (VIS-05), a capa 9:16, o compartilhamento separado (ENC-07), a falha do pôster sem derrubar o vídeo e a validação do MP4/pôster no S24 Ultra.
+**Versão:** 1.49 · **Data:** 13/11/2026 · **Mudança:** Sprint B começou e fechou MAP-01..MAP-03: MapLibre `android-sdk-opengl:13.7.1`, `MapSnapshot.pixelForLatLng` no caminho de produção e port Kotlin apenas como fallback/teste; paridade medida no S24 Ultra (máx. 0,000244 px) e story escuro validado no aparelho. A versão 1.48 registrou a atribuição do OpenStreetMap no canto inferior esquerdo, na borda do vídeo.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -525,7 +525,7 @@ Sem migração.
 
 **Proposta de evolução:** `docs/STORY_V2.md` — “O Veredito”. Fases A (área segura, câmera, film look, 30 fps e capa), B (veredito por km, rota por zona) e câmera v2 (zoom por card + pitch/yaw) concluídas em 03/11/2026; fase C (áudio/morph) pendente.
 
-**Story V3 — Sprint A (Etapa 1, em andamento desde 13/11/2026):** plano em
+**Story V3 — Sprint A fechado; Sprint B iniciado em 13/11/2026:** plano em
 `docs/STORY_V3_PLANO_DE_ACAO.md` e decisão em `docs/adr/0040-story-v3-recipe-and-map.md`.
 Concluído: D0.1 (ADR 0040), D0.2 (correção do ADR 0015), D0.3 (banners de
 decisão), VIS-01 (safe area de Reels 13/22/5,5, card 62–78%, atribuição no
@@ -535,13 +535,13 @@ VBR), VIS-02 parcial (`tnum` e fim da legenda), DOM-01 (modelo puro em
 timeline por esforço, seleção de cards, codec/store e render spec). O renderer
 já consome o spec: card com 1–3 slots, encerramento com 3 essenciais + até 2
 extras, selo do km mais rápido só quando a receita pede e barra com todos os
-kms. O Story Studio (UI-01..UI-04/UI-08) e a prévia de 3 frames (VIS-06) estão
-prontos; VIS-05/ENC-07 acrescentaram o pôster 4:5, os três arquivos no
-MediaStore e o compartilhamento separado. Próximo: memória (ENC-08), receita
-no worker além do já encaminhado (ENC-05), MapLibre 13.7.1 OpenGL (Sprint B) e
-validação em aparelho (DEV-07/QA-06).
+kms. O Story Studio (UI-01..UI-04/UI-08), a prévia de 3 frames (VIS-06),
+VIS-05/ENC-07 (pôster 4:5, três arquivos no MediaStore e share separado) e
+MAP-01..MAP-03 (MapLibre 13.7.1 OpenGL + `pixelForLatLng` na produção) estão
+prontos. Próximo: MAP-04 (estilo autoral), MAP-05 (3 keyframes), memória
+(ENC-08), receita no worker além do já encaminhado (ENC-05) e DEV-07/QA-06.
 
-**Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com validação pendente em aparelho real.
+**Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026 e validado no S24 Ultra em 13/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com projeção nativa `pixelForLatLng` a partir do Sprint B.
 
 - [x] Planejador de rota, splits por km e timeline de 30 s.
 - [x] Renderer 9:16 com rota, progresso e card por km (pace + até 2 extras por km; calorias por km removidas).
@@ -553,7 +553,7 @@ validação em aparelho (DEV-07/QA-06).
 - [x] Mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) como background estático no vídeo (`ADR-0015`).
 - [x] Frame final (3 s) com as três essenciais (`distância`, `ritmo médio`, `tempo total`), até 2 extras e branding `MeuCoach` (`ADR-0015`, entrega 1; `ADR-0040` §2.1).
 - [x] `BoundingBox` geográfico no `StoryPlan` para o mapa (`ADR-0015`).
-- [ ] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`).
+- [x] Validar mapa, alinhamento e exportação em aparelho real (`ADR-0015`; S24 Ultra, 13/11/2026).
 - [x] Story v2 — Fase A: área segura do Instagram, câmera com zoom/rotação, film look, 30 fps e capa PNG (`docs/STORY_V2.md`).
 - [x] Story v2 — Fase B: rota colorida por zona e veredito do coach por km.
 - [x] Story v2 — câmera v2: flyover com follow do corredor, zoom por card, rotação pela direção da rota e pitch/yaw via homografia no mapa e na rota (`docs/STORY_V2.md` §12).
@@ -580,6 +580,11 @@ validação em aparelho (DEV-07/QA-06).
 - [x] Story V3 — VIS-09/ENC-03: copy antiga "pronta para o feed" removida e nomes com data/distância.
 - [x] Story V3 — QA-02: goldens do pôster em 5k dark/light e 10k dark, além dos goldens do Studio.
 - [x] Story V3 — DEV-06/QA-04: MP4 validado no S24 Ultra (1080×1920, 30 fps, BT.709/tv/limited, sem áudio/GPS); gates verdes.
+- [x] Story V3 — MAP-01: MapLibre `org.maplibre.gl:android-sdk-opengl:13.7.1` no version catalog e no build; AAR 15,9 MB, `minSdk 23`, `arm64-v8a`/`x86_64`; sem Vulkan obrigatório.
+- [x] Story V3 — MAP-02: `StoryMapSnapshot` com bitmap + `pixelForLatLng` da rota e início/fim; worker recebe os pixels exatos no PNG + sidecar `.route`; `StoryFrameRenderer` escala os pixels do snapshot.
+- [x] Story V3 — MAP-03: `StoryMapProjection` só fallback/teste; nenhum uso no caminho real do vídeo; teste de regressão garante que o renderer segue os pixels do snapshot.
+- [~] Story V3 — DEV-01: snapshot escuro em pitch 32°/42° validado no S24 Ultra; falta validar o estilo claro depois do MAP-04.
+- [x] Story V3 — DEV-02: rota alinhada às ruas no S24 Ultra; paridade port × SDK medida em 360 pontos (máx. 0,000244 px, média 6,95e-6/3,65e-6 px) — muito abaixo da meta de 2 px.
 - [~] Story V3 — QA-05/DEV-07: pôster 1080×1350 e share sheet validados no S24 Ultra; faltam grid do Instagram/upload real e mid-range 4 GB.
 - [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05) e memória (ENC-08) seguem pendentes.
 

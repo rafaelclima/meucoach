@@ -26,6 +26,7 @@
 > Revisão 1.23 (13/11/2026): FR-013 fatia 2 — RPE opcional no fechamento com corrida vinculada persiste em `session_executions.rpe`; `TrainingSignalSource` passa a alimentar Hoje, Tendências, tutorial e replanejamento com a mesma série (incluindo execuções manuais e o frescor dual). Sem migração.
 > Revisão 1.24 (13/11/2026): FR-013 concluído — fatia 3 fecha a superfície: nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade (mesmo sem alvo de esforço) e `R-LOAD-04`/dado ausente no sheet "Por que este treino?". Sem migração.
 > Revisão 1.26 (13/11/2026): ADR 0015 corrigido — o Google é bloqueio legal (não custo), o `MapSnapshot` expõe `pixelForLatLng`, o MapLibre 13.7.1 OpenGL é decisão pendente do Sprint B (não implementado) e satélite fica fora do MVP. Story V3 avançou em DOM-02..DOM-07: catálogo de métricas, receita/presets, timeline por esforço, 8 cards + barra com todos os kms, codec/store e `StoryRenderSpec`; o renderer já usa slots de 1–3 no card e 3+2 no encerramento.
+> Revisão 1.27 (13/11/2026): Sprint B MAP-01..MAP-03 — MapLibre `android-sdk-opengl:13.7.1`, `MapSnapshot.pixelForLatLng` no caminho de produção e port Kotlin apenas como fallback/teste; paridade port × SDK medida em 0,000244 px no S24 Ultra e story escuro validado. Sem ADR novo; addendum no ADR 0015.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -45,7 +46,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0012](adr/0012-story-video.md) | Story de treino ao ar livre (vídeo com animação do percurso) — planejamento com Canvas+MediaCodec | Substituído parcialmente por ADR-0015 | 31/10/2026 |
 | [0013](adr/0013-manual-session-swap.md) | Troca manual de sessões subordinada aos guardrails | Aceito | 31/10/2026 |
 | [0014](adr/0014-incremental-health-sync.md) | Sync incremental do Health Connect via WorkManager | Aceito | 31/10/2026 |
-| [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito — implementado; corrigido em 13/11/2026 (projeção do `MapSnapshot`, bloqueio legal do Google, satélite fora e MapLibre 13.7.1 OpenGL pendente); validação em aparelho pendente | 02/11/2026 |
+| [0015](adr/0015-story-video-map.md) | Mapa real (OSM + MapLibre) e frame final no story de treino | Aceito — implementado; addendum de 13/11/2026 aplicou MapLibre 13.7.1 OpenGL e `pixelForLatLng` na produção; smoke no S24 Ultra validado | 02/11/2026 |
 | [0016](adr/0016-daily-metrics-merge.md) | Mescla de métricas diárias por campo, com precedência de origem | Aceito | 03/11/2026 |
 | [0018](adr/0018-story-export-background.md) | Geração do story em segundo plano e cancelamento real | Aceito — implementado | 04/11/2026 |
 | [0019](adr/0019-story-camera-projection.md) | Câmera 3D real no snapshot do story (port da projeção do MapLibre) | Aceito — implementado | 04/11/2026 |

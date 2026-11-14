@@ -14,6 +14,7 @@ import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryIntroStore
+import com.meucoach.app.story.StoryMapSnapshot
 import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StoryRecipeStore
 import com.meucoach.app.story.StorySessionResolver
@@ -1040,19 +1041,20 @@ class ActivityDetailViewModelTest {
 
         override suspend fun render(
             boundingBox: BoundingBox,
+            route: List<com.meucoach.core.domain.story.StoryGeoPoint>,
             width: Int,
             height: Int,
             style: StoryMapStyle,
             pitchDegrees: Float,
             bearingDegrees: Float,
-        ): Bitmap {
+        ): StoryMapSnapshot {
             this.calls += 1
             this.bounds = boundingBox
             this.width = width
             this.height = height
             this.style = style
             error?.let { throw it }
-            return Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+            return StoryMapSnapshot(Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), emptyList())
         }
     }
 
@@ -1061,13 +1063,13 @@ class ActivityDetailViewModelTest {
         var startedActivityId: String? = null
         var startedRecipe: com.meucoach.core.domain.story.StoryRecipe? = null
         var startedPalette: StoryPalette? = null
-        var startedMap: Bitmap? = null
+        var startedMap: StoryMapSnapshot? = null
         var cancelledActivityId: String? = null
 
         override suspend fun start(
             activityId: String,
             recipe: com.meucoach.core.domain.story.StoryRecipe,
-            mapBackground: Bitmap?,
+            mapBackground: StoryMapSnapshot?,
             palette: StoryPalette,
             isCancelled: () -> Boolean,
         ) {

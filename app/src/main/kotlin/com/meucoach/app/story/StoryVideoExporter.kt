@@ -94,8 +94,8 @@ interface StoryVideoExporter {
         plan: StoryPlan,
         palette: StoryPalette,
         recipe: StoryRecipe = StoryRecipe(),
-        mapBackground: Bitmap? = null,
-        overviewMap: Bitmap? = null,
+        mapBackground: StoryMapSnapshot? = null,
+        overviewMap: StoryMapSnapshot? = null,
         isCancelled: () -> Boolean = { false },
         onProgress: suspend (progress: Float) -> Unit = {},
     ): StoryExportResult
@@ -118,6 +118,14 @@ interface StoryVideoExporter {
 }
 
 /**
+ * Immutable inputs shared by the video, cover and poster passes of one export.
+ */
+private data class StoryRenderJob(val plan: StoryPlan, val palette: StoryPalette, val recipe: StoryRecipe)
+
+/** Follow and overview snapshots, already carrying native route pixels. */
+private data class StoryMapSnapshots(val follow: StoryMapSnapshot?, val overview: StoryMapSnapshot?)
+
+/**
  * Canvas + MediaCodec MVP for the story video. The encoder uses Image input
  * (YUV420 flexible), so it does not need an EGL surface or a new dependency.
  * Devices whose H.264 encoder lacks that color format return a clear error.
@@ -137,8 +145,8 @@ class CanvasStoryVideoExporter @Inject constructor(
         plan: StoryPlan,
         palette: StoryPalette,
         recipe: StoryRecipe,
-        mapBackground: Bitmap?,
-        overviewMap: Bitmap?,
+        mapBackground: StoryMapSnapshot?,
+        overviewMap: StoryMapSnapshot?,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
     ): StoryExportResult {
@@ -151,11 +159,8 @@ class CanvasStoryVideoExporter @Inject constructor(
         return try {
             withContext(encoderThread) {
                 exportOnEncoderThread(
-                    plan,
-                    palette,
-                    recipe,
-                    mapBackground,
-                    overviewMap,
+                    StoryRenderJob(plan, palette, recipe),
+                    StoryMapSnapshots(mapBackground, overviewMap),
                     isCancelled,
                     onProgress,
                 )
@@ -166,33 +171,30 @@ class CanvasStoryVideoExporter @Inject constructor(
     }
 
     private suspend fun exportOnEncoderThread(
-        plan: StoryPlan,
-        palette: StoryPalette,
-        recipe: StoryRecipe,
-        mapBackground: Bitmap?,
-        overviewMap: Bitmap?,
+        renderJob: StoryRenderJob,
+        maps: StoryMapSnapshots,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
     ): StoryExportResult {
         // Cancellation must be polled synchronously: the encode loop never
         // suspends, so simply cancelling this coroutine would not stop it.
-        val job = requireNotNull(currentCoroutineContext()[Job]) { "Export precisa de um Job ativo." }
-        val cancelled = { !job.isActive }
+        val coroutineJob = requireNotNull(currentCoroutineContext()[Job]) { "Export precisa de um Job ativo." }
+        val cancelled = { !coroutineJob.isActive }
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
         val stamp = System.currentTimeMillis()
-        val output = File(directory, StoryFileNames.video(plan, stamp))
+        val output = File(directory, StoryFileNames.video(renderJob.plan, stamp))
         val avatar = runCatching {
             profiles.getProfile()?.avatarPath?.let { photos.load(it, maxSize = 256) }
         }.getOrNull()
         return try {
-            encode(plan, palette, recipe, mapBackground, overviewMap, output, cancelled, onProgress, avatar)
+            encode(renderJob, maps, output, cancelled, onProgress, avatar)
             val cover = runCatching {
-                writeCover(plan, palette, recipe, mapBackground, overviewMap, directory, stamp, avatar)
+                writeCover(renderJob, maps, directory, stamp, avatar)
             }.getOrNull()
             // The poster is an extra: a failure (or a plan without a route)
             // still leaves a completed video and cover.
             val poster = runCatching {
-                writePoster(plan, palette, recipe, directory, stamp)
+                writePoster(renderJob, directory, stamp)
             }.getOrNull()
             publish(output, cover, poster)
         } catch (error: Throwable) {
@@ -208,24 +210,28 @@ class CanvasStoryVideoExporter @Inject constructor(
      * frame with the same renderer guarantees the cover matches the video.
      */
     private fun writeCover(
-        plan: StoryPlan,
-        palette: StoryPalette,
-        recipe: StoryRecipe,
-        mapBackground: Bitmap?,
-        overviewMap: Bitmap?,
+        renderJob: StoryRenderJob,
+        maps: StoryMapSnapshots,
         directory: File,
         stamp: Long,
         avatar: Bitmap?,
     ): File {
-        val file = File(directory, StoryFileNames.cover(plan, stamp))
+        val file = File(directory, StoryFileNames.cover(renderJob.plan, stamp))
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         try {
-            val finalStart = plan.segments.lastOrNull { it.type == StorySegmentType.FINAL }?.startSec
-                ?: (plan.durationSec - 1f).coerceAtLeast(0f)
+            val finalStart = renderJob.plan.segments.lastOrNull { it.type == StorySegmentType.FINAL }?.startSec
+                ?: (renderJob.plan.durationSec - 1f).coerceAtLeast(0f)
             val timeSec = finalStart + 1f
             val canvas = Canvas(bitmap)
-            StoryFrameRenderer(palette, typeface, defaultLogoBitmap, mapBackground, avatar, overviewMap, recipe)
-                .render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
+            StoryFrameRenderer(
+                renderJob.palette,
+                typeface,
+                defaultLogoBitmap,
+                maps.follow,
+                avatar,
+                maps.overview,
+                renderJob.recipe,
+            ).render(canvas, renderJob.plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
             StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
             file.outputStream().use { output ->
                 check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
@@ -243,17 +249,12 @@ class CanvasStoryVideoExporter @Inject constructor(
      * poster failure never fails the export; [writePoster] returns null when
      * the renderer has no route or the PNG cannot be written.
      */
-    private fun writePoster(
-        plan: StoryPlan,
-        palette: StoryPalette,
-        recipe: StoryRecipe,
-        directory: File,
-        stamp: Long,
-    ): File? {
-        val file = File(directory, StoryFileNames.poster(plan, stamp))
+    private fun writePoster(renderJob: StoryRenderJob, directory: File, stamp: Long): File? {
+        val file = File(directory, StoryFileNames.poster(renderJob.plan, stamp))
         return try {
             val written = file.outputStream().use { output ->
-                StoryPosterRenderer(palette, typeface, defaultLogoBitmap).writePng(plan, recipe, output)
+                StoryPosterRenderer(renderJob.palette, typeface, defaultLogoBitmap)
+                    .writePng(renderJob.plan, renderJob.recipe, output)
             }
             if (written) {
                 file
@@ -268,11 +269,8 @@ class CanvasStoryVideoExporter @Inject constructor(
     }
 
     private suspend fun encode(
-        plan: StoryPlan,
-        palette: StoryPalette,
-        recipe: StoryRecipe,
-        mapBackground: Bitmap?,
-        overviewMap: Bitmap?,
+        renderJob: StoryRenderJob,
+        maps: StoryMapSnapshots,
         output: File,
         isCancelled: () -> Boolean,
         onProgress: suspend (progress: Float) -> Unit,
@@ -288,16 +286,16 @@ class CanvasStoryVideoExporter @Inject constructor(
         val bitmap = Bitmap.createBitmap(StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val renderer = StoryFrameRenderer(
-            palette,
+            renderJob.palette,
             typeface,
             defaultLogoBitmap,
-            mapBackground,
+            maps.follow,
             avatar,
-            overviewMap,
-            recipe,
+            maps.overview,
+            renderJob.recipe,
         )
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
-        val frameCount = (plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
+        val frameCount = (renderJob.plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
         val useSurface = supportsSurface(codecInfo)
         // Scratch planes are only needed by the fallback Image path.
         var pixels: IntArray? = null
@@ -373,7 +371,7 @@ class CanvasStoryVideoExporter @Inject constructor(
                     throw CancellationException("Geração do story cancelada.")
                 }
                 val timeSec = frame.toFloat() / FPS
-                renderer.render(canvas, plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
+                renderer.render(canvas, renderJob.plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
                 StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
                 val encoder = glEncoder
                 if (encoder != null) {

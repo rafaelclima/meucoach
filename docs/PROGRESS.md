@@ -1,6 +1,84 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 13/11/2026 (Story V3 Sprint A — atribuição do OpenStreetMap colada no canto inferior esquerdo, na borda do vídeo, por decisão explícita do usuário 0 (pode ficar sob a UI do Reels); card de volta a 62–78%; antes: VIS-05/ENC-07: pôster 4:5 em 1080×1350 com a rota como arte, capa 9:16 e pôster publicados em `Pictures/MeuCoach`, compartilhamento separado de vídeo/capa/pôster e falha do pôster sem derrubar o vídeo; validado no S24 Ultra (MP4 1080×1920/BT.709/sem áudio ou GPS e pôster 1080×1350); antes: Story Studio: UI-01..UI-04/UI-08 com essenciais fixas, extras ≤2 com motivo, presets, duração, mapa e “salvar como padrão”; prévia de 3 frames em 540×960 (VIS-06); card só abre o Studio e a geração usa a receita; goldens do Studio em dark/light e 0/2 extras; antes: domínio: D0.2/D0.3, `StoryRecipe` com 3 essenciais + até 2 extras, catálogo de métricas com motivo, timeline por esforço, 8 cards + barra com 10 km, codec/store e `StoryRenderSpec`; renderer com 1–3 slots no card e 3+2 no encerramento; antes: ADR 0040, safe area de Reels 13/22/5,5 com card em 62–78% e atribuição acima do card, encode BT.709/SDR/limited + H.264 High/4.1 condicional + 16 Mbps VBR, números tabulares e fim da legenda no card, e modelo puro do story em `core:domain/story`; antes: polimento U-01/U-02/U-03: fuso compartilhado com duas cidades-âncora — quem está em Natal não vê mais "Fortaleza" —, termos de saúde padronizados (`variabilidade cardíaca (HRV)` na primeira menção e `SpO₂`), check-in concluído em uma linha e confiança do plano contextualizada (`Plano · confiança baixa`); antes: FR-013 concluído: fatia 3 fechou a superfície do sRPE — nota "carga estimada pelo esforço que você sentiu" no card de carga, RPE registrado no detalhe da atividade mesmo sem alvo de esforço e `R-LOAD-04` + dado ausente no sheet "Por que este treino?"; antes: FR-013 fatia 2 concluída: RPE opcional no fechamento com corrida vinculada, persistido em `session_executions.rpe` sem migração, e `TrainingSignalSource` único alimentando Hoje, Tendências, tutorial e replanejamento com a mesma série de carga — incluindo execuções manuais e frescor dual; FR-013 fatia 1 — sRPE de Foster como 3º nível de carga (`TRIMP > rTSS > SRPE`) com a assimetria "subjetivo conserva, nunca acelera" — volume +6% e qualidade passam a exigir carga objetiva, `R-LOAD-04`, fonte dual de frescor, `daily-prescription-v5`/`weekly-plan-v5`, sem migração (ADR 0039); desenho do FR-013 aprovado pelo usuário 0 — documento D1–D9; gates de build concluídos: Detekt bloqueante com baseline por módulo em todos os módulos, Kover com gate em `core:data` (85%) e `:app` (78%) e fuzz leve determinístico do parser FIT — T-02/T-03/T-05; limite de 2 treinos fortes no plano concluído: o card do plano do Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto, sem jargão e sem número de regra na superfície; N-03 concluído: qualidade no taper e na duração agora deriva o bloco do tempo real, mantém o esforço e explica a redução sem jargão — `weekly-plan-v4`, sem migração; BUG-08 concluído: meta de prova sem data agora declara que não há redução de volume — `R-PLAN-11`, aviso no Perfil, linha no plano do Hoje e dado ausente na explicação, sem “taper” na UI; BUG-11 concluído: importação nunca fica presa — job terminal garantido, retry limitado a falhas transitórias, reconciliação de jobs interrompidos e notificação de falha sem job; FR-004/N-07 concluído: volume a partir do realizado com `R-PLAN-01`, base de 4 semanas, +6% e disponibilidade como teto, `weekly-plan-v3`, sem migração; gate visual estabilizado: gráficos Vico síncronos, 5 execuções completas verdes sob carga e sem golden regravado; C3-07 concluído: recuperação pós-prova com janela 2/3/5/10, `R-RACE-04`, sugestão de revisão e sem migração; D6-B concluído: previsão de prova por VDOT/Riegel, Room 17 e cards de prova; BUG-06 fatia 2 validada em dados reais; fatia 1: Tier B estima no domínio, ADR 0035; BUG-04 corrigido: HRV em espaço logarítmico; BUG-03 corrigido: PMC com burn-in de 180 dias; FR-011 concluído: revisão semanal determinística no domínio e no card de Tendências; FR-010, U-13, C3-06, C3-05, C3-G2/F4, C3-G1, C3-03/04, C3-02 e C3-01A/B incluídos)
+**Atualizado:** 13/11/2026 (Story V3 Sprint B — MAP-01..MAP-03: MapLibre `android-sdk-opengl:13.7.1`, `MapSnapshot.pixelForLatLng` no caminho de produção, port Kotlin só como fallback/teste, paridade medida no S24 Ultra e story escuro validado no aparelho; antes: Sprint A fechado com atribuição OSM no canto inferior esquerdo, pôster 4:5/capa 9:16 e Story Studio)
+
+## Sessão 2026-11-13 — Story V3 Sprint B: MapLibre 13.7.1 e projeção exata
+
+**Objetivo:** concluir MAP-01 (MapLibre 13.7.1 OpenGL), MAP-02 (projeção
+`pixelForLatLng`) e MAP-03 (aposentar o port Kotlin do caminho de produção),
+sem mexer em pôster, capa, share, layout do card ou posição da atribuição OSM.
+
+### Concluído
+
+- **MAP-01 — MapLibre 13.7.1 OpenGL:** `org.maplibre.gl:android-sdk-opengl`
+  substitui `android-sdk:12.3.1` no version catalog. AAR de 15,9 MB, `minSdk 23`,
+  `arm64-v8a`/`x86_64` (e `armeabi-v7a`); `libmaplibre.so` arm64 com 11,0 MB.
+  O flavor é OpenGL, sem Vulkan obrigatório. `MapLibre.getInstance`,
+  `MapSnapshotter`, `CameraPosition`, `Style` e `MapSnapshot.pixelForLatLng`
+  mantiveram a API usada pelo app.
+- **MAP-02 — `StoryMapSnapshot`:** o `MapBackgroundRenderer` agora recebe a
+  rota amostrada e devolve o bitmap + os pixels exatos de
+  `MapSnapshot.pixelForLatLng`, com início/fim. O `StoryFrameRenderer` escala
+  esses pixels para o frame em vez de reprojetar a geografia. O staging da
+  prévia grava PNG + sidecar `.route`; o worker lê os dois e, se o sidecar
+  faltar ou estiver corrompido, renderiza um snapshot novo em vez de adivinhar.
+  O staging é apagado ao fim do export.
+- **MAP-03 — port aposentado:** `StoryMapProjection` não é chamado no caminho
+  real do vídeo; permanece como fallback documentado da prévia sem mapa e dos
+  testes. `StoryFrameRendererTest` prova que mudar apenas `routePixels` muda o
+  frame, e `StoryExportProcessorTest` garante que os pixels nativos do staging
+  chegam ao exporter.
+- **Câmera:** `StoryMapCameraCalculator.calculateForStory` passou a usar
+  `StoryMapFit` internamente; a matriz de projeção em si não mudou, então os
+  goldens de story continuaram idênticos.
+- **ADR 0015:** addendum novo registra contrato, paridade e smoke; a decisão
+  pendente de versão foi atualizada para “13.7.1 aplicado”.
+
+### Testes
+
+- 1.698 testes, 0 falhas e 0 `@Ignore` (+8 desta sessão: 4 do store, 1 do
+  renderer e 3 do processor/staging).
+- `:app`: 78,443% de linhas (gate ≥78%); `core:domain`: 97,20% (gate ≥85%);
+  parser FIT: 93,01%.
+- `check`, `spotlessCheck`, `koverVerify`, detekt e lint verdes.
+- `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest"` verde; nenhum
+  golden existente regravado. `StoryFrameScreenshotTest` e
+  `StoryFrameRendererTest` também verdes.
+- `:app:dependencyInsight` confirma `android-sdk-opengl:13.7.1` e dependências
+  transitivas (`android-sdk-geojson`, `android-sdk-turf`, gestures) sem
+  dependência nova além da troca do MapLibre.
+
+### Validação no aparelho (S24 Ultra, SM-S928B)
+
+- Story escuro gerado a partir da corrida real de 4,22 km; MP4 final:
+  1080×1920, 30 fps, H.264, `bt709`/`tv`/`limited`, 39,7 MB. Frame extraído
+  mostra labels legíveis, rota alinhada às ruas e atribuição OSM no canto
+  inferior esquerdo.
+- **Paridade port × SDK medida no aparelho:** 360 pontos, pitch 42° (follow) e
+  32° (overview). Diferença máxima de **0,000244 px**; médias de **6,95e-6 px**
+  e **3,65e-6 px**. Meta era ≤2 px.
+- `logcat` sem crash nativo crítico de MapLibre/EGL; o aviso
+  `libEGL: call to OpenGL ES API with no current context` apareceu uma vez por
+  thread e não impediu o snapshot.
+- Cache `cache/stories` sem `story-map-*.png`/`.route` depois do export.
+
+### Decisões e observações
+
+- O sidecar `.route` evita colocar pixels no `Data` do WorkManager e preserva a
+  matriz exata do snapshot da prévia; um sidecar inválido degrada para um novo
+  render, nunca para uma rota aproximada.
+- `StoryFrameRenderer` ainda usa o port quando não há snapshot (prévia do Story
+  Studio e testes). Isso é fallback explícito, não o fluxo do vídeo.
+- Nenhuma migração de Room, nenhum dado real no diff e nenhuma mudança em
+  pôster, capa, share ou layout.
+
+### Próximo passo
+
+1. **MAP-04** — estilo `MeuCoach Dark`/`Light` autoral e legibilidade dos labels.
+2. **MAP-05** — 3 keyframes de câmera (abertura/follow/final) sobre a projeção
+   já estável.
+3. **DEV-01** — validar o snapshot no estilo claro depois do MAP-04.
+4. **Feedback do usuário 0** no S24 Ultra antes de avançar para MAP-06/ENC-04.
 
 ## Sessão 2026-11-13 — Story V3 Sprint A: atribuição OSM no canto inferior esquerdo
 
@@ -4369,3 +4447,5 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 04/11/2026 | Story com câmera 3D real: projeção do MapLibre portada para Kotlin, snapshot inclinado e rota alinhada (ADR 0019); 778 testes |
 | 04/11/2026 | Story: abertura com overview 32° → follow 42° sob fade-in de 0,6 s (sem corte visível); 778 testes |
 | 06/11/2026 | C1-02 concluído: cobertura/frescor de carga, ACWR desconhecido não libera qualidade, gate no plano/recomendador e UI explícita; 924 testes |
+| 13/11/2026 | Story V3 Sprint A concluído: Story Studio, prévia de 3 frames, pôster 4:5, share dos três arquivos e atribuição OSM no canto inferior esquerdo; 1.690 testes |
+| 13/11/2026 | Story V3 Sprint B MAP-01..MAP-03: MapLibre 13.7.1 OpenGL, projeção `pixelForLatLng` na produção, port Kotlin como fallback e paridade de 0,000244 px no S24 Ultra; 1.698 testes |

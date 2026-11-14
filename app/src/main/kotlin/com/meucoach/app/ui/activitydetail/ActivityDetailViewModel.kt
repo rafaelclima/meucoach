@@ -309,6 +309,7 @@ class ActivityDetailViewModel @Inject constructor(
                     withTimeoutOrNull(StoryMessages.MAP_TIMEOUT_MS) {
                         mapRenderer.render(
                             bounds,
+                            plan.geoPoints,
                             StoryVideoExporter.mapWidth(),
                             StoryVideoExporter.mapHeight(),
                             studio.recipe.mapStyle,

@@ -52,9 +52,9 @@ class StoryFrameRenderer(
     private val palette: StoryPalette,
     private val typeface: Typeface,
     private val logoBitmap: Bitmap? = null,
-    private val mapBackground: Bitmap? = null,
+    private val mapBackground: StoryMapSnapshot? = null,
     private val avatarBitmap: Bitmap? = null,
-    private val overviewMap: Bitmap? = null,
+    private val overviewMap: StoryMapSnapshot? = null,
     private val recipe: StoryRecipe = StoryRecipe(),
 ) {
     private var cachedSpec: StoryRenderSpec? = null
@@ -93,24 +93,6 @@ class StoryFrameRenderer(
         val isFinal = segment?.type == StorySegmentType.FINAL
         val square = StoryLayout.routeSquare(width.toFloat(), height.toFloat())
         val camera = StoryMotion.camera(timeSec, plan)
-        val followCamera = plan.boundingBox?.let {
-            StoryMapCameraCalculator.calculateForStory(
-                it,
-                width,
-                height,
-                pitchDegrees = StoryMapScript.FOLLOW_PITCH_DEGREES,
-            )
-        }
-        val followProjection = followCamera?.let { StoryMapProjection(it, width, height) }
-        val overviewCamera = plan.boundingBox?.let {
-            StoryMapCameraCalculator.calculateForStory(
-                it,
-                width,
-                height,
-                pitchDegrees = StoryMapScript.OVERVIEW_PITCH_DEGREES,
-            )
-        }
-        val overviewProjection = overviewCamera?.let { StoryMapProjection(it, width, height) }
         val cameraMatrix = StoryPerspective.cameraMatrix(
             camera,
             square,
@@ -118,6 +100,8 @@ class StoryFrameRenderer(
             height.toFloat(),
             nativeTilt = true,
         )
+        val overlayScale = scale / (camera.scale * StoryPerspective.COVERAGE_SCALE).coerceAtLeast(0.01f)
+        val followRoute = routeSource(plan, mapBackground, width, height, square, mapBackground != null)
         val spec = specFor(plan)
         val highlights = spec.highlights
         val followBlend = if (overviewMap != null) StoryMapScript.followBlend(timeSec) else 1f
@@ -125,16 +109,16 @@ class StoryFrameRenderer(
         canvas.drawColor(palette.background)
         var overviewPosition: FloatArray? = null
         if (overviewMap != null && followBlend < 1f) {
+            val overviewRoute = routeSource(plan, overviewMap, width, height, square, hasMap = true)
             withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, overviewMap, alpha = 1f)
+                drawMapLayer(canvas, width, height, overviewMap.bitmap, alpha = 1f)
                 overviewPosition = drawRoute(
                     canvas,
                     plan,
                     timeSec,
-                    scale,
                     square,
-                    camera.scale * StoryPerspective.COVERAGE_SCALE,
-                    overviewProjection,
+                    overlayScale,
+                    overviewRoute,
                     alpha = 1f,
                 )
             }
@@ -142,15 +126,14 @@ class StoryFrameRenderer(
         var followPosition: FloatArray? = null
         if (followBlend >= 1f) {
             withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, mapBackground, alpha = 1f)
+                drawMapLayer(canvas, width, height, mapBackground?.bitmap, alpha = 1f)
                 followPosition = drawRoute(
                     canvas,
                     plan,
                     timeSec,
-                    scale,
                     square,
-                    camera.scale * StoryPerspective.COVERAGE_SCALE,
-                    followProjection,
+                    overlayScale,
+                    followRoute,
                     alpha = 1f,
                 )
             }
@@ -159,15 +142,14 @@ class StoryFrameRenderer(
             // overview without the double exposure of a map crossfade.
             val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
             withCamera(canvas, cameraMatrix) {
-                drawMapLayer(canvas, width, height, mapBackground, alpha = 1f)
+                drawMapLayer(canvas, width, height, mapBackground?.bitmap, alpha = 1f)
                 followPosition = drawRoute(
                     canvas,
                     plan,
                     timeSec,
-                    scale,
                     square,
-                    camera.scale * StoryPerspective.COVERAGE_SCALE,
-                    followProjection,
+                    overlayScale,
+                    followRoute,
                     alpha = 1f,
                 )
             }
@@ -373,40 +355,17 @@ class StoryFrameRenderer(
         canvas: Canvas,
         plan: StoryPlan,
         timeSec: Float,
-        scale: Float,
         square: StoryLayout.RouteSquare,
-        cameraScale: Float,
-        projection: StoryMapProjection?,
+        overlayScale: Float,
+        route: StoryRouteSource,
         alpha: Float,
     ): FloatArray? {
         if (alpha <= 0f) return null
         fun a(base: Int): Int = (base * alpha).toInt().coerceIn(0, 255)
         val side = square.side
-        // Keep the route, markers and glow at a stable screen size while the
-        // map itself flies in and out under the camera.
-        val overlayScale = scale / cameraScale.coerceAtLeast(0.01f)
-        val geo = plan.geoPoints
-        val projected = projection != null && geo.size >= 2
-        fun normalizedX(x: Float): Float = if (mapBackground == null) {
-            square.left + x * side
-        } else {
-            square.centerX + (x - 0.5f) * side
-        }
-        fun normalizedY(y: Float): Float = if (mapBackground == null) {
-            square.top + y * side
-        } else {
-            square.centerY + (y - 0.5f) * side
-        }
-        fun vertexPoint(index: Int): FloatArray = if (projected) {
-            projection!!.project(geo[index].latitude, geo[index].longitude)
-        } else {
-            val point = plan.route.points[index]
-            floatArrayOf(normalizedX(point.x), normalizedY(point.y))
-        }
         val routePath = Path()
-        val vertexCount = if (projected) geo.size else plan.route.points.size
-        for (index in 0 until vertexCount) {
-            val point = vertexPoint(index)
+        for (index in 0 until route.size) {
+            val point = route.pointAt(index)
             if (index == 0) routePath.moveTo(point[0], point[1]) else routePath.lineTo(point[0], point[1])
         }
         val measure = PathMeasure(routePath, false)
@@ -415,8 +374,8 @@ class StoryFrameRenderer(
         measure.getPosTan(measure.length * progress, position, null)
         // Directional light around the runner: the map recedes and the eye
         // follows the route instead of scanning the whole snapshot.
-        drawSpotlight(canvas, position[0], position[1], side, alpha)
-        if (mapBackground != null) {
+        if (route.hasMap) drawSpotlight(canvas, position[0], position[1], side, alpha)
+        if (route.hasMap) {
             val casing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
                 strokeWidth = 19f * overlayScale
@@ -432,8 +391,8 @@ class StoryFrameRenderer(
             strokeWidth = 10f * overlayScale
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
-            color = if (mapBackground != null) palette.mapBaseRoute else palette.border
-            this.alpha = a(if (mapBackground != null) 240 else 255)
+            color = if (route.hasMap) palette.mapBaseRoute else palette.border
+            this.alpha = a(if (route.hasMap) 240 else 255)
         }
         canvas.drawPath(routePath, base)
 
@@ -454,9 +413,9 @@ class StoryFrameRenderer(
             )
         }
 
-        val start = vertexPoint(0)
-        val end = vertexPoint(vertexCount - 1)
-        if (mapBackground != null) {
+        val start = route.start
+        val end = route.end
+        if (route.hasMap) {
             val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = palette.mapCasing
                 this.alpha = a(210)
@@ -478,6 +437,93 @@ class StoryFrameRenderer(
         )
 
         return floatArrayOf(position[0], position[1])
+    }
+
+    /**
+     * Route vertices already in frame coordinates. A real snapshot supplies the
+     * native `pixelForLatLng` pixels; the pure projection is only used by the
+     * map-less preview/test fallback (MAP-02/MAP-03).
+     */
+    private fun routeSource(
+        plan: StoryPlan,
+        snapshot: StoryMapSnapshot?,
+        width: Int,
+        height: Int,
+        square: StoryLayout.RouteSquare,
+        hasMap: Boolean,
+    ): StoryRouteSource {
+        val routePixels = snapshot?.routePixels?.takeIf { it.size >= 2 }
+        // The pure port is only reachable when the renderer has no snapshot;
+        // a production snapshot never falls back to it (MAP-03).
+        val fallbackProjection = if (snapshot == null) fallbackProjection(plan, width, height) else null
+        val scaleX = if (routePixels != null) width.toFloat() / snapshot.bitmap.width else 1f
+        val scaleY = if (routePixels != null) height.toFloat() / snapshot.bitmap.height else 1f
+        fun normalizedX(x: Float): Float = if (!hasMap) {
+            square.left + x * square.side
+        } else {
+            square.centerX + (x - 0.5f) * square.side
+        }
+        fun normalizedY(y: Float): Float = if (!hasMap) {
+            square.top + y * square.side
+        } else {
+            square.centerY + (y - 0.5f) * square.side
+        }
+        fun pointAt(index: Int): FloatArray = when {
+            routePixels != null -> {
+                val point = routePixels[index]
+                floatArrayOf(point.x * scaleX, point.y * scaleY)
+            }
+
+            fallbackProjection != null -> {
+                val point = plan.geoPoints[index]
+                fallbackProjection.project(point.latitude, point.longitude)
+            }
+
+            else -> {
+                val point = plan.route.points[index]
+                floatArrayOf(normalizedX(point.x), normalizedY(point.y))
+            }
+        }
+        val size = when {
+            routePixels != null -> routePixels.size
+            fallbackProjection != null -> plan.geoPoints.size
+            else -> plan.route.points.size
+        }
+        require(size > 0) { "A rota do story precisa de pelo menos um ponto." }
+        val start = snapshot?.startPixel?.let { floatArrayOf(it.x * scaleX, it.y * scaleY) } ?: pointAt(0)
+        val end = snapshot?.endPixel?.let { floatArrayOf(it.x * scaleX, it.y * scaleY) } ?: pointAt(size - 1)
+        return StoryRouteSource(
+            size = size,
+            hasMap = hasMap,
+            start = start,
+            end = end,
+            point = ::pointAt,
+        )
+    }
+
+    private fun fallbackProjection(plan: StoryPlan, width: Int, height: Int): StoryMapProjection? {
+        val bounds = plan.boundingBox ?: return null
+        if (plan.geoPoints.size < 2) return null
+        return StoryMapProjection(
+            StoryMapCameraCalculator.calculateForStory(
+                bounds,
+                width,
+                height,
+                pitchDegrees = StoryMapScript.FOLLOW_PITCH_DEGREES,
+            ),
+            width,
+            height,
+        )
+    }
+
+    private class StoryRouteSource(
+        val size: Int,
+        val hasMap: Boolean,
+        val start: FloatArray,
+        val end: FloatArray,
+        private val point: (Int) -> FloatArray,
+    ) {
+        fun pointAt(index: Int): FloatArray = point(index)
     }
 
     /** Paints the traveled part of the route with the zone measured on that stretch. */
