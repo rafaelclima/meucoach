@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.47 · **Data:** 13/11/2026 · **Mudança:** Story V3 Sprint A — pôster 4:5 (VIS-05) em 1080×1350 com a rota como arte, capa 9:16 e pôster publicados em `Pictures/MeuCoach`, compartilhamento separado de vídeo/capa/pôster (ENC-07) e falha do pôster sem derrubar o vídeo. MP4 e pôster validados no S24 Ultra (1080×1920/1080×1350, BT.709/tv/limited, sem áudio/GPS). A versão 1.46 registrou o Story Studio (UI-01..UI-04, UI-08), a prévia de 3 frames (VIS-06) e a geração a partir da receita.
+**Versão:** 1.48 · **Data:** 13/11/2026 · **Mudança:** atribuição do OpenStreetMap fixada no canto inferior esquerdo, na borda do vídeo, por decisão explícita do usuário 0 (pode ficar sob a UI do Reels), com o card de volta a 62–78%. A versão 1.47 registrou o pôster 4:5 (VIS-05), a capa 9:16, o compartilhamento separado (ENC-07), a falha do pôster sem derrubar o vídeo e a validação do MP4/pôster no S24 Ultra.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -528,8 +528,8 @@ Sem migração.
 **Story V3 — Sprint A (Etapa 1, em andamento desde 13/11/2026):** plano em
 `docs/STORY_V3_PLANO_DE_ACAO.md` e decisão em `docs/adr/0040-story-v3-recipe-and-map.md`.
 Concluído: D0.1 (ADR 0040), D0.2 (correção do ADR 0015), D0.3 (banners de
-decisão), VIS-01 (safe area de Reels 13/22/5,5, card 62–78%, atribuição acima
-do card), ENC-01 (BT.709/SDR/limited, H.264 High/4.1 condicional e 16 Mbps
+decisão), VIS-01 (safe area de Reels 13/22/5,5, card 62–78%, atribuição no
+canto inferior esquerdo), ENC-01 (BT.709/SDR/limited, H.264 High/4.1 condicional e 16 Mbps
 VBR), VIS-02 parcial (`tnum` e fim da legenda), DOM-01 (modelo puro em
 `core:domain/story`) e DOM-02..DOM-07 (catálogo de métricas, receita/presets,
 timeline por esforço, seleção de cards, codec/store e render spec). O renderer
@@ -562,7 +562,7 @@ validação em aparelho (DEV-07/QA-06).
 - [x] Story V3 — D0.1: ADR 0040 com receita, métricas, mapa, safe area e encode.
 - [x] Story V3 — D0.2: ADR 0015 corrigido (bloqueio legal do Google, `pixelForLatLng`, satélite fora e MapLibre 13.7.1 OpenGL pendente do Sprint B).
 - [x] Story V3 — D0.3: banners de decisão na análise V3 e no STORY_V2.
-- [x] Story V3 — VIS-01: safe area de Reels 13/22/5,5, card 62–78% e atribuição acima do card.
+- [x] Story V3 — VIS-01: safe area de Reels 13/22/5,5, card 62–78% e atribuição colada no canto inferior esquerdo, fora da safe area por decisão do produto.
 - [x] Story V3 — ENC-01: BT.709/SDR/limited, H.264 High/4.1 condicional e 16 Mbps VBR.
 - [x] Story V3 — VIS-02 parcial: números tabulares (`tnum`) e remoção da legenda do card.
 - [x] Story V3 — DOM-01: modelo puro do story em `core:domain/story`.

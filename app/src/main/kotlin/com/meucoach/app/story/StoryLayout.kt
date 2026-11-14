@@ -5,9 +5,10 @@ package com.meucoach.app.story
  *
  * Instagram Stories cover roughly 13% of a 1080×1920 video at the top and at
  * the bottom with its own UI, but Reels covers ~420 px (22%) at the bottom and
- * TikTok reaches ~484 px. Every anchored element (header, route square, card,
- * attribution) is positioned from these fractions so the brand, the numbers
- * and the map attribution stay visible after posting.
+ * TikTok reaches ~484 px. The header, route square and card are positioned from
+ * these fractions so the brand and the numbers stay visible after posting.
+ * The OSM attribution is the exception: it stays pinned to the bottom-left
+ * corner by product decision, even if the platform UI covers it.
  *
  * Positions are fractions of the frame height; horizontal margins scale with
  * the width, like the text sizes in [StoryFrameRenderer].
@@ -34,8 +35,13 @@ object StoryLayout {
     private const val CARD_TOP = 0.62f
     private const val CARD_BOTTOM = 0.78f
 
-    /** Attribution sits in the gap above the card, never under the Reels UI. */
-    private const val ATTRIBUTION_GAP = 10f / REFERENCE_HEIGHT
+    /**
+     * OSM attribution is pinned to the bottom-left edge on purpose. The user 0
+     * accepted that it may sit under the Reels/TikTok UI; keeping the legal
+     * credit at the very corner is the product decision for this format.
+     */
+    private const val ATTRIBUTION_SIDE_INSET = 12f / FRAME_WIDTH
+    private const val ATTRIBUTION_BOTTOM_INSET = 14f / REFERENCE_HEIGHT
 
     fun safeTop(height: Float): Float = height * SAFE_TOP_FRACTION
     fun safeBottom(height: Float): Float = height * SAFE_BOTTOM_FRACTION
@@ -53,7 +59,11 @@ object StoryLayout {
     fun cardTop(height: Float): Float = height * CARD_TOP
     fun cardBottom(height: Float): Float = height * CARD_BOTTOM
 
-    fun attributionBaseline(height: Float): Float = height * (CARD_TOP - ATTRIBUTION_GAP)
+    /** Horizontal start of the badge, tight to the left edge. */
+    fun attributionLeft(width: Float): Float = width * ATTRIBUTION_SIDE_INSET
+
+    /** Baseline of the badge, tight to the bottom edge. */
+    fun attributionBaseline(height: Float): Float = height * (1f - ATTRIBUTION_BOTTOM_INSET)
 
     /** Square where the route is projected and where the map camera centres the bounds. */
     data class RouteSquare(val left: Float, val top: Float, val side: Float) {

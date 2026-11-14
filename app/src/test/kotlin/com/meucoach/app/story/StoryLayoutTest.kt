@@ -32,10 +32,11 @@ class StoryLayoutTest {
     }
 
     @Test
-    fun `attribution stays above the card instead of the reels footer`() {
-        assertThat(StoryLayout.attributionBaseline(height)).isLessThan(StoryLayout.cardTop(height))
-        assertThat(StoryLayout.attributionBaseline(height)).isGreaterThan(StoryLayout.routeTop(height))
-        assertThat(StoryLayout.attributionBaseline(height)).isLessThan(StoryLayout.safeBottom(height))
+    fun `attribution is pinned to the bottom left corner`() {
+        assertThat(StoryLayout.attributionBaseline(height)).isCloseTo(height - 21f, within(0.1f))
+        assertThat(StoryLayout.attributionBaseline(height)).isGreaterThan(StoryLayout.safeBottom(height))
+        assertThat(StoryLayout.attributionLeft(width)).isCloseTo(18f, within(0.1f))
+        assertThat(StoryLayout.attributionLeft(width)).isLessThan(StoryLayout.margin(width))
     }
 
     @Test

@@ -45,7 +45,8 @@ cobre ~420 px na base e o TikTok chega a ~484 px. O card termina em 84%
 
 **Implicação:** o safe area é pré-requisito de qualidade, não polish. O novo
 layout usa **13% topo / 22% base / 5,5% lados**, card em **62–78%** e atribuição
-dentro do card.
+colada no canto inferior esquerdo, na borda do vídeo (fora da safe area por
+decisão do produto).
 
 ### 2.2 O MapLibre já expõe a projeção exata
 
@@ -202,8 +203,8 @@ contador fica “1/2” e a métrica ausente aparece desabilitada com o motivo.
 - Base segura: 22% (≈422 px).
 - Lados: 5,5% (≈59 px).
 - Card: 62%–78%.
-- Atribuição do mapa: dentro do card (rodapé) ou acima dele; nunca abaixo de
-  78%.
+- Atribuição do mapa: canto inferior esquerdo, na borda. Pode ficar sob a UI
+  do Reels/TikTok; a posição fora da safe area é decisão explícita do produto.
 - Header: distância à esquerda, tempo total à direita; logo no topo.
 - Rota: moldura entre 26% e 76%, recalculada para o card novo.
 - Encerramento: 3 essenciais + 2 extras; manchete; prova; logo/tagline.
@@ -489,7 +490,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 
 | ID | Tarefa | Entrega | Arquivos | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|---|
-| [x] VIS-01 | Safe area Reels + layout 9:16 | 13% topo/22% base/5,5% lados; card 62–78%; atribuição acima do card (nunca abaixo de 78%) | `StoryLayout.kt`, testes | — | P | Card/atribuição acima de 78%; golden novo |
+| [x] VIS-01 | Safe area Reels + layout 9:16 | 13% topo/22% base/5,5% lados; card 62–78%; atribuição no canto inferior esquerdo, fora da safe area por decisão do produto | `StoryLayout.kt`, testes | — | P | Card acima de 78%; atribuição na borda; golden novo |
 | [x] VIS-02 | Slots dinâmicos de métricas | Header 2, card 1–3, final 3+2; tabular numerals; sem legenda | `StoryFrameRenderer.kt` | DOM-07 | G | 0/1/2 extras sem overflow; `tnum` |
 | [x] VIS-03 | Card por km | Ritmo + extras por km; “KM 3 · 5:02”; selo quando `FASTEST_KM`; barra com todos os kms | `StoryFrameRenderer.kt` | VIS-02, DOM-05 | G | Sem calorias/km; 10 km → 10 segmentos |
 | [x] VIS-04 | Encerramento | 3 essenciais + 2 extras; manchete/prova; logo/tagline | `StoryFrameRenderer.kt` | VIS-02 | M | 3 essenciais sempre; 2 extras quando escolhidos |
@@ -705,7 +706,8 @@ O MVP está pronto quando **todos** forem verdade:
 - 4:5 poster: 5k e 10k.
 - Card: 1, 2 e 3 métricas; com e sem selo de km mais rápido.
 - Final: 3, 4 e 5 métricas.
-- Safe area: card/atribuição acima de 78%.
+- Safe area: card acima de 78%; atribuição no canto inferior esquerdo, na
+  borda, por decisão do produto.
 - Studio: idle, 0/2, 2/2, erro, gerando.
 
 ### 8.3 Worker/UI
@@ -774,7 +776,8 @@ O MVP está pronto quando **todos** forem verdade:
 **Objetivo:** ver o efeito no aparelho antes de mexer na arquitetura.
 
 1. `D0.1` — criar ADR 0040 com as decisões deste documento.
-2. `VIS-01` — safe area 13/22/5,5; card 62–78%; atribuição no card.
+2. `VIS-01` — safe area 13/22/5,5; card 62–78%; atribuição no canto inferior
+   esquerdo.
 3. `ENC-01` — BT.709/SDR/limited, High/4.1, 16 Mbps VBR.
 4. `VIS-02` (parcial) — `fontFeatureSettings = "tnum"` e remover a legenda.
 5. Rodar `./gradlew :app:assembleDebug :app:verifyRoborazziDebug`.
@@ -866,7 +869,8 @@ Decisões já tomadas (não reabrir):
 
 Comece por:
 1. D0.1 — ADR 0040 com as decisões deste plano.
-2. VIS-01 — safe area de Reels, card 62–78%, atribuição dentro do card.
+2. VIS-01 — safe area de Reels, card 62–78%, atribuição no canto inferior
+   esquerdo.
 3. ENC-01 — BT.709/SDR/limited, High/4.1, 16 Mbps VBR.
 4. VIS-02 (parcial) — tabular numerals e remoção da legenda do card.
 5. DOM-01 — mover o modelo puro para core:domain/story.

@@ -291,9 +291,9 @@ class StoryFrameRenderer(
         drawGradient(
             canvas = canvas,
             width = width,
-            // Start where the card ends so the Reels-safe footer fades from
-            // the card instead of showing a brighter band below it.
-            top = height * 0.78f,
+            // Start where the card ends so the attribution sits on the dark
+            // footer instead of on a brighter band below the panel.
+            top = StoryLayout.cardBottom(height.toFloat()),
             bottom = height.toFloat(),
             edgeAlpha = if (dimmed) 210 else 200,
             fadeOut = false,
@@ -898,15 +898,15 @@ class StoryFrameRenderer(
         }
         val attribution = paint(palette.textSecondary, 13f * scale)
         attribution.alpha = 220
-        val margin = StoryLayout.margin(width.toFloat())
+        val left = StoryLayout.attributionLeft(width.toFloat())
         val baseline = StoryLayout.attributionBaseline(height.toFloat())
         val textWidth = attribution.measureText(text)
         val paddingH = 8f * scale
         val paddingV = 5f * scale
         val backdrop = RectF(
-            margin - paddingH,
+            left - paddingH,
             baseline - attribution.textSize - paddingV,
-            margin + textWidth + paddingH,
+            left + textWidth + paddingH,
             baseline + paddingV,
         )
         canvas.drawRoundRect(
@@ -918,7 +918,7 @@ class StoryFrameRenderer(
                 alpha = 175
             },
         )
-        canvas.drawText(text, margin, baseline, attribution)
+        canvas.drawText(text, left, baseline, attribution)
     }
 
     private fun drawVignette(canvas: Canvas, width: Int, height: Int) {

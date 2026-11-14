@@ -115,8 +115,9 @@ nitidez do mapa e safe area.
 
 - **Safe area:** 13% topo, **22% base**, 5,5% lados.
 - **Card:** 62%–78% da altura.
-- **Atribuição do mapa:** dentro do card (rodapé) ou imediatamente acima dele;
-  nunca abaixo de 78%.
+- **Atribuição do mapa:** colada no canto inferior esquerdo, na borda do vídeo.
+  Por decisão explícita do produto, ela pode ficar sob a UI do Reels/TikTok e
+  fora da área segura.
 - **Header:** distância à esquerda, tempo total à direita, dentro do topo
   seguro.
 - **Rota:** moldura entre 26% e 76%, recalculada para o card novo.
@@ -130,6 +131,12 @@ nitidez do mapa e safe area.
   (`ACTION_SEND`), sem `ACTION_SEND_MULTIPLE`: a maioria dos destinos escolhe
   um tipo por vez e um envio conjunto prometeria o que o app não entrega.
   Falha do pôster não invalida o vídeo; sem rota, o pôster é `null`.
+
+> **Revisão de 13/11/2026:** feedback do usuário 0 no S24 Ultra. A atribuição
+> do OpenStreetMap foi fixada no **canto inferior esquerdo, na borda do
+> vídeo**, fora da área segura por decisão explícita do produto; o card voltou
+> a **62–78%**. A regra anterior de manter a atribuição acima de 78% deixa de
+> valer para o Story V3.
 
 ### 2.7 Números tabulares e card sem legenda
 
@@ -206,15 +213,16 @@ das Etapas 1 + 2 e de validação em aparelho.
 Ordem do Sprint A (Etapa 1):
 
 1. `D0.1` — este ADR e o índice em `DECISIONS.md`.
-2. `VIS-01` — safe area 13/22/5,5; card 62–78%; atribuição acima de 78%.
+2. `VIS-01` — safe area 13/22/5,5; card 62–78%; atribuição no canto inferior
+   esquerdo, fora da safe area por decisão do produto.
 3. `ENC-01` — BT.709/SDR/limited, High/4.1 condicional, 16 Mbps VBR.
 4. `VIS-02` (parcial) — `tnum` nos textos e remoção da legenda do card.
 5. `DOM-01` — modelo puro em `core:domain/story`.
 
 Aceite do Sprint A: `:app:assembleDebug`, `check`, `spotlessCheck` e
-`koverVerify` verdes; goldens do story regravados e revisados; card e
-atribuição acima de 78%; nenhuma trilha de áudio, nenhum GPS e nenhum dado
-real de saúde no diff.
+`koverVerify` verdes; goldens do story regravados e revisados; card acima de
+78% e atribuição no canto inferior esquerdo por decisão do produto; nenhuma
+trilha de áudio, nenhum GPS e nenhum dado real de saúde no diff.
 
 ## 6. Referências
 
