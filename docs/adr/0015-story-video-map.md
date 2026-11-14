@@ -419,3 +419,17 @@ Este addendum fecha MAP-01..MAP-03 do Sprint B. A contingência de rollback para
   +2% de altura para cima (`StoryLayout.finalCardTop`, fundo segue em 78%) e
   fileiras reespaçadas; golden `story-final-two-extras-dark.png` regravado e
   revisado. Falta o usuário regenerar no aparelho para confirmar.
+
+## Addendum — 2026-11-14: cache por variante e stage dos bookends (MAP-06/ENC-04 fatia 2)
+
+- **Variante:** `cache/stories/<activityId>/<variantHash>/` com `follow.jpg`,
+  `opening.jpg`, `final.jpg` (JPEG 95 + sidecar `.route`) e `manifest.json`
+  (`StoryMapVariant`). O hash cobre estilo, keyframes, resolução e os pixels
+  da rota: trocar extras/duração não invalida o mapa.
+- **Fluxo:** o coordinator estagia o follow na variante (preservando bookends
+  da mesma variante) e escreve o manifesto; o worker reutiliza os bookends do
+  manifesto sem novo download, ou renderiza e estagia no miss. O cache da
+  variante é mantido para o reexport (LRU 200 MB + reset reclamam); o staging
+  plano legado continua sendo apagado após o export.
+- **Contrato intacto:** `pixelForLatLng` continua sendo a fonte da rota;
+  manifesto corrompido ou ausente degrada para render fresco, nunca adivinha.

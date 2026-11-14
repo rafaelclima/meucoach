@@ -78,9 +78,11 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
         palette: StoryPalette,
         isCancelled: () -> Boolean,
     ) {
-        val mapFile = mapBackground?.let { stageMap(it, activityId) }
+        val mapFile = mapBackground?.let { stageMap(it, activityId, palette.mapStyle) }
         if (isCancelled()) {
             // The user cancelled while the preview snapshot was being written.
+            // Only the follow shot staged above is removed: bookends from a
+            // previous variant stay cached for the next attempt.
             mapFile?.let { StoryMapSnapshotStore.delete(it) }
             return
         }
@@ -105,17 +107,50 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
     }
 
     /** The preview snapshot is big (~2430×4320); the route pixels travel in a sidecar. */
-    private suspend fun stageMap(snapshot: StoryMapSnapshot, activityId: String): File = withContext(Dispatchers.IO) {
-        val directory = File(context.cacheDir, "stories").apply { mkdirs() }
-        val file = File(directory, "story-map-$activityId.jpg")
-        // Stale PNG entries from previous versions never feed the worker: the
-        // worker only reads the path in the work input, and an orphaned PNG
-        // is reclaimed by the LRU trim below or by the data reset.
-        File(directory, "story-map-$activityId.png").let { legacy ->
+    private suspend fun stageMap(
+        snapshot: StoryMapSnapshot,
+        activityId: String,
+        style: com.meucoach.core.domain.story.StoryMapStyle,
+    ): File = withContext(Dispatchers.IO) {
+        val storiesDir = File(context.cacheDir, "stories").apply { mkdirs() }
+        // Legacy flat entries from previous slices never feed the worker: the
+        // worker only reads the path in the work input, and orphaned files are
+        // reclaimed by the LRU trim below or by the data reset.
+        File(storiesDir, "story-map-$activityId.jpg").let { legacy ->
             if (legacy.isFile) runCatching { StoryMapSnapshotStore.delete(legacy) }
         }
+        File(storiesDir, "story-map-$activityId.png").let { legacy ->
+            if (legacy.isFile) runCatching { StoryMapSnapshotStore.delete(legacy) }
+        }
+        val variantHash = StoryMapVariant.variantHash(
+            style,
+            snapshot.bitmap.width,
+            snapshot.bitmap.height,
+            snapshot.routePixels,
+        )
+        val variantDir = StoryMapVariant.variantDir(context.cacheDir, activityId, variantHash)
+        val file = StoryMapVariant.followFile(variantDir)
+        // A reexport with the same variant keeps the bookends staged by the
+        // previous worker run: only the follow shot is overwritten here.
+        val previous = StoryMapVariant.readManifest(variantDir)?.takeIf { it.style == style }
+        variantDir.mkdirs()
         StoryMapSnapshotStore.write(file, snapshot)
-        StoryMapDiskCache.trim(directory)
+        StoryMapVariant.writeManifest(
+            variantDir,
+            StoryMapVariant.Manifest(
+                activityId = activityId,
+                variantHash = variantHash,
+                style = style,
+                follow = StoryMapVariant.Entry(
+                    StoryMapVariant.FOLLOW_NAME,
+                    snapshot.bitmap.width,
+                    snapshot.bitmap.height,
+                ),
+                opening = previous?.opening?.takeIf { File(variantDir, it.file).isFile },
+                final = previous?.final?.takeIf { File(variantDir, it.file).isFile },
+            ),
+        )
+        StoryMapDiskCache.trim(storiesDir)
         file
     }
 

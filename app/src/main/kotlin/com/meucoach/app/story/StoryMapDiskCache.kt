@@ -4,18 +4,18 @@ import com.meucoach.core.domain.story.StoryMapStyle
 import java.io.File
 
 /**
- * Disk cache for the story map (MAP-06, primeira fatia).
+ * Disk cache for the story map (MAP-06, fatias 1–2).
  *
  * - Style JSON em disco: o `liberty` customizado é baixado uma vez por estilo
  *   e reaproveitado no reexport, sem novo download.
+ * - Variante por atividade: `stories/<activityId>/<variantHash>/` com follow +
+ *   bookends em JPEG 95, sidecars `.route` e `manifest.json`
+ *   (ver [StoryMapVariant]). O hash cobre estilo, keyframes, resolução e os
+ *   pixels da rota: trocar extras/duração não invalida o mapa.
  * - LRU simples por `lastModified`: após cada escrita, arquivos antigos são
  *   removidos até o diretório `stories` ficar abaixo de [MAX_CACHE_BYTES].
  * - A limpeza total no reset de dados continua em `DataResetCoordinator`
  *   (apaga `cacheDir/stories`); aqui só contemos o crescimento.
- *
- * O manifesto com pixels da rota continua sendo o sidecar `.route` do
- * [StoryMapSnapshotStore]; o `manifest.json` por variante
- * (`<activityId>/<variantHash>/`) chega na próxima fatia do MAP-06.
  */
 internal object StoryMapDiskCache {
     const val STYLE_VERSION = 1

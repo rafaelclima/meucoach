@@ -74,9 +74,17 @@ class StoryExportCoordinatorTest {
             )
         }
 
-        val staged = File(context.cacheDir, "stories/story-map-activity-1.jpg")
+        val variantDir = File(context.cacheDir, "stories/activity-1").listFiles()
+            ?.firstOrNull { StoryMapVariant.manifestFile(it).isFile }
+        assertThat(variantDir).isNotNull()
+        val staged = StoryMapVariant.followFile(variantDir!!)
         assertThat(staged.isFile).isTrue()
         assertThat(StoryMapSnapshotStore.routeFile(staged).isFile).isTrue()
+        val manifest = StoryMapVariant.readManifest(variantDir)
+        assertThat(manifest).isNotNull()
+        assertThat(manifest!!.style).isEqualTo(testPalette().mapStyle)
+        assertThat(manifest.follow.width).isEqualTo(4)
+        assertThat(manifest.follow.height).isEqualTo(4)
 
         val work = workManager
             .getWorkInfosForUniqueWork(StoryExportCoordinator.uniqueName("activity-1"))
@@ -89,6 +97,26 @@ class StoryExportCoordinatorTest {
             WorkInfo.State.SUCCEEDED,
             WorkInfo.State.FAILED,
         )
+    }
+
+    @Test
+    fun `reexport keeps the same variant when only extras change`() {
+        val palette = testPalette()
+        runBlocking {
+            coordinator.start("activity-1", StoryRecipe(), snapshot(), palette)
+            coordinator.start(
+                "activity-1",
+                StoryRecipe(extras = listOf(StoryExtra.DATE)),
+                snapshot(),
+                palette,
+            )
+        }
+
+        val variants = File(context.cacheDir, "stories/activity-1").listFiles()
+            ?.filter { StoryMapVariant.manifestFile(it).isFile }
+        // Extras/duration must not invalidate the map: same GPS + style stays
+        // in a single variant dir.
+        assertThat(variants).hasSize(1)
     }
 
     @Test
@@ -106,6 +134,13 @@ class StoryExportCoordinatorTest {
         assertThat(
             workManager.getWorkInfosForUniqueWork(StoryExportCoordinator.uniqueName("activity-1")).get(),
         ).isEmpty()
+        val variantDir = File(context.cacheDir, "stories/activity-1").listFiles()
+            ?.firstOrNull { StoryMapVariant.manifestFile(it).isFile }
+        if (variantDir != null) {
+            val staged = StoryMapVariant.followFile(variantDir)
+            assertThat(staged.exists()).isFalse()
+            assertThat(StoryMapSnapshotStore.routeFile(staged).exists()).isFalse()
+        }
         assertThat(File(context.cacheDir, "stories/story-map-activity-1.jpg").exists()).isFalse()
         assertThat(
             StoryMapSnapshotStore.routeFile(File(context.cacheDir, "stories/story-map-activity-1.jpg")).exists(),

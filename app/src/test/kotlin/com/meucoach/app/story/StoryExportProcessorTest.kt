@@ -352,9 +352,150 @@ class StoryExportProcessorTest {
         }
     }
 
+    @Test
+    fun `stages bookends into the variant dir on a cache miss`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val variantDir = StoryMapVariant.variantDir(context.cacheDir, "activity-1", "bookend-miss-1")
+            variantDir.deleteRecursively()
+            val follow = StoryMapVariant.followFile(variantDir)
+            variantDir.mkdirs()
+            val followBitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+            StoryMapSnapshotStore.write(
+                follow,
+                StoryMapSnapshot(followBitmap, listOf(android.graphics.PointF(1f, 2f))),
+            )
+            followBitmap.recycle()
+            StoryMapVariant.writeManifest(
+                variantDir,
+                StoryMapVariant.Manifest(
+                    activityId = "activity-1",
+                    variantHash = "bookend-miss-1",
+                    style = StoryMapStyle.MEUCOACH_DARK,
+                    follow = StoryMapVariant.Entry(StoryMapVariant.FOLLOW_NAME, 4, 4),
+                ),
+            )
+            val sized = SizedFakeMapRenderer()
+            val exporter = FakeExporter(listOf(1f))
+
+            val outcome = processor(exporter, sized).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = follow.absolutePath,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(sized.calls).isEqualTo(2)
+            assertThat(exporter.renderedOpening).isNotNull()
+            assertThat(exporter.renderedFinal).isNotNull()
+            val opening = StoryMapVariant.openingFile(variantDir)
+            val final = StoryMapVariant.finalFile(variantDir)
+            assertThat(opening.isFile).isTrue()
+            assertThat(final.isFile).isTrue()
+            assertThat(StoryMapSnapshotStore.routeFile(opening).isFile).isTrue()
+            assertThat(StoryMapSnapshotStore.routeFile(final).isFile).isTrue()
+            assertThat(opening.inputStream().use { it.read() }).isEqualTo(0xFF)
+            val manifest = StoryMapVariant.readManifest(variantDir)
+            assertThat(manifest?.opening?.width).isEqualTo(StoryMapScript.openingWidth())
+            assertThat(manifest?.final?.height).isEqualTo(StoryMapScript.finalHeight())
+            // Variant cache stays for the reexport; only legacy flat staging is deleted.
+            assertThat(follow.exists()).isTrue()
+            exporter.renderedOpening?.bitmap?.recycle()
+            exporter.renderedFinal?.bitmap?.recycle()
+        }
+    }
+
+    @Test
+    fun `reuses staged bookends without re-rendering`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val variantDir = StoryMapVariant.variantDir(context.cacheDir, "activity-1", "bookend-hit-1")
+            variantDir.deleteRecursively()
+            val follow = StoryMapVariant.followFile(variantDir)
+            variantDir.mkdirs()
+            val followBitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+            StoryMapSnapshotStore.write(
+                follow,
+                StoryMapSnapshot(followBitmap, listOf(android.graphics.PointF(1f, 2f))),
+            )
+            followBitmap.recycle()
+            StoryMapVariant.writeManifest(
+                variantDir,
+                StoryMapVariant.Manifest(
+                    activityId = "activity-1",
+                    variantHash = "bookend-hit-1",
+                    style = StoryMapStyle.MEUCOACH_DARK,
+                    follow = StoryMapVariant.Entry(StoryMapVariant.FOLLOW_NAME, 4, 4),
+                ),
+            )
+            val firstExporter = FakeExporter(listOf(1f))
+            processor(firstExporter, SizedFakeMapRenderer()).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = follow.absolutePath,
+                onProgress = { _, _ -> },
+            )
+            firstExporter.renderedOpening?.bitmap?.recycle()
+            firstExporter.renderedFinal?.bitmap?.recycle()
+
+            val secondRenderer = SizedFakeMapRenderer()
+            val secondExporter = FakeExporter(listOf(1f))
+            val outcome = processor(secondExporter, secondRenderer).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = follow.absolutePath,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(secondRenderer.calls).isEqualTo(0)
+            assertThat(secondExporter.renderedOpening).isNotNull()
+            assertThat(secondExporter.renderedFinal).isNotNull()
+            assertThat(secondExporter.renderedOpening!!.bitmap.width)
+                .isEqualTo(StoryMapScript.openingWidth())
+            secondExporter.renderedOpening?.bitmap?.recycle()
+            secondExporter.renderedFinal?.bitmap?.recycle()
+        }
+    }
+
+    @Test
+    fun `corrupt manifest falls back to rendering bookends`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val variantDir = StoryMapVariant.variantDir(context.cacheDir, "activity-1", "bookend-corrupt-1")
+            variantDir.deleteRecursively()
+            val follow = StoryMapVariant.followFile(variantDir)
+            variantDir.mkdirs()
+            val followBitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+            StoryMapSnapshotStore.write(
+                follow,
+                StoryMapSnapshot(followBitmap, listOf(android.graphics.PointF(1f, 2f))),
+            )
+            followBitmap.recycle()
+            StoryMapVariant.manifestFile(variantDir).writeText("not json")
+            val exporter = FakeExporter(listOf(1f))
+
+            val outcome = processor(exporter, FakeMapRenderer()).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = follow.absolutePath,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(exporter.renderedOpening).isNotNull()
+            assertThat(exporter.renderedFinal).isNotNull()
+        }
+    }
+
     private fun processor(
         exporter: StoryVideoExporter,
-        mapRenderer: FakeMapRenderer = this.mapRenderer,
+        mapRenderer: MapBackgroundRenderer = this.mapRenderer,
     ): StoryExportProcessor = StoryExportProcessor(
         planLoader = StoryPlanLoader(
             repository = repository,
@@ -441,6 +582,24 @@ class StoryExportProcessorTest {
                 if (pitchDegrees == failing) throw IllegalStateException("tile offline")
             }
             return StoryMapSnapshot(Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888), emptyList())
+        }
+    }
+
+    /** Renders bookends at their real staged size so the variant cache can validate them. */
+    private class SizedFakeMapRenderer : MapBackgroundRenderer {
+        var calls: Int = 0
+
+        override suspend fun render(
+            boundingBox: BoundingBox,
+            route: List<StoryGeoPoint>,
+            width: Int,
+            height: Int,
+            style: StoryMapStyle,
+            pitchDegrees: Float,
+            bearingDegrees: Float,
+        ): StoryMapSnapshot {
+            calls += 1
+            return StoryMapSnapshot(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888), emptyList())
         }
     }
 

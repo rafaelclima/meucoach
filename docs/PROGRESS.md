@@ -1,6 +1,60 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 14/11/2026 (MAP-06/ENC-04 fatia 1: style JSON em disco, staging JPEG 95 e LRU; antes: smoke no S24 Ultra e card final com respiro)
+**Atualizado:** 14/11/2026 (MAP-06/ENC-04 fatia 2: `manifest.json` por variante `<activityId>/<variantHash>/` + stage dos bookends em JPEG 95; antes: fatia 1 style JSON/LRU)
+
+## Sessão 2026-11-14 — MAP-06/ENC-04 fatia 2: manifesto por variante e bookends
+
+**Objetivo:** segunda fatia verificável de MAP-06/ENC-04 — `manifest.json` por
+variante e stage dos bookends em JPEG 95 — sem mudar atribuição, card,
+`pixelForLatLng`, migração ou dependência.
+
+### Concluído
+
+- **Variante por atividade (MAP-06):** `StoryMapVariant` com `variantHash`
+  SHA-256 (estilo + keyframes + resolução + pixels da rota) em
+  `cache/stories/<activityId>/<variantHash>/`. Trocar extras/duração não
+  invalida o mapa; novo estilo, resolução ou importação cria outra variante.
+- **`manifest.json` (MAP-06):** follow + opening/final com arquivo, largura e
+  altura, estilo e versão; leitura tolerante (corrompido/versão errada/variante
+  trocada retorna `null`, nunca adivinha a rota). O coordinator preserva os
+  bookends da mesma variante ao reestagiar o follow.
+- **Stage dos bookends (ENC-04):** o worker carrega opening/final do
+  `manifest.json` sem novo download (cache hit = 0 renders) e, no miss,
+  renderiza e estagia em JPEG 95 + `.route` + manifesto atualizado. O cache da
+  variante é mantido para o reexport (LRU/reset reclamam); o staging plano
+  legado continua sendo apagado após o export.
+- **Testes novos:** `StoryMapVariantTest` (hash determinístico, sensível a
+  estilo/resolução/pixels, round-trip do manifesto, corrompido/versão nulos,
+  sanitização) + ampliações no `StoryExportCoordinatorTest` (staging na
+  variante + manifesto, reexport com outros extras na mesma variante) e no
+  `StoryExportProcessorTest` (stage dos bookends em JPEG, reuso sem
+  re-render, manifesto corrompido degrada para render).
+- **Refatoração:** `BookendKey` (OPENING/FINAL) elimina o `LongParameterList`
+  do detekt; `renderBookend` recebe dimensões em vez de lambdas.
+
+### Testes
+
+- 1.727 testes, 0 falhas e 0 `@Ignore` (+10 nesta sessão: 6
+  `StoryMapVariantTest`, +1 líquido no `StoryExportCoordinatorTest`, +3 no
+  `StoryExportProcessorTest`).
+  - `:app`: 828; `core:domain`: 691; `core:data`: 168; `core:model`: 40.
+- `:app`: 78,74% de linhas (13.824/17.557, gate ≥78%); `core:domain`: 97,20%
+  (5.830/5.998, gate ≥85%).
+- `assembleDebug`, `spotlessCheck`, `koverVerify`, detekt, lint e
+  `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest"` verdes; nenhum
+  golden regravado (o renderer não mudou).
+- Nota de flake (registrada, não ignorada): `MetricsImportViewModelTest`
+  estourou o `withTimeout(30_000)` 1× na suíte cheia **com e sem** este diff
+  (stash limpo em `58ee6a5` reproduz o mesmo timeout no `--rerun-tasks`); passa
+  isolado e passa junto com `story.*`. Nenhum código compartilhado com o story
+  (import CSV × cache de mapa). Hipótese mantida: contenção sob carga no
+  `check` paralelo. Correção dedicada fora desta fatia.
+
+### Próximo passo
+
+1. ENC-05/ENC-08 — receita completa no worker + memória (pico <150 MB em 30 s).
+2. Usuário 0 regenera o story no aparelho e confirma o card final com respiro.
+3. MAP-07 (low-RAM: 1,25×, 2 keyframes) se o mid-range exigir.
 
 ## Sessão 2026-11-14 — MAP-06/ENC-04 fatia 1: cache em disco e staging JPEG
 

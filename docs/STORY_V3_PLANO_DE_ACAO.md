@@ -480,7 +480,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] MAP-03 | Aposentar `StoryMapProjection` do caminho de produção | Fallback/teste apenas | `StoryMapProjection.kt`, renderer | MAP-02 | M | Nenhum uso no fluxo real; `StoryFrameRendererTest` garante os pixels do snapshot |
 | [x] MAP-04 | Estilo `MeuCoach Dark`/`Light` | Paleta, filtros de POI/transporte/vias, labels, água/parques | `OpenFreeMapStyle.kt`, `StoryPalette.kt` | MAP-01 | G | Labels legíveis em 1080p; POIs ocultos; golden/screenshot |
 | [x] MAP-05 | 3 keyframes de câmera | Abertura 30°, follow 42°, final 35°; troca nos cards | `StoryMapScript.kt`, `StoryCameraScript.kt`, renderer | MAP-02 | G | 3 snapshots; rota alinhada; sem salto visível |
-| [~] MAP-06 | Cache de estilo e snapshots (fatia 1 em 14/11/2026: style JSON em `stories/styles/`, staging JPEG 95, LRU 200 MB; falta `manifest.json` por variante e stage dos bookends) | Style JSON em disco; manifesto; WebP/JPEG; LRU | `MapLibreBackgroundRenderer.kt`, `StoryMapCache.kt` | MAP-05 | M | Reexport não baixa de novo; cache limpo no reset |
+| [x] MAP-06 | Cache de estilo e snapshots (fatia 2 em 14/11/2026: `manifest.json` por variante `<activityId>/<variantHash>/`, stage dos bookends em JPEG 95, reuso sem re-download) | Style JSON em disco; manifesto; WebP/JPEG; LRU | `MapLibreBackgroundRenderer.kt`, `StoryMapCache.kt` | MAP-05 | M | Reexport não baixa de novo; cache limpo no reset |
 | [ ] MAP-07 | Low-RAM | `isLowRamDevice` → 1,25×, 2 keyframes | `StoryVideoExporter.kt`, `StoryMapScript.kt` | MAP-05 | P | Export completa em aparelho 4 GB |
 | [ ] MAP-08 | Remover satélite do MVP | Tirar `SATELLITE` da UI e do fluxo; manter o valor no enum como `@Deprecated` para não quebrar ordinais de jobs antigos; retorno só com licença | `StoryMapStyle.kt`, `StoryPaletteCodec.kt`, UI | D0.1 | P | Nenhuma opção Esri no fluxo padrão; decode antigo não quebra |
 | [ ] MAP-09 | Seam Protomaps | Interface `StoryTileSource` documentada | `StoryMapProvider.kt` | MAP-04 | P | Troca futura sem tocar no renderer |
@@ -507,7 +507,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] ENC-01 | Qualidade de encode | BT.709/SDR/limited, High/4.1, 16 Mbps VBR | `StoryVideoExporter.kt` | — | P | `ffprobe` mostra bt709; sem cor lavada |
 | [ ] ENC-02 | Perfis de qualidade | 1080p30 padrão; parâmetro de 60 fps preparado; bitrate por perfil | `StoryQuality.kt`, exporter | ENC-01 | M | 30 fps validado; 60 fps só é exposto após `DEV-04` |
 | [x] ENC-03 | Sem áudio, sem GPS | Nenhuma trilha AAC; nunca `setLocation`; nome com data/distância | exporter, `StoryFileNames.kt` | ENC-01 | P | MP4 só vídeo; sem metadata de local |
-| [~] ENC-04 | Estágio WebP/JPEG (fatia 1 em 14/11/2026: prévia em JPEG 95 com sidecar `.route`; falta stage dos keyframes) | Mapa de prévia e keyframes em WebP/JPEG 95 | Coordinator, cache | MAP-06 | M | Tempo de stage menor; decode ok |
+| [x] ENC-04 | Estágio WebP/JPEG (fatia 2 em 14/11/2026: bookends em JPEG 95 no worker, reuso via manifesto; variante mantida para o reexport, plano legado apagado) | Mapa de prévia e keyframes em WebP/JPEG 95 | Coordinator, cache | MAP-06 | M | Tempo de stage menor; decode ok |
 | [ ] ENC-05 | Receita no worker | `StoryPlanLoader` + `StoryRecipe` + `mapDir`/manifesto | Worker, Processor, Coordinator | DOM-06, MAP-05 | G | Export respeita extras/duração; teste |
 | [ ] ENC-06 | Progresso/ETA multi-snapshot | 0–10% mapa, 10–100% encode; cancelamento | Worker, ETA | ENC-05 | M | ETA estável; cancelar apaga parcial |
 | [x] ENC-07 | Publicação | Vídeo em Movies; capa 9:16 + pôster 4:5 em Pictures; share individual | exporter, UI | VIS-05 | M | 3 URIs; share sheet |
@@ -817,7 +817,8 @@ respeitam a receita no worker; `check` verde.
 2. **Concluído em 14/11/2026 (código; smoke no aparelho pendente):** `MAP-04`
    (estilo) → `MAP-05` (keyframes).
 4. `VIS-05` (pôster).
-5. `MAP-06`/`ENC-04` (cache/estágio).
+5. **Concluído em 14/11/2026 (código; validação no aparelho pendente):**
+   `MAP-06`/`ENC-04` fatia 2 (manifesto por variante + bookends em JPEG 95).
 6. `QA-05`/`DEV-01`–`DEV-03`.
 
 ---

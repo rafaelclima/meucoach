@@ -44,6 +44,7 @@ class StoryExportProcessor @Inject constructor(
         atMs: () -> Long = { SystemClock.elapsedRealtime() },
     ): StoryExportOutcome {
         val plan = planLoader.load(activityId, recipe) ?: return StoryExportOutcome.Failed(StoryMessages.MISSING_GPS)
+        val variantDir = variantDirFor(mapPath)
         val mapBackground = mapBackground(
             plan,
             mapPath,
@@ -52,22 +53,20 @@ class StoryExportProcessor @Inject constructor(
         ) ?: return StoryExportOutcome.Retry(StoryMessages.MAP_UNAVAILABLE)
         // Bookends are best-effort: a failed opening/final render falls back to
         // the follow snapshot in the renderer, which keeps the route aligned.
-        val openingMap =
-            renderBookend(
-                plan,
-                palette.mapStyle,
-                StoryMapScript::openingWidth,
-                StoryMapScript::openingHeight,
-                StoryMapScript.OPENING_PITCH_DEGREES,
-            )
-        val finalMap =
-            renderBookend(
-                plan,
-                palette.mapStyle,
-                StoryMapScript::finalWidth,
-                StoryMapScript::finalHeight,
-                StoryMapScript.FINAL_PITCH_DEGREES,
-            )
+        // Staged bookends in the variant dir are reused without a tile fetch;
+        // a miss renders fresh and stages JPEG 95 + manifest for the reexport.
+        val openingMap = cachedOrRenderBookend(
+            variantDir = variantDir,
+            style = palette.mapStyle,
+            plan = plan,
+            key = BookendKey.OPENING,
+        )
+        val finalMap = cachedOrRenderBookend(
+            variantDir = variantDir,
+            style = palette.mapStyle,
+            plan = plan,
+            key = BookendKey.FINAL,
+        )
         val eta = StoryEtaEstimator()
         val result = exporter.export(
             plan = plan,
@@ -79,10 +78,121 @@ class StoryExportProcessor @Inject constructor(
         ) { fraction ->
             onProgress(fraction, eta.remainingSec(fraction, atMs()))
         }
-        // The staged snapshot is a picture of the run's region: keep it only
-        // while the export needs it.
-        mapPath?.let { staged -> StoryMapSnapshotStore.delete(File(staged)) }
+        // Variant cache stays for the reexport (LRU + reset reclaim it);
+        // legacy flat staging is removed after the export as before.
+        if (variantDir != null) {
+            variantDir.parentFile?.parentFile?.let { storiesDir ->
+                runCatching { StoryMapDiskCache.trim(storiesDir) }
+            }
+        } else {
+            mapPath?.let { staged -> StoryMapSnapshotStore.delete(File(staged)) }
+        }
         return StoryExportOutcome.Completed(result)
+    }
+
+    /**
+     * Variant dir for bookend reuse: the parent of the staged follow shot when
+     * the coordinator wrote a manifest there. Legacy flat staging has no
+     * manifest and keeps rendering bookends fresh.
+     */
+    private fun variantDirFor(mapPath: String?): File? {
+        if (mapPath == null) return null
+        val parent = File(mapPath).parentFile ?: return null
+        if (!StoryMapVariant.manifestFile(parent).isFile) return null
+        return parent
+    }
+
+    /**
+     * Loads a staged bookend from the variant dir or renders and stages it in
+     * JPEG 95. Never fails the export: null falls back to the follow shot.
+     */
+    private suspend fun cachedOrRenderBookend(
+        variantDir: File?,
+        style: StoryMapStyle,
+        plan: StoryPlan,
+        key: BookendKey,
+    ): StoryMapSnapshot? {
+        if (variantDir == null) {
+            return renderBookend(plan, style, key.width, key.height, key.pitchDegrees)
+        }
+        loadStagedBookend(variantDir, style, key)?.let { return it }
+        val rendered = renderBookend(plan, style, key.width, key.height, key.pitchDegrees) ?: return null
+        stageBookend(variantDir, key, rendered)
+        return rendered
+    }
+
+    private fun loadStagedBookend(variantDir: File, style: StoryMapStyle, key: BookendKey): StoryMapSnapshot? {
+        val manifest = StoryMapVariant.readManifest(variantDir) ?: return null
+        if (manifest.style != style) return null
+        val entry = key.entryOf(manifest) ?: return null
+        if (entry.file != key.fileName || entry.width != key.width || entry.height != key.height) return null
+        val file = File(variantDir, entry.file)
+        val staged = StoryMapSnapshotStore.read(file) ?: return null
+        if (staged.bitmap.width != key.width || staged.bitmap.height != key.height) {
+            staged.bitmap.recycle()
+            return null
+        }
+        return staged
+    }
+
+    private fun stageBookend(variantDir: File, key: BookendKey, snapshot: StoryMapSnapshot) {
+        val manifest = StoryMapVariant.readManifest(variantDir) ?: return
+        // Never resurrect a stale entry: only update when the staged file is
+        // the one the manifest tracks.
+        val current = key.entryOf(manifest)
+        if (current != null && current.file != key.fileName) return
+        runCatching {
+            StoryMapSnapshotStore.write(File(variantDir, key.fileName), snapshot)
+            StoryMapVariant.writeManifest(
+                variantDir,
+                key.withEntry(
+                    manifest,
+                    StoryMapVariant.Entry(key.fileName, snapshot.bitmap.width, snapshot.bitmap.height),
+                ),
+            )
+        }
+    }
+
+    /** Fixed bookend keyframes staged in the variant dir (MAP-06 fatia 2). */
+    private enum class BookendKey {
+        OPENING,
+        FINAL,
+        ;
+
+        val fileName: String
+            get() = when (this) {
+                OPENING -> StoryMapVariant.OPENING_NAME
+                FINAL -> StoryMapVariant.FINAL_NAME
+            }
+
+        val width: Int
+            get() = when (this) {
+                OPENING -> StoryMapScript.openingWidth()
+                FINAL -> StoryMapScript.finalWidth()
+            }
+
+        val height: Int
+            get() = when (this) {
+                OPENING -> StoryMapScript.openingHeight()
+                FINAL -> StoryMapScript.finalHeight()
+            }
+
+        val pitchDegrees: Float
+            get() = when (this) {
+                OPENING -> StoryMapScript.OPENING_PITCH_DEGREES
+                FINAL -> StoryMapScript.FINAL_PITCH_DEGREES
+            }
+
+        fun entryOf(manifest: StoryMapVariant.Manifest): StoryMapVariant.Entry? = when (this) {
+            OPENING -> manifest.opening
+            FINAL -> manifest.final
+        }
+
+        fun withEntry(manifest: StoryMapVariant.Manifest, entry: StoryMapVariant.Entry?): StoryMapVariant.Manifest =
+            when (this) {
+                OPENING -> manifest.copy(opening = entry)
+                FINAL -> manifest.copy(final = entry)
+            }
     }
 
     /**
@@ -127,8 +237,8 @@ class StoryExportProcessor @Inject constructor(
     private suspend fun renderBookend(
         plan: StoryPlan,
         style: StoryMapStyle,
-        width: () -> Int,
-        height: () -> Int,
+        width: Int,
+        height: Int,
         pitchDegrees: Float,
     ): StoryMapSnapshot? {
         val bounds = plan.boundingBox ?: return null
@@ -137,8 +247,8 @@ class StoryExportProcessor @Inject constructor(
                 mapRenderer.render(
                     bounds,
                     plan.geoPoints,
-                    width(),
-                    height(),
+                    width,
+                    height,
                     style,
                     pitchDegrees,
                 )
