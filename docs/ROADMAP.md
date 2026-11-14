@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.50 · **Data:** 14/11/2026 · **Mudança:** Sprint B avançou com MAP-04/MAP-05 em código: estilo autoral `MeuCoach Dark`/`Light` e 3 keyframes 30°/42°/35° com pixels nativos por snapshot; smoke no aparelho pendente (S24 Ultra fora do `adb`). A versão 1.49 registrou MAP-01..MAP-03 (MapLibre 13.7.1 + `pixelForLatLng`).
+**Versão:** 1.51 · **Data:** 14/11/2026 · **Mudança:** smoke no S24 Ultra fechou DEV-01 (story escuro + claro validados: 1080×1920/30 fps/BT.709, rota alinhada nos 3 pitches, sem crash) e aplicou o feedback do usuário 0 (card final compacto com +2% de altura e fileiras reespaçadas). A versão 1.50 registrou MAP-04/MAP-05 em código.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -586,7 +586,7 @@ aparelho pendente) estão prontos. Próximo: memória
 - [x] Story V3 — MAP-03: `StoryMapProjection` só fallback/teste; nenhum uso no caminho real do vídeo; teste de regressão garante que o renderer segue os pixels do snapshot.
 - [x] Story V3 — MAP-04: estilo autoral `MeuCoach Dark`/`Light` em código (grafite, água azul-petróleo, parques dessaturados, POIs/transporte/vias menores ocultos); smoke no aparelho pendente.
 - [x] Story V3 — MAP-05: 3 keyframes em código (abertura 30°, follow 42°, final 35°, um snapshot com pixels nativos por keyframe, troca nos cards); smoke no aparelho pendente.
-- [~] Story V3 — DEV-01: snapshot escuro em pitch 32°/42° validado no S24 Ultra; falta validar os estilos autorais (escuro e claro) e os 3 pitches no aparelho.
+- [x] Story V3 — DEV-01: snapshots escuro e claro validados no S24 Ultra (MAP-04/MAP-05, 3 pitches, `pixelForLatLng`); card final compacto com respiro após feedback do usuário 0.
 - [x] Story V3 — DEV-02: rota alinhada às ruas no S24 Ultra; paridade port × SDK medida em 360 pontos (máx. 0,000244 px, média 6,95e-6/3,65e-6 px) — muito abaixo da meta de 2 px.
 - [~] Story V3 — QA-05/DEV-07: pôster 1080×1350 e share sheet validados no S24 Ultra; faltam grid do Instagram/upload real e mid-range 4 GB.
 - [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05) e memória (ENC-08) seguem pendentes.

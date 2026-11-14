@@ -36,6 +36,13 @@ object StoryLayout {
     private const val CARD_BOTTOM = 0.78f
 
     /**
+     * The closing card with 5 metrics (3 essenciais + 2 extras) gets 2% more
+     * height upward, into the map zone. The km cards keep [CARD_TOP]; the
+     * bottom stays at 78% so nothing slides under the Reels/TikTok footer.
+     */
+    private const val FINAL_CARD_TOP = 0.60f
+
+    /**
      * OSM attribution is pinned to the bottom-left edge on purpose. The user 0
      * accepted that it may sit under the Reels/TikTok UI; keeping the legal
      * credit at the very corner is the product decision for this format.
@@ -58,6 +65,9 @@ object StoryLayout {
 
     fun cardTop(height: Float): Float = height * CARD_TOP
     fun cardBottom(height: Float): Float = height * CARD_BOTTOM
+
+    /** Top of the roomier closing card; see [FINAL_CARD_TOP]. */
+    fun finalCardTop(height: Float): Float = height * FINAL_CARD_TOP
 
     /** Horizontal start of the badge, tight to the left edge. */
     fun attributionLeft(width: Float): Float = width * ATTRIBUTION_SIDE_INSET

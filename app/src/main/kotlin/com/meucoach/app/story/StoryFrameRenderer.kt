@@ -802,7 +802,7 @@ class StoryFrameRenderer(
         scale: Float,
         highlights: StoryHighlights,
     ) {
-        val card = cardBounds(width, height)
+        val card = if (spec.closing.size > 3) finalCardBounds(width, height) else cardBounds(width, height)
         drawPanel(canvas, card, scale)
         val compact = spec.closing.size > 3
 
@@ -826,7 +826,7 @@ class StoryFrameRenderer(
             )
         }
         val rule = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent }
-        val ruleTop = card.top + (if (compact) 66f else 84f) * scale
+        val ruleTop = card.top + (if (compact) 70f else 84f) * scale
         canvas.drawRect(
             card.left + 28f * scale,
             ruleTop,
@@ -838,12 +838,12 @@ class StoryFrameRenderer(
         if (compact) {
             val label = paint(palette.textTertiary, 12f * scale, bold = true)
             val value = paint(palette.textPrimary, 22f * scale, bold = true)
-            drawMetricRow(canvas, spec.closing.take(3), card, card.top + 80f * scale, scale, label, value)
+            drawMetricRow(canvas, spec.closing.take(3), card, card.top + 88f * scale, scale, label, value)
             val extras = spec.closing.drop(3)
             if (extras.isNotEmpty()) {
                 val extraLabel = paint(palette.textTertiary, 11f * scale, bold = true)
                 val extraValue = paint(palette.textPrimary, 19f * scale, bold = true)
-                drawMetricRow(canvas, extras, card, card.top + 120f * scale, scale, extraLabel, extraValue)
+                drawMetricRow(canvas, extras, card, card.top + 140f * scale, scale, extraLabel, extraValue)
             }
         } else {
             val label = paint(palette.textTertiary, 16f * scale, bold = true)
@@ -917,6 +917,17 @@ class StoryFrameRenderer(
         return RectF(
             margin,
             StoryLayout.cardTop(height.toFloat()),
+            width - margin,
+            StoryLayout.cardBottom(height.toFloat()),
+        )
+    }
+
+    /** Roomier closing card for 5 metrics; the bottom stays on the safe line. */
+    private fun finalCardBounds(width: Int, height: Int): RectF {
+        val margin = StoryLayout.margin(width.toFloat())
+        return RectF(
+            margin,
+            StoryLayout.finalCardTop(height.toFloat()),
             width - margin,
             StoryLayout.cardBottom(height.toFloat()),
         )

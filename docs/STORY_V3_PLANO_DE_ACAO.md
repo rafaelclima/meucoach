@@ -543,7 +543,7 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 
 | ID | Tarefa | Entrega | Dep. | Est. | Aceite |
 |---|---|---|---|---|---|
-| [~] DEV-01 | Smoke MapLibre 13.7.1 | Snapshot dark/light em pitch | MAP-04 | P | Dark validado no S24 Ultra; falta o claro após MAP-04 |
+| [x] DEV-01 | Smoke MapLibre 13.7.1 | Snapshot dark/light em pitch | MAP-04 | P | Escuro e claro validados no S24 Ultra (14/11/2026); card final com respiro |
 | [x] DEV-02 | Alinhamento da rota | Comparar rota desenhada vs ruas | MAP-02 | P | Erro visual imperceptível; paridade port × SDK medida |
 | [ ] DEV-03 | Export 5k/10k | Tempo, memória, tamanho | ENC-08 | M | 30 s ≤90 s; pico <150 MB |
 | [ ] DEV-04 | 60 fps | Encoder suporta? | ENC-02 | P | Se falhar, esconder opção |

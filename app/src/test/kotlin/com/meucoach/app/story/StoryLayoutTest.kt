@@ -32,6 +32,13 @@ class StoryLayoutTest {
     }
 
     @Test
+    fun `closing card with five metrics gets two percent more height upward`() {
+        assertThat(StoryLayout.finalCardTop(height)).isCloseTo(height * 0.60f, within(0.1f))
+        assertThat(StoryLayout.finalCardTop(height)).isLessThan(StoryLayout.cardTop(height))
+        assertThat(StoryLayout.cardBottom(height)).isLessThanOrEqualTo(StoryLayout.safeBottom(height))
+    }
+
+    @Test
     fun `attribution is pinned to the bottom left corner`() {
         assertThat(StoryLayout.attributionBaseline(height)).isCloseTo(height - 21f, within(0.1f))
         assertThat(StoryLayout.attributionBaseline(height)).isGreaterThan(StoryLayout.safeBottom(height))

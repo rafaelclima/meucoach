@@ -1,6 +1,56 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 14/11/2026 (Story V3 Sprint B — MAP-04/MAP-05 código pronto: estilo autoral `MeuCoach Dark`/`Light` e 3 keyframes 30°/42°/35° com pixels nativos por snapshot; smoke no aparelho pendente — S24 Ultra fora do `adb`; antes: MAP-01..MAP-03 com MapLibre 13.7.1 e projeção exata)
+**Atualizado:** 14/11/2026 (Smoke no S24 Ultra: story escuro + claro validados, DEV-01 fechado; feedback do usuário 0 aplicado — card final compacto com mais respiro; antes: MAP-04/MAP-05 em código)
+
+## Sessão 2026-11-14 — Smoke no S24 Ultra (escuro + claro) e respiro no card final
+
+**Objetivo:** validar MAP-04/MAP-05 no aparelho (DEV-01) e aplicar o feedback
+do usuário 0 sobre o card de encerramento com 5 métricas.
+
+### Smoke no aparelho (SM-S928B)
+
+- **Teste 1 — escuro:** story da corrida de 4,22 km gerado no aparelho; MP4
+  1080×1920, 30 fps, H.264 High, BT.709/tv, 16 s, só trilha de vídeo; capa
+  9:16 + pôster 4:5 publicados; staging `story-map-*` limpo após o export.
+- **Teste 2 — claro:** mesmo fluxo com mapa `MeuCoach Light`; MP4 36,4 MB com
+  as mesmas specs; sem crash nos dois.
+- **Frames extraídos (abertura/meio/final, dark + light):** rota por zonas
+  grudada nas ruas nos 3 pitches; abertura 30° dissolve no follow 42°; final
+  35° com card 3+2; labels legíveis nos dois estilos ("Conjunto Nova
+  Dimensão", "Rua Coronel Norton Chaves", "Avenida Capitão Mor Gouveia" ...);
+  POIs ocultos; atribuição no canto inferior esquerdo.
+- **logcat:** `libmaplibre.so` ok; só o aviso benigno conhecido do `libEGL`
+  (1× por thread); nenhum `FATAL` do app (o `E fatal: runForegroundReporters`
+  no período é do `com.instagram.android`, não do MeuCoach).
+- **DEV-01 fechado:** snapshot escuro e claro validados no aparelho.
+
+### Feedback do usuário 0 e correção
+
+- Labels legíveis; sem salto na troca; escuro aprovado. Pedido: o card final
+  com 5 métricas estava poluído — dar mais espaço interno, mesmo que o card
+  cresça um pouco.
+- **Correção (fatia pequena):** `StoryLayout.finalCardTop` (60%) dá +2% de
+  altura para cima (zona do mapa, fora da safe area) só no encerramento
+  compacto; o fundo continua em 78%. `StoryFrameRenderer.drawFinal` reespaçou
+  as linhas (fileira 1 em 88, extras em 140, régua em 70). Km cards intactos.
+- **Golden:** só `story-final-two-extras-dark.png` regravado e revisado (card
+  mais alto, ar entre as fileiras, base intacta); demais goldens do story
+  inalterados.
+
+### Testes
+
+- 1.711 testes, 0 falhas e 0 `@Ignore` (+1 `StoryLayoutTest.finalCardTop`).
+- `:app`: 78,58% de linhas (gate ≥78%); `core:domain`: 97,20% (gate ≥85%).
+- `check`, `spotlessCheck`, `koverVerify`, detekt verdes;
+  `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest"` verde.
+- Nota: `koverVerify` e `verifyRoborazziDebug --tests …` não podem ir no mesmo
+  comando — o filtro `--tests` esvazia a cobertura; rodar separado.
+
+### Próximo passo
+
+1. Usuário 0 regenera o story no aparelho e confirma o card final com respiro.
+2. **MAP-06/ENC-04** — cache de estilo/snapshots (WebP/JPEG) e manifesto.
+3. QA-05 (mid-range 4 GB) e QA-06 (upload Reels/TikTok) quando fizer sentido.
 
 ## Sessão 2026-11-14 — Story V3 Sprint B: estilo autoral e 3 keyframes (MAP-04/MAP-05, código)
 

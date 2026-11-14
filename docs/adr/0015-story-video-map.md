@@ -408,6 +408,14 @@ Este addendum fecha MAP-01..MAP-03 do Sprint B. A contingência de rollback para
   sem falhar o export. O renderer desenha um snapshot ativo por frame (dissolve
   radial só na abertura de 0,6 s) e cada keyframe consome seus próprios pixels
   nativos, então a troca nos cards/final não desloca a rota.
-- **Smoke no aparelho:** pendente — S24 Ultra fora do `adb` nesta sessão.
-  Falta gerar o story escuro e claro no aparelho e conferir logcat
-  (MapLibre/EGL), alinhamento da rota nos 3 pitches e memória (DEV-01/MAP-05).
+- **Smoke no aparelho (14/11/2026, testes 1 e 2 do usuário 0):** story escuro
+  (34,4 MB) e claro (36,4 MB) da corrida de 4,22 km — 1080×1920, 30 fps,
+  H.264 High, BT.709/tv, só vídeo; capa 9:16 + pôster 4:5 publicados; staging
+  limpo. Frames confirmam rota alinhada nos 3 pitches, labels legíveis nos
+  dois estilos, POIs ocultos e atribuição no canto inferior esquerdo. logcat
+  sem `FATAL` do app (só o aviso benigno do `libEGL` e um `E fatal` do
+  `com.instagram.android`, fora do escopo). DEV-01 fechado.
+- **Follow-up (feedback do usuário 0):** o card final com 5 métricas ganhou
+  +2% de altura para cima (`StoryLayout.finalCardTop`, fundo segue em 78%) e
+  fileiras reespaçadas; golden `story-final-two-extras-dark.png` regravado e
+  revisado. Falta o usuário regenerar no aparelho para confirmar.
