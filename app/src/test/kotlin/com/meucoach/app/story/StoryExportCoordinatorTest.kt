@@ -74,7 +74,7 @@ class StoryExportCoordinatorTest {
             )
         }
 
-        val staged = File(context.cacheDir, "stories/story-map-activity-1.png")
+        val staged = File(context.cacheDir, "stories/story-map-activity-1.jpg")
         assertThat(staged.isFile).isTrue()
         assertThat(StoryMapSnapshotStore.routeFile(staged).isFile).isTrue()
 
@@ -106,9 +106,9 @@ class StoryExportCoordinatorTest {
         assertThat(
             workManager.getWorkInfosForUniqueWork(StoryExportCoordinator.uniqueName("activity-1")).get(),
         ).isEmpty()
-        assertThat(File(context.cacheDir, "stories/story-map-activity-1.png").exists()).isFalse()
+        assertThat(File(context.cacheDir, "stories/story-map-activity-1.jpg").exists()).isFalse()
         assertThat(
-            StoryMapSnapshotStore.routeFile(File(context.cacheDir, "stories/story-map-activity-1.png")).exists(),
+            StoryMapSnapshotStore.routeFile(File(context.cacheDir, "stories/story-map-activity-1.jpg")).exists(),
         ).isFalse()
     }
 

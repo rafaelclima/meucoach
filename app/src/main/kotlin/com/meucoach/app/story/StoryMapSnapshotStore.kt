@@ -9,12 +9,15 @@ import java.io.File
 
 /**
  * Stages a [StoryMapSnapshot] between the preview and the background worker
- * without putting pixels in WorkManager `Data`. The PNG is the map bitmap and
- * the sidecar keeps the exact `pixelForLatLng` values; a missing or corrupt
- * sidecar makes the staged entry unusable, so the worker renders a fresh
- * snapshot instead of guessing the route (MAP-02).
+ * without putting pixels in WorkManager `Data`. The bitmap is staged as
+ * JPEG 95 (ENC-04: menor e mais rápido que o PNG 100; a rota não depende dos
+ * pixels do bitmap, e sim do sidecar) and the sidecar keeps the exact
+ * `pixelForLatLng` values; a missing or corrupt sidecar makes the staged
+ * entry unusable, so the worker renders a fresh snapshot instead of guessing
+ * the route (MAP-02). Legacy PNG entries still decode via `BitmapFactory`.
  */
 internal object StoryMapSnapshotStore {
+    const val STAGED_QUALITY = 95
     private const val MAGIC = 0x4D43504D // "MCMP"
     private const val VERSION = 1
     private const val MAX_POINTS = 20_000
@@ -25,7 +28,7 @@ internal object StoryMapSnapshotStore {
         // Never let a stale sidecar describe a new bitmap.
         routeFile(mapFile).delete()
         mapFile.outputStream().use { output ->
-            check(snapshot.bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+            check(snapshot.bitmap.compress(Bitmap.CompressFormat.JPEG, STAGED_QUALITY, output)) {
                 StoryMessages.MAP_STAGE_FAILED
             }
         }

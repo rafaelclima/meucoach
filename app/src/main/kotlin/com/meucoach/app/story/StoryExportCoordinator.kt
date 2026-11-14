@@ -107,8 +107,15 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
     /** The preview snapshot is big (~2430×4320); the route pixels travel in a sidecar. */
     private suspend fun stageMap(snapshot: StoryMapSnapshot, activityId: String): File = withContext(Dispatchers.IO) {
         val directory = File(context.cacheDir, "stories").apply { mkdirs() }
-        val file = File(directory, "story-map-$activityId.png")
+        val file = File(directory, "story-map-$activityId.jpg")
+        // Stale PNG entries from previous versions never feed the worker: the
+        // worker only reads the path in the work input, and an orphaned PNG
+        // is reclaimed by the LRU trim below or by the data reset.
+        File(directory, "story-map-$activityId.png").let { legacy ->
+            if (legacy.isFile) runCatching { StoryMapSnapshotStore.delete(legacy) }
+        }
         StoryMapSnapshotStore.write(file, snapshot)
+        StoryMapDiskCache.trim(directory)
         file
     }
 

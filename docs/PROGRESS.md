@@ -1,6 +1,60 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 14/11/2026 (Smoke no S24 Ultra: story escuro + claro validados, DEV-01 fechado; feedback do usuário 0 aplicado — card final compacto com mais respiro; antes: MAP-04/MAP-05 em código)
+**Atualizado:** 14/11/2026 (MAP-06/ENC-04 fatia 1: style JSON em disco, staging JPEG 95 e LRU; antes: smoke no S24 Ultra e card final com respiro)
+
+## Sessão 2026-11-14 — MAP-06/ENC-04 fatia 1: cache em disco e staging JPEG
+
+**Objetivo:** primeira fatia verificável de MAP-06/ENC-04 — style JSON em
+disco, staging da prévia em JPEG 95 e LRU — sem mudar atribuição, card,
+`pixelForLatLng`, migração ou dependência.
+
+### Concluído
+
+- **Style JSON em disco (MAP-06):** `StoryMapDiskCache` guarda o `liberty`
+  customizado em `cache/stories/styles/style-<estilo>-v1.json`; o
+  `MapLibreBackgroundRenderer` consulta memória → disco → rede e grava após
+  baixar (o fallback raster OSM inline não é persistido). Reexport reaproveita
+  o estilo sem novo download.
+- **Estágio JPEG 95 (ENC-04):** `StoryMapSnapshotStore.write` grava JPEG 95 em
+  vez de PNG 100; o sidecar `.route` segue com os `pixelForLatLng` exatos, e a
+  leitura aceita o PNG legado. O coordinator estagia
+  `story-map-<activityId>.jpg` (apaga o `.png` legado órfão) — a rota não
+  depende dos pixels do bitmap, e sim do sidecar.
+- **LRU (MAP-06):** `StoryMapDiskCache.trim` remove os mais antigos até
+  `stories/` ficar abaixo de 200 MB, apagando o `.route` junto com o bitmap.
+  A limpeza total no reset (`DataResetCoordinator` apaga `cache/stories`)
+  continua valendo.
+- **Testes novos:** `StoryMapDiskCacheTest` (round-trip do estilo, ausente,
+  branco não gravado, LRU por idade, sidecar junto) e ampliações no
+  `StoryMapSnapshotStoreTest` (magia JPEG FF D8 + rota exata, PNG legado com
+  sidecar válido) e no `StoryExportCoordinatorTest` (`.jpg`).
+- **Limites desta fatia:** sem `manifest.json` por variante
+  (`<activityId>/<variantHash>/`), sem stage dos bookends e sem medição no
+  aparelho — ficam para a próxima fatia (manifesto + keyframes) e ENC-05/08.
+
+### Testes
+
+- 1.717 testes, 0 falhas e 0 `@Ignore` (+6 nesta sessão: 5 `StoryMapDiskCacheTest`,
+  +1 líquido no `StoryMapSnapshotStoreTest`).
+  - `:app`: 818; `core:domain`: 691; `core:data`: 168; `core:model`: 40.
+- `:app`: 78,58% de linhas (13.677/17.405, gate ≥78%); `core:domain`: 97,20%
+  (5.830/5.998, gate ≥85%).
+- `check`, `spotlessCheck`, `koverVerify`, detekt, lint e
+  `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest"` verdes; nenhum
+  golden regravado (o renderer não mudou).
+- Nota de flake (registrada, não ignorada): `MetricsImportViewModelTest.reports
+  a missing date column` estourou o `withTimeout(30_000)` do `awaitIdle` em 2
+  execuções da suíte cheia com este diff, mas passa isolado, passa junto com
+  `story.*`, passou na suíte cheia sem o diff e passou no `--rerun-tasks` final
+  com o diff. Nenhum código compartilhado com o story (import CSV × cache de
+  mapa). Hipótese: contenção sob carga no `check` paralelo. Correção dedicada
+  (controle determinístico do dispatcher no `awaitIdle`) fica fora desta fatia.
+
+### Próximo passo
+
+1. MAP-06 fatia 2 — `manifest.json` por variante + stage dos bookends.
+2. ENC-05/ENC-08 — receita completa no worker + memória (pico <150 MB em 30 s).
+3. Usuário 0 regenera o story no aparelho e confirma o card final com respiro.
 
 ## Sessão 2026-11-14 — Smoke no S24 Ultra (escuro + claro) e respiro no card final
 

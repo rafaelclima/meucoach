@@ -19,9 +19,9 @@ class StoryMapSnapshotStoreTest {
     private val directory = ApplicationProvider.getApplicationContext<Context>().cacheDir
 
     @Test
-    fun `round-trips the bitmap and the exact route pixels`() {
-        val file = File(directory, "round-trip.png")
-        val bitmap = Bitmap.createBitmap(12, 20, Bitmap.Config.ARGB_8888)
+    fun `stages as jpeg 95 and keeps the exact route pixels`() {
+        val file = File(directory, "staged.jpg")
+        val bitmap = Bitmap.createBitmap(12, 20, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF184A5E.toInt()) }
         val snapshot = StoryMapSnapshot(
             bitmap = bitmap,
             routePixels = listOf(PointF(1.25f, 2.5f), PointF(11.75f, 19.5f)),
@@ -36,6 +36,28 @@ class StoryMapSnapshotStoreTest {
         assertThat(loaded.routePixels).containsExactly(PointF(1.25f, 2.5f), PointF(11.75f, 19.5f))
         assertThat(loaded.startPixel).isEqualTo(PointF(1.25f, 2.5f))
         assertThat(loaded.endPixel).isEqualTo(PointF(11.75f, 19.5f))
+        // JPEG magic: FF D8 (ENC-04: menor e mais rápido que o PNG 100).
+        val magic = file.inputStream().use { input -> ByteArray(2).also { input.read(it) } }
+        assertThat(magic[0]).isEqualTo(0xFF.toByte())
+        assertThat(magic[1]).isEqualTo(0xD8.toByte())
+    }
+
+    @Test
+    fun `a legacy png with a valid sidecar still decodes`() {
+        val src = File(directory, "legacy-src.jpg")
+        val png = File(directory, "legacy.png")
+        val bitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888)
+        StoryMapSnapshotStore.write(src, StoryMapSnapshot(bitmap, listOf(PointF(1f, 2f))))
+        // Same dimensions, so the sidecar from the JPEG entry is valid for the PNG bitmap.
+        png.outputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+        }
+        StoryMapSnapshotStore.routeFile(src).copyTo(StoryMapSnapshotStore.routeFile(png), overwrite = true)
+
+        val loaded = StoryMapSnapshotStore.read(png)
+
+        assertThat(loaded).isNotNull()
+        assertThat(loaded!!.routePixels).containsExactly(PointF(1f, 2f))
     }
 
     @Test

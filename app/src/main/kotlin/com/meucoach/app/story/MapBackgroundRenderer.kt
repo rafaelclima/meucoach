@@ -128,8 +128,15 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
         }
     }
 
-    private suspend fun styleJson(style: StoryMapStyle): String {
+    private fun cachedStyle(style: StoryMapStyle): String? {
         cachedStyles[style]?.let { return it }
+        val disk = StoryMapDiskCache.readStyle(context.cacheDir, style) ?: return null
+        cachedStyles[style] = disk
+        return disk
+    }
+
+    private suspend fun styleJson(style: StoryMapStyle): String {
+        cachedStyle(style)?.let { return it }
         val json = runCatching {
             withContext(Dispatchers.IO) {
                 val connection = (URL(OpenFreeMapStyle.STYLE_URL).openConnection() as HttpURLConnection).apply {
@@ -151,6 +158,9 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
             return OSM_RASTER_STYLE
         }
         cachedStyles[style] = json
+        if (json != OSM_RASTER_STYLE) {
+            StoryMapDiskCache.writeStyle(context.cacheDir, style, json)
+        }
         return json
     }
 

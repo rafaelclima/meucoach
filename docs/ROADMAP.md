@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.51 · **Data:** 14/11/2026 · **Mudança:** smoke no S24 Ultra fechou DEV-01 (story escuro + claro validados: 1080×1920/30 fps/BT.709, rota alinhada nos 3 pitches, sem crash) e aplicou o feedback do usuário 0 (card final compacto com +2% de altura e fileiras reespaçadas). A versão 1.50 registrou MAP-04/MAP-05 em código.
+**Versão:** 1.52 · **Data:** 14/11/2026 · **Mudança:** MAP-06/ENC-04 fatia 1 (style JSON em disco, staging JPEG 95, LRU 200 MB). A v1.51 registrou o smoke no S24 Ultra (DEV-01) e o card final com respiro.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -538,8 +538,10 @@ extras, selo do km mais rápido só quando a receita pede e barra com todos os
 kms. O Story Studio (UI-01..UI-04/UI-08), a prévia de 3 frames (VIS-06),
 VIS-05/ENC-07 (pôster 4:5, três arquivos no MediaStore e share separado) e
 MAP-01..MAP-03 (MapLibre 13.7.1 OpenGL + `pixelForLatLng` na produção) e
-MAP-04/MAP-05 em código (estilo autoral + 3 keyframes 30°/42°/35°, smoke no
-aparelho pendente) estão prontos. Próximo: memória
+MAP-04/MAP-05 em código (estilo autoral + 3 keyframes 30°/42°/35°) e
+DEV-01 (smoke escuro + claro no S24 Ultra) estão prontos, além de MAP-06/ENC-04
+fatia 1 (style JSON em disco, staging JPEG 95, LRU). Próximo: manifesto por
+variante e stage dos bookends (MAP-06/ENC-04 fatia 2), memória
 (ENC-08), receita no worker além do já encaminhado (ENC-05) e DEV-07/QA-06.
 
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026 e validado no S24 Ultra em 13/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com projeção nativa `pixelForLatLng` a partir do Sprint B.
