@@ -320,32 +320,43 @@ class ActivityDetailViewModel @Inject constructor(
                     null
                 }
             }
-            if (activeExport !== token) return@launch
+            if (activeExport !== token) {
+                // The preview shot was rendered but never staged; release the
+                // ~40 MB follow bitmap instead of waiting for the GC (ENC-08).
+                map?.let { runCatching { it.bitmap.recycle() } }
+                return@launch
+            }
             if (map == null) {
                 _uiState.update {
                     it.copy(storyExport = StoryExportUiState.Error(StoryMessages.MAP_UNAVAILABLE))
                 }
                 return@launch
             }
-            val startFailure = runCatching {
-                storyCoordinator.start(
-                    activityId = activityId,
-                    recipe = studio.recipe,
-                    mapBackground = map,
-                    palette = palette,
-                    isCancelled = { activeExport !== token },
-                )
-            }.exceptionOrNull()
-            if (startFailure != null) {
-                if (startFailure is CancellationException) throw startFailure
-                _uiState.update {
-                    it.copy(
-                        storyExport = StoryExportUiState.Error(
-                            startFailure.message ?: StoryMessages.MAP_STAGE_FAILED,
-                        ),
+            try {
+                val startFailure = runCatching {
+                    storyCoordinator.start(
+                        activityId = activityId,
+                        recipe = studio.recipe,
+                        mapBackground = map,
+                        palette = palette,
+                        isCancelled = { activeExport !== token },
                     )
+                }.exceptionOrNull()
+                if (startFailure != null) {
+                    if (startFailure is CancellationException) throw startFailure
+                    _uiState.update {
+                        it.copy(
+                            storyExport = StoryExportUiState.Error(
+                                startFailure.message ?: StoryMessages.MAP_STAGE_FAILED,
+                            ),
+                        )
+                    }
+                    return@launch
                 }
-                return@launch
+            } finally {
+                // The worker re-reads the staged JPEG from disk; the in-memory
+                // preview bitmap is no longer needed after staging (ENC-08).
+                runCatching { map.bitmap.recycle() }
             }
             if (activeExport === token) {
                 _uiState.update { it.copy(storyExport = StoryExportUiState.Generating(progress = 0f)) }

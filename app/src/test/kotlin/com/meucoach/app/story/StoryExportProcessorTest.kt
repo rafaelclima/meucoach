@@ -301,6 +301,49 @@ class StoryExportProcessorTest {
     }
 
     @Test
+    fun `uses the recipe map style instead of the palette`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeExporter(listOf(1f))
+            val palette = testPalette().copy(mapStyle = StoryMapStyle.MEUCOACH_DARK)
+            val recipe = StoryRecipe(mapStyle = StoryMapStyle.MEUCOACH_LIGHT)
+
+            val outcome = processor(exporter).export(
+                activityId = "activity-1",
+                recipe = recipe,
+                palette = palette,
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(mapRenderer.styles).isNotEmpty()
+            assertThat(mapRenderer.styles).allMatch { it == StoryMapStyle.MEUCOACH_LIGHT }
+        }
+    }
+
+    @Test
+    fun `recycles map bitmaps after the export`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeExporter(listOf(1f))
+
+            val outcome = processor(exporter).export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            assertThat(exporter.renderedBackground?.bitmap?.isRecycled).isTrue()
+            assertThat(exporter.renderedOpening?.bitmap?.isRecycled).isTrue()
+            assertThat(exporter.renderedFinal?.bitmap?.isRecycled).isTrue()
+        }
+    }
+
+    @Test
     fun `renders three keyframes with their own pitches`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
@@ -561,6 +604,7 @@ class StoryExportProcessorTest {
         var style: StoryMapStyle? = null
         val widths = mutableListOf<Int>()
         val pitches = mutableListOf<Float>()
+        val styles = mutableListOf<StoryMapStyle>()
 
         override suspend fun render(
             boundingBox: BoundingBox,
@@ -577,6 +621,7 @@ class StoryExportProcessorTest {
             this.style = style
             widths += width
             pitches += pitchDegrees
+            styles += style
             error?.let { throw it }
             failPitch?.let { failing ->
                 if (pitchDegrees == failing) throw IllegalStateException("tile offline")

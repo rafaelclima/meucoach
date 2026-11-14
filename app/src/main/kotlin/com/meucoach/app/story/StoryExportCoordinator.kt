@@ -78,7 +78,10 @@ class WorkManagerStoryExportCoordinator @Inject constructor(
         palette: StoryPalette,
         isCancelled: () -> Boolean,
     ) {
-        val mapFile = mapBackground?.let { stageMap(it, activityId, palette.mapStyle) }
+        // ENC-05: the recipe owns the map style; the palette only carries
+        // colors. Staging under the recipe style keeps the variant hash and
+        // the manifest on the same style the worker will render.
+        val mapFile = mapBackground?.let { stageMap(it, activityId, recipe.mapStyle) }
         if (isCancelled()) {
             // The user cancelled while the preview snapshot was being written.
             // Only the follow shot staged above is removed: bookends from a

@@ -7,6 +7,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryRecipe
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -117,6 +118,24 @@ class StoryExportCoordinatorTest {
         // Extras/duration must not invalidate the map: same GPS + style stays
         // in a single variant dir.
         assertThat(variants).hasSize(1)
+    }
+
+    @Test
+    fun `stages with the recipe style when the palette diverges`() {
+        runBlocking {
+            coordinator.start(
+                "activity-1",
+                StoryRecipe(mapStyle = StoryMapStyle.MEUCOACH_LIGHT),
+                snapshot(),
+                testPalette().copy(mapStyle = StoryMapStyle.MEUCOACH_DARK),
+            )
+        }
+
+        val variantDir = File(context.cacheDir, "stories/activity-1").listFiles()
+            ?.firstOrNull { StoryMapVariant.manifestFile(it).isFile }
+        assertThat(variantDir).isNotNull()
+        val manifest = StoryMapVariant.readManifest(variantDir!!)
+        assertThat(manifest!!.style).isEqualTo(StoryMapStyle.MEUCOACH_LIGHT)
     }
 
     @Test

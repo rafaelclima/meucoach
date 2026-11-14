@@ -508,10 +508,10 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [ ] ENC-02 | Perfis de qualidade | 1080p30 padrão; parâmetro de 60 fps preparado; bitrate por perfil | `StoryQuality.kt`, exporter | ENC-01 | M | 30 fps validado; 60 fps só é exposto após `DEV-04` |
 | [x] ENC-03 | Sem áudio, sem GPS | Nenhuma trilha AAC; nunca `setLocation`; nome com data/distância | exporter, `StoryFileNames.kt` | ENC-01 | P | MP4 só vídeo; sem metadata de local |
 | [x] ENC-04 | Estágio WebP/JPEG (fatia 2 em 14/11/2026: bookends em JPEG 95 no worker, reuso via manifesto; variante mantida para o reexport, plano legado apagado) | Mapa de prévia e keyframes em WebP/JPEG 95 | Coordinator, cache | MAP-06 | M | Tempo de stage menor; decode ok |
-| [ ] ENC-05 | Receita no worker | `StoryPlanLoader` + `StoryRecipe` + `mapDir`/manifesto | Worker, Processor, Coordinator | DOM-06, MAP-05 | G | Export respeita extras/duração; teste |
+| [~] ENC-05 | Receita no worker (fatia 1 em 14/11/2026: estilo vem da receita, paleta só carrega cores) | `StoryPlanLoader` + `StoryRecipe` + `mapDir`/manifesto | Worker, Processor, Coordinator | DOM-06, MAP-05 | G | Export respeita extras/duração/estilo; teste |
 | [ ] ENC-06 | Progresso/ETA multi-snapshot | 0–10% mapa, 10–100% encode; cancelamento | Worker, ETA | ENC-05 | M | ETA estável; cancelar apaga parcial |
 | [x] ENC-07 | Publicação | Vídeo em Movies; capa 9:16 + pôster 4:5 em Pictures; share individual | exporter, UI | VIS-05 | M | 3 URIs; share sheet |
-| [ ] ENC-08 | Memória | Reciclar bitmaps; não manter high-res na Preview | ViewModel, exporter | VIS-06 | M | Pico <150 MB em 30 s |
+| [~] ENC-08 | Memória (fatia 1 em 14/11/2026: reciclagem no worker/view model/exporter; medir no aparelho) | Reciclar bitmaps; não manter high-res na Preview | ViewModel, exporter | VIS-06 | M | Pico <150 MB em 30 s |
 | [ ] ENC-09 (Sprint 3) | GPU/HardwareRenderer | Spike se export >90 s | exporter | ENC-08 | G | Medição antes/depois; fallback |
 
 ### EPIC 5 — UI / Story Studio

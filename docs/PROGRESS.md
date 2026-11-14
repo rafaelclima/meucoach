@@ -1,6 +1,47 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 14/11/2026 (MAP-06/ENC-04 fatia 2: `manifest.json` por variante `<activityId>/<variantHash>/` + stage dos bookends em JPEG 95; antes: fatia 1 style JSON/LRU)
+**Atualizado:** 14/11/2026 (ENC-05/ENC-08 fatia 1: receita como fonte única do estilo + reciclagem de bitmaps no worker; antes: MAP-06/ENC-04 fatia 2)
+
+## Sessão 2026-11-14 — ENC-05/ENC-08 fatia 1: receita como fonte do estilo e reciclagem
+
+**Objetivo:** primeira fatia verificável de ENC-05/ENC-08 — unificar o estilo
+do mapa na receita e reciclar os bitmaps do worker — sem mudar atribuição,
+card, `pixelForLatLng`, migração ou dependência.
+
+### Concluído
+
+- **ENC-05 (receita como fonte única):** `StoryExportProcessor` e
+  `WorkManagerStoryExportCoordinator` usam `recipe.mapStyle`; a paleta só
+  carrega cores. Uma paleta divergente (tema claro/escuro do sistema) não
+  ressuscita outro estilo de mapa; variante e manifesto seguem a receita.
+- **ENC-08 (reciclagem):** o processor recicla follow/opening/final após o
+  encode (os arquivos seguem em cache para o reexport); o view model recicla
+  o preview após o staging (o worker relê o JPEG do disco); o exporter
+  recicla o frame 1080×1920 (~8 MB) e o avatar. O logo compartilhado nunca é
+  reciclado. Estimativa de pico no worker: mapas ~88 MB + frame 8 MB + scratch
+  YUV ~20 MB (só no fallback Image) → ~96–116 MB, abaixo do teto de 150 MB;
+  a medição no aparelho fica pendente (sem `adb` nesta sessão).
+- **Testes novos:** o processor usa o estilo da receita com paleta divergente,
+  o processor recicla os 3 bitmaps após o export e o coordinator estagia com
+  o estilo da receita.
+
+### Testes
+
+- 1.730 testes, 0 falhas e 0 `@Ignore` (+3 nesta sessão: 2
+  `StoryExportProcessorTest`, 1 `StoryExportCoordinatorTest`).
+  - `:app`: 831; `core:domain`: 691; `core:data`: 168; `core:model`: 40.
+- `:app`: 78,58% de linhas (13.677/17.405, gate ≥78%); `core:domain`: 97,20%
+  (5.830/5.998, gate ≥85%).
+- `check`, `spotlessCheck`, `koverVerify`, detekt, lint e
+  `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest"` verdes; nenhum
+  golden regravado (o renderer não mudou).
+- Sem flake nesta sessão: `check` verde de primeira.
+
+### Próximo passo
+
+1. ENC-08 — medir pico de memória e tempo de export no S24 Ultra (30 s).
+2. Usuário 0 confirma o reexport com outro estilo (claro/escuro) sem re-download.
+3. MAP-07 (low-RAM: 1,25×, 2 keyframes) se o mid-range exigir.
 
 ## Sessão 2026-11-14 — MAP-06/ENC-04 fatia 2: manifesto por variante e bookends
 

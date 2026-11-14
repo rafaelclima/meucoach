@@ -45,10 +45,13 @@ class StoryExportProcessor @Inject constructor(
     ): StoryExportOutcome {
         val plan = planLoader.load(activityId, recipe) ?: return StoryExportOutcome.Failed(StoryMessages.MISSING_GPS)
         val variantDir = variantDirFor(mapPath)
+        // ENC-05: the recipe is the single source of the map style; the palette
+        // only carries colors. A stale palette must not resurrect another style.
+        val style = recipe.mapStyle
         val mapBackground = mapBackground(
             plan,
             mapPath,
-            palette.mapStyle,
+            style,
             StoryMapScript.FOLLOW_PITCH_DEGREES,
         ) ?: return StoryExportOutcome.Retry(StoryMessages.MAP_UNAVAILABLE)
         // Bookends are best-effort: a failed opening/final render falls back to
@@ -57,37 +60,46 @@ class StoryExportProcessor @Inject constructor(
         // a miss renders fresh and stages JPEG 95 + manifest for the reexport.
         val openingMap = cachedOrRenderBookend(
             variantDir = variantDir,
-            style = palette.mapStyle,
+            style = style,
             plan = plan,
             key = BookendKey.OPENING,
         )
         val finalMap = cachedOrRenderBookend(
             variantDir = variantDir,
-            style = palette.mapStyle,
+            style = style,
             plan = plan,
             key = BookendKey.FINAL,
         )
         val eta = StoryEtaEstimator()
-        val result = exporter.export(
-            plan = plan,
-            palette = palette,
-            recipe = recipe,
-            mapBackground = mapBackground,
-            openingMap = openingMap,
-            finalMap = finalMap,
-        ) { fraction ->
-            onProgress(fraction, eta.remainingSec(fraction, atMs()))
-        }
-        // Variant cache stays for the reexport (LRU + reset reclaim it);
-        // legacy flat staging is removed after the export as before.
-        if (variantDir != null) {
-            variantDir.parentFile?.parentFile?.let { storiesDir ->
-                runCatching { StoryMapDiskCache.trim(storiesDir) }
+        try {
+            val result = exporter.export(
+                plan = plan,
+                palette = palette,
+                recipe = recipe,
+                mapBackground = mapBackground,
+                openingMap = openingMap,
+                finalMap = finalMap,
+            ) { fraction ->
+                onProgress(fraction, eta.remainingSec(fraction, atMs()))
             }
-        } else {
-            mapPath?.let { staged -> StoryMapSnapshotStore.delete(File(staged)) }
+            // Variant cache stays for the reexport (LRU + reset reclaim it);
+            // legacy flat staging is removed after the export as before.
+            if (variantDir != null) {
+                variantDir.parentFile?.parentFile?.let { storiesDir ->
+                    runCatching { StoryMapDiskCache.trim(storiesDir) }
+                }
+            } else {
+                mapPath?.let { staged -> StoryMapSnapshotStore.delete(File(staged)) }
+            }
+            return StoryExportOutcome.Completed(result)
+        } finally {
+            // ENC-08: the worker owns these decoded/rendered bitmaps for this
+            // attempt; the files stay cached for the reexport, only the native
+            // memory is released. The exporter already finished encoding.
+            runCatching { mapBackground.bitmap.recycle() }
+            openingMap?.let { runCatching { it.bitmap.recycle() } }
+            finalMap?.let { runCatching { it.bitmap.recycle() } }
         }
-        return StoryExportOutcome.Completed(result)
     }
 
     /**

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.53 · **Data:** 14/11/2026 · **Mudança:** MAP-06/ENC-04 fatia 2 (`manifest.json` por variante `<activityId>/<variantHash>/` + stage dos bookends em JPEG 95). A v1.52 registrou a fatia 1 (style JSON em disco, staging JPEG 95, LRU 200 MB).
+**Versão:** 1.54 · **Data:** 14/11/2026 · **Mudança:** ENC-05/ENC-08 fatia 1 (receita como fonte única do estilo do mapa + reciclagem de bitmaps no worker/view model/exporter). A v1.53 registrou MAP-06/ENC-04 fatia 2 (manifesto por variante, stage dos bookends em JPEG 95, reuso sem re-download).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -541,8 +541,9 @@ MAP-01..MAP-03 (MapLibre 13.7.1 OpenGL + `pixelForLatLng` na produção) e
 MAP-04/MAP-05 em código (estilo autoral + 3 keyframes 30°/42°/35°) e
 DEV-01 (smoke escuro + claro no S24 Ultra) estão prontos, além de MAP-06/ENC-04
 fatia 2 (`manifest.json` por variante, stage dos bookends em JPEG 95, reuso
-sem re-download). Próximo: memória (ENC-08), receita completa no worker
-(ENC-05) e DEV-07/QA-06.
+sem re-download) e ENC-05/ENC-08 fatia 1 (receita como fonte única do estilo,
+reciclagem de bitmaps no worker; medição no aparelho pendente). Próximo:
+medição de memória no aparelho (ENC-08) e DEV-07/QA-06.
 
 **Status:** protótipo validado em 02/11/2026 (`resposta 8`) — desempenho bom no aparelho real. `ADR-0015` implementado em 03/11/2026 e validado no S24 Ultra em 13/11/2026: frame final de 3 s + `BoundingBox` + mapa vetorial (`OpenFreeMap`/OSM + `MapLibre`) em 1080p, com projeção nativa `pixelForLatLng` a partir do Sprint B.
 
@@ -591,7 +592,7 @@ sem re-download). Próximo: memória (ENC-08), receita completa no worker
 - [x] Story V3 — DEV-01: snapshots escuro e claro validados no S24 Ultra (MAP-04/MAP-05, 3 pitches, `pixelForLatLng`); card final compacto com respiro após feedback do usuário 0.
 - [x] Story V3 — DEV-02: rota alinhada às ruas no S24 Ultra; paridade port × SDK medida em 360 pontos (máx. 0,000244 px, média 6,95e-6/3,65e-6 px) — muito abaixo da meta de 2 px.
 - [~] Story V3 — QA-05/DEV-07: pôster 1080×1350 e share sheet validados no S24 Ultra; faltam grid do Instagram/upload real e mid-range 4 GB.
-- [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05) e memória (ENC-08) seguem pendentes.
+- [~] Story V3 — ENC-05/ENC-08: fatia 1 concluída em 14/11/2026 (receita como fonte única do estilo do mapa; reciclagem de bitmaps no worker/view model/exporter, pico estimado ~96–116 MB); falta medir pico e tempo no S24 Ultra e no mid-range 4 GB.
 
 **Descrição da feature (proposta inicial):**
 

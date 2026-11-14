@@ -208,6 +208,11 @@ class CanvasStoryVideoExporter @Inject constructor(
             // nothing in the cache for the user to stumble on.
             runCatching { output.delete() }
             throw error
+        } finally {
+            // ENC-08: the avatar is a per-export decode (≤256 px); the shared
+            // logo bitmap stays alive. Releasing here covers encode, cover and
+            // failure paths with a single owner.
+            avatar?.let { runCatching { it.recycle() } }
         }
     }
 
@@ -433,6 +438,9 @@ class CanvasStoryVideoExporter @Inject constructor(
             inputSurface?.release()
             if (muxerStarted) runCatching { muxer.stop() }
             runCatching { muxer.release() }
+            // ENC-08: the 1080×1920 ARGB frame (~8 MB) is per-export scratch;
+            // release the native memory instead of waiting for the GC.
+            runCatching { bitmap.recycle() }
         }
     }
 
