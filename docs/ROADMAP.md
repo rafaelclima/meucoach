@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.47 · **Data:** 13/11/2026 · **Mudança:** Story V3 Sprint A — pôster 4:5 (VIS-05) em 1080×1350 com a rota como arte, capa 9:16 e pôster publicados em `Pictures/MeuCoach`, compartilhamento separado de vídeo/capa/pôster (ENC-07) e falha do pôster sem derrubar o vídeo. A versão 1.46 registrou o Story Studio (UI-01..UI-04, UI-08), a prévia de 3 frames (VIS-06) e a geração a partir da receita.
+**Versão:** 1.47 · **Data:** 13/11/2026 · **Mudança:** Story V3 Sprint A — pôster 4:5 (VIS-05) em 1080×1350 com a rota como arte, capa 9:16 e pôster publicados em `Pictures/MeuCoach`, compartilhamento separado de vídeo/capa/pôster (ENC-07) e falha do pôster sem derrubar o vídeo. MP4 e pôster validados no S24 Ultra (1080×1920/1080×1350, BT.709/tv/limited, sem áudio/GPS). A versão 1.46 registrou o Story Studio (UI-01..UI-04, UI-08), a prévia de 3 frames (VIS-06) e a geração a partir da receita.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -579,7 +579,9 @@ validação em aparelho (DEV-07/QA-06).
 - [x] Story V3 — ENC-07: vídeo em `Movies/MeuCoach`, capa 9:16 e pôster 4:5 em `Pictures/MeuCoach`; share individual dos três arquivos. Falha do pôster não invalida o vídeo.
 - [x] Story V3 — VIS-09/ENC-03: copy antiga "pronta para o feed" removida e nomes com data/distância.
 - [x] Story V3 — QA-02: goldens do pôster em 5k dark/light e 10k dark, além dos goldens do Studio.
-- [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05), memória (ENC-08) e validação do pôster no feed (DEV-07) seguem pendentes.
+- [x] Story V3 — DEV-06/QA-04: MP4 validado no S24 Ultra (1080×1920, 30 fps, BT.709/tv/limited, sem áudio/GPS); gates verdes.
+- [~] Story V3 — QA-05/DEV-07: pôster 1080×1350 e share sheet validados no S24 Ultra; faltam grid do Instagram/upload real e mid-range 4 GB.
+- [~] Story V3 — Story Studio: prévia desenha a rota (o mapa escolhido entra no vídeo); receita no worker além do já encaminhado (ENC-05) e memória (ENC-08) seguem pendentes.
 
 **Descrição da feature (proposta inicial):**
 

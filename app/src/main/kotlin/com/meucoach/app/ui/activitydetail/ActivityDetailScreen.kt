@@ -693,23 +693,22 @@ private fun StoryCard(
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    McPrimaryButton(
-                        text = "Compartilhar vídeo",
-                        onClick = { onShareStory(story.uri) },
+                McPrimaryButton(
+                    text = "Compartilhar vídeo",
+                    onClick = { onShareStory(story.uri) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("story-share-video"),
+                )
+                if (poster != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    McSecondaryButton(
+                        text = "Compartilhar pôster 4:5",
+                        onClick = { onSharePoster(poster) },
                         modifier = Modifier
-                            .weight(1f)
-                            .testTag("story-share-video"),
+                            .fillMaxWidth()
+                            .testTag("story-share-poster"),
                     )
-                    if (poster != null) {
-                        McSecondaryButton(
-                            text = "Pôster 4:5",
-                            onClick = { onSharePoster(poster) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("story-share-poster"),
-                        )
-                    }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

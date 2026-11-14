@@ -534,8 +534,8 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [x] QA-01 | Testes de domínio | Receita, catálogo, timeline, cards, codec | `core/domain/src/test/.../story/*` | DOM-08 | M | ≥85% linhas |
 | [x] QA-02 | Goldens | 9:16/4:5; presets; extras; dark/light | screenshots | VIS-08 | M | Studio dark/light, 0/2 e pôster 5k/10k cobertos |
 | [ ] QA-03 | Worker/coordinator | Receita, cache, retry, cancelamento | `app/src/test/.../story/*` | ENC-05 | M | Testes verdes |
-| [ ] QA-04 | Gates | `check`, `spotlessCheck`, `koverVerify`, detekt | — | tudo | P | 0 erros; sem novo baseline |
-| [ ] QA-05 | Roteiro de aparelho | S24 Ultra + mid-range 4 GB | `docs/RUNBOOK` ou anexo | ENC-08 | M | Tempo/memória/cor alinhados |
+| [x] QA-04 | Gates | `check`, `spotlessCheck`, `koverVerify`, detekt | — | tudo | P | 0 erros; sem novo baseline |
+| [~] QA-05 | Roteiro de aparelho | S24 Ultra + mid-range 4 GB | `docs/RUNBOOK` ou anexo | ENC-08 | M | S24 Ultra validado; falta mid-range |
 | [ ] QA-06 | Upload real | Instagram Reels + TikTok + WhatsApp | — | QA-05 | M | Safe area, nitidez, cor aprovadas |
 
 ### EPIC 7 — Validação em aparelho
@@ -547,8 +547,8 @@ Status: `[ ]` pendente · `[~]` em andamento · `[x]` concluído.
 | [ ] DEV-03 | Export 5k/10k | Tempo, memória, tamanho | ENC-08 | M | 30 s ≤90 s; pico <150 MB |
 | [ ] DEV-04 | 60 fps | Encoder suporta? | ENC-02 | P | Se falhar, esconder opção |
 | [ ] DEV-05 | Share real | Reels/TikTok/WhatsApp | UI-05 | M | Sem corte; vídeo mudo aceito |
-| [ ] DEV-06 | Metadados | `ffprobe`/MediaMetadataRetriever | ENC-03 | P | Sem GPS |
-| [~] DEV-07 | Pôster 4:5 | Grid do Instagram | VIS-05 | P | Gerado em 1080×1350; falta validar sem crop no feed |
+| [x] DEV-06 | Metadados | `ffprobe`/MediaMetadataRetriever | ENC-03 | P | Sem GPS; BT.709/tv/limited confirmados |
+| [~] DEV-07 | Pôster 4:5 | Grid do Instagram | VIS-05 | P | 1080×1350 e share sheet ok; falta o grid |
 
 ---
 
