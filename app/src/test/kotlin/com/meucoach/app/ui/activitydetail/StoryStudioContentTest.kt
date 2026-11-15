@@ -74,7 +74,7 @@ class StoryStudioContentTest {
 
         compose.onNodeWithTag("story-extra-date").performScrollTo()
         compose.onNodeWithTag("story-extra-date").assertIsNotEnabled()
-        compose.onNodeWithText("EXTRAS (2/2)").assertIsDisplayed()
+        compose.onNodeWithText("EXTRAS (2/2)").performScrollTo().assertIsDisplayed()
     }
 
     @Test
