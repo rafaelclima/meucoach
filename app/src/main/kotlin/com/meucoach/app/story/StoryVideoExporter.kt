@@ -57,8 +57,12 @@ internal object StoryEncoderSettings {
  * support; otherwise the encoder keeps its defaults and the export still
  * runs. Color keys are always present because they describe the Canvas input.
  */
-internal fun MediaFormat.applyStoryEncoderSettings(supportsHighProfile41: Boolean, supportsVbr: Boolean) {
-    setInteger(MediaFormat.KEY_BIT_RATE, StoryEncoderSettings.BITRATE)
+internal fun MediaFormat.applyStoryEncoderSettings(
+    supportsHighProfile41: Boolean,
+    supportsVbr: Boolean,
+    bitrate: Int = StoryEncoderSettings.BITRATE,
+) {
+    setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
     setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
     setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
     setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
@@ -79,6 +83,19 @@ internal fun MediaFormat.applyStoryEncoderSettings(supportsHighProfile41: Boolea
         )
     }
 }
+
+/**
+ * Frame timing for the story encoder (ENC-02). The recipe quality owns the
+ * frame rate; the UI keeps offering only 1080p30 until the 60 fps profile is
+ * validated on device (DEV-04).
+ */
+internal fun storyFrameCount(durationSec: Float, fps: Int): Int = (durationSec * fps).roundToInt().coerceAtLeast(1)
+
+internal fun storyFrameTimeSec(frame: Int, fps: Int): Float = frame.toFloat() / fps
+
+internal fun storyFrameTimeUs(frame: Int, fps: Int): Long = frame * 1_000_000L / fps
+
+internal fun storyFrameTimeNs(frame: Int, fps: Int): Long = frame * 1_000_000_000L / fps
 
 /**
  * Contract for rendering the story MP4 out of a [StoryPlan]. An interface so
@@ -113,8 +130,11 @@ interface StoryVideoExporter {
          */
         const val MAP_SUPERSAMPLE = 2.25f
 
-        fun mapWidth(): Int = (WIDTH * MAP_SUPERSAMPLE).toInt()
-        fun mapHeight(): Int = (HEIGHT * MAP_SUPERSAMPLE).toInt()
+        fun mapWidth(lowRam: Boolean = false): Int =
+            (WIDTH * if (lowRam) StoryMapScript.LOW_RAM_SUPERSAMPLE else MAP_SUPERSAMPLE).toInt()
+
+        fun mapHeight(lowRam: Boolean = false): Int =
+            (HEIGHT * if (lowRam) StoryMapScript.LOW_RAM_SUPERSAMPLE else MAP_SUPERSAMPLE).toInt()
     }
 }
 
@@ -308,7 +328,10 @@ class CanvasStoryVideoExporter @Inject constructor(
             renderJob.recipe,
         )
         val yuvSize = StoryVideoExporter.WIDTH * StoryVideoExporter.HEIGHT * 3 / 2
-        val frameCount = (renderJob.plan.durationSec * FPS).roundToInt().coerceAtLeast(1)
+        // ENC-02: the recipe quality owns the frame rate (1080p30 today; 60 fps
+        // stays unexposed until DEV-04 validates it on device).
+        val fps = renderJob.recipe.quality.fps
+        val frameCount = storyFrameCount(renderJob.plan.durationSec, fps)
         val useSurface = supportsSurface(codecInfo)
         // Scratch planes are only needed by the fallback Image path.
         var pixels: IntArray? = null
@@ -363,11 +386,12 @@ class CanvasStoryVideoExporter @Inject constructor(
                         MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
                     },
                 )
-                setInteger(MediaFormat.KEY_FRAME_RATE, FPS)
+                setInteger(MediaFormat.KEY_FRAME_RATE, fps)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
                 applyStoryEncoderSettings(
                     supportsHighProfile41 = supportsHighProfile41(codecInfo),
                     supportsVbr = supportsVbr(codecInfo),
+                    bitrate = renderJob.recipe.quality.bitrate,
                 )
             }
             codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
@@ -383,12 +407,12 @@ class CanvasStoryVideoExporter @Inject constructor(
                 if (isCancelled()) {
                     throw CancellationException("Geração do story cancelada.")
                 }
-                val timeSec = frame.toFloat() / FPS
+                val timeSec = storyFrameTimeSec(frame, fps)
                 renderer.render(canvas, renderJob.plan, timeSec, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT)
                 StoryFilm.drawGrain(canvas, StoryVideoExporter.WIDTH, StoryVideoExporter.HEIGHT, timeSec)
                 val encoder = glEncoder
                 if (encoder != null) {
-                    encoder.draw(bitmap, frame * 1_000_000_000L / FPS)
+                    encoder.draw(bitmap, storyFrameTimeNs(frame, fps))
                 } else {
                     val inputIndex = codec.dequeueInputBuffer(10_000L)
                     check(inputIndex >= 0) { "Encoder sem buffer de entrada." }
@@ -405,7 +429,7 @@ class CanvasStoryVideoExporter @Inject constructor(
                         inputIndex,
                         0,
                         yuvSize,
-                        frame * 1_000_000L / FPS,
+                        storyFrameTimeUs(frame, fps),
                         0,
                     )
                 }
@@ -425,7 +449,7 @@ class CanvasStoryVideoExporter @Inject constructor(
                     inputIndex,
                     0,
                     0,
-                    frameCount * 1_000_000L / FPS,
+                    storyFrameTimeUs(frameCount, fps),
                     MediaCodec.BUFFER_FLAG_END_OF_STREAM,
                 )
             }
@@ -677,7 +701,6 @@ class CanvasStoryVideoExporter @Inject constructor(
 
     companion object {
         private const val MIME = "video/avc"
-        private const val FPS = 30
 
         /** Progress callback stays cheap for the encoder loop; callers throttle further. */
         private const val PROGRESS_EVERY_FRAMES = 12

@@ -31,27 +31,25 @@ internal object OpenFreeMapStyle {
     private const val ELEVATION_TILES =
         "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
-    private const val SATELLITE_TILES =
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-
     @Suppress("DEPRECATION")
     fun customize(json: String, style: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK): String {
+        // Satellite is out of the MVP by license (ADR 0040 §2.4): old jobs
+        // still decode the enum value, but the flow renders the dark style
+        // instead of Esri imagery.
+        val effective = if (style == StoryMapStyle.SATELLITE) StoryMapStyle.MEUCOACH_DARK else style
         val root = JSONObject(json)
         val source = root.optJSONArray("layers") ?: return json
-        val satellite = style == StoryMapStyle.SATELLITE
         val layers = JSONArray()
         for (index in 0 until source.length()) {
             val layer = source.optJSONObject(index) ?: continue
-            if (isClutter(layer.optString("id"), style)) continue
+            if (isClutter(layer.optString("id"), effective)) continue
             val type = layer.optString("type")
-            // Satellite imagery replaces the vector base; labels stay on top.
-            if (satellite && type != "symbol") continue
-            if (type == "symbol") customizeLabel(layer, style)
-            if (style == StoryMapStyle.MEUCOACH_DARK) applyDarkPaint(layer)
-            if (style == StoryMapStyle.MEUCOACH_LIGHT) applyLightPaint(layer)
+            if (type == "symbol") customizeLabel(layer, effective)
+            if (effective == StoryMapStyle.MEUCOACH_DARK) applyDarkPaint(layer)
+            if (effective == StoryMapStyle.MEUCOACH_LIGHT) applyLightPaint(layer)
             layers.put(layer)
         }
-        val result = styledLayers(style, root, layers)
+        val result = styledLayers(effective, root, layers)
         root.put("layers", result)
         return root.toString()
     }
@@ -62,7 +60,7 @@ internal object OpenFreeMapStyle {
         val label = labelFor(layer.optString("id")) ?: return
         layout.put("text-size", label.size)
         val paint = layer.optJSONObject("paint") ?: JSONObject().also { layer.put("paint", it) }
-        if (style == StoryMapStyle.SATELLITE || style == StoryMapStyle.MEUCOACH_DARK) {
+        if (style == StoryMapStyle.MEUCOACH_DARK) {
             paint.put("text-color", DARK_LABEL)
             paint.put("text-halo-color", DARK_HALO)
         } else {
@@ -74,13 +72,15 @@ internal object OpenFreeMapStyle {
 
     @Suppress("DEPRECATION")
     private fun styledLayers(style: StoryMapStyle, root: JSONObject, layers: JSONArray): JSONArray = when (style) {
-        StoryMapStyle.SATELLITE -> withSatellite(root, layers)
-
         StoryMapStyle.TERRAIN -> withTerrain(root, layers)
 
         StoryMapStyle.MEUCOACH_DARK -> withMeuCoachDark(layers)
 
         StoryMapStyle.MEUCOACH_LIGHT -> withMeuCoachLight(layers)
+
+        // Legacy jobs still decode SATELLITE; customize() normalizes it to
+        // dark before reaching here, so this branch is a fallback only.
+        StoryMapStyle.SATELLITE -> withMeuCoachDark(layers)
 
         // Legacy liberty: trimmed geometry only.
         StoryMapStyle.CLASSIC,
@@ -101,65 +101,6 @@ internal object OpenFreeMapStyle {
      * um tom quente autoral; o restante mantém as cores do liberty.
      */
     private fun withMeuCoachLight(layers: JSONArray): JSONArray = layers
-
-    /**
-     * Satellite imagery with the same vector labels, muted and veiled so the
-     * lime route and the cards stay legible. Imagery: Esri World Imagery
-     * (attribution required).
-     */
-    private fun withSatellite(root: JSONObject, labels: JSONArray): JSONArray {
-        val sources = root.optJSONObject("sources") ?: JSONObject().also { root.put("sources", it) }
-        sources.put(
-            SATELLITE_SOURCE,
-            JSONObject(
-                """
-                {
-                  "type": "raster",
-                  "tiles": ["$SATELLITE_TILES"],
-                  "tileSize": 256,
-                  "maxzoom": 19,
-                  "attribution": "Imagery: Esri, Maxar, Earthstar Geographics"
-                }
-                """.trimIndent(),
-            ),
-        )
-        val result = JSONArray()
-        result.put(
-            JSONObject(
-                """
-                {
-                  "id": "satellite",
-                  "type": "raster",
-                  "source": "$SATELLITE_SOURCE",
-                  "paint": {
-                    "raster-opacity": 1.0,
-                    "raster-brightness-max": 0.92,
-                    "raster-contrast": 0.15,
-                    "raster-saturation": -0.2
-                  }
-                }
-                """.trimIndent(),
-            ),
-        )
-        // Dark veil above the imagery, below the labels: keeps the route and
-        // the safe-area gradients readable on bright satellite photos.
-        result.put(
-            JSONObject(
-                """
-                {
-                  "id": "satellite-veil",
-                  "type": "background",
-                  "paint": {
-                    "background-color": "#0B0D10",
-                    "background-opacity": 0.18
-                  }
-                }
-                """.trimIndent(),
-            ),
-        )
-        for (index in 0 until labels.length()) result.put(labels.getJSONObject(index))
-        return result
-    }
 
     /**
      * Hillshade over the vector basemap: cheap relief that reads as "terrain"
@@ -213,7 +154,6 @@ internal object OpenFreeMapStyle {
     }
 
     private const val TERRAIN_SOURCE = "terrain-dem"
-    private const val SATELLITE_SOURCE = "satellite"
 
     /**
      * Grafite, água azul-petróleo e parques dessaturados. As cores do liberty

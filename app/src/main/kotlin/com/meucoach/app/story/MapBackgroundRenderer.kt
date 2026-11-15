@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import android.app.ActivityManager
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -30,6 +31,13 @@ import kotlin.coroutines.resumeWithException
  * MapLibre native library.
  */
 interface MapBackgroundRenderer {
+    /**
+     * Low-RAM devices (`ActivityManager.isLowRamDevice`) render the story at
+     * 1,25× with two keyframes (MAP-07). The default is the full budget; only
+     * the real MapLibre renderer overrides this from the device.
+     */
+    val lowRam: Boolean get() = false
+
     suspend fun render(
         boundingBox: BoundingBox,
         route: List<StoryGeoPoint>,
@@ -47,9 +55,15 @@ interface MapBackgroundRenderer {
  * story, before the video is encoded, and reused for every frame. If the style
  * download fails, it falls back to the inline OSM raster style.
  */
-class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private val context: Context) :
-    MapBackgroundRenderer {
+class MapLibreBackgroundRenderer @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val tileSource: StoryTileSource,
+) : MapBackgroundRenderer {
     private val cachedStyles = java.util.concurrent.ConcurrentHashMap<StoryMapStyle, String>()
+
+    override val lowRam: Boolean by lazy {
+        context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+    }
 
     override suspend fun render(
         boundingBox: BoundingBox,
@@ -63,19 +77,29 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
         if (!hasNetwork()) {
             throw IllegalStateException("Sem conexão para baixar o mapa.")
         }
+        // Backstop for the low-RAM budget (MAP-07): callers already request
+        // 1,25× dims on constrained devices, but a full-size request is clamped
+        // here so the snapshot never exceeds the budget transiently either.
+        val pixels = width.toLong() * height.toLong()
+        val (renderWidth, renderHeight) = if (lowRam && pixels > LOW_RAM_MAX_PIXELS) {
+            val scale = kotlin.math.sqrt(LOW_RAM_MAX_PIXELS.toDouble() / pixels).toFloat()
+            maxOf(1, (width * scale).toInt()) to maxOf(1, (height * scale).toInt())
+        } else {
+            width to height
+        }
         val json = styleJson(style)
         return withContext(Dispatchers.Main.immediate) {
             MapLibre.getInstance(context)
             suspendCancellableCoroutine { continuation ->
                 val camera = StoryMapCameraCalculator.calculateForStory(
                     boundingBox,
-                    width,
-                    height,
+                    renderWidth,
+                    renderHeight,
                     pitchDegrees = pitchDegrees,
                     bearingDegrees = bearingDegrees,
                 )
                 val options = MapSnapshotter
-                    .Options(width, height)
+                    .Options(renderWidth, renderHeight)
                     .withStyleBuilder(Style.Builder().fromJson(json))
                     .withCameraPosition(
                         CameraPosition.Builder()
@@ -139,7 +163,7 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
         cachedStyle(style)?.let { return it }
         val json = runCatching {
             withContext(Dispatchers.IO) {
-                val connection = (URL(OpenFreeMapStyle.STYLE_URL).openConnection() as HttpURLConnection).apply {
+                val connection = (URL(tileSource.styleUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 10_000
                     readTimeout = 15_000
                     requestMethod = "GET"
@@ -147,7 +171,7 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
                     instanceFollowRedirects = true
                 }
                 val json = connection.getInputStream().bufferedReader().use { it.readText() }
-                OpenFreeMapStyle.customize(json, style)
+                tileSource.customize(json, style)
             }
         }.getOrElse { error ->
             if (error is CancellationException) throw error
@@ -172,6 +196,9 @@ class MapLibreBackgroundRenderer @Inject constructor(@ApplicationContext private
     }
 
     private companion object {
+        /** 1,25× follow frame: the low-RAM ceiling for any story snapshot (MAP-07). */
+        const val LOW_RAM_MAX_PIXELS = 1_350 * 2_400
+
         // Fallback when OpenFreeMap is unreachable: inline OSM raster tiles, no key.
         val OSM_RASTER_STYLE = """
             {

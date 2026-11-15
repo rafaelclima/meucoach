@@ -189,7 +189,7 @@ class OpenFreeMapStyleTest {
     }
 
     @Test
-    fun `satellite keeps labels over imagery with a dark veil`() {
+    fun `satellite falls back to the dark style without imagery`() {
         val json = """
             {"sources":{},"layers":[
               {"id":"water","type":"fill"},
@@ -201,18 +201,13 @@ class OpenFreeMapStyleTest {
         val root = JSONObject(OpenFreeMapStyle.customize(json, StoryMapStyle.SATELLITE))
         val layers = root.getJSONArray("layers")
 
-        assertThat(layers.getJSONObject(0).getString("type")).isEqualTo("raster")
-        assertThat(layers.getJSONObject(0).getString("source")).isEqualTo("satellite")
-        assertThat(layers.getJSONObject(1).getString("id")).isEqualTo("satellite-veil")
-        assertThat(layers.getJSONObject(2).getString("id")).isEqualTo("label_city")
-        assertThat(layers.length()).isEqualTo(3)
+        val ids = (0 until layers.length()).map { layers.getJSONObject(it).getString("id") }
+        assertThat(ids).doesNotContain("satellite", "satellite-veil")
+        assertThat(root.toString()).doesNotContain("arcgisonline")
+        assertThat(ids).contains("water", "roads", "label_city")
         assertThat(
-            root.getJSONObject("sources").getJSONObject("satellite")
-                .getJSONArray("tiles").getString(0),
-        ).contains("arcgisonline")
-        assertThat(
-            layers.getJSONObject(2).getJSONObject("paint").getString("text-color"),
-        ).isEqualTo("#F4F6F7")
+            layers.getJSONObject(ids.indexOf("label_city")).getJSONObject("paint").getString("text-color"),
+        ).isEqualTo(OpenFreeMapStyle.DARK_LABEL)
     }
 
     @Test

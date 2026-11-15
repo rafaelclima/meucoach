@@ -22,6 +22,16 @@ class StoryMapScriptTest {
     }
 
     @Test
+    fun `low ram devices render at one point two five with two keyframes`() {
+        assertThat(StoryVideoExporter.mapWidth(lowRam = true)).isEqualTo(1_350)
+        assertThat(StoryVideoExporter.mapHeight(lowRam = true)).isEqualTo(2_400)
+        assertThat(StoryMapScript.openingWidth(lowRam = true)).isEqualTo(1_350)
+        assertThat(StoryMapScript.openingHeight(lowRam = true)).isEqualTo(2_400)
+        assertThat(StoryMapScript.finalWidth(lowRam = true)).isEqualTo(1_350)
+        assertThat(StoryMapScript.finalHeight(lowRam = true)).isEqualTo(2_400)
+    }
+
+    @Test
     fun `keyframe follows the plan segments`() {
         val activity = ActivityDetailTestData.state().activity!!.imported
         val plan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))

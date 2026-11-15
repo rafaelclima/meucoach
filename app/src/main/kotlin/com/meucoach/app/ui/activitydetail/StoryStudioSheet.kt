@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -182,7 +185,9 @@ internal fun StoryStudioContent(
             }
             IconButton(
                 onClick = onClose,
-                modifier = Modifier.testTag("story-studio-close"),
+                modifier = Modifier
+                    .size(48.dp)
+                    .testTag("story-studio-close"),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Close,
@@ -282,7 +287,7 @@ internal fun StoryStudioContent(
         if (state.recipe.mapStyle == StoryMapStyle.TERRAIN) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Relevo do terreno via Mapzen · baixa na primeira vez.",
+                text = "Relevo do terreno via Mapzen · é baixado na primeira vez.",
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
             )
@@ -330,6 +335,7 @@ internal fun StoryStudioContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .toggleable(
                     value = state.saveAsDefault,
@@ -472,6 +478,7 @@ private fun SectionLabel(text: String) {
         text = text,
         style = McTextStyles.caption,
         color = McTheme.colors.textTertiary,
+        modifier = Modifier.semantics { heading() },
     )
     Spacer(modifier = Modifier.height(6.dp))
 }
@@ -548,11 +555,19 @@ internal fun StoryRecipe.summaryLine(): String {
         StoryDuration.SEC_45 -> "45 s"
         StoryDuration.SEC_60 -> "60 s"
     }
+
+    @Suppress("DEPRECATION")
     val map = when (mapStyle) {
         StoryMapStyle.CLASSIC -> "mapa clássico"
-        StoryMapStyle.SATELLITE -> "satélite"
+
+        // Satellite left the Studio (ADR 0040 §2.4); a saved legacy recipe
+        // renders the dark style, so the summary names it.
+        StoryMapStyle.SATELLITE -> "mapa escuro"
+
         StoryMapStyle.TERRAIN -> "mapa terreno"
+
         StoryMapStyle.MEUCOACH_DARK -> "mapa escuro"
+
         StoryMapStyle.MEUCOACH_LIGHT -> "mapa claro"
     }
     return "$extrasPart · $duration · $map."

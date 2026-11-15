@@ -334,6 +334,142 @@ class StoryFrameScreenshotTest {
         compose.onRoot().captureRoboImage("src/test/screenshots/story-final-two-extras-dark.png")
     }
 
+    @Test
+    fun storyFrameLight() {
+        val activity = ActivityDetailTestData.state().activity!!.imported
+        val storyPlan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = false) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(palette, Typeface.DEFAULT)
+                        .render(storyPlan, timeSec = 8f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Quadro do story claro",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-frame-light.png")
+    }
+
+    @Test
+    fun storyCardWithOneExtraDark() {
+        val storyPlan = easyPlan()
+        val recipe = StoryRecipe(extras = listOf(StoryExtra.AVG_HR))
+        val cardStart = checkNotNull(
+            storyPlan.segments.firstOrNull {
+                it.type == StorySegmentType.CARD && it.split?.km == 1
+            },
+        ).startSec
+        val map = fakeMapSnapshot(storyPlan)
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(
+                        palette = palette,
+                        typeface = Typeface.DEFAULT,
+                        mapBackground = map,
+                        recipe = recipe,
+                    ).render(storyPlan, timeSec = cardStart + 1f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Card do story com uma métrica extra",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-card-one-extra-dark.png")
+    }
+
+    @Test
+    fun storyFinalWithOneExtraDark() {
+        val storyPlan = easyPlan()
+        val recipe = StoryRecipe(extras = listOf(StoryExtra.AVG_HR))
+        val finalStart = storyPlan.segments.last { it.type == StorySegmentType.FINAL }.startSec
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(
+                        palette = palette,
+                        typeface = Typeface.DEFAULT,
+                        logoBitmap = logo,
+                        recipe = recipe,
+                    ).render(storyPlan, timeSec = finalStart + 1f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Frame final do story com uma métrica extra",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-final-one-extra-dark.png")
+    }
+
+    @Test
+    fun storyCardWithFastestStampDark() {
+        val storyPlan = easyPlan()
+        val recipe = StoryRecipe(extras = listOf(StoryExtra.FASTEST_KM))
+        val fastestKm = checkNotNull(storyPlan.splits.minByOrNull { it.pace.secondsPerKm }).km
+        val cardStart = checkNotNull(
+            storyPlan.segments.firstOrNull {
+                it.type == StorySegmentType.CARD && it.split?.km == fastestKm
+            },
+        ).startSec
+        val map = fakeMapSnapshot(storyPlan)
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(
+                        palette = palette,
+                        typeface = Typeface.DEFAULT,
+                        mapBackground = map,
+                        recipe = recipe,
+                    ).render(storyPlan, timeSec = cardStart + 1f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Card do story com selo de km mais rápido",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-card-fastest-dark.png")
+    }
+
     /** Synthetic 2 km easy run: every sample sits inside Z2 (`LTHR` 180, bpm 150). */
     private fun easyPlan(): StoryPlan {
         val activity = ImportedActivity(

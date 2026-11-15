@@ -1,13 +1,20 @@
 package com.meucoach.app.ui.activitydetail
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
@@ -133,7 +140,7 @@ class StoryStudioContentTest {
     fun `explains the terrain download and the route-only preview`() {
         setContent(recipe = StoryRecipe(mapStyle = StoryMapStyle.TERRAIN))
 
-        compose.onNodeWithText("Relevo do terreno via Mapzen · baixa na primeira vez.")
+        compose.onNodeWithText("Relevo do terreno via Mapzen · é baixado na primeira vez.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText("A prévia desenha a rota; o mapa escolhido entra no vídeo.")
@@ -162,6 +169,40 @@ class StoryStudioContentTest {
         compose.onNodeWithTag("story-generate").performScrollTo().performClick()
 
         assertThat(generated).isTrue()
+    }
+
+    @Test
+    fun `exposes headings selection and toggle state to TalkBack`() {
+        setContent(recipe = StoryRecipe(extras = listOf(StoryExtra.AVG_HR)))
+
+        compose.onNodeWithText("EXTRAS (1/2)").performScrollTo()
+        val extras = compose.onNodeWithText("EXTRAS (1/2)").fetchSemanticsNode()
+        val map = compose.onNodeWithText("MAPA").performScrollTo().fetchSemanticsNode()
+        assertThat(extras.config.getOrElse(SemanticsProperties.Heading) { null }).isEqualTo(Unit)
+        assertThat(map.config.getOrElse(SemanticsProperties.Heading) { null }).isEqualTo(Unit)
+        compose.onNodeWithTag("story-extra-avg_hr").performScrollTo().assertIsSelected()
+        compose.onNodeWithTag("story-extra-cadence").performScrollTo().assertIsNotSelected()
+        compose.onNodeWithTag("story-save-default").performScrollTo().assertIsOn()
+    }
+
+    @Test
+    fun `describes the preview frame to TalkBack`() {
+        setContent()
+
+        compose.onNode(hasContentDescription("Prévia do story — Abertura")).assertIsDisplayed()
+    }
+
+    @Test
+    fun `keeps story controls at forty eight dp touch targets`() {
+        setContent()
+
+        compose.onNodeWithTag("story-studio-close").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("story-preset-essential").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("story-extra-cadence").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("story-duration-auto").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("story-map-meucoach_dark").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("story-save-default").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("story-generate").performScrollTo().assertHeightIsAtLeast(48.dp)
     }
 
     @Test

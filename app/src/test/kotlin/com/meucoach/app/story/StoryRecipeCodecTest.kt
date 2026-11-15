@@ -99,6 +99,25 @@ class StoryRecipeCodecTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
+    fun `decodes a legacy satellite recipe without breaking`() {
+        val json = """
+            {
+              "v": 1,
+              "preset": "ESSENTIAL",
+              "extras": [],
+              "duration": "AUTO",
+              "mapStyle": "SATELLITE",
+              "quality": "STANDARD_1080P30"
+            }
+        """.trimIndent()
+
+        val recipe = StoryRecipeCodec.decode(json)
+
+        assertThat(recipe.mapStyle).isEqualTo(StoryMapStyle.SATELLITE)
+    }
+
+    @Test
     fun `unknown enum values fall back field by field`() {
         val json = """
             {

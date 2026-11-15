@@ -30,6 +30,16 @@ class StoryExportProcessor @Inject constructor(
     private val mapRenderer: MapBackgroundRenderer,
     private val exporter: StoryVideoExporter,
 ) {
+    companion object {
+        /** Plan loaded: the map phase owns the first 10% of the bar (ENC-06). */
+        const val PLAN_READY_FRACTION = 0.02f
+
+        /** Follow snapshot ready (staged or freshly rendered). */
+        const val FOLLOW_READY_FRACTION = 0.05f
+
+        /** Opening + final bookends ready: the encode owns 10–100%. */
+        const val MAP_READY_FRACTION = 0.10f
+    }
 
     /**
      * [atMs] is the wall clock used by the ETA estimator; the worker keeps the
@@ -44,32 +54,46 @@ class StoryExportProcessor @Inject constructor(
         atMs: () -> Long = { SystemClock.elapsedRealtime() },
     ): StoryExportOutcome {
         val plan = planLoader.load(activityId, recipe) ?: return StoryExportOutcome.Failed(StoryMessages.MISSING_GPS)
+        onProgress(PLAN_READY_FRACTION, null)
         val variantDir = variantDirFor(mapPath)
         // ENC-05: the recipe is the single source of the map style; the palette
         // only carries colors. A stale palette must not resurrect another style.
         val style = recipe.mapStyle
+        // MAP-07: low-RAM devices render the follow shot at 1,25× and keep two
+        // keyframes (follow + final). The opening bookend falls back to the
+        // follow snapshot in the renderer, which stays aligned.
+        val lowRam = mapRenderer.lowRam
         val mapBackground = mapBackground(
             plan,
             mapPath,
             style,
             StoryMapScript.FOLLOW_PITCH_DEGREES,
+            lowRam,
         ) ?: return StoryExportOutcome.Retry(StoryMessages.MAP_UNAVAILABLE)
+        onProgress(FOLLOW_READY_FRACTION, null)
         // Bookends are best-effort: a failed opening/final render falls back to
         // the follow snapshot in the renderer, which keeps the route aligned.
         // Staged bookends in the variant dir are reused without a tile fetch;
         // a miss renders fresh and stages JPEG 95 + manifest for the reexport.
-        val openingMap = cachedOrRenderBookend(
-            variantDir = variantDir,
-            style = style,
-            plan = plan,
-            key = BookendKey.OPENING,
-        )
+        val openingMap = if (lowRam) {
+            null
+        } else {
+            cachedOrRenderBookend(
+                variantDir = variantDir,
+                style = style,
+                plan = plan,
+                key = BookendKey.OPENING,
+                lowRam = lowRam,
+            )
+        }
         val finalMap = cachedOrRenderBookend(
             variantDir = variantDir,
             style = style,
             plan = plan,
             key = BookendKey.FINAL,
+            lowRam = lowRam,
         )
+        onProgress(MAP_READY_FRACTION, null)
         val eta = StoryEtaEstimator()
         try {
             val result = exporter.export(
@@ -80,7 +104,11 @@ class StoryExportProcessor @Inject constructor(
                 openingMap = openingMap,
                 finalMap = finalMap,
             ) { fraction ->
-                onProgress(fraction, eta.remainingSec(fraction, atMs()))
+                // ENC-06: the map phase owns 0–10% of the bar; the encode owns
+                // 10–100%. The mapping is linear, so the ETA rate math is
+                // unchanged and the estimate stays stable across the handoff.
+                val overall = MAP_READY_FRACTION + (1f - MAP_READY_FRACTION) * fraction
+                onProgress(overall, eta.remainingSec(overall, atMs()))
             }
             // Variant cache stays for the reexport (LRU + reset reclaim it);
             // legacy flat staging is removed after the export as before.
@@ -123,24 +151,44 @@ class StoryExportProcessor @Inject constructor(
         style: StoryMapStyle,
         plan: StoryPlan,
         key: BookendKey,
+        lowRam: Boolean,
     ): StoryMapSnapshot? {
         if (variantDir == null) {
-            return renderBookend(plan, style, key.width, key.height, key.pitchDegrees)
+            return renderBookend(
+                plan,
+                style,
+                key.width(lowRam),
+                key.height(lowRam),
+                key.pitchDegrees,
+            )
         }
-        loadStagedBookend(variantDir, style, key)?.let { return it }
-        val rendered = renderBookend(plan, style, key.width, key.height, key.pitchDegrees) ?: return null
+        loadStagedBookend(variantDir, style, key, lowRam)?.let { return it }
+        val rendered = renderBookend(
+            plan,
+            style,
+            key.width(lowRam),
+            key.height(lowRam),
+            key.pitchDegrees,
+        ) ?: return null
         stageBookend(variantDir, key, rendered)
         return rendered
     }
 
-    private fun loadStagedBookend(variantDir: File, style: StoryMapStyle, key: BookendKey): StoryMapSnapshot? {
+    private fun loadStagedBookend(
+        variantDir: File,
+        style: StoryMapStyle,
+        key: BookendKey,
+        lowRam: Boolean,
+    ): StoryMapSnapshot? {
         val manifest = StoryMapVariant.readManifest(variantDir) ?: return null
         if (manifest.style != style) return null
         val entry = key.entryOf(manifest) ?: return null
-        if (entry.file != key.fileName || entry.width != key.width || entry.height != key.height) return null
+        if (entry.file != key.fileName || entry.width != key.width(lowRam) || entry.height != key.height(lowRam)) {
+            return null
+        }
         val file = File(variantDir, entry.file)
         val staged = StoryMapSnapshotStore.read(file) ?: return null
-        if (staged.bitmap.width != key.width || staged.bitmap.height != key.height) {
+        if (staged.bitmap.width != key.width(lowRam) || staged.bitmap.height != key.height(lowRam)) {
             staged.bitmap.recycle()
             return null
         }
@@ -177,17 +225,15 @@ class StoryExportProcessor @Inject constructor(
                 FINAL -> StoryMapVariant.FINAL_NAME
             }
 
-        val width: Int
-            get() = when (this) {
-                OPENING -> StoryMapScript.openingWidth()
-                FINAL -> StoryMapScript.finalWidth()
-            }
+        fun width(lowRam: Boolean): Int = when (this) {
+            OPENING -> StoryMapScript.openingWidth(lowRam)
+            FINAL -> StoryMapScript.finalWidth(lowRam)
+        }
 
-        val height: Int
-            get() = when (this) {
-                OPENING -> StoryMapScript.openingHeight()
-                FINAL -> StoryMapScript.finalHeight()
-            }
+        fun height(lowRam: Boolean): Int = when (this) {
+            OPENING -> StoryMapScript.openingHeight(lowRam)
+            FINAL -> StoryMapScript.finalHeight(lowRam)
+        }
 
         val pitchDegrees: Float
             get() = when (this) {
@@ -217,6 +263,7 @@ class StoryExportProcessor @Inject constructor(
         mapPath: String?,
         style: StoryMapStyle,
         pitchDegrees: Float,
+        lowRam: Boolean,
     ): StoryMapSnapshot? {
         val bounds = plan.boundingBox ?: return null
         mapPath?.let { path ->
@@ -230,8 +277,8 @@ class StoryExportProcessor @Inject constructor(
                 mapRenderer.render(
                     bounds,
                     plan.geoPoints,
-                    StoryVideoExporter.mapWidth(),
-                    StoryVideoExporter.mapHeight(),
+                    StoryVideoExporter.mapWidth(lowRam),
+                    StoryVideoExporter.mapHeight(lowRam),
                     style,
                     pitchDegrees,
                 )

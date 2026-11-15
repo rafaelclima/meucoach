@@ -84,7 +84,7 @@ class ActivityDetailViewModel @Inject constructor(
             val avatar = withContext(Dispatchers.IO) {
                 profile?.avatarPath?.let { profilePhotos.load(it, maxSize = 256) }
             }
-            val recipe = storyRecipe.load()
+            val recipe = sanitizeRecipe(storyRecipe.load())
             val plan = activity?.let { stored -> calculateStoryPlan(stored, recipe, lthr) }
             val values = activity?.let { stored ->
                 plan?.let { StoryMetricValuesResolver.from(it, stored.localDate) }
@@ -207,6 +207,18 @@ class ActivityDetailViewModel @Inject constructor(
         updateStoryRecipe(StoryRecipe())
     }
 
+    /**
+     * Satellite left the Studio (MAP-08, ADR 0040 §2.4): a default saved by
+     * an older build renders the dark style now. The enum value survives only
+     * so old WorkManager jobs still decode.
+     */
+    @Suppress("DEPRECATION")
+    private fun sanitizeRecipe(recipe: StoryRecipe): StoryRecipe = if (recipe.mapStyle == StoryMapStyle.SATELLITE) {
+        recipe.copy(mapStyle = StoryMapStyle.MEUCOACH_DARK)
+    } else {
+        recipe
+    }
+
     private fun updateStoryRecipe(recipe: StoryRecipe) {
         val state = _uiState.value
         if (state.storyStudio.recipe == recipe) return
@@ -310,8 +322,8 @@ class ActivityDetailViewModel @Inject constructor(
                         mapRenderer.render(
                             bounds,
                             plan.geoPoints,
-                            StoryVideoExporter.mapWidth(),
-                            StoryVideoExporter.mapHeight(),
+                            StoryVideoExporter.mapWidth(mapRenderer.lowRam),
+                            StoryVideoExporter.mapHeight(mapRenderer.lowRam),
                             studio.recipe.mapStyle,
                         )
                     }

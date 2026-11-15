@@ -530,6 +530,20 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
+    fun `migrates a saved satellite recipe to the dark style on load`() {
+        runBlocking {
+            StoryRecipeStore(ApplicationProvider.getApplicationContext())
+                .save(StoryRecipe(mapStyle = StoryMapStyle.SATELLITE))
+            repository.saveImportedActivity(gpsActivity(), "sha")
+
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.storyStudio.recipe.mapStyle).isEqualTo(StoryMapStyle.MEUCOACH_DARK)
+        }
+    }
+
+    @Test
     fun `loads the saved recipe into the studio`() {
         runBlocking {
             val saved = StoryRecipe(

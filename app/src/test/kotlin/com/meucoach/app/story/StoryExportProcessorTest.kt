@@ -233,6 +233,29 @@ class StoryExportProcessorTest {
     }
 
     @Test
+    fun `reports map progress before the encode starts`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val processor = processor(FakeExporter(listOf(0.5f)))
+            val updates = mutableListOf<Pair<Float, Int?>>()
+
+            processor.export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { fraction, etaSec -> updates += fraction to etaSec },
+            )
+
+            // 0–10% map (plan, follow, bookends), 10–100% encode (ENC-06).
+            assertThat(updates.map { it.first }).containsExactly(0.02f, 0.05f, 0.10f, 0.55f)
+            assertThat(updates.take(3).map { it.second }).containsOnly(null as Int?)
+            val fractions = updates.map { it.first }
+            assertThat(fractions).isSorted
+        }
+    }
+
+    @Test
     fun `forwards fraction and eta from the codec loop`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
@@ -249,9 +272,41 @@ class StoryExportProcessorTest {
                 atMs = { nowMs.also { nowMs += 500 } },
             )
 
-            assertThat(updates.map { it.first }).containsExactly(0.25f, 0.5f)
-            // First sample has no rate yet; second: rate 0.5/s → 1 s remaining.
-            assertThat(updates).containsExactly(0.25f to null, 0.5f to 1)
+            // The encode range maps to 10–100%: 0.25 → 0.325, 0.5 → 0.55.
+            // Rescaling preserves the ETA math, so the expectations hold.
+            assertThat(updates.map { it.first }).containsExactly(0.02f, 0.05f, 0.10f, 0.325f, 0.55f)
+            // Map samples carry no ETA; first encode sample warms the rate;
+            // second: rate 0.45/s → 1 s remaining.
+            assertThat(updates.map { it.second }).containsExactly(null, null, null, null, 1)
+        }
+    }
+
+    @Test
+    fun `propagates cancellation instead of reporting a failure`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val processor = processor(
+                FakeExporter(
+                    fractions = emptyList(),
+                    error = kotlinx.coroutines.CancellationException("Geração do story cancelada."),
+                ),
+            )
+
+            val outcome = runCatching {
+                processor.export(
+                    activityId = "activity-1",
+                    recipe = StoryRecipe(),
+                    palette = testPalette(),
+                    mapPath = null,
+                    onProgress = { _, _ -> },
+                )
+            }
+
+            // Cancellation travels as CancellationException (the worker turns it
+            // into CANCELLED); it must never surface as a Failed outcome with a
+            // notification, and the partial file stays the exporter's job.
+            assertThat(outcome.exceptionOrNull())
+                .isInstanceOf(kotlinx.coroutines.CancellationException::class.java)
         }
     }
 
@@ -340,6 +395,35 @@ class StoryExportProcessorTest {
             assertThat(exporter.renderedBackground?.bitmap?.isRecycled).isTrue()
             assertThat(exporter.renderedOpening?.bitmap?.isRecycled).isTrue()
             assertThat(exporter.renderedFinal?.bitmap?.isRecycled).isTrue()
+        }
+    }
+
+    @Test
+    fun `low ram renders two keyframes at the constrained budget`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val lowRam = FakeMapRenderer(lowRam = true)
+            val processor = processor(FakeExporter(listOf(1f)), lowRam)
+
+            val outcome = processor.export(
+                activityId = "activity-1",
+                recipe = StoryRecipe(),
+                palette = testPalette(),
+                mapPath = null,
+                onProgress = { _, _ -> },
+            )
+
+            assertThat(outcome).isInstanceOf(StoryExportOutcome.Completed::class.java)
+            // 1.25× follow + final only: the opening bookend stays on the
+            // follow snapshot instead of costing a third render.
+            assertThat(lowRam.widths).containsExactly(
+                StoryVideoExporter.mapWidth(lowRam = true),
+                StoryMapScript.finalWidth(lowRam = true),
+            )
+            assertThat(lowRam.pitches).containsExactly(
+                StoryMapScript.FOLLOW_PITCH_DEGREES,
+                StoryMapScript.FINAL_PITCH_DEGREES,
+            )
         }
     }
 
@@ -564,8 +648,11 @@ class StoryExportProcessorTest {
         return file
     }
 
-    private class FakeExporter(private val fractions: List<Float>, private val posterUri: Uri? = null) :
-        StoryVideoExporter {
+    private class FakeExporter(
+        private val fractions: List<Float>,
+        private val posterUri: Uri? = null,
+        private val error: Throwable? = null,
+    ) : StoryVideoExporter {
         var renderedPlan: StoryPlan? = null
         var renderedRecipe: StoryRecipe? = null
         var renderedBackground: StoryMapSnapshot? = null
@@ -582,6 +669,7 @@ class StoryExportProcessorTest {
             isCancelled: () -> Boolean,
             onProgress: suspend (progress: Float) -> Unit,
         ): StoryExportResult {
+            error?.let { throw it }
             renderedPlan = plan
             renderedRecipe = recipe
             renderedBackground = mapBackground
@@ -596,8 +684,11 @@ class StoryExportProcessorTest {
         }
     }
 
-    private class FakeMapRenderer(private val error: Throwable? = null, private val failPitch: Float? = null) :
-        MapBackgroundRenderer {
+    private class FakeMapRenderer(
+        private val error: Throwable? = null,
+        private val failPitch: Float? = null,
+        override val lowRam: Boolean = false,
+    ) : MapBackgroundRenderer {
         var calls: Int = 0
         var width: Int = 0
         var height: Int = 0

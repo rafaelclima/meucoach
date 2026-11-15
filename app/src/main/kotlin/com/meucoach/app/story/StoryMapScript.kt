@@ -35,21 +35,28 @@ object StoryMapScript {
     const val OPENING_SUPERSAMPLE = 1.75f
     const val FINAL_SUPERSAMPLE = 1.75f
 
+    /** Low-RAM budget: 1,25× for every keyframe, validated by unit test (MAP-07). */
+    const val LOW_RAM_SUPERSAMPLE = 1.25f
+
     /** Legacy alias: the overview shot is now the opening keyframe. */
     const val OVERVIEW_PITCH_DEGREES = OPENING_PITCH_DEGREES
     const val OVERVIEW_SUPERSAMPLE = OPENING_SUPERSAMPLE
 
-    fun openingWidth(): Int = (StoryVideoExporter.WIDTH * OPENING_SUPERSAMPLE).toInt()
+    fun openingWidth(lowRam: Boolean = false): Int =
+        (StoryVideoExporter.WIDTH * if (lowRam) LOW_RAM_SUPERSAMPLE else OPENING_SUPERSAMPLE).toInt()
 
-    fun openingHeight(): Int = (StoryVideoExporter.HEIGHT * OPENING_SUPERSAMPLE).toInt()
+    fun openingHeight(lowRam: Boolean = false): Int =
+        (StoryVideoExporter.HEIGHT * if (lowRam) LOW_RAM_SUPERSAMPLE else OPENING_SUPERSAMPLE).toInt()
 
-    fun finalWidth(): Int = (StoryVideoExporter.WIDTH * FINAL_SUPERSAMPLE).toInt()
+    fun finalWidth(lowRam: Boolean = false): Int =
+        (StoryVideoExporter.WIDTH * if (lowRam) LOW_RAM_SUPERSAMPLE else FINAL_SUPERSAMPLE).toInt()
 
-    fun finalHeight(): Int = (StoryVideoExporter.HEIGHT * FINAL_SUPERSAMPLE).toInt()
+    fun finalHeight(lowRam: Boolean = false): Int =
+        (StoryVideoExporter.HEIGHT * if (lowRam) LOW_RAM_SUPERSAMPLE else FINAL_SUPERSAMPLE).toInt()
 
-    fun overviewWidth(): Int = openingWidth()
+    fun overviewWidth(lowRam: Boolean = false): Int = openingWidth(lowRam)
 
-    fun overviewHeight(): Int = openingHeight()
+    fun overviewHeight(lowRam: Boolean = false): Int = openingHeight(lowRam)
 
     /** 0 = opening, 1 = follow; smoothstep across the dissolve window. */
     fun followBlend(timeSec: Float): Float {
