@@ -210,7 +210,7 @@
 - [x] Plano persistido por semana (Room v7), sem reescrever com check-ins.
 - [x] Taper por prova-alvo e qualidade nomeada por experiência.
 - [x] Progressão por dose de qualidade, com disponibilidade como teto (ADR 0010).
-- [ ] Blocos/periodização.
+- [x] Blocos/periodização por nível e plano de prova (FR-012, [ADR 0043](adr/0043-periodization-by-level.md), concluído em 15/11/2026).
 - [x] Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida).
 - [x] Progressão de volume a partir do realizado (FR-004/N-07, ADR 0038): base é o maior volume concluído com evidência nas últimas 4 semanas, +6% somente com semana anterior ≥ 80%, prontidão verde e ACWR conhecido; disponibilidade continua teto; sem histórico, volume pela agenda com aviso; `R-PLAN-01` passa a ser emitida.
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
@@ -424,7 +424,7 @@ acima (replanejamento R-01..R-03 e sessão guiada G, outro trabalho).
 **Pendências herdadas do ciclo (não bloqueiam o fechamento):**
 
 - Validar o card 4b com os dados do usuário 0 (6 semanas reais → sugestão só com base completa); sem `fixtures/private/`, valeu só a validação sintética (`G-LVL-01`).
-- Relação taper × deload e periodização por nível (FR-012, desbloqueada pelo ADR 0042) continuam no backlog — candidatas naturais ao próximo passo, sem implementação nesta tarefa.
+- Relação taper × deload continua no backlog; periodização por nível (FR-012) concluída pelo ADR 0043 em 15/11/2026.
 
 ### Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05, C3-06 e C3-G2 implementados; C3-G1 detalhado (11/11/2026)
 
@@ -452,7 +452,7 @@ acima (replanejamento R-01..R-03 e sessão guiada G, outro trabalho).
 Fora do escopo implementável: limite de longão por fração da distância (FR-206).
 A recuperação pós-prova (FR-207) foi concluída em 12/11/2026 pelo ADR 0037.
 D6-B foi implementado pelo ADR 0036 em 11/11/2026.
-N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload e a periodização (FR-012, [ADR 0043](adr/0043-periodization-by-level.md) aprovado; fatias 1–6) continuam no backlog.
+N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload continua no backlog; a periodização (FR-012) foi concluída pelo [ADR 0043](adr/0043-periodization-by-level.md) em 15/11/2026.
 
 ### FR-010 — Comparação planejado × executado (concluído em 11/11/2026)
 
@@ -480,7 +480,7 @@ comparação por splits seguem pendentes.
 
 ### N-03 — Semana de prova e recuperação (backlog do ciclo 2)
 
-**Status:** recuperação pós-prova concluída em 12/11/2026 ([ADR 0037](adr/0037-post-race-recovery.md)); qualidade no taper concluída em 12/11/2026. A relação taper × deload e a periodização continuam no backlog.
+**Status:** recuperação pós-prova concluída em 12/11/2026 ([ADR 0037](adr/0037-post-race-recovery.md)); qualidade no taper concluída em 12/11/2026; periodização (FR-012) concluída em 15/11/2026 ([ADR 0043](adr/0043-periodization-by-level.md)). A relação taper × deload continua no backlog.
 
 - [x] Adicionar recuperação pós-prova (1–2 semanas conforme distância, sem qualidade) — implementada como janela determinística 2/3/5/10 dias com sessões curtas e sem longão.
 - [x] Reduzir também a duração/intensidade da qualidade no taper, não só fácil/longão — implementado em 12/11/2026: o fator de taper já alcança a qualidade; o texto agora deriva aquecimento/bloco/desaquecimento da duração real, os intervalos escalam de 3 a 5 repetições e a sessão explica a redução sem jargão. `weekly-plan-v4`, sem migração.

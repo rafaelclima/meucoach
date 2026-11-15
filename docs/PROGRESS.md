@@ -1,6 +1,25 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 fatia 6: EASY curto após a prova)
+**Atualizado:** 15/11/2026 (ADR 0043 encerrado: implementado + APK no aparelho)
+
+## Sessão 2026-11-15 — Encerramento do ADR 0043 + APK debug no aparelho
+
+**Objetivo:** marcar o ADR como implementado, reconciliar o `ROADMAP` e entregar o APK no aparelho do usuário 0.
+
+### Concluído
+
+- **ADR 0043 implementado:** status final; `R-PER-01/02` emitidos e testados; `G-PER-02` verde; sem migração, sem dependência nova.
+- **`ROADMAP.md`:** P1-05 com blocos/periodização concluídos; pendências do Ciclo 2 e N-03 agora registram FR-012 concluído (taper × deload segue no backlog).
+- **`DECISIONS.md` r1.41.**
+- **APK:** `:app:assembleDebug` verde; APK verificado (contém as strings novas) e instalado via `adb install -r` no aparelho (pacote `com.meucoach.app` atualizado, sem desinstalar — dados preservados).
+
+### Testes
+
+- Gates da fatia 6 seguem válidos (nenhum código mudou após eles): domain 774, app 881, `spotlessCheck`, `:core:domain:koverVerify`.
+
+### Próximo passo
+
+1. Validar no aparelho com leitura somente leitura (macro + biblioteca contra o estado real) ou voltar ao backlog (taper × deload, N-05).
 
 ## Sessão 2026-11-15 — ADR 0043 fatia 6: EASY pós-prova na mesma semana (TDD)
 
