@@ -3,7 +3,7 @@ package com.meucoach.core.domain.prescription
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
-/** Why a week was not allowed to grow (ADR 0038). `NONE` means it grew. */
+/** Why a week was not allowed to grow (ADR 0038, R-LOAD-03 v2 proposto). `NONE` means it grew. */
 enum class VolumeGrowthBlock {
     NONE,
     NO_HISTORY,
@@ -11,17 +11,23 @@ enum class VolumeGrowthBlock {
     PREVIOUS_WEEK_BELOW_80,
     PREVIOUS_WEEK_SPECIAL,
     DELOAD,
+    PEAK,
     TAPER,
     RACE_WEEK,
     RECOVERY,
     READINESS,
     LOAD_UNKNOWN,
     ACWR_OUT_OF_RANGE,
+    MONOTONY_HIGH,
+    STRAIN_SPIKE,
 }
 
 /**
  * Conditions that allow a weekly volume increase. The caller only translates
  * already-computed signals; the decision itself stays pure.
+ *
+ * R-LOAD-03 v2 (proposto): ACWR alone only maintains; monotony < 2.0 and no
+ * strain spike are required to grow.
  */
 data class VolumeGates(
     /** The week being planned is a deload/taper/race/recovery week and never grows. */
@@ -29,6 +35,8 @@ data class VolumeGates(
     val readinessGreen: Boolean = true,
     val loadKnown: Boolean = true,
     val acwrInRange: Boolean = true,
+    val monotonyOk: Boolean = true,
+    val strainOk: Boolean = true,
 )
 
 data class VolumeDecision(
@@ -105,6 +113,10 @@ class VolumeProgression {
             !gates.loadKnown -> VolumeGrowthBlock.LOAD_UNKNOWN
 
             !gates.acwrInRange -> VolumeGrowthBlock.ACWR_OUT_OF_RANGE
+
+            !gates.monotonyOk -> VolumeGrowthBlock.MONOTONY_HIGH
+
+            !gates.strainOk -> VolumeGrowthBlock.STRAIN_SPIKE
 
             else -> VolumeGrowthBlock.NONE
         }

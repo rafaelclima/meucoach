@@ -314,7 +314,7 @@ class SessionBriefingEngineTest {
         acuteAverage7d = 21.0,
         chronicAverage28d = 20.0,
         acwr = 1.05,
-        monotony = null,
+        monotony = 1.2,
         missingDays = 16,
         coverage = LoadCoverage(
             daysInWindow = 28,
@@ -324,5 +324,6 @@ class SessionBriefingEngineTest {
             lastActivityAt = null,
             sourceFresh = true,
         ),
+        strain = 180.0,
     )
 }

@@ -1,6 +1,104 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (fix do swap em data de prova cruzando a semana; antes: MAP-08, UI-06/UI-07, VIS-07, ENC-06, QA-03/VIS-08, MAP-07, ENC-02, MAP-09, DOM-09 fatia 1)
+**Atualizado:** 15/11/2026 (Ciclo 2 fatia 4a: ADR 0042 parcial-domínio — `LevelGraduationEngine`, `R-LVL-01/02`, golden `G-LVL-01`)
+
+## Sessão 2026-11-15 — Ciclo 2 fatia 4a: graduação de nível no domínio (ADR 0042 parcial)
+
+**Objetivo:** implementar o `LevelGraduationEngine` puro e determinístico (só `core:domain` + testes), sem o card de aceite do app (fatia 4b) — `Stay(reason, missing[])` ou `SuggestUpgrade` com `ruleIds`/`evidenceIds`/confiança máxima `MEDIUM`/`inputsHash`, downgrade nunca automático.
+
+### Concluído
+
+- **Domínio (`prescription/LevelGraduationEngine.kt` novo, `level-graduation-v1`):** `evaluate(LevelGraduationInput)` — perfil, até 6 `recentWeeks`, esforços 20–35 min com FC (mesmos do contador Tier B, 56d), `LevelCalibration` (Tier A ≤56d ou Tier B confirmada), prontidão atual + doença/lesão 14d (check-in, flag ou `CLOSED` por `ILLNESS_OR_INJURY`), CTL estável/crescente 4 sem com carga objetiva, monotonia média 4 sem <2,0, prova/TT ≤56d ou TT 30 min válido. Semana forte = `strongCompletionRatio ≥ 0,80` (só `ACTIVITY`/`GUIDED`; `MANUAL`/`LEGACY` nunca contam); longão só `DONE` forte (`≥60`/`≥90` min); `ADVANCED` sempre `Stay`; sem histórico ou sem calibração, `Stay` com `missing[]` declarado.
+- **`ExplanationCatalog`:** `R-LVL-01/02` registradas (títulos curtos); `ExplanationCatalogTest` cobre as duas.
+- **Testes (`LevelGraduationEngineTest`, TDD RED→GREEN):** 3/6→`Stay`, `G-LVL-01` (6 semanas sintéticas → `SuggestUpgrade BEGINNER→INTERMEDIATE` com `R-LVL-01`/`EV-SEILER-2010`/`EV-DANIELS-2014`/`EV-FRIEL-2018`), sem calibração→`Stay`, doença recente (data e `CLOSED`)→`Stay`, prontidão `RED`→`Stay`, `MANUAL`/`LEGACY`/esforço sem FC não contam, monotonia/CTL/prova bloqueiam `ADVANCED`, TT 30 min válido libera o critério de prova, determinismo + `inputsHash` estável (inclusive com semanas reordenadas), `ADVANCED` sem downgrade.
+- **Docs:** `SPORTS_SCIENCE.md` v1.3 (`R-LVL-01/02` sem o marcador proposto), ADR 0042 parcial-domínio, `DECISIONS.md` r1.30.
+
+### Testes
+
+- `:core:domain:test` verde (741 testes: 726 + 15 novos, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply` nos 2 arquivos novos).
+- `:core:domain:koverVerify` verde (gate ≥85% + FIT 93,01% branches).
+- `:app:testDebugUnitTest` verde (858 testes, 0 falhas).
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+- Nota: `:core:domain:detekt` segue vermelho por 4 achados **pré-existentes** da tree suja (`WeeklyPlanGenerator` LargeClass/ReturnCount, `MesoCycle` resolve ReturnCount + loop) — verificados sem os arquivos desta fatia (mesmos achados); nenhum achado no `LevelGraduationEngine`.
+
+### Próximo passo
+
+1. Fatia 4b: card de aceite no app (aceitar/recusar/suprimir, persiste `experience` + reavalia por `EvaluateReplan` T4, recusa lembrada por `profile.id + engineVersion + inputsHash`; `DONE`/`CLOSED`/prescrição do dia intactos).
+2. `ROADMAP.md` se necessário.
+
+## Sessão 2026-11-15 — Ciclo 2 fatia 3: mesociclo por histórico real (ADR 0041)
+
+**Objetivo:** implementar ADR 0041 sem quebrar determinismo — derivar `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga de `recentWeeks` reais (até 12 semanas), não do contador `weekNumberInBlock` (mantido como fallback 1 release); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável.
+
+### Concluído
+
+- **Domínio (`MesoCycle` novo):** `isLoadWeek` (criada na segunda + ≥1 `DONE` forte + sem `R-PLAN-04/05/10/R-RACE-04`); `consecutiveStrongWeeks` (buraco zera a contagem) + `totalStrongWeeks` (preserva fase); `resolve` — sem prova alterna `BASE`/`BUILD` em blocos de 4, com prova `BASE` >8 sem, `BUILD` até taper+21d, `PEAK` até o taper, `TAPER`/`RECOVERY` por janela; `PEAK` nunca é descarga.
+- **`WeeklyPlanGenerator` (`weekly-plan-v6`):** descarga = `streak >=3` do histórico (fallback só sem histórico, com aviso); `volumeWeekBlock` com `PEAK` estável (novo `VolumeGrowthBlock.PEAK`); rationale declara `Fase …` + `após N semanas`/`Sem histórico…`; `R-PLAN-04`/`EV-ISSURIN-2010` só sem taper (nunca dois cortes); `weekNumberInBlock` deprecated.
+- **`VolumeProgression`/`PlanReplanner`:** `PEAK` bloqueia crescimento (volume estável ≤ base×1,06); `inputsHash` inclui `fase,streak,total + mesoHash` (`PlanningFingerprints.mesoHash`); mudança de fase invalida como STALE via sugestão, nunca auto-aplica.
+- **Testes:** `MesoCycleTest` novo (TDD RED→GREEN: 3 cargas → descarga, buraco de 2 semeadas zera, taper/recuperação/prova prevalecem, sem histórico = `BASE`, G-PER-01 com 8 semanas e buraco, `PEAK` estável, determinismo); legados `weekNumberInBlock` atualizados para histórico + 1 teste de fallback; `TodayViewModelPersistTest` com `activityId` único por semana (evita `REPLACE` por índice único) e data fixa.
+- **Docs:** `SPORTS_SCIENCE.md` v1.2 (§8.1/§8.3 + `R-PLAN-04 v2` implementado), ADR 0041 implementado, `DECISIONS.md` r1.29.
+
+### Testes
+
+- `:core:domain:test` verde (726 testes).
+- `spotlessCheck`, `:core:domain:koverVerify` (FIT 93,01%) verdes.
+- `:app:testDebugUnitTest` verde total (858 testes).
+- Nenhum dado real no diff; schema v17 sem migração; `daily-prescription-v5`/`weekly-plan-v6`.
+
+### Próximo passo
+
+1. Fatia 4: ADR 0042 (`LevelGraduationEngine` com aceite T4).
+2. `ROADMAP.md` se necessário.
+3. Validar `PEAK` com 2 qualidades específicas em aparelho (fatia futura, sem mudar regra aqui).
+
+## Sessão 2026-11-15 — Ciclo 2 fatia 2: taper com micro-dose e recovery por severidade
+
+**Objetivo:** implementar `R-PLAN-05/10` v2 e `R-RACE-04` v2 sem quebrar determinismo — taper mantém 1 micro-dose ≤25 min dentro do corte/semana da prova; recovery 5k 3d / 10k 5d / meia 10d / maratona 16d; primeira semana pós-recovery sem progressão.
+
+### Concluído
+
+- **`RecoveryWindow`:** janelas 3/5/10/16, fases 30/45 (meia dias 6–10) e 30/60 (maratona dias 8–16).
+- **`WeeklyPlanGenerator`:** `microDoseCandidateDays` + `microDoseDays` (1× `Strides curtos` 25 min, `R-PLAN-05/10/06`); taper limita a 2ª qualidade; `withQualityCopy` preserva o rationale da micro-dose; `volumeWeekBlock` + `isPostRecoveryWeek` (gap 1–7d após semana com `R-RACE-04`) bloqueiam crescimento sem vetar qualidade.
+- **Testes:** `TaperRecoveryV2Test` novo (TDD RED→GREEN); `RecoveryWindowTest`, taper, caps por fase, pós-recovery e `RACE_COMPLETED` legados atualizados para a nova severidade.
+- **App:** `TodayRecoveryTest` (10k 5d, "dia 1 de 5 · até 06/11").
+
+### Testes
+
+- `:core:domain:test` verde (716 testes).
+- `spotlessCheck`, `:core:domain:koverVerify` (FIT 93,01%) verdes.
+- `:app:testDebugUnitTest` verde total (47s); `check` total com flake paralelo conhecido, rerun verde.
+- Nenhum dado real no diff; schema v17 sem migração; v5 mantida (bump para v6 na conclusão do Ciclo 2).
+
+### Próximo passo
+
+1. `PROGRESS.md` desta fatia (este registro) + `ROADMAP.md` se necessário.
+2. Fatia 3: ADR 0041 (mesociclo por `recentWeeks`) — derivar `MesoPhase`/deload do histórico.
+3. Fatia 4: ADR 0042 (`LevelGraduationEngine` com aceite T4).
+
+## Sessão 2026-11-15 — Ciclo 2 fatia 1: gate de carga v2 (monotonia/strain como permissão)
+
+**Objetivo:** implementar `R-LOAD-03` v2 sem quebrar determinismo — ACWR alto vira flag soft de redução no dia; permissão de qualidade/progressão passa a exigir carga objetiva + monotonia <2,0 + sem spike de strain.
+
+### Concluído
+
+- **Domínio:** `LoadSnapshot` ganha `strain`, `monotonyOk`, `strainSpike` e `permitsQualityAndProgression`; `TrainingLoadEngine` calcula `strain = soma7d × monotonia`.
+- **`WeeklyPlanGenerator`:** `qualityAllowed` usa `permitsQuality`; ACWR alto não veta a 1ª qualidade, só bloqueia a 2ª (`progressed` exige `acwr ≤1,5`); rationale e `R-LOAD-03`/`EV-FOSTER-2001` por monotonia/strain; `VolumeGates` + `MONOTONY_HIGH`/`STRAIN_SPIKE`.
+- **`DailyPrescriptionEngine`:** remove `acwrBlocked`; `QUALITY` vira `EASY` quando `!permitsQuality`, ACWR >1,5 ou monotonia/spike; confiança rebaixada sem permissão.
+- **Testes:** `LoadGateV2Test` novo (6 casos, TDD); helpers com monotonia saudável; 3 testes legados de ACWR atualizados para a nova semântica.
+- **Docs (sessão anterior):** `SPORTS_SCIENCE.md` v1.1 + ADR 0041/0042 propostos, sem código.
+
+### Testes
+
+- `:core:domain:test` 713 testes, 0 falhas.
+- `spotlessCheck`, `:core:domain:koverVerify` (FIT 93,01%) verdes.
+- `:app:testDebugUnitTest` verde isolado e em rerun total; no `check` paralelo houve 3 falhas `GetTodayPrescription` + 1 timeout `MetricsImportViewModelTest` — mesma assinatura do flake documentado (carga paralela), passam isolados/em rerun.
+- Nenhum dado real no diff; schema v17 sem migração; `weekly-plan`/`daily-prescription` seguem v5 (bump para v6 na implementação completa do Ciclo 2).
+
+### Próximo passo
+
+1. Ciclo 2 fatia 2: taper com micro-dose ≤25 min + recovery 3/5/10/16d com retorno verde (`R-PLAN-05/10`, `R-RACE-04`).
+2. Depois: ADR 0041 (mesociclo por `recentWeeks`) e ADR 0042 (`LevelGraduationEngine` com aceite T4).
 
 ## Correção 2026-11-15 — swap para data de prova cruzando a semana
 

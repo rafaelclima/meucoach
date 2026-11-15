@@ -110,7 +110,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `blocks quality with high ACWR`() {
+    fun `high ACWR alone does not block weekly quality when monotony and strain are ok`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -122,8 +122,45 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
+        // R-LOAD-03 v2: ACWR alto só reduz o dia; a semana mantém qualidade.
+        assertThat(plan.qualityCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `blocks weekly quality on monotony high even with normal ACWR`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, monotony = 2.5, strain = 900.0),
+            ),
+        )
+
         assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("sua carga subiu rápido")
+        assertThat(plan.rationale).contains("variou pouco")
+        assertThat(plan.ruleIds).contains("R-LOAD-03")
+    }
+
+    @Test
+    fun `blocks weekly quality on strain spike even with normal ACWR`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                // baseline semanal = 50 * 7 = 350 em série real; aqui o snapshot
+                // injeta strain alto com crônico positivo via helper abaixo.
+                load = load(acwr = 1.0, monotony = 1.5, strain = 900.0).copy(chronicAverage28d = 50.0),
+            ),
+        )
+
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.ruleIds).contains("R-LOAD-03")
     }
 
     @Test
@@ -165,7 +202,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `blocks quality when ACWR is below the safe range`() {
+    fun `low ACWR alone does not block weekly quality when monotony and strain are ok`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -177,13 +214,12 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("carga recente está baixa")
-        assertThat(plan.ruleIds).contains("R-LOAD-03")
+        // R-LOAD-03 v2: ACWR baixo sozinho apenas mantém volume, não veta qualidade.
+        assertThat(plan.qualityCount).isEqualTo(1)
     }
 
     @Test
-    fun `accepts quality at the exact ACWR bounds`() {
+    fun `accepts quality across the old ACWR bounds when monotony and strain are ok`() {
         val availability = mapOf(
             DayOfWeek.MONDAY to 40,
             DayOfWeek.WEDNESDAY to 40,
@@ -213,7 +249,7 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(lower.qualityCount).isEqualTo(1)
         assertThat(upper.qualityCount).isEqualTo(1)
-        assertThat(above.qualityCount).isZero()
+        assertThat(above.qualityCount).isEqualTo(1)
     }
 
     @Test
@@ -509,8 +545,9 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
+        // R-LOAD-03 v2: ACWR alto não veta a primeira qualidade, só a progressão.
         assertThat(withoutHistory.qualityCount).isEqualTo(1)
-        assertThat(highAcwr.qualityCount).isZero()
+        assertThat(highAcwr.qualityCount).isEqualTo(1)
     }
 
     @Test
@@ -580,33 +617,64 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `deloads volume every fourth week in the block`() {
+    fun `deloads after three consecutive load weeks from history`() {
         val availability = mapOf(
             DayOfWeek.MONDAY to 40,
             DayOfWeek.WEDNESDAY to 40,
             DayOfWeek.SATURDAY to 90,
         )
+        val twoLoads = listOf(
+            volumeWeek(monday.minusWeeks(2), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(1), List(4) { 30 }),
+        )
+        val threeLoads = listOf(
+            volumeWeek(monday.minusWeeks(3), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(2), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(1), List(4) { 30 }),
+        )
         val baseline = generator.generate(
             input(
                 profile = profile(Experience.BEGINNER, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
-                weekNumberInBlock = 3,
+                previousWeek = twoLoads.last(),
+                recentWeeks = twoLoads,
             ),
         )
         val deload = generator.generate(
             input(
                 profile = profile(Experience.BEGINNER, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
-                weekNumberInBlock = 4,
+                previousWeek = threeLoads.last(),
+                recentWeeks = threeLoads,
             ),
         )
 
         assertThat(baseline.weeklyMinutes).isEqualTo(114)
         assertThat(deload.weeklyMinutes).isEqualTo(86)
-        assertThat(deload.rationale).contains("Semana de descarga (4 de 4 no bloco)", "−25%")
+        assertThat(deload.rationale).contains("Semana de descarga após 3 semanas", "−25%", "Fase BASE")
         assertThat(deload.ruleIds).contains("R-PLAN-04")
         assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
         assertThat(baseline.ruleIds).doesNotContain("R-PLAN-04")
+    }
+
+    @Test
+    fun `falls back to the legacy counter without history for one release`() {
+        @Suppress("DEPRECATION")
+        val deload = generator.generate(
+            WeeklyPlanInput(
+                profile = profile(
+                    Experience.BEGINNER,
+                    mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                weekStart = monday,
+                today = monday,
+                weekNumberInBlock = 4,
+            ),
+        )
+
+        assertThat(deload.ruleIds).contains("R-PLAN-04")
+        assertThat(deload.rationale).contains("Sem histórico suficiente", "Fase BASE")
     }
 
     @Test
@@ -617,12 +685,17 @@ class WeeklyPlanGeneratorTest {
             DayOfWeek.FRIDAY to 40,
             DayOfWeek.SATURDAY to 90,
         )
+        val history = listOf(
+            volumeWeek(monday.minusWeeks(3), List(5) { 40 }),
+            volumeWeek(monday.minusWeeks(2), List(5) { 40 }),
+            volumeWeek(monday.minusWeeks(1), List(5) { 40 }),
+        )
         val plan = generator.generate(
             input(
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
-                weekNumberInBlock = 4,
+                recentWeeks = history,
             ),
         )
 
@@ -642,6 +715,11 @@ class WeeklyPlanGeneratorTest {
             DayOfWeek.WEDNESDAY to 40,
             DayOfWeek.SATURDAY to 90,
         )
+        val history = listOf(
+            volumeWeek(monday.minusWeeks(3), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(2), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(1), List(4) { 30 }),
+        )
         val plan = generator.generate(
             input(
                 profile = profile(Experience.BEGINNER, availability).copy(
@@ -651,7 +729,8 @@ class WeeklyPlanGeneratorTest {
                     ),
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
-                weekNumberInBlock = 4,
+                previousWeek = history.last(),
+                recentWeeks = history,
             ),
         )
 
@@ -888,7 +967,12 @@ class WeeklyPlanGeneratorTest {
 
     @Test
     fun `does not grow during a deload week`() {
-        val previous = previousWeek(completed = 4, total = 4)
+        val history = listOf(
+            volumeWeek(monday.minusWeeks(3), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(2), List(4) { 30 }),
+            volumeWeek(monday.minusWeeks(1), List(4) { 30 }),
+        )
+        val previous = history.last()
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -903,8 +987,7 @@ class WeeklyPlanGeneratorTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
                 previousWeek = previous,
-                recentWeeks = listOf(previous),
-                weekNumberInBlock = 4,
+                recentWeeks = history,
             ),
         )
 
@@ -1187,7 +1270,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `removes a quality inside the cutoff and keeps none in the race week`() {
+    fun `keeps a micro-dose inside the cutoff instead of zero quality in the race week`() {
         val availability = mapOf(
             DayOfWeek.MONDAY to 40,
             DayOfWeek.WEDNESDAY to 40,
@@ -1212,8 +1295,12 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(outsideCutoff.sessions.filter { it.type == WorkoutType.QUALITY }).isNotEmpty
-        assertThat(insideCutoff.sessions.filter { it.type == WorkoutType.QUALITY }).isEmpty()
-        assertThat(insideCutoff.ruleIds).contains("R-PLAN-10")
+        // R-PLAN-05/10 v2: dentro do corte vale 1 micro-dose ≤25 min, nunca zero.
+        val micro = insideCutoff.sessions.filter { it.type == WorkoutType.QUALITY }
+        assertThat(micro).hasSize(1)
+        assertThat(micro.single().title).isEqualTo("Strides curtos")
+        assertThat(micro.single().durationMin).isEqualTo(25)
+        assertThat(insideCutoff.ruleIds).contains("R-PLAN-05", "R-PLAN-10")
     }
 
     @Test
@@ -1525,7 +1612,7 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.sessions.map { it.durationMin }).containsExactly(30, 30, 30, 45, 45)
+        assertThat(plan.sessions.map { it.durationMin }).containsExactly(30, 30, 30, 30, 30)
         assertThat(plan.sessions.map { it.title }).containsOnly("Recuperação: fácil e curto")
         assertThat(plan.sessions.all { "R-RACE-04" in it.ruleIds }).isTrue()
     }
@@ -1550,6 +1637,9 @@ class WeeklyPlanGeneratorTest {
 
     @Test
     fun `returns to normal training after the recovery window`() {
+        // 5k agora tem janela de 3 dias: prova no sábado → seg/ter/qua em
+        // recuperação, qui/sex livres. Qui recebe qualidade, sábado o longão.
+        val postRace = RecoveryWindow(CompletedRace("race-1", RaceDistance.FIVE_K, monday.minusDays(2)))
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -1557,13 +1647,13 @@ class WeeklyPlanGeneratorTest {
                     availability = mapOf(
                         DayOfWeek.MONDAY to 40,
                         DayOfWeek.WEDNESDAY to 40,
-                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.THURSDAY to 40,
                         DayOfWeek.SATURDAY to 90,
                     ),
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
-                recovery = recovery(RaceDistance.FIVE_K),
+                recovery = postRace,
             ),
         )
 
@@ -1576,9 +1666,50 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.rationale).contains("em parte da semana")
     }
 
+    @Test
+    fun `first week after a recovery week maintains volume without progression`() {
+        // Semana anterior com R-RACE-04 terminou domingo; a semana alvo começa
+        // segunda (gap 1 dia) → pós-recovery: mantém, sem +6%. A base vem da
+        // semana útil anterior (recovery não é referência, ADR 0038).
+        val recoveryWeek = previousWeek(completed = 4, total = 4).copy(
+            ruleIds = listOf("R-ZONE-01", "R-RACE-04"),
+        )
+        val baseWeek = previousWeek(completed = 4, total = 4).copy(
+            weekStart = monday.minusWeeks(2),
+            createdOn = monday.minusWeeks(2),
+            sessions = previousWeek(completed = 4, total = 4).sessions.map {
+                it.copy(date = it.date.minusWeeks(1))
+            },
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.MONDAY to 40,
+                        DayOfWeek.TUESDAY to 40,
+                        DayOfWeek.WEDNESDAY to 40,
+                        DayOfWeek.THURSDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SATURDAY to 90,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                previousWeek = recoveryWeek,
+                recentWeeks = listOf(recoveryWeek, baseWeek),
+            ),
+        )
+
+        assertThat(plan.ruleIds).contains("R-PLAN-01")
+        assertThat(plan.rationale).contains("recuperação após a prova")
+        assertThat(plan.rationale).doesNotContain("+6%")
+    }
+
     private fun recovery(distance: RaceDistance): RecoveryWindow =
         RecoveryWindow(CompletedRace("race-1", distance, monday.minusDays(1)))
 
+    @Suppress("DEPRECATION")
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
@@ -1587,7 +1718,6 @@ class WeeklyPlanGeneratorTest {
         today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
         recentWeeks: List<WeeklyPlan> = emptyList(),
-        weekNumberInBlock: Int = 1,
         race: RacePlan? = null,
         eventDates: Set<LocalDate> = emptySet(),
         recovery: RecoveryWindow? = null,
@@ -1599,7 +1729,6 @@ class WeeklyPlanGeneratorTest {
         today = today,
         previousWeek = previousWeek,
         recentWeeks = recentWeeks,
-        weekNumberInBlock = weekNumberInBlock,
         race = race,
         eventDates = eventDates,
         recovery = recovery,
@@ -1645,6 +1774,8 @@ class WeeklyPlanGeneratorTest {
         daysWithLoad: Int = 12,
         sourceFresh: Boolean = true,
         subjectiveDaysInWindow: Int = 0,
+        monotony: Double? = 1.2,
+        strain: Double? = 400.0,
     ) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
@@ -1655,10 +1786,11 @@ class WeeklyPlanGeneratorTest {
         acuteAverage7d = 0.0,
         chronicAverage28d = 0.0,
         acwr = acwr,
-        monotony = null,
+        monotony = monotony,
         missingDays = 28 - daysWithLoad,
         coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
         subjectiveDaysInWindow = subjectiveDaysInWindow,
+        strain = strain,
     )
 
     private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {

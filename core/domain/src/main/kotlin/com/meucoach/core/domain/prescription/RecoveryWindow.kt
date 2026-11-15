@@ -44,10 +44,10 @@ data class RecoveryWindow(val race: CompletedRace) {
     /** Number of days the window stays active after the race. */
     val totalDays: Int
         get() = when (race.distance) {
-            RaceDistance.FIVE_K -> 2
-            RaceDistance.TEN_K -> 3
-            RaceDistance.HALF_MARATHON -> 5
-            RaceDistance.MARATHON -> 10
+            RaceDistance.FIVE_K -> 3
+            RaceDistance.TEN_K -> 5
+            RaceDistance.HALF_MARATHON -> 10
+            RaceDistance.MARATHON -> 16
         }
 
     /** Days since the race: 0 on the race day, 1 on the first recovery day. */
@@ -106,8 +106,8 @@ data class RecoveryWindow(val race: CompletedRace) {
         const val SHORT_PHASE_MINUTES = 30
         const val MEDIUM_PHASE_MINUTES = 45
         const val LONG_PHASE_MINUTES = 60
-        const val HALF_FIRST_PHASE_DAYS = 3
-        const val MARATHON_FIRST_PHASE_DAYS = 5
+        const val HALF_FIRST_PHASE_DAYS = 5
+        const val MARATHON_FIRST_PHASE_DAYS = 7
 
         /**
          * The window that governs [date], if any. When two completed races overlap,

@@ -26,7 +26,7 @@ object ExplanationCatalog {
         ),
         "R-PLAN-02" to RuleExplanation("R-PLAN-02", "No máximo 2 treinos fortes por semana"),
         "R-PLAN-03" to RuleExplanation("R-PLAN-03", "Longão entre 25–30% do volume semanal"),
-        "R-PLAN-04" to RuleExplanation("R-PLAN-04", "Semana de descarga a cada 4 semanas"),
+        "R-PLAN-04" to RuleExplanation("R-PLAN-04", "Descarga a cada 4ª semana de carga demonstrada"),
         "R-PLAN-05" to RuleExplanation("R-PLAN-05", "Redução de volume antes da prova"),
         "R-PLAN-06" to RuleExplanation("R-PLAN-06", "80% do tempo em ritmo fácil"),
         "R-PLAN-07" to RuleExplanation("R-PLAN-07", "Calor pede ajuste conservador"),
@@ -65,6 +65,14 @@ object ExplanationCatalog {
         "R-RACE-04" to RuleExplanation(
             "R-RACE-04",
             "Recuperação após a prova, sem treino forte e sem longão",
+        ),
+        "R-LVL-01" to RuleExplanation(
+            "R-LVL-01",
+            "Graduação para intermediário por consistência demonstrada, com aceite",
+        ),
+        "R-LVL-02" to RuleExplanation(
+            "R-LVL-02",
+            "Graduação para avançado por carga estável e prova, com aceite",
         ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",

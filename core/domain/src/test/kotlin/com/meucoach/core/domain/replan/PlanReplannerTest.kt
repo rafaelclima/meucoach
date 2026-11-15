@@ -1058,6 +1058,8 @@ class PlanReplannerTest {
 
         assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
         val candidate = (result as ReplanResult.Suggest).candidate
+        // Só 1 dia futuro disponível (qua) após excluir o sábado de prova:
+        // sem dias suficientes para qualidade ou micro-dose (mínimo 3).
         assertThat(candidate.sessions.filter { it.type == WorkoutType.QUALITY }).isEmpty()
         assertThat(candidate.sessions.map { it.date }).doesNotContain(monday.plusDays(5))
     }
@@ -1120,6 +1122,35 @@ class PlanReplannerTest {
 
         assertThat(without).isNotEqualTo(withPrevious)
         assertThat(withPrevious).isNotEqualTo(withOlder)
+    }
+
+    @Test
+    fun `inputs hash changes when the meso streak changes`() {
+        val current = planOf(session(monday, WorkoutType.EASY, 40))
+        val oneStrong = completedPreviousWeek()
+        val threeStrong = listOf(
+            oneStrong.copy(
+                weekStart = monday.minusWeeks(3),
+                createdOn = monday.minusWeeks(3),
+                sessions = oneStrong.sessions.map { it.copy(date = it.date.minusWeeks(2)) },
+            ),
+            oneStrong.copy(
+                weekStart = monday.minusWeeks(2),
+                createdOn = monday.minusWeeks(2),
+                sessions = oneStrong.sessions.map { it.copy(date = it.date.minusWeeks(1)) },
+            ),
+            oneStrong,
+        )
+
+        val single = PlanReplanner.inputsHash(
+            input(current = current, today = monday, previousWeek = oneStrong, recentWeeks = listOf(oneStrong)),
+        )
+        val triple = PlanReplanner.inputsHash(
+            input(current = current, today = monday, previousWeek = oneStrong, recentWeeks = threeStrong),
+        )
+
+        // Mesma base de volume, contagem de semanas fortes diferente → fase/contagem no hash.
+        assertThat(single).isNotEqualTo(triple)
     }
 
     @Test
@@ -1251,6 +1282,7 @@ class PlanReplannerTest {
         assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
     }
 
+    @Suppress("DEPRECATION")
     private fun input(
         current: WeeklyPlan,
         today: LocalDate,
@@ -1427,7 +1459,7 @@ class PlanReplannerTest {
         acuteAverage7d = 0.0,
         chronicAverage28d = 0.0,
         acwr = 1.0,
-        monotony = null,
+        monotony = 1.2,
         missingDays = 16,
         coverage = LoadCoverage(
             daysInWindow = 28,
@@ -1437,5 +1469,6 @@ class PlanReplannerTest {
             lastActivityAt = Instant.parse("2026-10-30T10:00:00Z"),
             sourceFresh = true,
         ),
+        strain = 400.0,
     )
 }

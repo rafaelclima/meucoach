@@ -108,7 +108,12 @@ data class WeeklyPlanInput(
     /** Local date of generation; only days from here to Sunday enter the plan. */
     val today: LocalDate,
     val previousWeek: WeeklyPlan? = null,
-    /** 1-based position in the current block; every 4th week is a deload. */
+    /**
+     * Legacy 1-based position in the block. Deprecated: the deload now derives
+     * from [recentWeeks] (ADR 0041); kept for one release as a fallback only
+     * when the history is empty.
+     */
+    @Deprecated("Derivado de recentWeeks (ADR 0041); fallback só sem histórico")
     val weekNumberInBlock: Int = 1,
     /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */
     val race: RacePlan? = null,
@@ -117,8 +122,9 @@ data class WeeklyPlanInput(
     /** Post-race recovery window (ADR 0037); caps sessions and blocks quality/long run. */
     val recovery: RecoveryWindow? = null,
     /**
-     * Previous persisted weeks, most recent first or any order (ADR 0038).
-     * The volume base is derived from their strong-evidence completions.
+     * Previous persisted weeks, most recent first or any order (ADR 0038/0041,
+     * up to 12 weeks). The volume base uses the last 4 usable weeks; the
+     * mesocycle (phase + deload) uses up to 12 weeks of strong completions.
      */
     val recentWeeks: List<WeeklyPlan> = emptyList(),
 ) {
@@ -134,8 +140,9 @@ data class WeeklyPlanInput(
  * recently completed week and only with a green, evidenced, known-load week
  * (ADR 0038); otherwise it is maintained. The plan allows at most two quality
  * sessions, only on a green day with calibration-adjacent guardrails, and keeps
- * them away from the long run. Every fourth consecutive week is a deload. A
- * taper always takes precedence over the deload.
+ * them away from the long run. The deload derives from 3 consecutive load weeks
+ * in `recentWeeks` (R-PLAN-04 v2, ADR 0041). A taper or recovery always takes
+ * precedence over the deload, and a race week is never a deload.
  */
 class WeeklyPlanGenerator {
     fun generate(input: WeeklyPlanInput): WeeklyPlan {
@@ -211,29 +218,75 @@ class WeeklyPlanGenerator {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
         } || input.readiness.level != ReadinessLevel.GREEN
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
-        // D5 (ADR 0039): trust for quality/progression is objective load only.
-        // Subjective sRPE keeps ACWR and guardrails alive but never licenses
-        // quality or volume growth.
+        // D5 (ADR 0039) + R-LOAD-03 v2 (proposto): trust for quality/progression
+        // is objective load only, plus monotony < 2.0 and no strain spike.
+        // ACWR alone never permits nor vetoes; ACWR > 1.5 only reduces the day.
         val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
+        val permitsQuality = input.load?.permitsQualityAndProgression ?: false
+        val monotonyOk = input.load?.monotonyOk ?: false
+        val strainOk = input.load?.let { !it.strainSpike } ?: false
         val acwr = input.load?.acwr
         val acwrInRange = acwr != null && acwr in ACWR_MIN..ACWR_MAX
+        // R-LOAD-03 v2: ACWR alto não veta a primeira qualidade, mas veta a
+        // progressão para a segunda (dose extra com carga já alta).
+        val acwrNotHigh = acwr == null || acwr <= ACWR_MAX
         val qualityAllowed = !safetyBlock &&
             input.profile.experience != Experience.BEGINNER &&
-            loadTrusted &&
-            acwrInRange &&
+            permitsQuality &&
             days.size >= 3
         val completionRatio = input.previousWeek?.strongCompletionRatio() ?: 0.0
-        val progressed = qualityAllowed && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
-        val deload = input.weekNumberInBlock % DELOAD_EVERY_WEEKS == 0
+        val progressed = qualityAllowed && acwrNotHigh && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
+        // ADR 0041: mesociclo e descarga derivam de `recentWeeks` reais (até 12
+        // semanas). O contador `weekNumberInBlock` só vale sem histórico.
+        val combinedReferences =
+            (input.recentWeeks + listOfNotNull(input.previousWeek)).distinctBy { it.weekStart }
+        val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
+        val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
+        val mesoRecoveryActive = recovery != null &&
+            recovery.intersects(weekStart, weekStart.plusDays(6))
+        val meso = MesoCycle.resolve(
+            targetWeekStart = weekStart,
+            race = race,
+            recoveryActive = mesoRecoveryActive,
+            isRaceWeek = isRaceWeek,
+            isTaperWeek = isTaperWeek,
+            references = combinedReferences,
+            fallbackWeekNumberInBlock = input.weekNumberInBlock,
+        )
+        val postRecoveryForDeload = isPostRecoveryWeek(combinedReferences, weekStart)
+        // Taper, recovery, pós-recovery e semana de prova nunca são descarga;
+        // PEAK já sai sem descarga do resolvedor para manter volume estável.
+        val deload = meso.isDeload && !postRecoveryForDeload
+        // R-PLAN-05/10 v2 (proposto): taper mantém intensidade em micro-dose.
+        val taperLimitsQuality = race != null && days.any { day ->
+            race.isInTaperWindow(weekStart.plusDays((day.value - 1).toLong()))
+        }
         val qualityCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             (race?.allowsQuality(date) ?: true) && (recovery?.allowsQuality(date) ?: true)
+        }
+        val microDoseCandidateDays = days.filter { day ->
+            val date = weekStart.plusDays((day.value - 1).toLong())
+            (recovery?.allowsQuality(date) ?: true) &&
+                race != null &&
+                race.isInTaperWindow(date) &&
+                !race.allowsQuality(date) &&
+                !race.isRaceDayOrLater(date)
         }
         val qualityDays = if (qualityAllowed) {
             selectQualityDays(
                 days = qualityCandidateDays,
                 longDay = longDay,
-                maxQualities = if (progressed) 2 else 1,
+                maxQualities = if (progressed && !taperLimitsQuality) 2 else 1,
+            )
+        } else {
+            emptySet()
+        }
+        val microDoseDays = if (qualityAllowed && qualityDays.isEmpty() && microDoseCandidateDays.isNotEmpty()) {
+            selectQualityDays(
+                days = microDoseCandidateDays,
+                longDay = longDay,
+                maxQualities = 1,
             )
         } else {
             emptySet()
@@ -265,6 +318,23 @@ class WeeklyPlanGenerator {
                             type = WorkoutType.QUALITY,
                             profile = input.profile,
                             durationMin = duration,
+                        ),
+                    )
+                }
+
+                day in microDoseDays -> {
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.QUALITY,
+                        title = "Strides curtos",
+                        durationMin = MICRO_DOSE_MIN,
+                        rationale = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
+                        ruleIds = listOf("R-PLAN-05", "R-PLAN-10", "R-PLAN-06"),
+                        evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.QUALITY,
+                            profile = input.profile,
+                            durationMin = MICRO_DOSE_MIN,
                         ),
                     )
                 }
@@ -331,12 +401,21 @@ class WeeklyPlanGenerator {
         }
         val taperActive = race?.isInTaperWindow(input.today) == true
         val availabilityCeiling = limitedLong.sumOf { it.durationMin ?: 0 }
+        val postRecovery = isPostRecoveryWeek(combinedReferences, weekStart)
         val volumeDecision = VolumeProgression().decide(
             targetWeekStart = weekStart,
             availabilityCeilingMinutes = availabilityCeiling,
-            references = (input.recentWeeks + listOfNotNull(input.previousWeek)).distinctBy { it.weekStart },
+            references = combinedReferences,
             gates = VolumeGates(
-                targetWeekBlock = volumeWeekBlock(race, recoveryActive, deload, weekStart, days),
+                targetWeekBlock = volumeWeekBlock(
+                    race,
+                    recoveryActive,
+                    deload,
+                    weekStart,
+                    days,
+                    postRecovery = postRecovery,
+                    mesoPhase = meso.phase,
+                ),
                 readinessGreen = input.readiness.level == ReadinessLevel.GREEN &&
                     input.readiness.flags.none {
                         it == ReadinessFlag.ILLNESS_OR_INJURY ||
@@ -345,6 +424,8 @@ class WeeklyPlanGenerator {
                     },
                 loadKnown = loadTrusted,
                 acwrInRange = acwrInRange,
+                monotonyOk = monotonyOk,
+                strainOk = strainOk,
             ),
         )
         val volumeAdjusted = fitToVolume(limitedLong, volumeDecision.minutes)
@@ -374,6 +455,10 @@ class WeeklyPlanGenerator {
             else -> baseConfidence
         }
         val rationale = buildString {
+            append("Fase ${meso.phase}. ")
+            if (meso.fallbackUsed) {
+                append("Sem histórico suficiente para mesociclo; usando posição legada. ")
+            }
             if (recoveryActive) {
                 append(
                     if (fullyRecovering) {
@@ -392,8 +477,9 @@ class WeeklyPlanGenerator {
                 }
             } else if (deload) {
                 append(
-                    "Semana de descarga (${input.weekNumberInBlock} de 4 no bloco): volume −" +
-                        "${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, intensidade mantida. ",
+                    "Semana de descarga após ${meso.strongStreak} semanas de carga demonstrada: " +
+                        "volume −${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, " +
+                        "intensidade mantida. ",
                 )
             }
             append(volumeRationale(volumeDecision, volumeAdjusted.droppedSessions))
@@ -430,9 +516,11 @@ class WeeklyPlanGenerator {
                             "sua carga recente vem do esforço percebido: treino forte precisa " +
                                 "de carga medida por FC ou ritmo."
 
-                        acwr != null && acwr > ACWR_MAX -> "sua carga subiu rápido."
+                        loadTrusted && !monotonyOk ->
+                            "sua semana variou pouco: treino forte precisa de monotonia abaixo de 2,0."
 
-                        acwr != null && acwr < ACWR_MIN -> "sua carga recente está baixa."
+                        loadTrusted && !strainOk ->
+                            "sua carga concentrou demais: reduza antes de treino forte."
 
                         days.size < 3 -> "menos de 3 dias disponíveis."
 
@@ -463,27 +551,28 @@ class WeeklyPlanGenerator {
                 if (volumeDecision.hasHistory) add("R-PLAN-01")
                 if (!loadTrusted) add("R-DATA-01")
                 if (loadState == LoadDataState.KNOWN && !loadTrusted) add("R-LOAD-04")
-                if (loadTrusted && !acwrInRange) add("R-LOAD-03")
+                if (loadTrusted && !permitsQuality) add("R-LOAD-03")
                 if (recoveryActive) add("R-RACE-04")
                 if (raceGoalWithoutDate) add("R-PLAN-11")
                 if (taperActive) add("R-PLAN-05")
                 if (taperActive) add("R-PLAN-10")
-                if (deload && !taperActive) add("R-PLAN-04")
+                if (deload) add("R-PLAN-04")
             },
             evidenceIds = buildList {
                 add("EV-SEILER-2010")
                 add("EV-DANIELS-2014")
                 add("EV-PFITZINGER-2008")
                 if (volumeDecision.hasHistory) add("EV-GABBETT-2016")
-                if (!loadTrusted || (loadTrusted && !acwrInRange)) {
+                if (!loadTrusted || (loadTrusted && !permitsQuality)) {
                     add("EV-IMPELLIZZERI-2020")
                 }
+                if (loadTrusted && !permitsQuality) add("EV-FOSTER-2001")
                 if (loadState == LoadDataState.KNOWN && !loadTrusted) add("EV-FOSTER-2001")
                 if (taperActive) {
                     add("EV-BOSQUET-2007")
                     add("EV-MUJIKA-2003")
                 }
-                if (deload && !taperActive) add("EV-ISSURIN-2010")
+                if (deload) add("EV-ISSURIN-2010")
             },
             createdOn = input.today,
         )
@@ -579,15 +668,19 @@ class WeeklyPlanGenerator {
     ): PlannedSession {
         if (type != WorkoutType.QUALITY || durationMin == null) return this
         val inTaper = race?.isInTaperWindow(date) == true
+        val weekRules = buildList {
+            if (inTaper) add("R-PLAN-05")
+            if (deload && !inTaper) add("R-PLAN-04")
+        }
+        // Micro-dose de taper tem rationale próprio e duração fixa: só agrega regras.
+        if (title == MICRO_DOSE_TITLE && durationMin <= MICRO_DOSE_MIN) {
+            return copy(ruleIds = (ruleIds + weekRules).distinct())
+        }
         val reduction = when {
             originalDurationMin == null || durationMin >= originalDurationMin -> null
             inTaper -> QualityReduction.TAPER
             deload -> QualityReduction.DELOAD
             else -> null
-        }
-        val weekRules = buildList {
-            if (inTaper) add("R-PLAN-05")
-            if (deload && !inTaper) add("R-PLAN-04")
         }
         return copy(
             rationale = qualityRationale(profile, durationMin, reduction),
@@ -663,8 +756,11 @@ class WeeklyPlanGenerator {
     private enum class QualityReduction { TAPER, DELOAD }
 
     /**
-     * A deload, taper, race or recovery week never grows. A race week is labeled
-     * first because it is also inside the taper window.
+     * A deload, taper, race, peak or recovery week never grows. A race week is
+     * labeled first because it is also inside the taper window. The first week
+     * after a recovery week also never grows (R-RACE-04): the athlete resumes
+     * quality but without progression. PEAK keeps the volume stable
+     * (R-PLAN-04 v2 direction, ADR 0041).
      */
     private fun volumeWeekBlock(
         race: RacePlan?,
@@ -672,6 +768,8 @@ class WeeklyPlanGenerator {
         deload: Boolean,
         weekStart: LocalDate,
         days: List<DayOfWeek>,
+        postRecovery: Boolean = false,
+        mesoPhase: MesoPhase = MesoPhase.BASE,
     ): VolumeGrowthBlock {
         if (race != null && race.targetDate in weekStart..weekStart.plusDays(6)) {
             return VolumeGrowthBlock.RACE_WEEK
@@ -679,8 +777,24 @@ class WeeklyPlanGenerator {
         val dates = days.map { weekStart.plusDays((it.value - 1).toLong()) }
         if (race != null && dates.any { race.isInTaperWindow(it) }) return VolumeGrowthBlock.TAPER
         if (recoveryActive) return VolumeGrowthBlock.RECOVERY
+        if (postRecovery) return VolumeGrowthBlock.RECOVERY
+        if (mesoPhase == MesoPhase.PEAK) return VolumeGrowthBlock.PEAK
         if (deload) return VolumeGrowthBlock.DELOAD
         return VolumeGrowthBlock.NONE
+    }
+
+    /**
+     * First week after a recovery week (gap 1–7 days after the end of the most
+     * recent week carrying R-RACE-04). Derived from persisted weeks, never from
+     * a volatile counter (ADR 0041 direction).
+     */
+    private fun isPostRecoveryWeek(references: List<WeeklyPlan>, targetWeekStart: LocalDate): Boolean {
+        val latestEnd = references
+            .filter { "R-RACE-04" in it.ruleIds }
+            .maxOfOrNull { it.weekStart.plusDays(6) }
+            ?: return false
+        val gap = java.time.temporal.ChronoUnit.DAYS.between(latestEnd, targetWeekStart)
+        return gap in 1..7
     }
 
     private fun volumeRationale(decision: VolumeDecision, droppedSessions: Int): String {
@@ -725,6 +839,8 @@ class WeeklyPlanGenerator {
 
         VolumeGrowthBlock.DELOAD -> " (descarga)"
 
+        VolumeGrowthBlock.PEAK -> " (pico: volume estável)"
+
         VolumeGrowthBlock.TAPER, VolumeGrowthBlock.RACE_WEEK -> " (prova)"
 
         VolumeGrowthBlock.RECOVERY -> " (recuperação após a prova)"
@@ -734,6 +850,10 @@ class WeeklyPlanGenerator {
         VolumeGrowthBlock.LOAD_UNKNOWN -> " (dados de carga insuficientes)"
 
         VolumeGrowthBlock.ACWR_OUT_OF_RANGE -> " (carga recente fora da faixa)"
+
+        VolumeGrowthBlock.MONOTONY_HIGH -> " (semana variou pouco)"
+
+        VolumeGrowthBlock.STRAIN_SPIKE -> " (carga concentrou demais)"
     }
 
     private fun cappedConfidence(confidence: DataConfidence, cap: DataConfidence): DataConfidence {
@@ -748,9 +868,11 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v5"
+        const val ENGINE_VERSION = "weekly-plan-v6"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
+        private const val MICRO_DOSE_TITLE = "Strides curtos"
+        private const val MICRO_DOSE_MIN = 25
         private const val MIN_EASY_MIN = 20
         private const val MAX_EASY_MIN = 60
         private const val MIN_QUALITY_MIN = 25
@@ -766,10 +888,10 @@ class WeeklyPlanGenerator {
         private const val PROGRESSION_COMPLETION = 0.80
         private const val ACWR_MIN = 0.8
         private const val ACWR_MAX = 1.3
-        private const val DELOAD_EVERY_WEEKS = 4
         private const val DELOAD_FACTOR = 0.75
         private val SPECIAL_VOLUME_BLOCKS = setOf(
             VolumeGrowthBlock.DELOAD,
+            VolumeGrowthBlock.PEAK,
             VolumeGrowthBlock.TAPER,
             VolumeGrowthBlock.RACE_WEEK,
             VolumeGrowthBlock.RECOVERY,

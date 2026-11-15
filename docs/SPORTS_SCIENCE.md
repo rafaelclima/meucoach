@@ -1,6 +1,9 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.0 · **Data:** 27/10/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.3 · **Data:** 15/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+
+> Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
+> Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -164,12 +167,12 @@ Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pont
 - Com elevação: ajuste por grade (grade-adjusted pace) em versão futura; no MVP, marcar confiança média.
 - Treadmill: pace da esteira + inclinação informada; sem GPS.
 
-### 6.3 ACWR com ressalvas
+### 6.3 ACWR com ressalvas (flag soft + monotonia/strain como permissão)
 
-- Calcular 7/28, mas **não** usar como lei.
+- Calcular 7/28, mas **não** usar como lei nem como bloqueio duro de semana.
 - A literatura recente questiona a validade teórica e estatística do ACWR (Impellizzeri et al., 2020).
-- Uso no app: **flag** para revisar carga, nunca para liberar aumento.
-- Faixa de atenção: < 0,8 ou > 1,3. > 1,5 = alerta; não aumentar volume.
+- Uso no app: **flag soft de redução no dia**. ACWR > 1,5 ⇒ dia fácil/reduzido (`REDUCE`/`DOWNGRADE`), nunca veto semanal permanente. ACWR < 0,8 ⇒ mantém, nunca acelera.
+- Permissão de qualidade e de progressão de volume (+6%) exige conjuntamente: carga **objetiva** `KNOWN` (TRIMP/rTSS, nunca só sRPE), cobertura ≥ 8 dias/28 com fonte fresca ≤ 14d, monotonia 7d < 2,0 e strain sem spike > 2× a média de 4 semanas (`EV-FOSTER-2001`). ACWR fora de 0,8–1,3 sozinho apenas mantém, não veta (`R-LOAD-03 v2`, proposto Ciclo 2).
 - ACWR só é exposto quando a fonte de atividades está fresca (última importação
   em até 14 dias) e há pelo menos 8 dias com carga nos últimos 28. Caso
   contrário, o valor é `null` e o estado é `INSUFFICIENT` ou `STALE`; `null`
@@ -213,7 +216,7 @@ No app, o texto visível é **Alta / Moderada / Baixa**; a cor acompanha o mesmo
 - Doença febril, dor aguda, lesão ou tontura ⇒ vermelho.
 - RHR +7 bpm por 2 dias consecutivos ⇒ no mínimo âmbar.
 - Sono < 6 h na noite anterior ⇒ sem qualidade.
-- ACWR > 1,5 ⇒ não aumentar carga.
+- ACWR > 1,5 ⇒ flag de redução no dia (fácil/reduzido); não veta a semana sozinho (`R-LOAD-03` v2, proposto).
 - HRV abaixo do SWC por 3+ dias + RHR elevada ⇒ âmbar/vermelho.
 
 ### 7.3 Confiança
@@ -245,10 +248,13 @@ A UI mostra os contribuintes e o que falta. "Sem dados" não é "recuperação r
 | **Base** | 4–8 semanas | Volume fácil, consistência, economia de corrida |
 | **Build** | 4–6 semanas | Limiar, VO2max, pace específico |
 | **Peak** | 2–3 semanas | Qualidade específica, volume estável |
-| **Taper** | 2 semanas (5k–meia) / 3 (maratona) | Reduzir volume 40–60%, manter intensidade |
-| **Recuperação** | 1–2 semanas | Volume baixo, sem qualidade |
+| **Taper** | 2 semanas (5k–meia) / 3 (maratona) | Reduzir volume −45 a −55%, manter intensidade em micro-dose |
+| **Recuperação** | 3–16 dias por distância (`R-RACE-04`) | Volume baixo, sem qualidade/longão, retorno só com check-in verde |
 
-Deload a cada 4ª semana (−20 a −30% de volume). Sem progressão após semana de prova.
+Deload a cada 4ª semana de carga demonstrada (−20 a −30% de volume), derivado de
+`recentWeeks` reais (3 cargas seguidas + descarga; buraco zera a contagem, fase
+preservada). Taper/recuperação prevalecem; semana de prova nunca é descarga
+(`R-PLAN-04 v2`, ADR 0041). Sem progressão após semana de prova.
 
 ### 8.2 Semana padrão (iniciante/intermediário)
 
@@ -276,7 +282,7 @@ Crescer exige **todas** as condições:
 - a base é a semana imediatamente anterior e ela foi concluída ≥ 80% com
   evidência forte (um clique não conta, `ADR 0024`);
 - prontidão verde, sem doença/lesão, sono curto ou `NO_QUALITY`;
-- carga **objetiva** conhecida (TRIMP/rTSS) e ACWR entre 0,8 e 1,3 (`R-LOAD-03`); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039);
+- carga **objetiva** conhecida (TRIMP/rTSS), cobertura ≥ 8 dias/28 com fonte fresca ≤ 14d, monotonia 7d < 2,0 e strain sem spike > 2× (`R-LOAD-03` v2, proposto Ciclo 2); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039); ACWR fora de 0,8–1,3 sozinho apenas mantém, não veta;
 - a semana de destino não é deload, taper, semana de prova ou recuperação.
 
 Fora disso o alvo é **mantido**; uma semana fraca nunca reduz o plano por conta
@@ -285,10 +291,14 @@ continua sendo teto rígido: se o alvo não couber na agenda, vale o que cabe, e
 quando os mínimos por sessão não couberem a semana usa menos dias. Sem histórico,
 o volume vem da disponibilidade, com aviso explícito.
 
-**Deload:** a cada 4ª semana consecutiva de plano, reduzir o volume em **20–30%**
-(o motor usa −25%) mantendo o tipo/intensidade das sessões (`R-PLAN-04`,
-`EV-ISSURIN-2010`). Taper tem precedência sobre o deload. Uma lacuna no histórico
-de planos reinicia o bloco (ADR 0011).
+**Deload:** a cada 4ª semana de carga demonstrada em `recentWeeks` reais
+(3 semanas com ao menos 1 conclusão forte + descarga), reduzir o volume em
+**20–30%** (o motor usa −25%) mantendo o tipo/intensidade das sessões
+(`R-PLAN-04 v2`, `EV-ISSURIN-2010`, ADR 0041). Taper (`R-PLAN-05/10`) e
+recuperação (`R-RACE-04`) prevalecem sobre o deload; semana de prova nunca é
+descarga. Sem prova, o motor alterna `BASE`/`BUILD` em blocos de 4 sem `PEAK`;
+com prova 12–16 semanas à frente, `BASE` até −8 semanas, `BUILD` até −3 semanas,
+`PEAK` 2–3 semanas com volume estável (nunca > base×1,06).
 
 ### 8.4 Sessões de qualidade
 
@@ -311,9 +321,9 @@ Aquecimento de 10 min + mobilidade. A tabela mostra o estímulo canônico; no pl
 
 ### 8.6 Taper
 
-- Volume −40 a −60%; intensidade mantida em pequenas doses.
+- Volume −45 a −55% sobre a média das 3 semanas pré-taper; intensidade mantida em micro-doses (`EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Última sessão intensa 7–10 dias antes da prova (5k/10k) ou 10–14 dias (meia/maratona).
-- No plano, a qualidade que cai fora do corte de 10 dias (5k/10k) ou 14 dias (meia/maratona) é encurtada pelo mesmo fator de volume, com piso de 25 min; o tipo e o esforço são mantidos e a sessão diz que o bloco ficou mais curto. Dentro do corte e na semana da prova, não há qualidade (`R-PLAN-05`).
+- No plano, a qualidade fora do corte de 10 dias (5k/10k) ou 14 dias (meia/maratona) é encurtada pelo fator de taper (`0,55`; `0,45` nos últimos 7 dias), com piso de 25 min; tipo e esforço mantidos. Dentro do corte e na semana da prova não há `QUALITY` longa nem `LONG`: mantém 1 micro-dose ≤ 25 min (`8×20s strides` ou `3×3min T leve + trote`). Nunca zero estímulo (`R-PLAN-05`, `R-PLAN-10` v2 proposto).
 - Sem treino novo, sem tênis novo, sem dieta nova na semana da prova.
 
 ### 8.7 Recomendação diária conservadora
@@ -323,7 +333,7 @@ Precedência determinística do `WorkoutRecommender`:
 1. Doença/lesão ou prontidão vermelha ⇒ **descanso** (`R-SAFE-01`, `R-READY-03`).
 2. Dia sem disponibilidade explícita ⇒ **descanso** (`R-DATA-01`).
 3. Sono < 6 h, prontidão âmbar ou `NO_QUALITY` ⇒ **fácil**, sem qualidade (`R-READY-03`, `R-READY-04`).
-4. ACWR > 1,5 ⇒ **fácil**, sem aumento de carga (`R-LOAD-03`).
+4. ACWR > 1,5 ⇒ **fácil/reduzido no dia**, sem vetar a semana sozinho (`R-LOAD-03` v2, proposto).
 5. Dia verde ⇒ **fácil em Z2**, com pace E e FC Z2 quando houver calibração (`R-ZONE-01`).
 6. Sem LTHR/pace de limiar ⇒ fácil por RPE, confiança baixa (`R-CAL-02`).
 7. Carga desconhecida (`INSUFFICIENT`) ou desatualizada (`STALE`) ⇒ **fácil**,
@@ -341,16 +351,16 @@ segunda→domingo:
 
 - Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
 - No máximo **2 qualidades** por semana; a segunda só com progressão e nunca consecutiva/adjacente ao longão.
-- Qualidade só em dia verde, não iniciante, com ACWR entre 0,8 e 1,3.
+- Qualidade só em dia verde, não iniciante, com carga objetiva `KNOWN` + monotonia 7d < 2,0 + strain sem spike (`R-LOAD-03` v2, proposto). ACWR desconhecido ou fora de faixa sozinho não veta; apenas mantém.
 - A qualidade exige `LoadDataState.KNOWN`: pelo menos 8 dias com carga nos
   últimos 28 e última importação de atividades em até 14 dias. Sem cobertura
   ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
   explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
-  ADR 0026). ACWR desconhecido nunca libera progressão.
+  ADR 0026).
 - Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
 - Fácil entre 20–60 min; qualidade entre 25–45 min, como "Ritmo forte" (intermediário) ou "Intervalos" (avançado). O texto deriva aquecimento/bloco/desaquecimento da duração real e nunca descreve mais trabalho do que cabe.
-- Taper encurta a qualidade que cai fora do corte (10 dias para 5k/10k, 14 para meia/maratona), mantendo o tipo e o esforço; com piso de 25 min, a sessão só diz que houve redução quando a duração realmente caiu (`R-PLAN-05`).
-- Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
+- Taper encurta a qualidade fora do corte (10 dias para 5k/10k, 14 para meia/maratona) com piso de 25 min; dentro do corte e na semana da prova vale 1 micro-dose ≤ 25 min, nunca zero estímulo (`R-PLAN-05`, `R-PLAN-10` v2 proposto).
+- Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% com intensidade mantida em micro-dose (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Sem data de prova, não há taper: a meta de prova sem data não define quando reduzir o volume. O plano mantém o volume normal e diz isso explicitamente, sem inventar uma data (`R-PLAN-11`, BUG-08).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
@@ -382,13 +392,15 @@ segunda→domingo:
   número — o card diz por quê. É referência, nunca promessa, prescrição ou
   garantia; não entra em plano, taper, prescrição ou briefing.
 - Plano de prova: negative split conservador ou even pace; nunca largar acima do pace alvo.
-- Recuperação após prova concluída (`R-RACE-04`, [ADR 0037](adr/0037-post-race-recovery.md)):
-  a janela é ancorada na data da prova e vale para 5k (2 dias), 10k (3), meia (5)
-  e maratona (10). Dentro dela não há `QUALITY` nem longão; as sessões viram fácil
-  curto com teto de 30 min (45 min na 2ª metade da meia; 60 min na 2ª metade da
-  maratona). A frequência é mantida e a adesão conta normalmente. `CANCELLED`/
-  `NO_SHOW` não iniciam janela. É heurística de produto (`LIMITED`), encurtada em
-  12/11/2026 por decisão do usuário 0; não é prescrição médica nem consenso
+- Recuperação após prova concluída (`R-RACE-04`, [ADR 0037](adr/0037-post-race-recovery.md), revisto Ciclo 2 proposto):
+  a janela é ancorada na data da prova e vale para 5k (3 dias), 10k (5), meia (10)
+  e maratona (16). Dentro dela não há `QUALITY` nem longão; as sessões viram fácil
+  curto com teto de 30 min (45 min nos dias 6–10 da meia; 60 min nos dias 8–16 da
+  maratona). A frequência é mantida e a adesão conta normalmente. Sem progressão
+  na primeira semana pós-janela. `CANCELLED`/`NO_SHOW` não iniciam janela.
+  Retorno à carga exige check-in sem `ILLNESS_OR_INJURY`, sem dor ≥ 3/10 e sem
+  prontidão vermelha; caso contrário estende +7d via sugestão `RACE_COMPLETED`.
+  É heurística de produto (`LIMITED`); não é prescrição médica nem consenso
   científico.
 
 ### 8.11 Prescrição do dia e evidência de conclusão
@@ -556,28 +568,31 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
-| `R-LOAD-03` | ACWR é flag, nunca meta; fora de 0,8–1,3 bloqueia qualidade/progressão; >1,5 é alerta | GABBETT, IMPELLIZZERI | LIMITED |
+| `R-LOAD-03` | ACWR é flag soft, nunca meta nem veto semanal: >1,5 reduz o dia; permissão de qualidade/progressão exige carga objetiva + monotonia 7d <2,0 + strain sem spike | GABBETT, IMPELLIZZERI, FOSTER | LIMITED |
 | `R-LOAD-04` | sRPE (`RPE × min`) preenche o dia sem FC/pace; subjetiva: conserva, nunca libera aumento | FOSTER | LIMITED |
 | `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
 | `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
 | `R-READY-04` | Sono <6 h ⇒ sem qualidade; <6,5 h por 3 dias ⇒ sem aumento de volume | WALSH, WATSON | STRONG |
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
-| `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume concluído com evidência nas últimas 4 semanas, e só com a semana anterior ≥ 80% concluída, prontidão verde, carga conhecida e ACWR 0,8–1,3; a disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT; ADR 0038 | MODERATE |
+| `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume concluído com evidência nas últimas 4 semanas, e só com a semana anterior ≥ 80% concluída, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike; ACWR fora de faixa sozinho apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT, FOSTER; ADR 0038; `R-LOAD-03` v2 proposto | MODERATE |
 | `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
 | `R-PLAN-03` | Longão 25–30% do volume; iniciante ≤150 min | PFITZINGER, DANIELS | MODERATE |
 | `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |
-| `R-PLAN-05` | Taper 2 semanas (5k–meia) / 3 (maratona), volume −40–60% | BOSQUET, MUJIKA | STRONG |
+| `R-PLAN-04 v2` | Deload a cada 4ª semana de carga demonstrada, derivado de `recentWeeks` reais; taper/recuperação prevalecem | ISSURIN; ADR 0041 | MODERATE |
+| `R-PLAN-05` | Taper 2 semanas (5k–meia) / 3 (maratona), volume −45–55%, intensidade mantida em micro-dose ≤25 min; qualidade fora do corte encurtada com piso 25 min | BOSQUET, MUJIKA | STRONG |
 | `R-PLAN-06` | 80% do tempo em Z1–Z2; qualidade doseada | SEILER | MODERATE |
 | `R-PLAN-07` | Ajuste por calor +3–8%, subordinado a FC/RPE | ELY | LIMITED |
 | `R-PLAN-08` | Esteira válida para qualidade no calor; prescrever por velocidade/inclinação | ELY, DANIELS | LIMITED |
 | `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
-| `R-PLAN-10` | Sem `QUALITY` na semana civil da prova e corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) antes dela; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
+| `R-PLAN-10` | Corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) + semana civil sem `QUALITY` longa/`LONG`; dentro do corte vale 1 micro-dose ≤25 min, nunca zero estímulo; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
 | `R-PLAN-11` | Meta de prova sem data não agenda redução de volume: o plano mantém o volume normal e declara a ausência da data na UI, sem inventar uma data | BUG-08; `R-DATA-01` (dado ausente é ausente) | LIMITED — regra de transparência de produto, sem alegação fisiológica |
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |
-| `R-RACE-04` | Após prova concluída, janela por distância (5k 2, 10k 3, meia 5, maratona 10 dias) sem treino forte e sem longão, com sessões fáceis de até 30 min (45/60 na 2ª metade); `CANCELLED`/`NO_SHOW` não iniciam | ADR 0037; heurística de produto derivada de `SPORTS_SCIENCE` §8.10 | LIMITED — convenção conservadora de produto, sem alegação fisiológica |
+| `R-RACE-04` | Após prova concluída, janela por distância (5k 3, 10k 5, meia 10, maratona 16 dias) sem treino forte e sem longão, com sessões fáceis de até 30 min (45 nos dias 6–10 da meia; 60 nos dias 8–16 da maratona); retorno exige check-in sem dor e sem prontidão vermelha; sem progressão na semana seguinte; `CANCELLED`/`NO_SHOW` não iniciam | ADR 0037 revisto Ciclo 2 proposto; heurística de produto derivada de `SPORTS_SCIENCE` §8.10 | LIMITED — convenção conservadora de produto, sem alegação fisiológica |
+| `R-LVL-01` | `BEGINNER → INTERMEDIATE` só com 4/6 semanas ≥80% forte + 3 esforços 20–35 min + calibração válida + sem doença + longão 60 min; sugestão com aceite, nunca automática | DANIELS, FRIEL, SEILER; ADR 0042 (domínio) | LIMITED — convenção de produto |
+| `R-LVL-02` | `INTERMEDIATE → ADVANCED` exige `R-LVL-01` + CTL estável 4 sem + longão 90 min + prova/TT + monotonia <2,0; sugestão com aceite | DANIELS, SEILER, FOSTER; ADR 0042 (domínio) | LIMITED — convenção de produto |
 | `R-FEEDBACK-01` | Comparação planejado × executado é descritiva: usa o alvo prescrito do dia, tolera 10% em duração/distância e 1 ponto de RPE, mostra dado ausente como ausente e não julga qualidade nem prescreve; treino livre não inventa alvo | ADR 0033; DANIELS, FRIEL | STRONG como política de produto/copy |
 | `R-REVIEW-01` | A revisão semanal consolida adesão, volume, intensidade, prontidão e sono a partir de valores já calculados; reporta no máximo 3 observações determinísticas que citam regra/evidência, com dado ausente como ausente, sem LLM, sem nota, streak ou prescrição | ADR 0034; política de produto | STRONG como política de produto/copy |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |
@@ -599,7 +614,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 - Potência de corrida do Zepp é proprietária; usar apenas tendência relativa.
 - Ajuste de calor é empírico e conservador; não é prescrição fisiológica individual.
 - HRV noturno de wearable de pulso tem ruído; usar tendência, não noite isolada.
-- ACWR tem limitações teóricas; nunca é a única justificativa.
+- ACWR tem limitações teóricas; é flag soft de redução no dia, nunca veto semanal nem única justificativa (`R-LOAD-03` v2).
 - O modelo de prontidão não substitui sintomas subjetivos ou avaliação médica.
 
 ## 16. Próximas calibrações

@@ -239,6 +239,7 @@ class Cycle1RegressionTest {
         assertThat(plan.rationale).contains("Sem progressão")
     }
 
+    @Suppress("DEPRECATION")
     private fun input(
         profile: AthleteProfile,
         readiness: ReadinessResult,
@@ -302,9 +303,10 @@ class Cycle1RegressionTest {
         acuteAverage7d = 0.0,
         chronicAverage28d = 0.0,
         acwr = acwr,
-        monotony = null,
+        monotony = 1.2,
         missingDays = missingDays,
         coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
+        strain = 400.0,
     )
 
     private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {

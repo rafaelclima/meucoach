@@ -627,7 +627,7 @@ class DailyPrescriptionEngineTest {
 
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
-        assertThat(prescription.prescribedDurationMin).isEqualTo(45)
+        assertThat(prescription.prescribedDurationMin).isEqualTo(30)
         assertThat(prescription.ruleIds).contains("R-RACE-04")
         assertThat(prescription.rationale).contains("O longão fica para quando a recuperação permitir")
     }
@@ -797,6 +797,8 @@ class DailyPrescriptionEngineTest {
         daysWithLoad: Int = 12,
         sourceFresh: Boolean = true,
         subjectiveDaysInWindow: Int = 0,
+        monotony: Double? = 1.2,
+        strain: Double? = 400.0,
     ): LoadSnapshot {
         val daysWithoutActivity = if (sourceFresh) 28 - daysWithLoad else 0
         val daysWithoutData = if (sourceFresh) 0 else 28 - daysWithLoad
@@ -810,7 +812,7 @@ class DailyPrescriptionEngineTest {
             acuteAverage7d = 0.0,
             chronicAverage28d = 0.0,
             acwr = acwr,
-            monotony = null,
+            monotony = monotony,
             missingDays = 28 - daysWithLoad,
             coverage = LoadCoverage(
                 daysInWindow = 28,
@@ -821,6 +823,7 @@ class DailyPrescriptionEngineTest {
                 sourceFresh = sourceFresh,
             ),
             subjectiveDaysInWindow = subjectiveDaysInWindow,
+            strain = strain,
         )
     }
 }

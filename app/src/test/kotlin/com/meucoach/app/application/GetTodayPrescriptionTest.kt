@@ -385,7 +385,7 @@ class GetTodayPrescriptionTest {
         acuteAverage7d = 0.0,
         chronicAverage28d = 0.0,
         acwr = acwr,
-        monotony = null,
+        monotony = 1.2,
         missingDays = 16,
         coverage = LoadCoverage(
             daysInWindow = 28,
@@ -395,5 +395,6 @@ class GetTodayPrescriptionTest {
             lastActivityAt = null,
             sourceFresh = true,
         ),
+        strain = 400.0,
     )
 }

@@ -182,8 +182,12 @@ class TodayViewModelPersistTest {
     }
 
     @Test
-    fun `deloads after three consecutive planned weeks`(): Unit = runBlocking {
-        val today = LocalDate.now()
+    fun `deloads after three consecutive load weeks from history`(): Unit = runBlocking {
+        val timeProvider = FakeTimeProvider(
+            instant = Instant.parse("2026-11-02T12:00:00Z"),
+            zone = ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
         val weekStart = today.with(
             java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
         )
@@ -195,14 +199,14 @@ class TodayViewModelPersistTest {
             plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
         }
 
-        val viewModel = createViewModel()
+        val viewModel = createViewModel(timeProvider)
         val state = withTimeout(5_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
 
         assertThat(state.plan?.ruleIds).contains("R-PLAN-04")
         assertThat(state.plan?.evidenceIds).contains("EV-ISSURIN-2010")
-        assertThat(state.plan?.rationale).contains("4 de 4 no bloco")
+        assertThat(state.plan?.rationale).contains("após 3 semanas", "Fase BASE")
     }
 
     @Test
@@ -594,7 +598,7 @@ class TodayViewModelPersistTest {
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
                 completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
-                activityId = "previous-day-0",
+                activityId = "previous-$weekStart-0",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(1),
@@ -606,7 +610,7 @@ class TodayViewModelPersistTest {
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
                 completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
-                activityId = "previous-day-1",
+                activityId = "previous-$weekStart-1",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(2),
@@ -618,7 +622,7 @@ class TodayViewModelPersistTest {
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
                 completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
-                activityId = "previous-day-2",
+                activityId = "previous-$weekStart-2",
             ),
             com.meucoach.core.domain.prescription.PlannedSession(
                 date = weekStart.plusDays(3),
@@ -630,7 +634,7 @@ class TodayViewModelPersistTest {
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = com.meucoach.core.domain.prescription.SessionStatus.DONE,
                 completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
-                activityId = "previous-day-3",
+                activityId = "previous-$weekStart-3",
             ),
         ),
         weeklyMinutes = 120,

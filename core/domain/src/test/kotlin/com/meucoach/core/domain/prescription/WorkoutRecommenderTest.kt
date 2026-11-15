@@ -347,9 +347,10 @@ class WorkoutRecommenderTest {
         acuteAverage7d = 0.0,
         chronicAverage28d = 0.0,
         acwr = acwr,
-        monotony = null,
+        monotony = 1.2,
         missingDays = 16,
         coverage = coverage(daysWithLoad = 12),
+        strain = 400.0,
     )
 
     private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {

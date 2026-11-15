@@ -60,16 +60,18 @@ class DailyPrescriptionEngine {
         }
 
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
-        // D5 (ADR 0039): trust for quality is objective load only; subjective
-        // sRPE keeps ACWR and reduction guardrails alive but never unlocks a
-        // strong session.
+        // D5 (ADR 0039) + R-LOAD-03 v2 (proposto): trust for quality is objective
+        // load plus monotony < 2.0 and no strain spike. ACWR > 1.5 only reduces
+        // the day; it never vetoes the week alone.
         val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
+        val permitsQuality = input.load?.permitsQualityAndProgression ?: false
+        val monotonyOk = input.load?.monotonyOk ?: false
+        val strainSpike = input.load?.strainSpike ?: false
         val subjectiveOnlyLoad = loadState == LoadDataState.KNOWN && !loadTrusted
         val acwr = input.load?.acwr
         // ACWR comes from the full series (objective + subjective): a high
         // subjective load must still trigger the reduction guardrail.
         val acwrHigh = loadState == LoadDataState.KNOWN && acwr != null && acwr > ACWR_MAX
-        val acwrBlocked = loadTrusted && (acwr == null || acwr !in ACWR_MIN..ACWR_MAX)
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         // Missing data lowers confidence and blocks quality, but it is not bad
         // recovery: the plan duration is kept instead of being reduced.
@@ -94,22 +96,26 @@ class DailyPrescriptionEngine {
         }
         val recoveryGuard = recoveryActive && planned.type == WorkoutType.QUALITY
         val qualityBlocked =
-            safetyReduce || absenceOnly || !loadTrusted || acwrBlocked || acwrHigh ||
+            safetyReduce || absenceOnly || !permitsQuality || acwrHigh ||
                 beginnerGuard || recoveryGuard
         val safetyReasons = safetyReasons(input, shortSleep, negativeReadiness, absenceOnly)
-        val qualityReasons = qualityReasons(loadState, loadTrusted, acwrHigh, acwrBlocked)
+        val qualityReasons = qualityReasons(loadState, loadTrusted, acwrHigh, permitsQuality, monotonyOk, strainSpike)
         val guardReasons = buildList {
             if (beginnerGuard) add(BEGINNER_REASON)
             if (recoveryGuard && recoveryReason != null) add(recoveryReason)
         }
-        val uncertainLoad = !loadTrusted || acwrBlocked || acwrHigh
+        val uncertainLoad = !permitsQuality || acwrHigh
 
-        val baseConfidence = confidence(input, loadTrusted = loadTrusted)
+        val baseConfidence = confidence(input, loadTrusted = permitsQuality)
         val rules = baseRules(planned)
         val evidence = baseEvidence(planned)
-        if (!loadTrusted) {
+        if (!permitsQuality) {
             rules += "R-DATA-01"
             evidence += "EV-IMPELLIZZERI-2020"
+        }
+        if (loadTrusted && !permitsQuality) {
+            rules += "R-LOAD-03"
+            evidence += "EV-FOSTER-2001"
         }
         if (subjectiveOnlyLoad) {
             rules += "R-LOAD-04"
@@ -458,7 +464,9 @@ class DailyPrescriptionEngine {
         loadState: LoadDataState,
         loadTrusted: Boolean,
         acwrHigh: Boolean,
-        acwrBlocked: Boolean,
+        permitsQuality: Boolean,
+        monotonyOk: Boolean,
+        strainSpike: Boolean,
     ): List<String> = buildList {
         when (loadState) {
             LoadDataState.STALE -> add("dados de carga desatualizados")
@@ -470,7 +478,11 @@ class DailyPrescriptionEngine {
             LoadDataState.KNOWN -> if (!loadTrusted) add("carga recente vem do esforço percebido")
         }
         if (acwrHigh) add("sua carga subiu rápido")
-        if (acwrBlocked && loadState == LoadDataState.KNOWN) add("a carga recente está fora da faixa segura")
+        if (loadTrusted && !permitsQuality) {
+            if (!monotonyOk) add("sua semana variou pouco")
+            if (strainSpike) add("sua carga concentrou demais")
+            if (monotonyOk && !strainSpike) add("carga objetiva sem permissão para treino forte")
+        }
     }
 
     private fun readinessRules(negativeReadiness: Boolean, shortSleep: Boolean): List<String> = buildList {
@@ -484,12 +496,18 @@ class DailyPrescriptionEngine {
 
     private fun loadRules(uncertain: Boolean, acwrHigh: Boolean): List<String> = buildList {
         if (acwrHigh) add("R-LOAD-03")
-        if (uncertain && !acwrHigh) add("R-DATA-01")
+        if (uncertain && !acwrHigh) {
+            add("R-DATA-01")
+            add("R-LOAD-03")
+        }
     }
 
     private fun loadEvidence(uncertain: Boolean, acwrHigh: Boolean): List<String> = buildList {
         if (acwrHigh) add("EV-GABBETT-2016")
-        if (uncertain && !acwrHigh) add("EV-IMPELLIZZERI-2020")
+        if (uncertain && !acwrHigh) {
+            add("EV-IMPELLIZZERI-2020")
+            add("EV-FOSTER-2001")
+        }
     }
 
     private fun beginnerRules(active: Boolean): List<String> = if (active) listOf("R-PRESC-04") else emptyList()

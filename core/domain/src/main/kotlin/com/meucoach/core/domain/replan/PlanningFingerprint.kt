@@ -116,6 +116,15 @@ object PlanningFingerprints {
     fun temporalContextHash(zoneId: ZoneId): String = sha256("$TEMPORAL_CONTEXT_VERSION|zoneId=${zoneId.id}")
 
     fun temporalContextHash(profile: AthleteProfile): String = temporalContextHash(ZoneId.of(profile.timezone))
+
+    /**
+     * Stable hash of the derived mesocycle (ADR 0041). The phase and the strong
+     * counters travel in the replanner `inputsHash`; a new history that changes
+     * the phase invalidates the suggestion as STALE (ADR 0028/0031), never
+     * auto-applied.
+     */
+    fun mesoHash(phase: String, strongStreak: Int, totalStrong: Int): String =
+        sha256("meso-v1|phase=$phase|streak=$strongStreak|total=$totalStrong")
 }
 
 /** Everything a `NoChange` or accepted revision needs to persist as the evaluated checkpoint. */

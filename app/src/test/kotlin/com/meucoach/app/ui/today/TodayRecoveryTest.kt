@@ -54,8 +54,8 @@ class TodayRecoveryTest {
 
         assertThat(state.recovery).isNotNull()
         assertThat(state.recovery?.dayOfWindow).isEqualTo(1)
-        assertThat(state.recovery?.totalDays).isEqualTo(3)
-        assertThat(state.recovery?.until).isEqualTo(today.plusDays(2))
+        assertThat(state.recovery?.totalDays).isEqualTo(5)
+        assertThat(state.recovery?.until).isEqualTo(today.plusDays(4))
         assertThat(state.prescription?.prescribedType).isEqualTo(WorkoutType.EASY)
         assertThat(state.prescription?.ruleIds).contains("R-RACE-04")
     }
@@ -98,7 +98,7 @@ class TodayRecoveryTest {
         }
 
         compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("today-recovery"))
-        compose.onNodeWithText("Recuperação após a prova · dia 1 de 3 · até 04/11").assertIsDisplayed()
+        compose.onNodeWithText("Recuperação após a prova · dia 1 de 5 · até 06/11").assertIsDisplayed()
     }
 
     private fun qualityPlan(date: LocalDate) = WeeklyPlan(

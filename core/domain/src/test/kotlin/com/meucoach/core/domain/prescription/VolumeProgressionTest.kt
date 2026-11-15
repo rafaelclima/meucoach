@@ -101,6 +101,7 @@ class VolumeProgressionTest {
             .filter {
                 it in setOf(
                     VolumeGrowthBlock.DELOAD,
+                    VolumeGrowthBlock.PEAK,
                     VolumeGrowthBlock.TAPER,
                     VolumeGrowthBlock.RACE_WEEK,
                     VolumeGrowthBlock.RECOVERY,
@@ -142,11 +143,26 @@ class VolumeProgressionTest {
             references,
             VolumeGates(acwrInRange = false),
         )
+        val monotonyHigh = progression.decide(
+            monday,
+            210,
+            references,
+            VolumeGates(monotonyOk = false),
+        )
+        val strainSpike = progression.decide(
+            monday,
+            210,
+            references,
+            VolumeGates(strainOk = false),
+        )
 
         assertThat(notGreen.block).isEqualTo(VolumeGrowthBlock.READINESS)
         assertThat(loadUnknown.block).isEqualTo(VolumeGrowthBlock.LOAD_UNKNOWN)
         assertThat(acwrOut.block).isEqualTo(VolumeGrowthBlock.ACWR_OUT_OF_RANGE)
-        assertThat(listOf(notGreen, loadUnknown, acwrOut).map { it.minutes }).containsOnly(120)
+        assertThat(monotonyHigh.block).isEqualTo(VolumeGrowthBlock.MONOTONY_HIGH)
+        assertThat(strainSpike.block).isEqualTo(VolumeGrowthBlock.STRAIN_SPIKE)
+        assertThat(listOf(notGreen, loadUnknown, acwrOut, monotonyHigh, strainSpike).map { it.minutes })
+            .containsOnly(120)
     }
 
     @Test

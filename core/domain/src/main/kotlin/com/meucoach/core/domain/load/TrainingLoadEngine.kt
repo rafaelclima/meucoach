@@ -129,6 +129,12 @@ data class LoadSnapshot(
     val coverage: LoadCoverage,
     /** Days in the 28-day window whose load came from subjective sRPE (ADR 0039). */
     val subjectiveDaysInWindow: Int = 0,
+    /**
+     * Weekly strain (Foster): sum of the last 7 daily loads × monotony.
+     * Null when monotony is null. Computed by [TrainingLoadEngine]; tests may
+     * inject it directly. Never a permission alone.
+     */
+    val strain: Double? = null,
 ) {
     val hasData: Boolean get() = daily.any { it.metric != null }
 
@@ -175,9 +181,45 @@ data class LoadSnapshot(
     val tsbSeries: List<Double>
         get() = ctlSeries.zip(atlSeries) { ctl, atl -> TrainingLoadCalculator.tsb(ctl, atl) }
 
+    /**
+     * Monotony gate (R-LOAD-03 v2, proposto): training must vary.
+     * Null monotony blocks (conservative): uniform or insufficient week.
+     */
+    val monotonyOk: Boolean
+        get() = monotony != null && monotony < MONOTONY_MAX
+
+    /**
+     * Strain spike: current weekly strain above twice the chronic weekly
+     * baseline (chronic daily average × 7). Requires a positive baseline;
+     * without it there is no spike, only the monotony gate applies.
+     * Heuristic LIMITED, never a diagnosis.
+     */
+    val strainSpike: Boolean
+        get() {
+            val current = strain ?: return false
+            if (!current.isFinite() || current < 0.0) return false
+            val baselineWeekly = chronicAverage28d * 7.0
+            if (!baselineWeekly.isFinite() || baselineWeekly <= 0.0) return false
+            return current > STRAIN_SPIKE_FACTOR * baselineWeekly
+        }
+
+    /**
+     * Quality/progression permission (R-LOAD-03 v2, proposto):
+     * objective load KNOWN + monotony < 2.0 + no strain spike.
+     * ACWR alone never permits nor vetoes; ACWR > 1.5 only reduces the day.
+     */
+    val permitsQualityAndProgression: Boolean
+        get() = objectiveDataState == LoadDataState.KNOWN && monotonyOk && !strainSpike
+
     companion object {
         /** Minimum days with load in the 28-day window to trust ACWR (≈2 runs/week). */
         const val MIN_DAYS_WITH_LOAD = 8
+
+        /** Foster: weekly monotony above this blocks quality/progression. */
+        const val MONOTONY_MAX = 2.0
+
+        /** Strain above twice the chronic weekly baseline is a spike. */
+        const val STRAIN_SPIKE_FACTOR = 2.0
     }
 }
 
@@ -253,6 +295,9 @@ class TrainingLoadEngine {
             null
         }
         val subjectiveDaysInWindow = coverageCount(daily, today) { it.metric == LoadMetric.SRPE }
+        val weeklyMonotony = TrainingLoadCalculator.monotony(last7)
+        val weeklySum = last7.sum()
+        val weeklyStrain = weeklyMonotony?.let { monotony -> weeklySum * monotony }
 
         return LoadSnapshot(
             daily = daily,
@@ -264,10 +309,11 @@ class TrainingLoadEngine {
             acuteAverage7d = acute,
             chronicAverage28d = chronic,
             acwr = acwr,
-            monotony = TrainingLoadCalculator.monotony(last7),
+            monotony = weeklyMonotony,
             missingDays = daily.count { it.metric == null },
             coverage = coverage,
             subjectiveDaysInWindow = subjectiveDaysInWindow,
+            strain = weeklyStrain,
         )
     }
 

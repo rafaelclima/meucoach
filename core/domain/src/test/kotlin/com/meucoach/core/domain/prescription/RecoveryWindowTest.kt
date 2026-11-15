@@ -11,10 +11,10 @@ class RecoveryWindowTest {
 
     @Test
     fun `uses the approved window per distance`() {
-        assertThat(window(RaceDistance.FIVE_K).totalDays).isEqualTo(2)
-        assertThat(window(RaceDistance.TEN_K).totalDays).isEqualTo(3)
-        assertThat(window(RaceDistance.HALF_MARATHON).totalDays).isEqualTo(5)
-        assertThat(window(RaceDistance.MARATHON).totalDays).isEqualTo(10)
+        assertThat(window(RaceDistance.FIVE_K).totalDays).isEqualTo(3)
+        assertThat(window(RaceDistance.TEN_K).totalDays).isEqualTo(5)
+        assertThat(window(RaceDistance.HALF_MARATHON).totalDays).isEqualTo(10)
+        assertThat(window(RaceDistance.MARATHON).totalDays).isEqualTo(16)
     }
 
     @Test
@@ -23,8 +23,8 @@ class RecoveryWindowTest {
 
         assertThat(recovery.isActive(raceDay)).isFalse()
         assertThat(recovery.isActive(raceDay.plusDays(1))).isTrue()
-        assertThat(recovery.isActive(raceDay.plusDays(3))).isTrue()
-        assertThat(recovery.isActive(raceDay.plusDays(4))).isFalse()
+        assertThat(recovery.isActive(raceDay.plusDays(5))).isTrue()
+        assertThat(recovery.isActive(raceDay.plusDays(6))).isFalse()
         assertThat(recovery.dayNumber(raceDay)).isZero()
         assertThat(recovery.dayNumber(raceDay.plusDays(2))).isEqualTo(2)
     }
@@ -34,8 +34,8 @@ class RecoveryWindowTest {
         val recovery = window(RaceDistance.HALF_MARATHON)
 
         assertThat(recovery.allowsQuality(raceDay.plusDays(1))).isFalse()
-        assertThat(recovery.allowsLongRun(raceDay.plusDays(5))).isFalse()
-        assertThat(recovery.allowsQuality(raceDay.plusDays(6))).isTrue()
+        assertThat(recovery.allowsLongRun(raceDay.plusDays(10))).isFalse()
+        assertThat(recovery.allowsQuality(raceDay.plusDays(11))).isTrue()
         assertThat(recovery.allowsLongRun(raceDay)).isTrue()
     }
 
@@ -43,19 +43,19 @@ class RecoveryWindowTest {
     fun `caps sessions by phase`() {
         assertThat(window(RaceDistance.FIVE_K).maxSessionMinutes(raceDay)).isNull()
         assertThat(window(RaceDistance.FIVE_K).maxSessionMinutes(raceDay.plusDays(1))).isEqualTo(30)
-        assertThat(window(RaceDistance.TEN_K).maxSessionMinutes(raceDay.plusDays(3))).isEqualTo(30)
+        assertThat(window(RaceDistance.TEN_K).maxSessionMinutes(raceDay.plusDays(5))).isEqualTo(30)
 
         val half = window(RaceDistance.HALF_MARATHON)
-        assertThat(half.maxSessionMinutes(raceDay.plusDays(3))).isEqualTo(30)
-        assertThat(half.maxSessionMinutes(raceDay.plusDays(4))).isEqualTo(45)
-        assertThat(half.maxSessionMinutes(raceDay.plusDays(5))).isEqualTo(45)
-        assertThat(half.maxSessionMinutes(raceDay.plusDays(6))).isNull()
+        assertThat(half.maxSessionMinutes(raceDay.plusDays(5))).isEqualTo(30)
+        assertThat(half.maxSessionMinutes(raceDay.plusDays(6))).isEqualTo(45)
+        assertThat(half.maxSessionMinutes(raceDay.plusDays(10))).isEqualTo(45)
+        assertThat(half.maxSessionMinutes(raceDay.plusDays(11))).isNull()
 
         val marathon = window(RaceDistance.MARATHON)
-        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(5))).isEqualTo(30)
-        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(6))).isEqualTo(60)
-        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(10))).isEqualTo(60)
-        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(11))).isNull()
+        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(7))).isEqualTo(30)
+        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(8))).isEqualTo(60)
+        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(16))).isEqualTo(60)
+        assertThat(marathon.maxSessionMinutes(raceDay.plusDays(17))).isNull()
     }
 
     @Test
@@ -68,7 +68,7 @@ class RecoveryWindowTest {
         assertThat(recovery.blocks(WorkoutType.EASY, day, 45)).isTrue()
         assertThat(recovery.blocks(WorkoutType.EASY, day, 30)).isFalse()
         assertThat(recovery.blocks(WorkoutType.EASY, day, null)).isFalse()
-        assertThat(recovery.blocks(WorkoutType.QUALITY, raceDay.plusDays(4), 30)).isFalse()
+        assertThat(recovery.blocks(WorkoutType.QUALITY, raceDay.plusDays(6), 30)).isFalse()
         assertThat(recovery.blocks(WorkoutType.EASY, raceDay, 90)).isFalse()
     }
 
@@ -77,22 +77,22 @@ class RecoveryWindowTest {
         val recovery = window(RaceDistance.MARATHON)
 
         assertThat(recovery.dayOfWindow(raceDay.plusDays(1))).isEqualTo(1)
-        assertThat(recovery.dayOfWindow(raceDay.plusDays(10))).isEqualTo(10)
-        assertThat(recovery.daysRemaining(raceDay.plusDays(1))).isEqualTo(10)
-        assertThat(recovery.daysRemaining(raceDay.plusDays(9))).isEqualTo(2)
+        assertThat(recovery.dayOfWindow(raceDay.plusDays(16))).isEqualTo(16)
+        assertThat(recovery.daysRemaining(raceDay.plusDays(1))).isEqualTo(16)
+        assertThat(recovery.daysRemaining(raceDay.plusDays(15))).isEqualTo(2)
         assertThat(recovery.dayOfWindow(raceDay)).isZero()
-        assertThat(recovery.daysRemaining(raceDay.plusDays(11))).isZero()
+        assertThat(recovery.daysRemaining(raceDay.plusDays(17))).isZero()
     }
 
     @Test
     fun `intersects only when the range touches the window`() {
         val recovery = window(RaceDistance.HALF_MARATHON)
 
-        assertThat(recovery.intersects(raceDay, raceDay.plusDays(6))).isTrue()
-        assertThat(recovery.intersects(raceDay.plusDays(5), raceDay.plusDays(12))).isTrue()
-        assertThat(recovery.intersects(raceDay.plusDays(6), raceDay.plusDays(12))).isFalse()
+        assertThat(recovery.intersects(raceDay, raceDay.plusDays(11))).isTrue()
+        assertThat(recovery.intersects(raceDay.plusDays(10), raceDay.plusDays(12))).isTrue()
+        assertThat(recovery.intersects(raceDay.plusDays(11), raceDay.plusDays(12))).isFalse()
         assertThat(recovery.intersects(raceDay.minusDays(7), raceDay)).isFalse()
-        assertThat(recovery.intersects(raceDay.plusDays(6), raceDay)).isFalse()
+        assertThat(recovery.intersects(raceDay.plusDays(11), raceDay.plusDays(10))).isFalse()
     }
 
     @Test

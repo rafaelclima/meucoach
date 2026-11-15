@@ -1,6 +1,7 @@
 package com.meucoach.core.domain.replan
 
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.MesoCycle
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -437,6 +438,7 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";previous=").append(previousWeek?.canonical() ?: "null")
     append(";recent=").append(recentWeeks.sortedBy { it.weekStart }.joinToString("|") { it.canonical() })
     append(";block=").append(weekNumberInBlock)
+    append(";meso=").append(mesoCanonical())
     append(";nonTrainable=").append(nonTrainablePastDates.sorted().joinToString(","))
     append(";race=").append(
         race?.let { "${it.eventId},${it.distance.name},${it.targetDate}" } ?: "null",
@@ -447,6 +449,25 @@ private fun ReplanInput.canonical(): String = buildString {
     )
     append(";threshold=").append(missedSessionThreshold)
     append(";sessions=").append(currentPlan.sessions.joinToString("|") { it.canonical() })
+}
+
+private fun ReplanInput.mesoCanonical(): String {
+    val weekStart = currentPlan.weekStart
+    val combined = (recentWeeks + listOfNotNull(previousWeek)).distinctBy { it.weekStart }
+    val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
+    val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
+    val recoveryActive = recovery != null && recovery.intersects(weekStart, weekStart.plusDays(6))
+    val meso = MesoCycle.resolve(
+        targetWeekStart = weekStart,
+        race = race,
+        recoveryActive = recoveryActive,
+        isRaceWeek = isRaceWeek,
+        isTaperWeek = isTaperWeek,
+        references = combined,
+        fallbackWeekNumberInBlock = weekNumberInBlock,
+    )
+    val hash = PlanningFingerprints.mesoHash(meso.phase.name, meso.strongStreak, meso.totalStrong)
+    return "${meso.phase.name},${meso.strongStreak},${meso.totalStrong},$hash"
 }
 
 private fun ReadinessResult.canonical(): String = buildString {
