@@ -1,6 +1,19 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (MAP-08, UI-06/UI-07, VIS-07, ENC-06, QA-03/VIS-08, MAP-07, ENC-02, MAP-09, DOM-09 fatia 1; antes: ENC-05/ENC-08 fatia 1)
+**Atualizado:** 15/11/2026 (fix do swap em data de prova cruzando a semana; antes: MAP-08, UI-06/UI-07, VIS-07, ENC-06, QA-03/VIS-08, MAP-07, ENC-02, MAP-09, DOM-09 fatia 1)
+
+## Correção 2026-11-15 — swap para data de prova cruzando a semana
+
+**Causa raiz (bug real, não flake):** `TodayViewModel.swapSession` buscava
+datas de prova só na semana de `firstDate`. No domingo, `tomorrow` cai na
+semana seguinte, fora do intervalo — o bloqueio nunca disparava e a troca
+para o dia da prova era aplicada. O fix estende a busca às duas semanas
+(`minOf`/`maxOf` dos `weekStart` + 6 dias); o swap entre semanas continua
+impossível (sessão não encontrada), só o bloqueio de prova passa a valer.
+**Evidência:** sem o fix, o teste antigo (domingo real) e o novo teste de
+domingo fixo (`2026-11-15`) falham; com o fix, os 12 do arquivo passam, junto
+com `SessionSwapperTest`, detekt e spotless. Commit `359bb75` (só 2 arquivos;
+ADRs 0041/0042 de outro trabalho na branch não foram tocados).
 
 ## Sessão 2026-11-15 — Story V3: MAP-08, a11y/copy, VIS-07, ENC-06, QA-03/VIS-08, MAP-07, ENC-02, MAP-09, DOM-09 fatia 1
 
@@ -88,8 +101,9 @@ low-RAM, 60 fps preparado, seam Protomaps e o detector de recordes (domínio).
 
 ### Próximo passo
 
-1. Fatia dedicada: `TodayViewModelPersistTest` com clock injetado (falha de
-   domingo pré-existente, documentada acima).
+1. ~~Fatia dedicada: `TodayViewModelPersistTest` com clock injetado~~ —
+   resolvido em 15/11/2026: era bug real (busca de prova restrita à semana de
+   `firstDate`); fix + teste de domingo fixo, commit `359bb75`.
 2. DOM-09 fatia 2 — badges no spec/renderer + golden do encerramento.
 3. MAP-10 (fallback sem rede) e ENC-09 (spike GPU, exige aparelho).
 4. Aparelho (usuário 0): QA-05/DEV-03/04/05/07, QA-06, ENC-08 (pico real).
