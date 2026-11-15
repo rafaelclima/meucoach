@@ -1,6 +1,98 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 14/11/2026 (ENC-05/ENC-08 fatia 1: receita como fonte única do estilo + reciclagem de bitmaps no worker; antes: MAP-06/ENC-04 fatia 2)
+**Atualizado:** 15/11/2026 (MAP-08, UI-06/UI-07, VIS-07, ENC-06, QA-03/VIS-08, MAP-07, ENC-02, MAP-09, DOM-09 fatia 1; antes: ENC-05/ENC-08 fatia 1)
+
+## Sessão 2026-11-15 — Story V3: MAP-08, a11y/copy, VIS-07, ENC-06, QA-03/VIS-08, MAP-07, ENC-02, MAP-09, DOM-09 fatia 1
+
+**Objetivo:** fechar, sem aparelho, as fatias verificáveis restantes do plano
+antes do Sprint 3 — satélite fora do fluxo, acessibilidade/copy do Studio,
+refatoração do renderer, progresso multi-snapshot, cobertura worker/goldens,
+low-RAM, 60 fps preparado, seam Protomaps e o detector de recordes (domínio).
+
+### Concluído
+
+- **MAP-08 (satélite fora):** `SATELLITE` segue no enum como `@Deprecated`
+  (ordinal 1 preservado, decode antigo não quebra), mas saiu do fluxo:
+  `OpenFreeMapStyle.customize` normaliza para o dark (URL Esri e layers de
+  imagery apagados), atribuição cai no texto OSM, `summaryLine` nomeia "mapa
+  escuro" e o view model migra uma receita legada salva para `MEUCOACH_DARK`
+  no load. A UI nunca ofereceu o satélite (só Escuro/Claro/Terreno) e o
+  `selectStoryMapStyle` já o ignorava — agora há teste para isso e para a
+  migração. Nenhuma opção Esri no fluxo padrão.
+- **UI-06/UI-07 (a11y + copy):** `SectionLabel` virou heading para o TalkBack,
+  linha "Salvar como padrão" com `heightIn(48.dp)` e botão fechar em 48 dp
+  (media 40 dp antes); chips expõem `selected`, toggle expõe on/off, prévia
+  tem content description e extras indisponíveis seguem com motivo (sem cor
+  como único sinal). Copy: "é baixado na primeira vez" no aviso do Terreno;
+  restante do card/Studio revisado sem mudança. Testes novos de headings,
+  estado selecionado/on e alvos ≥48 dp.
+- **VIS-07 (renderer em `render/`):** `StoryFrameRenderer` (1024 linhas) virou
+  orquestrador (149) + `StoryDrawScope`, `StoryHeaderRenderer`,
+  `StoryCardRenderer`, `StoryFinalRenderer`, `StoryRouteRenderer`,
+  `StoryRoutePainter`, `StoryRouteSource`, `StoryCameraFrame` e
+  `StoryBackdropRenderer` — todos <300 linhas, mesma API pública. O ramo
+  `blend == 0` replica o overdraw duplo original para pixel-identidade.
+  Goldens do story passam sem nenhuma mudança visual (nenhum regravado).
+- **ENC-06 (progresso/ETA):** o mapa ocupa 0–10% da barra (plano 0,02,
+  follow 0,05, bookends 0,10, sem ETA) e o encode mapeia para 10–100%
+  (`0,1 + 0,9×fração`); o mapeamento é linear, então a matemática da ETA não
+  muda e o estimate segue estável. Cancelamento propaga
+  `CancellationException` (vira CANCELLED, nunca `Failed`); o MP4 parcial
+  continua sendo apagado pelo exporter.
+- **QA-03/VIS-08:** `StoryExportWorkerTest` novo (8 testes: sem activity,
+  paleta inválida, sucesso com URIs, falha definitiva no store, retry,
+  desistência após a última tentativa, reset silencioso, cancelamento) e 4
+  goldens novos revisados — `story-frame-light` (Essencial claro), card/final
+  com 1 extra (2/4 métricas) e card com selo `KM MAIS RÁPIDO`. Matriz de
+  presets × 0/1/2 extras × dark/light fechada.
+- **MAP-07 (low-RAM):** `MapBackgroundRenderer.lowRam` (default `false`;
+  override real lê `ActivityManager.isLowRamDevice`) com clamp de backstop no
+  snapshotter; `mapWidth/Height`, bookends e `BookendKey` aceitam `lowRam`
+  (1,25× = 1350×2400); o processor pula a abertura (2 keyframes: follow +
+  final) e valida o manifesto no budget. View model e coordinator inalterados
+  no ctor (baseline do detekt). Teste unitário com fake `lowRam = true`;
+  validação em 4 GB continua aparelho.
+- **ENC-02 (60 fps preparado):** `recipe.quality` agora comanda o encode
+  (frame count, timestamps ns/us, `KEY_FRAME_RATE`, bitrate por perfil via
+  helpers `storyFrameTime*` testáveis); a UI segue sem controle de qualidade
+  (só "Padrão 1080p30" estático) — exposição só após DEV-04. Testes novos
+  de timing (30/60) e dos perfis no domínio.
+- **MAP-09 (seam Protomaps):** `StoryTileSource` (interface documentada:
+  `name`, `styleUrl`, `customize`) + `OpenFreeMapTileSource` com `@Binds` no
+  `StoryModule`; `MapLibreBackgroundRenderer` depende da interface. Fonte
+  inalterada; troca futura não toca renderer nem cache.
+- **DOM-09 fatia 1 (domínio):** `StoryRecordDetector` puro — ≥3 corridas,
+  recorde só com superação estrita, sem dado comparável não há badge, pace
+  só a partir de 3 km (espelha os recordes de Tendências). 12 testes. O wiring
+  (spec/renderer/badge + golden) fica para a próxima fatia.
+
+### Testes
+
+- 1.770 testes, 1 falha pré-existente e 0 `@Ignore`.
+  - `:app`: 857 (inclui +8 worker, +4 goldens, +3 timing/a11y, +2
+    satélite/migração, +2 map-progress/cancel, +1 low-RAM, +2 tile-seam);
+    `core:domain`: 705 (+12 detector, +1 perfis); `core:data`: 168;
+    `core:model`: 40.
+- `:app`: 79,38% de linhas (14.000/17.636, gate ≥78%); `core:domain`: 97,21%
+  (5.853/6.021, gate ≥85%).
+- `assembleDebug`, `spotlessCheck`, `koverVerify`, detekt, lint e
+  `:app:verifyRoborazziDebug --tests "*Story*ScreenshotTest*"` verdes.
+- `check` vermelho por **1 falha pré-existente, fora deste diff**:
+  `TodayViewModelPersistTest.blocks swapping a session into a race date`
+  (`expected EASY but was QUALITY`) **reproduz no tree limpo** (`git stash`
+  em `e9f43bd` + rerun isolado falha igual). Causa provável: o teste usa
+  `LocalDate.now()` e hoje (domingo) o `tomorrow` cai na semana seguinte,
+  mudando o caminho do swap — precisa de fatia dedicada (injetar clock), fora
+  do escopo story. `MetricsImportViewModelTest` falhou 1× na suíte cheia e
+  passou isolado e no rerun (flake de carga já registrado).
+
+### Próximo passo
+
+1. Fatia dedicada: `TodayViewModelPersistTest` com clock injetado (falha de
+   domingo pré-existente, documentada acima).
+2. DOM-09 fatia 2 — badges no spec/renderer + golden do encerramento.
+3. MAP-10 (fallback sem rede) e ENC-09 (spike GPU, exige aparelho).
+4. Aparelho (usuário 0): QA-05/DEV-03/04/05/07, QA-06, ENC-08 (pico real).
 
 ## Sessão 2026-11-14 — ENC-05/ENC-08 fatia 1: receita como fonte do estilo e reciclagem
 

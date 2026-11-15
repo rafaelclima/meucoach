@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.54 · **Data:** 14/11/2026 · **Mudança:** ENC-05/ENC-08 fatia 1 (receita como fonte única do estilo do mapa + reciclagem de bitmaps no worker/view model/exporter). A v1.53 registrou MAP-06/ENC-04 fatia 2 (manifesto por variante, stage dos bookends em JPEG 95, reuso sem re-download).
+**Versão:** 1.55 · **Data:** 15/11/2026 · **Mudança:** Story V3 sem aparelho — MAP-08 (satélite fora do fluxo), UI-06/UI-07 (a11y + copy), VIS-07 (renderer em `render/`, arquivos <300 linhas), ENC-06 (progresso 0–10% mapa/10–100% encode), QA-03/VIS-08 (worker + 4 goldens), MAP-07 (low-RAM 1,25×/2 keyframes), ENC-02 (60 fps preparado), MAP-09 (seam Protomaps), DOM-09 fatia 1 (detector). A v1.54 registrou ENC-05/ENC-08 fatia 1 (receita como fonte única do estilo do mapa + reciclagem de bitmaps no worker/view model/exporter).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -592,6 +592,15 @@ medição de memória no aparelho (ENC-08) e DEV-07/QA-06.
 - [x] Story V3 — DEV-01: snapshots escuro e claro validados no S24 Ultra (MAP-04/MAP-05, 3 pitches, `pixelForLatLng`); card final compacto com respiro após feedback do usuário 0.
 - [x] Story V3 — DEV-02: rota alinhada às ruas no S24 Ultra; paridade port × SDK medida em 360 pontos (máx. 0,000244 px, média 6,95e-6/3,65e-6 px) — muito abaixo da meta de 2 px.
 - [~] Story V3 — QA-05/DEV-07: pôster 1080×1350 e share sheet validados no S24 Ultra; faltam grid do Instagram/upload real e mid-range 4 GB.
+- [x] Story V3 — MAP-08: satélite fora do fluxo (`SATELLITE` segue `@Deprecated`, ordinal 1; decode antigo não quebra; render cai no dark).
+- [x] Story V3 — UI-06/UI-07: a11y do Studio (headings, 48 dp, seleção anunciada, contraste) + revisão de copy.
+- [x] Story V3 — VIS-07: renderer em `render/` (header/card/final/route/backdrop, arquivos <300 linhas); goldens passando sem mudança visual.
+- [x] Story V3 — ENC-06: progresso/ETA multi-snapshot (0–10% mapa, 10–100% encode); ETA estável; cancelar apaga parcial.
+- [x] Story V3 — QA-03/VIS-08: worker/coordinator cobertos e goldens restantes (light Essencial, 1 extra card/final, selo de km mais rápido).
+- [x] Story V3 — MAP-07: low-RAM (`isLowRamDevice` → 1,25×, 2 keyframes) com teste unitário; validação em 4 GB fica para o aparelho.
+- [x] Story V3 — ENC-02: parâmetro de 60 fps preparado (fps/bitrate por perfil comandam o encode); sem expor a opção "Suave" (depende de aparelho).
+- [x] Story V3 — MAP-09: seam Protomaps (`StoryTileSource` documentada, OpenFreeMap ligado via Hilt, sem trocar a fonte).
+- [~] Story V3 — DOM-09 (Sprint 3, fatia 1): `StoryRecordDetector` determinístico com testes; wiring (spec/badge/golden) pendente.
 - [~] Story V3 — ENC-05/ENC-08: fatia 1 concluída em 14/11/2026 (receita como fonte única do estilo do mapa; reciclagem de bitmaps no worker/view model/exporter, pico estimado ~96–116 MB); falta medir pico e tempo no S24 Ultra e no mid-range 4 GB.
 
 **Descrição da feature (proposta inicial):**
