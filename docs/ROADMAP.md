@@ -452,7 +452,7 @@ acima (replanejamento R-01..R-03 e sessão guiada G, outro trabalho).
 Fora do escopo implementável: limite de longão por fração da distância (FR-206).
 A recuperação pós-prova (FR-207) foi concluída em 12/11/2026 pelo ADR 0037.
 D6-B foi implementado pelo ADR 0036 em 11/11/2026.
-N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload e a periodização (FR-012, [ADR 0043](adr/0043-periodization-by-level.md) aprovado; fatias 1–2 no domínio) continuam no backlog.
+N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload e a periodização (FR-012, [ADR 0043](adr/0043-periodization-by-level.md) aprovado; fatias 1–3, fase macro prevalece com prova) continuam no backlog.
 
 ### FR-010 — Comparação planejado × executado (concluído em 11/11/2026)
 

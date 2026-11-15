@@ -163,7 +163,8 @@ class MesoCycleTest {
             input(
                 recentWeeks = listOf(base),
                 previousWeek = base,
-                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(30)),
+                // A 20 dias: semana PEAK pela tabela macro (bloco antes do taper).
+                race = RacePlan("race-1", RaceDistance.TEN_K, monday.plusDays(20)),
             ),
         )
 

@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.36 · **Data:** 15/11/2026
+**Versão:** 1.37 · **Data:** 15/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -36,6 +36,7 @@
 > Revisão 1.34 (15/11/2026): usuário 0 confirmou a trava de iniciante — ADR 0043 aprovado (4 de 4 pontos), pronto para implementação em fatias.
 > Revisão 1.35 (15/11/2026): ADR 0043 fatia 1 — `MacroPlanResolver` puro no domínio (blocos por distância, taper de `RacePlan`, caminho geral, `R-PER-01`, `inputsHash`, golden `G-PER-02`); sem fiação no gerador, sem migração.
 > Revisão 1.36 (15/11/2026): ADR 0043 fatia 2 — `SessionLibrary` pura no domínio (estruturas por fase/nível sem pace nem minutos inventados, trava de iniciante, `R-PER-02`); sem fiação, sem migração.
+> Revisão 1.37 (15/11/2026): ADR 0043 fatia 3 — fiação no `WeeklyPlanGenerator` (fase macro prevalece com prova, rationale `Bloco X de Y` + regressiva, `R-PER-01`); `PlanReplanner`/`PlanningFingerprint` sem mudança (`race` + `today` já cobrem o `STALE`).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -81,7 +82,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0040](adr/0040-story-v3-recipe-and-map.md) | Story V3: receita, métricas, safe area e mapa autoral | Aceito — Sprint A em andamento em 13/11/2026 (D0.1–D0.3, VIS-01, ENC-01, VIS-02 parcial, DOM-01 e DOM-02..DOM-07 implementados; renderer com slots 1–3/3+2; 3 essenciais + até 2 extras, sem calorias/km, vídeo mudo, sem máscara, OpenFreeMap/estilo autoral, 9:16 Reels-safe + pôster 4:5, BT.709/SDR/limited + H.264 High/4.1 + 16 Mbps VBR) | 13/11/2026 |
 | [0041](adr/0041-mesocycle-persistence.md) | Persistência de mesociclos por histórico real (Base/Build/Peak/Taper) | Aceito — implementado em 15/11/2026 (`MesoPhase` + deload por `recentWeeks`, `R-PLAN-04 v2`, `PEAK` estável, `weekly-plan-v6`, sem migração) | 15/11/2026 |
 | [0042](adr/0042-level-graduation-engine.md) | Motor de graduação de nível com aceite explícito | Aceito — implementado em 15/11/2026 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + `G-LVL-01`; app: card de aceite no Perfil com aceite T4, recusa por `profile.id + engineVersion + inputsHash`, sem auto-aplicar nem downgrade) | 15/11/2026 |
-| [0043](adr/0043-periodization-by-level.md) | Periodização por nível e plano de prova (FR-012) | Aprovado em 15/11/2026; fatias 1–2 implementadas em 15/11/2026 (`MacroPlanResolver` + `SessionLibrary` + `R-PER-01/02` + `G-PER-02`, sem fiação no gerador, sem migração) | 15/11/2026 |
+| [0043](adr/0043-periodization-by-level.md) | Periodização por nível e plano de prova (FR-012) | Aprovado em 15/11/2026; fatias 1–3 implementadas em 15/11/2026 (`MacroPlanResolver` + `SessionLibrary` + fiação fase/rationale no gerador, `R-PER-01/02`, `G-PER-02`; replanejador sem mudança, sem migração) | 15/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

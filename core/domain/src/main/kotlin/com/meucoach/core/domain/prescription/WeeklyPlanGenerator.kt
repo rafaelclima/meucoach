@@ -244,6 +244,11 @@ class WeeklyPlanGenerator {
         val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
         val mesoRecoveryActive = recovery != null &&
             recovery.intersects(weekStart, weekStart.plusDays(6))
+        // ADR 0043: com prova dentro do horizonte, a fase da semana vem da
+        // preparação macro (tabela por distância); sem prova, além do horizonte
+        // ou passada, o mesociclo segue como antes. A recuperação continua suprema.
+        val macroPlan = MacroPlanResolver.resolve(race, input.today)
+        val macroIntent = macroPlan.weeks.singleOrNull { it.weekStart == weekStart }
         val meso = MesoCycle.resolve(
             targetWeekStart = weekStart,
             race = race,
@@ -252,6 +257,7 @@ class WeeklyPlanGenerator {
             isTaperWeek = isTaperWeek,
             references = combinedReferences,
             fallbackWeekNumberInBlock = input.weekNumberInBlock,
+            phaseOverride = macroIntent?.phase,
         )
         val postRecoveryForDeload = isPostRecoveryWeek(combinedReferences, weekStart)
         // Taper, recovery, pós-recovery e semana de prova nunca são descarga;
@@ -459,6 +465,17 @@ class WeeklyPlanGenerator {
             if (meso.fallbackUsed) {
                 append("Sem histórico suficiente para mesociclo; usando posição legada. ")
             }
+            if (macroIntent != null) {
+                val totalBlocks = macroPlan.weeks.maxOf { it.blockIndex }
+                append("Bloco ${macroIntent.blockIndex} de $totalBlocks. ")
+                if (macroIntent.weeksToRace == 0) {
+                    append("É a semana da prova. ")
+                } else if (macroIntent.weeksToRace == 1) {
+                    append("Falta 1 semana para a prova. ")
+                } else {
+                    append("Faltam ${macroIntent.weeksToRace} semanas para a prova. ")
+                }
+            }
             if (recoveryActive) {
                 append(
                     if (fullyRecovering) {
@@ -557,6 +574,7 @@ class WeeklyPlanGenerator {
                 if (taperActive) add("R-PLAN-05")
                 if (taperActive) add("R-PLAN-10")
                 if (deload) add("R-PLAN-04")
+                if (macroIntent != null) add("R-PER-01")
             },
             evidenceIds = buildList {
                 add("EV-SEILER-2010")
@@ -573,6 +591,7 @@ class WeeklyPlanGenerator {
                     add("EV-MUJIKA-2003")
                 }
                 if (deload) add("EV-ISSURIN-2010")
+                if (macroIntent != null && !deload) add("EV-ISSURIN-2010")
             },
             createdOn = input.today,
         )

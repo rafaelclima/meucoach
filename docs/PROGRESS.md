@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 fatia 2: biblioteca de sessões por fase/nível)
+**Atualizado:** 15/11/2026 (ADR 0043 fatia 3: fiação macro no gerador, fase macro prevalece)
+
+## Sessão 2026-11-15 — ADR 0043 fatia 3: fiação no `WeeklyPlanGenerator` (TDD)
+
+**Objetivo:** consumir a intenção macro na semana com prova (fase + rationale + regra), sem reescrever proteções de carga.
+
+### Decisão de autoridade (achado load-bearing)
+
+- A tabela macro aprovada e o ramo de prova do `MesoCycle` (ADR 0041) discordavam da fase em quase todas as semanas de uma preparação (ex.: 5k a 3 semanas: meso `TAPER`, macro `PEAK`). Usuário 0 decidiu: **macro prevalece com prova dentro do horizonte**; sem prova, o meso segue; descarga continua por streak; recuperação suprema.
+- Proteções por dia intactas (taper por data, cutoff, recovery, deload por streak); só fase/rationale/estabilidade mudam.
+- Achado 2: `PlanReplanner`/`PlanningFingerprint` **não precisam de mudança** — `race` + `today` já estão no `inputsHash`, então qualquer mudança macro invalida como `STALE`. ADR §3.3 corrigido.
+
+### Concluído
+
+- **`MesoCycle.resolve` (+`phaseOverride`):** com prova no horizonte, fase macro prevalece; descarga suprimida em `PEAK`/`TAPER`; sem prova, comportamento idêntico ao anterior.
+- **Gerador:** intenção da semana via `MacroPlanResolver`; rationale `Bloco X de Y` + regressiva (`Falta(m) N semanas`/`É a semana da prova`); `R-PER-01` (+`EV-ISSURIN-2010` sem duplicar) quando a preparação está ativa.
+- **Testes (`MacroWiringTest`, TDD RED→GREEN):** 5 novos — autoridade macro sobre histórico, `PEAK` com volume estável e bloco, sem prova sem moldura, além do horizonte no meso (com descarga por streak), semana da prova em taper com moldura. Teste de `PEAK` legado ajustado à nova autoridade (prova a 20d, mesma intenção de estabilidade).
+- **Docs:** ADR 0043 fatia 3 (§3.3 reconciliado), `DECISIONS.md` r1.37.
+
+### Testes
+
+- `:core:domain:test` verde (763 testes: 758 + 5 novos, 0 falhas).
+- `:app:testDebugUnitTest` verde (881 testes, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply`), `:core:domain:koverVerify` verde.
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+
+### Próximo passo
+
+1. Fatia 4: papéis da `SessionLibrary` na montagem das sessões (títulos/estrutura por fase/nível, durações pela disponibilidade vigente).
 
 ## Sessão 2026-11-15 — ADR 0043 fatia 2: `SessionLibrary` pura (TDD)
 

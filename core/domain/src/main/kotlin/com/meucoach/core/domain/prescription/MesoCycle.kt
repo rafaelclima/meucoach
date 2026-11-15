@@ -79,9 +79,15 @@ object MesoCycle {
         isTaperWeek: Boolean,
         references: List<WeeklyPlan>,
         fallbackWeekNumberInBlock: Int = 1,
+        /**
+         * Fase da preparação macro (ADR 0043). Com prova dentro do horizonte,
+         * prevalece sobre o ramo de prova abaixo; a recuperação continua
+         * suprema e a descarga segue pela contagem de semanas fortes.
+         */
+        phaseOverride: MesoPhase? = null,
     ): MesoState {
         if (references.isEmpty()) {
-            val phase = when {
+            val phase = phaseOverride ?: when {
                 recoveryActive -> MesoPhase.RECOVERY
                 isRaceWeek || isTaperWeek -> MesoPhase.TAPER
                 else -> MesoPhase.BASE
@@ -89,17 +95,25 @@ object MesoCycle {
             return MesoState(
                 phase = phase,
                 isDeload = fallbackWeekNumberInBlock % DELOAD_EVERY_WEEKS == 0 &&
-                    phase != MesoPhase.TAPER &&
-                    phase != MesoPhase.RECOVERY,
+                    allowsDeload(phase),
                 strongStreak = 0,
                 totalStrong = 0,
-                fallbackUsed = true,
+                fallbackUsed = phaseOverride == null,
             )
         }
         val streak = consecutiveStrongWeeks(references, targetWeekStart)
         val total = totalStrongWeeks(references, targetWeekStart)
         if (recoveryActive) {
             return MesoState(MesoPhase.RECOVERY, false, streak, total, false)
+        }
+        if (phaseOverride != null) {
+            return MesoState(
+                phaseOverride,
+                allowsDeload(phaseOverride) && streak >= STREAK_FOR_DELOAD,
+                streak,
+                total,
+                false,
+            )
         }
         if (isRaceWeek || isTaperWeek) {
             return MesoState(MesoPhase.TAPER, false, streak, total, false)
@@ -125,6 +139,9 @@ object MesoCycle {
         }
         return MesoState(MesoPhase.TAPER, false, streak, total, false)
     }
+
+    /** Descarga só existe em `BASE`/`BUILD`; `PEAK`/`TAPER`/`RECOVERY` nunca descarregam. */
+    private fun allowsDeload(phase: MesoPhase): Boolean = phase == MesoPhase.BASE || phase == MesoPhase.BUILD
 
     private const val DELOAD_EVERY_WEEKS = 4
 }
