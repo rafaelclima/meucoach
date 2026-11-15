@@ -95,6 +95,7 @@ class DataResetCoordinatorTest {
     private lateinit var importedRunPrompts: ImportedRunPromptStore
     private lateinit var raceAutoCompletions: RaceAutoCompletionStore
     private lateinit var replanSuggestions: ReplanSuggestionStore
+    private lateinit var levelGraduations: com.meucoach.app.level.LevelGraduationSuggestionStore
     private lateinit var healthSync: HealthSyncCoordinator
     private lateinit var coordinator: DataResetCoordinator
     private val clock = Clock.fixed(Instant.parse("2026-11-06T12:00:00Z"), ZoneOffset.UTC)
@@ -133,6 +134,11 @@ class DataResetCoordinatorTest {
         importedRunPrompts = ImportedRunPromptStore(context, "reset-import-prompts-${System.nanoTime()}")
         raceAutoCompletions = RaceAutoCompletionStore(context, "reset-race-auto-${System.nanoTime()}")
         replanSuggestions = ReplanSuggestionStore(context, "reset-replan-${System.nanoTime()}")
+        levelGraduations =
+            com.meucoach.app.level.LevelGraduationSuggestionStore(
+                context,
+                "reset-level-${System.nanoTime()}",
+            )
         userData = UserDataRepository(database, healthStore, clock)
         val source = FakeSource()
         healthSync = HealthSyncCoordinator(
@@ -161,6 +167,7 @@ class DataResetCoordinatorTest {
             raceAutoCompletions = raceAutoCompletions,
             replanSuggestions = replanSuggestions,
             profilePlanEvaluations = com.meucoach.app.replan.ProfilePlanEvaluationStore(),
+            levelGraduations = levelGraduations,
             tutorial = tutorial,
             firstRunMetrics = firstRunMetrics,
             firstRunTips = firstRunTips,
@@ -203,6 +210,8 @@ class DataResetCoordinatorTest {
         assertThat(importedRunPrompts.pending.value).isEmpty()
         assertThat(raceAutoCompletions.declinedActivityIds()).isEmpty()
         assertThat(replanSuggestions.isSuppressed(LocalDate.of(2026, 11, 6))).isFalse()
+        assertThat(levelGraduations.isSuppressed(LocalDate.of(2026, 11, 6))).isFalse()
+        assertThat(levelGraduations.declinedInputsHash("athlete-1")).isNull()
         assertThat(storyIntro.seen()).isFalse()
         assertThat(storyRecipe.load()).isEqualTo(StoryRecipe())
         assertThat(storyFailures.messageFor("activity-1")).isNull()
@@ -278,6 +287,8 @@ class DataResetCoordinatorTest {
         importedRunPrompts.add("activity-1")
         raceAutoCompletions.decline("activity-1")
         replanSuggestions.suppress(LocalDate.of(2026, 11, 6))
+        levelGraduations.suppress(LocalDate.of(2026, 11, 6))
+        levelGraduations.decline("athlete-1", "level-graduation-v1", "hash-a")
         storyFailures.save("activity-1", "erro")
         storyIntro.markSeen()
         storyRecipe.save(StoryRecipe(extras = listOf(StoryExtra.DATE)))
@@ -290,6 +301,7 @@ class DataResetCoordinatorTest {
         firstRunMetrics.reset()
         firstRunTips.reset()
         replanSuggestions.reset()
+        levelGraduations.reset()
         storyFailures.clearAll()
         storyIntro.reset()
         storyRecipe.reset()

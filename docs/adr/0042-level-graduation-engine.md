@@ -1,6 +1,6 @@
 # ADR 0042 — Motor de graduação de nível (LevelGraduationEngine)
 
-**Status:** Parcialmente implementado em 2026-11-15 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + golden `G-LVL-01`; card de aceite no app fica para a fatia 4b).
+**Status:** Implementado em 2026-11-15 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + golden `G-LVL-01`; app: card de aceite no Perfil com `LevelGraduationViewModel`, `LevelGraduationSuggestionStore`, aceite via `ProfileRepository` + reavaliação `EvaluateReplan` T4).
 **Data:** 2026-11-15
 **Escopo:** Ciclo 2 do motor do coach; `core:domain` puro; `AthleteProfile.experience`.
 **Relacionados:** ADR 0028 (replanejamento sugerido), ADR 0031 (fingerprint/T4), ADR 0035 (Tier B), ADR 0038 (progressão), `R-PRESC-04` (guarda de iniciante).

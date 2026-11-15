@@ -11,6 +11,7 @@ import com.meucoach.app.importer.ImportStaging
 import com.meucoach.app.importer.ImportWorker
 import com.meucoach.app.importer.ImportedRunPromptStore
 import com.meucoach.app.importer.RaceAutoCompletionStore
+import com.meucoach.app.level.LevelGraduationSuggestionStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.reminder.ReminderWorker
@@ -66,6 +67,7 @@ class DataResetCoordinator @Inject constructor(
     private val raceAutoCompletions: RaceAutoCompletionStore,
     private val replanSuggestions: ReplanSuggestionStore,
     private val profilePlanEvaluations: ProfilePlanEvaluationStore,
+    private val levelGraduations: LevelGraduationSuggestionStore,
     private val tutorial: TutorialStore,
     private val firstRunMetrics: FirstRunMetricsStore,
     private val firstRunTips: FirstRunTipStore,
@@ -92,6 +94,7 @@ class DataResetCoordinator @Inject constructor(
             cleanup("recusa de auto-conclusão de prova") { raceAutoCompletions.reset() }?.let(failures::add)
             cleanup("sugestão de replanejamento") { replanSuggestions.reset() }?.let(failures::add)
             cleanup("avaliação de perfil") { profilePlanEvaluations.clear() }?.let(failures::add)
+            cleanup("sugestão de graduação de nível") { levelGraduations.reset() }?.let(failures::add)
             cleanup("cache de story") {
                 val directory = File(context.cacheDir, "stories")
                 if (directory.exists() && !directory.deleteRecursively()) error("cache não removido")

@@ -5,6 +5,7 @@ import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.app.importer.ImportedRunPromptStore
 import com.meucoach.app.importer.RaceAutoCompletionStore
+import com.meucoach.app.level.LevelGraduationSuggestionStore
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
@@ -161,6 +162,11 @@ object DataModule {
     @Singleton
     fun provideReplanSuggestionStore(@ApplicationContext context: Context): ReplanSuggestionStore =
         ReplanSuggestionStore(context)
+
+    @Provides
+    @Singleton
+    fun provideLevelGraduationSuggestionStore(@ApplicationContext context: Context): LevelGraduationSuggestionStore =
+        LevelGraduationSuggestionStore(context)
 
     @Provides
     @Singleton

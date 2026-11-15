@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.28 · **Data:** 15/11/2026
+**Versão:** 1.31 · **Data:** 15/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -30,6 +30,7 @@
 > Revisão 1.28 (15/11/2026): Ciclo 2 proposto sem código — `SPORTS_SCIENCE.md` v1.1 (taper com micro-dose, recovery 3/5/10/16d com retorno verde, ACWR como flag soft com monotonia/strain como permissão) + ADR 0041 (mesociclos por `recentWeeks`) + ADR 0042 (`LevelGraduationEngine` com aceite T4) propostos; `R-PLAN-01/04/05/10`, `R-LOAD-03`, `R-RACE-04` revistos como proposto e `R-LVL-01/02` adicionados como propostos; código segue em `daily-prescription-v5`/`weekly-plan-v5`.
 > Revisão 1.29 (15/11/2026): Ciclo 2 fatia 3 — ADR 0041 implementado (`MesoPhase` + descarga por histórico real, `R-PLAN-04 v2`, `PEAK` estável, fase no `inputsHash` via STALE, `weekly-plan-v6`, sem migração); `SPORTS_SCIENCE.md` v1.2 (§8.1/§8.3).
 > Revisão 1.30 (15/11/2026): Ciclo 2 fatia 4a — ADR 0042 parcial-domínio (`LevelGraduationEngine` puro, `R-LVL-01/02`, `inputsHash`, golden `G-LVL-01`, confiança máxima `MEDIUM`, sem auto-aplicar nem downgrade); `SPORTS_SCIENCE.md` v1.3; card de aceite no app pendente (fatia 4b).
+> Revisão 1.31 (15/11/2026): Ciclo 2 fatia 4b — ADR 0042 implementado (card "Pronto para subir de nível?" no Perfil com aceitar/recusar/suprimir estilo T4, recusa por `profile.id + engineVersion + inputsHash`, aceite persiste `experience` + reavalia por `EvaluateReplan` sem aplicar sozinho, `DONE`/`CLOSED`/prescrição intactos, sem downgrade automático, sem migração).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -74,7 +75,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0039](adr/0039-load-from-subjective-srpe.md) | Carga subjetiva por sRPE (FR-013 / BL-022) | Aceito — implementado em 13/11/2026 nas três fatias (`LoadMetric.SRPE` como 3º nível, fonte dual de frescor, RPE opcional no fechamento com corrida vinculada, `TrainingSignalSource` único, nota e RPE no detalhe, `R-LOAD-04` no catálogo e na explicação, `daily-prescription-v5`/`weekly-plan-v5`, schema v17 sem migração) | 13/11/2026 |
 | [0040](adr/0040-story-v3-recipe-and-map.md) | Story V3: receita, métricas, safe area e mapa autoral | Aceito — Sprint A em andamento em 13/11/2026 (D0.1–D0.3, VIS-01, ENC-01, VIS-02 parcial, DOM-01 e DOM-02..DOM-07 implementados; renderer com slots 1–3/3+2; 3 essenciais + até 2 extras, sem calorias/km, vídeo mudo, sem máscara, OpenFreeMap/estilo autoral, 9:16 Reels-safe + pôster 4:5, BT.709/SDR/limited + H.264 High/4.1 + 16 Mbps VBR) | 13/11/2026 |
 | [0041](adr/0041-mesocycle-persistence.md) | Persistência de mesociclos por histórico real (Base/Build/Peak/Taper) | Aceito — implementado em 15/11/2026 (`MesoPhase` + deload por `recentWeeks`, `R-PLAN-04 v2`, `PEAK` estável, `weekly-plan-v6`, sem migração) | 15/11/2026 |
-| [0042](adr/0042-level-graduation-engine.md) | Motor de graduação de nível com aceite explícito | Parcialmente implementado em 15/11/2026 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + `G-LVL-01`; card de aceite no app pendente) | 15/11/2026 |
+| [0042](adr/0042-level-graduation-engine.md) | Motor de graduação de nível com aceite explícito | Aceito — implementado em 15/11/2026 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + `G-LVL-01`; app: card de aceite no Perfil com aceite T4, recusa por `profile.id + engineVersion + inputsHash`, sem auto-aplicar nem downgrade) | 15/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

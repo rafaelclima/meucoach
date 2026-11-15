@@ -33,6 +33,9 @@ import com.meucoach.app.ui.common.healthConnectLastSyncLabel
 import com.meucoach.app.ui.common.healthConnectStatusLabel
 import com.meucoach.app.ui.common.isHealthConnectConnected
 import com.meucoach.app.ui.common.timezoneLabel
+import com.meucoach.app.ui.level.LevelGraduationSection
+import com.meucoach.app.ui.level.LevelGraduationUiState
+import com.meucoach.app.ui.level.LevelGraduationViewModel
 import com.meucoach.app.ui.replan.ReplanChangesSheet
 import com.meucoach.app.ui.replan.ReplanMessageCard
 import com.meucoach.app.ui.replan.ReplanSuggestionCard
@@ -67,18 +70,22 @@ fun ProfileScreen(
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
     replanViewModel: ReplanViewModel = hiltViewModel(),
+    levelGraduationViewModel: LevelGraduationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val replan by replanViewModel.uiState.collectAsStateWithLifecycle()
+    val levelGraduation by levelGraduationViewModel.uiState.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) {
         viewModel.refreshHealth()
         replanViewModel.refreshForProfile()
+        levelGraduationViewModel.refresh()
         onPauseOrDispose { }
     }
 
     ProfileContent(
         state = state,
         replan = replan,
+        levelGraduation = levelGraduation,
         onEdit = onEdit,
         onCalibrate = onCalibrate,
         onOpenHealth = onOpenHealth,
@@ -88,6 +95,10 @@ fun ProfileScreen(
         onReplanDecline = replanViewModel::decline,
         onReplanSuppress = replanViewModel::suppress,
         onReplanConsumeMessage = replanViewModel::consumeMessage,
+        onLevelAccept = levelGraduationViewModel::accept,
+        onLevelDecline = levelGraduationViewModel::decline,
+        onLevelSuppress = levelGraduationViewModel::suppress,
+        onLevelConsumeMessage = levelGraduationViewModel::consumeMessage,
         onRaceSave = viewModel::saveRaceEvent,
         onRaceComplete = viewModel::completeRaceEvent,
         onRaceCancel = viewModel::cancelRaceEvent,
@@ -111,6 +122,11 @@ internal fun ProfileContent(
     onReplanDecline: () -> Unit = {},
     onReplanSuppress: () -> Unit = {},
     onReplanConsumeMessage: () -> Unit = {},
+    levelGraduation: LevelGraduationUiState = LevelGraduationUiState(),
+    onLevelAccept: () -> Unit = {},
+    onLevelDecline: () -> Unit = {},
+    onLevelSuppress: () -> Unit = {},
+    onLevelConsumeMessage: () -> Unit = {},
     onRaceSave: (RaceDistance, LocalDate, Int?) -> Unit = { _, _, _ -> },
     onRaceComplete: (String?) -> Unit = {},
     onRaceCancel: () -> Unit = {},
@@ -152,6 +168,7 @@ internal fun ProfileContent(
                 now = state.now,
                 zone = state.zone,
                 replan = replan,
+                levelGraduation = levelGraduation,
                 raceEvents = state.raceEvents,
                 raceRecovery = state.raceRecovery,
                 raceActivities = state.raceActivities,
@@ -167,6 +184,10 @@ internal fun ProfileContent(
                 onReplanDecline = onReplanDecline,
                 onReplanSuppress = onReplanSuppress,
                 onReplanConsumeMessage = onReplanConsumeMessage,
+                onLevelAccept = onLevelAccept,
+                onLevelDecline = onLevelDecline,
+                onLevelSuppress = onLevelSuppress,
+                onLevelConsumeMessage = onLevelConsumeMessage,
                 onRaceSave = onRaceSave,
                 onRaceComplete = onRaceComplete,
                 onRaceCancel = onRaceCancel,
@@ -201,6 +222,11 @@ private fun ProfileDetails(
     onReplanDecline: () -> Unit,
     onReplanSuppress: () -> Unit,
     onReplanConsumeMessage: () -> Unit,
+    levelGraduation: LevelGraduationUiState,
+    onLevelAccept: () -> Unit,
+    onLevelDecline: () -> Unit,
+    onLevelSuppress: () -> Unit,
+    onLevelConsumeMessage: () -> Unit,
     onRaceSave: (RaceDistance, LocalDate, Int?) -> Unit,
     onRaceComplete: (String?) -> Unit,
     onRaceCancel: () -> Unit,
@@ -263,6 +289,17 @@ private fun ProfileDetails(
                         onDismiss = onReplanConsumeMessage,
                     )
                 }
+            }
+        }
+        if (levelGraduation.suggestion != null || levelGraduation.message != null || levelGraduation.isLoading) {
+            item {
+                LevelGraduationSection(
+                    state = levelGraduation,
+                    onAccept = onLevelAccept,
+                    onDecline = onLevelDecline,
+                    onSuppress = onLevelSuppress,
+                    onDismissMessage = onLevelConsumeMessage,
+                )
             }
         }
         item {

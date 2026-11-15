@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (Ciclo 2 fatia 4a: ADR 0042 parcial-domínio — `LevelGraduationEngine`, `R-LVL-01/02`, golden `G-LVL-01`)
+**Atualizado:** 15/11/2026 (Ciclo 2 fatia 4b: ADR 0042 implementado — card de aceite da graduação de nível)
+
+## Sessão 2026-11-15 — Ciclo 2 fatia 4b: card de aceite da graduação de nível (ADR 0042 implementado)
+
+**Objetivo:** expor a sugestão do `LevelGraduationEngine` (fatia 4a) no Perfil com aceite explícito estilo T4 — aceitar/recusar/suprimir, persistir `experience` + reavaliar por `EvaluateReplan`, recusa por `profile.id + engineVersion + inputsHash`, sem downgrade automático e sem tocar `DONE`/`CLOSED`/prescrição vigente.
+
+### Concluído
+
+- **Store (`level/LevelGraduationSuggestionStore.kt` novo):** espelha o `ReplanSuggestionStore` — supressão até o fim do dia local; recusa lembrada por `profile.id + engineVersion + inputsHash` (novo hash = nova proposta); `reset()` incluído no `DataResetCoordinator`.
+- **Aplicação (`LevelGraduationContextBuilder` + `EvaluateLevelGraduation` novos):** monta o `LevelGraduationInput` do estado persistido — 6 semanas anteriores fechadas (a parcial atual não pune a consistência), esforços com FC do `recentEffortActivities`/`toCalibrationEfforts`, calibração Tier A (`PERFORMANCE` com data; o motor valida 56d) ou Tier B (`TRAINING_ESTIMATE` salva = confirmação explícita), prontidão do `TrainingSignalSource`, doença/lesão 14d dos check-ins, CTL/monotonia em 4 blocos de 7 dias do snapshot (nula bloqueia o avançado) com `objectiveCtl` só sob `LoadDataState.KNOWN` objetivo, última prova `COMPLETED` e TT 30 min válido (Tier B confirmada com referência 25–35 min ≤56d). `LevelGraduationEvaluator` é interface com `@Binds` (`LevelModule`), então o ViewModel é testável sem Hilt.
+- **UI (`ui/level/` novo, padrão T4):** `LevelGraduationViewModel` (refresh no resume respeitando supressão/recusa, aceite guarda `profile.id != from` e `to > from` antes de persistir, publica a reavaliação no `ProfilePlanEvaluationStore` sem aplicar sozinho, erro vira mensagem pt-BR); card "Pronto para subir de nível?" com transição `De X para Y`, motivos, nota "o treino de hoje não muda", "Por quê?" com `R-LVL-01/02` + evidências via `ExplanationCatalog` (IDs só no detalhe), aceitar/recusar/suprimir em alvos ≥48 dp, título como heading para o TalkBack, loading/empty/error e dark/light. Fiação no `ProfileScreen` após o bloco do replanejamento.
+- **Testes (23 novos, sintéticos):** store (supressão por dia, recusa por perfil/motor/hash, novo hash, reset); ViewModel end-to-end com Room (sugestão `BEGINNER→INTERMEDIATE` com `R-LVL-01`, aceite persiste + reavalia T4 com versão/sessões/prescrição intactas, recusa some e novo hash reexibe, supressão até o dia seguinte, `ADVANCED` sem downgrade, falha com mensagem); card (copy, IDs só no detalhe, ações, 48 dp, heading, light, loading/mensagem/vazio); Perfil (card com aceite, vazio, light).
+- **Docs:** ADR 0042 implementado, `DECISIONS.md` r1.31.
+
+### Testes
+
+- `:app:testDebugUnitTest` verde (881 testes: 858 + 23 novos, 0 falhas).
+- `:core:domain:test` verde (741 testes, 0 falhas).
+- `spotlessCheck` verde, `:core:domain:koverVerify` verde.
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+- Arquivos `StoryStudioSheet.kt`/`StoryStudioContentTest.kt` (e goldens do story) seguem intocados — sujeira pré-existente de outro trabalho, fora desta fatia.
+
+### Próximo passo
+
+1. `ROADMAP.md` se necessário (Ciclo 2: próxima fatia ou encerramento).
+2. Validar o card com dados do usuário 0 (6 semanas reais → sugestão aparece só com base completa).
+
 
 ## Sessão 2026-11-15 — Ciclo 2 fatia 4a: graduação de nível no domínio (ADR 0042 parcial)
 
