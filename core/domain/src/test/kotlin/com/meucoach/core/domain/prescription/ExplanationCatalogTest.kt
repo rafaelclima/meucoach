@@ -36,6 +36,7 @@ class ExplanationCatalogTest {
             "R-RACE-03",
             "R-LVL-01",
             "R-LVL-02",
+            "R-PER-01",
             "R-FEEDBACK-01",
             "R-REVIEW-01",
         )

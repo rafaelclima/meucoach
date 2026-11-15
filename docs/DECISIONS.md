@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.31 · **Data:** 15/11/2026
+**Versão:** 1.35 · **Data:** 15/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -31,6 +31,10 @@
 > Revisão 1.29 (15/11/2026): Ciclo 2 fatia 3 — ADR 0041 implementado (`MesoPhase` + descarga por histórico real, `R-PLAN-04 v2`, `PEAK` estável, fase no `inputsHash` via STALE, `weekly-plan-v6`, sem migração); `SPORTS_SCIENCE.md` v1.2 (§8.1/§8.3).
 > Revisão 1.30 (15/11/2026): Ciclo 2 fatia 4a — ADR 0042 parcial-domínio (`LevelGraduationEngine` puro, `R-LVL-01/02`, `inputsHash`, golden `G-LVL-01`, confiança máxima `MEDIUM`, sem auto-aplicar nem downgrade); `SPORTS_SCIENCE.md` v1.3; card de aceite no app pendente (fatia 4b).
 > Revisão 1.31 (15/11/2026): Ciclo 2 fatia 4b — ADR 0042 implementado (card "Pronto para subir de nível?" no Perfil com aceitar/recusar/suprimir estilo T4, recusa por `profile.id + engineVersion + inputsHash`, aceite persiste `experience` + reavalia por `EvaluateReplan` sem aplicar sozinho, `DONE`/`CLOSED`/prescrição intactos, sem downgrade automático, sem migração).
+> Revisão 1.32 (15/11/2026): ADR 0043 proposto — periodização por nível e plano de prova (FR-012): macro-planejador puro, tabela de blocos por distância, biblioteca de sessões por (fase, nível), `R-PER-01/02` propostos, sem código.
+> Revisão 1.33 (15/11/2026): usuário 0 revisou o ADR 0043 — tabela de blocos (§3.1), EASY curto regenerativo pós-prova (§3.3) e `LIMITED`/`MEDIUM` aprovados; trava de iniciante em 1 qualidade (§3.2) com recomendação de manter, aguardando confirmação.
+> Revisão 1.34 (15/11/2026): usuário 0 confirmou a trava de iniciante — ADR 0043 aprovado (4 de 4 pontos), pronto para implementação em fatias.
+> Revisão 1.35 (15/11/2026): ADR 0043 fatia 1 — `MacroPlanResolver` puro no domínio (blocos por distância, taper de `RacePlan`, caminho geral, `R-PER-01`, `inputsHash`, golden `G-PER-02`); sem fiação no gerador, sem migração.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -76,6 +80,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0040](adr/0040-story-v3-recipe-and-map.md) | Story V3: receita, métricas, safe area e mapa autoral | Aceito — Sprint A em andamento em 13/11/2026 (D0.1–D0.3, VIS-01, ENC-01, VIS-02 parcial, DOM-01 e DOM-02..DOM-07 implementados; renderer com slots 1–3/3+2; 3 essenciais + até 2 extras, sem calorias/km, vídeo mudo, sem máscara, OpenFreeMap/estilo autoral, 9:16 Reels-safe + pôster 4:5, BT.709/SDR/limited + H.264 High/4.1 + 16 Mbps VBR) | 13/11/2026 |
 | [0041](adr/0041-mesocycle-persistence.md) | Persistência de mesociclos por histórico real (Base/Build/Peak/Taper) | Aceito — implementado em 15/11/2026 (`MesoPhase` + deload por `recentWeeks`, `R-PLAN-04 v2`, `PEAK` estável, `weekly-plan-v6`, sem migração) | 15/11/2026 |
 | [0042](adr/0042-level-graduation-engine.md) | Motor de graduação de nível com aceite explícito | Aceito — implementado em 15/11/2026 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + `G-LVL-01`; app: card de aceite no Perfil com aceite T4, recusa por `profile.id + engineVersion + inputsHash`, sem auto-aplicar nem downgrade) | 15/11/2026 |
+| [0043](adr/0043-periodization-by-level.md) | Periodização por nível e plano de prova (FR-012) | Aprovado em 15/11/2026; fatia 1 implementada em 15/11/2026 (`MacroPlanResolver` + `R-PER-01` + `G-PER-02`, sem fiação no gerador, sem migração) | 15/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

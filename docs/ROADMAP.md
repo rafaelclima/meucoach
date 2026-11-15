@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.55 · **Data:** 15/11/2026 · **Mudança:** Story V3 sem aparelho — MAP-08 (satélite fora do fluxo), UI-06/UI-07 (a11y + copy), VIS-07 (renderer em `render/`, arquivos <300 linhas), ENC-06 (progresso 0–10% mapa/10–100% encode), QA-03/VIS-08 (worker + 4 goldens), MAP-07 (low-RAM 1,25×/2 keyframes), ENC-02 (60 fps preparado), MAP-09 (seam Protomaps), DOM-09 fatia 1 (detector). A v1.54 registrou ENC-05/ENC-08 fatia 1 (receita como fonte única do estilo do mapa + reciclagem de bitmaps no worker/view model/exporter).
+**Versão:** 1.56 · **Data:** 15/11/2026 · **Mudança:** Ciclo 2 do motor do coach encerrado — SPORTS_SCIENCE v1.1 (gate de carga v2, taper com micro-dose, recovery por severidade), ADR 0041 (mesociclos por histórico real, weekly-plan-v6) e ADR 0042 (graduação de nível com aceite, fatias 4a/4b); sem mudança de código.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -404,6 +404,28 @@ FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/
 - Toda regra nova cita `ruleId`, `evidenceId` e confiança.
 - Dados reais nunca entram no diff.
 
+### Ciclo 2 — motor do coach (SPORTS_SCIENCE v1.1 + ADR 0041 + ADR 0042) — concluído em 15/11/2026
+
+**Status:** concluído — fatias 1, 2, 3, 4a e 4b implementadas, com gates verdes
+(`:app:testDebugUnitTest` 881, `:core:domain:test` 741, `spotlessCheck`,
+`:core:domain:koverVerify`, schema v17 sem migração, sem dependência nova).
+**Docs:** `SPORTS_SCIENCE.md` v1.1→v1.3, ADRs 0041/0042 implementados,
+`DECISIONS.md` r1.28–r1.31. Não confundir com o “Ciclo 2 — proposta auditada”
+acima (replanejamento R-01..R-03 e sessão guiada G, outro trabalho).
+
+| Fatia | Escopo | Estado |
+|---|---|---|
+| **1 — gate de carga v2** | `R-LOAD-03` como permissão: monotonia <2,0 e sem spike de strain (`TrainingLoadEngine.strain`, `permitsQuality`); ACWR alto vira flag soft | Concluída em 15/11/2026 (`LoadGateV2Test`, 6 casos; `daily-prescription-v5`/`weekly-plan-v5` mantidos) |
+| **2 — taper + recovery** | Taper com 1 micro-dose ≤25 min (`R-PLAN-05/10` v2); recovery 3/5/10/16d por severidade (`R-RACE-04` v2, primeira semana pós-recovery sem progressão) | Concluída em 15/11/2026 (`TaperRecoveryV2Test`; `RecoveryWindow` 30/45 e 30/60) |
+| **3 — mesociclo** | [ADR 0041](adr/0041-mesocycle-persistence.md): `MesoPhase` (BASE/BUILD/PEAK/TAPER/RECOVERY) + descarga por `recentWeeks` reais; `weekly-plan-v6`, `PEAK` estável, mudança de fase invalida via STALE | Concluída em 15/11/2026 (`MesoCycleTest`; `R-PLAN-04 v2`) |
+| **4a — graduação (domínio)** | [ADR 0042](adr/0042-level-graduation-engine.md) parcial: `LevelGraduationEngine` puro (`level-graduation-v1`), `R-LVL-01/02` no catálogo, golden `G-LVL-01` (6 semanas sintéticas → `SuggestUpgrade BEGINNER→INTERMEDIATE`), confiança máxima `MEDIUM`, sem auto-aplicar nem downgrade | Concluída em 15/11/2026 (15 testes novos em `core:domain`) |
+| **4b — graduação (aceite)** | Card “Pronto para subir de nível?” no Perfil (aceitar/recusar/suprimir estilo T4, recusa por `profile.id + engineVersion + inputsHash`, aceite persiste `experience` + reavalia por `EvaluateReplan` sem aplicar sozinho, `DONE`/`CLOSED`/prescrição intactos) | Concluída em 15/11/2026 (23 testes novos no app; `LevelGraduationContextBuilder` + `EvaluateLevelGraduation`) |
+
+**Pendências herdadas do ciclo (não bloqueiam o fechamento):**
+
+- Validar o card 4b com os dados do usuário 0 (6 semanas reais → sugestão só com base completa); sem `fixtures/private/`, valeu só a validação sintética (`G-LVL-01`).
+- Relação taper × deload e periodização por nível (FR-012, desbloqueada pelo ADR 0042) continuam no backlog — candidatas naturais ao próximo passo, sem implementação nesta tarefa.
+
 ### Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05, C3-06 e C3-G2 implementados; C3-G1 detalhado (11/11/2026)
 
 **Documentos:** [`docs/PRD_ADAPTACAO_E_BRIEFING_v0.2.md`](PRD_ADAPTACAO_E_BRIEFING_v0.2.md),
@@ -430,7 +452,7 @@ FR-011 (revisão semanal com métricas e observações) foi concluído em 11/11/
 Fora do escopo implementável: limite de longão por fração da distância (FR-206).
 A recuperação pós-prova (FR-207) foi concluída em 12/11/2026 pelo ADR 0037.
 D6-B foi implementado pelo ADR 0036 em 11/11/2026.
-N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload e a periodização (FR-012) continuam no backlog.
+N-03 foi concluído em 12/11/2026 para a qualidade no taper; o PRD v0.2 definiu a direção de evento/taper que a implementação C3-05/C3-06 seguiu. A relação taper × deload e a periodização (FR-012, [ADR 0043](adr/0043-periodization-by-level.md) aprovado; fatia 1 no domínio) continuam no backlog.
 
 ### FR-010 — Comparação planejado × executado (concluído em 11/11/2026)
 

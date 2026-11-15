@@ -74,6 +74,10 @@ object ExplanationCatalog {
             "R-LVL-02",
             "Graduação para avançado por carga estável e prova, com aceite",
         ),
+        "R-PER-01" to RuleExplanation(
+            "R-PER-01",
+            "Blocos até a prova por distância; sem data, só plano geral",
+        ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",
             "Planejado × executado descreve a diferença, sem julgar",

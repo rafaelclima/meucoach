@@ -1,6 +1,118 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (Ciclo 2 fatia 4b: ADR 0042 implementado — card de aceite da graduação de nível)
+**Atualizado:** 15/11/2026 (ADR 0043 fatia 1: macro-planejador puro no domínio)
+
+## Sessão 2026-11-15 — ADR 0043 fatia 1: `MacroPlanResolver` puro (TDD)
+
+**Objetivo:** implementar só a distribuição de blocos até a prova no domínio, sem fiação no gerador nem UI.
+
+### Concluído
+
+- **Domínio (`prescription/MacroPlan.kt` novo, `macro-plan-v1`):** `resolve(race, today)` — com prova dentro do horizonte devolve intenções da semana atual até a semana da prova (taper de `RacePlan.taperWindowDays`, `PEAK` 1/2 sem, resto BASE/BUILD com teto na BASE; início tardio posiciona pela distância restante); sem prova, além do horizonte ou passada, caminho geral vazio (`isGeneral`, sem `PEAK`/taper, gerador segue pelo ADR 0041). Emite `R-PER-01` + `EV-ISSURIN-2010`/`EV-BOSQUET-2007`/`EV-MUJIKA-2003`, confiança `MEDIUM`, `inputsHash` estável.
+- **`ExplanationCatalog`:** `R-PER-01` registrado ("Blocos até a prova por distância; sem data, só plano geral"); `ExplanationCatalogTest` cobre o novo ID.
+- **Testes (`MacroPlanTest`, TDD RED→GREEN):** 8 novos — `G-PER-02` (8 semanas sintéticas até 5k → `BASE×3, BUILD×2, PEAK, TAPER×2` com `blockIndex` 1,1,1,2,2,3,4,4), maratona 16 sem com taper de 3, meia 12 sem, início tardio pela distância restante, geral sem prova/além do horizonte/passada, determinismo + hash estável.
+- **Docs:** ADR 0043 fatia 1, `DECISIONS.md` r1.35.
+
+### Testes
+
+- `:core:domain:test` verde (749 testes: 741 + 8 novos, 0 falhas).
+- `:app:testDebugUnitTest` verde (881 testes, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply` no arquivo novo), `:core:domain:koverVerify` verde (FIT 93,01% branches).
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+
+### Próximo passo
+
+1. Fatia 2: biblioteca de sessões por (fase, nível) (`R-PER-02`) no domínio, sem fiação.
+2. Depois: fiação no `WeeklyPlanGenerator` (intenção da semana + rationale `Bloco X de Y`) com `STALE` via fingerprint.
+
+## Sessão 2026-11-15 — ADR 0043 aprovado pelo usuário 0
+
+**Objetivo:** fechar o 4º ponto (trava de iniciante), sem código.
+
+### Decidido
+
+- Trava de iniciante em 1 qualidade mesmo em `BUILD` **confirmada/mantida** (saída continua sendo a graduação por evidência, ADR 0042). ADR 0043: **aprovado (4 de 4)**, pronto para implementação em fatias.
+
+### Docs
+
+- `docs/adr/0043-periodization-by-level.md`: status aprovado + trava confirmada na matriz de testes.
+- `docs/DECISIONS.md` r1.33 → r1.34 (revisão + linha da tabela atualizada).
+
+### Próximo passo
+
+1. Fatia 1 de implementação: macro-planejador puro no domínio (`resolveMacroPlan` + testes + `G-PER-02`), sem fiação no gerador.
+
+## Sessão 2026-11-15 — Revisão do ADR 0043 pelo usuário 0
+
+**Objetivo:** julgar os pontos abertos do ADR proposto, sem código.
+
+### Decidido
+
+- Tabela de blocos por distância (§3.1) **aprovada** como proposta.
+- Pós-prova na mesma semana: **EASY curto regenerativo permitido** (sem qualidade/longão); semana seguinte segue recuperação (`R-RACE-04`). ADR §1.2/§3.3/§5 atualizados.
+- `R-PER-01/02` como convenção de produto (`LIMITED`, confiança máx. `MEDIUM`) **aprovados**.
+- Trava de iniciante em 1 qualidade (§3.2): **recomendação de manter, aguardando confirmação** (ver sugestão no resumo).
+
+### Docs
+
+- `docs/adr/0043-periodization-by-level.md`: status de revisão + EASY leve registrado.
+- `docs/DECISIONS.md` r1.32 → r1.33.
+
+### Próximo passo
+
+1. Confirmar a trava de iniciante; após os 4 pontos fechados, implementar em fatias (macro-planejador no domínio → fiação no gerador → testes/golden `G-PER-02`).
+
+## Sessão 2026-11-15 — ADR 0043 proposto (FR-012: periodização por nível e plano de prova)
+
+**Objetivo:** abrir o próximo passo (FR-012) com uma fatia mínima de documentação — propor o ADR sem nenhum código, mantendo o motor intacto.
+
+### Concluído
+
+- **`docs/adr/0043-periodization-by-level.md` (novo, proposto):** macro-planejador puro com tabela de blocos por distância (5k/10k 8 sem, meia 12, maratona 16, taper/recovery reutilizados sem duplicar regra), plano geral sem `PEAK`/taper quando sem data, biblioteca de sessões por (fase, nível) com guarda de iniciante preservada, fiação via `WeeklyPlanGenerator`/`PlanReplanner`/`PlanningFingerprint` com `STALE` por sugestão T4, `R-PER-01/02` propostos (`LIMITED`, confiança máxima `MEDIUM`), matriz de testes com golden `G-PER-02`, D7 registrada como aprovada e atendida pelo evento de prova vigente.
+- **`docs/DECISIONS.md` r1.31 → r1.32:** revisão proposta + linha do ADR 0043 na tabela.
+- **`docs/ROADMAP.md`:** backlog do FR-012 agora aponta o ADR 0043 proposto (edição de uma linha).
+
+### Testes
+
+- Nenhum código alterado; gates da sessão anterior seguem válidos (`:app:testDebugUnitTest` 881, `:core:domain:test` 741, `spotlessCheck`, `:core:domain:koverVerify`). `spotlessCheck` revalidado abaixo.
+
+### Próximo passo
+
+1. Revisão do usuário 0 no ADR 0043 (tabela de blocos e §3.2 por nível); só implementar após aceite, em fatias (macro-planejador no domínio → fiação no gerador → testes/golden).
+
+## Sessão 2026-11-15 — Encerramento do Ciclo 2 (motor do coach): ROADMAP + validação real somente leitura
+
+**Objetivo:** fechar formalmente o Ciclo 2 (fatia 1–4b) sem mudar regra, threshold ou copy — reconciliar o `ROADMAP.md` e validar o que `LevelGraduationContextBuilder` + `LevelGraduationEngine` produzem com os dados do usuário 0.
+
+### Concluído (Parte A — reconciliação)
+
+- **`ROADMAP.md` v1.55 → v1.56:** nova seção "Ciclo 2 — motor do coach (SPORTS_SCIENCE v1.1 + ADR 0041 + ADR 0042) — concluído em 15/11/2026" com as 5 fatias (gate de carga v2 `R-LOAD-03`; taper com micro-dose + recovery 3/5/10/16d; mesociclo ADR 0041 `weekly-plan-v6`; graduação 4a motor + `R-LVL-01/02` + `G-LVL-01`; graduação 4b card de aceite, 23 testes), gates, docs (`SPORTS_SCIENCE` v1.1→v1.3, ADRs 0041/0042, `DECISIONS` r1.28–r1.31) e a distinção do outro "Ciclo 2 — proposta auditada" (R-01..R-03/G). Edição precisa, sem reescrever o arquivo.
+
+### Concluído (Parte B — validação com dados reais, somente leitura)
+
+- **Acesso:** `fixtures/private/` segue ausente (gitignored, confirmado); com autorização do usuário 0, a validação usou o banco do aparelho via `adb run-as` (build debug), copiado para `/tmp` fora do repo e **apagado após o uso**. Nenhum dado real em arquivos, diffs, logs ou neste resumo — abaixo só veredito, completude e `missing[]`.
+- **Método:** espelho fiel do pipeline (`ContextBuilder` + `TrainingSignalSource` + `TrainingLoadEngine` + `ReadinessCalculator` + `LevelGraduationEngine`, mesmas janelas e constantes do código) avaliado fora do repo; nenhuma regra/threshold/copy tocada.
+- **Resultado: `Stay`** — `missing = [strong_weeks, long_run, ctl, long_run_90, race, monotony]` (perfil `INTERMEDIATE`, portanto com os 4 critérios do avançado).
+- **Completude da entrada:** janela de 6 semanas incompleta (base de planos curta no aparelho — por si só já bloqueia, comportamento conservador esperado); esforços 20–35 min com FC suficientes; calibração Tier B válida; sem doença/lesão 14d; prontidão fora do vermelho; sem prova/TT-30 válido na janela; carga objetiva `INSUFFICIENT` (poucos dias objetivos em 28d, fonte fresca) com CTL/monotonia bloqueados por desenho.
+- **Checagem cruzada:** o padrão sintético `G-LVL-01` continua verde na suíte (6 semanas sintéticas → `SuggestUpgrade BEGINNER→INTERMEDIATE`, `R-LVL-01`, `MEDIUM`) — o motor aprova quando a base existe; com a base atual do aparelho, `Stay` é o resultado correto.
+
+### Testes
+
+- `:app:testDebugUnitTest` verde com rerun real (881 testes, 0 falhas).
+- `:core:domain:test` verde com rerun real (741 testes, 0 falhas).
+- `spotlessCheck` verde, `:core:domain:koverVerify` verde (sem mudança de código — só `docs/ROADMAP.md` no diff; arquivos do story intocados).
+
+### Pendências (achados viram pendência, não fix)
+
+1. Base de planos curta no aparelho reduz a janela de graduação — observar se é efeito de reset/reseed ou retenção; se recorrente, avaliar teste de regressão do `ContextBuilder` com janela parcial (sem mudar regra).
+2. Evidências legadas (`LEGACY_UNVERIFIED`) não contam como fortes por desenho (ADR 0024) — vale confirmar com o usuário 0 se há treinos concluídos fora do vínculo que ele esperava ver contar.
+3. Carga objetiva `INSUFFICIENT` com fonte fresca — consistência esperada da assimetria D5 (sRPE conserva, nunca licencia), só registrar.
+
+### Próximo passo (sugestão, não implementado)
+
+1. Periodização por nível desbloqueada pelo ADR 0042 (FR-012) — candidata natural.
+2. Relação taper × deload (N-03 restante).
+3. N-05 (backfill do Health Connect).
 
 ## Sessão 2026-11-15 — Ciclo 2 fatia 4b: card de aceite da graduação de nível (ADR 0042 implementado)
 
