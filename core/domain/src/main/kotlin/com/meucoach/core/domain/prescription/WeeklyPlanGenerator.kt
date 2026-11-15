@@ -271,6 +271,23 @@ class WeeklyPlanGenerator {
             val date = weekStart.plusDays((day.value - 1).toLong())
             (race?.allowsQuality(date) ?: true) && (recovery?.allowsQuality(date) ?: true)
         }
+        val stridesDay = if (input.profile.experience == Experience.BEGINNER &&
+            (meso.phase == MesoPhase.BASE || meso.phase == MesoPhase.BUILD || meso.phase == MesoPhase.PEAK)
+        ) {
+            // Decisão do usuário 0 (fatia 5): strides como EASY no dia leve mais
+            // curto (teto da disponibilidade intacto); tipo EASY de propósito —
+            // sobrevive à guarda `R-PRESC-04` e não conta como qualidade. Dias de
+            // recuperação ficam de fora; sem 2+ dias além do longão, não há strides.
+            days.filter { day ->
+                day != longDay &&
+                    recovery?.isActive(weekStart.plusDays((day.value - 1).toLong())) != true
+            }
+                .sortedWith(compareBy({ availability.getValue(it) }, { it.value }))
+                .takeIf { it.size >= 2 }
+                ?.first()
+        } else {
+            null
+        }
         val microDoseCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             (recovery?.allowsQuality(date) ?: true) &&
@@ -375,34 +392,53 @@ class WeeklyPlanGenerator {
                 else -> {
                     val recoveryCap = recovery?.maxSessionMinutes(date)
                     val isRecoveryDay = recoveryCap != null
-                    val duration = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN)
-                        .let { minutes -> recoveryCap?.let { cap -> minOf(minutes, cap) } ?: minutes }
-                    PlannedSession(
-                        date = date,
-                        type = WorkoutType.EASY,
-                        title = if (isRecoveryDay) {
-                            RECOVERY_TITLE
-                        } else {
-                            templateTitle(SessionRole.EASY_RUN) ?: "Fácil e conversável"
-                        },
-                        durationMin = duration,
-                        rationale = if (isRecoveryDay) {
-                            "Recuperação após a prova: sessão curta e leve, sem treino forte."
-                        } else {
-                            "Base aeróbica conversável; sem treino forte neste dia."
-                        },
-                        ruleIds = buildList {
-                            add("R-ZONE-01")
-                            add("R-PLAN-06")
-                            if (isRecoveryDay) add("R-RACE-04")
-                        },
-                        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
-                        targets = PrescriptionPolicy.targets(
+                    if (day == stridesDay) {
+                        val duration = minOf(available, MICRO_DOSE_MIN)
+                        PlannedSession(
+                            date = date,
                             type = WorkoutType.EASY,
-                            profile = input.profile,
+                            title = templateTitle(SessionRole.STRIDES) ?: "Strides curtos",
                             durationMin = duration,
-                        ),
-                    )
+                            rationale = templates.singleOrNull { it.role == SessionRole.STRIDES }?.blurb
+                                ?: "Estímulo neuromuscular curto, sem fadiga.",
+                            ruleIds = listOf("R-ZONE-01", "R-PLAN-06", "R-PER-02"),
+                            evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                            targets = PrescriptionPolicy.targets(
+                                type = WorkoutType.EASY,
+                                profile = input.profile,
+                                durationMin = duration,
+                            ),
+                        )
+                    } else {
+                        val duration = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN)
+                            .let { minutes -> recoveryCap?.let { cap -> minOf(minutes, cap) } ?: minutes }
+                        PlannedSession(
+                            date = date,
+                            type = WorkoutType.EASY,
+                            title = if (isRecoveryDay) {
+                                RECOVERY_TITLE
+                            } else {
+                                templateTitle(SessionRole.EASY_RUN) ?: "Fácil e conversável"
+                            },
+                            durationMin = duration,
+                            rationale = if (isRecoveryDay) {
+                                "Recuperação após a prova: sessão curta e leve, sem treino forte."
+                            } else {
+                                "Base aeróbica conversável; sem treino forte neste dia."
+                            },
+                            ruleIds = buildList {
+                                add("R-ZONE-01")
+                                add("R-PLAN-06")
+                                if (isRecoveryDay) add("R-RACE-04")
+                            },
+                            evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                            targets = PrescriptionPolicy.targets(
+                                type = WorkoutType.EASY,
+                                profile = input.profile,
+                                durationMin = duration,
+                            ),
+                        )
+                    }
                 }
             }
         }

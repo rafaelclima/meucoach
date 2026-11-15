@@ -1,6 +1,27 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 fatia 4: papéis da biblioteca na montagem)
+**Atualizado:** 15/11/2026 (ADR 0043 fatia 5: strides do iniciante como EASY)
+
+## Sessão 2026-11-15 — ADR 0043 fatia 5: strides do iniciante (TDD, decisão do usuário 0)
+
+**Objetivo:** agendar os strides do iniciante sem tocar na guarda `R-PRESC-04`.
+
+### Concluído
+
+- **Gerador:** iniciante em `BASE`/`BUILD`/`PEAK` ganha sessão EASY de até 25 min ("Strides curtos", blurb do template, `R-PER-02`) no dia leve mais curto com teto da disponibilidade intacto; tipo EASY de propósito — sobrevive ao dia e não conta como qualidade. Sem 2+ dias além do longão ou em dia de recuperação, não há strides. Não iniciantes intactos.
+- **Testes (`BeginnerStridesTest`, TDD RED→GREEN):** 5 novos — strides em `BASE`/`BUILD`, teto em dia curto, sem espaço sem strides, não iniciantes intactos. 3 testes legados de iniciante atualizados à nova composição (95 base / 73 descarga com piso, Monday 25).
+- **Docs:** ADR 0043 fatia 5, `DECISIONS.md` r1.39.
+
+### Testes
+
+- `:core:domain:test` verde (771 testes: 766 + 5 novos, 0 falhas).
+- `:app:testDebugUnitTest` verde (881 testes, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply`), `:core:domain:koverVerify` verde.
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+
+### Próximo passo
+
+1. FR-012 restante: EASY leve pós-prova na semana da prova (aprovado §3.3, pendente de fiação) ou encerrar o ADR 0043 e voltar ao backlog (taper × deload, N-05).
 
 ## Sessão 2026-11-15 — ADR 0043 fatia 4: títulos da biblioteca + `R-PER-02` (TDD)
 

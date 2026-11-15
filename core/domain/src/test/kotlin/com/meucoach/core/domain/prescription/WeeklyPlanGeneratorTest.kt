@@ -40,8 +40,10 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.qualityCount).isZero()
         assertThat(plan.sessions.map { it.type })
             .containsExactly(WorkoutType.EASY, WorkoutType.EASY, WorkoutType.LONG)
-        assertThat(plan.longRunMinutes).isEqualTo(34)
-        assertThat(plan.weeklyMinutes).isEqualTo(114)
+        // Segunda é strides (EASY, 25 min): 25 + 40 + longão.
+        assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Strides curtos")
+        assertThat(plan.longRunMinutes).isEqualTo(30)
+        assertThat(plan.weeklyMinutes).isEqualTo(95)
         assertThat(plan.rationale).contains("iniciante")
         assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
     }
@@ -649,8 +651,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(baseline.weeklyMinutes).isEqualTo(114)
-        assertThat(deload.weeklyMinutes).isEqualTo(86)
+        // Segunda é strides (EASY, 25 min): base 95, descarga 73 (piso de 20
+        // eleva a segunda de 19 para 20 no corte de 25%).
+        assertThat(baseline.weeklyMinutes).isEqualTo(95)
+        assertThat(deload.weeklyMinutes).isEqualTo(73)
         assertThat(deload.rationale).contains("Semana de descarga após 3 semanas", "−25%", "Fase BASE")
         assertThat(deload.ruleIds).contains("R-PLAN-04")
         assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
@@ -1531,7 +1535,9 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.sessions.map { it.date }).containsExactly(monday, monday.plusDays(1), monday.plusDays(3))
-        assertThat(plan.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
+        // Segunda é o dia de strides do iniciante (EASY, 25 min, sem taper).
+        assertThat(plan.sessions.first { it.date == monday }.durationMin).isEqualTo(25)
+        assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Strides curtos")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
     }
 

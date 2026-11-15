@@ -1,6 +1,6 @@
 # ADR 0043 — Periodização por nível e plano de prova (FR-012)
 
-**Status:** Aprovado em 2026-11-15; fatias 1–4 implementadas em 15/11/2026 (`MacroPlanResolver` + `SessionLibrary` + fiação fase/títulos/rationale no gerador, `R-PER-01/02`, goldens `G-PER-02` + `G-PER-01`).
+**Status:** Aprovado em 2026-11-15; fatias 1–5 implementadas em 15/11/2026 (macro + biblioteca + fiação fase/títulos/strides no gerador, `R-PER-01/02`, goldens `G-PER-02` + `G-PER-01`).
 **Data:** 2026-11-15
 **Escopo:** Motor do coach; `WeeklyPlanGenerator`, catálogo de sessões, `PlanningFingerprint`.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0011 (deload ancorado),
