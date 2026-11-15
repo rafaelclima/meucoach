@@ -437,6 +437,57 @@ class TodayViewModelPersistTest {
     }
 
     @Test
+    fun `blocks swapping into a race date across a week boundary`(): Unit = runBlocking {
+        // Regression: on Sunday `tomorrow` lands in the next week, outside the
+        // firstDate week range the race lookup used to cover. Fixed dates keep
+        // this failing on any weekday while the range stays single-week.
+        val today = LocalDate.parse("2026-11-15") // a Sunday
+        val weekStart = today.with(
+            java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        val tomorrow = today.plusDays(1)
+        val week = weekWith(today, weekStart).copy(
+            sessions = listOf(
+                com.meucoach.core.domain.prescription.PlannedSession(
+                    date = today,
+                    type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                    title = "Fácil",
+                    durationMin = 30,
+                    rationale = "Base.",
+                    ruleIds = listOf("R-ZONE-01"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                com.meucoach.core.domain.prescription.PlannedSession(
+                    date = tomorrow,
+                    type = com.meucoach.core.domain.prescription.WorkoutType.QUALITY,
+                    title = "Tempo",
+                    durationMin = 30,
+                    rationale = "Qualidade.",
+                    ruleIds = listOf("R-PLAN-02"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+            ),
+        )
+        plans.saveWeek(week)
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, tomorrow))
+
+        val viewModel = createViewModel()
+        withTimeout(5_000) { viewModel.uiState.first { it.plan != null } }
+        viewModel.swapSession(today, tomorrow, today)
+        delay(200)
+
+        val stored = plans.getWeek(weekStart)!!
+        assertThat(stored.sessions.first { it.date == today }.type)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
+        assertThat(stored.sessions.first { it.date == tomorrow }.type)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.QUALITY)
+    }
+
+    @Test
     fun `blocks swapping a session into a race date`(): Unit = runBlocking {
         val today = LocalDate.now()
         val weekStart = today.with(

@@ -619,7 +619,15 @@ class TodayViewModel @Inject constructor(
         viewModelScope.launch {
             val weekStart = firstDate.weekStart()
             val plan = planRepository.getWeek(weekStart) ?: return@launch
-            val raceDates = raceEventRepository.getDatesBetween(weekStart, weekStart.plusDays(6))
+            // Race dates are looked up across both weeks: when the swap
+            // crosses a week boundary (Sunday into Monday), the second date
+            // falls outside firstDate's week and the race block would never
+            // trigger, swapping a session into a race date.
+            val otherStart = secondDate.weekStart()
+            val raceDates = raceEventRepository.getDatesBetween(
+                minOf(weekStart, otherStart),
+                maxOf(weekStart, otherStart).plusDays(6),
+            )
             val result = SessionSwapper.swap(plan, firstDate, secondDate, today, raceDates)
             if (result is SwapResult.Applied) {
                 planRepository.updateSessions(result.plan.weekStart, result.plan.sessions)
