@@ -83,12 +83,26 @@ class MacroPlanTest {
     }
 
     @Test
-    fun `late prep start assigns phases by distance to the race`() {
+    fun `late prep start continues the table instead of restarting at base`() {
         val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(3)), monday)
 
         assertThat(plan.isGeneral).isFalse()
         assertThat(plan.weeks.map { it.phase }).containsExactly(
-            MesoPhase.BASE,
+            MesoPhase.BUILD,
+            MesoPhase.PEAK,
+            MesoPhase.TAPER,
+            MesoPhase.TAPER,
+        )
+    }
+
+    @Test
+    fun `mid prep current week continues the table`() {
+        val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(4)), monday)
+
+        assertThat(plan.isGeneral).isFalse()
+        assertThat(plan.weeks.map { it.phase }).containsExactly(
+            MesoPhase.BUILD,
+            MesoPhase.BUILD,
             MesoPhase.PEAK,
             MesoPhase.TAPER,
             MesoPhase.TAPER,

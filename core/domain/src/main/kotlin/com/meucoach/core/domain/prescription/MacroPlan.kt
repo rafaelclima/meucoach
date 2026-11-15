@@ -58,26 +58,18 @@ object MacroPlanResolver {
         if (weeksToRaceWeek >= horizon) {
             return general(today)
         }
-        val taperWeeks = race.taperWindowDays / DAYS_PER_WEEK
-        val peakWeeks = if (race.distance == RaceDistance.HALF_MARATHON || race.distance == RaceDistance.MARATHON) {
-            LONG_PEAK_WEEKS
-        } else {
-            SHORT_PEAK_WEEKS
-        }
+        // A tabela é ancorada no início da preparação (semana da prova menos o
+        // horizonte): a semana atual continua de onde parou, então todo bloco
+        // é alcançável mesmo com horizonte parcial.
+        val prepStart = raceWeek.minusWeeks((horizon - 1).toLong())
+        val table = buildTable(race, horizon)
         val count = weeksToRaceWeek + 1
-        val baseBuild = count - taperWeeks - peakWeeks
-        val baseCount = (baseBuild + 1) / 2
         val intents = (0 until count).map { index ->
-            val fromEnd = count - 1 - index
-            val phase = when {
-                fromEnd < taperWeeks -> MesoPhase.TAPER
-                fromEnd < taperWeeks + peakWeeks -> MesoPhase.PEAK
-                index < baseCount -> MesoPhase.BASE
-                else -> MesoPhase.BUILD
-            }
+            val intentWeek = weekStart.plusWeeks(index.toLong())
+            val position = ChronoUnit.WEEKS.between(prepStart, intentWeek).toInt()
             MacroWeekIntent(
-                weekStart = weekStart.plusWeeks(index.toLong()),
-                phase = phase,
+                weekStart = intentWeek,
+                phase = table[position],
                 blockIndex = 0,
                 weeksToRace = weeksToRaceWeek - index,
             )
@@ -105,6 +97,21 @@ object MacroPlanResolver {
         RaceDistance.FIVE_K, RaceDistance.TEN_K -> SHORT_HORIZON_WEEKS
         RaceDistance.HALF_MARATHON -> HALF_HORIZON_WEEKS
         RaceDistance.MARATHON -> MARATHON_HORIZON_WEEKS
+    }
+
+    private fun buildTable(race: RacePlan, horizon: Int): List<MesoPhase> {
+        val taperWeeks = race.taperWindowDays / DAYS_PER_WEEK
+        val peakWeeks = if (race.distance == RaceDistance.FIVE_K || race.distance == RaceDistance.TEN_K) {
+            SHORT_PEAK_WEEKS
+        } else {
+            LONG_PEAK_WEEKS
+        }
+        val baseBuild = horizon - taperWeeks - peakWeeks
+        val baseCount = (baseBuild + 1) / 2
+        return List(baseCount) { MesoPhase.BASE } +
+            List(baseBuild - baseCount) { MesoPhase.BUILD } +
+            List(peakWeeks) { MesoPhase.PEAK } +
+            List(taperWeeks) { MesoPhase.TAPER }
     }
 
     private fun withBlockIndexes(intents: List<MacroWeekIntent>): List<MacroWeekIntent> {

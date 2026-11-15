@@ -1,6 +1,28 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 fatia 3: fiação macro no gerador, fase macro prevalece)
+**Atualizado:** 15/11/2026 (ADR 0043 fatia 4: papéis da biblioteca na montagem)
+
+## Sessão 2026-11-15 — ADR 0043 fatia 4: títulos da biblioteca + `R-PER-02` (TDD)
+
+**Objetivo:** fiar os papéis da `SessionLibrary` na montagem das sessões sem mudar proteções de carga.
+
+### Concluído
+
+- **Gerador:** títulos de qualidade/longão/fácil/strides vindos dos templates (fonte única; mesmas strings, sem mudança de comportamento); `R-PER-02` (+`EV-FOSTER-2001` quando há qualidade) citado com preparação ativa; tabela macro ancorada no início da preparação (bloco `BUILD` alcançável em horizonte parcial).
+- **Achado revertido (load-bearing):** suprimir qualidade na `BASE` quebrou 45 testes — a elegibilidade continua pelos guardrails; a supressão exige decisão explícita (fatia futura). Rationale sem ramo novo.
+- **Testes (`SessionRolesTest`, TDD RED→GREEN):** 2 novos — qualidade com guardrails na `BASE` sem prova (contrato atual explícito), títulos da preparação vindos da biblioteca + `R-PER-02`; `MacroPlanTest` ganhou o teste de continuação da tabela.
+- **Docs:** ADR 0043 fatias 1–4 (§3.3 reconciliado), `DECISIONS.md` r1.38.
+
+### Testes
+
+- `:core:domain:test` verde (766 testes: 763 + 3 novos, 0 falhas).
+- `:app:testDebugUnitTest` verde (881 testes, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply`), `:core:domain:koverVerify` verde.
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+
+### Próximo passo
+
+1. Fatia 5 (decisão sua): agendar strides para iniciante na `BASE`/`BUILD`/`PEAK` (interage com a guarda `R-PRESC-04` do dia: strides como `QUALITY` seriam rebaixados; como `EASY` mudam a contagem) — ou suprimir qualidade na `BASE` para todos.
 
 ## Sessão 2026-11-15 — ADR 0043 fatia 3: fiação no `WeeklyPlanGenerator` (TDD)
 

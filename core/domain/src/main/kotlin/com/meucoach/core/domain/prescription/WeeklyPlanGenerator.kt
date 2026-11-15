@@ -279,6 +279,14 @@ class WeeklyPlanGenerator {
                 !race.allowsQuality(date) &&
                 !race.isRaceDayOrLater(date)
         }
+        // ADR 0043 §3.2: papéis da semana pela biblioteca (fase, nível). Títulos
+        // vêm dos templates (fonte única); durações seguem a disponibilidade.
+        // A biblioteca define estruturas e travas (iniciante, taper, recovery);
+        // a elegibilidade de qualidade continua pelos guardrails vigentes —
+        // suprimir qualidade na BASE seria mudar 45 comportamentos testados e
+        // exige decisão explícita (fatia futura).
+        val templates = SessionLibrary.templates(meso.phase, input.profile.experience)
+        fun templateTitle(role: SessionRole): String? = templates.singleOrNull { it.role == role }?.title
         val qualityDays = if (qualityAllowed) {
             selectQualityDays(
                 days = qualityCandidateDays,
@@ -307,7 +315,8 @@ class WeeklyPlanGenerator {
                     PlannedSession(
                         date = date,
                         type = WorkoutType.QUALITY,
-                        title = qualityTitle(input.profile.experience),
+                        title = templateTitle(SessionRole.QUALITY_MAIN)
+                            ?: qualityTitle(input.profile.experience),
                         durationMin = duration,
                         rationale = qualityRationale(input.profile, duration, null),
                         ruleIds = buildList {
@@ -332,7 +341,7 @@ class WeeklyPlanGenerator {
                     PlannedSession(
                         date = date,
                         type = WorkoutType.QUALITY,
-                        title = "Strides curtos",
+                        title = templateTitle(SessionRole.STRIDES) ?: "Strides curtos",
                         durationMin = MICRO_DOSE_MIN,
                         rationale = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
                         ruleIds = listOf("R-PLAN-05", "R-PLAN-10", "R-PLAN-06"),
@@ -350,7 +359,7 @@ class WeeklyPlanGenerator {
                     PlannedSession(
                         date = date,
                         type = WorkoutType.LONG,
-                        title = "Longão",
+                        title = templateTitle(SessionRole.LONG_RUN) ?: "Longão",
                         durationMin = duration,
                         rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
                         ruleIds = listOf("R-PLAN-03"),
@@ -371,7 +380,11 @@ class WeeklyPlanGenerator {
                     PlannedSession(
                         date = date,
                         type = WorkoutType.EASY,
-                        title = if (isRecoveryDay) RECOVERY_TITLE else "Fácil e conversável",
+                        title = if (isRecoveryDay) {
+                            RECOVERY_TITLE
+                        } else {
+                            templateTitle(SessionRole.EASY_RUN) ?: "Fácil e conversável"
+                        },
                         durationMin = duration,
                         rationale = if (isRecoveryDay) {
                             "Recuperação após a prova: sessão curta e leve, sem treino forte."
@@ -575,6 +588,7 @@ class WeeklyPlanGenerator {
                 if (taperActive) add("R-PLAN-10")
                 if (deload) add("R-PLAN-04")
                 if (macroIntent != null) add("R-PER-01")
+                if (macroIntent != null) add("R-PER-02")
             },
             evidenceIds = buildList {
                 add("EV-SEILER-2010")
@@ -592,6 +606,9 @@ class WeeklyPlanGenerator {
                 }
                 if (deload) add("EV-ISSURIN-2010")
                 if (macroIntent != null && !deload) add("EV-ISSURIN-2010")
+                if (macroIntent != null && qualityCount > 0 && !(loadTrusted && !permitsQuality)) {
+                    add("EV-FOSTER-2001")
+                }
             },
             createdOn = input.today,
         )

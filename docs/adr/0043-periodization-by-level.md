@@ -1,6 +1,6 @@
 # ADR 0043 — Periodização por nível e plano de prova (FR-012)
 
-**Status:** Aprovado em 2026-11-15; fatias 1–3 implementadas em 15/11/2026 (`MacroPlanResolver` + `SessionLibrary` + fiação no gerador, `R-PER-01/02`, golden `G-PER-02`).
+**Status:** Aprovado em 2026-11-15; fatias 1–4 implementadas em 15/11/2026 (`MacroPlanResolver` + `SessionLibrary` + fiação fase/títulos/rationale no gerador, `R-PER-01/02`, goldens `G-PER-02` + `G-PER-01`).
 **Data:** 2026-11-15
 **Escopo:** Motor do coach; `WeeklyPlanGenerator`, catálogo de sessões, `PlanningFingerprint`.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0011 (deload ancorado),
@@ -97,7 +97,7 @@ derivam da calibração vigente; sem calibração, RPE — nunca número solto):
 
 | Camada | Mudança proposta |
 |---|---|
-| `WeeklyPlanGenerator` | consome a intenção da semana (fase) em vez da alternância cega sem prova; rationale declara `Bloco X de Y` + contagem regressiva; papéis (estruturas) ficam para a fatia 4 |
+| `WeeklyPlanGenerator` | consome a intenção da semana (fase) e os títulos dos papéis da biblioteca; rationale declara `Bloco X de Y` + contagem regressiva. Sem supressão de qualidade na `BASE` nesta fatia (mudaria 45 comportamentos testados; exige decisão explícita) |
 | `MesoCycle` | com prova dentro do horizonte, a fase macro prevalece sobre o ramo de prova (decisão do usuário 0 em 15/11/2026); sem prova, a alternância segue; descarga continua pela contagem de semanas fortes; recuperação suprema |
 | `PlanReplanner` | sem mudança: `race` + `today` já estão no `inputsHash`, então qualquer mudança de intenção macro invalida como `STALE` (padrão T4, ADR 0031/0028), nunca auto-aplica |
 | `PlanningFingerprint` | sem mudança (objetivo/evento já cobertos); recusa/supressão seguem o padrão T4 |

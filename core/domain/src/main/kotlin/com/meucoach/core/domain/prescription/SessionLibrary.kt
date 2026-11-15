@@ -108,7 +108,7 @@ object SessionLibrary {
     private fun easy(recovery: Boolean): SessionTemplate = SessionTemplate(
         role = SessionRole.EASY_RUN,
         type = WorkoutType.EASY,
-        title = if (recovery) "Recuperação" else "Fácil e conversável",
+        title = if (recovery) "Recuperação: fácil e curto" else "Fácil e conversável",
         qualityKind = null,
         durationPolicy = DurationPolicy.EASY_SIZED,
         blurb = if (recovery) {
