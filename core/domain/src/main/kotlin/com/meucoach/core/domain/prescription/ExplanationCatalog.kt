@@ -78,6 +78,10 @@ object ExplanationCatalog {
             "R-PER-01",
             "Blocos até a prova por distância; sem data, só plano geral",
         ),
+        "R-PER-02" to RuleExplanation(
+            "R-PER-02",
+            "Sessões por fase e nível, com trava de iniciante",
+        ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",
             "Planejado × executado descreve a diferença, sem julgar",

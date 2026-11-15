@@ -1,6 +1,28 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 fatia 1: macro-planejador puro no domínio)
+**Atualizado:** 15/11/2026 (ADR 0043 fatia 2: biblioteca de sessões por fase/nível)
+
+## Sessão 2026-11-15 — ADR 0043 fatia 2: `SessionLibrary` pura (TDD)
+
+**Objetivo:** implementar o catálogo de estruturas de sessão por (fase, nível) no domínio, sem fiação no gerador nem UI.
+
+### Concluído
+
+- **Domínio (`prescription/SessionLibrary.kt` novo):** `templates(phase, level)` — papéis (`EASY_RUN`, `LONG_RUN`, `QUALITY_MAIN/SECOND`, `STRIDES`), natureza do estímulo (`STRIDES_ONLY`, `CONTINUOUS`, `INTERVALS`) e política de duração (`EASY/LONG/QUALITY_SIZED`, `MICRO_DOSE_25`); sem pace e sem minutos inventados (fiação resolve pela disponibilidade). `BEGINNER` só recebe strides como qualidade; `BUILD` dá 2 qualidades a `INTERMEDIATE` (contínuas) e `ADVANCED` (intervaladas); `PEAK` uma específica por nível; `TAPER` só micro-dose; `RECOVERY` só fácil; `BASE` sem qualidade principal.
+- **`ExplanationCatalog`:** `R-PER-02` registrado ("Sessões por fase e nível, com trava de iniciante"); teste cobre o novo ID.
+- **Testes (`SessionLibraryTest`, TDD RED→GREEN):** 9 novos — trava de iniciante em todas as fases, 2 qualidades no `BUILD`, micro-dose no taper, fácil só no recovery, específica no `PEAK`, base sem qualidade principal, auditabilidade de toda estrutura e determinismo.
+- **Docs:** ADR 0043 fatias 1–2, `DECISIONS.md` r1.36.
+
+### Testes
+
+- `:core:domain:test` verde (758 testes: 749 + 9 novos, 0 falhas).
+- `:app:testDebugUnitTest` verde (881 testes, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply`), `:core:domain:koverVerify` verde.
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+
+### Próximo passo
+
+1. Fatia 3: fiação no `WeeklyPlanGenerator` (intenção da semana via `MacroPlanResolver` + estruturas via `SessionLibrary`, rationale `Bloco X de Y`, `macroHash` no fingerprint com `STALE` por sugestão).
 
 ## Sessão 2026-11-15 — ADR 0043 fatia 1: `MacroPlanResolver` puro (TDD)
 
