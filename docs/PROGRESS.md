@@ -1,6 +1,28 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 fatia 5: strides do iniciante como EASY)
+**Atualizado:** 15/11/2026 (ADR 0043 fatia 6: EASY curto após a prova)
+
+## Sessão 2026-11-15 — ADR 0043 fatia 6: EASY pós-prova na mesma semana (TDD)
+
+**Objetivo:** permitir só EASY curto regenerativo após a prova, sem qualidade/longão.
+
+### Concluído
+
+- **Gerador:** dias após a prova (antes excluídos) viram EASY de até 30 min (`POST_RACE_EASY_MAX_MIN`, teto da disponibilidade e cap de recovery intactos); longão e qualidade continuam só antes da prova; dia da prova segue sem sessão; rationale declara "Após a prova: só sessões leves e curtas".
+- **Teste legado preservado na intenção:** "corte profundo na semana da prova" agora compara o volume pré-prova (a semana passa a ter carga legítima pós-prova).
+- **Testes (`PostRaceEasyTest`, TDD RED→GREEN):** 3 novos — EASY curto após prova no meio da semana, sem longão após, semana inalterada com prova no domingo.
+- **Docs:** ADR 0043 fatia 6, `DECISIONS.md` r1.40.
+
+### Testes
+
+- `:core:domain:test` verde (774 testes: 771 + 3 novos, 0 falhas).
+- `:app:testDebugUnitTest` verde (881 testes, 0 falhas).
+- `spotlessCheck` verde (após `spotlessApply`), `:core:domain:koverVerify` verde.
+- Nenhum dado real no diff; schema v17 sem migração; sem dependência nova.
+
+### Próximo passo
+
+1. Encerrar o ADR 0043 (marcar implementado) + validar no aparelho com leitura somente leitura, ou voltar ao backlog (taper × deload, N-05).
 
 ## Sessão 2026-11-15 — ADR 0043 fatia 5: strides do iniciante (TDD, decisão do usuário 0)
 

@@ -189,11 +189,18 @@ class WeeklyPlanGenerator {
         // A race day never receives an ordinary session. The rest of the race
         // week stays free too: recovery is out of scope, so the app does not
         // invent post-race training (ADR 0030).
+        // A prova nunca recebe sessão comum; dias após a prova na mesma semana
+        // recebem só EASY curto regenerativo (decisão do usuário 0, ADR 0043
+        // §3.3) — sem qualidade/longão, que continuam vetados abaixo.
         val days = daysAfterToday.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             date !in eventDates && (race == null || !race.isRaceDayOrLater(date))
         }
-        if (days.isEmpty()) {
+        val postRaceDays = daysAfterToday.filter { day ->
+            val date = weekStart.plusDays((day.value - 1).toLong())
+            date !in eventDates && race != null && race.isRaceDayOrLater(date)
+        }
+        if (days.isEmpty() && postRaceDays.isEmpty()) {
             val message = if (daysAfterToday.isNotEmpty() && race != null) {
                 "Não há dias de treino antes da prova nesta semana. O próximo plano começa depois do evento."
             } else {
@@ -323,10 +330,30 @@ class WeeklyPlanGenerator {
             emptySet()
         }
 
-        val sessions = days.map { day ->
+        val sessions = (days + postRaceDays).sorted().map { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             val available = availability.getValue(day)
             when {
+                day in postRaceDays -> {
+                    val recoveryCap = recovery?.maxSessionMinutes(date)
+                    val duration = minOf(available, POST_RACE_EASY_MAX_MIN)
+                        .let { minutes -> recoveryCap?.let { cap -> minOf(minutes, cap) } ?: minutes }
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.EASY,
+                        title = "Fácil e conversável",
+                        durationMin = duration,
+                        rationale = "Após a prova: sessão curta e leve, sem esforço.",
+                        ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
+                        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.EASY,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                    )
+                }
+
                 day in qualityDays -> {
                     val duration = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN)
                     PlannedSession(
@@ -547,6 +574,9 @@ class WeeklyPlanGenerator {
                         "volume −${((1.0 - DELOAD_FACTOR) * 100).roundToInt()}%, " +
                         "intensidade mantida. ",
                 )
+            }
+            if (postRaceDays.isNotEmpty()) {
+                append("Após a prova: só sessões leves e curtas. ")
             }
             append(volumeRationale(volumeDecision, volumeAdjusted.droppedSessions))
             append(" ")
@@ -945,6 +975,9 @@ class WeeklyPlanGenerator {
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MICRO_DOSE_TITLE = "Strides curtos"
         private const val MICRO_DOSE_MIN = 25
+
+        /** EASY curto após a prova na mesma semana (decisão do usuário 0, ADR 0043 §3.3). */
+        private const val POST_RACE_EASY_MAX_MIN = 30
         private const val MIN_EASY_MIN = 20
         private const val MAX_EASY_MIN = 60
         private const val MIN_QUALITY_MIN = 25

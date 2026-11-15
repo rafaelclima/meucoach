@@ -429,7 +429,13 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(raceWeek.weeklyMinutes).isLessThan(tenDays.weeklyMinutes)
+        // A semana da prova agora tem EASY curto após a corrida (ADR 0043 §3.3);
+        // a intenção do corte profundo vale para o volume PRÉ-prova.
+        val raceDate = monday.plusDays(3)
+        val preRaceMinutes = raceWeek.sessions
+            .filter { it.date < raceDate }
+            .sumOf { it.durationMin ?: 0 }
+        assertThat(preRaceMinutes).isLessThan(tenDays.weeklyMinutes)
     }
 
     @Test
