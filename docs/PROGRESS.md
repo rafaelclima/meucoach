@@ -1,6 +1,23 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (base sincronizada com `origin/dev` + gate verde)
+**Atualizado:** 16/11/2026 (Ciclo 4 documentado: PRD v1.1, ADRs 0044–0050 e checklist de execução; sem código)
+
+## Sessão 2026-11-16 — Ciclo 4: PRD, ADRs 0044–0050 e checklist de execução
+
+**Objetivo:** transformar a auditoria do motor em PRD aprovada, ADRs e checklist de execução por sessão, sem alterar código.
+
+### Concluído
+
+- **PRD (`docs/PRD_TREINO_REAL.md` v1.1):** problema P-01..P-13, FR-401..FR-413, algoritmo, schema v18, goldens e 60 tasks; 12/12 decisões aprovadas pelo usuário 0; política do iniciante (strides + intro fartlek `EASY`; intervalado estruturado só após a graduação) e pace dinâmico registrados.
+- **ADRs 0044–0050:** oportunidade de qualidade/autoridade do dia, longão, load gate v3/ACWR confiável, catálogo/periodização, prontidão de dados/upgrade/schema v18, prontidão/check-in/sono e volume real/treino extra. Status “Aprovado — implementação pendente”.
+- **`DECISIONS.md` r1.42:** índice com os 7 ADRs e nota de revisão.
+- **Checklist (`docs/CICLO_4_TREINO_REAL.md`):** estado atual, protocolo de sessão, plano S0–S17, task board C4-01..C4-60, log de sessões, gates, commits, DoD e rollback.
+- **Nenhum código de produção alterado; nenhum teste executado; nenhum commit feito nesta sessão.**
+
+### Próximo passo
+
+1. Commitar o S0 (`docs(c4): approve PRD, ADRs 0044-0050 and execution checklist`).
+2. Iniciar a S1 no checklist: C4-01 + C4-03 (modelos de oportunidade e `QualityGate` puro), com TDD.
 
 ## Sessão 2026-11-16 — Base sincronizada com `origin/dev` e `check` verde
 

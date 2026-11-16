@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.41 · **Data:** 15/11/2026
+**Versão:** 1.42 · **Data:** 16/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -41,6 +41,7 @@
 > Revisão 1.39 (15/11/2026): ADR 0043 fatia 5 — strides do iniciante como `EASY` (decisão do usuário 0; até 25 min no dia leve mais curto, sem 2+ dias não há strides, dias de recuperação fora); 3 testes legados de iniciante atualizados à nova composição.
 > Revisão 1.40 (15/11/2026): ADR 0043 fatia 6 — EASY curto (teto 30 min) após a prova na mesma semana, sem qualidade/longão (longão só antes da prova); teste de corte profundo preservado como volume pré-prova.
 > Revisão 1.41 (15/11/2026): ADR 0043 encerrado — implementado (fatias 1–6, FR-012 atendido); `ROADMAP` P1-05/N-03 reconciliados; APK debug gerado e instalado no aparelho do usuário 0 via `adb`.
+> Revisão 1.42 (16/11/2026): Ciclo 4 aprovado — PRD `docs/PRD_TREINO_REAL.md` v1.1 e ADRs 0044–0050 (`QualityOpportunity`/autoridade do dia, longão com piso, load gate v3/ACWR confiável, catálogo/periodização, prontidão de dados/upgrade/schema v18, prontidão/check-in/sono, volume real/treino extra). Implementação pendente; nenhum código alterado nesta revisão.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -87,6 +88,13 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0041](adr/0041-mesocycle-persistence.md) | Persistência de mesociclos por histórico real (Base/Build/Peak/Taper) | Aceito — implementado em 15/11/2026 (`MesoPhase` + deload por `recentWeeks`, `R-PLAN-04 v2`, `PEAK` estável, `weekly-plan-v6`, sem migração) | 15/11/2026 |
 | [0042](adr/0042-level-graduation-engine.md) | Motor de graduação de nível com aceite explícito | Aceito — implementado em 15/11/2026 (domínio: `LevelGraduationEngine` + `R-LVL-01/02` + `G-LVL-01`; app: card de aceite no Perfil com aceite T4, recusa por `profile.id + engineVersion + inputsHash`, sem auto-aplicar nem downgrade) | 15/11/2026 |
 | [0043](adr/0043-periodization-by-level.md) | Periodização por nível e plano de prova (FR-012) | Implementado em 15/11/2026 (fatias 1–6: macro + biblioteca + fiação fase/títulos/strides/EASY pós-prova, `R-PER-01/02`, goldens; sem supressão na `BASE`, sem migração) | 15/11/2026 |
+| [0044](adr/0044-quality-opportunity-day-authority.md) | Oportunidade de qualidade estrutural e autoridade do dia (`QualityGate`, reavaliação, `R-PRESC-02` emendada) | Aprovado — implementação pendente (C4-01..C4-08) | 16/11/2026 |
+| [0045](adr/0045-long-run-sizing.md) | Longão: seleção do dia, piso 45/60, 25–30% como alvo, título honesto e `fitToVolume` | Aprovado — implementação pendente (C4-09..C4-13) | 16/11/2026 |
+| [0046](adr/0046-load-gate-v3-acwr-reliability.md) | Load gate v3: ACWR 1,5, confiabilidade de 28 dias, pré-história como ausência, progressão separada | Aprovado — implementação pendente (C4-22..C4-27) | 16/11/2026 |
+| [0047](adr/0047-quality-catalog-periodization.md) | Catálogo/periodização por fase, nível e distância; estrutura executável; iniciante com strides + intro fartlek `EASY`; intermediário com intervalado/fartlek/colinas | Aprovado — implementação pendente (C4-14..C4-21) | 16/11/2026 |
+| [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Aprovado — implementação pendente (C4-44..C4-49) | 16/11/2026 |
+| [0049](adr/0049-readiness-checkin-sleep.md) | Prontidão/check-in sem inversão, reavaliação tardia, sono plausível e `QualityGate` | Aprovado — implementação pendente (C4-28..C4-37) | 16/11/2026 |
+| [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Aprovado — implementação pendente (C4-38..C4-43) | 16/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
