@@ -1,5 +1,6 @@
 package com.meucoach.app.ui.level
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.EvaluateLevelGraduationResult
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+
+private const val TAG = "LevelGraduation"
 
 /**
  * Oferece a subida de nível no Perfil com aceite explícito (padrão T4).
@@ -53,12 +56,16 @@ class LevelGraduationViewModel @Inject constructor(
         evaluating = true
         mutableState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            try {
-                present(evaluateGraduation(), timeProvider.currentDate())
+            val today = timeProvider.currentDate()
+            val result = try {
+                evaluateGraduation()
             } catch (error: CancellationException) {
+                evaluating = false
                 throw error
             } catch (error: Exception) {
+                Log.w(TAG, "Falha ao avaliar a graduação de nível", error)
                 pending = null
+                evaluating = false
                 mutableState.update {
                     it.copy(
                         isLoading = false,
@@ -66,10 +73,13 @@ class LevelGraduationViewModel @Inject constructor(
                         message = "Não foi possível avaliar o nível agora. Tente de novo em instantes.",
                     )
                 }
-            } finally {
-                evaluating = false
-                mutableState.update { if (it.isLoading) it.copy(isLoading = false) else it }
+                return@launch
             }
+            // Libera o guarda antes de publicar: `isLoading = false` é o sinal
+            // público de "pode pedir de novo" e não pode chegar antes dele,
+            // senão o refresh disparado ao ver o card é descartado em silêncio.
+            evaluating = false
+            present(result, today)
         }
     }
 
@@ -124,6 +134,7 @@ class LevelGraduationViewModel @Inject constructor(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                Log.w(TAG, "Falha ao aplicar a graduação de nível", error)
                 mutableState.update {
                     it.copy(
                         isApplying = false,
