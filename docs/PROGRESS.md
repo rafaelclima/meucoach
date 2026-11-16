@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S5 do Ciclo 4: volume real na progressão/meso/graduação)
+**Atualizado:** 16/11/2026 (S5.1 do Ciclo 4: reparo LEGACY do mesmo dia)
+
+## Sessão 2026-11-16 — Ciclo 4/S5.1: reparo LEGACY do mesmo dia (C4-40)
+
+**Objetivo:** permitir que uma corrida importada no mesmo dia repare uma sessão `DONE` + `LEGACY_UNVERIFIED` sem vínculo, com confirmação explícita, sem promover o histórico migrado.
+
+### Concluído
+
+- **Regra pura:** `SessionCompletionRules.checkLegacyRepair(...)` exige `DONE` + `LEGACY_UNVERIFIED`, sem `activityId`/`executionId`, sessão e corrida no dia atual e confirmação explícita; sessão de outro dia é bloqueada como histórico migrado.
+- **Persistência:** `TrainingPlanDao.repairLegacyEvidence` só atualiza a linha legada sem vínculo; `SessionExecutionRepository.repairLegacyWithActivity(...)` cria a execução ausente, troca a evidência para `ACTIVITY`, mantém `DONE`/`completedAt` e fecha o vínculo 1:1 na mesma transação.
+- **Caso de uso:** `RepairLegacyCompletion` no `:app` revalida plano, corrida, esporte, data, confirmação e estado; `RepairLegacyCompletionRequest.confirmed` documenta a confirmação.
+- **Prompt/UI:** `ImportedRunPromptUi.AlreadyDone` ganhou `repairEvidence` (`MANUAL` ou `LEGACY_UNVERIFIED`); o diálogo mostra a cópia correta, o botão “Usar esta corrida” é a confirmação e o dismiss mantém a corrida livre. `OfferImportedRun` enfileira o legado do mesmo dia.
+- **Sem duplicação:** o segundo reparo é rejeitado; a atividade não pode estar vinculada a outra sessão/prova.
+
+### Testes
+
+- `:core:domain:test` 906 verdes (+7); `:core:data:test` 175 (+4); `:app:testDebugUnitTest` 901 (+11); `:core:model` 40.
+- Novos: `SessionCompletionRulesTest` (7 casos de reparo), `SessionExecutionRepositoryTest` (+4), `RepairLegacyCompletionTest` (7), `ImportedRunPromptViewModelTest` (+2), `ImportedRunPromptDialogTest` (+1) e `OfferImportedRunTest` (+1).
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt`, `:app:lintDebug`; FIT 93,01% de branches.
+- Na primeira execução completa, `MetricsImportViewModelTest` estourou o timeout de 30 s (arquivo não tocado); passou isolado e na reexecução da suíte.
+
+### Decisões e observações
+
+- O reparo é só para o dia atual; o histórico migrado continua `LEGACY_UNVERIFIED` e somente leitura.
+- Um `LEGACY` com atividade na lixeira mantém o `activityId` e não é reparável; restaurar a atividade devolve `ACTIVITY`.
+- A tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`; o caminho do legado é o prompt de import (ADR 0050 §7).
+- O baseline do detekt foi atualizado para o `LongParameterList` pré-existente do `ImportedRunPromptViewModel` (mais um repositório); nenhum schema/migração foi alterado.
+
+### Próximo passo
+
+1. S6 / C4-14: `WorkoutStructure`/`WorkoutBlock` + JSON, TDD.
+2. Depois C4-15..C4-17 (catálogo/rotação/gerador).
 
 ## Sessão 2026-11-16 — Ciclo 4/S5: volume real na progressão, mesociclo e graduação (C4-39)
 
@@ -5421,3 +5452,4 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 16/11/2026 | Ciclo 4/S3: ACWR confiável em 28 dias, pré-história como “sem dado” e 1,5 único (C4-22..C4-25); 844 testes de domínio |
 | 16/11/2026 | Ciclo 4/S4: prontidão sem inversão e sono plausível (C4-28, C4-34..C4-36); 873 testes de domínio |
 | 16/11/2026 | Ciclo 4/S5: `VolumeReference`/`StrongRun` e projeção determinística do volume real (C4-38); 887 testes de domínio |
+| 16/11/2026 | Ciclo 4/S5.1: reparo `LEGACY_UNVERIFIED` do mesmo dia com confirmação (C4-40); 906 testes de domínio |

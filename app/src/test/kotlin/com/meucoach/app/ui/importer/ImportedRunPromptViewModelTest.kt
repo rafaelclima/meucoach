@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.CompleteSession
+import com.meucoach.app.application.RepairLegacyCompletion
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.importer.ImportedRunPromptStore
 import com.meucoach.app.time.FakeTimeProvider
@@ -94,6 +95,7 @@ class ImportedRunPromptViewModelTest {
             executions = executions,
             completeSession = CompleteSession(plans, activities, executions, RaceEventRepository(database, clock)),
             replaceManualCompletion = ReplaceManualCompletion(plans, activities, executions),
+            repairLegacyCompletion = RepairLegacyCompletion(plans, activities, executions),
             store = store,
             timeProvider = timeProvider,
         )
@@ -168,9 +170,9 @@ class ImportedRunPromptViewModelTest {
         val prompt = withTimeout(TIMEOUT_MILLIS) {
             viewModel.uiState.first { it.prompt is ImportedRunPromptUi.AlreadyDone }
         }.prompt as ImportedRunPromptUi.AlreadyDone
-        assertThat(prompt.canReplace).isTrue()
+        assertThat(prompt.canRepair).isTrue()
 
-        viewModel.replaceManualRecord()
+        viewModel.repairRecord()
 
         val state = withTimeout(TIMEOUT_MILLIS) {
             viewModel.uiState.first { it.prompt == null && it.message != null }
@@ -184,6 +186,53 @@ class ImportedRunPromptViewModelTest {
         assertThat(execution.rpe).isNull()
         assertThat(state.message).contains("substituído")
         assertThat(store.pending.value).isEmpty()
+    }
+
+    @Test
+    fun `repairs a same-day legacy completion with the imported run`(): Unit = runBlocking {
+        plans.saveWeek(donePlan(evidence = CompletionEvidence.LEGACY_UNVERIFIED))
+        val id = saveRun()
+        store.add(id)
+        val prompt = withTimeout(TIMEOUT_MILLIS) {
+            viewModel.uiState.first { it.prompt is ImportedRunPromptUi.AlreadyDone }
+        }.prompt as ImportedRunPromptUi.AlreadyDone
+        assertThat(prompt.canRepair).isTrue()
+        assertThat(prompt.repairEvidence).isEqualTo(CompletionEvidence.LEGACY_UNVERIFIED)
+
+        viewModel.repairRecord()
+
+        val state = withTimeout(TIMEOUT_MILLIS) {
+            viewModel.uiState.first { it.prompt == null && it.message != null }
+        }
+        val session = plans.getWeek(weekStart())!!.sessions.single()
+        assertThat(session.status).isEqualTo(SessionStatus.DONE)
+        assertThat(session.completionEvidence).isEqualTo(CompletionEvidence.ACTIVITY)
+        assertThat(session.activityId).isEqualTo(id)
+        assertThat(session.executionId).isNotNull()
+        val execution = executions.getForActivity(id)!!
+        assertThat(execution.source.name).isEqualTo("ACTIVITY")
+        assertThat(state.message).contains("reparado")
+        assertThat(state.message).contains("histórico")
+        assertThat(store.pending.value).isEmpty()
+    }
+
+    @Test
+    fun `a linked legacy completion is only informational`(): Unit = runBlocking {
+        val linkedPlan = donePlan(evidence = CompletionEvidence.LEGACY_UNVERIFIED)
+        plans.saveWeek(
+            linkedPlan.copy(
+                sessions = linkedPlan.sessions.map { it.copy(activityId = "suspended-activity") },
+            ),
+        )
+        val id = saveRun()
+        store.add(id)
+
+        val prompt = withTimeout(TIMEOUT_MILLIS) {
+            viewModel.uiState.first { it.prompt is ImportedRunPromptUi.AlreadyDone }
+        }.prompt as ImportedRunPromptUi.AlreadyDone
+
+        assertThat(prompt.canRepair).isFalse()
+        assertThat(prompt.repairEvidence).isNull()
     }
 
     @Test

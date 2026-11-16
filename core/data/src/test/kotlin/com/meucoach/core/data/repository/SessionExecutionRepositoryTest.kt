@@ -336,6 +336,154 @@ class SessionExecutionRepositoryTest {
     }
 
     @Test
+    fun `repairs a legacy completion and creates its execution`(): Unit = runBlocking {
+        plans.saveWeek(legacyPlan())
+        activities.saveImportedActivity(activity())
+
+        val outcome = executions.repairLegacyWithActivity(
+            plannedSessionId = "2026-11-02-2026-11-02",
+            activityId = "activity-1",
+            startedAt = Instant.parse("2026-11-02T10:00:00Z"),
+            durationSec = 1_800,
+            distanceM = 5_000.0,
+        )
+
+        assertThat(outcome).isInstanceOf(CompletionOutcome.Recorded::class.java)
+        val execution = (outcome as CompletionOutcome.Recorded).execution
+        assertThat(execution.source.name).isEqualTo("ACTIVITY")
+        assertThat(execution.activityId).isEqualTo("activity-1")
+        assertThat(execution.distanceM).isEqualTo(5_000.0)
+        assertThat(executions.getForActivity("activity-1")?.id).isEqualTo(execution.id)
+        assertThat(executions.getForSession("2026-11-02-2026-11-02")?.id).isEqualTo(execution.id)
+
+        val session = plans.getWeek(monday)?.sessions?.first()
+        assertThat(session?.status).isEqualTo(SessionStatus.DONE)
+        assertThat(session?.completionEvidence).isEqualTo(CompletionEvidence.ACTIVITY)
+        assertThat(session?.activityId).isEqualTo("activity-1")
+        assertThat(session?.executionId).isEqualTo(execution.id)
+        assertThat(database.trainingPlanDao().getSession("2026-11-02-2026-11-02")?.completedAt)
+            .isEqualTo(clock.millis())
+    }
+
+    @Test
+    fun `legacy repair only accepts an unlinked legacy completion`(): Unit = runBlocking {
+        plans.saveWeek(plan())
+        activities.saveImportedActivity(activity())
+        val planned = executions.repairLegacyWithActivity(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+        assertThat(planned).isInstanceOf(CompletionOutcome.Rejected::class.java)
+
+        plans.saveWeek(
+            plan().copy(
+                sessions = listOf(
+                    session(monday).copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = CompletionEvidence.MANUAL,
+                    ),
+                    session(monday.plusDays(1)),
+                ),
+            ),
+        )
+        val manual = executions.repairLegacyWithActivity(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+        assertThat(manual).isInstanceOf(CompletionOutcome.Rejected::class.java)
+
+        plans.saveWeek(
+            plan().copy(
+                sessions = listOf(
+                    legacySession(monday, activityId = "activity-1"),
+                    session(monday.plusDays(1)),
+                ),
+            ),
+        )
+        val suspended = executions.repairLegacyWithActivity(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+        assertThat(suspended).isInstanceOf(CompletionOutcome.Rejected::class.java)
+    }
+
+    @Test
+    fun `legacy repair rejects an activity already linked to another session`(): Unit = runBlocking {
+        plans.saveWeek(
+            legacyPlan().copy(
+                sessions = listOf(
+                    legacySession(monday),
+                    session(monday.plusDays(1)),
+                ),
+            ),
+        )
+        activities.saveImportedActivity(activity())
+        executions.recordActivityExecution(
+            "2026-11-02-2026-11-03",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+
+        val outcome = executions.repairLegacyWithActivity(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+
+        assertThat(outcome).isInstanceOf(CompletionOutcome.ActivityAlreadyLinked::class.java)
+        val session = plans.getWeek(monday)?.sessions?.first()
+        assertThat(session?.completionEvidence).isEqualTo(CompletionEvidence.LEGACY_UNVERIFIED)
+        assertThat(session?.activityId).isNull()
+    }
+
+    @Test
+    fun `legacy repair keeps migrated history from other days untouched`(): Unit = runBlocking {
+        val previousMonday = monday.minusWeeks(1)
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = previousMonday,
+                sessions = listOf(legacySession(previousMonday)),
+                weeklyMinutes = 40,
+                longRunMinutes = null,
+                qualityCount = 0,
+                rationale = "Histórico.",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        )
+        plans.saveWeek(legacyPlan())
+        activities.saveImportedActivity(activity())
+
+        executions.repairLegacyWithActivity(
+            "2026-11-02-2026-11-02",
+            "activity-1",
+            Instant.parse("2026-11-02T10:00:00Z"),
+            1_800,
+            5_000.0,
+        )
+
+        val migrated = plans.getWeek(previousMonday)?.sessions?.single()
+        assertThat(migrated?.completionEvidence).isEqualTo(CompletionEvidence.LEGACY_UNVERIFIED)
+        assertThat(migrated?.activityId).isNull()
+        assertThat(migrated?.executionId).isNull()
+        assertThat(executions.getForSession("$previousMonday-$previousMonday")).isNull()
+    }
+
+    @Test
     fun `trash suspends evidence, restore returns it and purge removes the link`(): Unit = runBlocking {
         plans.saveWeek(plan())
         activities.saveImportedActivity(activity())
@@ -379,6 +527,19 @@ class SessionExecutionRepositoryTest {
         confidence = DataConfidence.MEDIUM,
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
+    )
+
+    private fun legacyPlan() = plan().copy(
+        sessions = listOf(
+            legacySession(monday),
+            session(monday.plusDays(1)),
+        ),
+    )
+
+    private fun legacySession(date: LocalDate, activityId: String? = null) = session(date).copy(
+        status = SessionStatus.DONE,
+        completionEvidence = CompletionEvidence.LEGACY_UNVERIFIED,
+        activityId = activityId,
     )
 
     private fun session(date: LocalDate) = PlannedSession(

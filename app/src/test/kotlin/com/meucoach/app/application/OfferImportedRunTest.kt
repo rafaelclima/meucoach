@@ -118,6 +118,25 @@ class OfferImportedRunTest {
     }
 
     @Test
+    fun `queues a repair prompt for a same-day legacy completion`(): Unit = runBlocking {
+        plans.saveWeek(
+            plan().copy(
+                sessions = plan().sessions.map {
+                    it.copy(
+                        status = SessionStatus.DONE,
+                        completionEvidence = CompletionEvidence.LEGACY_UNVERIFIED,
+                    )
+                },
+            ),
+        )
+        val id = saveRun(today)
+
+        offer.evaluate(id)
+
+        assertThat(store.pending.value).containsExactly(id)
+    }
+
+    @Test
     fun `does not offer the legacy session on a race day`(): Unit = runBlocking {
         plans.saveWeek(plan())
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, today))

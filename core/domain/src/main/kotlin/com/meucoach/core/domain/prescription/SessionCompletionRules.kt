@@ -1,5 +1,6 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.model.CompletionEvidence
 import java.time.LocalDate
 
 /**
@@ -95,5 +96,43 @@ object SessionCompletionRules {
         SessionClosureReason.ILLNESS_OR_INJURY
     } else {
         SessionClosureReason.REST_PRESCRIBED
+    }
+
+    /**
+     * A `LEGACY_UNVERIFIED` completion may be repaired only on its own day, by
+     * a run imported on that same day and after explicit confirmation
+     * (ADR 0050 §2.4). Migrated history from older days stays read-only.
+     */
+    fun checkLegacyRepair(
+        session: PlannedSession,
+        activityDate: LocalDate,
+        today: LocalDate,
+        confirmed: Boolean,
+    ): SessionCompletionDecision {
+        if (session.status != SessionStatus.DONE ||
+            session.completionEvidence != CompletionEvidence.LEGACY_UNVERIFIED
+        ) {
+            return SessionCompletionDecision.Blocked("Esta sessão não tem um registro legado para reparar.")
+        }
+        if (session.activityId != null || session.executionId != null) {
+            return SessionCompletionDecision.Blocked("Esta sessão ainda tem um vínculo e não precisa de reparo.")
+        }
+        if (session.date.isAfter(today)) {
+            return SessionCompletionDecision.Blocked("Não é possível reparar um treino que ainda não aconteceu.")
+        }
+        if (session.date != today) {
+            return SessionCompletionDecision.Blocked(
+                "O histórico migrado não é promovido. Só o treino de hoje pode ser reparado.",
+            )
+        }
+        if (activityDate != session.date) {
+            return SessionCompletionDecision.Blocked("Esta corrida pertence a outro dia.")
+        }
+        if (!confirmed) {
+            return SessionCompletionDecision.Blocked(
+                "Confirme que esta corrida é o treino do dia para reparar o registro.",
+            )
+        }
+        return SessionCompletionDecision.Allowed()
     }
 }

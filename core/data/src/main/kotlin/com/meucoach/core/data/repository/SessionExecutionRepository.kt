@@ -264,6 +264,82 @@ class SessionExecutionRepository(
         }
     }
 
+    /**
+     * Repairs a same-day legacy completion with the imported run.
+     *
+     * The legacy row has no execution or activity link (migration or purge).
+     * The repair creates the execution and keeps the original completion time;
+     * only an unlinked `DONE` + `LEGACY_UNVERIFIED` row can be repaired, so the
+     * migrated history from older days stays untouched (ADR 0050 §2.4).
+     */
+    suspend fun repairLegacyWithActivity(
+        plannedSessionId: String,
+        activityId: String,
+        startedAt: Instant,
+        durationSec: Int,
+        distanceM: Double?,
+    ): CompletionOutcome = runCatching {
+        database.withTransaction {
+            val session = sessions.getSession(plannedSessionId)
+                ?: return@withTransaction CompletionOutcome.Rejected("Sessão planejada não encontrada.")
+            if (session.status != SessionStatus.DONE ||
+                session.completionEvidence != CompletionEvidence.LEGACY_UNVERIFIED ||
+                session.activityId != null ||
+                session.executionId != null
+            ) {
+                return@withTransaction CompletionOutcome.Rejected(
+                    "Este treino não tem um registro legado sem vínculo para reparar.",
+                )
+            }
+            if (executions.findBySession(plannedSessionId) != null) {
+                return@withTransaction CompletionOutcome.Rejected(
+                    "Este treino já tem uma execução registrada.",
+                )
+            }
+            if (sessions.getSessionByActivityId(activityId) != null ||
+                executions.findByActivity(activityId) != null ||
+                database.raceEventDao().findByActivity(activityId) != null
+            ) {
+                return@withTransaction CompletionOutcome.ActivityAlreadyLinked(
+                    "Esta corrida já está vinculada a outro treino ou prova.",
+                )
+            }
+            val execution = SessionExecution(
+                id = idGenerator(),
+                plannedSessionId = plannedSessionId,
+                activityId = activityId,
+                startedAt = startedAt,
+                endedAt = startedAt.plusSeconds(durationSec.toLong()),
+                durationSec = durationSec,
+                distanceM = distanceM,
+                rpe = null,
+                source = ExecutionSource.ACTIVITY,
+                createdAt = clock.instant(),
+            )
+            executions.insert(execution.toEntity())
+            val updated = sessions.repairLegacyEvidence(
+                id = plannedSessionId,
+                executionId = execution.id,
+                activityId = activityId,
+                completedAt = session.completedAt ?: clock.millis(),
+            )
+            if (updated != 1) throw SessionChangedException()
+            CompletionOutcome.Recorded(execution)
+        }
+    }.getOrElse { error ->
+        when (error) {
+            is SQLiteConstraintException -> CompletionOutcome.ActivityAlreadyLinked(
+                "Esta corrida já está vinculada a outro treino.",
+            )
+
+            is SessionChangedException -> CompletionOutcome.Rejected(
+                "Não foi possível reparar o registro. Tente novamente.",
+            )
+
+            else -> throw error
+        }
+    }
+
     /** Closes a day that will not be trained (rest, illness, skip, missed, replaced). */
     suspend fun closeSession(
         plannedSessionId: String,

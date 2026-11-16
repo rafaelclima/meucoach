@@ -17,6 +17,7 @@ import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.model.CompletionEvidence
 
 @Composable
 fun ImportedRunPromptHost(viewModel: ImportedRunPromptViewModel = hiltViewModel()) {
@@ -24,7 +25,7 @@ fun ImportedRunPromptHost(viewModel: ImportedRunPromptViewModel = hiltViewModel(
     ImportedRunPromptDialog(
         state = state,
         onLink = viewModel::link,
-        onReplaceManualRecord = viewModel::replaceManualRecord,
+        onRepairRecord = viewModel::repairRecord,
         onKeepAsFreeRun = viewModel::keepAsFreeRun,
         onConsumeMessage = viewModel::consumeMessage,
     )
@@ -34,7 +35,7 @@ fun ImportedRunPromptHost(viewModel: ImportedRunPromptViewModel = hiltViewModel(
 internal fun ImportedRunPromptDialog(
     state: ImportedRunPromptState,
     onLink: () -> Unit,
-    onReplaceManualRecord: () -> Unit,
+    onRepairRecord: () -> Unit,
     onKeepAsFreeRun: () -> Unit,
     onConsumeMessage: () -> Unit,
 ) {
@@ -48,7 +49,8 @@ internal fun ImportedRunPromptDialog(
 
     val colors = McTheme.colors
     val isOffer = prompt is ImportedRunPromptUi.Offer
-    val canReplace = prompt is ImportedRunPromptUi.AlreadyDone && prompt.canReplace
+    val repairEvidence = (prompt as? ImportedRunPromptUi.AlreadyDone)?.repairEvidence
+    val canRepair = repairEvidence != null
     AlertDialog(
         onDismissRequest = { if (!state.isLinking) onKeepAsFreeRun() },
         modifier = Modifier.testTag("imported-run-prompt"),
@@ -56,7 +58,7 @@ internal fun ImportedRunPromptDialog(
             Text(
                 text = when {
                     isOffer -> "Corrida importada"
-                    canReplace -> "Corrigir registro do treino"
+                    canRepair -> "Corrigir registro do treino"
                     else -> "Treino de hoje já concluído"
                 },
             )
@@ -91,33 +93,53 @@ internal fun ImportedRunPromptDialog(
                         color = colors.textSecondary,
                     )
                 } else if (prompt is ImportedRunPromptUi.AlreadyDone) {
-                    if (prompt.canReplace) {
-                        Text(
-                            text = "O treino de hoje foi marcado como feito sem registro, " +
-                                "mas esta corrida é do mesmo dia.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Quer substituir o registro manual pelos dados reais da corrida? " +
-                                "A duração e o RPE informados à mão serão descartados.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                    } else {
-                        Text(
-                            text = "O treino de hoje já foi concluído ${prompt.evidenceLabel}.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Esta corrida vai ficar registrada no app como treino livre. " +
-                                "O coach não vai usá-la como o treino do dia.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
+                    when (prompt.repairEvidence) {
+                        CompletionEvidence.MANUAL -> {
+                            Text(
+                                text = "O treino de hoje foi marcado como feito sem registro, " +
+                                    "mas esta corrida é do mesmo dia.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Quer substituir o registro manual pelos dados reais da corrida? " +
+                                    "A duração e o RPE informados à mão serão descartados.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                        }
+
+                        CompletionEvidence.LEGACY_UNVERIFIED -> {
+                            Text(
+                                text = "O treino de hoje foi concluído sem verificação, " +
+                                    "mas esta corrida é do mesmo dia e pode ser o treino que ficou sem vínculo.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Quer usar esta corrida como o treino de hoje? " +
+                                    "Só este dia é reparado; o histórico antigo continua como está.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                        }
+
+                        else -> {
+                            Text(
+                                text = "O treino de hoje já foi concluído ${prompt.evidenceLabel}.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Esta corrida vai ficar registrada no app como treino livre. " +
+                                    "O coach não vai usá-la como o treino do dia.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                        }
                     }
                 }
                 state.message?.let { message ->
@@ -140,9 +162,9 @@ internal fun ImportedRunPromptDialog(
                     modifier = Modifier.testTag("imported-run-link"),
                 )
 
-                canReplace -> McPrimaryButton(
-                    text = if (state.isLinking) "Substituindo…" else "Usar esta corrida",
-                    onClick = onReplaceManualRecord,
+                canRepair -> McPrimaryButton(
+                    text = if (state.isLinking) "Corrigindo…" else "Usar esta corrida",
+                    onClick = onRepairRecord,
                     enabled = !state.isLinking,
                     modifier = Modifier.testTag("imported-run-replace"),
                 )
@@ -165,8 +187,12 @@ internal fun ImportedRunPromptDialog(
                     modifier = Modifier.testTag("imported-run-keep"),
                 )
 
-                canReplace -> McTextButton(
-                    text = "Manter sem registro",
+                canRepair -> McTextButton(
+                    text = if (repairEvidence == CompletionEvidence.MANUAL) {
+                        "Manter sem registro"
+                    } else {
+                        "Manter sem vínculo"
+                    },
                     onClick = onKeepAsFreeRun,
                     trailingArrow = false,
                     enabled = !state.isLinking,

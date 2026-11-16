@@ -125,6 +125,19 @@ interface TrainingPlanDao {
         completedAt: Long,
     ): Int
 
+    /**
+     * Repairs a same-day legacy completion by attaching the imported run. Only
+     * a DONE/LEGACY_UNVERIFIED row without any link can be repaired; older
+     * migrated history is never matched by the use case (ADR 0050 §2.4).
+     */
+    @Query(
+        "UPDATE planned_sessions SET status = 'DONE', completionEvidence = 'ACTIVITY', " +
+            "executionId = :executionId, activityId = :activityId, completedAt = :completedAt " +
+            "WHERE id = :id AND status = 'DONE' AND completionEvidence = 'LEGACY_UNVERIFIED' " +
+            "AND activityId IS NULL AND executionId IS NULL",
+    )
+    suspend fun repairLegacyEvidence(id: String, executionId: String, activityId: String, completedAt: Long): Int
+
     @Query(
         "UPDATE planned_sessions SET status = 'CLOSED', closureReason = :reason, " +
             "skipReason = :note, closedAt = :closedAt, completedAt = NULL, " +

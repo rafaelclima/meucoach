@@ -1,6 +1,6 @@
 # ADR 0050 — Volume real, treino extra e reparo de evidência legada
 
-**Status:** Aprovado em 2026-11-16 — implementação em andamento (C4-38/C4-39 concluídas; reparo, golden e docs em C4-40..C4-43).
+**Status:** Aprovado em 2026-11-16 — implementação em andamento (C4-38..C4-40 concluídas; golden, copy e docs em C4-41..C4-43).
 **Data:** 2026-11-16
 **Escopo:** `VolumeProgression`, `MesoCycle`, `LevelGraduationEngine`,
 `VolumeReference`, `StrongRun`, `TrainingPlanRepository`/`ActivityRepository` (projeção),
@@ -119,6 +119,14 @@ data class StrongRun(
 - O reparo é auditável (quem/quando/origem) e reversível? A reversão segue a
   lixeira/undo do vínculo; o histórico migrado não é tocado.
 - Se a sessão já está `DONE` com `ACTIVITY`, não há reparo.
+
+> **Implementação (C4-40):** `SessionCompletionRules.checkLegacyRepair`,
+> `SessionExecutionRepository.repairLegacyWithActivity` e
+> `RepairLegacyCompletion`; o prompt de import oferece a correção para
+> `MANUAL`/`LEGACY` e envia `confirmed=true` só após o toque. O reparo só
+> aceita o dia atual e uma sessão sem `activityId`/`executionId`; o histórico
+> antigo não é tocado. `PLANNED` continua no fluxo normal de vínculo; `MANUAL`
+> continua no `ReplaceManualCompletion`.
 
 ### 2.5 Sem dupla contagem
 

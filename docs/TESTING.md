@@ -240,7 +240,7 @@ Evidência atual (12/11/2026):
 - `TimeProviderTest` / `TimeDrivenStateTest`: relógio fixo, 23:59→00:01, domingo→segunda, fuso, DST e plano semanal.
 - `TrainingLoadEngineTest`: `LoadCoverage`, `LoadDataState`, frescor, 7/8 dias e limites 0,79/0,8/1,3/1,31.
 - `DailyPrescriptionEngineTest`, `DailyPrescriptionRepositoryTest` e `GetTodayPrescriptionTest`: `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, N-01/N-02, calor, sem calibração, versão e hash.
-- `SessionMatcherTest`, `SessionCompletionRulesTest`, `SessionExecutionRepositoryTest` e `CompleteSessionTest`: vínculo 1:1, manual válido/inválido, futuro, ontem, descanso/doença e legado.
+- `SessionMatcherTest`, `SessionCompletionRulesTest`, `SessionExecutionRepositoryTest`, `CompleteSessionTest` e `RepairLegacyCompletionTest`: vínculo 1:1, manual válido/inválido, futuro, ontem, descanso/doença, legado do mesmo dia com confirmação e histórico migrado intocado.
 - `TrashPolicyTest`, `DataEpochStoreTest`, `DataResetCoordinatorTest`, `HealthSyncServiceTest` e `ImportServiceTest`: lixeira de 7 dias, expurgo por clock, reset sem ressurreição e época.
 - `MeuCoachDatabaseMigrationTest`: 10→11, 11→12 e 12→13 com banco antigo, backfill e preservação de status/planos.
 - `Cycle1RegressionTest`: gates de disponibilidade, espaçamento, prontidão vermelha, ACWR desconhecido, cobertura insuficiente, plano no meio da semana, `DONE` sem evidência e progressão bloqueada por legado.

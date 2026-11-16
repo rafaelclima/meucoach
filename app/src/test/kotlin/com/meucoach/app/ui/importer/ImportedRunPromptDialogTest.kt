@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.model.CompletionEvidence
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -38,7 +39,7 @@ class ImportedRunPromptDialogTest {
                         ),
                     ),
                     onLink = { linked = true },
-                    onReplaceManualRecord = {},
+                    onRepairRecord = {},
                     onKeepAsFreeRun = { kept = true },
                     onConsumeMessage = {},
                 )
@@ -66,11 +67,11 @@ class ImportedRunPromptDialogTest {
                             activityTitle = "Corrida",
                             activityDetail = "6,00 km · 40:00",
                             evidenceLabel = "sem registro de corrida",
-                            canReplace = false,
+                            repairEvidence = null,
                         ),
                     ),
                     onLink = {},
-                    onReplaceManualRecord = {},
+                    onRepairRecord = {},
                     onKeepAsFreeRun = { kept = true },
                     onConsumeMessage = {},
                 )
@@ -98,11 +99,11 @@ class ImportedRunPromptDialogTest {
                             activityTitle = "Corrida",
                             activityDetail = "6,00 km · 40:00",
                             evidenceLabel = "sem registro de corrida",
-                            canReplace = true,
+                            repairEvidence = CompletionEvidence.MANUAL,
                         ),
                     ),
                     onLink = {},
-                    onReplaceManualRecord = { replaced = true },
+                    onRepairRecord = { replaced = true },
                     onKeepAsFreeRun = {},
                     onConsumeMessage = {},
                 )
@@ -116,5 +117,37 @@ class ImportedRunPromptDialogTest {
         compose.onNodeWithTag("imported-run-replace").performClick()
 
         assertThat(replaced).isTrue()
+    }
+
+    @Test
+    fun `offers to repair an unverified same-day completion`() {
+        var repaired = false
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ImportedRunPromptDialog(
+                    state = ImportedRunPromptState(
+                        prompt = ImportedRunPromptUi.AlreadyDone(
+                            activityId = "activity-1",
+                            activityTitle = "Corrida",
+                            activityDetail = "6,00 km · 40:00",
+                            evidenceLabel = "não verificado",
+                            repairEvidence = CompletionEvidence.LEGACY_UNVERIFIED,
+                        ),
+                    ),
+                    onLink = {},
+                    onRepairRecord = { repaired = true },
+                    onKeepAsFreeRun = {},
+                    onConsumeMessage = {},
+                )
+            }
+        }
+
+        compose.onNodeWithText("Corrigir registro do treino").assertIsDisplayed()
+        compose
+            .onNodeWithText("Só este dia é reparado", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithTag("imported-run-replace").performClick()
+
+        assertThat(repaired).isTrue()
     }
 }

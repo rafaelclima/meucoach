@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.CompleteSessionRequest
 import com.meucoach.app.application.CompleteSessionResult
+import com.meucoach.app.application.RepairLegacyCompletion
+import com.meucoach.app.application.RepairLegacyCompletionRequest
+import com.meucoach.app.application.RepairLegacyCompletionResult
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.ReplaceManualCompletionRequest
 import com.meucoach.app.application.ReplaceManualCompletionResult
@@ -20,6 +23,9 @@ import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionCompletionDecision
+import com.meucoach.core.domain.prescription.SessionCompletionRules
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.CompletionEvidence
@@ -55,9 +61,14 @@ sealed interface ImportedRunPromptUi {
         override val activityTitle: String,
         override val activityDetail: String,
         val evidenceLabel: String,
-        /** True only for an explicit manual declaration that can be corrected. */
-        val canReplace: Boolean,
-    ) : ImportedRunPromptUi
+        /**
+         * Evidence that a same-day imported run can correct: an explicit manual
+         * declaration or an unlinked `LEGACY_UNVERIFIED` completion.
+         */
+        val repairEvidence: CompletionEvidence?,
+    ) : ImportedRunPromptUi {
+        val canRepair: Boolean get() = repairEvidence != null
+    }
 }
 
 data class ImportedRunPromptState(
@@ -81,6 +92,7 @@ class ImportedRunPromptViewModel @Inject constructor(
     private val executions: SessionExecutionRepository,
     private val completeSession: CompleteSession,
     private val replaceManualCompletion: ReplaceManualCompletion,
+    private val repairLegacyCompletion: RepairLegacyCompletion,
     private val store: ImportedRunPromptStore,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
@@ -143,33 +155,66 @@ class ImportedRunPromptViewModel @Inject constructor(
         message.value = null
     }
 
-    /** Corrects an accidental "fiz sem registro" with the imported run. */
-    fun replaceManualRecord() {
+    /** Corrects a same-day manual or legacy completion with the imported run. */
+    fun repairRecord() {
         val current = prompt.value as? ImportedRunPromptUi.AlreadyDone ?: return
-        if (!current.canReplace || linking.value) return
+        val evidence = current.repairEvidence ?: return
+        if (linking.value) return
         viewModelScope.launch {
             linking.value = true
             val today = timeProvider.currentDate()
-            val result = replaceManualCompletion(
-                ReplaceManualCompletionRequest(
-                    date = today,
-                    today = today,
-                    activityId = current.activityId,
-                    zoneId = timeProvider.zoneId.value,
-                ),
-            )
-            linking.value = false
-            when (result) {
-                is ReplaceManualCompletionResult.Replaced -> {
-                    store.clear()
-                    prompt.value = null
-                    message.value = "Registro manual substituído pela corrida. " +
-                        "O treino agora entra em volume, carga e zonas."
+            val zone = timeProvider.zoneId.value
+            when (evidence) {
+                CompletionEvidence.MANUAL -> {
+                    val result = replaceManualCompletion(
+                        ReplaceManualCompletionRequest(
+                            date = today,
+                            today = today,
+                            activityId = current.activityId,
+                            zoneId = zone,
+                        ),
+                    )
+                    linking.value = false
+                    when (result) {
+                        is ReplaceManualCompletionResult.Replaced -> finishRepair(
+                            "Registro manual substituído pela corrida. " +
+                                "O treino agora entra em volume, carga e zonas.",
+                        )
+
+                        is ReplaceManualCompletionResult.Rejected -> message.value = result.message
+                    }
                 }
 
-                is ReplaceManualCompletionResult.Rejected -> message.value = result.message
+                CompletionEvidence.LEGACY_UNVERIFIED -> {
+                    val result = repairLegacyCompletion(
+                        RepairLegacyCompletionRequest(
+                            date = today,
+                            today = today,
+                            activityId = current.activityId,
+                            confirmed = true,
+                            zoneId = zone,
+                        ),
+                    )
+                    linking.value = false
+                    when (result) {
+                        is RepairLegacyCompletionResult.Repaired -> finishRepair(
+                            "Registro reparado: a corrida de hoje agora é o treino. " +
+                                "O histórico antigo continua como estava.",
+                        )
+
+                        is RepairLegacyCompletionResult.Rejected -> message.value = result.message
+                    }
+                }
+
+                else -> linking.value = false
             }
         }
+    }
+
+    private fun finishRepair(feedback: String) {
+        store.clear()
+        prompt.value = null
+        message.value = feedback
     }
 
     fun consumeMessage() {
@@ -199,18 +244,22 @@ class ImportedRunPromptViewModel @Inject constructor(
     private suspend fun candidate(activityId: String, today: LocalDate, zone: ZoneId): ImportedRunPromptUi? {
         val activity = activities.getActivitySummary(activityId) ?: return null
         if (activity.sport != Sport.RUNNING && activity.sport != Sport.TREADMILL) return null
-        if (activity.startTime.atZone(zone).toLocalDate() != today) return null
-        if (executions.getForActivity(activityId) != null) return null
-        val plan = plans.getWeek(today.weekStart()) ?: return null
-        val session = plan.sessions.firstOrNull { it.date == today } ?: return null
-        if (session.status == SessionStatus.CLOSED) return null
-        if (session.activityId == activityId) return null
-        if (prescriptions.getLatest(today)?.isRest == true) return null
+        val activityDate = activity.startTime.atZone(zone).toLocalDate()
+        val plan = if (activityDate == today) plans.getWeek(today.weekStart()) else null
+        val session = plan?.sessions?.firstOrNull { it.date == today } ?: return null
 
         val title = sportLabel(activity.sport)
         val detail = activityDetail(activity)
-        return when (session.status) {
-            SessionStatus.PLANNED -> ImportedRunPromptUi.Offer(
+        return when {
+            executions.getForActivity(activityId) != null -> null
+
+            session.status == SessionStatus.CLOSED -> null
+
+            session.activityId == activityId -> null
+
+            prescriptions.getLatest(today)?.isRest == true -> null
+
+            session.status == SessionStatus.PLANNED -> ImportedRunPromptUi.Offer(
                 activityId = activity.id,
                 activityTitle = title,
                 activityDetail = detail,
@@ -218,16 +267,32 @@ class ImportedRunPromptViewModel @Inject constructor(
                 sessionDurationMin = session.durationMin,
             )
 
-            SessionStatus.DONE -> ImportedRunPromptUi.AlreadyDone(
+            else -> ImportedRunPromptUi.AlreadyDone(
                 activityId = activity.id,
                 activityTitle = title,
                 activityDetail = detail,
                 evidenceLabel = evidenceLabel(session.completionEvidence),
-                canReplace = session.completionEvidence == CompletionEvidence.MANUAL,
+                repairEvidence = repairEvidence(session, activityDate, today),
             )
-
-            SessionStatus.CLOSED -> null
         }
+    }
+
+    private fun repairEvidence(
+        session: PlannedSession,
+        activityDate: LocalDate,
+        today: LocalDate,
+    ): CompletionEvidence? = when {
+        session.completionEvidence == CompletionEvidence.MANUAL -> CompletionEvidence.MANUAL
+
+        session.completionEvidence == CompletionEvidence.LEGACY_UNVERIFIED &&
+            SessionCompletionRules.checkLegacyRepair(
+                session = session,
+                activityDate = activityDate,
+                today = today,
+                confirmed = true,
+            ) is SessionCompletionDecision.Allowed -> CompletionEvidence.LEGACY_UNVERIFIED
+
+        else -> null
     }
 
     private fun activityDetail(activity: ActivitySummary): String = listOfNotNull(

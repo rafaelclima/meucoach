@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S5 (C4-38 + C4-39)
-> **Último commit:** S5 — `feat(domain): use real volume reference in progression, meso and graduation (C4-39)` (C4-38: `91520d0`)
-> **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S5 concluída — C4-38 e C4-39 DONE**
-> **Task atual:** C4-40 (TODO)
-> **Próxima task:** C4-40
+> **Última atualização:** 16/11/2026 — S5.1 (C4-40)
+> **Último commit:** S5.1 — `feat(app): repair same-day legacy completion with confirmation (C4-40)`
+> **Fase:** 1 — Domínio — **em andamento** (C4-40 antecipada de S13)
+> **Sessão atual:** **S5.1 concluída — C4-40 DONE**
+> **Task atual:** C4-14 (TODO)
+> **Próxima task:** C4-14
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 899 verdes; `:core:data:test` 171; `:app:testDebugUnitTest` 890; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; FIT 93,01% de branches
-> **Próxima ação:** ler ADR 0050 §2.4–2.5 e FR-408; abrir C4-40 (reparo `LEGACY_UNVERIFIED` do mesmo dia com confirmação), TDD.
+> **Gates da última sessão:** `:core:domain:test` 906 verdes; `:core:data:test` 175; `:app:testDebugUnitTest` 901; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; FIT 93,01% de branches
+> **Próxima ação:** ler ADR 0047 §2 e FR-403; abrir C4-14 (`WorkoutStructure`/`WorkoutBlock` + JSON), TDD.
 
 ### 0.1 O que já está pronto
 
@@ -79,10 +79,18 @@
 - [x] 14 testes em `VolumeReferenceTest` e 8 em `VolumeReferenceProjectionTest`; `SPECIAL_WEEK_RULE_IDS` unifica a lista usada por `VolumeProgression`/`MesoCycle`.
 - [x] C4-39: `VolumeProgression` usa `strongMinutes` como base e adesão planejada; `MesoCycle` usa `strongSessions`; `LevelGraduation` usa `StrongRun` real (60/90). `TodayViewModel`/`TutorialViewModel`/`ReplanContextBuilder`/`LevelGraduationContextBuilder` passam a projeção; fallback legado só para `null` em testes/callers antigos.
 
+**S5.1 — reparo LEGACY (C4-40)**
+
+- [x] `SessionCompletionRules.checkLegacyRepair(...)`: só `DONE` + `LEGACY_UNVERIFIED`, sem `activityId`/`executionId`, no mesmo dia, corrida do mesmo dia e confirmação explícita; histórico antigo bloqueado.
+- [x] `TrainingPlanDao.repairLegacyEvidence` + `SessionExecutionRepository.repairLegacyWithActivity(...)`: cria a execução ausente, grava `activityId`, troca a evidência para `ACTIVITY`, mantém `DONE` e o `completedAt` original; vínculo 1:1 pelos índices.
+- [x] `RepairLegacyCompletion` no `:app` e `ImportedRunPromptViewModel`/diálogo: o prompt de import oferece “Corrigir registro” para `MANUAL` e `LEGACY`; confirmação explícita; o histórico migrado fica intocado.
+- [x] 7 testes de regra, 4 de repositório, 7 do caso de uso e 4 de prompt/UI; `OfferImportedRunTest` cobre a fila do legado.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
 - `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
+- O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe, mas o diário e o recomendador ainda não o leem; a fiação é C4-04/C4-29.
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
@@ -221,6 +229,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S3** | C4-22..C4-25 | ACWR confiável, limites, progressão | testes de carga; consistência | commit + testes |
 | **S4** | C4-28, C4-34..C4-36 | Prontidão, check-in, sono | testes de readiness/health | commit + testes |
 | **S5** | C4-38, C4-39 | `VolumeReference`/`StrongRun`; meso/graduação | testes de volume | C4-38 e C4-39 concluídas (`VolumeReferenceTest`, `VolumeReferenceProjectionTest`, base/meso/graduação reais) |
+| **S5.1** | C4-40 | Reparo `LEGACY` do mesmo dia, com confirmação | testes de reparo; migrado intocado | C4-40 concluída (`SessionCompletionRulesTest`, repositório, `RepairLegacyCompletionTest`, prompt) |
 | **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | commit + testes |
 | **S7** | C4-02, C4-07 | Gerador estrutural + `G-PER-03` | `G-PER-03`; propriedades | commit + golden |
 | **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | commit + testes |
@@ -228,7 +237,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S10** | C4-44, C4-47, C4-48, C4-49 | Gate de dados, upgrade, replanner | `G-UPGRADE-01`; idempotência | commit + golden |
 | **S11** | C4-06, C4-30, C4-31, C4-50..C4-52, C4-08 | Copy, check-in UI, reavaliação tardia, decisão/catálogo | UI tests; catálogo | commit + testes |
 | **S12** | C4-18, C4-19, C4-20, C4-21 | Strides/intro fartlek; estrutura no briefing; `G-PER-05`; docs | testes de iniciante; UI | commit + testes |
-| **S13** | C4-40..C4-43 | Reparo LEGACY; crédito do treino extra; UI | `G-VOL-02`; testes de reparo | commit + golden |
+| **S13** | C4-41..C4-43 | Crédito do treino extra; UI do review | `G-VOL-02`; testes de reparo | commit + golden |
 | **S14** | C4-26, C4-27, C4-32, C4-33, C4-37 | UI/copy de carga, prontidão, sono; docs | goldens; UI/a11y; docs | commit + testes |
 | **S15** | C4-57..C4-60 | Alvos pace×FC, horizonte/pace dinâmico, copy, `createdAt` | testes; copy | commit + testes |
 | **S16** | C4-53, C4-54 | Versões, suíte completa, Kover, detekt, spotless | `check`/`koverVerify`/`assembleDebug` | commit + logs |
@@ -282,6 +291,47 @@ C4-53 → C4-54 → C4-55 → C4-56
 - `VolumeReference.strongSessions` conta todas as corridas fortes; por isso a adesão usa o plano, não esse numerador. O ADR 0050 §2.2 foi revisado para registrar isso.
 - O fallback legado (`VolumeReferenceBuilder.fromPlans`) só roda quando `volumeReferences == null` (testes/callers antigos); lista vazia significa “sem referência real”.
 - `G-VOL-02`, o rationale “treino extra contou” e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam em C4-41/C4-42. Há uma inconsistência numérica no golden (114 + 28 + 33 → 127) a reconciliar antes de escrevê-lo.
+
+**Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
+
+---
+
+## 5.1 Sessão S5.1 — C4-40 concluída
+
+> C4-40 foi antecipada de S13 porque só depende de C4-39; a S6 (catálogo) continua sendo a próxima sessão planejada.
+
+**Objetivo:** permitir que uma corrida importada no mesmo dia repare uma sessão `DONE` + `LEGACY_UNVERIFIED` sem vínculo, com confirmação explícita, sem promover o histórico migrado.
+
+**Contexto obrigatório:**
+
+- ADR 0050 §2.4–2.5 e FR-408.
+- `SessionCompletionRules`, `SessionExecutionRepository`/`TrainingPlanDao`, `ReplaceManualCompletion`, `ImportedRunPromptViewModel`/diálogo e `OfferImportedRun`.
+
+**Task C4-40 — reparo `LEGACY_UNVERIFIED` do mesmo dia**
+
+- [x] `SessionCompletionRules.checkLegacyRepair(...)`: exige `DONE` + `LEGACY_UNVERIFIED`, sem `activityId`/`executionId`, sessão e corrida no dia atual e confirmação explícita.
+- [x] `TrainingPlanDao.repairLegacyEvidence` só atualiza a linha legada sem vínculo; `SessionExecutionRepository.repairLegacyWithActivity(...)` cria a execução e fecha o vínculo 1:1 na mesma transação.
+- [x] `RepairLegacyCompletion` no `:app` revalida plano, corrida, esporte, data, confirmação e estado antes de reparar.
+- [x] `ImportedRunPromptViewModel`/diálogo: `AlreadyDone` distingue `MANUAL` e `LEGACY`; o botão “Usar esta corrida” é a confirmação explícita; a cópia explica que só o dia atual é reparado.
+- [x] `OfferImportedRun` enfileira o prompt para o legado do mesmo dia; o histórico de dias anteriores continua somente leitura.
+
+**Aceite da sessão (C4-40):**
+
+- [x] `./gradlew :core:domain:test` verde (906).
+- [x] `:core:data:test` 175; `:app:testDebugUnitTest` 901; `:app:assembleDebug`.
+- [x] `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01%.
+- [x] Nenhum dado real; nenhuma migração; nenhuma alteração de schema.
+- [x] §0/§6/§7/PROGRESS atualizados.
+- [x] Commit: `feat(app): repair same-day legacy completion with confirmation (C4-40)`.
+
+**Notas de implementação:**
+
+- A confirmação é um campo do request (`confirmed`); sem ele o caso de uso rejeita. O botão do diálogo é a confirmação visual.
+- O reparo preserva o `completedAt` original quando existe; sem ele, usa o clock atual.
+- Um `LEGACY` com `activityId` (evidência suspensa pela lixeira) não é reparável: restaurar a atividade devolve `ACTIVITY`; o reparo é só para o caso sem vínculo.
+- O histórico migrado é bloqueado pela data (`session.date == today`) e o repositório só atualiza a linha pelo id, sem backfill.
+- O `ImportedRunPromptViewModel` ganhou uma dependência e a entrada de `LongParameterList` do baseline do detekt foi atualizada; a dívida é pré-existente (ViewModel com muitos repositórios), não um achado novo.
+- A tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`; o caminho do legado é o prompt de import (ADR 0050 §7).
 
 **Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
 
@@ -366,7 +416,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-38 | `VolumeReference` + builder | C4-22 | L | S5 | ADR 0050 | Projeção determinística | `VolumeReferenceTest` (14); `VolumeReferenceProjectionTest` (8); commit S5 |
 | [x] | C4-39 | Volume/meso/graduação usam referência real | C4-38 | L | S5 | ADR 0050 | Base real; adesão separada | `VolumeProgressionTest`/`MesoCycleTest`/`LevelGraduationEngineTest`; fiação app; commit S5 |
-| [ ] | C4-40 | Reparo LEGACY do mesmo dia | C4-39 | M | S13 | ADR 0050 | Confirmação; migrado intacto | — |
+| [x] | C4-40 | Reparo LEGACY do mesmo dia | C4-39 | M | S5.1 | ADR 0050 | Confirmação; migrado intacto | `SessionCompletionRulesTest` (7); `SessionExecutionRepositoryTest` (+4); `RepairLegacyCompletionTest` (7); prompt/UI (+4); commit S5.1 |
 | [ ] | C4-41 | Golden `G-VOL-02` + copy | C4-38..40 | M | S13 | ADR 0050 | Golden/copy | — |
 | [ ] | C4-42 | Docs `R-PLAN-01 v2`, `R-LVL-03`, ADR | C4-38..41 | S | S13 | ADR 0050 | Docs | — |
 | [ ] | C4-43 | Review “planejada/mantida/rebaixada” | C4-39 | S | S13 | ADR 0050 | UI/teste | — |
@@ -469,6 +519,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** a base é `max(strongMinutes)` das semanas usáveis; a adesão continua no `strongCompletionRatio` do plano, porque `strongSessions` conta treino extra. `MesoCycle` usa `strongSessions >= 1` e semana não especial; a graduação usa `StrongRun` real 60/90 e ignora duração apenas planejada. `volumeReferences` é opcional (`null` = fallback legado derivado do plano, só testes/callers antigos; `emptyList()` = sem referência real). A projeção é montada em `TodayViewModel`, `TutorialViewModel`, `ReplanContextBuilder` e `LevelGraduationContextBuilder`; o replanner inclui as referências no `inputsHash`. `G-VOL-02` (inconsistência 114 + 28 + 33 → 127), reparo `LEGACY`, copy e docs completos ficam em C4-40..C4-43.
 - **Próximo:** C4-40 — reparo `LEGACY_UNVERIFIED` do mesmo dia com confirmação, TDD.
 
+### S5.1 — 2026-11-16 — Reparo LEGACY do mesmo dia (C4-40)
+
+- **Status:** DONE
+- **Tasks:** C4-40 (antecipada de S13).
+- **Arquivos:** `core/domain/.../prescription/SessionCompletionRules.kt`, `SessionCompletionRulesTest.kt`, `core/data/.../db/dao/TrainingPlanDao.kt`, `repository/SessionExecutionRepository.kt`, `SessionExecutionRepositoryTest.kt`, `app/.../application/RepairLegacyCompletion.kt` (novo), `RepairLegacyCompletionTest.kt` (novo), `app/.../ui/importer/ImportedRunPromptViewModel.kt`, `ImportedRunPromptDialog.kt`, `ImportedRunPromptViewModelTest.kt`, `ImportedRunPromptDialogTest.kt`, `OfferImportedRunTest.kt`, `app/config/detekt/baseline.xml`, `docs/adr/0050-volume-credit-unplanned-activities.md`, `docs/TESTING.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 906 verdes (+7); `:core:data:test` 175 (+4); `:app:testDebugUnitTest` 901 (+11); `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; FIT 93,01% de branches. Na primeira execução completa, `MetricsImportViewModelTest` estourou o timeout de 30 s (arquivo não tocado); passou isolado e na reexecução da suíte.
+- **Commit:** `feat(app): repair same-day legacy completion with confirmation (C4-40)`.
+- **Decisões/notas:** a regra só aceita `DONE` + `LEGACY_UNVERIFIED` sem `activityId`/`executionId`, sessão e corrida no dia atual e `confirmed=true`; o repositório cria a execução ausente, preserva `completedAt` e grava o vínculo 1:1. O prompt de import distingue `MANUAL` e `LEGACY` em `AlreadyDone.repairEvidence`; o botão “Usar esta corrida” é a confirmação. A tela Hoje continua só com correção manual; o legado passa pelo prompt. O baseline do detekt foi atualizado para o `LongParameterList` pré-existente do ViewModel; nenhum schema/migração foi alterado.
+- **Próximo:** S6 / C4-14 (`WorkoutStructure`/`WorkoutBlock` + JSON), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -553,9 +613,9 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 890 | Atualizar conforme novos testes |
-| `:core:domain` | 899 | Atualizar conforme novos testes |
-| `:core:data` | 171 | Atualizar |
+| `:app` | 901 | Atualizar conforme novos testes |
+| `:core:domain` | 906 | Atualizar conforme novos testes |
+| `:core:data` | 175 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -644,11 +704,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-40, S13)
+## 14. Próxima ação (C4-14, S6)
 
-1. Abrir `docs/adr/0050-volume-credit-unplanned-activities.md` §2.4–2.5 e o FR-408 do PRD.
-2. Ler `SessionCompletionRules`, `ImportService`/oferta do mesmo dia, `TodayViewModel` e os testes de vínculo `LEGACY_UNVERIFIED`.
-3. Escrever os testes que falham de C4-40: corrida importada no mesmo dia de sessão `PLANNED`/`DONE`/`MANUAL`/`LEGACY` sem vínculo, confirmação explícita, reparo 1:1 (`activityId`, `ACTIVITY`, `DONE`, execução) e histórico migrado intocado.
-4. Implementar C4-40 com TDD, rodar `:core:domain:test` + `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0047-quality-catalog-periodization.md` §2.1–2.2 e o FR-403 do PRD.
+2. Ler `SessionLibrary`, `PlannedSession`, `PrescriptionJson`/`PlanJson` e os testes de catálogo/plano existentes.
+3. Escrever os testes que falham de C4-14: `WorkoutStructure`/`WorkoutBlock` puros, validação de `totalMin` (aquecimento + blocos + recuperações + volta à calma ≤ total), round-trip JSON e retrocompatibilidade com `structure=null` em linhas antigas.
+4. Implementar C4-14 com TDD, rodar `:core:domain:test` + `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.
