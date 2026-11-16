@@ -170,7 +170,14 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
         plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
-        seedLoad(today)
+        val zone = ZoneId.of("America/Sao_Paulo")
+        val previous = weekStart.minusWeeks(1)
+        (0L..3L).forEach { offset ->
+            seedRun(previous.plusDays(offset), minutes = 30, zone = zone)
+        }
+        listOf(8L, 10L, 12L, 14L, 16L, 18L, 20L, 22L, 24L, 27L).forEach { daysAgo ->
+            seedRun(today.minusDays(daysAgo), minutes = 30, zone = zone)
+        }
 
         val viewModel = createViewModel(timeProvider)
         val state = withTimeout(5_000) {
@@ -199,6 +206,11 @@ class TodayViewModelPersistTest {
         )
         (1L..3L).forEach { weeksAgo ->
             plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
+            seedRun(
+                weekStart.minusWeeks(weeksAgo).plusDays(1),
+                minutes = 30,
+                zone = ZoneId.of("America/Sao_Paulo"),
+            )
         }
 
         val viewModel = createViewModel(timeProvider)
@@ -647,6 +659,20 @@ class TodayViewModelPersistTest {
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
     )
+
+    private suspend fun seedRun(date: LocalDate, minutes: Int, zone: ZoneId) {
+        activities.saveImportedActivity(
+            ImportedActivity(
+                source = ActivitySource.FIT,
+                sport = Sport.RUNNING,
+                startTime = date.atTime(12, 0).atZone(zone).toInstant(),
+                durationSec = minutes * 60,
+                distanceM = minutes * 150.0,
+                averageHeartRate = 150,
+                averagePace = Pace.fromSecondsPerKm(400),
+            ),
+        )
+    }
 
     private suspend fun seedLoad(today: LocalDate) {
         val zone = ZoneId.of("America/Sao_Paulo")

@@ -24,10 +24,10 @@ data class MesoState(
 /**
  * Derives the mesocycle from persisted weeks, never from a volatile counter.
  *
- * A load week has at least one `DONE` session with strong evidence, was
- * created on its own Monday and carries no taper/deload/recovery rule. A hole
- * (missing plan or no strong completion) resets the streak for deload purposes
- * but preserves the macrocycle phase, which uses the total in 12 weeks.
+ * A load week has at least one real strong run (planned or not), was created on
+ * its own Monday and carries no taper/deload/recovery rule (ADR 0050 §2.3). A
+ * hole (missing plan or a week without strong runs) resets the streak for deload
+ * purposes but preserves the macrocycle phase, which uses the total in 12 weeks.
  */
 object MesoCycle {
     const val MAX_HISTORY_WEEKS = 12
@@ -35,20 +35,20 @@ object MesoCycle {
     const val BASE_THRESHOLD_DAYS = 56L
     const val PEAK_WINDOW_DAYS = 21L
 
-    fun isLoadWeek(plan: WeeklyPlan): Boolean {
-        if (plan.createdOn != plan.weekStart) return false
-        if (plan.ruleIds.any { it in SPECIAL_WEEK_RULE_IDS }) return false
-        return plan.completedVolumeMinutes() > 0
+    fun isLoadWeek(reference: VolumeReference): Boolean {
+        if (reference.createdOn != reference.weekStart) return false
+        if (reference.specialWeek) return false
+        return reference.strongSessions >= 1
     }
 
-    fun consecutiveStrongWeeks(references: List<WeeklyPlan>, targetWeekStart: LocalDate): Int {
+    fun consecutiveStrongWeeks(references: List<VolumeReference>, targetWeekStart: LocalDate): Int {
         val byWeek = references.distinctBy { it.weekStart }.associateBy { it.weekStart }
         var streak = 0
         var expected = targetWeekStart.minusWeeks(1)
         val earliest = targetWeekStart.minusWeeks(MAX_HISTORY_WEEKS.toLong())
         while (!expected.isBefore(earliest)) {
-            val plan = byWeek[expected] ?: break
-            if (!isLoadWeek(plan)) break
+            val reference = byWeek[expected] ?: break
+            if (!isLoadWeek(reference)) break
             streak += 1
             expected = expected.minusWeeks(1)
         }
@@ -56,7 +56,7 @@ object MesoCycle {
     }
 
     fun totalStrongWeeks(
-        references: List<WeeklyPlan>,
+        references: List<VolumeReference>,
         targetWeekStart: LocalDate,
         windowWeeks: Int = MAX_HISTORY_WEEKS,
     ): Int {
@@ -75,7 +75,7 @@ object MesoCycle {
         recoveryActive: Boolean,
         isRaceWeek: Boolean,
         isTaperWeek: Boolean,
-        references: List<WeeklyPlan>,
+        references: List<VolumeReference>,
         fallbackWeekNumberInBlock: Int = 1,
         /**
          * Fase da preparação macro (ADR 0043). Com prova dentro do horizonte,

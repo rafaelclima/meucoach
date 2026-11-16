@@ -495,7 +495,9 @@ VolumeReference(
 ```
 
 - A base de volume usa `strongMinutes` (executado), não `plannedMinutes`.
-- A adesão ao plano continua usando `plannedSessions`/`strongSessions`; treino extra não infla adesão.
+- A adesão ao plano continua usando as sessões planejadas
+  (`strongCompletionRatio` do `WeeklyPlan`), não `strongSessions` da referência:
+  `strongSessions` conta também o treino extra. Treino extra não infla adesão.
 - `createdOn == weekStart` continua sendo a regra para uma semana ser referência comparável; plano criado no meio da semana não conta.
 - O `VolumeReference` é construído na borda (`:app`/`core:data`) a partir de `WeeklyPlan` + atividades; o domínio continua puro.
 

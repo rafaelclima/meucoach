@@ -67,6 +67,11 @@ class LevelGraduationContextBuilder @Inject constructor(
         return LevelGraduationInput(
             profile = profile,
             recentWeeks = recentWeeks,
+            strongRuns = VolumeReferenceProjection.build(
+                plans = recentWeeks,
+                activities = snapshot.activities,
+                zoneId = zone,
+            ).strongRuns,
             efforts = efforts,
             calibration = calibrationFor(profile),
             readiness = snapshot.readiness,

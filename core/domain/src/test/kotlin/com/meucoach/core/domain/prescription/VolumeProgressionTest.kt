@@ -25,14 +25,16 @@ class VolumeProgressionTest {
 
     @Test
     fun `grows six percent over a fully completed previous week`() {
+        val previous = monday.minusWeeks(1)
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 210,
-            references = listOf(week(monday.minusWeeks(1), completed = listOf(30, 30, 30, 30))),
+            references = listOf(reference(previous, strongMinutes = 120)),
+            previousWeek = week(previous, completed = listOf(30, 30, 30, 30)),
         )
 
         assertThat(decision.baseMinutes).isEqualTo(120)
-        assertThat(decision.baseWeekStart).isEqualTo(monday.minusWeeks(1))
+        assertThat(decision.baseWeekStart).isEqualTo(previous)
         assertThat(decision.minutes).isEqualTo(127)
         assertThat(decision.growthPercent).isEqualTo(6)
         assertThat(decision.block).isEqualTo(VolumeGrowthBlock.NONE)
@@ -41,11 +43,15 @@ class VolumeProgressionTest {
 
     @Test
     fun `maintains the base when the previous week is below eighty percent`() {
+        val previous = monday.minusWeeks(1)
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 210,
-            references = listOf(
-                week(monday.minusWeeks(1), completed = listOf(30, 30), planned = listOf(30, 30, 30, 30)),
+            references = listOf(reference(previous, strongMinutes = 60)),
+            previousWeek = week(
+                previous,
+                completed = listOf(30, 30),
+                planned = listOf(30, 30, 30, 30),
             ),
         )
 
@@ -57,17 +63,24 @@ class VolumeProgressionTest {
 
     @Test
     fun `an older completed week is the base but never grows`() {
+        val previous = monday.minusWeeks(1)
+        val older = monday.minusWeeks(2)
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 300,
             references = listOf(
-                week(monday.minusWeeks(1), completed = listOf(30, 30), planned = listOf(30, 30, 30, 30)),
-                week(monday.minusWeeks(2), completed = listOf(40, 40, 40, 40, 40)),
+                reference(previous, strongMinutes = 60),
+                reference(older, strongMinutes = 200),
+            ),
+            previousWeek = week(
+                previous,
+                completed = listOf(30, 30),
+                planned = listOf(30, 30, 30, 30),
             ),
         )
 
         assertThat(decision.baseMinutes).isEqualTo(200)
-        assertThat(decision.baseWeekStart).isEqualTo(monday.minusWeeks(2))
+        assertThat(decision.baseWeekStart).isEqualTo(older)
         assertThat(decision.minutes).isEqualTo(200)
         assertThat(decision.growthPercent).isZero()
         assertThat(decision.block).isEqualTo(VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80)
@@ -75,17 +88,16 @@ class VolumeProgressionTest {
 
     @Test
     fun `a special previous week does not grow the next one`() {
+        val previous = monday.minusWeeks(1)
+        val older = monday.minusWeeks(2)
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 300,
             references = listOf(
-                week(
-                    monday.minusWeeks(1),
-                    completed = listOf(30, 30, 30, 30),
-                    ruleIds = listOf("R-PLAN-04"),
-                ),
-                week(monday.minusWeeks(2), completed = listOf(50, 50, 50, 50)),
+                reference(previous, strongMinutes = 120, specialWeek = true),
+                reference(older, strongMinutes = 200),
             ),
+            previousWeek = week(previous, completed = listOf(30, 30, 30, 30)),
         )
 
         assertThat(decision.baseMinutes).isEqualTo(200)
@@ -95,7 +107,9 @@ class VolumeProgressionTest {
 
     @Test
     fun `special target weeks never grow`() {
-        val references = listOf(week(monday.minusWeeks(1), completed = listOf(30, 30, 30, 30)))
+        val previous = monday.minusWeeks(1)
+        val references = listOf(reference(previous, strongMinutes = 120))
+        val previousWeek = week(previous, completed = listOf(30, 30, 30, 30))
 
         VolumeGrowthBlock.entries
             .filter {
@@ -112,6 +126,7 @@ class VolumeProgressionTest {
                     targetWeekStart = monday,
                     availabilityCeilingMinutes = 210,
                     references = references,
+                    previousWeek = previousWeek,
                     gates = VolumeGates(targetWeekBlock = block),
                 )
 
@@ -123,42 +138,50 @@ class VolumeProgressionTest {
 
     @Test
     fun `readiness load and acwr each block the increase`() {
-        val references = listOf(week(monday.minusWeeks(1), completed = listOf(30, 30, 30, 30)))
+        val previous = monday.minusWeeks(1)
+        val references = listOf(reference(previous, strongMinutes = 120))
+        val previousWeek = week(previous, completed = listOf(30, 30, 30, 30))
 
         val notGreen = progression.decide(
             monday,
             210,
             references,
+            previousWeek,
             VolumeGates(readinessGreen = false),
         )
         val loadUnknown = progression.decide(
             monday,
             210,
             references,
+            previousWeek,
             VolumeGates(loadKnown = false),
         )
         val acwrOut = progression.decide(
             monday,
             210,
             references,
+            previousWeek,
             VolumeGates(acwrInRange = false),
         )
         val acwrCalibrating = progression.decide(
             monday,
             210,
             references,
+            previousWeek,
             VolumeGates(acwrReliable = false),
         )
         val monotonyHigh = progression.decide(
             monday,
             210,
             references,
+            previousWeek,
             VolumeGates(monotonyOk = false),
         )
         val strainSpike = progression.decide(
             monday,
             210,
             references,
+            previousWeek,
             VolumeGates(strainOk = false),
         )
 
@@ -176,13 +199,16 @@ class VolumeProgressionTest {
 
     @Test
     fun `availability caps an increase and a base above the ceiling`() {
-        val references = listOf(week(monday.minusWeeks(1), completed = listOf(30, 30, 30, 30)))
+        val previous = monday.minusWeeks(1)
+        val references = listOf(reference(previous, strongMinutes = 120))
+        val previousWeek = week(previous, completed = listOf(30, 30, 30, 30))
 
-        val cappedGrowth = progression.decide(monday, 100, references)
+        val cappedGrowth = progression.decide(monday, 100, references, previousWeek)
         val cappedBase = progression.decide(
             monday,
             100,
             references,
+            previousWeek,
             VolumeGates(readinessGreen = false),
         )
 
@@ -195,16 +221,18 @@ class VolumeProgressionTest {
 
     @Test
     fun `a plan created midweek is not a volume reference`() {
+        val previous = monday.minusWeeks(1)
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 210,
             references = listOf(
-                week(
-                    monday.minusWeeks(1),
-                    completed = listOf(30, 30, 30, 30),
-                    createdOn = monday.minusWeeks(1).plusDays(3),
+                reference(
+                    previous,
+                    strongMinutes = 120,
+                    createdOn = previous.plusDays(3),
                 ),
             ),
+            previousWeek = week(previous, completed = listOf(30, 30, 30, 30)),
         )
 
         assertThat(decision.hasHistory).isFalse()
@@ -216,7 +244,7 @@ class VolumeProgressionTest {
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 210,
-            references = listOf(week(monday.minusWeeks(5), completed = listOf(60, 60, 60, 60))),
+            references = listOf(reference(monday.minusWeeks(5), strongMinutes = 240)),
         )
 
         assertThat(decision.hasHistory).isFalse()
@@ -228,8 +256,8 @@ class VolumeProgressionTest {
             targetWeekStart = monday,
             availabilityCeilingMinutes = 300,
             references = listOf(
-                week(monday.minusWeeks(1), completed = listOf(30, 30, 30, 30)),
-                week(monday.minusWeeks(2), completed = listOf(30, 30, 30, 30)),
+                reference(monday.minusWeeks(1), strongMinutes = 120),
+                reference(monday.minusWeeks(2), strongMinutes = 120),
             ),
         )
 
@@ -241,7 +269,7 @@ class VolumeProgressionTest {
         val decision = progression.decide(
             targetWeekStart = monday,
             availabilityCeilingMinutes = 210,
-            references = listOf(week(monday.minusWeeks(2), completed = listOf(30, 30, 30, 30))),
+            references = listOf(reference(monday.minusWeeks(2), strongMinutes = 120)),
         )
 
         assertThat(decision.minutes).isEqualTo(120)
@@ -249,22 +277,129 @@ class VolumeProgressionTest {
     }
 
     @Test
-    fun `only strong evidence counts as completed volume`() {
-        val reference = week(
-            monday.minusWeeks(1),
+    fun `the real strong volume is the base not the planned minutes`() {
+        val previous = monday.minusWeeks(1)
+        val decision = progression.decide(
+            targetWeekStart = monday,
+            availabilityCeilingMinutes = 300,
+            references = listOf(
+                reference(
+                    previous,
+                    strongMinutes = 142,
+                    plannedMinutes = 114,
+                ),
+            ),
+            previousWeek = week(previous, completed = listOf(38, 38, 38)),
+        )
+
+        assertThat(decision.baseMinutes).isEqualTo(142)
+        assertThat(decision.minutes).isEqualTo(151)
+        assertThat(decision.growthPercent).isEqualTo(6)
+        assertThat(decision.block).isEqualTo(VolumeGrowthBlock.NONE)
+    }
+
+    @Test
+    fun `the real strong volume can be lower than the planned minutes`() {
+        val previous = monday.minusWeeks(1)
+        val decision = progression.decide(
+            targetWeekStart = monday,
+            availabilityCeilingMinutes = 300,
+            references = listOf(
+                reference(
+                    previous,
+                    strongMinutes = 90,
+                    plannedMinutes = 120,
+                ),
+            ),
+            previousWeek = week(previous, completed = listOf(30, 30, 30, 30)),
+        )
+
+        assertThat(decision.baseMinutes).isEqualTo(90)
+        assertThat(decision.minutes).isEqualTo(95)
+    }
+
+    @Test
+    fun `extra training counts for volume but never inflates adherence`() {
+        val previous = monday.minusWeeks(1)
+        // Three planned sessions done (3/3 adherence) plus a 28 min extra run.
+        val decision = progression.decide(
+            targetWeekStart = monday,
+            availabilityCeilingMinutes = 300,
+            references = listOf(reference(previous, strongMinutes = 142)),
+            previousWeek = week(previous, completed = listOf(38, 38, 38)),
+        )
+
+        assertThat(decision.baseMinutes).isEqualTo(142)
+        assertThat(decision.block).isEqualTo(VolumeGrowthBlock.NONE)
+        assertThat(decision.growthPercent).isEqualTo(6)
+    }
+
+    @Test
+    fun `a week without a plan is not a volume reference`() {
+        val decision = progression.decide(
+            targetWeekStart = monday,
+            availabilityCeilingMinutes = 210,
+            references = listOf(
+                reference(
+                    monday.minusWeeks(1),
+                    strongMinutes = 120,
+                    plannedMinutes = null,
+                    createdOn = null,
+                ),
+            ),
+        )
+
+        assertThat(decision.hasHistory).isFalse()
+        assertThat(decision.minutes).isEqualTo(210)
+        assertThat(decision.block).isEqualTo(VolumeGrowthBlock.NO_HISTORY)
+    }
+
+    @Test
+    fun `a week without real strong volume is not a volume reference`() {
+        val decision = progression.decide(
+            targetWeekStart = monday,
+            availabilityCeilingMinutes = 210,
+            references = listOf(reference(monday.minusWeeks(1), strongMinutes = 0)),
+        )
+
+        assertThat(decision.hasHistory).isFalse()
+    }
+
+    @Test
+    fun `only strong evidence counts as completed adherence`() {
+        val previous = monday.minusWeeks(1)
+        val plan = week(
+            previous,
             completed = listOf(40),
             planned = listOf(40, 40),
-        ).let { plan ->
-            val manual = plan.sessions[1].copy(
+        ).let { week ->
+            val manual = week.sessions[1].copy(
                 status = SessionStatus.DONE,
                 completionEvidence = CompletionEvidence.MANUAL,
             )
-            plan.copy(sessions = listOf(plan.sessions[0], manual))
+            week.copy(sessions = listOf(week.sessions[0], manual))
         }
 
-        assertThat(reference.completedVolumeMinutes()).isEqualTo(40)
-        assertThat(reference.strongCompletionRatio()).isEqualTo(0.5)
+        assertThat(plan.strongCompletionRatio()).isEqualTo(0.5)
     }
+
+    private fun reference(
+        weekStart: LocalDate,
+        strongMinutes: Int,
+        plannedMinutes: Int? = 120,
+        plannedSessions: Int = 4,
+        createdOn: LocalDate? = weekStart,
+        specialWeek: Boolean = false,
+    ) = VolumeReference(
+        weekStart = weekStart,
+        plannedMinutes = plannedMinutes,
+        executedMinutes = strongMinutes,
+        strongMinutes = strongMinutes,
+        strongSessions = if (strongMinutes > 0) 1 else 0,
+        plannedSessions = plannedSessions,
+        createdOn = createdOn,
+        specialWeek = specialWeek,
+    )
 
     private fun week(
         weekStart: LocalDate,

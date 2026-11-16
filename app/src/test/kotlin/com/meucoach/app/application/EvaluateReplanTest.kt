@@ -334,5 +334,9 @@ class EvaluateReplanTest {
 
         assertThat(context.input.previousWeek?.weekStart).isEqualTo(previousStart)
         assertThat(context.input.recentWeeks.map { it.weekStart }).containsExactly(previousStart)
+        // ADR 0050: the replanner receives the real projection, not a plan-derived fallback.
+        assertThat(context.input.volumeReferences).isNotNull
+        assertThat(context.input.volumeReferences?.map { it.weekStart }).containsExactly(previousStart)
+        assertThat(context.input.volumeReferences?.single()?.strongMinutes).isZero()
     }
 }

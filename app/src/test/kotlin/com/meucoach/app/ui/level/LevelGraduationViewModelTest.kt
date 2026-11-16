@@ -317,6 +317,17 @@ class LevelGraduationViewModelTest {
                 ),
             )
         }
+        activities.saveImportedActivity(
+            ImportedActivity(
+                source = ActivitySource.FIT,
+                sport = Sport.RUNNING,
+                startTime = weekStart.minusWeeks(4).plusDays(5).atTime(12, 0).toInstant(ZoneOffset.UTC),
+                durationSec = 65 * 60,
+                distanceM = 10_000.0,
+                averageHeartRate = 155,
+                averagePace = Pace.fromSecondsPerKm(390),
+            ),
+        )
         if (experience == Experience.ADVANCED) return
         listOf(
             weekStart.minusWeeks(4) to 65,

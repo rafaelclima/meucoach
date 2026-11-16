@@ -91,6 +91,29 @@ object VolumeReferenceBuilder {
         )
     }
 
+    /**
+     * Compatibility reference for persisted history without an activity
+     * projection. It only sees strong planned completions (`ACTIVITY`/`GUIDED`),
+     * so extra training cannot appear here. Production must pass the real
+     * projection; `null` in the generator means a legacy/test caller.
+     */
+    internal fun fromPlans(plans: List<WeeklyPlan>): List<VolumeReference> = plans
+        .distinctBy { it.weekStart }
+        .sortedBy { it.weekStart }
+        .map { plan ->
+            val runs = plan.trainableSessions()
+                .filter { it.status == SessionStatus.DONE && it.completionEvidence?.isStrong == true }
+                .mapNotNull { session ->
+                    val minutes = session.durationMin?.takeIf { it > 0 } ?: return@mapNotNull null
+                    StrongRun(
+                        date = session.date,
+                        durationMin = minutes,
+                        source = ActivitySource.FIT,
+                    )
+                }
+            build(plan.weekStart, plan, runs)
+        }
+
     private const val DAYS_IN_WEEK = 7L
 }
 

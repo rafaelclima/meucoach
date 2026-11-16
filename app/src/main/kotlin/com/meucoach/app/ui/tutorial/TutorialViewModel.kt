@@ -3,6 +3,7 @@ package com.meucoach.app.ui.tutorial
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.TrainingSignalSource
+import com.meucoach.app.application.VolumeReferenceProjection
 import com.meucoach.app.firstrun.FirstActionType
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.time.TimeProvider
@@ -179,6 +180,13 @@ class TutorialViewModel @Inject constructor(
         val recentWeeks = planRepository.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
         val previousWeek = recentWeeks.firstOrNull { it.weekStart == weekStart.minusWeeks(1) }
         val weekNumber = planRepository.consecutiveWeeksBefore(weekStart) + 1
+        val zone = runCatching { java.time.ZoneId.of(profile.timezone) }
+            .getOrNull() ?: timeProvider.zoneId.value
+        val volumeReferences = VolumeReferenceProjection.build(
+            plans = recentWeeks + listOfNotNull(previousWeek),
+            activities = activities,
+            zoneId = zone,
+        ).references
         val plan = planRepository.getWeek(weekStart) ?: planGenerator.generate(
             WeeklyPlanInput(
                 profile = profile,
@@ -188,6 +196,7 @@ class TutorialViewModel @Inject constructor(
                 today = today,
                 previousWeek = previousWeek,
                 recentWeeks = recentWeeks,
+                volumeReferences = volumeReferences,
                 weekNumberInBlock = weekNumber,
             ),
         ).also { planRepository.saveWeek(it) }

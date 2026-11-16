@@ -1,6 +1,6 @@
 # ADR 0050 — Volume real, treino extra e reparo de evidência legada
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-38..C4-43).
+**Status:** Aprovado em 2026-11-16 — implementação em andamento (C4-38/C4-39 concluídas; reparo, golden e docs em C4-40..C4-43).
 **Data:** 2026-11-16
 **Escopo:** `VolumeProgression`, `MesoCycle`, `LevelGraduationEngine`,
 `VolumeReference`, `StrongRun`, `TrainingPlanRepository`/`ActivityRepository` (projeção),
@@ -86,8 +86,9 @@ data class StrongRun(
   `plannedMinutes`.
 - A progressão continua +6% e continua exigindo semana anterior ≥80% de adesão
   **planejada**, prontidão, ACWR confiável 0,8–1,3, monotonia e strain.
-- A adesão continua: `strongSessions`/`plannedSessions` apenas de sessões
-  planejadas; treino extra **não** infla adesão.
+- A adesão continua lida do `WeeklyPlan` da semana anterior
+  (`strongCompletionRatio`): `VolumeReference.strongSessions` conta também
+  treino extra e não é o numerador de adesão. Treino extra **não** infla adesão.
 - Uma semana sem plano não é referência de volume (conservador).
 - Uma semana de deload/taper/recovery não é referência.
 - Atividade deletada não conta; atividade sem métrica conta para volume, mas não
@@ -143,10 +144,11 @@ data class StrongRun(
 ## 3. Dados e APIs
 
 - `VolumeReference`/`StrongRun` no domínio.
-- `VolumeProgression.decide(references: List<VolumeReference>, ...)`; o
+- `VolumeProgression.decide(references: List<VolumeReference>, previousWeek: WeeklyPlan?, ...)`;
+  a base vem das referências e a adesão do plano anterior; o
   `WeeklyPlanGenerator` recebe `volumeReferences`.
 - `MesoCycle`/`LevelGraduation` usam as referências/strong runs.
-- `LevelGraduationContextBuilder` monta `StrongRun` a partir das atividades.
+- `LevelGraduationInput.strongRuns` montado a partir das atividades.
 - `TrainingPlanRepository`/`ActivityRepository` expõem a projeção semanal.
 - `SessionCompletionRules`/`ImportService` ganham o reparo com confirmação.
 - Sem migração de schema; a projeção é derivada.

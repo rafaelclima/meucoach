@@ -5,6 +5,8 @@ import com.meucoach.core.domain.prescription.MesoCycle
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.VolumeReference
+import com.meucoach.core.domain.prescription.VolumeReferenceBuilder
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
@@ -95,6 +97,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 today = input.today,
                 previousWeek = input.previousWeek,
                 recentWeeks = input.recentWeeks,
+                volumeReferences = input.volumeReferences,
                 weekNumberInBlock = input.weekNumberInBlock,
                 race = input.race,
                 eventDates = input.eventDates,
@@ -472,6 +475,9 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";load=").append(load?.canonical() ?: "null")
     append(";previous=").append(previousWeek?.canonical() ?: "null")
     append(";recent=").append(recentWeeks.sortedBy { it.weekStart }.joinToString("|") { it.canonical() })
+    append(";volume=").append(
+        volumeReferences?.sortedBy { it.weekStart }?.joinToString("|") { it.canonical() } ?: "legacy",
+    )
     append(";block=").append(weekNumberInBlock)
     append(";meso=").append(mesoCanonical())
     append(";nonTrainable=").append(nonTrainablePastDates.sorted().joinToString(","))
@@ -489,6 +495,7 @@ private fun ReplanInput.canonical(): String = buildString {
 private fun ReplanInput.mesoCanonical(): String {
     val weekStart = currentPlan.weekStart
     val combined = (recentWeeks + listOfNotNull(previousWeek)).distinctBy { it.weekStart }
+    val volume = volumeReferences ?: VolumeReferenceBuilder.fromPlans(combined)
     val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
     val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
     val recoveryActive = recovery != null && recovery.intersects(weekStart, weekStart.plusDays(6))
@@ -498,7 +505,7 @@ private fun ReplanInput.mesoCanonical(): String {
         recoveryActive = recoveryActive,
         isRaceWeek = isRaceWeek,
         isTaperWeek = isTaperWeek,
-        references = combined,
+        references = volume,
         fallbackWeekNumberInBlock = weekNumberInBlock,
     )
     val hash = PlanningFingerprints.mesoHash(meso.phase.name, meso.strongStreak, meso.totalStrong)
@@ -529,6 +536,17 @@ private fun WeeklyPlan.canonical(): String = buildString {
     append(weekStart).append(':')
     append(sessions.joinToString("|") { it.canonical() })
 }
+
+private fun VolumeReference.canonical(): String = listOf(
+    weekStart.toString(),
+    plannedMinutes?.toString(),
+    executedMinutes.toString(),
+    strongMinutes.toString(),
+    strongSessions.toString(),
+    plannedSessions.toString(),
+    createdOn?.toString(),
+    specialWeek.toString(),
+).joinToString(",")
 
 private fun PlannedSession.canonical(): String = listOf(
     date.toString(),

@@ -202,6 +202,43 @@ class MesoCycleTest {
         )
     }
 
+    @Test
+    fun `an unplanned strong run is a load week`() {
+        val reference = reference(monday.minusWeeks(1), strongSessions = 1)
+
+        assertThat(MesoCycle.isLoadWeek(reference)).isTrue()
+    }
+
+    @Test
+    fun `a planless or special week is not a load week`() {
+        assertThat(MesoCycle.isLoadWeek(reference(monday, createdOn = null))).isFalse()
+        assertThat(MesoCycle.isLoadWeek(reference(monday, specialWeek = true))).isFalse()
+        assertThat(MesoCycle.isLoadWeek(reference(monday, strongSessions = 0))).isFalse()
+        assertThat(MesoCycle.isLoadWeek(reference(monday, createdOn = monday.plusDays(2)))).isFalse()
+    }
+
+    @Test
+    fun `three weeks with only extra runs still trigger a deload`() {
+        val recent = listOf(
+            loadWeek(monday.minusWeeks(3)),
+            loadWeek(monday.minusWeeks(2)),
+            loadWeek(monday.minusWeeks(1)),
+        )
+        val references = (1L..3L).map { weeksAgo ->
+            reference(monday.minusWeeks(weeksAgo), strongSessions = 1, strongMinutes = 35)
+        }
+        val plan = generator.generate(
+            input(
+                recentWeeks = recent,
+                previousWeek = recent.last(),
+                volumeReferences = references,
+            ),
+        )
+
+        assertThat(plan.ruleIds).contains("R-PLAN-04")
+        assertThat(plan.rationale).contains("descarga")
+    }
+
     private fun input(
         recentWeeks: List<WeeklyPlan> = emptyList(),
         previousWeek: WeeklyPlan? = null,
@@ -209,6 +246,7 @@ class MesoCycleTest {
         today: LocalDate = weekStart,
         race: RacePlan? = null,
         recovery: RecoveryWindow? = null,
+        volumeReferences: List<VolumeReference>? = null,
     ) = WeeklyPlanInput(
         profile = AthleteProfile(
             id = "athlete-1",
@@ -265,5 +303,23 @@ class MesoCycleTest {
         recentWeeks = recentWeeks,
         race = race,
         recovery = recovery,
+        volumeReferences = volumeReferences,
+    )
+
+    private fun reference(
+        weekStart: LocalDate,
+        strongSessions: Int = 1,
+        strongMinutes: Int = if (strongSessions > 0) 35 else 0,
+        createdOn: LocalDate? = weekStart,
+        specialWeek: Boolean = false,
+    ) = VolumeReference(
+        weekStart = weekStart,
+        plannedMinutes = 160,
+        executedMinutes = strongMinutes,
+        strongMinutes = strongMinutes,
+        strongSessions = strongSessions,
+        plannedSessions = 4,
+        createdOn = createdOn,
+        specialWeek = specialWeek,
     )
 }

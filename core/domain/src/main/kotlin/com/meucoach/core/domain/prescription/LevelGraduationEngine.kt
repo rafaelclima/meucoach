@@ -30,14 +30,16 @@ data class LevelCalibration(
  * Entradas puras da avaliação de graduação (ADR 0042 §3.2).
  *
  * [recentWeeks] carrega até 6 semanas persistidas (com `createdOn`, status e
- * evidência); [efforts] são os esforços sustentados com FC do período (os
- * mesmos do contador Tier B); [illnessOrInjuryDates] marca os dias com
- * `ILLNESS_OR_INJURY` do check-in; [ctlLast4] e [monotonyLast4] são as séries
+ * evidência); [strongRuns] são as corridas fortes reais do período (planejadas
+ * ou não), usadas para o longão; [efforts] são os esforços sustentados com FC do
+ * período (os mesmos do contador Tier B); [illnessOrInjuryDates] marca os dias
+ * com `ILLNESS_OR_INJURY` do check-in; [ctlLast4] e [monotonyLast4] são as séries
  * semanais objetivas para o `INTERMEDIATE → ADVANCED`.
  */
 data class LevelGraduationInput(
     val profile: AthleteProfile,
     val recentWeeks: List<WeeklyPlan>,
+    val strongRuns: List<StrongRun> = emptyList(),
     val efforts: List<CalibrationPerformance> = emptyList(),
     val calibration: LevelCalibration,
     val readiness: ReadinessResult,
@@ -89,10 +91,11 @@ sealed interface LevelGraduationResult {
  *
  * Convenções de produto (confiança máxima `MEDIUM`, `LIMITED`):
  * - semana forte = `strongCompletionRatio ≥ 0,80` (só `ACTIVITY`/`GUIDED`);
- *   `MANUAL`/`LEGACY_UNVERIFIED` contam adesão, nunca graduação;
+ *   `MANUAL`/`LEGACY_UNVERIFIED` nunca contam como evidência forte;
  * - esforço válido = 20–35 min com FC (pace deriva de distância/duração),
  *   recente por 56 dias, como o contador Tier B;
- * - longão conta só `DONE` com evidência forte (`R-PLAN-01`/`R-DATA-01`);
+ * - longão conta pelo `StrongRun.durationMin` real (planejado ou não), dentro da
+ *   janela de 6 semanas; a duração planejada não basta (`R-PLAN-01 v2`/`R-LVL-03`);
  * - doença/lesão vale por check-in, prontidão ou sessão `CLOSED` por
  *   `ILLNESS_OR_INJURY` nos últimos 14 dias;
  * - CTL estável/crescente = último valor ≥ primeiro em 4 semanas objetivas;
@@ -163,7 +166,7 @@ object LevelGraduationEngine {
         val calibrationOk = isCalibrationValid(input.calibration, input.today)
         val illness = hasRecentIllness(input, input.today)
         val readinessRed = input.readiness.level == ReadinessLevel.RED
-        val longRun = hasLongRun(window, LONG_RUN_60_MIN)
+        val longRun = hasLongRun(input, window, LONG_RUN_60_MIN)
         val missing = buildList {
             if (strongWeeks < MIN_STRONG_WEEKS) add(MISSING_STRONG_WEEKS)
             if (efforts.size < MIN_EFFORTS) add(MISSING_EFFORTS)
@@ -177,21 +180,21 @@ object LevelGraduationEngine {
             add("${efforts.size} esforços de 20 a 35 minutos com frequência cardíaca e ritmo")
             add(calibrationReason(input.calibration))
             add("Sem doença ou lesão nos últimos 14 dias e prontidão atual ${readinessLabel(input.readiness)}")
-            add("Longão de pelo menos 60 minutos concluído")
+            add("Longão real de pelo menos 60 minutos concluído")
         }
         return BaseEvaluation(missing, reasons, strongWeeks, efforts.size)
     }
 
     private fun evaluateAdvanced(input: LevelGraduationInput, window: List<WeeklyPlan>): List<String> = buildList {
         if (!isCtlStableOrGrowing(input)) add(MISSING_CTL)
-        if (!hasLongRun(window, LONG_RUN_90_MIN)) add(MISSING_LONG_RUN_90)
+        if (!hasLongRun(input, window, LONG_RUN_90_MIN)) add(MISSING_LONG_RUN_90)
         if (!hasRaceEvidence(input)) add(MISSING_RACE)
         if (!isMonotonyOk(input.monotonyLast4)) add(MISSING_MONOTONY)
     }
 
     private fun advancedReasons(input: LevelGraduationInput): List<String> = buildList {
         add("CTL estável ou crescente nas últimas 4 semanas com carga objetiva")
-        add("Longão de pelo menos 90 minutos concluído")
+        add("Longão real de pelo menos 90 minutos concluído")
         add(raceReason(input))
         add("Monotonia média das últimas 4 semanas abaixo de 2,0")
     }
@@ -256,12 +259,11 @@ object LevelGraduationEngine {
         }
     }
 
-    private fun hasLongRun(window: List<WeeklyPlan>, minMinutes: Int): Boolean = window.any { plan ->
-        plan.sessions.any { session ->
-            session.status == SessionStatus.DONE &&
-                session.type == WorkoutType.LONG &&
-                (session.durationMin ?: 0) >= minMinutes &&
-                session.completionEvidence?.isStrong == true
+    private fun hasLongRun(input: LevelGraduationInput, window: List<WeeklyPlan>, minMinutes: Int): Boolean {
+        val windowStart = window.minOfOrNull { it.weekStart }
+            ?: input.today.minusWeeks(WINDOW_WEEKS.toLong())
+        return input.strongRuns.any { run ->
+            run.durationMin >= minMinutes && !run.date.isBefore(windowStart) && !run.date.isAfter(input.today)
         }
     }
 
@@ -323,11 +325,11 @@ object LevelGraduationEngine {
 
         MISSING_READINESS -> "prontidão atual fora do vermelho"
 
-        MISSING_LONG_RUN -> "longão de pelo menos $LONG_RUN_60_MIN min"
+        MISSING_LONG_RUN -> "longão real de pelo menos $LONG_RUN_60_MIN min"
 
         MISSING_CTL -> "CTL estável ou crescente em $CTL_WEEKS semanas com carga objetiva"
 
-        MISSING_LONG_RUN_90 -> "longão de pelo menos $LONG_RUN_90_MIN min"
+        MISSING_LONG_RUN_90 -> "longão real de pelo menos $LONG_RUN_90_MIN min"
 
         MISSING_RACE -> "prova ou TT recente (até $RECENT_DAYS dias) ou TT de 30 min válido"
 
@@ -362,6 +364,11 @@ object LevelGraduationEngine {
             input.efforts.sortedWith(compareBy({ it.date }, { it.durationSec })).joinToString("|") {
                 "${it.date},${it.durationSec},${it.distanceM},${it.averageHeartRate}"
             },
+        )
+        append("|strongRuns=").append(
+            input.strongRuns
+                .sortedWith(compareBy({ it.date }, { it.durationMin }, { it.source.name }))
+                .joinToString("|") { "${it.date},${it.durationMin},${it.source.name},${it.plannedSessionId}" },
         )
         append("|calibration=").append(
             "${input.calibration.tier?.name},${input.calibration.calibratedAt},${input.calibration.tierBConfirmed}",

@@ -140,9 +140,18 @@ data class WeeklyPlanInput(
     /**
      * Previous persisted weeks, most recent first or any order (ADR 0038/0041,
      * up to 12 weeks). The volume base uses the last 4 usable weeks; the
-     * mesocycle (phase + deload) uses up to 12 weeks of strong completions.
+     * mesocycle (phase + deload) uses up to 12 weeks of real strong runs.
      */
     val recentWeeks: List<WeeklyPlan> = emptyList(),
+    /**
+     * Real weekly execution projection (ADR 0050). The volume base and the
+     * mesocycle read [VolumeReference.strongMinutes]/[VolumeReference.strongSessions];
+     * adherence keeps coming from [previousWeek]'s plan. `null` means a legacy
+     * caller without activities: the generator derives a conservative reference
+     * from planned strong completions only. Production always passes the
+     * projection (an empty list means "no real reference" and never falls back).
+     */
+    val volumeReferences: List<VolumeReference>? = null,
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
@@ -263,6 +272,8 @@ class WeeklyPlanGenerator {
         // semanas). O contador `weekNumberInBlock` só vale sem histórico.
         val combinedReferences =
             (input.recentWeeks + listOfNotNull(input.previousWeek)).distinctBy { it.weekStart }
+        val volumeReferences = input.volumeReferences
+            ?: VolumeReferenceBuilder.fromPlans(combinedReferences)
         val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
         val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
         val mesoRecoveryActive = recovery != null &&
@@ -278,7 +289,7 @@ class WeeklyPlanGenerator {
             recoveryActive = mesoRecoveryActive,
             isRaceWeek = isRaceWeek,
             isTaperWeek = isTaperWeek,
-            references = combinedReferences,
+            references = volumeReferences,
             fallbackWeekNumberInBlock = input.weekNumberInBlock,
             phaseOverride = macroIntent?.phase,
         )
@@ -523,7 +534,8 @@ class WeeklyPlanGenerator {
         val volumeDecision = VolumeProgression().decide(
             targetWeekStart = weekStart,
             availabilityCeilingMinutes = availabilityCeiling,
-            references = combinedReferences,
+            references = volumeReferences,
+            previousWeek = input.previousWeek,
             gates = VolumeGates(
                 targetWeekBlock = volumeWeekBlock(
                     race,

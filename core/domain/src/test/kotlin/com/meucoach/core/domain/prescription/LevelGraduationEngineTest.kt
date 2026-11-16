@@ -5,6 +5,7 @@ import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
+import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
@@ -182,6 +183,89 @@ class LevelGraduationEngineTest {
     }
 
     @Test
+    fun `an unplanned strong long run counts for graduation`() {
+        val weeks = listOf(
+            strongWeek(monday.minusWeeks(6)),
+            strongWeek(monday.minusWeeks(5)),
+            strongWeek(monday.minusWeeks(4)),
+            strongWeek(monday.minusWeeks(3)),
+            strongWeek(monday.minusWeeks(2)),
+            strongWeek(monday.minusWeeks(1)),
+        )
+        val input = baseInput(weeks).copy(
+            strongRuns = baseInput(weeks).strongRuns + StrongRun(
+                date = monday.minusWeeks(2).plusDays(5),
+                durationMin = 65,
+                source = ActivitySource.FIT,
+                plannedSessionId = null,
+            ),
+        )
+
+        val result = LevelGraduationEngine.evaluate(input)
+
+        assertThat(result).isInstanceOf(LevelGraduationResult.SuggestUpgrade::class.java)
+    }
+
+    @Test
+    fun `a planned long run without real strong evidence does not count`() {
+        val weeks = listOf(
+            strongWeek(monday.minusWeeks(6)),
+            strongWeek(monday.minusWeeks(5)),
+            strongWeek(monday.minusWeeks(4)),
+            strongWeek(monday.minusWeeks(3), longRunMin = 65),
+        )
+        val input = baseInput(weeks).copy(strongRuns = emptyList())
+
+        val result = LevelGraduationEngine.evaluate(input)
+
+        assertThat(result).isInstanceOf(LevelGraduationResult.Stay::class.java)
+        assertThat((result as LevelGraduationResult.Stay).missing)
+            .contains(LevelGraduationEngine.MISSING_LONG_RUN)
+    }
+
+    @Test
+    fun `the real strong run decides the long run instead of the planned duration`() {
+        val weeks = listOf(
+            strongWeek(monday.minusWeeks(6)),
+            strongWeek(monday.minusWeeks(5)),
+            strongWeek(monday.minusWeeks(4)),
+            strongWeek(monday.minusWeeks(3), longRunMin = 90),
+        )
+        val input = baseInput(weeks).copy(
+            strongRuns = baseInput(weeks).strongRuns.filter { it.durationMin < 90 },
+        )
+
+        val result = LevelGraduationEngine.evaluate(input)
+
+        assertThat(result).isInstanceOf(LevelGraduationResult.Stay::class.java)
+        assertThat((result as LevelGraduationResult.Stay).missing)
+            .contains(LevelGraduationEngine.MISSING_LONG_RUN)
+    }
+
+    @Test
+    fun `a strong long run outside the window does not count`() {
+        val weeks = listOf(
+            strongWeek(monday.minusWeeks(6)),
+            strongWeek(monday.minusWeeks(5)),
+            strongWeek(monday.minusWeeks(4)),
+            strongWeek(monday.minusWeeks(3)),
+        )
+        val input = baseInput(weeks).copy(
+            strongRuns = baseInput(weeks).strongRuns + StrongRun(
+                date = monday.minusWeeks(7),
+                durationMin = 90,
+                source = ActivitySource.FIT,
+            ),
+        )
+
+        val result = LevelGraduationEngine.evaluate(input)
+
+        assertThat(result).isInstanceOf(LevelGraduationResult.Stay::class.java)
+        assertThat((result as LevelGraduationResult.Stay).missing)
+            .contains(LevelGraduationEngine.MISSING_LONG_RUN)
+    }
+
+    @Test
     fun `evaluation is deterministic with a stable inputs hash`() {
         val weeks = listOf(
             strongWeek(monday.minusWeeks(6)),
@@ -285,6 +369,7 @@ class LevelGraduationEngineTest {
     private fun baseInput(weeks: List<WeeklyPlan>, experience: Experience = Experience.BEGINNER) = LevelGraduationInput(
         profile = profile(experience),
         recentWeeks = weeks,
+        strongRuns = strongRunsFrom(weeks),
         efforts = listOf(
             effort(daysAgo = 30),
             effort(daysAgo = 20),
@@ -307,6 +392,16 @@ class LevelGraduationEngineTest {
             strongWeek(monday.minusWeeks(3)),
             strongWeek(monday.minusWeeks(2), longRunMin = 95),
             strongWeek(monday.minusWeeks(1)),
+        ),
+        strongRuns = strongRunsFrom(
+            listOf(
+                strongWeek(monday.minusWeeks(6)),
+                strongWeek(monday.minusWeeks(5)),
+                strongWeek(monday.minusWeeks(4)),
+                strongWeek(monday.minusWeeks(3)),
+                strongWeek(monday.minusWeeks(2), longRunMin = 95),
+                strongWeek(monday.minusWeeks(1)),
+            ),
         ),
         efforts = listOf(
             effort(daysAgo = 30),
@@ -347,6 +442,20 @@ class LevelGraduationEngineTest {
         date = today.minusDays(daysAgo),
         averageHeartRate = averageHeartRate,
     )
+
+    private fun strongRunsFrom(weeks: List<WeeklyPlan>): List<StrongRun> = weeks.flatMap { plan ->
+        plan.sessions.mapNotNull { session ->
+            if (session.status != SessionStatus.DONE) return@mapNotNull null
+            if (session.completionEvidence?.isStrong != true) return@mapNotNull null
+            val minutes = session.durationMin ?: return@mapNotNull null
+            StrongRun(
+                date = session.date,
+                durationMin = minutes,
+                source = ActivitySource.FIT,
+                plannedSessionId = session.activityId,
+            )
+        }
+    }
 
     private fun strongWeek(weekStart: LocalDate, longRunMin: Int? = null): WeeklyPlan {
         val sessions = (0 until 3).map { index ->

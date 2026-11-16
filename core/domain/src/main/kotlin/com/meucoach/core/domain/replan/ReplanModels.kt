@@ -3,6 +3,7 @@ package com.meucoach.core.domain.replan
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.RecoveryWindow
+import com.meucoach.core.domain.prescription.VolumeReference
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
@@ -134,6 +135,12 @@ data class ReplanInput(
     val previousWeek: WeeklyPlan? = null,
     /** Previous persisted weeks used by the volume base (ADR 0038). */
     val recentWeeks: List<WeeklyPlan> = emptyList(),
+    /**
+     * Real weekly execution projection (ADR 0050). `null` keeps the legacy
+     * plan-derived reference for callers without activities; production passes
+     * the projection. Adherence still comes from [previousWeek].
+     */
+    val volumeReferences: List<VolumeReference>? = null,
     val weekNumberInBlock: Int = 1,
     val nonTrainablePastDates: Set<LocalDate> = emptySet(),
     /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */

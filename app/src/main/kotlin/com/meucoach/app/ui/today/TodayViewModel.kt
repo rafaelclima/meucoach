@@ -17,6 +17,7 @@ import com.meucoach.app.application.ReplaceManualCompletionRequest
 import com.meucoach.app.application.ReplaceManualCompletionResult
 import com.meucoach.app.application.TodayDecisionRequest
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.application.VolumeReferenceProjection
 import com.meucoach.app.application.buildLoadSnapshot
 import com.meucoach.app.application.readinessResult
 import com.meucoach.app.time.TimeProvider
@@ -209,6 +210,13 @@ class TodayViewModel @Inject constructor(
                     .filter { event -> event.status == RaceStatus.PLANNED }
                     .maxByOrNull { event -> event.updatedAt }
                     ?.let(RacePlan::from)
+                val zone = runCatching { java.time.ZoneId.of(it.timezone) }
+                    .getOrNull() ?: timeProvider.zoneId.value
+                val volumeReferences = VolumeReferenceProjection.build(
+                    plans = history.recentWeeks + listOfNotNull(history.previousWeek),
+                    activities = context.activities,
+                    zoneId = zone,
+                ).references
                 planGenerator.generate(
                     WeeklyPlanInput(
                         profile = it,
@@ -218,6 +226,7 @@ class TodayViewModel @Inject constructor(
                         today = context.today,
                         previousWeek = history.previousWeek,
                         recentWeeks = history.recentWeeks,
+                        volumeReferences = volumeReferences,
                         weekNumberInBlock = history.weekNumberInBlock,
                         race = race,
                         eventDates = eventDates,

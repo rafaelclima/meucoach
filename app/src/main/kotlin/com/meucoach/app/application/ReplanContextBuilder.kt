@@ -81,6 +81,11 @@ class ReplanContextBuilder @Inject constructor(
         val load = signalsSnapshot.load
         val previousWeek = plans.getWeek(weekStart.minusWeeks(1))
         val recentWeeks = plans.getWeeks((1L..4L).map { weekStart.minusWeeks(it) })
+        val volumeReferences = VolumeReferenceProjection.build(
+            plans = recentWeeks + listOfNotNull(previousWeek),
+            activities = signalsSnapshot.activities,
+            zoneId = zoneId,
+        ).references
         val weekNumberInBlock = plans.consecutiveWeeksBefore(weekStart) + 1
         val nonTrainablePastDates = nonTrainablePastDates(
             record = record,
@@ -117,6 +122,7 @@ class ReplanContextBuilder @Inject constructor(
             load = load,
             previousWeek = previousWeek,
             recentWeeks = recentWeeks,
+            volumeReferences = volumeReferences,
             weekNumberInBlock = weekNumberInBlock,
             nonTrainablePastDates = nonTrainablePastDates,
             race = race,

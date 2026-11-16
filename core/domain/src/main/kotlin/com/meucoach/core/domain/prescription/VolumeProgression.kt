@@ -65,21 +65,24 @@ data class VolumeDecision(
 }
 
 /**
- * Volume progression from what the athlete actually completed (ADR 0038, FR-004).
+ * Volume progression from what the athlete actually ran (ADR 0038/0050, FR-004/FR-408).
  *
  * The availability stays a hard ceiling. Without history the ceiling is used as
- * today. With history the base is the highest completed volume in the last four
- * usable weeks — a dose the athlete already demonstrated. It only grows 6%
- * (midpoint of the 5–8% rule, `R-PLAN-01`) when the base is the immediately
- * previous week, that week was at least 80% completed with strong evidence and
- * every guardrail is green; otherwise it is maintained. A weak week never lowers
- * the prescription on its own.
+ * today. With history the base is the highest real strong volume in the last
+ * four usable weeks — a dose the athlete already demonstrated, planned or not.
+ * It only grows 6% (midpoint of the 5–8% rule, `R-PLAN-01`) when the base is the
+ * immediately previous week, that week was at least 80% completed with strong
+ * **planned** evidence and every guardrail is green; otherwise it is maintained.
+ * Extra training counts for volume but never inflates adherence, so adherence is
+ * read from [previousWeek], not from the reference. A weak week never lowers the
+ * prescription on its own.
  */
 class VolumeProgression {
     fun decide(
         targetWeekStart: LocalDate,
         availabilityCeilingMinutes: Int,
-        references: List<WeeklyPlan>,
+        references: List<VolumeReference>,
+        previousWeek: WeeklyPlan? = null,
         gates: VolumeGates = VolumeGates(),
     ): VolumeDecision {
         require(availabilityCeilingMinutes >= 0) { "Availability ceiling must not be negative" }
@@ -88,7 +91,7 @@ class VolumeProgression {
             .filter { it.isUsableVolumeReference(targetWeekStart) }
             .distinctBy { it.weekStart }
         val base = usable.maxWithOrNull(
-            compareBy<WeeklyPlan>({ it.completedVolumeMinutes() }, { it.weekStart }),
+            compareBy<VolumeReference>({ it.strongMinutes }, { it.weekStart }),
         ) ?: return VolumeDecision(
             minutes = availabilityCeilingMinutes,
             baseMinutes = null,
@@ -98,19 +101,20 @@ class VolumeProgression {
             block = VolumeGrowthBlock.NO_HISTORY,
         )
 
-        val baseMinutes = base.completedVolumeMinutes()
+        val baseMinutes = base.strongMinutes
         val previous = references.firstOrNull { it.weekStart == previousWeekStart }
         val block = when {
             gates.targetWeekBlock != VolumeGrowthBlock.NONE -> gates.targetWeekBlock
 
             previous == null -> VolumeGrowthBlock.NO_PREVIOUS_WEEK
 
-            base.weekStart != previousWeekStart && !previous.isUsableVolumeReference(targetWeekStart) ->
+            base.weekStart != previousWeekStart && previous.specialWeek ->
                 VolumeGrowthBlock.PREVIOUS_WEEK_SPECIAL
 
             base.weekStart != previousWeekStart -> VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80
 
-            (previous.strongCompletionRatio() ?: 0.0) < MIN_COMPLETION -> VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80
+            (previousWeek?.strongCompletionRatio() ?: 0.0) < MIN_COMPLETION ->
+                VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80
 
             !gates.readinessGreen -> VolumeGrowthBlock.READINESS
 
@@ -153,16 +157,19 @@ class VolumeProgression {
 
     /**
      * A week is a comparable reference only when it was planned from its own
-     * Monday, is at most four weeks old, was not a deload/taper/recovery week and
-     * has at least one session completed with strong evidence.
+     * Monday, is at most four weeks old, was not a deload/taper/recovery week,
+     * has trainable sessions and proved real strong volume (ADR 0050 §2.2).
+     * A week without a plan is never a reference, even if it has strong runs.
      */
-    private fun WeeklyPlan.isUsableVolumeReference(targetWeekStart: LocalDate): Boolean {
+    private fun VolumeReference.isUsableVolumeReference(targetWeekStart: LocalDate): Boolean {
         if (!weekStart.isBefore(targetWeekStart)) return false
         if (weekStart.isBefore(targetWeekStart.minusWeeks(MAX_REFERENCE_WEEKS.toLong()))) return false
-        if (createdOn.isAfter(weekStart)) return false
-        if (ruleIds.any { it in SPECIAL_WEEK_RULE_IDS }) return false
-        if (trainableSessions().isEmpty()) return false
-        return completedVolumeMinutes() > 0
+        if (createdOn != weekStart) return false
+        if (specialWeek) return false
+        if (!hasPlan) return false
+        if (plannedSessions == 0) return false
+        if (strongMinutes <= 0) return false
+        return true
     }
 
     companion object {
@@ -183,12 +190,8 @@ internal fun WeeklyPlan.trainableSessions(): List<PlannedSession> = sessions
 /**
  * Volume proven by strong evidence. Only `ACTIVITY`/`GUIDED` count, matching the
  * quality progression gate (ADR 0024): a click is not a completed session.
+ * Adherence stays plan-based; real volume comes from [VolumeReference].
  */
-internal fun WeeklyPlan.completedVolumeMinutes(): Int = trainableSessions()
-    .filter { it.status == SessionStatus.DONE && it.completionEvidence?.isStrong == true }
-    .sumOf { it.durationMin ?: 0 }
-
-/** Share of planned sessions completed with strong evidence; `null` when nothing was planned. */
 internal fun WeeklyPlan.strongCompletionRatio(): Double? {
     val planned = trainableSessions()
     if (planned.isEmpty()) return null

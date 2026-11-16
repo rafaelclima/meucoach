@@ -1,6 +1,38 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S5 do Ciclo 4: projeção de volume real)
+**Atualizado:** 16/11/2026 (S5 do Ciclo 4: volume real na progressão/meso/graduação)
+
+## Sessão 2026-11-16 — Ciclo 4/S5: volume real na progressão, mesociclo e graduação (C4-39)
+
+**Objetivo:** fazer `VolumeProgression`, `MesoCycle` e `LevelGraduationEngine` consumirem a projeção de execução real, mantendo a adesão presa ao plano e o longão preso ao tempo real.
+
+### Concluído
+
+- **Progressão:** `VolumeProgression.decide` recebe `List<VolumeReference>`; a base é `max(strongMinutes)` das semanas usáveis (plano criado na segunda, não especial, com sessões treináveis e volume forte real). Aumento de 6% continua exigindo a semana anterior ≥80% de adesão **planejada**, lida do `WeeklyPlan`; treino extra conta volume e não infla adesão.
+- **Mesociclo:** `MesoCycle.isLoadWeek` usa `strongSessions >= 1`, `createdOn == weekStart` e semana não especial; uma semana só com treino extra conta como carga e pode disparar descarga, uma semana sem plano não conta.
+- **Graduação:** `LevelGraduationInput.strongRuns` e `hasLongRun` usam o `StrongRun.durationMin` real (60/90), planejado ou não; a duração planejada não substitui a corrida real. O hash de inputs inclui as corridas fortes.
+- **Fiação:** `WeeklyPlanInput`/`ReplanInput` recebem `volumeReferences`; `TodayViewModel`, `TutorialViewModel`, `ReplanContextBuilder` e `LevelGraduationContextBuilder` montam a projeção com `VolumeReferenceProjection`. Sem projeção (`null`), o domínio mantém um fallback legado derivado do plano para testes/callers antigos; produção sempre passa a projeção.
+- **Replanner:** o `inputsHash` inclui as referências reais; o mesociclo canônico usa as mesmas referências do gerador.
+
+### Testes
+
+- `:core:domain:test` 899 verdes (+12), `:app:testDebugUnitTest` 890, `:core:data:test` 171, `:core:model` 40.
+- Novos: `VolumeProgressionTest` com base real, treino extra sem inflar adesão, semana sem plano/especial e volume forte zero; `MesoCycleTest` com treino extra como carga e descarga após 3 semanas; `LevelGraduationEngineTest` com longão não planejado e duração planejada que não conta.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt`; FIT 93,01% de branches.
+- `./gradlew check` abortou em `:app:lintAnalyzeDebugUnitTest` com falha interna do lint ao analisar `NavigationTest.kt` (resolvedor FIR; arquivo não tocado nesta task); `check -x :app:lintAnalyzeDebugUnitTest` passou e os gates de teste/módulo acima também.
+- `TodayViewModelPersistTest` passa a semear corridas reais para a base de volume e a descarga; `LevelGraduationViewModelTest` semeia o longão real de 65 min; `EvaluateReplanTest` verifica a projeção no contexto.
+
+### Decisões e observações
+
+- `VolumeReference.strongSessions` conta todas as corridas fortes; por isso a adesão não pode usar esse numerador. O código usa `strongCompletionRatio` do plano, como o ADR 0050 §2.2 revisado.
+- O fallback legado (`VolumeReferenceBuilder.fromPlans`) só existe para chamadas sem projeção (`null`); uma lista vazia significa “sem referência real” e não cai no fallback.
+- A ordem de `TodayViewModel`: a projeção é montada no momento da geração do plano, com as atividades já sem lixeira.
+- `G-VOL-02`, reparo `LEGACY`, copy “treino extra contou” e `R-PLAN-01 v2`/`R-LVL-03` completos ficam em C4-40..C4-43.
+
+### Próximo passo
+
+1. C4-40: reparo `LEGACY_UNVERIFIED` do mesmo dia, com confirmação explícita.
+2. Depois C4-41..C4-43: golden `G-VOL-02`, docs e review planejada/mantida/rebaixada.
 
 ## Sessão 2026-11-16 — Ciclo 4/S5: projeção de volume real (C4-38)
 
