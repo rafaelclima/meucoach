@@ -193,6 +193,8 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 
 `PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale` e IDs de regra/evidência. No domínio, `structure?` carrega o `WorkoutStructure` executável (aquecimento, blocos, recuperações e volta à calma; C4-14); a coluna `structureJson` chega no schema v18 (C4-45) e linhas antigas/export antigo decodificam como `null`.
 
+O catálogo de sessões é `SessionLibrary` (domínio puro): `qualityTemplates(phase, level, distance)` e `easyTemplates(phase, level, includeIntroFartlek)` devolvem `SessionTemplate` com `qualityKind`, IDs de regra/evidência e `structure` canônica. Em qualidade, `structure` é obrigatória; `INTRO_FARTLEK` e os strides de dia fácil são `EASY`, com `qualityKind=null` e estrutura própria (C4-15). O gerador v6 ainda usa a projeção main/second de `templates(...)`; a fiação da matriz é C4-17.
+
 Regras do `ADR 0024`:
 
 - `DONE` só existe com evidência; o modelo rejeita a construção sem ela.

@@ -1,6 +1,7 @@
 package com.meucoach.core.domain.prescription
 
 import com.meucoach.core.model.Experience
+import com.meucoach.core.model.RaceDistance
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
@@ -27,31 +28,34 @@ class SessionLibraryTest {
     }
 
     @Test
-    fun `beginner quality is strides only`() {
-        MesoPhase.entries.forEach { phase ->
+    fun `beginner has no structured quality outside the taper micro-dose`() {
+        listOf(MesoPhase.BASE, MesoPhase.BUILD, MesoPhase.PEAK).forEach { phase ->
             val qualities = SessionLibrary.templates(phase, Experience.BEGINNER)
                 .filter { it.type == WorkoutType.QUALITY }
 
-            assertThat(qualities.map { it.qualityKind })
+            assertThat(qualities)
                 .describedAs("phase $phase")
-                .doesNotContain(QualityKind.CONTINUOUS, QualityKind.INTERVALS)
-            assertThat(qualities).hasSizeLessThanOrEqualTo(1)
+                .isEmpty()
         }
+
+        val taper = SessionLibrary.templates(MesoPhase.TAPER, Experience.BEGINNER)
+            .filter { it.type == WorkoutType.QUALITY }
+        assertThat(taper.map { it.qualityKind }).containsExactly(QualityKind.STRIDES_ONLY)
     }
 
     @Test
-    fun `build gives two qualities to intermediate and advanced`() {
+    fun `build gives two qualities with distinct kinds to intermediate and advanced`() {
         val intermediate = SessionLibrary.templates(MesoPhase.BUILD, Experience.INTERMEDIATE)
         assertThat(intermediate.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
             .containsExactly(QualityKind.CONTINUOUS)
         assertThat(intermediate.filter { it.role == SessionRole.QUALITY_SECOND }.map { it.qualityKind })
-            .containsExactly(QualityKind.CONTINUOUS)
+            .containsExactly(QualityKind.INTERVALS)
 
         val advanced = SessionLibrary.templates(MesoPhase.BUILD, Experience.ADVANCED)
         assertThat(
             advanced.filter { it.role == SessionRole.QUALITY_MAIN || it.role == SessionRole.QUALITY_SECOND }
                 .map { it.qualityKind },
-        ).containsExactly(QualityKind.INTERVALS, QualityKind.INTERVALS)
+        ).containsExactly(QualityKind.INTERVALS, QualityKind.HILLS)
     }
 
     @Test
@@ -79,15 +83,19 @@ class SessionLibraryTest {
     }
 
     @Test
-    fun `peak carries one specific quality per level`() {
-        val intermediate = SessionLibrary.templates(MesoPhase.PEAK, Experience.INTERMEDIATE)
-        assertThat(intermediate.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
-            .containsExactly(QualityKind.CONTINUOUS)
-        assertThat(intermediate.map { it.role }).doesNotContain(SessionRole.QUALITY_SECOND)
+    fun `peak carries one specific race-pace quality per distance`() {
+        RaceDistance.entries.forEach { distance ->
+            val intermediate = SessionLibrary.templates(MesoPhase.PEAK, Experience.INTERMEDIATE, distance)
+            assertThat(intermediate.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
+                .describedAs("intermediate $distance")
+                .containsExactly(QualityKind.RACE_PACE)
+            assertThat(intermediate.map { it.role }).doesNotContain(SessionRole.QUALITY_SECOND)
 
-        val advanced = SessionLibrary.templates(MesoPhase.PEAK, Experience.ADVANCED)
-        assertThat(advanced.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
-            .containsExactly(QualityKind.INTERVALS)
+            val advanced = SessionLibrary.templates(MesoPhase.PEAK, Experience.ADVANCED, distance)
+            assertThat(advanced.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
+                .describedAs("advanced $distance")
+                .containsExactly(QualityKind.RACE_PACE)
+        }
     }
 
     @Test
@@ -119,6 +127,11 @@ class SessionLibraryTest {
                     assertThat(template.evidenceIds)
                         .describedAs("$phase/$level/${template.role}")
                         .isNotEmpty()
+                    if (template.type == WorkoutType.QUALITY) {
+                        assertThat(template.structure)
+                            .describedAs("$phase/$level/${template.role}")
+                            .isNotNull()
+                    }
                 }
             }
         }

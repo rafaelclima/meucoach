@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — em implementação (C4-14 concluída; C4-15..C4-21 pendentes).
+**Status:** Aprovado em 2026-11-16 — em implementação (C4-14 e C4-15 concluídas; C4-16..C4-21 pendentes).
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -337,3 +337,19 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
 - ADR 0023, 0024, 0038, 0041, 0042, 0043, 0044.
 - `EV-DANIELS-2014`, `EV-SEILER-2010`, `EV-FOSTER-2001`, `EV-ISSURIN-2010`,
   `EV-TID-2021`, `EV-INJURY-2015`, `EV-HIIT-2016`, `EV-HIIT-2024`.
+
+---
+
+## 10. Registro de implementação
+
+- **C4-14 (S6):** `WorkoutStructure`/`WorkoutBlock`/`BlockKind` puros e codec
+  `WorkoutStructureJson` versionado em `core:data`; a estrutura nunca promete
+  mais tempo do que `totalMin`.
+- **C4-15 (S6.1):** matriz em
+  `SessionLibrary.qualityTemplates(phase, level, distance)` e
+  `easyTemplates(phase, level, includeIntroFartlek)`; `SessionRole.INTRO_FARTLEK`;
+  `SessionTemplate.structure` obrigatória em qualidade. A projeção
+  `templates(...)` mantém o formato main/second usado pelo gerador v6 até
+  C4-17. As formas de `PEAK` são baseadas em tempo porque `WorkoutBlock` não
+  carrega metros; C4-17 converte a previsão atual em pace real e ajusta a
+  estrutura à duração disponível.

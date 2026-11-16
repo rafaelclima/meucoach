@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S6 do Ciclo 4: estrutura executável da sessão)
+**Atualizado:** 16/11/2026 (S6.1 do Ciclo 4: matriz do catálogo de qualidade)
+
+## Sessão 2026-11-16 — Ciclo 4/S6.1: matriz do catálogo de qualidade (C4-15)
+
+**Objetivo:** substituir o catálogo contínuo-only do intermediário por uma matriz determinística de fase × nível × distância, com `INTRO_FARTLEK` e estrutura executável nos templates de qualidade.
+
+### Concluído
+
+- **Catálogo:** `SessionLibrary.qualityTemplates(phase, level, distance)` expõe a matriz; `easyTemplates(phase, level, includeIntroFartlek)` expõe fácil, strides e intro fartlek. `templates(...)` mantém a projeção main/second do gerador v6 até C4-17.
+- **Tipos:** `SessionRole.INTRO_FARTLEK`; `SessionTemplate.structure: WorkoutStructure?`; template de qualidade sem estrutura é rejeitado. Strides de dia fácil e intro fartlek são `EASY`, `qualityKind=null`, com estrutura.
+- **Matriz:** iniciante sem qualidade estruturada em `BASE`/`BUILD`/`PEAK`; `TAPER` mantém a micro-dose. Intermediário `BUILD` ganha contínuo, intervalos 5×3, fartlek 8×(1+1) e colinas 6×45 s; avançado ganha mais volume. `BASE` expõe fartlek leve para intermediário/avançado (a segunda metade fica para C4-16). `PEAK` é específico por distância: `RACE_PACE` com alvo `GOAL_5K`/`GOAL_10K`/`GOAL_HALF`/`GOAL_MARATHON`; avançado soma um segundo estímulo (intervalos curtos no 5K; contínuo nos demais).
+- **Estruturas:** formas canônicas de 25–45 min para strides, intro fartlek, contínuo, intervalos, fartlek, colinas, 5K, 10K, meia, maratona e intervalos curtos; todas respeitam `plannedSeconds <= totalMin`.
+
+### Testes
+
+- `:core:domain:test` 936 verdes (+17: `QualityCatalogTest`); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01% de branches.
+- `SessionLibrary`: 100% de linhas e 98,3% de branches.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+
+### Decisões e observações
+
+- A projeção legada `templates` continua sem qualidade na `BASE` para não mudar o gerador v6 antes de C4-16/17; a matriz já expõe o fartlek leve. A segunda metade da `BASE` será filtrada na rotação.
+- As formas de `PEAK` são baseadas em tempo porque `WorkoutBlock` não carrega metros; C4-17 converte a previsão atual em pace real e ajusta repetições/recuperações à duração. O alvo `GOAL_*` é um rótulo de distância, não a meta de tempo.
+- O iniciante continua sem `QUALITY` estruturada; a micro-dose de strides do `TAPER` permanece `STRIDES_ONLY` no catálogo, mas o gerador já bloqueia qualidade para `BEGINNER` (`R-PRESC-04`).
+- `structure` ainda não é persistida nem usada pelo gerador; a fiação é C4-17 e o schema v18/C4-45.
+
+### Próximo passo
+
+1. S6 / C4-16: rotação determinística por `weekInPhase` e duas qualidades com kinds diferentes; filtrar o fartlek leve da `BASE` para a segunda metade.
+2. Depois C4-17: gerador usa `qualityTemplates`/`easyTemplates`, preenche `qualityKind`/`structure` e torna o `PEAK` específico.
 
 ## Sessão 2026-11-16 — Ciclo 4/S6: estrutura executável da sessão (C4-14)
 

@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S6 (C4-14)
-> **Último commit:** C4-14 — `feat(domain): add executable workout structure and JSON (C4-14)`
+> **Última atualização:** 16/11/2026 — S6.1 (C4-15)
+> **Último commit:** C4-15 — `feat(domain): add quality catalog matrix and structures (C4-15)`
 > **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S6 concluída — C4-14 DONE**
-> **Task atual:** C4-15 (TODO)
-> **Próxima task:** C4-15
+> **Sessão atual:** **S6.1 concluída — C4-15 DONE**
+> **Task atual:** C4-16 (TODO)
+> **Próxima task:** C4-16
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 919 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`
-> **Próxima ação:** ler ADR 0047 §2.3–2.5 e FR-403; abrir C4-15 (matriz de `QualityKind`/`SessionTemplate` por fase, nível e distância; `INTRO_FARTLEK`; `SessionTemplate.structure`), TDD.
+> **Gates da última sessão:** `:core:domain:test` 936 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`
+> **Próxima ação:** abrir C4-16 (rotação determinística por `weekInPhase`, duas qualidades com kinds diferentes e filtro da segunda metade da BASE), TDD sobre `SessionLibrary`.
 
 ### 0.1 O que já está pronto
 
@@ -94,6 +94,16 @@
 - [x] `WorkoutStructureJson` versionado em `core:data`; `null`/vazio/JSON malformado/versão futura/kind desconhecido/estrutura inválida → `null`, nunca estrutura parcial.
 - [x] 13 testes em `WorkoutStructureTest` e 11 em `WorkoutStructureJsonTest`; fix separado do `ComplexCondition` de C4-40 no `:core:data` (`:core:data:detekt` verde).
 
+**S6.1 — matriz do catálogo (C4-15)**
+
+- [x] `SessionLibrary.qualityTemplates(phase, level, distance)` e `easyTemplates(phase, level, includeIntroFartlek)`; `templates` mantém a projeção main/second do gerador v6 até C4-17.
+- [x] `SessionRole.INTRO_FARTLEK`; `SessionTemplate.structure: WorkoutStructure?`; template de qualidade sem estrutura é rejeitado.
+- [x] Iniciante sem qualidade estruturada em `BASE`/`BUILD`/`PEAK`; `TAPER` mantém a micro-dose `STRIDES_ONLY`.
+- [x] `INTERMEDIATE/BUILD` com contínuo, intervalos 5×3, fartlek 8×(1+1) e colinas 6×45 s; `ADVANCED` com mais volume.
+- [x] `BASE` expõe fartlek leve para intermediário/avançado; a segunda metade da fase fica para C4-16.
+- [x] `PEAK` específico por distância (`RACE_PACE`, alvos `GOAL_5K`/`GOAL_10K`/`GOAL_HALF`/`GOAL_MARATHON`); avançado soma um segundo estímulo.
+- [x] 17 testes em `QualityCatalogTest`; `SessionLibraryTest` atualizado para a nova matriz.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
@@ -105,7 +115,7 @@
 - O check-in UI (C4-30), a reavaliação tardia (C4-31), o golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes.
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
 - A persistência de `qualityKind`/`planDecision`/`structure` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip. O codec JSON de `structure` já existe (C4-14), mas ainda não está ligado ao `PlanJson`/banco.
-- O catálogo de `role`/`structure` da oportunidade entra em C4-15/C4-17; o read model atual cobre data, kind, motivo, status e decisão. `WorkoutStructure` já existe no domínio, mas o gerador ainda não o preenche.
+- O catálogo de `role`/`qualityKind`/`structure` já existe em `SessionLibrary` (C4-15); o gerador e a oportunidade ainda não o consomem (C4-17). `WorkoutStructure` já existe no domínio, mas o gerador ainda não o preenche.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-03`, `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
@@ -238,7 +248,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S4** | C4-28, C4-34..C4-36 | Prontidão, check-in, sono | testes de readiness/health | commit + testes |
 | **S5** | C4-38, C4-39 | `VolumeReference`/`StrongRun`; meso/graduação | testes de volume | C4-38 e C4-39 concluídas (`VolumeReferenceTest`, `VolumeReferenceProjectionTest`, base/meso/graduação reais) |
 | **S5.1** | C4-40 | Reparo `LEGACY` do mesmo dia, com confirmação | testes de reparo; migrado intocado | C4-40 concluída (`SessionCompletionRulesTest`, repositório, `RepairLegacyCompletionTest`, prompt) |
-| **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | C4-14 concluída (`WorkoutStructureTest` 13, `WorkoutStructureJsonTest` 11); C4-15..C4-17 pendentes |
+| **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | C4-14 e C4-15 concluídas (`WorkoutStructureTest` 13, `WorkoutStructureJsonTest` 11, `QualityCatalogTest` 17); C4-16..C4-17 pendentes |
 | **S7** | C4-02, C4-07 | Gerador estrutural + `G-PER-03` | `G-PER-03`; propriedades | commit + golden |
 | **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | commit + testes |
 | **S9** | C4-45, C4-46 | Schema v18, JSON, `generatorVersion` | migração 17→18; round-trip | commit + migração |
@@ -381,6 +391,46 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
+## 5.3 Sessão S6.1 — C4-15 concluída
+
+**Objetivo:** transformar a `SessionLibrary` em uma matriz determinística de fase × nível × distância, com `INTRO_FARTLEK`, `SessionTemplate.structure` e PEAK específico, sem ainda fiar o gerador (C4-17).
+
+**Contexto obrigatório:**
+
+- ADR 0047 §2.1–2.5 e FR-403.
+- `SessionLibrary`, `SessionTemplate`, `SessionLibraryTest`, `SessionRolesTest` e os testes do gerador que fixam títulos/roles.
+
+**Task C4-15 — matriz de `QualityKind`/`SessionTemplate`**
+
+- [x] `SessionLibrary.qualityTemplates(phase, level, distance)` expõe a matriz; `easyTemplates(phase, level, includeIntroFartlek)` expõe fácil, strides e intro fartlek.
+- [x] `SessionRole.INTRO_FARTLEK`; `SessionTemplate.structure`; template de qualidade sem estrutura é rejeitado.
+- [x] Iniciante sem qualidade estruturada em `BASE`/`BUILD`/`PEAK`; `TAPER` mantém a micro-dose `STRIDES_ONLY`.
+- [x] Intermediário `BUILD`: contínuo, intervalos 5×3, fartlek 8×(1+1) e colinas 6×45 s; avançado com mais volume.
+- [x] `BASE` com fartlek leve para intermediário/avançado; a segunda metade da fase fica para C4-16.
+- [x] `PEAK` específico por distância (`RACE_PACE` com `GOAL_5K`/`GOAL_10K`/`GOAL_HALF`/`GOAL_MARATHON`); avançado soma um segundo estímulo.
+- [x] A projeção legada `templates(...)` mantém main/second e BASE sem qualidade para não mudar o gerador v6 antes de C4-17.
+- [x] 17 testes em `QualityCatalogTest`; `SessionLibraryTest` atualizado para a nova matriz.
+
+**Aceite da sessão (C4-15):**
+
+- [x] `./gradlew :core:domain:test` verde (936).
+- [x] `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`.
+- [x] `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01%.
+- [x] Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+- [x] §0/§6/§7/PROGRESS atualizados.
+- [x] Commit: `feat(domain): add quality catalog matrix and structures (C4-15)`.
+
+**Notas de implementação:**
+
+- A matriz expõe todos os estímulos elegíveis; a rotação escolhe 1–2 por semana (C4-16) e o gerador preenche `qualityKind`/`structure` (C4-17).
+- As formas de PEAK são baseadas em tempo (`WorkoutBlock` não carrega metros) e cabem no teto de 45 min; o alvo `GOAL_*` é um rótulo de distância, não a meta de tempo. C4-17 converte a previsão atual em pace real.
+- O iniciante continua sem `QUALITY` estruturada; a micro-dose de `TAPER` permanece `STRIDES_ONLY` no catálogo, mas o gerador já bloqueia qualidade para `BEGINNER` (`R-PRESC-04`).
+- `structure` ainda não é persistida nem usada pelo gerador; a fiação é C4-17 e o schema v18/C4-45.
+
+**Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
+
+---
+
 ## 6. Task board
 
 > **Status:** `[ ]` TODO · `[~]` IN_PROGRESS · `[x]` DONE · `[!]` BLOCKED · `[-]` DEFERRED.
@@ -415,7 +465,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-14 | `WorkoutStructure`/`WorkoutBlock` + JSON | C4-01 | L | S6 | ADR 0047/0048 | Round-trip; retrocompatível | `WorkoutStructureTest` (13); `WorkoutStructureJsonTest` (11); commit S6 |
-| [ ] | C4-15 | `QualityKind` + matriz da `SessionLibrary` | C4-14 | XL | S6 | ADR 0047 | Matriz fase/nível/distância | — |
+| [x] | C4-15 | `QualityKind` + matriz da `SessionLibrary` | C4-14 | XL | S6.1 | ADR 0047 | Matriz fase/nível/distância | `QualityCatalogTest` (17); `SessionLibraryTest` atualizado; commit S6.1 |
 | [ ] | C4-16 | Rotação determinística e 2 kinds | C4-15 | M | S6 | ADR 0047 | Duas semanas não repetem | — |
 | [ ] | C4-17 | Gerador usa estrutura/kind; PEAK específico | C4-15/16 | L | S6 | ADR 0047 | PEAK ≠ BUILD; testes | — |
 | [ ] | C4-18 | Strides para todos + intro fartlek do iniciante | C4-15 | M | S12 | ADR 0047 | Iniciante EASY; qualidade 0 | — |
@@ -582,6 +632,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Commits:** `fix(data): simplify legacy repair guard for detekt (C4-40)`; `feat(domain): add executable workout structure and JSON (C4-14)`.
 - **Decisões/notas:** `totalMin` cobre aquecimento + blocos + recuperações + volta à calma; a recuperação após a última repetição é contada de propósito, então a estrutura é conservadora. O codec é versionado e devolve `null` para payload ausente, malformado, de versão futura ou inválido; nunca monta uma estrutura parcial. `PlannedSession.structure` já existe no domínio, mas a coluna `structureJson` e o round-trip no banco ficam para C4-45. `SessionTemplate.structure`/`INTRO_FARTLEK` e a matriz ficam em C4-15. O `ComplexCondition` de C4-40 foi corrigido em commit separado para o `:core:data:detekt` passar sem baseline novo.
 - **Próximo:** S6 / C4-15 (matriz de `QualityKind`/`SessionTemplate` por fase, nível e distância; `INTRO_FARTLEK`; `SessionTemplate.structure`), TDD.
+
+### S6.1 — 2026-11-16 — Matriz do catálogo de qualidade (C4-15)
+
+- **Status:** DONE
+- **Tasks:** C4-15.
+- **Arquivos:** `core/domain/.../prescription/SessionLibrary.kt`, `QualityCatalogTest.kt` (novo), `SessionLibraryTest.kt`, `SessionRolesTest.kt`, `docs/adr/0047-quality-catalog-periodization.md`, `docs/DATA_MODEL.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 936 verdes (+17: `QualityCatalogTest`); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`; FIT 93,01% de branches. `SessionLibrary` com 100% de linhas e 98,3% de branches.
+- **Commit:** `feat(domain): add quality catalog matrix and structures (C4-15)`.
+- **Decisões/notas:** `qualityTemplates` expõe todos os estímulos elegíveis; a rotação escolhe 1–2 por semana (C4-16) e o gerador preenche `qualityKind`/`structure` (C4-17). A projeção legada `templates` mantém main/second e BASE sem qualidade para não mudar o gerador v6 antes de C4-17; a segunda metade da BASE é decisão da rotação. As formas de PEAK são baseadas em tempo (`WorkoutBlock` não carrega metros) e cabem no teto de 45 min; o alvo `GOAL_*` é um rótulo de distância, não a meta de tempo. O iniciante continua sem `QUALITY` estruturada; a micro-dose de `TAPER` permanece `STRIDES_ONLY` no catálogo, mas o gerador já bloqueia qualidade para `BEGINNER` (`R-PRESC-04`). `structure` ainda não é persistida nem usada pelo gerador.
+- **Próximo:** S6 / C4-16 (rotação determinística por `weekInPhase`, duas qualidades com kinds diferentes e filtro da segunda metade da BASE), TDD.
 
 ---
 

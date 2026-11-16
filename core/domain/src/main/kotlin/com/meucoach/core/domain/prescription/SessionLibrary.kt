@@ -1,6 +1,7 @@
 package com.meucoach.core.domain.prescription
 
 import com.meucoach.core.model.Experience
+import com.meucoach.core.model.RaceDistance
 
 /** Papel da sessão dentro da semana; a fiação agenda dias e durações. */
 enum class SessionRole {
@@ -9,9 +10,16 @@ enum class SessionRole {
     QUALITY_MAIN,
     QUALITY_SECOND,
     STRIDES,
+
+    /**
+     * Surtos curtos no fim de um fácil do iniciante, após 4 semanas
+     * consistentes (ADR 0047 §2.2). É `EASY`, não conta como qualidade e não
+     * usa [QualityKind].
+     */
+    INTRO_FARTLEK,
 }
 
-/** Natureza do estímulo forte; iniciante só conhece [STRIDES_ONLY] (ADR 0043 §3.2). */
+/** Natureza do estímulo forte; o catálogo decide o que cada fase/nível vê (ADR 0047). */
 enum class QualityKind {
     STRIDES_ONLY,
     CONTINUOUS,
@@ -34,12 +42,18 @@ enum class DurationPolicy {
 }
 
 /**
- * Estrutura de sessão por (fase, nível), sem pace e sem minutos inventados.
+ * Estrutura de sessão por (fase, nível, distância), sem pace e sem minutos
+ * inventados.
  *
  * Títulos e descrições reutilizam o vocabulário do gerador ("Longão",
  * "Strides curtos", "Ritmo forte"/"Intervalos"); paces e durações derivam da
  * calibração e da disponibilidade na fiação (fatia 3). Toda estrutura cita
  * `R-PER-02`.
+ *
+ * [structure] is the canonical executable shape. Quality templates must carry
+ * one; the generator (C4-17) sizes repetitions and recoveries to the real
+ * duration. Plain easy and long templates stay continuous and keep it `null`;
+ * strides and the intro fartlek carry their own short shape.
  */
 data class SessionTemplate(
     val role: SessionRole,
@@ -50,6 +64,7 @@ data class SessionTemplate(
     val blurb: String,
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
+    val structure: WorkoutStructure? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Template title must not be blank" }
@@ -59,53 +74,143 @@ data class SessionTemplate(
         require((type == WorkoutType.QUALITY) == (qualityKind != null)) {
             "Only quality sessions carry a quality kind"
         }
+        require(type != WorkoutType.QUALITY || structure != null) {
+            "Quality templates require an executable structure"
+        }
     }
 }
 
 /**
- * Biblioteca de sessões por fase e nível (ADR 0043 §3.2, fatia 2).
+ * Biblioteca de sessões por fase, nível e distância (ADR 0043 §3.2, ADR 0047).
  *
- * Pura e determinística: mesma fase + mesmo nível, mesmas estruturas. A trava
- * de iniciante vive aqui — `BEGINNER` nunca recebe [QualityKind.CONTINUOUS]
- * nem [QualityKind.INTERVALS]; a saída continua sendo a graduação por
- * evidência (ADR 0042). `TAPER` só carrega a micro-dose, `RECOVERY` é só fácil
- * e `BASE` não tem qualidade principal.
+ * Pura e determinística: mesma fase + nível + distância, mesmas estruturas.
+ * A trava de iniciante vive aqui — `BEGINNER` nunca recebe qualidade
+ * estruturada; `TAPER` só carrega a micro-dose de strides, `RECOVERY` é só
+ * fácil e `BASE` só expõe o fartlek leve para intermediário/avançado (a
+ * segunda metade da fase é decidida pela rotação, C4-16).
+ *
+ * [templates] keeps the one-main/one-second projection used by the v6
+ * generator until C4-17 consumes the full matrix. [qualityTemplates] and
+ * [easyTemplates] are the catalog: they never invent a duration and expose
+ * every eligible stimulus with its executable structure.
  */
 object SessionLibrary {
-    fun templates(phase: MesoPhase, level: Experience): List<SessionTemplate> = when (phase) {
+    fun templates(phase: MesoPhase, level: Experience, distance: RaceDistance? = null): List<SessionTemplate> =
+        buildList {
+            addAll(easyTemplates(phase, level))
+            if (phase != MesoPhase.RECOVERY) add(long())
+            addAll(legacyQualityProjection(phase, level, distance))
+        }
+
+    /**
+     * Easy sessions eligible in [phase]. [includeIntroFartlek] only matters
+     * for a beginner after four consistent weeks (ADR 0047 §2.2); it never
+     * turns the intro fartlek into a quality session.
+     */
+    fun easyTemplates(
+        phase: MesoPhase,
+        level: Experience,
+        includeIntroFartlek: Boolean = false,
+    ): List<SessionTemplate> = when (phase) {
         MesoPhase.RECOVERY -> listOf(easy(recovery = true))
 
-        MesoPhase.TAPER -> listOf(easy(recovery = false), long(), stridesMicroDose())
+        MesoPhase.TAPER -> listOf(easy(recovery = false))
 
-        MesoPhase.BASE -> listOf(easy(recovery = false), long(), stridesBase())
-
-        MesoPhase.BUILD -> buildList {
+        MesoPhase.BASE, MesoPhase.BUILD, MesoPhase.PEAK -> buildList {
             add(easy(recovery = false))
-            add(long())
-            when (level) {
-                Experience.BEGINNER -> add(stridesBase())
+            add(stridesBase())
+            if (level == Experience.BEGINNER && includeIntroFartlek) add(introFartlek())
+        }
+    }
 
-                Experience.INTERMEDIATE -> {
-                    add(qualityMain(QualityKind.CONTINUOUS, level))
-                    add(qualitySecond(QualityKind.CONTINUOUS))
-                }
+    /**
+     * Full quality matrix for [phase], [level] and race [distance].
+     *
+     * `distance` only changes `PEAK`: the session receives race-pace work for
+     * the event distance, and advanced adds a second specific stimulus. Without
+     * a distance the `PEAK` quality stays generic and conservative; the
+     * generator only enters `PEAK` with a race, so this is a caller-safety
+     * fallback.
+     */
+    fun qualityTemplates(phase: MesoPhase, level: Experience, distance: RaceDistance? = null): List<SessionTemplate> =
+        when (phase) {
+            MesoPhase.RECOVERY -> emptyList()
 
-                Experience.ADVANCED -> {
-                    add(qualityMain(QualityKind.INTERVALS, level))
-                    add(qualitySecond(QualityKind.INTERVALS))
-                }
+            MesoPhase.TAPER -> listOf(stridesMicroDose())
+
+            MesoPhase.BASE -> when (level) {
+                Experience.BEGINNER -> emptyList()
+                Experience.INTERMEDIATE, Experience.ADVANCED -> listOf(lightFartlek())
             }
+
+            MesoPhase.BUILD -> buildTemplates(level)
+
+            MesoPhase.PEAK -> peakTemplates(level, distance)
         }
 
-        MesoPhase.PEAK -> buildList {
-            add(easy(recovery = false))
-            add(long())
-            when (level) {
-                Experience.BEGINNER -> add(stridesBase())
-                Experience.INTERMEDIATE -> add(qualityMain(QualityKind.CONTINUOUS, level))
-                Experience.ADVANCED -> add(qualityMain(QualityKind.INTERVALS, level))
+    private fun buildTemplates(level: Experience): List<SessionTemplate> = when (level) {
+        Experience.BEGINNER -> emptyList()
+
+        Experience.INTERMEDIATE -> listOf(
+            continuous(workMin = 20),
+            intervals(repetitions = 5),
+            fartlek(repetitions = 8),
+            hills(repetitions = 6),
+        )
+
+        Experience.ADVANCED -> listOf(
+            intervals(repetitions = 6),
+            hills(repetitions = 8),
+            continuous(workMin = 25),
+            fartlek(repetitions = 10),
+        )
+    }
+
+    private fun peakTemplates(level: Experience, distance: RaceDistance?): List<SessionTemplate> = when (level) {
+        Experience.BEGINNER -> emptyList()
+        Experience.INTERMEDIATE -> listOf(peakIntermediate(distance))
+        Experience.ADVANCED -> peakAdvanced(distance)
+    }
+
+    private fun peakIntermediate(distance: RaceDistance?): SessionTemplate =
+        if (distance == null) continuous(workMin = 20) else peakRacePace(distance)
+
+    private fun peakAdvanced(distance: RaceDistance?): List<SessionTemplate> = when (distance) {
+        null -> listOf(intervals(repetitions = 6))
+
+        RaceDistance.FIVE_K -> listOf(peakRacePace(distance), shortIntervals())
+
+        RaceDistance.TEN_K,
+        RaceDistance.HALF_MARATHON,
+        RaceDistance.MARATHON,
+        -> listOf(peakRacePace(distance), continuous(workMin = 25))
+    }
+
+    /**
+     * One-main/one-second projection for the v6 generator. `BASE` stays
+     * quality-free here because the light fartlek is only available in the
+     * second half of the phase; C4-16/17 owns that gate. Remove once C4-17
+     * reads the matrix.
+     */
+    private fun legacyQualityProjection(
+        phase: MesoPhase,
+        level: Experience,
+        distance: RaceDistance?,
+    ): List<SessionTemplate> = when (phase) {
+        MesoPhase.RECOVERY,
+        MesoPhase.BASE,
+        -> emptyList()
+
+        MesoPhase.TAPER -> qualityTemplates(phase, level, distance)
+
+        MesoPhase.BUILD -> qualityTemplates(phase, level, distance)
+            .distinctBy { it.qualityKind }
+            .take(2)
+            .mapIndexed { index, template ->
+                if (index == 0) template else template.copy(role = SessionRole.QUALITY_SECOND)
             }
-        }
+
+        MesoPhase.PEAK -> qualityTemplates(phase, level, distance).take(1)
     }
 
     private fun easy(recovery: Boolean): SessionTemplate = SessionTemplate(
@@ -137,13 +242,41 @@ object SessionLibrary {
 
     private fun stridesBase(): SessionTemplate = SessionTemplate(
         role = SessionRole.STRIDES,
-        type = WorkoutType.QUALITY,
+        type = WorkoutType.EASY,
         title = "Strides curtos",
-        qualityKind = QualityKind.STRIDES_ONLY,
+        qualityKind = null,
         durationPolicy = DurationPolicy.MICRO_DOSE_25,
-        blurb = "Estímulo neuromuscular curto, sem fadiga.",
+        blurb = "Estímulo neuromuscular curto no fim de um fácil; não conta como treino forte.",
         ruleIds = listOf(RULE_ID),
         evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+        structure = stridesStructure(note = "Rápido e relaxado; recuperação completa."),
+    )
+
+    private fun introFartlek(): SessionTemplate = SessionTemplate(
+        role = SessionRole.INTRO_FARTLEK,
+        type = WorkoutType.EASY,
+        title = "Fácil com surtos",
+        qualityKind = null,
+        durationPolicy = DurationPolicy.EASY_SIZED,
+        blurb = "Surtos curtos e controlados no fácil, após 4 semanas consistentes; " +
+            "não conta como qualidade.",
+        ruleIds = listOf(RULE_ID),
+        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+        structure = structure(
+            warmupMin = WARMUP_EASY_MIN,
+            blocks = listOf(
+                WorkoutBlock(
+                    kind = BlockKind.WORK,
+                    repetitions = 6,
+                    workSec = 30,
+                    recoverySec = 90,
+                    target = "RPE 7",
+                    note = "Confortavelmente forte; não é prova.",
+                ),
+            ),
+            cooldownMin = 10,
+            totalMin = 30,
+        ),
     )
 
     private fun stridesMicroDose(): SessionTemplate = SessionTemplate(
@@ -155,28 +288,263 @@ object SessionLibrary {
         blurb = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
         ruleIds = listOf(RULE_ID, "R-PLAN-05"),
         evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
+        structure = stridesStructure(note = "Micro-dose de semana de prova; sem fadiga."),
     )
 
-    private fun qualityMain(kind: QualityKind, level: Experience): SessionTemplate = SessionTemplate(
+    private fun stridesStructure(note: String): WorkoutStructure = structure(
+        warmupMin = WARMUP_EASY_MIN,
+        blocks = listOf(
+            WorkoutBlock(
+                kind = BlockKind.STRIDES,
+                repetitions = 6,
+                workSec = 20,
+                recoverySec = 60,
+                target = "RPE 8",
+                note = note,
+            ),
+        ),
+        cooldownMin = 9,
+        totalMin = 25,
+    )
+
+    private fun lightFartlek(): SessionTemplate = SessionTemplate(
         role = SessionRole.QUALITY_MAIN,
         type = WorkoutType.QUALITY,
-        title = if (level == Experience.ADVANCED) "Intervalos" else "Ritmo forte",
-        qualityKind = kind,
+        title = "Fartlek leve",
+        qualityKind = QualityKind.FARTLEK,
         durationPolicy = DurationPolicy.QUALITY_SIZED,
-        blurb = if (kind == QualityKind.INTERVALS) {
-            "Repetições fortes com recuperação leve entre elas."
-        } else {
-            "Ritmo forte sustentado com aquecimento e volta à calma."
-        },
-        ruleIds = listOf(RULE_ID, "R-PLAN-02"),
-        evidenceIds = listOf("EV-DANIELS-2014", "EV-SEILER-2010", "EV-FOSTER-2001"),
+        blurb = "Dose baixa de variação na segunda metade da base; não é treino forte.",
+        ruleIds = QUALITY_RULES,
+        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+        structure = structure(
+            warmupMin = WARMUP_EASY_MIN,
+            blocks = listOf(
+                WorkoutBlock(
+                    kind = BlockKind.WORK,
+                    repetitions = 6,
+                    workSec = 30,
+                    recoverySec = 90,
+                    target = "RPE 7",
+                    note = "Confortavelmente forte; dose baixa.",
+                ),
+            ),
+            cooldownMin = 10,
+            totalMin = 30,
+        ),
     )
 
-    private fun qualitySecond(kind: QualityKind): SessionTemplate = qualityMain(kind, levelFor(kind))
-        .copy(role = SessionRole.QUALITY_SECOND)
+    private fun continuous(workMin: Int): SessionTemplate = SessionTemplate(
+        role = SessionRole.QUALITY_MAIN,
+        type = WorkoutType.QUALITY,
+        title = "Ritmo forte",
+        qualityKind = QualityKind.CONTINUOUS,
+        durationPolicy = DurationPolicy.QUALITY_SIZED,
+        blurb = "Ritmo forte sustentado com aquecimento e volta à calma.",
+        ruleIds = QUALITY_RULES,
+        evidenceIds = QUALITY_EVIDENCE,
+        structure = structure(
+            warmupMin = 10,
+            blocks = listOf(
+                WorkoutBlock(
+                    kind = BlockKind.WORK,
+                    workSec = workMin * SECONDS_PER_MINUTE,
+                    target = "T",
+                    note = "Ritmo forte sustentado.",
+                ),
+            ),
+            cooldownMin = 5,
+            totalMin = workMin + 15,
+        ),
+    )
 
-    private fun levelFor(kind: QualityKind): Experience =
-        if (kind == QualityKind.INTERVALS) Experience.ADVANCED else Experience.INTERMEDIATE
+    private fun intervals(repetitions: Int): SessionTemplate = SessionTemplate(
+        role = SessionRole.QUALITY_MAIN,
+        type = WorkoutType.QUALITY,
+        title = "Intervalos",
+        qualityKind = QualityKind.INTERVALS,
+        durationPolicy = DurationPolicy.QUALITY_SIZED,
+        blurb = "Repetições fortes com recuperação leve entre elas.",
+        ruleIds = QUALITY_RULES,
+        evidenceIds = QUALITY_EVIDENCE,
+        structure = structure(
+            warmupMin = 10,
+            blocks = listOf(
+                WorkoutBlock(
+                    kind = BlockKind.WORK,
+                    repetitions = repetitions,
+                    workSec = INTERVAL_WORK_SEC,
+                    recoverySec = INTERVAL_RECOVERY_SEC,
+                    target = "I",
+                    note = "Repetições fortes; recuperação leve.",
+                ),
+            ),
+            cooldownMin = 5,
+            totalMin = 15 + repetitions * INTERVAL_CYCLE_MIN,
+        ),
+    )
+
+    private fun fartlek(repetitions: Int): SessionTemplate {
+        val totalMin = if (repetitions >= 10) 40 else 35
+        return SessionTemplate(
+            role = SessionRole.QUALITY_MAIN,
+            type = WorkoutType.QUALITY,
+            title = "Fartlek",
+            qualityKind = QualityKind.FARTLEK,
+            durationPolicy = DurationPolicy.QUALITY_SIZED,
+            blurb = "Variação por esforço percebido, sem pace fixo.",
+            ruleIds = QUALITY_RULES,
+            evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+            structure = structure(
+                warmupMin = 10,
+                blocks = listOf(
+                    WorkoutBlock(
+                        kind = BlockKind.WORK,
+                        repetitions = repetitions,
+                        workSec = 60,
+                        recoverySec = 60,
+                        target = "RPE 8",
+                        note = "Forte e fácil alternados pelo esforço.",
+                    ),
+                ),
+                cooldownMin = totalMin - 10 - repetitions * 2,
+                totalMin = totalMin,
+            ),
+        )
+    }
+
+    private fun hills(repetitions: Int): SessionTemplate {
+        val totalMin = if (repetitions >= 8) 40 else 35
+        return SessionTemplate(
+            role = SessionRole.QUALITY_MAIN,
+            type = WorkoutType.QUALITY,
+            title = "Colinas",
+            qualityKind = QualityKind.HILLS,
+            durationPolicy = DurationPolicy.QUALITY_SIZED,
+            blurb = "Subidas curtas e fortes, com recuperação caminhando.",
+            ruleIds = QUALITY_RULES,
+            evidenceIds = listOf("EV-DANIELS-2014", "EV-SEILER-2010"),
+            structure = structure(
+                warmupMin = 10,
+                blocks = listOf(
+                    WorkoutBlock(
+                        kind = BlockKind.WORK,
+                        repetitions = repetitions,
+                        workSec = 45,
+                        recoverySec = 120,
+                        target = "RPE 8",
+                        note = "Subida forte; desça caminhando.",
+                    ),
+                ),
+                cooldownMin = 8,
+                totalMin = totalMin,
+            ),
+        )
+    }
+
+    private fun peakRacePace(distance: RaceDistance): SessionTemplate {
+        val shape = peakShape(distance)
+        return SessionTemplate(
+            role = SessionRole.QUALITY_MAIN,
+            type = WorkoutType.QUALITY,
+            title = "Pace de prova ${distance.raceLabel()}",
+            qualityKind = QualityKind.RACE_PACE,
+            durationPolicy = DurationPolicy.QUALITY_SIZED,
+            blurb = "Blocos no pace atual da prova (${distance.raceLabel()}), não na meta; " +
+                "a previsão manda.",
+            ruleIds = QUALITY_RULES,
+            evidenceIds = listOf("EV-DANIELS-2014", "EV-FOSTER-2001"),
+            structure = structure(
+                warmupMin = 10,
+                blocks = listOf(
+                    WorkoutBlock(
+                        kind = BlockKind.RACE_PACE,
+                        repetitions = shape.repetitions,
+                        workSec = shape.workSec,
+                        recoverySec = shape.recoverySec,
+                        target = distance.targetLabel(),
+                        note = "Pace atual, não a meta.",
+                    ),
+                ),
+                cooldownMin = 5,
+                totalMin = 45,
+            ),
+        )
+    }
+
+    private fun shortIntervals(): SessionTemplate = SessionTemplate(
+        role = SessionRole.QUALITY_MAIN,
+        type = WorkoutType.QUALITY,
+        title = "Intervalos curtos",
+        qualityKind = QualityKind.INTERVALS,
+        durationPolicy = DurationPolicy.QUALITY_SIZED,
+        blurb = "Repetições curtas para a especificidade de 5K.",
+        ruleIds = QUALITY_RULES,
+        evidenceIds = listOf("EV-DANIELS-2014", "EV-FOSTER-2001"),
+        structure = structure(
+            warmupMin = 12,
+            blocks = listOf(
+                WorkoutBlock(
+                    kind = BlockKind.WORK,
+                    repetitions = 8,
+                    workSec = 120,
+                    recoverySec = 60,
+                    target = "I",
+                    note = "Repetições curtas e fortes.",
+                ),
+            ),
+            cooldownMin = 9,
+            totalMin = 45,
+        ),
+    )
+
+    private fun structure(
+        warmupMin: Int,
+        blocks: List<WorkoutBlock>,
+        cooldownMin: Int,
+        totalMin: Int,
+    ): WorkoutStructure = WorkoutStructure(
+        warmupMin = warmupMin,
+        blocks = blocks,
+        cooldownMin = cooldownMin,
+        totalMin = totalMin,
+    )
+
+    private data class PeakShape(val repetitions: Int, val workSec: Int, val recoverySec: Int)
+
+    /**
+     * Time-based shape for the distance-specific peak. [WorkoutBlock] carries
+     * seconds, not meters, and the session ceiling is 45 min; C4-17 converts
+     * the current prediction to the real pace and available duration. The
+     * product examples (5×1 km, 3×2 km, 2×3 km, 2×5 km) are the intent, not a
+     * promise that does not fit the day.
+     */
+    private fun peakShape(distance: RaceDistance): PeakShape = when (distance) {
+        RaceDistance.FIVE_K -> PeakShape(repetitions = 5, workSec = 240, recoverySec = 120)
+        RaceDistance.TEN_K -> PeakShape(repetitions = 3, workSec = 480, recoverySec = 120)
+        RaceDistance.HALF_MARATHON -> PeakShape(repetitions = 2, workSec = 720, recoverySec = 180)
+        RaceDistance.MARATHON -> PeakShape(repetitions = 2, workSec = 660, recoverySec = 240)
+    }
+
+    private fun RaceDistance.raceLabel(): String = when (this) {
+        RaceDistance.FIVE_K -> "5K"
+        RaceDistance.TEN_K -> "10K"
+        RaceDistance.HALF_MARATHON -> "meia maratona"
+        RaceDistance.MARATHON -> "maratona"
+    }
+
+    private fun RaceDistance.targetLabel(): String = when (this) {
+        RaceDistance.FIVE_K -> "GOAL_5K"
+        RaceDistance.TEN_K -> "GOAL_10K"
+        RaceDistance.HALF_MARATHON -> "GOAL_HALF"
+        RaceDistance.MARATHON -> "GOAL_MARATHON"
+    }
 
     private const val RULE_ID = "R-PER-02"
+    private const val WARMUP_EASY_MIN = 8
+    private const val SECONDS_PER_MINUTE = 60
+    private const val INTERVAL_WORK_SEC = 180
+    private const val INTERVAL_RECOVERY_SEC = 120
+    private const val INTERVAL_CYCLE_MIN = 5
+    private val QUALITY_RULES = listOf(RULE_ID, "R-PLAN-02")
+    private val QUALITY_EVIDENCE = listOf("EV-DANIELS-2014", "EV-SEILER-2010", "EV-FOSTER-2001")
 }

@@ -45,9 +45,11 @@ class SessionRolesTest {
             ),
         )
 
-        // A fase não veta qualidade fora de preparação: valem os guardrails
-        // (verde, carga objetiva, 3+ dias). Suprimir na BASE exige decisão
-        // explícita (fatia futura).
+        // A biblioteca de C4-15 expõe o fartlek leve em
+        // `qualityTemplates(BASE, ...)`, mas a projeção legada usada pelo
+        // gerador v6 continua sem qualidade na BASE até C4-16/17 decidirem a
+        // segunda metade da fase. A qualidade genérica abaixo é o
+        // comportamento vigente.
         assertThat(plan.sessions.map { it.type }).contains(WorkoutType.QUALITY)
         assertThat(plan.ruleIds).doesNotContain("R-PER-02")
         assertThat(plan.rationale).doesNotContain("Bloco")
