@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 (documentação/ADRs) concluída; **S1 é a próxima sessão**.
+**Status:** S0 e S1 concluídas; **S2 é a próxima sessão**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,17 +9,19 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S0
-> **Último commit:** nenhum ainda. O primeiro commit deve ser o S0 (`docs(c4): approve PRD, ADRs 0044-0050 and execution checklist`).
-> **Fase:** 0 — Documentação/ADRs — **concluída**
-> **Sessão atual:** **S1 — Quality opportunity + QualityGate**
-> **Task atual:** C4-01 (TODO) e C4-03 (TODO)
-> **Próxima task:** C4-01
+> **Última atualização:** 16/11/2026 — S1
+> **Último commit:** S1 — `feat(domain): add quality opportunity and quality gate (C4-01, C4-03)` (S0: `8724c35`)
+> **Fase:** 1 — Domínio — **em andamento**
+> **Sessão atual:** **S2 — Long day**
+> **Task atual:** C4-09 (TODO)
+> **Próxima task:** C4-09
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** não executados (só documentação); revisão manual e `git diff --check`
-> **Próxima ação:** commitar o S0; ler ADR 0044; abrir C4-01; escrever o teste que falha antes do código.
+> **Gates da última sessão:** `:core:domain:test` 816 verdes; `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`
+> **Próxima ação:** ler ADR 0045; abrir C4-09; escrever o teste que falha do comparator do long day.
 
-### 0.1 O que já está pronto (S0)
+### 0.1 O que já está pronto
+
+**S0 — documentação**
 
 - [x] PRD `docs/PRD_TREINO_REAL.md` v1.1 aprovada (12/12 decisões; §11.5).
 - [x] ADR 0044 — oportunidade de qualidade e autoridade do dia.
@@ -32,12 +34,24 @@
 - [x] `docs/DECISIONS.md` r1.42 com os 7 ADRs.
 - [x] Este checklist.
 
+**S1 — domínio**
+
+- [x] `QualityKind` ganhou `FARTLEK`, `HILLS` e `RACE_PACE`, preservando os valores legados.
+- [x] `QualityOpportunity`, `PlanDecision`, `PlanDecisionReason`, `QualityBlockReason` e `QualityEligibility` no domínio puro.
+- [x] `PlannedSession` ganhou `qualityKind`/`planDecision` com default `null`; o gerador não mudou.
+- [x] `WeeklyPlan.qualityCount` documentado como oportunidades planejadas.
+- [x] `QualityGate.evaluate(...)` puro com a precedência do ADR 0044 §2.4.
+- [x] 42 testes novos: `QualityOpportunityTest` (15) e `QualityGateTest` (27).
+
 ### 0.2 O que **não** está pronto
 
-- Nenhum código de produção foi alterado.
-- Nenhuma migração v18 foi escrita/testada.
-- Nenhum teste novo foi executado.
-- Nenhum commit foi feito.
+- `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
+- O gate não bloqueia prontidão âmbar sozinho: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
+- A confiabilidade de carga é provisória até C4-22/C4-23; o gate já não usa ACWR não confiável, mas a janela completa de 28 dias chega nessa task.
+- Copy/catálogo de `R-PER-03`/`R-READY-06` e docs de `SPORTS_SCIENCE` ficam para C4-06/C4-08/C4-33/C4-52.
+- A persistência/JSON de `qualityKind`/`planDecision` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip.
+- `role`/`structure` da oportunidade entram com o catálogo/estrutura (C4-14/C4-15); o read model atual cobre data, kind, motivo, status e decisão.
+- Nenhuma migração v18 foi escrita/testada; nenhuma UI foi alterada; nenhum golden do ciclo foi criado.
 
 ---
 
@@ -181,9 +195,9 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
-## 5. Sessão atual — S1
+## 5. Sessão S1 — concluída
 
-> Preencha este bloco no início da sessão e mantenha atualizado. Ele é o “caderno aberto” do agente.
+> Próxima sessão: substituir este bloco pelo caderno da S2 no início da sessão; o registro da S1 fica no §7.
 
 **Objetivo:** criar o modelo de oportunidade de qualidade e o `QualityGate` puro, com testes, sem UI e sem fiação no app.
 
@@ -197,31 +211,40 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 **Task C4-01 — modelos**
 
-- [ ] Criar `QualityKind` com `STRIDES_ONLY`, `CONTINUOUS`, `INTERVALS`, `FARTLEK`, `HILLS`, `RACE_PACE` (ou evoluir o enum existente; preservar compatibilidade de serialização).
-- [ ] Criar `QualityOpportunity`/`QualityEligibility`/`QualityBlockReason`/`PlanDecisionReason` no domínio, sem Android/Room.
-- [ ] `PlannedSession` ganha `qualityKind`/`planDecision` (estrutura fica para C4-14; se o campo for necessário, usar default null).
-- [ ] `WeeklyPlan.qualityCount` documentado como oportunidades; sem mudar o comportamento do gerador ainda.
-- [ ] Testes de valor/igualdade/serialização básica, se aplicável.
-- [ ] Nenhuma UI; nenhum schema; nenhuma migração.
+- [x] Criar `QualityKind` com `STRIDES_ONLY`, `CONTINUOUS`, `INTERVALS`, `FARTLEK`, `HILLS`, `RACE_PACE` (ou evoluir o enum existente; preservar compatibilidade de serialização).
+- [x] Criar `QualityOpportunity`/`QualityEligibility`/`QualityBlockReason`/`PlanDecisionReason` no domínio, sem Android/Room.
+- [x] `PlannedSession` ganha `qualityKind`/`planDecision` (estrutura fica para C4-14; se o campo for necessário, usar default null).
+- [x] `WeeklyPlan.qualityCount` documentado como oportunidades; sem mudar o comportamento do gerador ainda.
+- [x] Testes de valor/igualdade/serialização básica, se aplicável.
+- [x] Nenhuma UI; nenhum schema; nenhuma migração.
 
 **Task C4-03 — `QualityGate` puro**
 
-- [ ] Criar `QualityGate.evaluate(...)` com a precedência do ADR 0044 §2.4.
-- [ ] Entradas: `PlannedSession` (tipo QUALITY), `ReadinessResult`, `LoadSnapshot?`, `RecoveryWindow?`, `AthleteProfile`, `LocalDate`.
-- [ ] Saída: `QualityEligibility(eligible, reason, detail, ruleId, evidenceIds, unlockHint)`.
-- [ ] Casos: doença/vermelho, beginner, sem check-in, sono curto, recovery/taper/race, load stale/insufficient, monotonia, strain, ACWR >1,5, elegível.
-- [ ] Determinismo e precedência; nenhum `now()` no domínio.
-- [ ] Testes de todos os reasons e do primeiro-que-falha.
-- [ ] Não fiar no `DailyPrescriptionEngine` ainda (C4-04).
+- [x] Criar `QualityGate.evaluate(...)` com a precedência do ADR 0044 §2.4.
+- [x] Entradas: `PlannedSession` (tipo QUALITY), `ReadinessResult`, `LoadSnapshot?`, `RecoveryWindow?`, `AthleteProfile`, `LocalDate`.
+- [x] Saída: `QualityEligibility(eligible, reason, detail, ruleId, evidenceIds, unlockHint)`.
+- [x] Casos: doença/vermelho, beginner, sem check-in, sono curto, recovery/taper/race, load stale/insufficient, monotonia, strain, ACWR >1,5, elegível.
+- [x] Determinismo e precedência; nenhum `now()` no domínio.
+- [x] Testes de todos os reasons e do primeiro-que-falha.
+- [x] Não fiar no `DailyPrescriptionEngine` ainda (C4-04).
 
 **Aceite da sessão:**
 
-- [ ] `./gradlew :core:domain:test` verde (focado e módulo).
-- [ ] `./gradlew spotlessCheck` verde.
-- [ ] Nenhum comportamento existente alterado (o gerador/daily ainda usam o código antigo).
-- [ ] Nenhum dado real.
-- [ ] §0/§6/§7/PROGRESS atualizados.
-- [ ] Commit: `feat(domain): add quality opportunity and quality gate (C4-01, C4-03)`.
+- [x] `./gradlew :core:domain:test` verde (focado e módulo).
+- [x] `./gradlew spotlessCheck` verde.
+- [x] Nenhum comportamento existente alterado (o gerador/daily ainda usam o código antigo).
+- [x] Nenhum dado real.
+- [x] §0/§6/§7/PROGRESS atualizados.
+- [x] Commit: `feat(domain): add quality opportunity and quality gate (C4-01, C4-03)`.
+
+**Notas de implementação:**
+
+- `phase: MesoPhase?` e `raceWeek: Boolean` entraram como contexto opcional do plano (default seguro); o gate não tem relógio nem conhece a prontidão da segunda.
+- A micro-dose de taper (`STRIDES_ONLY`) não é bloqueada pelo taper/semana de prova em si; segurança, recuperação e carga continuam valendo.
+- Âmbar **não** é bloqueado pelo gate: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
+- `QualityBlockReason.NONE` não entrou no enum: elegível é `reason = null` (ADR 0044), evitando duas representações do mesmo estado.
+- A confiabilidade de ACWR/strain é provisória até C4-22/C4-23; o gate já ignora ACWR não confiável.
+- Nenhum comportamento do `WeeklyPlanGenerator`/`DailyPrescriptionEngine` foi alterado.
 
 **Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
 
@@ -237,9 +260,9 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-01 | Modelos de oportunidade/gate | — | M | S1 | ADR 0044/FR-401 | Tipos puros, testes, sem UI | — |
+| [x] | C4-01 | Modelos de oportunidade/gate | — | M | S1 | ADR 0044/FR-401 | Tipos puros, testes, sem UI | `QualityOpportunityTest` (15); commit S1 |
 | [ ] | C4-02 | Separar gates estrutural × do dia no gerador | C4-01 | L | S7 | ADR 0044 | 3×40 gera 1 oportunidade; 2ª com progressão | — |
-| [ ] | C4-03 | `QualityGate` puro | C4-01 | L | S1 | ADR 0044 | Precedência completa; determinístico | — |
+| [x] | C4-03 | `QualityGate` puro | C4-01 | L | S1 | ADR 0044 | Precedência completa; determinístico | `QualityGateTest` (27); commit S1 |
 | [ ] | C4-04 | Daily engine usa `QualityGate` | C4-03 | M | S8 | ADR 0044 | Mantém/rebaixa com motivo; `R-PRESC-02` | — |
 | [ ] | C4-05 | Reavaliação com check-in/carga antes do DONE | C4-04 | M | S8 | ADR 0044/0049 | EASY→QUALITY antes do DONE; DONE intacto | — |
 | [ ] | C4-06 | Copy/rationale da oportunidade e rebaixamento | C4-03 | M | S11 | ADR 0044/FR-412 | Sem contradição; IDs catalogados | — |
@@ -359,15 +382,15 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões:** 12/12 aprovadas; iniciante = strides + intro fartlek `EASY`; pace dinâmico.
 - **Próximo:** S1 / C4-01.
 
-### S1 — _preencher_
+### S1 — 2026-11-16 — Oportunidade de qualidade + `QualityGate` puro
 
-- **Status:** TODO
-- **Tasks:** C4-01, C4-03
-- **Arquivos:**
-- **Testes/gates:**
-- **Commit:**
-- **Notas/bloqueios:**
-- **Próximo:**
+- **Status:** DONE
+- **Tasks:** C4-01, C4-03.
+- **Arquivos:** `core/domain/.../prescription/QualityOpportunity.kt` (novo), `QualityGate.kt` (novo), `SessionLibrary.kt`, `WeeklyPlanGenerator.kt`, `QualityOpportunityTest.kt`, `QualityGateTest.kt`.
+- **Testes/gates:** `:core:domain:test` 816 verdes (774 + 42 novos); `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; parser FIT 93,01%.
+- **Commit:** `feat(domain): add quality opportunity and quality gate (C4-01, C4-03)`.
+- **Notas/bloqueios:** gate ainda não fiado (C4-04); âmbar fica para `qualityEligibleByReadiness` (C4-28/29); confiabilidade de ACWR é provisória até C4-23; micro-dose de taper não é bloqueada pelo taper em si; nenhuma UI/schema/migração.
+- **Próximo:** S2 / C4-09 (comparator do long day), TDD sobre `WeeklyPlanGenerator`.
 
 ---
 
@@ -454,7 +477,7 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 881 | Atualizar conforme novos testes |
-| `:core:domain` | 774 | Atualizar conforme novos testes |
+| `:core:domain` | 816 | Atualizar conforme novos testes |
 | `:core:data` | 168 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -544,12 +567,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (S1)
+## 14. Próxima ação (S2)
 
-1. **Commitar o S0** (docs/PRD/ADRs/DECISIONS/checklist) com `docs(c4): approve PRD, ADRs 0044-0050 and execution checklist`.
-2. Abrir `docs/adr/0044-quality-opportunity-day-authority.md` §2.
-3. Abrir `core/domain/.../prescription/` e os testes existentes.
-4. Escrever o primeiro teste que falha de `C4-01`/`C4-03`.
-5. Implementar, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0045-long-run-sizing.md` e o FR-402/§5.6 do PRD.
+2. Ler `WeeklyPlanGenerator` (seleção do long day e `fitToVolume`) e os testes de longão existentes.
+3. Escrever o teste que falha do comparator do long day (C4-09: empate 3×40 → domingo).
+4. Implementar C4-09..C4-12 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -16,6 +16,9 @@ enum class QualityKind {
     STRIDES_ONLY,
     CONTINUOUS,
     INTERVALS,
+    FARTLEK,
+    HILLS,
+    RACE_PACE,
 }
 
 /**

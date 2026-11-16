@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (Ciclo 4 documentado: PRD v1.1, ADRs 0044–0050 e checklist de execução; sem código)
+**Atualizado:** 16/11/2026 (S1 do Ciclo 4: oportunidade de qualidade e `QualityGate` puro)
+
+## Sessão 2026-11-16 — Ciclo 4/S1: oportunidade de qualidade e `QualityGate` puro
+
+**Objetivo:** criar os modelos de oportunidade e o gate de qualidade do dia, puros e testados, sem UI nem fiação.
+
+### Concluído
+
+- **Modelos:** `QualityKind` ganhou `FARTLEK`/`HILLS`/`RACE_PACE`; `QualityOpportunity`, `PlanDecision`/`PlanDecisionReason`, `QualityBlockReason` e `QualityEligibility`; `PlannedSession.qualityKind`/`planDecision` com default `null`; `qualityCount` documentado como oportunidades planejadas.
+- **Gate:** `QualityGate.evaluate` com a precedência do ADR 0044 §2.4 (doença/vermelho, iniciante, check-in, sono, recovery/taper/race, carga, monotonia, strain, ACWR 1,5), detalhe com o valor que falhou e `unlockHint`. `phase`/`raceWeek` entram como contexto opcional; a micro-dose de taper não é bloqueada pelo taper em si. Determinístico, sem relógio.
+- **Testes:** 42 novos (15 de modelos + 27 do gate), cobrindo todos os reasons, primeiro-que-falha, ACWR 1,4 vs 1,6, confiabilidade, micro-dose e invariantes dos modelos.
+- **Sem fiação:** `WeeklyPlanGenerator` e `DailyPrescriptionEngine` intactos; sem UI, schema ou migração.
+
+### Testes
+
+- `:core:domain:test` 816 verdes (774 + 42).
+- `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug` verde.
+- `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01% de branches.
+- `QualityGate` com 97,6% de branches; sem dado real no diff.
+
+### Decisões e observações
+
+- O gate não decide âmbar sozinho: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
+- `QualityBlockReason.NONE` não entrou no enum: elegível é `reason = null` (ADR 0044), sem duas representações do mesmo estado.
+- A confiabilidade de ACWR é provisória até C4-22/C4-23; ACWR não confiável não veta qualidade.
+- `R-PER-03`/`R-READY-06` são emitidos, mas catálogo/copy/docs ficam para C4-06/C4-08/C4-33/C4-52.
+- Nenhuma mudança de comportamento no gerador ou na prescrição diária.
+
+### Próximo passo
+
+1. S2/C4-09: comparator do long day (empate 3×40 → domingo), com TDD.
+2. Depois C4-10..C4-13: piso/share/availability, `fitToVolume`, golden `G-PER-04` e docs.
 
 ## Sessão 2026-11-16 — Ciclo 4: PRD, ADRs 0044–0050 e checklist de execução
 

@@ -48,11 +48,22 @@ data class PlannedSession(
     /** Present only on [SessionStatus.CLOSED]. */
     val closureReason: SessionClosureReason? = null,
     val closedAt: Instant? = null,
+    /**
+     * Nature of the strong stimulus (ADR 0044 §2.2). Legacy rows have `null`
+     * until the catalog fills it (C4-15); only a `QUALITY` session may carry
+     * one.
+     */
+    val qualityKind: QualityKind? = null,
+    /** Why the plan created or withheld the opportunity (ADR 0044 §3.1). */
+    val planDecision: PlanDecision? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Session title must not be blank" }
         require(ruleIds.isNotEmpty()) { "Session must cite at least one rule" }
         require(evidenceIds.isNotEmpty()) { "Session must cite at least one evidence" }
+        require(qualityKind == null || type == WorkoutType.QUALITY) {
+            "Only a quality session carries a quality kind"
+        }
         require(status != SessionStatus.DONE || completionEvidence != null) {
             "A done session requires completion evidence"
         }
@@ -83,6 +94,11 @@ data class WeeklyPlan(
     val sessions: List<PlannedSession>,
     val weeklyMinutes: Int,
     val longRunMinutes: Int?,
+    /**
+     * Number of planned quality **opportunities**, not confirmed sessions
+     * (ADR 0044 §2.2). The day may keep or downgrade each one; the UI and the
+     * weekly review distinguish planned/kept/downgraded/not done.
+     */
     val qualityCount: Int,
     val rationale: String,
     val confidence: DataConfidence,
