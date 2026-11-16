@@ -160,7 +160,7 @@ class VolumeProgression {
         if (!weekStart.isBefore(targetWeekStart)) return false
         if (weekStart.isBefore(targetWeekStart.minusWeeks(MAX_REFERENCE_WEEKS.toLong()))) return false
         if (createdOn.isAfter(weekStart)) return false
-        if (ruleIds.any { it in SPECIAL_WEEK_RULES }) return false
+        if (ruleIds.any { it in SPECIAL_WEEK_RULE_IDS }) return false
         if (trainableSessions().isEmpty()) return false
         return completedVolumeMinutes() > 0
     }
@@ -171,8 +171,6 @@ class VolumeProgression {
         const val GROWTH_FACTOR = 1.06
         const val MAX_REFERENCE_WEEKS = 4
         const val MIN_COMPLETION = 0.80
-
-        private val SPECIAL_WEEK_RULES = setOf("R-PLAN-04", "R-PLAN-05", "R-PLAN-10", "R-RACE-04")
     }
 }
 

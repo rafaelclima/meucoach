@@ -35,11 +35,9 @@ object MesoCycle {
     const val BASE_THRESHOLD_DAYS = 56L
     const val PEAK_WINDOW_DAYS = 21L
 
-    private val specialWeekRules = setOf("R-PLAN-04", "R-PLAN-05", "R-PLAN-10", "R-RACE-04")
-
     fun isLoadWeek(plan: WeeklyPlan): Boolean {
         if (plan.createdOn != plan.weekStart) return false
-        if (plan.ruleIds.any { it in specialWeekRules }) return false
+        if (plan.ruleIds.any { it in SPECIAL_WEEK_RULE_IDS }) return false
         return plan.completedVolumeMinutes() > 0
     }
 

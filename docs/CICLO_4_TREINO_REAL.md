@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S4
-> **Último commit:** S4 — `feat(domain): block quality without check-in and implausible sleep (C4-28, C4-34..C4-36)` (S3: `f574297`)
+> **Última atualização:** 16/11/2026 — S5
+> **Último commit:** S5 — `feat(domain): add real volume reference projection (C4-38)` (S4: `6678165`)
 > **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S4 concluída — próxima: S5 (volume real/treino extra)**
-> **Task atual:** C4-38 (TODO)
-> **Próxima task:** C4-38
+> **Sessão atual:** **S5 parcial — C4-38 concluída; C4-39 pendente**
+> **Task atual:** C4-39 (TODO)
+> **Próxima task:** C4-39
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 873 verdes; `:core:data:test` 171; `:app:testDebugUnitTest` 882; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; FIT 93,01% de branches
-> **Próxima ação:** ler ADR 0050 e FR-409; abrir C4-38 (`VolumeReference` + builder), TDD da projeção determinística.
+> **Gates da última sessão:** `:core:domain:test` 887 verdes; `:core:data:test` 171; `:app:testDebugUnitTest` 890; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; FIT 93,01% de branches
+> **Próxima ação:** ler ADR 0050 §2.2–2.3 e FR-408; abrir C4-39 (`VolumeProgression`/`MesoCycle`/`LevelGraduation` usando `VolumeReference`/`StrongRun`, com adesão separada), TDD.
 
 ### 0.1 O que já está pronto
 
@@ -71,9 +71,18 @@
 - [x] Agregador converte noite suspeita em `sleepDurationMin=null`, conta noites suspeitas/fragmentadas e propaga o diagnóstico até a UI; readiness/review não geram `SHORT_SLEEP` falso.
 - [x] 29 testes novos no domínio (`ReadinessEligibilityTest` 8, `SleepNightValidatorTest` 12, `SleepPlausibilityTest` 4, agregador 5) + 3 em `:core:data` + 1 no `:app`.
 
+**S5 — volume real (parcial)**
+
+- [x] `StrongRun` e `VolumeReference` no domínio puro, com validações e `hasPlan`.
+- [x] `VolumeReferenceBuilder.build(...)`: agrega as atividades fortes da semana (`strongMinutes`/`strongSessions`), preenche `plannedMinutes`, `plannedSessions`, `createdOn` e `specialWeek`, e ignora corridas fora da semana.
+- [x] `VolumeReferenceProjection` na borda (`:app`): converte `ActivitySummary` RUNNING/TREADMILL importadas em `StrongRun`, vincula o `plannedSessionId` quando a atividade está ligada a uma sessão e devolve uma referência por semana planejada; ordem determinística; atividade manual/curta não conta.
+- [x] 14 testes em `VolumeReferenceTest` e 8 em `VolumeReferenceProjectionTest`; `SPECIAL_WEEK_RULE_IDS` unifica a lista usada por `VolumeProgression`/`MesoCycle`.
+- [ ] C4-39 pende: `VolumeProgression`, `MesoCycle` e `LevelGraduation` ainda usam sessões planejadas, não a referência real.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
+- `VolumeReference`/`StrongRun` existem e a projeção está testada, mas `VolumeProgression`, `MesoCycle` e `LevelGraduation` ainda leem sessões planejadas; a fiação é C4-39. O golden `G-VOL-02` e os docs `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
 - `qualityEligibleByReadiness` já existe, mas o diário e o recomendador ainda não o leem; a fiação é C4-04/C4-29.
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
@@ -211,7 +220,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S2** | C4-09, C4-10, C4-11, C4-12, C4-13 | Long day, piso/share, `fitToVolume`, golden/docs | testes do gerador; `G-PER-04` | commit + golden |
 | **S3** | C4-22..C4-25 | ACWR confiável, limites, progressão | testes de carga; consistência | commit + testes |
 | **S4** | C4-28, C4-34..C4-36 | Prontidão, check-in, sono | testes de readiness/health | commit + testes |
-| **S5** | C4-38, C4-39 | `VolumeReference`/`StrongRun`; meso/graduação | testes de volume | commit + testes |
+| **S5** | C4-38, C4-39 | `VolumeReference`/`StrongRun`; meso/graduação | testes de volume | C4-38 concluída (`VolumeReferenceTest`, `VolumeReferenceProjectionTest`); C4-39 pendente |
 | **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | commit + testes |
 | **S7** | C4-02, C4-07 | Gerador estrutural + `G-PER-03` | `G-PER-03`; propriedades | commit + golden |
 | **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | commit + testes |
@@ -227,60 +236,43 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
-## 5. Sessão S4 — concluída
+## 5. Sessão S5 — C4-38 concluída; C4-39 pendente
 
-> Próxima sessão: substituir este bloco pelo caderno da S5 no início da sessão; o registro da S4 fica no §7.
+> O caderno completo da S4 fica no §7. Esta sessão abriu a projeção de volume real; a fiação da decisão é a próxima task.
 
-**Objetivo:** eliminar a inversão do check-in (omitir não libera qualidade) e tratar sono implausível como ausente, sem UI de check-in nem migração.
+**Objetivo:** dar ao motor de volume uma projeção determinística do que o atleta realmente correu, separando volume forte de adesão ao plano, sem UI nem migração.
 
 **Contexto obrigatório:**
 
-- `docs/adr/0049-readiness-checkin-sleep.md` §2.1–2.6.
-- `docs/PRD_TREINO_REAL.md` FR-406/FR-407 e §5.4.
-- `ReadinessCalculator`, `ReadinessModels`, `DailyMetricsReadinessBuilder`, `HealthMetricsAggregator` e `WeeklyReview`.
+- `docs/adr/0050-volume-credit-unplanned-activities.md` §2.1–2.5 e §6.
+- `docs/PRD_TREINO_REAL.md` FR-408 e §5.6.
+- `VolumeProgression`, `MesoCycle`, `LevelGraduationEngine`, `WeeklyPlanGenerator` e os testes de volume existentes.
 
-**Task C4-28 — `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING`**
+**Task C4-38 — `VolumeReference` + builder**
 
-- [x] `ReadinessFlag.SUBJECTIVE_MISSING` nasce quando não há check-in, inclusive quando não há nenhum componente.
-- [x] `qualityEligibleByReadiness` exige verde + subjetivo + sem `SHORT_SLEEP` + sem `ILLNESS_OR_INJURY`; o score pode ficar verde com dados parciais, sem `NO_QUALITY`.
-- [x] 8 casos em `ReadinessEligibilityTest`: sem check-in, sem dados, 3/3/3/3, 4/2/2/2, 5/1/1/1, sono curto, doença e FC de repouso elevada.
-- [x] Golden `readiness-no-data` atualizado com `SUBJECTIVE_MISSING`.
+- [x] `StrongRun` (data, duração, fonte, vínculo planejado) e `VolumeReference` (planejado, executado, forte, sessões, `createdOn`, semana especial) no domínio puro.
+- [x] `VolumeReferenceBuilder.build(...)` agrega as corridas fortes da semana, preenche os metadados do plano e ignora atividades fora da semana.
+- [x] `VolumeReferenceProjection` na borda (`:app`): RUNNING/TREADMILL importadas, vínculo 1:1 com sessão planejada, atividade manual/curta fora, ordem determinística e uma referência por semana planejada.
+- [x] `SPECIAL_WEEK_RULE_IDS` unifica as regras de deload/taper/prova/recuperação usadas por `VolumeProgression` e `MesoCycle`.
+- [x] 14 casos em `VolumeReferenceTest` e 8 em `VolumeReferenceProjectionTest`.
+- [ ] C4-39: `VolumeProgression`/`MesoCycle`/`LevelGraduation` passam a consumir `VolumeReference`/`StrongRun`; adesão continua planejada. **Próxima sessão.**
 
-**Task C4-34 — `SleepNightValidator`**
+**Aceite da sessão (C4-38):**
 
-- [x] Janela `[18:00 do dia anterior, 12:00 do dia]` no fuso local; cochilo diurno não entra.
-- [x] Blocos com gap ≤120 min; o gap não conta como sono e registros sobrepostos são unidos; noite fragmentada usa o maior bloco.
-- [x] Faixa plausível 180–840 min; 36 min, 2h59 e 14h+ são suspeitas, 3h e 5h30 são válidas.
-- [x] 12 casos em `SleepNightValidatorTest`.
-
-**Task C4-35 — agregador usa o validador**
-
-- [x] Noite suspeita vira `sleepDurationMin=null`; os demais campos do dia continuam.
-- [x] `HealthAggregation`, `HealthConnectReadResult` e `HealthSyncResult` carregam `suspectSleepNights`/`fragmentedSleepNights`; o coordenador expõe no estado e o Health Connect explica na mensagem, sem valor bruto.
-- [x] 5 casos novos no `HealthMetricsAggregatorTest`; propagação coberta em `:core:data` e no `:app`.
-
-**Task C4-36 — readiness/review ignoram suspeita**
-
-- [x] Noite suspeita não vira `SleepMetrics`; a prontidão não liga `SHORT_SLEEP` nem libera qualidade.
-- [x] 5h30 válido continua ligando `SHORT_SLEEP`; o `WeeklyReview` não conta a noite suspeita como medida.
-- [x] 4 casos de integração em `SleepPlausibilityTest`.
-
-**Aceite da sessão:**
-
-- [x] `./gradlew :core:domain:test` verde (873).
-- [x] `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01%.
-- [x] `:core:data:test` 171 e `:app:testDebugUnitTest` 882 verdes; `:app:assembleDebug`.
-- [x] Nenhum dado real.
-- [x] §0/§6/§7/PROGRESS/ADR 0049 atualizados.
-- [x] Commit: `feat(domain): block quality without check-in and implausible sleep (C4-28, C4-34..C4-36)`.
+- [x] `./gradlew :core:domain:test` verde (887).
+- [x] `:app:testDebugUnitTest` 890 verdes; `:core:data:test` 171; `:app:assembleDebug`.
+- [x] `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt` e `:app:detekt` verdes; FIT 93,01%.
+- [x] Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+- [x] §0/§6/§7/PROGRESS atualizados.
+- [x] Commit: `feat(domain): add real volume reference projection (C4-38)`.
 
 **Notas de implementação:**
 
-- O check-in ausente continua permitindo exibir a prontidão; o que muda é a elegibilidade. O `DailyPrescriptionEngine` ainda usa o proxy antigo até C4-29.
-- O validador não usa o span do bloco: 4h + 4h com 30 min de intervalo contam 8h, não 8h30. O gap de até 2h agrupa, mas não vira sono.
-- Uma noite fragmentada com blocos de 4h + 4h e gap de 3h usa 4h e é marcada como fragmentada; o diagnóstico não soma os pedaços.
-- O `SLEEP_DATA_SUSPECT` do ADR 0049 não é emitido: a noite suspeita é descartada para `null` e o diagnóstico fica no sync. Não há migração de schema.
-- A UI do check-in (C4-30/C4-31), o golden `G-READY-03` (C4-32), os docs de prontidão (C4-33) e o `G-DATA-02`/docs de sono (C4-37) ficam para as sessões indicadas.
+- A projeção recebe as atividades já sem lixeira (`listActivitySummaries`/`observeActivitySummaries`); atividade deletada continua fora na origem.
+- Uma corrida com menos de 60 s arredonda para 0 min e não conta; o volume nunca é inflado.
+- `executedMinutes` e `strongMinutes` são hoje o mesmo número (ADR 0050 §2.1); a distinção fica no modelo para evolução sem quebrar o contrato.
+- O builder não decide se a semana é referência: `VolumeProgression` continuará filtrando `createdOn == weekStart`, semana não especial e sessões treináveis (C4-39).
+- `G-VOL-02`, o rationale “treino extra contou” e os docs `R-PLAN-01 v2`/`R-LVL-03` ficam em C4-41/C4-42. Há uma inconsistência numérica no golden (114 + 28 + 33 → 127) a reconciliar antes de escrevê-lo.
 
 **Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
 
@@ -363,7 +355,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-38 | `VolumeReference` + builder | C4-22 | L | S5 | ADR 0050 | Projeção determinística | — |
+| [x] | C4-38 | `VolumeReference` + builder | C4-22 | L | S5 | ADR 0050 | Projeção determinística | `VolumeReferenceTest` (14); `VolumeReferenceProjectionTest` (8); commit S5 |
 | [ ] | C4-39 | Volume/meso/graduação usam referência real | C4-38 | L | S5 | ADR 0050 | Base real; adesão separada | — |
 | [ ] | C4-40 | Reparo LEGACY do mesmo dia | C4-39 | M | S13 | ADR 0050 | Confirmação; migrado intacto | — |
 | [ ] | C4-41 | Golden `G-VOL-02` + copy | C4-38..40 | M | S13 | ADR 0050 | Golden/copy | — |
@@ -458,6 +450,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** sem check-in, `SUBJECTIVE_MISSING` é explícito e `qualityEligibleByReadiness=false`, mas o score e o nível continuam exibíveis (dados parciais) e `NO_QUALITY` não é ligado. O validador de sono usa a janela local 18:00–12:00, agrupa blocos com gap ≤120 min e soma o sono real (não o span): 4h + 4h com 30 min de intervalo = 8h. Noite fragmentada usa o maior bloco; 36 min vira `null`, nunca `SHORT_SLEEP`. O diagnóstico de noites suspeitas/fragmentadas chega ao estado do sync e à mensagem do Health Connect, sem valor bruto. `SLEEP_DATA_SUSPECT` não é emitido porque a noite é persistida como `null` e não há migração. Check-in UI, reavaliação tardia, `G-READY-03`, `G-DATA-02` e docs de `R-READY-06`/sono ficam em C4-30..C4-33/C4-37.
 - **Próximo:** S5 / C4-38 (`VolumeReference` + builder), TDD da projeção determinística.
 
+### S5 — 2026-11-16 — Projeção de volume real (C4-38)
+
+- **Status:** PARTIAL — C4-38 DONE; C4-39 TODO.
+- **Tasks:** C4-38.
+- **Arquivos:** `core/domain/.../prescription/VolumeReference.kt` (novo), `VolumeProgression.kt`, `MesoCycle.kt`, `app/.../application/VolumeReferenceProjection.kt` (novo), `VolumeReferenceTest.kt` (novo), `VolumeReferenceProjectionTest.kt` (novo), este checklist, `docs/PROGRESS.md`.
+- **Testes/gates:** `:core:domain:test` 887 verdes (+14; `VolumeReferenceTest`); `:app:testDebugUnitTest` 890 (+8; `VolumeReferenceProjectionTest`); `:core:data:test` 171; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; FIT 93,01% de branches. `VolumeReference.kt`: 100% de linhas, 97,2% de branches.
+- **Commit:** `feat(domain): add real volume reference projection (C4-38)`.
+- **Decisões/notas:** `StrongRun` só aceita fonte importada (MANUAL nunca); `VolumeReference` carrega planejado/executado/forte/sessões/`createdOn`/semana especial. O builder é puro, ignora corridas fora da semana e não decide a usabilidade da referência. A projeção no `:app` usa as atividades já sem lixeira, converte minutos por piso (nunca infla), vincula `plannedSessionId` pela sessão que possui o `activityId` e ordena de forma determinística; uma referência por semana planejada. `SPECIAL_WEEK_RULE_IDS` elimina a duplicação entre `VolumeProgression` e `MesoCycle`. Nenhuma UI, schema ou migração. A inconsistência numérica do `G-VOL-02` (114 + 28 + 33 → 127) fica registrada para C4-41.
+- **Próximo:** C4-39 — `VolumeProgression`/`MesoCycle`/`LevelGraduation` usando `VolumeReference`/`StrongRun`, com adesão separada e longão real.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -542,8 +544,8 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 882 | Atualizar conforme novos testes |
-| `:core:domain` | 873 | Atualizar conforme novos testes |
+| `:app` | 890 | Atualizar conforme novos testes |
+| `:core:domain` | 887 | Atualizar conforme novos testes |
 | `:core:data` | 171 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -633,11 +635,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (S5)
+## 14. Próxima ação (C4-39, continuação da S5)
 
-1. Abrir `docs/adr/0050-real-volume-extra-training-legacy.md` e o FR-409/§5.6 do PRD.
-2. Ler `VolumeProgression`, `WeeklyPlanGenerator`, `MesoCycle`, `LevelGraduationEngine` e os testes de volume existentes.
-3. Escrever o teste que falha de `VolumeReference`/builder (C4-38): projeção determinística a partir do volume real, sem adesão.
-4. Implementar C4-38 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0050-volume-credit-unplanned-activities.md` §2.2–2.3 e o FR-408/§5.6 do PRD.
+2. Ler `VolumeProgression`, `WeeklyPlanGenerator`, `MesoCycle`, `LevelGraduationEngine`, `LevelGraduationContextBuilder`, `TodayViewModel`/`ReplanContextBuilder` e os testes de volume existentes.
+3. Escrever os testes que falham de C4-39: base = `max(strongMinutes)`; semana sem plano/especial não é referência; adesão continua `strongSessions`/`plannedSessions` planejada; meso usa `strongSessions`; longão real 60/90 na graduação.
+4. Implementar C4-39 com TDD, rodar `:core:domain:test` + `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

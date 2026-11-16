@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S4 do Ciclo 4: prontidão sem inversão e sono plausível)
+**Atualizado:** 16/11/2026 (S5 do Ciclo 4: projeção de volume real)
+
+## Sessão 2026-11-16 — Ciclo 4/S5: projeção de volume real (C4-38)
+
+**Objetivo:** dar ao motor de volume uma projeção determinística do que o atleta realmente correu, separando volume forte de adesão ao plano, sem UI nem migração.
+
+### Concluído
+
+- **Domínio:** `StrongRun` e `VolumeReference` puros; `VolumeReferenceBuilder` agrega `strongMinutes`/`strongSessions` das corridas fortes da semana, preenche `plannedMinutes`, `plannedSessions`, `createdOn` e `specialWeek`, e ignora corridas fora da semana.
+- **Borda:** `VolumeReferenceProjection` no `:app` converte atividades RUNNING/TREADMILL importadas em `StrongRun`, marca o `plannedSessionId` quando a atividade está ligada a uma sessão, exclui `MANUAL`/curta e devolve uma referência por semana planejada em ordem determinística.
+- **Sem dupla contagem:** a atividade vinculada entra uma vez, pelo tempo real; o tempo planejado da sessão não é somado.
+- **Regras compartilhadas:** `SPECIAL_WEEK_RULE_IDS` unifica a lista de deload/taper/prova/recuperação usada por `VolumeProgression` e `MesoCycle`.
+- **Testes:** 14 novos em `VolumeReferenceTest` e 8 em `VolumeReferenceProjectionTest`; ordem, semana especial, semana sem plano, manual/curta e vínculo cobertos.
+
+### Testes
+
+- `:core:domain:test` 887 verdes (+14); `:app:testDebugUnitTest` 890 (+8); `:core:data:test` 171; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt` e `:app:detekt` verdes; FIT 93,01% de branches.
+- `VolumeReference.kt`: 100% de linhas e 97,2% de branches; nenhum dado real no diff.
+
+### Decisões e observações
+
+- `StrongRun` só aceita fonte importada; `ActivitySource.MANUAL` nunca é volume forte.
+- `executedMinutes` e `strongMinutes` são hoje o mesmo número (ADR 0050 §2.1); a distinção fica no modelo.
+- A projeção recebe as atividades já sem lixeira; atividade deletada continua fora na origem. Uma corrida < 60 s não conta.
+- O builder não decide se a semana é referência; `VolumeProgression` continuará filtrando `createdOn == weekStart`, semana especial e sessões treináveis na C4-39.
+- `G-VOL-02` tem uma inconsistência numérica (114 + 28 + 33 → 127) a reconciliar antes do golden (C4-41).
+
+### Próximo passo
+
+1. C4-39: `VolumeProgression`/`MesoCycle`/`LevelGraduation` usando `VolumeReference`/`StrongRun`, com adesão separada e longão real.
+2. Depois C4-40..C4-43: reparo `LEGACY`, golden `G-VOL-02`, docs e review.
 
 ## Sessão 2026-11-16 — Ciclo 4/S4: prontidão sem inversão e sono plausível (C4-28, C4-34..C4-36)
 
@@ -5356,3 +5387,5 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 16/11/2026 | Ciclo 4/S1: oportunidade de qualidade e `QualityGate` puro (C4-01, C4-03); 816 testes de domínio |
 | 16/11/2026 | Ciclo 4/S2: longão com piso, título honesto e `fitToVolume` (C4-09..C4-13); 825 testes de domínio |
 | 16/11/2026 | Ciclo 4/S3: ACWR confiável em 28 dias, pré-história como “sem dado” e 1,5 único (C4-22..C4-25); 844 testes de domínio |
+| 16/11/2026 | Ciclo 4/S4: prontidão sem inversão e sono plausível (C4-28, C4-34..C4-36); 873 testes de domínio |
+| 16/11/2026 | Ciclo 4/S5: `VolumeReference`/`StrongRun` e projeção determinística do volume real (C4-38); 887 testes de domínio |
