@@ -1,6 +1,29 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 15/11/2026 (ADR 0043 encerrado: implementado + APK no aparelho)
+**Atualizado:** 16/11/2026 (base sincronizada com `origin/dev` + gate verde)
+
+## Sessão 2026-11-16 — Base sincronizada com `origin/dev` e `check` verde
+
+**Objetivo:** atualizar a base local (24 commits atrás), rodar `./gradlew check` e corrigir o que o pull trouxe quebrado.
+
+### Concluído
+
+- **Base:** fast-forward `556914c → ad9aa6c` (ADR 0041/0042/0043 + Story V3); sem conflito, sem commit local pendente.
+- **`:app:detekt`:** baseline atualizado para `LongParameterList` do `DataResetCoordinator` (novo `LevelGraduationSuggestionStore`); os dois `SwallowedException` do `LevelGraduationViewModel` viraram `Log.w` com a exceção, mantendo a mensagem amigável.
+- **`:core:domain:detekt`:** 7 achados do ADR 0043 estavam fora do baseline e só não apareciam porque o build morria antes no `:app:detekt`. Entraram no baseline e a dívida foi rastreada como REF-01 no `ROADMAP`.
+- **Bug de produto (corrigido):** `LevelGraduationViewModel.refresh()` liberava o guarda `evaluating` só no `finally`, depois de `present()` publicar `isLoading = false`. Quem reage a esse sinal e pede `refresh()` de novo (o Perfil ao ficar visível) tinha a chamada descartada em silêncio — o card de graduação podia não aparecer. A ordem foi invertida: solta o guarda, depois publica.
+- **Ambiente:** `mise.toml` (`java = "latest"` → 27) e `.mise.toml` (`17.0.2`) conflitavam e o primeiro vencia, quebrando a toolchain 17 do Gradle. Ficou um único arquivo em 17.0.2.
+
+### Testes
+
+- `./gradlew check` verde: app 881, domain 774, `spotlessCheck`, `koverVerify`, lint e detekt (5 módulos).
+- `:app:assembleDebug` verde.
+- O teste que falhava (`a suppressed suggestion stays hidden only until the next day`) não precisou de timeout maior: subir de 5 s para 30 s não resolveu, o que isolou a causa na ordem do guarda. Com a correção ele fica determinístico.
+
+### Próximo passo
+
+1. Refatorar REF-01 (`WeeklyPlanGenerator`/`MesoCycle`) sem alterar prescrição.
+2. Validar o card de graduação com os dados reais do usuário 0 (pendência herdada do Ciclo 2).
 
 ## Sessão 2026-11-15 — Encerramento do ADR 0043 + APK debug no aparelho
 

@@ -442,6 +442,12 @@ catch `e`/`error`/`expected`/`_` (convenção de borda do import — a falha é
 registrada, não engolida; `SwallowedException` segue ativa). Justificativa de
 dependência (regra 8): ferramenta de build, zero impacto no APK, Apache-2.0.
 
+Exceção conhecida: os 7 achados de `core:domain` em `MacroPlan`, `MesoCycle` e
+`WeeklyPlanGenerator` (ADR 0043) entraram no baseline em 16/11/2026 porque o
+código já estava commitado e o `check` estava vermelho. São dívida **rastreada**
+em `ROADMAP.md` (REF-01), não perdão: o item só fecha quando as entradas saírem
+do baseline sem mudança de comportamento.
+
 ## 11.1 Teste manual de notificações
 
 Em aparelho/emulador API 33+:

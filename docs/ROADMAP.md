@@ -524,6 +524,30 @@ Sem migração.
 
 ---
 
+### REF-01 — Refatorar a dívida estrutural do ADR 0043 (backlog de manutenção)
+
+**Status:** aberto em 16/11/2026. Sem código novo, sem mudança de comportamento
+esperada. Registrado quando o `check` da base sincronizada revelou 7 achados do
+Detekt que o ADR 0043 deixou fora do baseline do `core:domain` — entraram no
+baseline para destravar o gate, com rastreio aqui (política em `TESTING.md` §11.2).
+
+- `WeeklyPlanGenerator` passou do limite de classe (`LargeClass`): separar o
+  cálculo de volume/fase das decisões de montagem do plano.
+- `WeeklyPlanGenerator.volumeWeekBlock` tem 6 `return`; `MesoCycle.resolve` tem 9
+  (`ReturnCount`, limite 4). Reduzir com `when`/early-exit estruturado ou funções
+  puras por ramo.
+- `MesoCycle.resolve` também acumula `break`/`continue` no mesmo laço.
+- Três `ComplexCondition` (limite 4): `MacroPlanResolver` (race × horizonte ×
+  semana da prova) e duas no `WeeklyPlanGenerator` (fase macro × `experience`;
+  intenção macro × qualidade × permissão de carga).
+
+**Critério de pronto:** remover as 7 entradas de
+`core/domain/config/detekt/baseline.xml` mantendo `MacroPlanTest`,
+`MacroWiringTest`, `MesoCycleTest` e `WeeklyPlanGeneratorTest` verdes e os
+goldens de plano idênticos. Se a refatoração mudar alguma regra, primeiro
+`SPORTS_SCIENCE.md` + ADR — refatorar estrutura não é justificativa para alterar
+prescrição.
+
 ## Fase 2 — Nuvem e extensões
 
 - P2-01 Backend Ktor + Postgres + Flyway.
