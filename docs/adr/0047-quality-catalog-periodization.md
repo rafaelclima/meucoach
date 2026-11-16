@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-14..C4-21).
+**Status:** Aprovado em 2026-11-16 — em implementação (C4-14 concluída; C4-15..C4-21 pendentes).
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -223,7 +223,8 @@ consecutivas, respeitando disponibilidade e taper/recovery.
 
 - `QualityKind` + `FARTLEK`, `HILLS`, `RACE_PACE`.
 - `WorkoutStructure`/`WorkoutBlock` no domínio; `structureJson` no schema v18
-  (ADR 0048).
+  (ADR 0048). Codec `WorkoutStructureJson` versionado em `core:data` (C4-14),
+  com payload inválido/desconhecido decodificando como `null`.
 - `SessionTemplate.structure`; `SessionRole.INTRO_FARTLEK`.
 - `SessionLibrary.qualityTemplates(phase, level, distance)` e
   `SessionLibrary.easyTemplates(phase, level, includeIntroFartlek)`.

@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S5.1 do Ciclo 4: reparo LEGACY do mesmo dia)
+**Atualizado:** 16/11/2026 (S6 do Ciclo 4: estrutura executável da sessão)
+
+## Sessão 2026-11-16 — Ciclo 4/S6: estrutura executável da sessão (C4-14)
+
+**Objetivo:** introduzir o contrato puro que descreve aquecimento, blocos, recuperações e volta à calma, com a invariante de nunca prometer mais trabalho do que cabe na duração da sessão.
+
+### Concluído
+
+- **Domínio:** `WorkoutStructure`, `WorkoutBlock` e `BlockKind` (`WORK`, `RECOVERY`, `STRIDES`, `RACE_PACE`) em `core:domain`. A validação rejeita bloco sem duração, repetição/recovery não positivos, texto em branco, versão inválida e estrutura vazia.
+- **Orçamento de tempo:** `plannedSeconds` soma aquecimento + blocos + recuperações + volta à calma; a recuperação é contada depois de **toda** repetição (inclusive a última), o que é conservador. `plannedMinutes` arredonda para cima; a estrutura não pode exceder `totalMin`.
+- **Sessão planejada:** `PlannedSession.structure: WorkoutStructure? = null`; linhas legadas e prescrições sem estrutura continuam válidas. A coluna `structureJson` e o round-trip no banco ficam para o schema v18 (C4-45).
+- **JSON:** `WorkoutStructureJson` versionado (`version = 1`) em `core:data`; campos opcionais são omitidos; `null`/vazio/`"null"`, JSON malformado, versão futura, `kind` desconhecido ou estrutura que não cabe decodificam como `null`, nunca como estrutura parcial.
+- **Higiene:** `ComplexCondition` pré-existente em `SessionExecutionRepository` (C4-40) foi extraído para dois booleanos; `:core:data:detekt` passou a rodar verde sem aumentar o baseline.
+
+### Testes
+
+- `:core:domain:test` 919 verdes (+13: `WorkoutStructureTest`); `:core:data:test` 186 (+11: `WorkoutStructureJsonTest`); `:app:testDebugUnitTest` 901; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:core:domain:detekt`, `:core:data:detekt` e `:app:detekt` verdes.
+- Nenhum dado real, nenhuma migração e nenhuma UI alterada.
+
+### Decisões e observações
+
+- O codec é do tipo “tudo ou nada”: na dúvida, a estrutura vira `null`. O briefing futuro deve omitir a estrutura em vez de exibir uma sessão inventada.
+- A recuperação após a última repetição entra no orçamento; se o gerador quiser usar o tempo restante para a volta à calma, deve reduzir a estrutura ou declarar `totalMin` suficiente.
+- `PlannedSession.structure` ainda não é persistido; o gerador só passa a preenchê-lo em C4-17. A fiação de `PlanJson`/coluna acontece em C4-45.
+- O fix do detekt foi commitado separado (`fix(data): simplify legacy repair guard for detekt (C4-40)`) para não misturar com a task.
+
+### Próximo passo
+
+1. S6 / C4-15: matriz `QualityKind`/`SessionTemplate` por fase, nível e distância; `SessionRole.INTRO_FARTLEK`; `SessionTemplate.structure`.
+2. Depois C4-16 (rotação) e C4-17 (gerador estrutural).
 
 ## Sessão 2026-11-16 — Ciclo 4/S5.1: reparo LEGACY do mesmo dia (C4-40)
 

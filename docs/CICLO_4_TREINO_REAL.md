@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S5.1 (C4-40)
-> **Último commit:** S5.1 — `feat(app): repair same-day legacy completion with confirmation (C4-40)`
-> **Fase:** 1 — Domínio — **em andamento** (C4-40 antecipada de S13)
-> **Sessão atual:** **S5.1 concluída — C4-40 DONE**
-> **Task atual:** C4-14 (TODO)
-> **Próxima task:** C4-14
+> **Última atualização:** 16/11/2026 — S6 (C4-14)
+> **Último commit:** C4-14 — `feat(domain): add executable workout structure and JSON (C4-14)`
+> **Fase:** 1 — Domínio — **em andamento**
+> **Sessão atual:** **S6 concluída — C4-14 DONE**
+> **Task atual:** C4-15 (TODO)
+> **Próxima task:** C4-15
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 906 verdes; `:core:data:test` 175; `:app:testDebugUnitTest` 901; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; FIT 93,01% de branches
-> **Próxima ação:** ler ADR 0047 §2 e FR-403; abrir C4-14 (`WorkoutStructure`/`WorkoutBlock` + JSON), TDD.
+> **Gates da última sessão:** `:core:domain:test` 919 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`
+> **Próxima ação:** ler ADR 0047 §2.3–2.5 e FR-403; abrir C4-15 (matriz de `QualityKind`/`SessionTemplate` por fase, nível e distância; `INTRO_FARTLEK`; `SessionTemplate.structure`), TDD.
 
 ### 0.1 O que já está pronto
 
@@ -86,6 +86,14 @@
 - [x] `RepairLegacyCompletion` no `:app` e `ImportedRunPromptViewModel`/diálogo: o prompt de import oferece “Corrigir registro” para `MANUAL` e `LEGACY`; confirmação explícita; o histórico migrado fica intocado.
 - [x] 7 testes de regra, 4 de repositório, 7 do caso de uso e 4 de prompt/UI; `OfferImportedRunTest` cobre a fila do legado.
 
+**S6 — estrutura executável (C4-14)**
+
+- [x] `WorkoutStructure`/`WorkoutBlock`/`BlockKind` no domínio puro; `totalMin` nunca menor que aquecimento + blocos + recuperações + volta à calma.
+- [x] Recuperação contada depois de toda repetição (inclusive a última), `plannedMinutes` arredondado para cima e validação de bloco/versão/estrutura vazia.
+- [x] `PlannedSession.structure: WorkoutStructure? = null`; linhas antigas e sessões sem estrutura continuam válidas.
+- [x] `WorkoutStructureJson` versionado em `core:data`; `null`/vazio/JSON malformado/versão futura/kind desconhecido/estrutura inválida → `null`, nunca estrutura parcial.
+- [x] 13 testes em `WorkoutStructureTest` e 11 em `WorkoutStructureJsonTest`; fix separado do `ComplexCondition` de C4-40 no `:core:data` (`:core:data:detekt` verde).
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
@@ -96,8 +104,8 @@
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
 - O check-in UI (C4-30), a reavaliação tardia (C4-31), o golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes.
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
-- A persistência/JSON de `qualityKind`/`planDecision` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip.
-- `role`/`structure` da oportunidade entram com o catálogo/estrutura (C4-14/C4-15); o read model atual cobre data, kind, motivo, status e decisão.
+- A persistência de `qualityKind`/`planDecision`/`structure` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip. O codec JSON de `structure` já existe (C4-14), mas ainda não está ligado ao `PlanJson`/banco.
+- O catálogo de `role`/`structure` da oportunidade entra em C4-15/C4-17; o read model atual cobre data, kind, motivo, status e decisão. `WorkoutStructure` já existe no domínio, mas o gerador ainda não o preenche.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-03`, `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
@@ -230,7 +238,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S4** | C4-28, C4-34..C4-36 | Prontidão, check-in, sono | testes de readiness/health | commit + testes |
 | **S5** | C4-38, C4-39 | `VolumeReference`/`StrongRun`; meso/graduação | testes de volume | C4-38 e C4-39 concluídas (`VolumeReferenceTest`, `VolumeReferenceProjectionTest`, base/meso/graduação reais) |
 | **S5.1** | C4-40 | Reparo `LEGACY` do mesmo dia, com confirmação | testes de reparo; migrado intocado | C4-40 concluída (`SessionCompletionRulesTest`, repositório, `RepairLegacyCompletionTest`, prompt) |
-| **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | commit + testes |
+| **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | C4-14 concluída (`WorkoutStructureTest` 13, `WorkoutStructureJsonTest` 11); C4-15..C4-17 pendentes |
 | **S7** | C4-02, C4-07 | Gerador estrutural + `G-PER-03` | `G-PER-03`; propriedades | commit + golden |
 | **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | commit + testes |
 | **S9** | C4-45, C4-46 | Schema v18, JSON, `generatorVersion` | migração 17→18; round-trip | commit + migração |
@@ -337,6 +345,42 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
+## 5.2 Sessão S6 — C4-14 concluída
+
+**Objetivo:** estabelecer o contrato executável da sessão (aquecimento, blocos, recuperações, volta à calma) com um orçamento de tempo verificável, pronto para o catálogo (C4-15) e para a persistência (C4-45).
+
+**Contexto obrigatório:**
+
+- ADR 0047 §2.1 e PRD §5.3.
+- `PlannedSession`, `PrescriptionJson`/`PlanJson` e os testes de domínio da prescrição.
+
+**Task C4-14 — `WorkoutStructure`/`WorkoutBlock` + JSON**
+
+- [x] Tipos puros no domínio: `BlockKind`, `WorkoutBlock` e `WorkoutStructure`, com validações de versão, durações, repetições e texto.
+- [x] `plannedSeconds`/`plannedMinutes`: aquecimento + blocos + recuperações + volta à calma ≤ `totalMin`; recuperação contada após toda repetição.
+- [x] `PlannedSession.structure` opcional, default `null`, sem quebrar linhas/callers antigos.
+- [x] Codec `WorkoutStructureJson` versionado em `core:data`, com política “tudo ou nada”: payload desconhecido/inválido vira `null`.
+- [x] 13 testes de domínio e 11 de codec; `:core:domain:test` 919, `:core:data:test` 186, `:app:testDebugUnitTest` 901, `:core:model` 40.
+
+**Aceite da sessão (C4-14):**
+
+- [x] `:core:domain:test`, `:core:data:test`, `:app:testDebugUnitTest` verdes.
+- [x] `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:core:domain:detekt`, `:core:data:detekt` e `:app:detekt` verdes.
+- [x] Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+- [x] §0/§6/§7/PROGRESS atualizados.
+- [x] Commits: `fix(data): simplify legacy repair guard for detekt (C4-40)` e `feat(domain): add executable workout structure and JSON (C4-14)`.
+
+**Notas de implementação:**
+
+- O codec ainda não está ligado ao `PlanJson`/`PlannedSessionEntity`: a coluna `structureJson` é do schema v18 (C4-45), como planejado.
+- A recuperação depois da última repetição é intencionalmente conservadora; o gerador de C4-17 deve dimensionar a estrutura dentro do `totalMin`, não contar com uma recuperação “grátis” no fim.
+- `SessionTemplate.structure` e a matriz do catálogo ficam em C4-15, junto com `SessionRole.INTRO_FARTLEK`.
+- O `ComplexCondition` do reparo `LEGACY` foi corrigido em commit separado para o `:core:data:detekt` voltar a passar sem baseline novo.
+
+**Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
+
+---
+
 ## 6. Task board
 
 > **Status:** `[ ]` TODO · `[~]` IN_PROGRESS · `[x]` DONE · `[!]` BLOCKED · `[-]` DEFERRED.
@@ -370,7 +414,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-14 | `WorkoutStructure`/`WorkoutBlock` + JSON | C4-01 | L | S6 | ADR 0047/0048 | Round-trip; retrocompatível | — |
+| [x] | C4-14 | `WorkoutStructure`/`WorkoutBlock` + JSON | C4-01 | L | S6 | ADR 0047/0048 | Round-trip; retrocompatível | `WorkoutStructureTest` (13); `WorkoutStructureJsonTest` (11); commit S6 |
 | [ ] | C4-15 | `QualityKind` + matriz da `SessionLibrary` | C4-14 | XL | S6 | ADR 0047 | Matriz fase/nível/distância | — |
 | [ ] | C4-16 | Rotação determinística e 2 kinds | C4-15 | M | S6 | ADR 0047 | Duas semanas não repetem | — |
 | [ ] | C4-17 | Gerador usa estrutura/kind; PEAK específico | C4-15/16 | L | S6 | ADR 0047 | PEAK ≠ BUILD; testes | — |
@@ -529,6 +573,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** a regra só aceita `DONE` + `LEGACY_UNVERIFIED` sem `activityId`/`executionId`, sessão e corrida no dia atual e `confirmed=true`; o repositório cria a execução ausente, preserva `completedAt` e grava o vínculo 1:1. O prompt de import distingue `MANUAL` e `LEGACY` em `AlreadyDone.repairEvidence`; o botão “Usar esta corrida” é a confirmação. A tela Hoje continua só com correção manual; o legado passa pelo prompt. O baseline do detekt foi atualizado para o `LongParameterList` pré-existente do ViewModel; nenhum schema/migração foi alterado.
 - **Próximo:** S6 / C4-14 (`WorkoutStructure`/`WorkoutBlock` + JSON), TDD.
 
+### S6 — 2026-11-16 — Estrutura executável da sessão (C4-14)
+
+- **Status:** DONE
+- **Tasks:** C4-14.
+- **Arquivos:** `core/domain/.../prescription/WorkoutStructure.kt` (novo), `WeeklyPlanGenerator.kt` (`PlannedSession.structure`), `WorkoutStructureTest.kt` (novo), `core/data/.../prescription/WorkoutStructureJson.kt` (novo), `WorkoutStructureJsonTest.kt` (novo), `repository/SessionExecutionRepository.kt` (fix de detekt de C4-40), `docs/adr/0047-quality-catalog-periodization.md`, `docs/DATA_MODEL.md`, `docs/DECISIONS.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 919 verdes (+13); `:core:data:test` 186 (+11); `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`.
+- **Commits:** `fix(data): simplify legacy repair guard for detekt (C4-40)`; `feat(domain): add executable workout structure and JSON (C4-14)`.
+- **Decisões/notas:** `totalMin` cobre aquecimento + blocos + recuperações + volta à calma; a recuperação após a última repetição é contada de propósito, então a estrutura é conservadora. O codec é versionado e devolve `null` para payload ausente, malformado, de versão futura ou inválido; nunca monta uma estrutura parcial. `PlannedSession.structure` já existe no domínio, mas a coluna `structureJson` e o round-trip no banco ficam para C4-45. `SessionTemplate.structure`/`INTRO_FARTLEK` e a matriz ficam em C4-15. O `ComplexCondition` de C4-40 foi corrigido em commit separado para o `:core:data:detekt` passar sem baseline novo.
+- **Próximo:** S6 / C4-15 (matriz de `QualityKind`/`SessionTemplate` por fase, nível e distância; `INTRO_FARTLEK`; `SessionTemplate.structure`), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -614,8 +668,8 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 901 | Atualizar conforme novos testes |
-| `:core:domain` | 906 | Atualizar conforme novos testes |
-| `:core:data` | 175 | Atualizar |
+| `:core:domain` | 919 | Atualizar conforme novos testes |
+| `:core:data` | 186 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -704,11 +758,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-14, S6)
+## 14. Próxima ação (C4-15, S6)
 
-1. Abrir `docs/adr/0047-quality-catalog-periodization.md` §2.1–2.2 e o FR-403 do PRD.
-2. Ler `SessionLibrary`, `PlannedSession`, `PrescriptionJson`/`PlanJson` e os testes de catálogo/plano existentes.
-3. Escrever os testes que falham de C4-14: `WorkoutStructure`/`WorkoutBlock` puros, validação de `totalMin` (aquecimento + blocos + recuperações + volta à calma ≤ total), round-trip JSON e retrocompatibilidade com `structure=null` em linhas antigas.
-4. Implementar C4-14 com TDD, rodar `:core:domain:test` + `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0047-quality-catalog-periodization.md` §2.3–2.5 e o FR-403 do PRD.
+2. Ler `SessionLibrary`, `SessionTemplate`, `SessionLibraryTest`, `SessionRolesTest` e os testes do gerador que fixam títulos/roles.
+3. Escrever os testes que falham de C4-15: matriz fase × nível × distância, `BEGINNER` sem `QUALITY` (strides/intro fartlek `EASY`), `INTERMEDIATE/BUILD` com `INTERVALS`/`FARTLEK`/`HILLS`, `PEAK` específico (5K/maratona), `INTRO_FARTLEK` e `structure` presente nos templates de qualidade.
+4. Implementar C4-15 com TDD, rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -56,6 +56,12 @@ data class PlannedSession(
     val qualityKind: QualityKind? = null,
     /** Why the plan created or withheld the opportunity (ADR 0044 §3.1). */
     val planDecision: PlanDecision? = null,
+    /**
+     * Executable structure when the catalog provides one (ADR 0047 §2.1).
+     * Legacy rows and sessions without a prescription keep `null`; persistence
+     * arrives with schema v18 (C4-45).
+     */
+    val structure: WorkoutStructure? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Session title must not be blank" }
