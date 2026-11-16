@@ -81,6 +81,96 @@ class HealthSyncServiceTest {
     }
 
     @Test
+    fun `propagates sleep diagnostics from the source`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = emptySet(),
+                suspectSleepNights = 1,
+                fragmentedSleepNights = 2,
+            ),
+        )
+
+        val result = service(source).sync()
+
+        assertThat(result.suspectSleepNights).isEqualTo(1)
+        assertThat(result.fragmentedSleepNights).isEqualTo(2)
+        assertThat(result.suspectSleepDates).isEmpty()
+    }
+
+    @Test
+    fun `clears a suspect night stored by an older sync`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        metrics.saveAll(
+            listOf(
+                DailyMetrics(
+                    date = today,
+                    sleepDurationMin = 36,
+                    source = DailyMetricsSource.HEALTH_CONNECT,
+                ),
+            ),
+        )
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(
+                    DailyMetrics(
+                        date = today,
+                        sleepDurationMin = null,
+                        restingHeartRate = 58.0,
+                        source = DailyMetricsSource.HEALTH_CONNECT,
+                    ),
+                ),
+                missingPermissions = emptySet(),
+                suspectSleepNights = 1,
+                suspectSleepDates = setOf(today),
+            ),
+        )
+
+        val result = service(source).sync()
+
+        val merged = checkNotNull(metrics.get(today))
+        assertThat(result.suspectSleepDates).containsExactly(today)
+        assertThat(merged.sleepDurationMin).isNull()
+        assertThat(merged.restingHeartRate).isEqualTo(58.0)
+    }
+
+    @Test
+    fun `clearing a suspect night keeps a manual sleep`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        metrics.saveAll(
+            listOf(
+                DailyMetrics(
+                    date = today,
+                    sleepDurationMin = 450,
+                    source = DailyMetricsSource.MANUAL,
+                ),
+            ),
+        )
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(
+                    DailyMetrics(
+                        date = today,
+                        sleepDurationMin = null,
+                        restingHeartRate = 58.0,
+                        source = DailyMetricsSource.HEALTH_CONNECT,
+                    ),
+                ),
+                missingPermissions = emptySet(),
+                suspectSleepNights = 1,
+                suspectSleepDates = setOf(today),
+            ),
+        )
+
+        service(source).sync()
+
+        val merged = checkNotNull(metrics.get(today))
+        assertThat(merged.sleepDurationMin).isEqualTo(450)
+        assertThat(merged.source).isEqualTo(DailyMetricsSource.MANUAL)
+    }
+
+    @Test
     fun `keeps csv-only fields when health connect covers the same day`(): Unit = runBlocking {
         profiles.saveProfile(profile())
         metrics.saveAll(

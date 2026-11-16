@@ -1,6 +1,6 @@
 # ADR 0049 — Prontidão, check-in e sono plausível
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-28..C4-37).
+**Status:** Aprovado em 2026-11-16 — domínio implementado (C4-28, C4-34..C4-36); UI, goldens e docs pendentes (C4-30..C4-33, C4-37).
 **Data:** 2026-11-16
 **Escopo:** `ReadinessCalculator`, `ReadinessResult`, `ReadinessFlag`,
 `DailyMetricsReadinessBuilder`, `HealthMetricsAggregator`, `CheckInViewModel`/`CheckInScreen`,

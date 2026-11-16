@@ -2,7 +2,6 @@ package com.meucoach.core.domain.health
 
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DailyMetricsSource
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -26,33 +25,62 @@ data class HealthRawData(
     val oxygenSaturation: List<HealthSample> = emptyList(),
 )
 
+/** Aggregated days plus the sleep diagnostics the sync UI may report. */
+data class HealthAggregation(
+    val days: List<DailyMetrics>,
+    val suspectSleepNights: Int = 0,
+    val fragmentedSleepNights: Int = 0,
+    /** Dates whose stored sleep must be cleared, not kept from an older sync. */
+    val suspectSleepDates: Set<LocalDate> = emptySet(),
+) {
+    init {
+        require(suspectSleepNights >= 0) { "Suspect nights must not be negative" }
+        require(fragmentedSleepNights >= 0) { "Fragmented nights must not be negative" }
+    }
+}
+
 /**
  * Merges Health Connect records into one row per local day.
  *
- * Sleep sessions are assigned to the local date they end and overlapping
- * sessions are merged so a duplicated record does not inflate the night.
+ * Sleep sessions are assigned to the local date they end and validated by
+ * [SleepNightValidator]: an implausible night becomes `null` (absent), never a
+ * short night, and is counted in [HealthAggregation.suspectSleepNights].
  * Metrics are averaged per day; days without data are not emitted.
  */
 object HealthMetricsAggregator {
-    fun aggregate(data: HealthRawData, zoneId: ZoneId, from: LocalDate, to: LocalDate): List<DailyMetrics> {
+    fun aggregate(data: HealthRawData, zoneId: ZoneId, from: LocalDate, to: LocalDate): List<DailyMetrics> =
+        aggregateWithDiagnostics(data, zoneId, from, to).days
+
+    fun aggregateWithDiagnostics(
+        data: HealthRawData,
+        zoneId: ZoneId,
+        from: LocalDate,
+        to: LocalDate,
+    ): HealthAggregation {
         require(!to.isBefore(from)) { "End date must not be before start date" }
         val sleep = sleepByDate(data.sleepSessions, zoneId, from, to)
         val rhr = averagesByDate(data.restingHeartRates, zoneId, from, to)
         val hrv = averagesByDate(data.hrvRmssd, zoneId, from, to)
         val spo2 = averagesByDate(data.oxygenSaturation, zoneId, from, to)
 
-        return (sleep.keys + rhr.keys + hrv.keys + spo2.keys)
+        val days = (sleep.byDate.keys + rhr.keys + hrv.keys + spo2.keys)
             .sorted()
             .map { date ->
                 DailyMetrics(
                     date = date,
-                    sleepDurationMin = sleep[date],
+                    sleepDurationMin = sleep.byDate[date],
                     restingHeartRate = rhr[date],
                     hrvRmssdMs = hrv[date],
                     spo2Avg = spo2[date],
                     source = DailyMetricsSource.HEALTH_CONNECT,
                 )
             }
+        return HealthAggregation(
+            days = days,
+            suspectSleepNights = sleep.suspectDates.size,
+            fragmentedSleepNights = sleep.fragmentedNights,
+            suspectSleepDates = sleep.suspectDates,
+        )
     }
 
     private fun sleepByDate(
@@ -60,40 +88,30 @@ object HealthMetricsAggregator {
         zoneId: ZoneId,
         from: LocalDate,
         to: LocalDate,
-    ): Map<LocalDate, Int> {
-        val intervals = mutableMapOf<LocalDate, MutableList<Pair<Instant, Instant>>>()
+    ): SleepAggregation {
+        val sessionsByDate = mutableMapOf<LocalDate, MutableList<HealthSleepSession>>()
         sessions.forEach { session ->
             val date = session.end.atZone(zoneId).toLocalDate()
             if (date.isBefore(from) || date.isAfter(to)) return@forEach
-            intervals.getOrPut(date) { mutableListOf() } += session.start to session.end
+            sessionsByDate.getOrPut(date) { mutableListOf() } += session
         }
-        return intervals.mapValues { (_, dayIntervals) ->
-            val sorted = dayIntervals.sortedBy { it.first }
-            var totalSeconds = 0L
-            var currentStart: Instant? = null
-            var currentEnd: Instant? = null
-            sorted.forEach { (start, end) ->
-                val openStart = currentStart
-                val openEnd = currentEnd
-                if (openStart == null || openEnd == null) {
-                    currentStart = start
-                    currentEnd = end
-                } else if (start.isAfter(openEnd)) {
-                    totalSeconds += Duration.between(openStart, openEnd).seconds
-                    currentStart = start
-                    currentEnd = end
-                } else if (end.isAfter(openEnd)) {
-                    currentEnd = end
-                }
-            }
-            currentStart?.let { start ->
-                currentEnd?.let { end ->
-                    totalSeconds += Duration.between(start, end).seconds
-                }
-            }
-            (totalSeconds / 60).toInt().coerceIn(0, 1_440)
+        val byDate = mutableMapOf<LocalDate, Int?>()
+        val suspectDates = mutableSetOf<LocalDate>()
+        var fragmentedNights = 0
+        sessionsByDate.toSortedMap().forEach { (date, daySessions) ->
+            val night = SleepNightValidator.validate(date, daySessions, zoneId)
+            byDate[date] = night.minutes
+            if (night.suspect) suspectDates += date
+            if (!night.suspect && night.fragmented) fragmentedNights++
         }
+        return SleepAggregation(byDate, suspectDates, fragmentedNights)
     }
+
+    private data class SleepAggregation(
+        val byDate: Map<LocalDate, Int?>,
+        val suspectDates: Set<LocalDate>,
+        val fragmentedNights: Int,
+    )
 
     private fun averagesByDate(
         samples: List<HealthSample>,

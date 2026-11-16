@@ -6,6 +6,7 @@ import com.meucoach.app.health.HealthSyncCoordinator
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
+import com.meucoach.core.data.health.HealthSyncResult
 import com.meucoach.core.data.health.HealthSyncStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,7 +113,7 @@ class HealthConnectViewModel @Inject constructor(
             runCatching { coordinator.syncNow() }.fold(
                 onSuccess = { result ->
                     importedDays.value = result.importedDays
-                    manualMessage.value = when {
+                    val message = when {
                         result.error != null -> result.error
 
                         result.missingPermissions.isNotEmpty() ->
@@ -126,6 +127,7 @@ class HealthConnectViewModel @Inject constructor(
 
                         else -> "${result.importedDays} dias importados do Health Connect."
                     }
+                    manualMessage.value = message + sleepDiagnostic(result)
                 },
                 onFailure = { error ->
                     manualMessage.value = error.message ?: "Não foi possível sincronizar agora."
@@ -137,6 +139,31 @@ class HealthConnectViewModel @Inject constructor(
     fun consumeMessage() {
         manualMessage.value = null
     }
+
+    /**
+     * ADR 0049 §2.4: a suspect night is explained as absent data, without
+     * showing its raw duration or turning it into a short-night alert.
+     */
+    private fun sleepDiagnostic(result: HealthSyncResult): String {
+        val notes = buildList {
+            if (result.suspectSleepNights > 0) {
+                add(
+                    nightLabel(result.suspectSleepNights, "ignorada", "ignoradas") +
+                        " por dados implausíveis de sono.",
+                )
+            }
+            if (result.fragmentedSleepNights > 0) {
+                add(
+                    nightLabel(result.fragmentedSleepNights, "fragmentada", "fragmentadas") +
+                        ": usei o maior bloco.",
+                )
+            }
+        }
+        return if (notes.isEmpty()) "" else " " + notes.joinToString(" ")
+    }
+
+    private fun nightLabel(count: Int, singular: String, plural: String): String =
+        if (count == 1) "1 noite $singular" else "$count noites $plural"
 
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L

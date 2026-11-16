@@ -40,7 +40,10 @@ object ReadinessCalculator {
                 confidence = DataConfidence.LOW,
                 components = components,
                 missing = allComponents,
-                flags = setOf(ReadinessFlag.INSUFFICIENT_DATA),
+                flags = buildSet {
+                    add(ReadinessFlag.INSUFFICIENT_DATA)
+                    if (checkIn == null) add(ReadinessFlag.SUBJECTIVE_MISSING)
+                },
             )
         }
 
@@ -52,6 +55,10 @@ object ReadinessCalculator {
         var score = weightedScore.roundToInt().coerceIn(0, 100)
         var level = levelFor(score)
         val flags = linkedSetOf<ReadinessFlag>()
+
+        // ADR 0049 §2.1: omission is partial data, not a green light. The score
+        // may stay green for display; the quality gate reads the flag.
+        if (checkIn == null) flags += ReadinessFlag.SUBJECTIVE_MISSING
 
         if (sleep != null && sleep.durationMin < SHORT_SLEEP_MINUTES) {
             flags += ReadinessFlag.SHORT_SLEEP

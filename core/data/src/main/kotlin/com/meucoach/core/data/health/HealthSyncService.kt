@@ -22,7 +22,18 @@ data class HealthSyncResult(
     /** No profile or a reset happened; the caller must not retry. */
     val skipped: Boolean = false,
     val cancelledByReset: Boolean = false,
-)
+    /** Nights dropped as implausible; the UI may explain the absence. */
+    val suspectSleepNights: Int = 0,
+    /** Valid fragmented nights where only the largest block was used. */
+    val fragmentedSleepNights: Int = 0,
+    /** Dates whose previously stored sleep is suspect and must be cleared. */
+    val suspectSleepDates: Set<LocalDate> = emptySet(),
+) {
+    init {
+        require(suspectSleepNights >= 0) { "Suspect nights must not be negative" }
+        require(fragmentedSleepNights >= 0) { "Fragmented nights must not be negative" }
+    }
+}
 
 /**
  * Shared Health Connect sync used by the app resume, the profile screen and the
@@ -108,6 +119,9 @@ class HealthSyncService(
                 from = safeFrom,
                 to = today,
                 incremental = lastSynced != null,
+                suspectSleepNights = result.suspectSleepNights,
+                fragmentedSleepNights = result.fragmentedSleepNights,
+                suspectSleepDates = result.suspectSleepDates,
             )
         }
         if (result.missingPermissions.isNotEmpty()) {
@@ -117,19 +131,22 @@ class HealthSyncService(
                 from = safeFrom,
                 to = today,
                 incremental = lastSynced != null,
+                suspectSleepNights = result.suspectSleepNights,
+                fragmentedSleepNights = result.fragmentedSleepNights,
+                suspectSleepDates = result.suspectSleepDates,
             )
         }
 
         val cancelled = epochStore != null && epochStore.current() != epoch
         if (cancelled) return cancelledByReset(safeFrom, today, lastSynced != null)
 
-        if (result.days.isNotEmpty()) {
+        if (result.days.isNotEmpty() || result.suspectSleepDates.isNotEmpty()) {
             val saved = writeMutex?.let { guard ->
                 guard.mutex.withLock {
                     if (epochStore != null && epochStore.current() != epoch) {
                         false
                     } else {
-                        metricsRepository.saveAll(result.days)
+                        metricsRepository.saveAll(result.days, clearSleepDates = result.suspectSleepDates)
                         true
                     }
                 }
@@ -137,7 +154,7 @@ class HealthSyncService(
                 if (epochStore != null && epochStore.current() != epoch) {
                     false
                 } else {
-                    metricsRepository.saveAll(result.days)
+                    metricsRepository.saveAll(result.days, clearSleepDates = result.suspectSleepDates)
                     true
                 }
             }
@@ -154,6 +171,9 @@ class HealthSyncService(
             from = safeFrom,
             to = today,
             incremental = lastSynced != null,
+            suspectSleepNights = result.suspectSleepNights,
+            fragmentedSleepNights = result.fragmentedSleepNights,
+            suspectSleepDates = result.suspectSleepDates,
         )
     }
 

@@ -167,7 +167,11 @@ class ReadinessCalculatorTest {
         assertThat(result.confidence).isEqualTo(DataConfidence.LOW)
         assertThat(result.components).isEmpty()
         assertThat(result.missing).hasSize(4)
-        assertThat(result.flags).containsExactly(ReadinessFlag.INSUFFICIENT_DATA)
+        // ADR 0049: no check-in is also explicit in the flags.
+        assertThat(result.flags).containsExactlyInAnyOrder(
+            ReadinessFlag.INSUFFICIENT_DATA,
+            ReadinessFlag.SUBJECTIVE_MISSING,
+        )
     }
 
     @Test

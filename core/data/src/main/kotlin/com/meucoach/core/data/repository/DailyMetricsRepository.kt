@@ -5,6 +5,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.domain.health.DailyMetricsMerger
 import com.meucoach.core.model.DailyMetrics
+import com.meucoach.core.model.DailyMetricsSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
@@ -19,17 +20,30 @@ class DailyMetricsRepository(private val database: MeuCoachDatabase, private val
 
     suspend fun get(date: LocalDate): DailyMetrics? = dao.get(date.toString())?.toModel()
 
-    suspend fun saveAll(metrics: List<DailyMetrics>): Int = database.withTransaction {
-        val now = clock.millis()
-        metrics.forEach { row ->
-            val existing = dao.get(row.date.toString())
-            val merged = existing
-                ?.let { DailyMetricsMerger.merge(it.toModel(), row) }
-                ?: row
-            dao.upsert(merged.toEntity(createdAt = existing?.createdAt ?: now, updatedAt = now))
+    /**
+     * Saves the incoming days and, in the same transaction, clears sleep for
+     * [clearSleepDates]. A suspect night must remove a value stored by an older
+     * sync instead of being silently kept by the merge. Manual sleep still wins:
+     * the incoming null does not erase a higher-precedence source.
+     */
+    suspend fun saveAll(metrics: List<DailyMetrics>, clearSleepDates: Set<LocalDate> = emptySet()): Int =
+        database.withTransaction {
+            val now = clock.millis()
+            clearSleepDates.forEach { date ->
+                val existing = dao.get(date.toString()) ?: return@forEach
+                if (existing.sleepDurationMin != null && existing.source != DailyMetricsSource.MANUAL) {
+                    dao.upsert(existing.copy(sleepDurationMin = null, updatedAt = now))
+                }
+            }
+            metrics.forEach { row ->
+                val existing = dao.get(row.date.toString())
+                val merged = existing
+                    ?.let { DailyMetricsMerger.merge(it.toModel(), row) }
+                    ?: row
+                dao.upsert(merged.toEntity(createdAt = existing?.createdAt ?: now, updatedAt = now))
+            }
+            metrics.size
         }
-        metrics.size
-    }
 
     suspend fun delete(date: LocalDate): Boolean = dao.delete(date.toString()) > 0
 

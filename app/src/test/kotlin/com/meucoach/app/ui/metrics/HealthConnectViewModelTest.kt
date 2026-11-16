@@ -116,6 +116,28 @@ class HealthConnectViewModelTest {
     }
 
     @Test
+    fun `explains implausible and fragmented sleep without raw values`(): Unit = runBlocking {
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(LocalDate.now())),
+                missingPermissions = emptySet(),
+                suspectSleepNights = 1,
+                fragmentedSleepNights = 2,
+            ),
+        )
+        val viewModel = HealthConnectViewModel(source, coordinator(source), syncStore, FakeTimeProvider())
+        viewModel.uiState.first { !it.isLoading }
+
+        viewModel.sync()
+        withTimeout(5_000) { viewModel.uiState.first { !it.isSyncing && it.message != null } }
+
+        assertThat(viewModel.uiState.value.message)
+            .contains("1 noite ignorada por dados implausíveis de sono")
+            .contains("2 noites fragmentadas: usei o maior bloco")
+            .doesNotContain("36")
+    }
+
+    @Test
     fun `does not sync without permissions`(): Unit = runBlocking {
         val source = FakeSource(
             granted = emptySet(),

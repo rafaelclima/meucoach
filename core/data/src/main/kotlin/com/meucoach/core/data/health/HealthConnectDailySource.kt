@@ -28,7 +28,18 @@ data class HealthConnectReadResult(
     val days: List<DailyMetrics>,
     val missingPermissions: Set<String>,
     val error: String? = null,
-)
+    /** Nights dropped because they were implausible, never treated as short. */
+    val suspectSleepNights: Int = 0,
+    /** Valid nights whose largest block was used instead of summing pieces. */
+    val fragmentedSleepNights: Int = 0,
+    /** Dates with a suspect night; their stored sleep must be cleared. */
+    val suspectSleepDates: Set<LocalDate> = emptySet(),
+) {
+    init {
+        require(suspectSleepNights >= 0) { "Suspect nights must not be negative" }
+        require(fragmentedSleepNights >= 0) { "Fragmented nights must not be negative" }
+    }
+}
 
 interface HealthDailySource {
     val requiredPermissions: Set<String>
@@ -114,9 +125,13 @@ class HealthConnectDailySource(context: Context) : HealthDailySource {
                     ),
                 ).map { HealthSample(it.time, it.percentage.value) },
             )
+            val aggregation = HealthMetricsAggregator.aggregateWithDiagnostics(raw, zoneId, from, to)
             HealthConnectReadResult(
-                days = HealthMetricsAggregator.aggregate(raw, zoneId, from, to),
+                days = aggregation.days,
                 missingPermissions = emptySet(),
+                suspectSleepNights = aggregation.suspectSleepNights,
+                fragmentedSleepNights = aggregation.fragmentedSleepNights,
+                suspectSleepDates = aggregation.suspectSleepDates,
             )
         }.getOrElse { error ->
             HealthConnectReadResult(

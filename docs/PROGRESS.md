@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S3 do Ciclo 4: carga confiável, janela de 28 dias e ACWR 1,5)
+**Atualizado:** 16/11/2026 (S4 do Ciclo 4: prontidão sem inversão e sono plausível)
+
+## Sessão 2026-11-16 — Ciclo 4/S4: prontidão sem inversão e sono plausível (C4-28, C4-34..C4-36)
+
+**Objetivo:** eliminar a inversão do check-in (omitir não libera qualidade) e tratar sono implausível como ausente, sem UI de check-in nem migração.
+
+### Concluído
+
+- **Prontidão:** `ReadinessFlag.SUBJECTIVE_MISSING` e `ReadinessResult.qualityEligibleByReadiness` (verde + subjetivo + sem sono curto + sem doença). Sem check-in, o score pode continuar verde com dados parciais, mas a qualidade é inelegível e `NO_QUALITY` não é ligado por omissão.
+- **Sono:** `SleepNightValidator` usa a janela local 18:00–12:00, agrupa blocos com gap ≤120 min, soma o sono real sem contar o gap (4h + 4h com 30 min = 8h), usa o maior bloco em noite fragmentada e trata 180–840 min como plausível.
+- **Agregador:** noite suspeita vira `sleepDurationMin=null`; `HealthAggregation`, `HealthConnectReadResult` e `HealthSyncResult` carregam `suspectSleepNights`/`fragmentedSleepNights`; o estado do sync e a mensagem do Health Connect explicam sem valor bruto.
+- **Readiness/review:** noite suspeita não vira `SleepMetrics` nem liga `SHORT_SLEEP`; 5h30 válido continua curto; o `WeeklyReview` não conta a noite suspeita como medida.
+- **Testes:** `ReadinessEligibilityTest` (8), `SleepNightValidatorTest` (12), `SleepPlausibilityTest` (4) e 5 novos no agregador; propagação em `:core:data` e no `:app`.
+
+### Testes
+
+- `:core:domain:test` 873 verdes (+29); `:core:data:test` 171 (+3); `:app:testDebugUnitTest` 882 (+1).
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01% de branches.
+- Nenhum dado real no diff; fixtures sintéticas.
+
+### Decisões e observações
+
+- O check-in ausente continua permitindo exibir a prontidão; o que muda é a elegibilidade. `DailyPrescriptionEngine`/`WorkoutRecommender` ainda usam o proxy antigo até C4-29.
+- O gap de até 2h agrupa blocos, mas não vira sono; uma noite fragmentada com gap maior usa o maior bloco e é marcada como fragmentada.
+- `SLEEP_DATA_SUSPECT` não é emitido: a noite suspeita é descartada para `null` e o diagnóstico fica no sync; não há migração de schema.
+- Check-in UI (C4-30/C4-31), `G-READY-03` (C4-32), docs de prontidão (C4-33), `G-DATA-02`/docs de sono (C4-37) e a fiação do gate (C4-04/C4-29) continuam pendentes.
+
+### Próximo passo
+
+1. S5/C4-38: `VolumeReference` + builder, projeção determinística a partir do volume real.
+2. Depois C4-39: volume/meso/graduação usando a referência real, com adesão separada.
 
 ## Sessão 2026-11-16 — Ciclo 4/S3: carga confiável e ACWR 1,5 (C4-22..C4-25)
 

@@ -17,6 +17,9 @@ enum class ReadinessFlag {
     RESTING_HEART_RATE_ELEVATED,
     NO_QUALITY,
     INSUFFICIENT_DATA,
+
+    /** No subjective check-in today: partial data, never a quality green light. */
+    SUBJECTIVE_MISSING,
 }
 
 data class SubjectiveCheckIn(val sleepQuality: Int, val fatigue: Int, val soreness: Int, val stress: Int) {
@@ -102,4 +105,17 @@ data class ReadinessResult(
     val components: Map<ReadinessComponent, Int>,
     val missing: Set<ReadinessComponent>,
     val flags: Set<ReadinessFlag>,
-)
+) {
+    /**
+     * ADR 0049 §2.1: only a green day with a subjective check-in, no valid
+     * short sleep and no illness/injury may confirm a quality session.
+     *
+     * Objective-only data can still show a green score as partial data; it
+     * never unlocks quality by omission.
+     */
+    val qualityEligibleByReadiness: Boolean
+        get() = level == ReadinessLevel.GREEN &&
+            ReadinessComponent.SUBJECTIVE in components &&
+            ReadinessFlag.SHORT_SLEEP !in flags &&
+            ReadinessFlag.ILLNESS_OR_INJURY !in flags
+}

@@ -31,6 +31,10 @@ data class HealthSyncState(
     val needsPermission: Boolean = false,
     val unavailable: Boolean = false,
     val lastError: String? = null,
+    /** Last sync's implausible nights; zero means no diagnostic to show. */
+    val suspectSleepNights: Int = 0,
+    /** Last sync's valid fragmented nights; the largest block was used. */
+    val fragmentedSleepNights: Int = 0,
 )
 
 @Singleton
@@ -96,6 +100,8 @@ class HealthSyncCoordinator @Inject constructor(
                         lastAttemptAt = store.lastAttemptAt(),
                         lastError = result?.error,
                         needsPermission = result?.missingPermissions?.isNotEmpty() == true,
+                        suspectSleepNights = result?.suspectSleepNights ?: it.suspectSleepNights,
+                        fragmentedSleepNights = result?.fragmentedSleepNights ?: it.fragmentedSleepNights,
                     )
                 }
             } catch (cancellation: CancellationException) {
@@ -127,6 +133,8 @@ class HealthSyncCoordinator @Inject constructor(
                         lastError = result.error,
                         needsPermission = result.missingPermissions.isNotEmpty(),
                         unavailable = result.error?.contains("indisponível") == true,
+                        suspectSleepNights = result.suspectSleepNights,
+                        fragmentedSleepNights = result.fragmentedSleepNights,
                     )
                 }
             }

@@ -5,5 +5,5 @@
   "confidence": "LOW",
   "components": {},
   "missing": ["HRV", "RESTING_HEART_RATE", "SLEEP", "SUBJECTIVE"],
-  "flags": ["INSUFFICIENT_DATA"]
+  "flags": ["INSUFFICIENT_DATA", "SUBJECTIVE_MISSING"]
 }

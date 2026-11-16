@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S3
-> **Último commit:** S3 — `feat(domain): make ACWR reliable on a full 28-day window (C4-22..C4-25)` (S2: `e567727`)
+> **Última atualização:** 16/11/2026 — S4
+> **Último commit:** S4 — `feat(domain): block quality without check-in and implausible sleep (C4-28, C4-34..C4-36)` (S3: `f574297`)
 > **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S4 — Prontidão/check-in/sono**
-> **Task atual:** C4-28 (TODO)
-> **Próxima task:** C4-28
+> **Sessão atual:** **S4 concluída — próxima: S5 (volume real/treino extra)**
+> **Task atual:** C4-38 (TODO)
+> **Próxima task:** C4-38
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 844 verdes; `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; FIT 93,01% de branches
-> **Próxima ação:** ler ADR 0049 e FR-406; abrir C4-28; escrever o teste que falha de `qualityEligibleByReadiness`/`SUBJECTIVE_MISSING` sem check-in.
+> **Gates da última sessão:** `:core:domain:test` 873 verdes; `:core:data:test` 171; `:app:testDebugUnitTest` 882; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; FIT 93,01% de branches
+> **Próxima ação:** ler ADR 0050 e FR-409; abrir C4-38 (`VolumeReference` + builder), TDD da projeção determinística.
 
 ### 0.1 O que já está pronto
 
@@ -64,15 +64,24 @@
 - [x] `firstActivityAt` fiado em `TrainingSignals`/`TodayViewModel`; volume sem janela completa mantém e explica “em calibração”.
 - [x] 19 testes novos líquidos: `LoadReliabilityTest` (7), `LoadGateV3Test` (10), limites e confiabilidade no diário/gerador/recomendador/volume.
 
+**S4 — prontidão/check-in/sono**
+
+- [x] `ReadinessFlag.SUBJECTIVE_MISSING` e `ReadinessResult.qualityEligibleByReadiness` (verde + subjetivo + sem sono curto + sem doença); sem check-in o score pode ficar verde, mas a qualidade é inelegível.
+- [x] `SleepNightValidator`: janela 18:00–12:00 local, blocos com gap ≤120 min, união sem contar o gap, maior bloco em noite fragmentada e faixa plausível 180–840 min.
+- [x] Agregador converte noite suspeita em `sleepDurationMin=null`, conta noites suspeitas/fragmentadas e propaga o diagnóstico até a UI; readiness/review não geram `SHORT_SLEEP` falso.
+- [x] 29 testes novos no domínio (`ReadinessEligibilityTest` 8, `SleepNightValidatorTest` 12, `SleepPlausibilityTest` 4, agregador 5) + 3 em `:core:data` + 1 no `:app`.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
-- O gate não bloqueia prontidão âmbar sozinho: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
+- `qualityEligibleByReadiness` já existe, mas o diário e o recomendador ainda não o leem; a fiação é C4-04/C4-29.
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
+- O check-in UI (C4-30), a reavaliação tardia (C4-31), o golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes.
+- O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
 - A persistência/JSON de `qualityKind`/`planDecision` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip.
 - `role`/`structure` da oportunidade entram com o catálogo/estrutura (C4-14/C4-15); o read model atual cobre data, kind, motivo, status e decisão.
-- O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI foi alterada.
+- O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-03`, `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
@@ -218,60 +227,60 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
-## 5. Sessão S3 — concluída
+## 5. Sessão S4 — concluída
 
-> Próxima sessão: substituir este bloco pelo caderno da S4 no início da sessão; o registro da S3 fica no §7.
+> Próxima sessão: substituir este bloco pelo caderno da S5 no início da sessão; o registro da S4 fica no §7.
 
-**Objetivo:** tornar a carga confiável: pré-história como “sem dado”, janela completa de 28 dias, ACWR 1,5 em todos os caminhos e permissões de qualidade/progressão separadas. Sem UI nem migração.
+**Objetivo:** eliminar a inversão do check-in (omitir não libera qualidade) e tratar sono implausível como ausente, sem UI de check-in nem migração.
 
 **Contexto obrigatório:**
 
-- `docs/adr/0046-load-gate-v3-acwr-reliability.md` §2.1–2.6.
-- `docs/PRD_TREINO_REAL.md` FR-405 e §5.5.
-- `core/domain/src/main/kotlin/com/meucoach/core/domain/load/TrainingLoadEngine.kt`.
-- `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/DailyPrescriptionEngine.kt`, `WeeklyPlanGenerator.kt`, `QualityGate.kt`, `VolumeProgression.kt`, `WorkoutRecommender.kt`.
+- `docs/adr/0049-readiness-checkin-sleep.md` §2.1–2.6.
+- `docs/PRD_TREINO_REAL.md` FR-406/FR-407 e §5.4.
+- `ReadinessCalculator`, `ReadinessModels`, `DailyMetricsReadinessBuilder`, `HealthMetricsAggregator` e `WeeklyReview`.
 
-**Task C4-22 — `firstActivityAt`; pré-história como “sem dado”**
+**Task C4-28 — `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING`**
 
-- [x] `ActivitySourceStatus.firstActivityAt` com fallback determinístico para a atividade/execução mais antiga recebida.
-- [x] `LoadCoverage.daysBeforeHistory`; dias antes do primeiro registro são `daysWithoutData`, nunca descanso.
-- [x] Fonte velha continua “sem dado” e o cold start não vira expertise de descanso.
-- [x] 7 casos em `LoadReliabilityTest`.
+- [x] `ReadinessFlag.SUBJECTIVE_MISSING` nasce quando não há check-in, inclusive quando não há nenhum componente.
+- [x] `qualityEligibleByReadiness` exige verde + subjetivo + sem `SHORT_SLEEP` + sem `ILLNESS_OR_INJURY`; o score pode ficar verde com dados parciais, sem `NO_QUALITY`.
+- [x] 8 casos em `ReadinessEligibilityTest`: sem check-in, sem dados, 3/3/3/3, 4/2/2/2, 5/1/1/1, sono curto, doença e FC de repouso elevada.
+- [x] Golden `readiness-no-data` atualizado com `SUBJECTIVE_MISSING`.
 
-**Task C4-23 — `acwrReliable`/`strainReliable`/`historyDays`**
+**Task C4-34 — `SleepNightValidator`**
 
-- [x] `acwrReliable` exige fonte fresca, janela inteira coberta, sem dia “sem dado”, ≥8 dias com carga objetiva e nenhum dia subjetivo.
-- [x] `strainReliable` herda a janela; `historyDays` e `baselineDays` expostos no snapshot.
-- [x] `acwrHigh` é `acwrReliable && acwr > 1,5`; ACWR não confiável não reduz nem veta.
+- [x] Janela `[18:00 do dia anterior, 12:00 do dia]` no fuso local; cochilo diurno não entra.
+- [x] Blocos com gap ≤120 min; o gap não conta como sono e registros sobrepostos são unidos; noite fragmentada usa o maior bloco.
+- [x] Faixa plausível 180–840 min; 36 min, 2h59 e 14h+ são suspeitas, 3h e 5h30 são válidas.
+- [x] 12 casos em `SleepNightValidatorTest`.
 
-**Task C4-24 — ACWR 1,5 em todos os caminhos**
+**Task C4-35 — agregador usa o validador**
 
-- [x] `LoadSnapshot.ACWR_MAX = 1.5` usado por `QualityGate`, `DailyPrescriptionEngine`, `WeeklyPlanGenerator` e `WorkoutRecommender`.
-- [x] 1,4 mantém; 1,5 mantém; 1,6 rebaixa; 0,7 mantém. Nenhum caminho usa 1,3 como veto.
-- [x] `WorkoutRecommender` não diz “carga subiu rápido” quando o ACWR é não confiável.
+- [x] Noite suspeita vira `sleepDurationMin=null`; os demais campos do dia continuam.
+- [x] `HealthAggregation`, `HealthConnectReadResult` e `HealthSyncResult` carregam `suspectSleepNights`/`fragmentedSleepNights`; o coordenador expõe no estado e o Health Connect explica na mensagem, sem valor bruto.
+- [x] 5 casos novos no `HealthMetricsAggregatorTest`; propagação coberta em `:core:data` e no `:app`.
 
-**Task C4-25 — `permitsQuality`/`permitsProgression` separados**
+**Task C4-36 — readiness/review ignoram suspeita**
 
-- [x] Qualidade: carga objetiva `KNOWN` + monotonia < 2,0 + sem strain spike confiável + sem ACWR confiável > 1,5.
-- [x] Progressão: qualidade + ACWR confiável em 0,8–1,3; `VolumeGates.acwrReliable` e `ACWR_UNRELIABLE` (“em calibração”).
-- [x] Qualidade não é vetada por ACWR não confiável; progressão nunca acelera sem baseline completo.
+- [x] Noite suspeita não vira `SleepMetrics`; a prontidão não liga `SHORT_SLEEP` nem libera qualidade.
+- [x] 5h30 válido continua ligando `SHORT_SLEEP`; o `WeeklyReview` não conta a noite suspeita como medida.
+- [x] 4 casos de integração em `SleepPlausibilityTest`.
 
 **Aceite da sessão:**
 
-- [x] `./gradlew :core:domain:test` verde (844).
+- [x] `./gradlew :core:domain:test` verde (873).
 - [x] `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01%.
-- [x] `:core:data:test` 168 e `:app:testDebugUnitTest` 881 verdes; `:app:assembleDebug`.
+- [x] `:core:data:test` 171 e `:app:testDebugUnitTest` 882 verdes; `:app:assembleDebug`.
 - [x] Nenhum dado real.
-- [x] §0/§6/§7/PROGRESS/SPORTS_SCIENCE/ADR 0046 atualizados.
-- [x] Commit: `feat(domain): make ACWR reliable on a full 28-day window (C4-22..C4-25)`.
+- [x] §0/§6/§7/PROGRESS/ADR 0049 atualizados.
+- [x] Commit: `feat(domain): block quality without check-in and implausible sleep (C4-28, C4-34..C4-36)`.
 
 **Notas de implementação:**
 
-- `historyDays` é a janela coberta pelo histórico; `baselineDays` são os dias com carga objetiva. A UI pode mostrar “X de 28 dias” sem inventar zero.
-- O `firstActivityAt` é fiado em `TrainingSignals`/`TodayViewModel` a partir da atividade mais antiga; `ActivitySummary` continua sendo a fonte local.
-- `VolumeGrowthBlock.ACWR_UNRELIABLE` separa “sem baseline” de “fora da faixa”, para a copy de C4-26 não dizer que a carga subiu quando o número está em calibração.
-- O seed do `TodayViewModelPersistTest` passou a cobrir os 28 dias; sem isso, a progressão (corretamente) não cresce.
-- O golden `G-LOAD-02` e a copy/UI continuam em C4-26/C4-27; a versão de motor fica em C4-53.
+- O check-in ausente continua permitindo exibir a prontidão; o que muda é a elegibilidade. O `DailyPrescriptionEngine` ainda usa o proxy antigo até C4-29.
+- O validador não usa o span do bloco: 4h + 4h com 30 min de intervalo contam 8h, não 8h30. O gap de até 2h agrupa, mas não vira sono.
+- Uma noite fragmentada com blocos de 4h + 4h e gap de 3h usa 4h e é marcada como fragmentada; o diagnóstico não soma os pedaços.
+- O `SLEEP_DATA_SUSPECT` do ADR 0049 não é emitido: a noite suspeita é descartada para `null` e o diagnóstico fica no sync. Não há migração de schema.
+- A UI do check-in (C4-30/C4-31), o golden `G-READY-03` (C4-32), os docs de prontidão (C4-33) e o `G-DATA-02`/docs de sono (C4-37) ficam para as sessões indicadas.
 
 **Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
 
@@ -334,7 +343,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-28 | `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING` | — | M | S4 | ADR 0049 | Sem check-in = falso | — |
+| [x] | C4-28 | `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING` | — | M | S4 | ADR 0049 | Sem check-in = falso | `ReadinessEligibilityTest` (8); golden `readiness-no-data`; commit S4 |
 | [ ] | C4-29 | Daily/recommender usam o gate | C4-28 | M | S8 | ADR 0044/0049 | Sem qualidade sem check-in | — |
 | [ ] | C4-30 | Check-in sem 3/3/3/3; labels; pré-preencher | C4-28 | M | S11 | ADR 0049 | UI; salvar desabilitado | — |
 | [ ] | C4-31 | Reavaliação após check-in | C4-05/30 | M | S11 | ADR 0049 | EASY→QUALITY antes do DONE | — |
@@ -345,9 +354,9 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-34 | `SleepNightValidator` | — | M | S4 | ADR 0049 | Janela/merge/180–840 | — |
-| [ ] | C4-35 | Agregador usa o validador; suspeita → null | C4-34 | M | S4 | ADR 0049 | Testes; diagnóstico | — |
-| [ ] | C4-36 | Readiness/review ignoram suspeita | C4-35 | M | S4 | ADR 0049 | Sem SHORT_SLEEP falso | — |
+| [x] | C4-34 | `SleepNightValidator` | — | M | S4 | ADR 0049 | Janela/merge/180–840 | `SleepNightValidatorTest` (12); commit S4 |
+| [x] | C4-35 | Agregador usa o validador; suspeita → null | C4-34 | M | S4 | ADR 0049 | Testes; diagnóstico | `HealthMetricsAggregatorTest` (5 novos); sync/UI; commit S4 |
+| [x] | C4-36 | Readiness/review ignoram suspeita | C4-35 | M | S4 | ADR 0049 | Sem SHORT_SLEEP falso | `SleepPlausibilityTest` (4); commit S4 |
 | [ ] | C4-37 | Golden `G-DATA-02` + docs | C4-34..36 | S | S14 | ADR 0049 | Golden/docs | — |
 
 ### E7 — Volume/treino extra
@@ -439,6 +448,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** pré-história vira `daysWithoutData` e `daysBeforeHistory`; a fonte pode informar `firstActivityAt` e o engine deriva do registro mais antigo quando ela não informa. `acwrReliable` exige 28 dias cobertos, ≥8 dias de carga objetiva, fonte fresca e zero dia subjetivo; `strainReliable` herda a mesma janela. `permitsQuality` mantém a qualidade em ACWR não confiável; `permitsProgression` exige janela completa e 0,8–1,3. `LoadSnapshot.ACWR_MAX = 1.5` é o único limite de redução; 1,3 fica só como topo da faixa de progressão. `VolumeGrowthBlock.ACWR_UNRELIABLE` separa calibração de “fora da faixa”. O seed de `TodayViewModelPersistTest` passou a cobrir 28 dias para a progressão continuar válida. Golden/copy/UI e bump de versões ficam em C4-26/C4-27/C4-53.
 - **Próximo:** S4 / C4-28 (`qualityEligibleByReadiness` + `SUBJECTIVE_MISSING`).
 
+### S4 — 2026-11-16 — Prontidão sem inversão e sono plausível
+
+- **Status:** DONE
+- **Tasks:** C4-28, C4-34, C4-35, C4-36.
+- **Arquivos:** `core/domain/.../readiness/ReadinessModels.kt`, `ReadinessCalculator.kt`, `core/domain/.../health/SleepNightValidator.kt` (novo), `HealthMetricsAggregator.kt`, `core/data/.../health/HealthConnectDailySource.kt`, `HealthSyncService.kt`, `app/.../health/HealthSyncCoordinator.kt`, `app/.../ui/metrics/HealthConnectViewModel.kt`, `ReadinessEligibilityTest.kt` (novo), `SleepNightValidatorTest.kt` (novo), `SleepPlausibilityTest.kt` (novo), `HealthMetricsAggregatorTest.kt`, `HealthSyncServiceTest.kt`, `HealthConnectViewModelTest.kt`, `ReadinessCalculatorTest.kt`, `fixtures/golden/readiness-no-data/`, `docs/adr/0049-readiness-checkin-sleep.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 873 verdes (+29; `ReadinessEligibilityTest` 8, `SleepNightValidatorTest` 12, `SleepPlausibilityTest` 4, agregador 5); `:core:data:test` 171 (+3); `:app:testDebugUnitTest` 882 (+1); `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; FIT 93,01% de branches; `detekt` verde.
+- **Commit:** `feat(domain): block quality without check-in and implausible sleep (C4-28, C4-34..C4-36)`.
+- **Decisões/notas:** sem check-in, `SUBJECTIVE_MISSING` é explícito e `qualityEligibleByReadiness=false`, mas o score e o nível continuam exibíveis (dados parciais) e `NO_QUALITY` não é ligado. O validador de sono usa a janela local 18:00–12:00, agrupa blocos com gap ≤120 min e soma o sono real (não o span): 4h + 4h com 30 min de intervalo = 8h. Noite fragmentada usa o maior bloco; 36 min vira `null`, nunca `SHORT_SLEEP`. O diagnóstico de noites suspeitas/fragmentadas chega ao estado do sync e à mensagem do Health Connect, sem valor bruto. `SLEEP_DATA_SUSPECT` não é emitido porque a noite é persistida como `null` e não há migração. Check-in UI, reavaliação tardia, `G-READY-03`, `G-DATA-02` e docs de `R-READY-06`/sono ficam em C4-30..C4-33/C4-37.
+- **Próximo:** S5 / C4-38 (`VolumeReference` + builder), TDD da projeção determinística.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -523,9 +542,9 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 881 | Atualizar conforme novos testes |
-| `:core:domain` | 844 | Atualizar conforme novos testes |
-| `:core:data` | 168 | Atualizar |
+| `:app` | 882 | Atualizar conforme novos testes |
+| `:core:domain` | 873 | Atualizar conforme novos testes |
+| `:core:data` | 171 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -545,7 +564,7 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 | Prescrição/plano | `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/WeeklyPlanGenerator.kt`, `DailyPrescriptionEngine.kt`, `SessionLibrary.kt`, `VolumeProgression.kt`, `MesoCycle.kt`, `LevelGraduationEngine.kt`, `PrescriptionTargets.kt`, `SessionSwapper.kt` |
 | Carga | `core/domain/.../load/TrainingLoadEngine.kt`, `TrainingLoadCalculator.kt` |
 | Prontidão | `core/domain/.../readiness/ReadinessCalculator.kt`, `DailyMetricsReadinessBuilder.kt`, `ReadinessModels.kt` |
-| Saúde/sono | `core/domain/.../health/HealthMetricsAggregator.kt` |
+| Saúde/sono | `core/domain/.../health/HealthMetricsAggregator.kt`, `SleepNightValidator.kt` |
 | Replanejamento | `core/domain/.../replan/PlanReplanner.kt`, `PlanningFingerprint.kt`, `ReplanModels.kt` |
 | Persistência | `core/data/.../db/MeuCoachDatabase.kt`, `db/entity/`, `repository/TrainingPlanRepository.kt`, `prescription/PlanJson.kt`, `PrescriptionJson.kt` |
 | App | `app/src/main/kotlin/com/meucoach/app/ui/today/TodayViewModel.kt`, `application/GetTodayPrescription.kt`, `ui/checkin/CheckInViewModel.kt`, `ui/checkin/CheckInScreen.kt`, `health/HealthSyncCoordinator.kt`, `MeuCoachApp.kt` |
@@ -614,11 +633,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (S4)
+## 14. Próxima ação (S5)
 
-1. Abrir `docs/adr/0049-readiness-checkin-sleep.md` e o FR-406/§5.4 do PRD.
-2. Ler `ReadinessCalculator`, `ReadinessModels`, `DailyMetricsReadinessBuilder` e os testes de prontidão existentes.
-3. Escrever o teste que falha de `qualityEligibleByReadiness`/`SUBJECTIVE_MISSING` sem check-in (C4-28): sem check-in não há qualidade por default 3/3/3/3.
-4. Implementar C4-28 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0050-real-volume-extra-training-legacy.md` e o FR-409/§5.6 do PRD.
+2. Ler `VolumeProgression`, `WeeklyPlanGenerator`, `MesoCycle`, `LevelGraduationEngine` e os testes de volume existentes.
+3. Escrever o teste que falha de `VolumeReference`/builder (C4-38): projeção determinística a partir do volume real, sem adesão.
+4. Implementar C4-38 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.
