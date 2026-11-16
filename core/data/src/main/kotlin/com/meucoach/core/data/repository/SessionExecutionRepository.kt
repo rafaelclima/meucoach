@@ -282,11 +282,10 @@ class SessionExecutionRepository(
         database.withTransaction {
             val session = sessions.getSession(plannedSessionId)
                 ?: return@withTransaction CompletionOutcome.Rejected("Sessão planejada não encontrada.")
-            if (session.status != SessionStatus.DONE ||
-                session.completionEvidence != CompletionEvidence.LEGACY_UNVERIFIED ||
-                session.activityId != null ||
-                session.executionId != null
-            ) {
+            val isLegacyDone = session.status == SessionStatus.DONE &&
+                session.completionEvidence == CompletionEvidence.LEGACY_UNVERIFIED
+            val isUnlinked = session.activityId == null && session.executionId == null
+            if (!isLegacyDone || !isUnlinked) {
                 return@withTransaction CompletionOutcome.Rejected(
                     "Este treino não tem um registro legado sem vínculo para reparar.",
                 )
