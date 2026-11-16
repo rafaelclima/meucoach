@@ -5,6 +5,8 @@ import com.meucoach.core.model.Pace
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 data class LoadActivity(
     val date: LocalDate,
@@ -59,6 +61,12 @@ data class ActivitySourceStatus(
     val checkedAt: Instant,
     val lastSubjectiveLogAt: Instant? = null,
     val maxAgeDays: Long = DEFAULT_MAX_AGE_DAYS,
+    /**
+     * First known activity instant (ADR 0046). A `null` value lets the engine
+     * derive it from the oldest activity it receives; it never means "no
+     * training". Days before this instant are missing data, not rest.
+     */
+    val firstActivityAt: Instant? = null,
 ) {
     init {
         require(maxAgeDays > 0) { "Source max age must be positive" }
@@ -89,9 +97,10 @@ data class ActivitySourceStatus(
  * Coverage of the 28-day load window.
  *
  * [daysWithLoad] are days with a computable load metric. [daysWithoutActivity]
- * are rest days (no activity) observed with a fresh source. [daysWithoutData]
- * are days the app cannot classify: activity without a usable metric, or any
- * day without activity while the source is stale.
+ * are rest days (no activity) observed with a fresh source and after the first
+ * known history day. [daysWithoutData] are days the app cannot classify:
+ * activity without a usable metric, any day while the source is stale, or any
+ * day before the first known activity (ADR 0046). Pre-history is never rest.
  */
 data class LoadCoverage(
     val daysInWindow: Int,
@@ -100,12 +109,17 @@ data class LoadCoverage(
     val daysWithoutData: Int,
     val lastActivityAt: Instant?,
     val sourceFresh: Boolean,
+    /** Days in the window before the first known activity/subjective log. */
+    val daysBeforeHistory: Int = 0,
 ) {
     init {
         require(daysInWindow >= 0) { "Window size must not be negative" }
         require(daysWithLoad >= 0) { "Days with load must not be negative" }
         require(daysWithoutActivity >= 0) { "Days without activity must not be negative" }
         require(daysWithoutData >= 0) { "Days without data must not be negative" }
+        require(daysBeforeHistory in 0..daysInWindow) {
+            "Days before history must fit inside the window"
+        }
         require(daysWithLoad + daysWithoutActivity + daysWithoutData == daysInWindow) {
             "Coverage buckets must add up to the window"
         }
@@ -204,16 +218,72 @@ data class LoadSnapshot(
         }
 
     /**
-     * Quality/progression permission (R-LOAD-03 v2, proposto):
-     * objective load KNOWN + monotony < 2.0 + no strain spike.
-     * ACWR alone never permits nor vetoes; ACWR > 1.5 only reduces the day.
+     * ACWR above the single documented limit (1.5) only reduces the day when
+     * the ratio is reliable. An unstable ratio never becomes a physiological
+     * verdict (ADR 0046).
      */
-    val permitsQualityAndProgression: Boolean
-        get() = objectiveDataState == LoadDataState.KNOWN && monotonyOk && !strainSpike
+    val acwrHigh: Boolean
+        get() = acwrReliable && (acwr ?: 0.0) > ACWR_MAX
+
+    /**
+     * True when the 28-day window is fully covered by history (ADR 0046):
+     * fresh source, no day before the first activity, no day without data,
+     * enough objective load days and no subjective-only day. When false the
+     * ratio may be displayed as "em calibração", but it never decides.
+     */
+    val acwrReliable: Boolean
+        get() = acwr != null &&
+            coverage.sourceFresh &&
+            coverage.daysBeforeHistory == 0 &&
+            coverage.daysWithoutData == 0 &&
+            coverage.daysWithLoad >= MIN_DAYS_WITH_LOAD &&
+            subjectiveDaysInWindow == 0
+
+    /** Strain shares the ACWR baseline: without it, strain informs but never blocks. */
+    val strainReliable: Boolean
+        get() = acwrReliable
+
+    /** Days of the 28-day window covered by history (first known activity onward). */
+    val historyDays: Int
+        get() = (coverage.daysInWindow - coverage.daysBeforeHistory).coerceIn(0, coverage.daysInWindow)
+
+    /** Days with objective load in the window; the baseline behind the ratio. */
+    val baselineDays: Int
+        get() = objectiveDaysWithLoad
+
+    /**
+     * Quality permission (R-LOAD-03 v3, ADR 0046): objective load KNOWN,
+     * monotony < 2.0, no reliable strain spike and no reliable ACWR > 1.5.
+     * An unreliable ACWR never vetoes quality.
+     */
+    val permitsQuality: Boolean
+        get() = objectiveDataState == LoadDataState.KNOWN &&
+            monotonyOk &&
+            !(strainSpike && strainReliable) &&
+            !acwrHigh
+
+    /**
+     * Progression permission: quality plus a reliable ACWR inside 0.8–1.3.
+     * A missing baseline conserves volume; it never accelerates (ADR 0046).
+     */
+    val permitsProgression: Boolean
+        get() {
+            val ratio = acwr ?: return false
+            return permitsQuality &&
+                acwrReliable &&
+                ratio in ACWR_PROGRESSION_MIN..ACWR_PROGRESSION_MAX
+        }
 
     companion object {
         /** Minimum days with load in the 28-day window to trust ACWR (≈2 runs/week). */
         const val MIN_DAYS_WITH_LOAD = 8
+
+        /** The single documented ACWR reduction limit; no path uses 1.3 as a veto. */
+        const val ACWR_MAX = 1.5
+
+        /** Progression band; missing or outside it only maintains volume. */
+        const val ACWR_PROGRESSION_MIN = 0.8
+        const val ACWR_PROGRESSION_MAX = 1.3
 
         /** Foster: weekly monotony above this blocks quality/progression. */
         const val MONOTONY_MAX = 2.0
@@ -253,6 +323,7 @@ class TrainingLoadEngine {
     ): LoadSnapshot {
         require(days >= 28) { "Load series needs at least 28 days" }
         require(warmupDays >= 0) { "Warm-up days must not be negative" }
+        val zone = ZoneId.of(profile.timezone)
         val displayStart = today.minusDays(days - 1L)
         val seriesStart = displayStart.minusDays(warmupDays.toLong())
         val inWindow: (LocalDate) -> Boolean = { date ->
@@ -262,6 +333,11 @@ class TrainingLoadEngine {
         val byDate = filtered.groupBy { it.date }
         val filteredExecutions = executions.filter { inWindow(it.date) }
         val executionsByDate = filteredExecutions.groupBy { it.date }
+        // ADR 0046: history starts at the first known activity or subjective
+        // log. The source may report it explicitly; otherwise the oldest row
+        // received is the best available evidence. Null means no history at all.
+        val historyStart = sourceStatus.firstActivityAt?.atZone(zone)?.toLocalDate()
+            ?: (activities.map { it.date } + executions.map { it.date }).minOrNull()
 
         val fullSeries = (0 until days + warmupDays).map { offset ->
             val date = seriesStart.plusDays(offset.toLong())
@@ -288,6 +364,7 @@ class TrainingLoadEngine {
             sourceStatus = sourceStatus,
             today = today,
             displayStart = displayStart,
+            historyStart = historyStart,
         )
         val acwr = if (sourceStatus.isFresh && coverage.daysWithLoad >= LoadSnapshot.MIN_DAYS_WITH_LOAD) {
             TrainingLoadCalculator.acwr(acute, chronic)
@@ -328,13 +405,28 @@ class TrainingLoadEngine {
         sourceStatus: ActivitySourceStatus,
         today: LocalDate,
         displayStart: LocalDate,
+        historyStart: LocalDate?,
     ): LoadCoverage {
         val windowStart = today.minusDays(COVERAGE_DAYS - 1L)
         val window = daily.filter { !it.date.isBefore(windowStart) }
         val activityDates = activitiesByDate.keys.filter { !it.isBefore(windowStart) }.toSet()
         val daysWithLoad = window.count { it.metric != null }
-        val daysWithoutActivity = if (sourceStatus.isFresh) {
-            window.count { it.metric == null && it.date !in activityDates }
+        val daysBeforeHistory = if (historyStart == null) {
+            window.size
+        } else {
+            ChronoUnit.DAYS.between(windowStart, historyStart)
+                .coerceIn(0L, window.size.toLong())
+                .toInt()
+        }
+        // A day without activity is only observed rest when the source is
+        // fresh AND that day already belongs to known history. Before the
+        // first import it is missing data, never a physiological zero.
+        val daysWithoutActivity = if (sourceStatus.isFresh && historyStart != null) {
+            window.count { day ->
+                day.metric == null &&
+                    day.date !in activityDates &&
+                    !day.date.isBefore(historyStart)
+            }
         } else {
             0
         }
@@ -354,6 +446,7 @@ class TrainingLoadEngine {
             daysWithoutData = daysWithoutData,
             lastActivityAt = lastActivityAt,
             sourceFresh = sourceStatus.isFresh,
+            daysBeforeHistory = daysBeforeHistory,
         )
     }
 

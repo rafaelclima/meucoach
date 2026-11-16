@@ -139,6 +139,91 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `a reliable acwr one point four keeps the planned quality`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.4),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.rationale).doesNotContain("carga subiu rápido")
+    }
+
+    @Test
+    fun `a reliable acwr one point five keeps the planned quality`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.5),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+    }
+
+    @Test
+    fun `a reliable acwr above one point five downgrades the planned quality`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.6),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.rationale).contains("carga subiu rápido")
+        assertThat(prescription.ruleIds).contains("R-LOAD-03")
+    }
+
+    @Test
+    fun `an unreliable acwr above one point five does not downgrade the quality`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.6, daysWithoutData = 2),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.rationale).doesNotContain("carga subiu rápido")
+        assertThat(prescription.ruleIds).doesNotContain("R-LOAD-03")
+    }
+
+    @Test
     fun `a done quality is not re-downgraded by the beginner guard`() {
         val plan = planWithQuality()
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
@@ -799,9 +884,10 @@ class DailyPrescriptionEngineTest {
         subjectiveDaysInWindow: Int = 0,
         monotony: Double? = 1.2,
         strain: Double? = 400.0,
+        daysWithoutData: Int = 0,
     ): LoadSnapshot {
-        val daysWithoutActivity = if (sourceFresh) 28 - daysWithLoad else 0
-        val daysWithoutData = if (sourceFresh) 0 else 28 - daysWithLoad
+        val withoutData = if (sourceFresh) daysWithoutData else 28 - daysWithLoad
+        val daysWithoutActivity = if (sourceFresh) 28 - daysWithLoad - withoutData else 0
         return LoadSnapshot(
             daily = emptyList(),
             ctlSeries = emptyList(),

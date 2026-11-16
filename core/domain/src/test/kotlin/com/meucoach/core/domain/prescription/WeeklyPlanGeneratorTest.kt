@@ -113,7 +113,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `high ACWR alone does not block weekly quality when monotony and strain are ok`() {
+    fun `reliable high ACWR blocks weekly quality`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -125,7 +125,26 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // R-LOAD-03 v2: ACWR alto só reduz o dia; a semana mantém qualidade.
+        // R-LOAD-03 v3: a reliable ACWR above 1.5 removes the strong session.
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("passou de 1,50")
+        assertThat(plan.ruleIds).contains("R-LOAD-03")
+    }
+
+    @Test
+    fun `unreliable high ACWR does not block weekly quality`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.6, daysWithoutData = 2),
+            ),
+        )
+
+        // ADR 0046: without the full 28-day window the ratio may not veto.
         assertThat(plan.qualityCount).isEqualTo(1)
     }
 
@@ -531,7 +550,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `keeps one quality without a previous week or with high ACWR`() {
+    fun `keeps one quality without a previous week or with a reliable high ACWR`() {
         val availability = mapOf(
             DayOfWeek.MONDAY to 40,
             DayOfWeek.WEDNESDAY to 40,
@@ -554,9 +573,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // R-LOAD-03 v2: ACWR alto não veta a primeira qualidade, só a progressão.
+        // ADR 0046: a reliable 1.6 removes quality; without a previous week the
+        // single structural opportunity remains.
         assertThat(withoutHistory.qualityCount).isEqualTo(1)
-        assertThat(highAcwr.qualityCount).isEqualTo(1)
+        assertThat(highAcwr.qualityCount).isZero()
     }
 
     @Test
@@ -870,6 +890,35 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.rationale).contains("esforço percebido")
         assertThat(plan.ruleIds).contains("R-LOAD-04")
         assertThat(ExplanationCatalog.hasRule("R-LOAD-04")).isTrue()
+    }
+
+    @Test
+    fun `an unreliable acwr maintains volume instead of growing`() {
+        val profile = profile(
+            experience = Experience.INTERMEDIATE,
+            availability = mapOf(
+                DayOfWeek.MONDAY to 40,
+                DayOfWeek.WEDNESDAY to 40,
+                DayOfWeek.FRIDAY to 40,
+                DayOfWeek.SUNDAY to 90,
+            ),
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, daysWithoutData = 2),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+            ),
+        )
+
+        // ADR 0046: progression needs a reliable 28-day baseline.
+        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        assertThat(plan.rationale).contains("em calibração")
+        assertThat(plan.rationale).doesNotContain("+6%")
+        assertThat(plan.ruleIds).contains("R-PLAN-01")
     }
 
     @Test
@@ -1801,6 +1850,7 @@ class WeeklyPlanGeneratorTest {
         subjectiveDaysInWindow: Int = 0,
         monotony: Double? = 1.2,
         strain: Double? = 400.0,
+        daysWithoutData: Int = 0,
     ) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
@@ -1813,20 +1863,24 @@ class WeeklyPlanGeneratorTest {
         acwr = acwr,
         monotony = monotony,
         missingDays = 28 - daysWithLoad,
-        coverage = coverage(daysWithLoad = daysWithLoad, sourceFresh = sourceFresh),
+        coverage = coverage(
+            daysWithLoad = daysWithLoad,
+            sourceFresh = sourceFresh,
+            daysWithoutData = daysWithoutData,
+        ),
         subjectiveDaysInWindow = subjectiveDaysInWindow,
         strain = strain,
     )
 
-    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {
+    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true, daysWithoutData: Int = 0): LoadCoverage {
         val daysInWindow = 28
-        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad else 0
-        val daysWithoutData = if (sourceFresh) 0 else daysInWindow - daysWithLoad
+        val withoutData = if (sourceFresh) daysWithoutData else daysInWindow - daysWithLoad
+        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad - withoutData else 0
         return LoadCoverage(
             daysInWindow = daysInWindow,
             daysWithLoad = daysWithLoad,
             daysWithoutActivity = daysWithoutActivity,
-            daysWithoutData = daysWithoutData,
+            daysWithoutData = withoutData,
             lastActivityAt = if (daysWithLoad > 0) java.time.Instant.parse("2026-10-30T10:00:00Z") else null,
             sourceFresh = sourceFresh,
         )

@@ -97,7 +97,9 @@ class WorkoutRecommender {
 
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
         val loadTrusted = loadState == LoadDataState.KNOWN
-        val acwrHigh = loadTrusted && (input.load?.acwr ?: 0.0) > ACWR_ALERT
+        // ADR 0046: only a reliable ACWR above 1.5 reduces the day. An unstable
+        // ratio is informative ("em calibração"), never a "carga subiu rápido".
+        val acwrHigh = input.load?.acwrHigh == true
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         val noQuality = ReadinessFlag.NO_QUALITY in readiness.flags
         val conservative =
@@ -266,7 +268,6 @@ class WorkoutRecommender {
     private fun Double.roundToOneDecimal(): Double = (this * 10).roundToInt() / 10.0
 
     private companion object {
-        const val ACWR_ALERT = 1.5
         const val MIN_EASY_MIN = 20
         const val MAX_EASY_MIN = 60
         const val DEFAULT_EASY_MIN = 30

@@ -17,6 +17,7 @@ enum class VolumeGrowthBlock {
     RECOVERY,
     READINESS,
     LOAD_UNKNOWN,
+    ACWR_UNRELIABLE,
     ACWR_OUT_OF_RANGE,
     MONOTONY_HIGH,
     STRAIN_SPIKE,
@@ -26,14 +27,17 @@ enum class VolumeGrowthBlock {
  * Conditions that allow a weekly volume increase. The caller only translates
  * already-computed signals; the decision itself stays pure.
  *
- * R-LOAD-03 v2 (proposto): ACWR alone only maintains; monotony < 2.0 and no
- * strain spike are required to grow.
+ * R-LOAD-03 v3 (ADR 0046): a reliable ACWR inside 0.8–1.3 plus monotony < 2.0
+ * and no reliable strain spike are required to grow. Without a full 28-day
+ * baseline, volume is maintained.
  */
 data class VolumeGates(
     /** The week being planned is a deload/taper/race/recovery week and never grows. */
     val targetWeekBlock: VolumeGrowthBlock = VolumeGrowthBlock.NONE,
     val readinessGreen: Boolean = true,
     val loadKnown: Boolean = true,
+    /** The 28-day window is fully covered and the ACWR can decide. */
+    val acwrReliable: Boolean = true,
     val acwrInRange: Boolean = true,
     val monotonyOk: Boolean = true,
     val strainOk: Boolean = true,
@@ -111,6 +115,8 @@ class VolumeProgression {
             !gates.readinessGreen -> VolumeGrowthBlock.READINESS
 
             !gates.loadKnown -> VolumeGrowthBlock.LOAD_UNKNOWN
+
+            !gates.acwrReliable -> VolumeGrowthBlock.ACWR_UNRELIABLE
 
             !gates.acwrInRange -> VolumeGrowthBlock.ACWR_OUT_OF_RANGE
 

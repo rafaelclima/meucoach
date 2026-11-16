@@ -274,6 +274,15 @@ class QualityGateTest {
     }
 
     @Test
+    fun `pre-history acwr one point six does not block`() {
+        val eligibility = evaluate(
+            load = load(acwr = 1.6, daysWithLoad = 14, daysBeforeHistory = 13),
+        )
+
+        assertThat(eligibility.eligible).isTrue()
+    }
+
+    @Test
     fun `first failing gate wins in a deterministic order`() {
         val eligibility = evaluate(
             profile = profile(experience = Experience.BEGINNER),
@@ -409,8 +418,9 @@ class QualityGateTest {
         strain: Double? = 400.0,
         chronicAverage28d: Double = 0.0,
         daysWithoutData: Int = 0,
+        daysBeforeHistory: Int = 0,
     ): LoadSnapshot {
-        val withoutData = if (sourceFresh) daysWithoutData else 28 - daysWithLoad
+        val withoutData = if (sourceFresh) daysWithoutData + daysBeforeHistory else 28 - daysWithLoad
         val withoutActivity = if (sourceFresh) 28 - daysWithLoad - withoutData else 0
         return LoadSnapshot(
             daily = emptyList(),
@@ -431,6 +441,7 @@ class QualityGateTest {
                 daysWithoutData = withoutData,
                 lastActivityAt = null,
                 sourceFresh = sourceFresh,
+                daysBeforeHistory = daysBeforeHistory,
             ),
             subjectiveDaysInWindow = subjectiveDaysInWindow,
             strain = strain,

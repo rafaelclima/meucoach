@@ -1,9 +1,10 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 15/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.4 · **Data:** 16/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
+> Revisão 1.4 (16/11/2026, Ciclo 4/S3, ADR 0046 implementado no domínio): load gate v3 — ACWR 1,5 em todos os caminhos, `acwrReliable` com janela completa de 28 dias, pré-história como “sem dado”, `permitsQuality`/`permitsProgression` separados e strain confiável; versões de motor e UI ficam para C4-53/C4-26.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -172,13 +173,16 @@ Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pont
 - Calcular 7/28, mas **não** usar como lei nem como bloqueio duro de semana.
 - A literatura recente questiona a validade teórica e estatística do ACWR (Impellizzeri et al., 2020).
 - Uso no app: **flag soft de redução no dia**. ACWR > 1,5 ⇒ dia fácil/reduzido (`REDUCE`/`DOWNGRADE`), nunca veto semanal permanente. ACWR < 0,8 ⇒ mantém, nunca acelera.
-- Permissão de qualidade e de progressão de volume (+6%) exige conjuntamente: carga **objetiva** `KNOWN` (TRIMP/rTSS, nunca só sRPE), cobertura ≥ 8 dias/28 com fonte fresca ≤ 14d, monotonia 7d < 2,0 e strain sem spike > 2× a média de 4 semanas (`EV-FOSTER-2001`). ACWR fora de 0,8–1,3 sozinho apenas mantém, não veta (`R-LOAD-03 v2`, proposto Ciclo 2).
+- **Confiabilidade (28 dias):** o ACWR só decide quando `acwrReliable == true` — fonte fresca ≤ 14 dias, janela de 28 dias inteiramente coberta por histórico, todos os dias classificáveis como “com carga” ou “descanso observado”, pelo menos 8 dias com carga objetiva e nenhum dia só com sRPE. Dias antes da primeira atividade são “sem dado”, nunca descanso (ADR 0046).
+- **Qualidade** exige carga **objetiva** `KNOWN` (TRIMP/rTSS, nunca só sRPE), monotonia 7d < 2,0, strain sem spike confiável > 2× a média de 4 semanas e ACWR confiável ≤ 1,5 (`EV-FOSTER-2001`). ACWR não confiável não veta qualidade: o app mostra “em calibração” e decide com prontidão, monotonia e strain confiável (`R-LOAD-03 v3`, ADR 0046).
+- **Progressão de volume (+6%)** exige adicionalmente ACWR confiável dentro de 0,8–1,3; fora dessa faixa ou sem baseline completo, o volume é mantido, nunca acelerado.
 - ACWR só é exposto quando a fonte de atividades está fresca (última importação
   em até 14 dias) e há pelo menos 8 dias com carga nos últimos 28. Caso
   contrário, o valor é `null` e o estado é `INSUFFICIENT` ou `STALE`; `null`
   nunca significa “sem restrição” (`R-DATA-01`, ADR 0026).
-- Dia sem atividade só conta como descanso quando a fonte está fresca. Com
-  fonte desatualizada, o dia é “sem dado”, não um zero fisiológico.
+- Dia sem atividade só conta como descanso quando a fonte está fresca **e** o
+  dia já pertence ao histórico conhecido. Com fonte desatualizada ou antes do
+  primeiro import, o dia é “sem dado”, não um zero fisiológico.
 
 ### 6.4 Distribuição semanal
 
@@ -216,7 +220,7 @@ No app, o texto visível é **Alta / Moderada / Baixa**; a cor acompanha o mesmo
 - Doença febril, dor aguda, lesão ou tontura ⇒ vermelho.
 - RHR +7 bpm por 2 dias consecutivos ⇒ no mínimo âmbar.
 - Sono < 6 h na noite anterior ⇒ sem qualidade.
-- ACWR > 1,5 ⇒ flag de redução no dia (fácil/reduzido); não veta a semana sozinho (`R-LOAD-03` v2, proposto).
+- ACWR confiável > 1,5 ⇒ flag de redução no dia (fácil/reduzido); não veta a semana sozinho. ACWR em calibração (janela incompleta) não reduz nem veta (`R-LOAD-03` v3, ADR 0046).
 - HRV abaixo do SWC por 3+ dias + RHR elevada ⇒ âmbar/vermelho.
 
 ### 7.3 Confiança
@@ -282,7 +286,7 @@ Crescer exige **todas** as condições:
 - a base é a semana imediatamente anterior e ela foi concluída ≥ 80% com
   evidência forte (um clique não conta, `ADR 0024`);
 - prontidão verde, sem doença/lesão, sono curto ou `NO_QUALITY`;
-- carga **objetiva** conhecida (TRIMP/rTSS), cobertura ≥ 8 dias/28 com fonte fresca ≤ 14d, monotonia 7d < 2,0 e strain sem spike > 2× (`R-LOAD-03` v2, proposto Ciclo 2); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039); ACWR fora de 0,8–1,3 sozinho apenas mantém, não veta;
+- carga **objetiva** conhecida (TRIMP/rTSS), monotonia 7d < 2,0, strain sem spike confiável > 2× e ACWR confiável dentro de 0,8–1,3 (`R-LOAD-03` v3, ADR 0046); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039); sem janela completa de 28 dias, o volume é mantido (“em calibração”);
 - a semana de destino não é deload, taper, semana de prova ou recuperação.
 
 Fora disso o alvo é **mantido**; uma semana fraca nunca reduz o plano por conta
@@ -336,7 +340,7 @@ Precedência determinística do `WorkoutRecommender`:
 1. Doença/lesão ou prontidão vermelha ⇒ **descanso** (`R-SAFE-01`, `R-READY-03`).
 2. Dia sem disponibilidade explícita ⇒ **descanso** (`R-DATA-01`).
 3. Sono < 6 h, prontidão âmbar ou `NO_QUALITY` ⇒ **fácil**, sem qualidade (`R-READY-03`, `R-READY-04`).
-4. ACWR > 1,5 ⇒ **fácil/reduzido no dia**, sem vetar a semana sozinho (`R-LOAD-03` v2, proposto).
+4. ACWR confiável > 1,5 ⇒ **fácil/reduzido no dia**, sem vetar a semana sozinho (`R-LOAD-03` v3, ADR 0046). ACWR em calibração não reduz nem veta.
 5. Dia verde ⇒ **fácil em Z2**, com pace E e FC Z2 quando houver calibração (`R-ZONE-01`).
 6. Sem LTHR/pace de limiar ⇒ fácil por RPE, confiança baixa (`R-CAL-02`).
 7. Carga desconhecida (`INSUFFICIENT`) ou desatualizada (`STALE`) ⇒ **fácil**,
@@ -354,7 +358,7 @@ segunda→domingo:
 
 - Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
 - No máximo **2 qualidades** por semana; a segunda só com progressão e nunca consecutiva/adjacente ao longão.
-- Qualidade só em dia verde, não iniciante, com carga objetiva `KNOWN` + monotonia 7d < 2,0 + strain sem spike (`R-LOAD-03` v2, proposto). ACWR desconhecido ou fora de faixa sozinho não veta; apenas mantém.
+- Qualidade só em dia verde, não iniciante, com carga objetiva `KNOWN` + monotonia 7d < 2,0 + strain sem spike confiável + ACWR confiável ≤ 1,5 (`R-LOAD-03` v3, ADR 0046). ACWR desconhecido, em calibração ou fora de faixa sozinho não veta; apenas mantém.
 - A qualidade exige `LoadDataState.KNOWN`: pelo menos 8 dias com carga nos
   últimos 28 e última importação de atividades em até 14 dias. Sem cobertura
   ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
@@ -571,14 +575,14 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
-| `R-LOAD-03` | ACWR é flag soft, nunca meta nem veto semanal: >1,5 reduz o dia; permissão de qualidade/progressão exige carga objetiva + monotonia 7d <2,0 + strain sem spike | GABBETT, IMPELLIZZERI, FOSTER | LIMITED |
+| `R-LOAD-03` | ACWR é flag soft, nunca meta nem veto semanal: confiável >1,5 reduz o dia; qualidade exige carga objetiva + monotonia 7d <2,0 + strain sem spike confiável + ACWR confiável ≤1,5; progressão exige adicionalmente ACWR confiável em 0,8–1,3; janela incompleta é “em calibração” e não decide | GABBETT, IMPELLIZZERI, FOSTER; ADR 0046 | LIMITED |
 | `R-LOAD-04` | sRPE (`RPE × min`) preenche o dia sem FC/pace; subjetiva: conserva, nunca libera aumento | FOSTER | LIMITED |
 | `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
 | `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
 | `R-READY-04` | Sono <6 h ⇒ sem qualidade; <6,5 h por 3 dias ⇒ sem aumento de volume | WALSH, WATSON | STRONG |
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
-| `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume concluído com evidência nas últimas 4 semanas, e só com a semana anterior ≥ 80% concluída, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike; ACWR fora de faixa sozinho apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT, FOSTER; ADR 0038; `R-LOAD-03` v2 proposto | MODERATE |
+| `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume concluído com evidência nas últimas 4 semanas, e só com a semana anterior ≥ 80% concluída, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike confiável + ACWR confiável em 0,8–1,3; ACWR em calibração ou fora de faixa apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT, FOSTER; ADR 0038; ADR 0046; `R-LOAD-03` v3 | MODERATE |
 | `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
 | `R-PLAN-03 v2` | Longão é a sessão mais longa; piso 45/60 (30 em deload/taper), alvo 25–30% sem virar teto, disponibilidade como teto rígido; abaixo do piso, “Corrida mais longa” e ajuste de agenda | PFITZINGER, DANIELS; ADR 0045 | MODERATE (piso: LIMITED — convenção de produto) |
 | `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |
@@ -617,7 +621,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 - Potência de corrida do Zepp é proprietária; usar apenas tendência relativa.
 - Ajuste de calor é empírico e conservador; não é prescrição fisiológica individual.
 - HRV noturno de wearable de pulso tem ruído; usar tendência, não noite isolada.
-- ACWR tem limitações teóricas; é flag soft de redução no dia, nunca veto semanal nem única justificativa (`R-LOAD-03` v2).
+- ACWR tem limitações teóricas; é flag soft de redução do dia quando confiável, nunca veto semanal nem única justificativa (`R-LOAD-03` v3, ADR 0046).
 - O modelo de prontidão não substitui sintomas subjetivos ou avaliação médica.
 
 ## 16. Próximas calibrações

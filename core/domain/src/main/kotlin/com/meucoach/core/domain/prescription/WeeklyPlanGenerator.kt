@@ -237,24 +237,28 @@ class WeeklyPlanGenerator {
             it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
         } || input.readiness.level != ReadinessLevel.GREEN
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
-        // D5 (ADR 0039) + R-LOAD-03 v2 (proposto): trust for quality/progression
-        // is objective load only, plus monotony < 2.0 and no strain spike.
-        // ACWR alone never permits nor vetoes; ACWR > 1.5 only reduces the day.
+        // D5 (ADR 0039) + R-LOAD-03 v3 (ADR 0046): quality needs objective load,
+        // low monotony, no reliable strain spike and no reliable ACWR > 1.5.
+        // Volume progression additionally needs a reliable ACWR in 0.8–1.3.
         val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
-        val permitsQuality = input.load?.permitsQualityAndProgression ?: false
+        val permitsQuality = input.load?.permitsQuality ?: false
+        val permitsProgression = input.load?.permitsProgression ?: false
         val monotonyOk = input.load?.monotonyOk ?: false
-        val strainOk = input.load?.let { !it.strainSpike } ?: false
+        val strainOk = input.load?.let { !it.strainSpike || !it.strainReliable } ?: false
         val acwr = input.load?.acwr
-        val acwrInRange = acwr != null && acwr in ACWR_MIN..ACWR_MAX
-        // R-LOAD-03 v2: ACWR alto não veta a primeira qualidade, mas veta a
-        // progressão para a segunda (dose extra com carga já alta).
-        val acwrNotHigh = acwr == null || acwr <= ACWR_MAX
+        val acwrReliable = input.load?.acwrReliable == true
+        val acwrHigh = input.load?.acwrHigh ?: false
+        val acwrInRange = acwr != null &&
+            acwr in LoadSnapshot.ACWR_PROGRESSION_MIN..LoadSnapshot.ACWR_PROGRESSION_MAX
         val qualityAllowed = !safetyBlock &&
             input.profile.experience != Experience.BEGINNER &&
             permitsQuality &&
             days.size >= 3
         val completionRatio = input.previousWeek?.strongCompletionRatio() ?: 0.0
-        val progressed = qualityAllowed && acwrNotHigh && completionRatio >= PROGRESSION_COMPLETION && days.size >= 4
+        val progressed = qualityAllowed &&
+            permitsProgression &&
+            completionRatio >= PROGRESSION_COMPLETION &&
+            days.size >= 4
         // ADR 0041: mesociclo e descarga derivam de `recentWeeks` reais (até 12
         // semanas). O contador `weekNumberInBlock` só vale sem histórico.
         val combinedReferences =
@@ -537,6 +541,7 @@ class WeeklyPlanGenerator {
                             it == ReadinessFlag.NO_QUALITY
                     },
                 loadKnown = loadTrusted,
+                acwrReliable = acwrReliable,
                 acwrInRange = acwrInRange,
                 monotonyOk = monotonyOk,
                 strainOk = strainOk,
@@ -659,6 +664,9 @@ class WeeklyPlanGenerator {
                         loadState == LoadDataState.KNOWN && !loadTrusted ->
                             "sua carga recente vem do esforço percebido: treino forte precisa " +
                                 "de carga medida por FC ou ritmo."
+
+                        loadTrusted && acwrHigh ->
+                            "sua carga recente passou de 1,50; a qualidade volta quando o ACWR estabilizar."
 
                         loadTrusted && !monotonyOk ->
                             "sua semana variou pouco: treino forte precisa de monotonia abaixo de 2,0."
@@ -1216,6 +1224,8 @@ class WeeklyPlanGenerator {
 
         VolumeGrowthBlock.LOAD_UNKNOWN -> " (dados de carga insuficientes)"
 
+        VolumeGrowthBlock.ACWR_UNRELIABLE -> " (histórico de carga em calibração)"
+
         VolumeGrowthBlock.ACWR_OUT_OF_RANGE -> " (carga recente fora da faixa)"
 
         VolumeGrowthBlock.MONOTONY_HIGH -> " (semana variou pouco)"
@@ -1262,8 +1272,6 @@ class WeeklyPlanGenerator {
         private const val LONG_LONGER_MARGIN = 5
         private const val LONG_FLOOR_HINT_RANGE = 15
         private const val PROGRESSION_COMPLETION = 0.80
-        private const val ACWR_MIN = 0.8
-        private const val ACWR_MAX = 1.3
         private const val DELOAD_FACTOR = 0.75
         private val SPECIAL_VOLUME_BLOCKS = setOf(
             VolumeGrowthBlock.DELOAD,

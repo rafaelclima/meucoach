@@ -126,6 +126,7 @@ class TrainingSignalSource @Inject constructor(
                 sourceStatus = ActivitySourceStatus(
                     lastImportedAt = activities.lastImportedAt(),
                     checkedAt = checkedAt,
+                    firstActivityAt = summaries.minOfOrNull { it.startTime },
                 ),
                 executions = executions.listAll(),
             ),

@@ -96,6 +96,23 @@ class WorkoutRecommenderTest {
     }
 
     @Test
+    fun `unreliable high ACWR is not reported as a fast rise`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN),
+                load = knownLoad(acwr = 1.6).copy(
+                    coverage = coverage(daysWithLoad = 12, daysWithoutData = 2),
+                ),
+            ),
+        )
+
+        // ADR 0046: without the full 28-day baseline the ratio only informs.
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.rationale).doesNotContain("carga subiu rápido")
+        assertThat(recommendation.ruleIds).doesNotContain("R-LOAD-03")
+    }
+
+    @Test
     fun `unknown load keeps the day easy and explains the missing data`() {
         val recommendation = recommender.recommend(
             input(
@@ -353,15 +370,15 @@ class WorkoutRecommenderTest {
         strain = 400.0,
     )
 
-    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true): LoadCoverage {
+    private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true, daysWithoutData: Int = 0): LoadCoverage {
         val daysInWindow = 28
-        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad else 0
-        val daysWithoutData = if (sourceFresh) 0 else daysInWindow - daysWithLoad
+        val withoutData = if (sourceFresh) daysWithoutData else daysInWindow - daysWithLoad
+        val daysWithoutActivity = if (sourceFresh) daysInWindow - daysWithLoad - withoutData else 0
         return LoadCoverage(
             daysInWindow = daysInWindow,
             daysWithLoad = daysWithLoad,
             daysWithoutActivity = daysWithoutActivity,
-            daysWithoutData = daysWithoutData,
+            daysWithoutData = withoutData,
             lastActivityAt = if (daysWithLoad > 0) java.time.Instant.parse("2026-10-30T10:00:00Z") else null,
             sourceFresh = sourceFresh,
         )

@@ -143,6 +143,12 @@ class VolumeProgressionTest {
             references,
             VolumeGates(acwrInRange = false),
         )
+        val acwrCalibrating = progression.decide(
+            monday,
+            210,
+            references,
+            VolumeGates(acwrReliable = false),
+        )
         val monotonyHigh = progression.decide(
             monday,
             210,
@@ -159,10 +165,13 @@ class VolumeProgressionTest {
         assertThat(notGreen.block).isEqualTo(VolumeGrowthBlock.READINESS)
         assertThat(loadUnknown.block).isEqualTo(VolumeGrowthBlock.LOAD_UNKNOWN)
         assertThat(acwrOut.block).isEqualTo(VolumeGrowthBlock.ACWR_OUT_OF_RANGE)
+        assertThat(acwrCalibrating.block).isEqualTo(VolumeGrowthBlock.ACWR_UNRELIABLE)
         assertThat(monotonyHigh.block).isEqualTo(VolumeGrowthBlock.MONOTONY_HIGH)
         assertThat(strainSpike.block).isEqualTo(VolumeGrowthBlock.STRAIN_SPIKE)
-        assertThat(listOf(notGreen, loadUnknown, acwrOut, monotonyHigh, strainSpike).map { it.minutes })
-            .containsOnly(120)
+        assertThat(
+            listOf(notGreen, loadUnknown, acwrOut, acwrCalibrating, monotonyHigh, strainSpike)
+                .map { it.minutes },
+        ).containsOnly(120)
     }
 
     @Test

@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0, S1 e S2 concluídas; **S3 é a próxima sessão**.
+**Status:** S0 a S3 concluídas; **S4 é a próxima sessão**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S2
-> **Último commit:** S2 — `feat(domain): size the long run with a floor and honest title (C4-09..C4-13)` (S1: `9b0f414`)
+> **Última atualização:** 16/11/2026 — S3
+> **Último commit:** S3 — `feat(domain): make ACWR reliable on a full 28-day window (C4-22..C4-25)` (S2: `e567727`)
 > **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S3 — Carga/ACWR v3**
-> **Task atual:** C4-22 (TODO)
-> **Próxima task:** C4-22
+> **Sessão atual:** **S4 — Prontidão/check-in/sono**
+> **Task atual:** C4-28 (TODO)
+> **Próxima task:** C4-28
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 825 verdes; `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`
-> **Próxima ação:** ler ADR 0046; abrir C4-22; escrever o teste que falha de `firstActivityAt`/pré-história como “sem dado”.
+> **Gates da última sessão:** `:core:domain:test` 844 verdes; `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; FIT 93,01% de branches
+> **Próxima ação:** ler ADR 0049 e FR-406; abrir C4-28; escrever o teste que falha de `qualityEligibleByReadiness`/`SUBJECTIVE_MISSING` sem check-in.
 
 ### 0.1 O que já está pronto
 
@@ -54,11 +54,21 @@
 - [x] Golden `G-PER-04` (2×40 + sábado 90 → longão 45, “Longão”, volume 125, qualidade).
 - [x] 9 testes novos em `LongRunSizingTest`; testes legados atualizados com justificativa.
 
+**S3 — carga/ACWR v3**
+
+- [x] `ActivitySourceStatus.firstActivityAt` e pré-história classificada como “sem dado”; o engine deriva a data quando a fonte não a informa.
+- [x] `LoadCoverage.daysBeforeHistory`; dias sem atividade só são descanso observado depois da primeira atividade e com fonte fresca.
+- [x] `LoadSnapshot.acwrReliable`, `strainReliable`, `historyDays`, `baselineDays` e `acwrHigh` derivados de uma janela completa de 28 dias.
+- [x] `permitsQuality` e `permitsProgression` separados; progressão exige ACWR confiável em 0,8–1,3; ACWR não confiável não veta qualidade.
+- [x] 1,5 é o único limite de redução em todos os caminhos; `DailyPrescriptionEngine`, `QualityGate`, `WeeklyPlanGenerator`, `WorkoutRecommender` e `VolumeGates` usam `LoadSnapshot.ACWR_MAX`.
+- [x] `firstActivityAt` fiado em `TrainingSignals`/`TodayViewModel`; volume sem janela completa mantém e explica “em calibração”.
+- [x] 19 testes novos líquidos: `LoadReliabilityTest` (7), `LoadGateV3Test` (10), limites e confiabilidade no diário/gerador/recomendador/volume.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
 - O gate não bloqueia prontidão âmbar sozinho: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
-- A confiabilidade de carga é provisória até C4-22/C4-23; o gate já não usa ACWR não confiável, mas a janela completa de 28 dias chega nessa task.
+- A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
 - A persistência/JSON de `qualityKind`/`planDecision` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip.
 - `role`/`structure` da oportunidade entram com o catálogo/estrutura (C4-14/C4-15); o read model atual cobre data, kind, motivo, status e decisão.
@@ -208,69 +218,60 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
-## 5. Sessão S2 — concluída
+## 5. Sessão S3 — concluída
 
-> Próxima sessão: substituir este bloco pelo caderno da S3 no início da sessão; o registro da S2 fica no §7.
+> Próxima sessão: substituir este bloco pelo caderno da S4 no início da sessão; o registro da S3 fica no §7.
 
-**Objetivo:** fazer o longão ser a sessão mais longa da semana, com piso 45/60, título honesto e `fitToVolume` ancorado no piso, sem UI nem migração.
+**Objetivo:** tornar a carga confiável: pré-história como “sem dado”, janela completa de 28 dias, ACWR 1,5 em todos os caminhos e permissões de qualidade/progressão separadas. Sem UI nem migração.
 
 **Contexto obrigatório:**
 
-- `docs/adr/0045-long-run-sizing.md` §2.1–2.7.
-- `docs/PRD_TREINO_REAL.md` FR-402 e §5.6.
-- `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/WeeklyPlanGenerator.kt`.
-- `core/domain/src/test/kotlin/com/meucoach/core/domain/prescription/WeeklyPlanGeneratorTest.kt`.
-- `core/domain/src/main/kotlin/com/meucoach/core/domain/replan/PlanReplanner.kt` (guarda de não compensação).
+- `docs/adr/0046-load-gate-v3-acwr-reliability.md` §2.1–2.6.
+- `docs/PRD_TREINO_REAL.md` FR-405 e §5.5.
+- `core/domain/src/main/kotlin/com/meucoach/core/domain/load/TrainingLoadEngine.kt`.
+- `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/DailyPrescriptionEngine.kt`, `WeeklyPlanGenerator.kt`, `QualityGate.kt`, `VolumeProgression.kt`, `WorkoutRecommender.kt`.
 
-**Task C4-09 — comparator do long day**
+**Task C4-22 — `firstActivityAt`; pré-história como “sem dado”**
 
-- [x] Selecionar por disponibilidade, depois sáb/dom > sexta > outros, depois o dia mais tarde.
-- [x] Teste de empate 3×40 → domingo e de disponibilidade vencendo o fim de semana.
-- [x] Teste de 4×60 com sábado e domingo → domingo (a tabela do ADR foi corrigida).
+- [x] `ActivitySourceStatus.firstActivityAt` com fallback determinístico para a atividade/execução mais antiga recebida.
+- [x] `LoadCoverage.daysBeforeHistory`; dias antes do primeiro registro são `daysWithoutData`, nunca descanso.
+- [x] Fonte velha continua “sem dado” e o cold start não vira expertise de descanso.
+- [x] 7 casos em `LoadReliabilityTest`.
 
-**Task C4-10 — piso/share/availability e título honesto**
+**Task C4-23 — `acwrReliable`/`strainReliable`/`historyDays`**
 
-- [x] Piso 45 (iniciante/intermediário) e 60 (avançado); 30 em deload/taper.
-- [x] Alvo `(0,28/0,72) × otherMinutes`, `longestOther + 5` e disponibilidade/teto 150/180 como limites.
-- [x] 2×40 + sábado 90 → 45 “Longão”; 3×40 → 40 “Corrida mais longa”; 4×60 → 60; avançado sem espaço → 50 “Corrida mais longa”.
-- [x] `PlanDecision(LONG_DAY_TOO_SHORT)` com detalhe e dica de agenda; deload/taper sem dica de agenda.
+- [x] `acwrReliable` exige fonte fresca, janela inteira coberta, sem dia “sem dado”, ≥8 dias com carga objetiva e nenhum dia subjetivo.
+- [x] `strainReliable` herda a janela; `historyDays` e `baselineDays` expostos no snapshot.
+- [x] `acwrHigh` é `acwrReliable && acwr > 1,5`; ACWR não confiável não reduz nem veta.
 
-**Task C4-11 — `fitToVolume`**
+**Task C4-24 — ACWR 1,5 em todos os caminhos**
 
-- [x] Longão ancorado no piso: nunca cresce, nunca fica abaixo do piso (45/60; 30 em deload/taper).
-- [x] Demais sessões escalam para o restante do alvo; se ainda não couber, remove só fácil (mínimo 1), nunca qualidade/longão.
-- [x] Semana mínima preserva os pisos e declara no rationale que o volume está acima do alvo e não é progressão.
-- [x] Longão nunca menor que o fácil mais longo, inclusive após taper/deload por data.
+- [x] `LoadSnapshot.ACWR_MAX = 1.5` usado por `QualityGate`, `DailyPrescriptionEngine`, `WeeklyPlanGenerator` e `WorkoutRecommender`.
+- [x] 1,4 mantém; 1,5 mantém; 1,6 rebaixa; 0,7 mantém. Nenhum caminho usa 1,3 como veto.
+- [x] `WorkoutRecommender` não diz “carga subiu rápido” quando o ACWR é não confiável.
 
-**Task C4-12 — golden e legado**
+**Task C4-25 — `permitsQuality`/`permitsProgression` separados**
 
-- [x] `G-PER-04`: 2×40 + sábado 90, intermediário com carga → longão 45, “Longão”, volume 125, qualidade terça.
-- [x] `LongRunSizingTest` com 9 casos (comparator, piso, share, avançado, fit, semana mínima, deload).
-- [x] Testes legados atualizados com justificativa: 30→45, 51→47, 47→45, deload 73→84, volume 128→126, 171→167, 126→115, 75→90, 90→100, replanner 30/34→45.
-
-**Task C4-13 — docs**
-
-- [x] `SPORTS_SCIENCE` §8.5/§8.8 e `R-PLAN-03 v2`.
-- [x] ADR 0045 implementado; tabela 4×60 corrigida para domingo.
-- [x] `DECISIONS` r1.43; `PROGRESS` e este checklist.
+- [x] Qualidade: carga objetiva `KNOWN` + monotonia < 2,0 + sem strain spike confiável + sem ACWR confiável > 1,5.
+- [x] Progressão: qualidade + ACWR confiável em 0,8–1,3; `VolumeGates.acwrReliable` e `ACWR_UNRELIABLE` (“em calibração”).
+- [x] Qualidade não é vetada por ACWR não confiável; progressão nunca acelera sem baseline completo.
 
 **Aceite da sessão:**
 
-- [x] `./gradlew :core:domain:test` verde (focado e módulo, 825).
-- [x] `./gradlew spotlessCheck` verde.
-- [x] `:core:data:test`, `:app:testDebugUnitTest` e `:app:assembleDebug` verdes.
-- [x] `:core:domain:koverVerify` e `:core:domain:detekt` verdes.
+- [x] `./gradlew :core:domain:test` verde (844).
+- [x] `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01%.
+- [x] `:core:data:test` 168 e `:app:testDebugUnitTest` 881 verdes; `:app:assembleDebug`.
 - [x] Nenhum dado real.
-- [x] §0/§6/§7/PROGRESS atualizados.
-- [x] Commit: `feat(domain): size the long run with a floor and honest title (C4-09..C4-13)`.
+- [x] §0/§6/§7/PROGRESS/SPORTS_SCIENCE/ADR 0046 atualizados.
+- [x] Commit: `feat(domain): make ACWR reliable on a full 28-day window (C4-22..C4-25)`.
 
 **Notas de implementação:**
 
-- O bump `weekly-plan-v6` → `weekly-plan-v7` fica em C4-53; o JSON/schema de `planDecision` fica em C4-45/C4-46.
-- O share de 25–30% virou referência; em semanas pequenas o piso pode deixar o share acima de 30%, e o rationale diz isso.
-- O replanner mantém a guarda de não compensação em T1/T2/T3. Ele aceita a correção estrutural de um longão legado abaixo do piso e, em T4 (perfil/fuso), reflete uma nova disponibilidade que move/cria o longão; em ambos os casos, as demais sessões futuras não crescem.
-- O título “Corrida mais longa” ainda não tem link para Perfil/Disponibilidade na UI (C4-51).
-- O `PlanDecision` do longão é de domínio; ainda não é persistido nem exibido.
+- `historyDays` é a janela coberta pelo histórico; `baselineDays` são os dias com carga objetiva. A UI pode mostrar “X de 28 dias” sem inventar zero.
+- O `firstActivityAt` é fiado em `TrainingSignals`/`TodayViewModel` a partir da atividade mais antiga; `ActivitySummary` continua sendo a fonte local.
+- `VolumeGrowthBlock.ACWR_UNRELIABLE` separa “sem baseline” de “fora da faixa”, para a copy de C4-26 não dizer que a carga subiu quando o número está em calibração.
+- O seed do `TodayViewModelPersistTest` passou a cobrir os 28 dias; sem isso, a progressão (corretamente) não cresce.
+- O golden `G-LOAD-02` e a copy/UI continuam em C4-26/C4-27; a versão de motor fica em C4-53.
 
 **Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
 
@@ -322,10 +323,10 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-22 | `firstActivityAt`; pré-história como “sem dado” | — | M | S3 | ADR 0046 | Cold start não é descanso | — |
-| [ ] | C4-23 | `acwrReliable`/`strainReliable`/`historyDays` | C4-22 | M | S3 | ADR 0046 | Flags e testes de janela | — |
-| [ ] | C4-24 | ACWR 1,5 em todos os caminhos | C4-23 | S | S3 | ADR 0046 | Nenhum 1,3 como veto | — |
-| [ ] | C4-25 | `permitsQuality`/`permitsProgression` separados | C4-23/24 | M | S3 | ADR 0046 | 1,4 mantém; 1,6 rebaixa; 0,7 mantém | — |
+| [x] | C4-22 | `firstActivityAt`; pré-história como “sem dado” | — | M | S3 | ADR 0046 | Cold start não é descanso | `LoadReliabilityTest` (7); commit S3 |
+| [x] | C4-23 | `acwrReliable`/`strainReliable`/`historyDays` | C4-22 | M | S3 | ADR 0046 | Flags e testes de janela | `LoadReliabilityTest`; `LoadGateV3Test`; commit S3 |
+| [x] | C4-24 | ACWR 1,5 em todos os caminhos | C4-23 | S | S3 | ADR 0046 | Nenhum 1,3 como veto | `LoadSnapshot.ACWR_MAX`; testes diário/gerador; commit S3 |
+| [x] | C4-25 | `permitsQuality`/`permitsProgression` separados | C4-23/24 | M | S3 | ADR 0046 | 1,4 mantém; 1,6 rebaixa; 0,7 mantém | `LoadGateV3Test` (10); commit S3 |
 | [ ] | C4-26 | Golden `G-LOAD-02` + copy “em calibração” | C4-23..25 | M | S14 | ADR 0046 | Golden/copy | — |
 | [ ] | C4-27 | Docs `R-LOAD-03 v3`, SPORTS_SCIENCE, ADR | C4-22..26 | S | S14 | ADR 0046 | Docs atualizados | — |
 
@@ -428,6 +429,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** o comparador usa disponibilidade > sáb/dom > sexta > dia mais tarde; a tabela do ADR 0045 §2.5 foi corrigida (4×60 com sábado e domingo → domingo). O piso vence o share em semanas pequenas; o share pode passar de 30% e o rationale diz que é alvo, não teto. O replanner mantém a guarda em T1/T2/T3; aceita a correção estrutural do longão legado até o piso e, em T4, a nova disponibilidade que move/cria o longão, sem crescer as demais sessões futuras. Bump `weekly-plan-v7` fica em C4-53; persistência de `planDecision` em C4-45/C4-46; link de disponibilidade na UI em C4-51.
 - **Próximo:** S3 / C4-22 (`firstActivityAt`; pré-história como “sem dado”), TDD sobre `TrainingLoadEngine`/`TrainingLoadCalculator`.
 
+### S3 — 2026-11-16 — Carga confiável: janela de 28 dias e ACWR 1,5
+
+- **Status:** DONE
+- **Tasks:** C4-22, C4-23, C4-24, C4-25.
+- **Arquivos:** `core/domain/.../load/TrainingLoadEngine.kt`, `core/domain/.../prescription/DailyPrescriptionEngine.kt`, `QualityGate.kt`, `WeeklyPlanGenerator.kt`, `VolumeProgression.kt`, `WorkoutRecommender.kt`, `app/.../application/TrainingSignals.kt`, `app/.../ui/today/TodayViewModel.kt`, `LoadReliabilityTest.kt` (novo), `LoadGateV3Test.kt` (renomeado), testes de diário/gerador/volume/recomendador, `TodayViewModelPersistTest.kt`, `docs/SPORTS_SCIENCE.md`, `docs/adr/0046-load-gate-v3-acwr-reliability.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 844 verdes (+19 líquidos; `LoadReliabilityTest` 7, `LoadGateV3Test` 10, limites no diário/gerador/recomendador); `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; FIT 93,01% de branches; `detekt` verde.
+- **Commit:** `feat(domain): make ACWR reliable on a full 28-day window (C4-22..C4-25)`.
+- **Decisões/notas:** pré-história vira `daysWithoutData` e `daysBeforeHistory`; a fonte pode informar `firstActivityAt` e o engine deriva do registro mais antigo quando ela não informa. `acwrReliable` exige 28 dias cobertos, ≥8 dias de carga objetiva, fonte fresca e zero dia subjetivo; `strainReliable` herda a mesma janela. `permitsQuality` mantém a qualidade em ACWR não confiável; `permitsProgression` exige janela completa e 0,8–1,3. `LoadSnapshot.ACWR_MAX = 1.5` é o único limite de redução; 1,3 fica só como topo da faixa de progressão. `VolumeGrowthBlock.ACWR_UNRELIABLE` separa calibração de “fora da faixa”. O seed de `TodayViewModelPersistTest` passou a cobrir 28 dias para a progressão continuar válida. Golden/copy/UI e bump de versões ficam em C4-26/C4-27/C4-53.
+- **Próximo:** S4 / C4-28 (`qualityEligibleByReadiness` + `SUBJECTIVE_MISSING`).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -513,7 +524,7 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 881 | Atualizar conforme novos testes |
-| `:core:domain` | 825 | Atualizar conforme novos testes |
+| `:core:domain` | 844 | Atualizar conforme novos testes |
 | `:core:data` | 168 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -603,11 +614,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (S3)
+## 14. Próxima ação (S4)
 
-1. Abrir `docs/adr/0046-load-gate-v3-acwr-reliability.md` e o FR-403/§5.3 do PRD.
-2. Ler `TrainingLoadEngine`, `TrainingLoadCalculator`, `LoadSnapshot`/`LoadCoverage` e os testes de carga existentes.
-3. Escrever o teste que falha de `firstActivityAt`/pré-história como “sem dado” (C4-22): cold start não é descanso.
-4. Implementar C4-22..C4-25 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0049-readiness-checkin-sleep.md` e o FR-406/§5.4 do PRD.
+2. Ler `ReadinessCalculator`, `ReadinessModels`, `DailyMetricsReadinessBuilder` e os testes de prontidão existentes.
+3. Escrever o teste que falha de `qualityEligibleByReadiness`/`SUBJECTIVE_MISSING` sem check-in (C4-28): sem check-in não há qualidade por default 3/3/3/3.
+4. Implementar C4-28 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -650,7 +650,7 @@ class TodayViewModelPersistTest {
 
     private suspend fun seedLoad(today: LocalDate) {
         val zone = ZoneId.of("America/Sao_Paulo")
-        listOf(1L, 4L, 8L, 11L, 15L, 18L, 22L, 25L).forEach { daysAgo ->
+        listOf(1L, 4L, 6L, 8L, 11L, 15L, 18L, 22L, 25L, 27L).forEach { daysAgo ->
             activities.saveImportedActivity(
                 ImportedActivity(
                     source = ActivitySource.FIT,

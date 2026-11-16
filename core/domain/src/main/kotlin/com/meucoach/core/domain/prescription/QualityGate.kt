@@ -215,7 +215,7 @@ object QualityGate {
     }
 
     private fun strainBlock(load: LoadSnapshot): QualityEligibility? {
-        if (!load.acwrReliableForGate() || !load.strainSpike) return null
+        if (!load.strainReliable || !load.strainSpike) return null
         return blocked(
             reason = QualityBlockReason.STRAIN_SPIKE,
             detail = "strain semanal acima de 2× a média crônica",
@@ -227,25 +227,15 @@ object QualityGate {
 
     private fun acwrBlock(load: LoadSnapshot): QualityEligibility? {
         val acwr = load.acwr ?: return null
-        if (!load.acwrReliableForGate() || acwr <= ACWR_MAX) return null
+        if (!load.acwrReliable || acwr <= LoadSnapshot.ACWR_MAX) return null
         return blocked(
             reason = QualityBlockReason.ACWR_HIGH,
-            detail = "ACWR ${decimal(acwr)} > ${decimal(ACWR_MAX)}",
+            detail = "ACWR ${decimal(acwr)} > ${decimal(LoadSnapshot.ACWR_MAX)}",
             ruleId = "R-LOAD-03",
             evidenceIds = listOf("EV-GABBETT-2016"),
             unlockHint = "Mantenha a carga estável até o ACWR voltar a 1,50 ou menos.",
         )
     }
-
-    /**
-     * Reliability available before C4-23 adds the complete 28-day window.
-     * The load gate already guaranteed an objective `KNOWN` snapshot when this
-     * runs; pre-history days count as `daysWithoutData`. C4-23 widens the
-     * window without changing this gate's contract.
-     */
-    private fun LoadSnapshot.acwrReliableForGate(): Boolean = acwr != null &&
-        coverage.daysWithoutData == 0 &&
-        subjectiveDaysInWindow == 0
 
     private fun eligible() = QualityEligibility(
         eligible = true,
@@ -287,7 +277,6 @@ object QualityGate {
 
     private data class PlanDayContext(val phase: MesoPhase?, val raceWeek: Boolean)
 
-    private const val ACWR_MAX = 1.5
     private const val RULE_ELIGIBLE = "R-PER-03"
     private const val UNLOCK_LOAD = "Registre pelo menos 8 dias de carga objetiva nas últimas 4 semanas."
     private val ELIGIBLE_EVIDENCE = listOf("EV-SEILER-2010", "EV-DANIELS-2014")

@@ -60,18 +60,16 @@ class DailyPrescriptionEngine {
         }
 
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
-        // D5 (ADR 0039) + R-LOAD-03 v2 (proposto): trust for quality is objective
-        // load plus monotony < 2.0 and no strain spike. ACWR > 1.5 only reduces
-        // the day; it never vetoes the week alone.
+        // D5 (ADR 0039) + R-LOAD-03 v3 (ADR 0046): trust for quality is
+        // objective load plus monotony < 2.0, no reliable strain spike and no
+        // reliable ACWR > 1.5. An unreliable ratio never vetoes the day.
         val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
-        val permitsQuality = input.load?.permitsQualityAndProgression ?: false
+        val permitsQuality = input.load?.permitsQuality ?: false
         val monotonyOk = input.load?.monotonyOk ?: false
         val strainSpike = input.load?.strainSpike ?: false
+        val strainReliable = input.load?.strainReliable ?: false
         val subjectiveOnlyLoad = loadState == LoadDataState.KNOWN && !loadTrusted
-        val acwr = input.load?.acwr
-        // ACWR comes from the full series (objective + subjective): a high
-        // subjective load must still trigger the reduction guardrail.
-        val acwrHigh = loadState == LoadDataState.KNOWN && acwr != null && acwr > ACWR_MAX
+        val acwrHigh = input.load?.acwrHigh ?: false
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         // Missing data lowers confidence and blocks quality, but it is not bad
         // recovery: the plan duration is kept instead of being reduced.
@@ -99,7 +97,14 @@ class DailyPrescriptionEngine {
             safetyReduce || absenceOnly || !permitsQuality || acwrHigh ||
                 beginnerGuard || recoveryGuard
         val safetyReasons = safetyReasons(input, shortSleep, negativeReadiness, absenceOnly)
-        val qualityReasons = qualityReasons(loadState, loadTrusted, acwrHigh, permitsQuality, monotonyOk, strainSpike)
+        val qualityReasons = qualityReasons(
+            loadState,
+            loadTrusted,
+            acwrHigh,
+            permitsQuality,
+            monotonyOk,
+            strainSpike && strainReliable,
+        )
         val guardReasons = buildList {
             if (beginnerGuard) add(BEGINNER_REASON)
             if (recoveryGuard && recoveryReason != null) add(recoveryReason)
@@ -478,7 +483,7 @@ class DailyPrescriptionEngine {
             LoadDataState.KNOWN -> if (!loadTrusted) add("carga recente vem do esforço percebido")
         }
         if (acwrHigh) add("sua carga subiu rápido")
-        if (loadTrusted && !permitsQuality) {
+        if (!acwrHigh && loadTrusted && !permitsQuality) {
             if (!monotonyOk) add("sua semana variou pouco")
             if (strainSpike) add("sua carga concentrou demais")
             if (monotonyOk && !strainSpike) add("carga objetiva sem permissão para treino forte")
@@ -597,8 +602,6 @@ class DailyPrescriptionEngine {
     }
 
     private companion object {
-        const val ACWR_MIN = 0.8
-        const val ACWR_MAX = 1.3
         const val EASY_REDUCED_TITLE = "Fácil, sem pressa"
         const val RECOVERY_REDUCED_TITLE = "Recuperação: fácil e curto"
         const val BEGINNER_REASON = "seu nível é iniciante e o treino forte fica para depois"

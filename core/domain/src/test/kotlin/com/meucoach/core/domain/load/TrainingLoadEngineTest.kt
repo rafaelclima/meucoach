@@ -218,9 +218,12 @@ class TrainingLoadEngineTest {
         assertThat(snapshot.dataState).isEqualTo(LoadDataState.KNOWN)
         assertThat(snapshot.acwr).isNotNull()
         assertThat(snapshot.coverage.daysWithLoad).isEqualTo(8)
-        assertThat(snapshot.coverage.daysWithoutActivity).isEqualTo(20)
-        assertThat(snapshot.coverage.daysWithoutData).isZero()
+        assertThat(snapshot.coverage.daysBeforeHistory).isEqualTo(20)
+        assertThat(snapshot.coverage.daysWithoutActivity).isZero()
+        assertThat(snapshot.coverage.daysWithoutData).isEqualTo(20)
         assertThat(snapshot.coverage.sourceFresh).isTrue()
+        // ADR 0046: eight days inside a 28-day window are not a full baseline.
+        assertThat(snapshot.acwrReliable).isFalse()
     }
 
     @Test
@@ -275,7 +278,8 @@ class TrainingLoadEngineTest {
         assertThat(snapshot.dataState).isEqualTo(LoadDataState.INSUFFICIENT)
         assertThat(snapshot.acwr).isNull()
         assertThat(snapshot.coverage.daysWithLoad).isEqualTo(7)
-        assertThat(snapshot.coverage.daysWithoutActivity).isEqualTo(21)
+        assertThat(snapshot.coverage.daysBeforeHistory).isEqualTo(21)
+        assertThat(snapshot.coverage.daysWithoutActivity).isZero()
     }
 
     @Test
@@ -291,8 +295,9 @@ class TrainingLoadEngineTest {
         )
 
         assertThat(snapshot.coverage.daysWithLoad).isZero()
-        assertThat(snapshot.coverage.daysWithoutActivity).isEqualTo(27)
-        assertThat(snapshot.coverage.daysWithoutData).isEqualTo(1)
+        assertThat(snapshot.coverage.daysBeforeHistory).isEqualTo(26)
+        assertThat(snapshot.coverage.daysWithoutActivity).isEqualTo(1)
+        assertThat(snapshot.coverage.daysWithoutData).isEqualTo(27)
         assertThat(snapshot.dataState).isEqualTo(LoadDataState.INSUFFICIENT)
     }
 

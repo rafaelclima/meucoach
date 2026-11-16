@@ -1,6 +1,6 @@
 # ADR 0046 — Load gate v3: ACWR confiável e limite único
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-22..C4-27).
+**Status:** Aprovado em 2026-11-16 — domínio implementado em 2026-11-16 (C4-22..C4-25, sessão S3); UI/copy e golden ficam para C4-26/C4-27.
 **Data:** 2026-11-16
 **Escopo:** `TrainingLoadEngine`, `LoadSnapshot`, `LoadCoverage`, `ActivitySourceStatus`,
 `DailyPrescriptionEngine`, `WeeklyPlanGenerator`, `WorkoutRecommender`, `VolumeProgression`.

@@ -420,7 +420,11 @@ class TodayViewModel @Inject constructor(
                 activities = activities,
                 profile = it,
                 today = today,
-                sourceStatus = ActivitySourceStatus(lastImportedAt = lastImportedAt, checkedAt = checkedAt),
+                sourceStatus = ActivitySourceStatus(
+                    lastImportedAt = lastImportedAt,
+                    checkedAt = checkedAt,
+                    firstActivityAt = activities.minOfOrNull { it.startTime },
+                ),
                 executions = executions,
             )
         }

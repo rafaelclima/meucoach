@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S2 do Ciclo 4: longão com piso, comparator e `fitToVolume`)
+**Atualizado:** 16/11/2026 (S3 do Ciclo 4: carga confiável, janela de 28 dias e ACWR 1,5)
+
+## Sessão 2026-11-16 — Ciclo 4/S3: carga confiável e ACWR 1,5 (C4-22..C4-25)
+
+**Objetivo:** tornar a carga confiável: pré-história como “sem dado”, janela completa de 28 dias, ACWR 1,5 em todos os caminhos e permissões de qualidade/progressão separadas.
+
+### Concluído
+
+- **Pré-história:** `ActivitySourceStatus.firstActivityAt` + `LoadCoverage.daysBeforeHistory`; dias antes do primeiro registro são “sem dado”, nunca descanso. O engine deriva a data do registro mais antigo quando a fonte não informa; `TrainingSignals`/`TodayViewModel` passam a data real.
+- **Confiabilidade:** `LoadSnapshot.acwrReliable`, `strainReliable`, `historyDays` e `baselineDays`; a janela exige fonte fresca, 28 dias cobertos, ≥8 dias de carga objetiva e zero dia subjetivo.
+- **Limite único:** `LoadSnapshot.ACWR_MAX = 1.5` em `QualityGate`, `DailyPrescriptionEngine`, `WeeklyPlanGenerator` e `WorkoutRecommender`; 1,4 e 1,5 mantêm, 1,6 rebaixa, 0,7 mantém. ACWR não confiável não veta qualidade e não é reportado como “carga subiu rápido”.
+- **Permissões:** `permitsQuality` (carga objetiva + monotonia + sem strain spike confiável + sem ACWR confiável >1,5) separado de `permitsProgression` (+ ACWR confiável em 0,8–1,3). `VolumeGates.acwrReliable` e `ACWR_UNRELIABLE` explicam “em calibração”.
+- **Testes:** `LoadReliabilityTest` (7) e `LoadGateV3Test` (10), além de limites no diário/gerador/recomendador/volume. O seed de `TodayViewModelPersistTest` passou a cobrir 28 dias para a progressão continuar válida.
+
+### Testes
+
+- `:core:domain:test` 844 verdes (+19 líquidos).
+- `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`.
+- `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01% de branches.
+- Nenhum dado real no diff.
+
+### Decisões e observações
+
+- `historyDays` é a janela coberta pelo histórico; `baselineDays` são os dias com carga objetiva.
+- O `ACWR_UNRELIABLE` separa “sem baseline” de “fora da faixa”, para a copy de C4-26 não contradizer o estado.
+- Golden `G-LOAD-02`, copy/UI (“em calibração”), versões de motor (`daily-v6`/`weekly-v7`) e schema v18 ficam para C4-26/C4-27/C4-53.
+- Nenhuma migração, nenhuma alteração de UI e nenhum catálogo novo.
+
+### Próximo passo
+
+1. S4/C4-28: `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING` sem check-in.
+2. Depois C4-34..C4-36: sono/`SleepNightValidator` na mesma sessão.
 
 ## Sessão 2026-11-16 — Ciclo 4/S2: longão de verdade (C4-09..C4-13)
 
@@ -5292,3 +5323,6 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 06/11/2026 | C1-02 concluído: cobertura/frescor de carga, ACWR desconhecido não libera qualidade, gate no plano/recomendador e UI explícita; 924 testes |
 | 13/11/2026 | Story V3 Sprint A concluído: Story Studio, prévia de 3 frames, pôster 4:5, share dos três arquivos e atribuição OSM no canto inferior esquerdo; 1.690 testes |
 | 13/11/2026 | Story V3 Sprint B MAP-01..MAP-03: MapLibre 13.7.1 OpenGL, projeção `pixelForLatLng` na produção, port Kotlin como fallback e paridade de 0,000244 px no S24 Ultra; 1.698 testes |
+| 16/11/2026 | Ciclo 4/S1: oportunidade de qualidade e `QualityGate` puro (C4-01, C4-03); 816 testes de domínio |
+| 16/11/2026 | Ciclo 4/S2: longão com piso, título honesto e `fitToVolume` (C4-09..C4-13); 825 testes de domínio |
+| 16/11/2026 | Ciclo 4/S3: ACWR confiável em 28 dias, pré-história como “sem dado” e 1,5 único (C4-22..C4-25); 844 testes de domínio |
