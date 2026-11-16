@@ -9,7 +9,9 @@ import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.prescription.longRunFloorMinutes
 import com.meucoach.core.domain.readiness.ReadinessResult
+import com.meucoach.core.model.Experience
 import com.meucoach.core.model.WeeklyAvailability
 import java.security.MessageDigest
 import java.time.DayOfWeek
@@ -115,7 +117,12 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         validationFailure(candidateSessions, candidateFuture, input)?.let { reason ->
             return noChange(reason, input, availabilityHash)
         }
-        ceilingFailure(currentFuture, candidateFuture)?.let { reason ->
+        ceilingFailure(
+            currentFuture = currentFuture,
+            candidateFuture = candidateFuture,
+            experience = input.profile.experience,
+            allowStructuralLongChange = t4Triggered && !missedTriggered,
+        )?.let { reason ->
             return noChange(reason, input, availabilityHash)
         }
         if (sameProjection(currentFuture, candidateFuture)) {
@@ -275,11 +282,39 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
     /**
      * A revision never compensates missed work: future volume and the number of
      * future quality sessions may not exceed the current future intent.
+     *
+     * The one exception is the long-run floor (ADR 0045): a legacy future long
+     * below 45/60 min may be raised to the floor because the plan is migrating
+     * to the current engine, not compensating a missed session. The correction
+     * is bounded by the floor and may never raise any other future session.
+     *
+     * A T4 profile/temporal revision may also reflect a new availability that
+     * moves or creates the long run; that is a structural change the user can
+     * accept, still bounded by "no other future session grows". Missed sessions
+     * never unlock the structural exception.
      */
-    private fun ceilingFailure(currentFuture: List<PlannedSession>, candidateFuture: List<PlannedSession>): String? {
+    private fun ceilingFailure(
+        currentFuture: List<PlannedSession>,
+        candidateFuture: List<PlannedSession>,
+        experience: Experience,
+        allowStructuralLongChange: Boolean,
+    ): String? {
         val current = currentFuture.filter { it.status == SessionStatus.PLANNED }
         val candidate = candidateFuture.filter { it.status == SessionStatus.PLANNED }
-        if (candidate.sumOf { it.durationMin ?: 0 } > current.sumOf { it.durationMin ?: 0 }) {
+        val currentVolume = current.sumOf { it.durationMin ?: 0 }
+        val candidateVolume = candidate.sumOf { it.durationMin ?: 0 }
+        val currentLong = current.filter { it.type == WorkoutType.LONG }.sumOf { it.durationMin ?: 0 }
+        val candidateLong = candidate.filter { it.type == WorkoutType.LONG }.sumOf { it.durationMin ?: 0 }
+        val currentOther = currentVolume - currentLong
+        val candidateOther = candidateVolume - candidateLong
+        val longFloor = longRunFloorMinutes(experience)
+        val floorCorrection = currentLong in 1 until longFloor &&
+            candidateLong in (currentLong + 1)..longFloor &&
+            candidateOther <= currentOther
+        val structuralLongChange = allowStructuralLongChange &&
+            candidateLong > currentLong &&
+            candidateOther <= currentOther
+        if (candidateVolume > currentVolume && !floorCorrection && !structuralLongChange) {
             return "A revisão não pode aumentar o volume futuro da semana; ela não repõe treinos perdidos."
         }
         if (candidate.count { it.type == WorkoutType.QUALITY } > current.count { it.type == WorkoutType.QUALITY }) {

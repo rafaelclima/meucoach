@@ -227,12 +227,8 @@ class WeeklyPlanGenerator {
         val dayTrimmed = daysAfterToday.size < allDays.size
         val eventDaysSkipped = days.size < daysAfterToday.size
         // A recovery day is active but never receives a long run (ADR 0037).
-        val longDay = days
-            .filter { day ->
-                val date = weekStart.plusDays((day.value - 1).toLong())
-                recovery?.allowsLongRun(date) != false
-            }
-            .maxByOrNull { day -> availability.getValue(day) }
+        // ADR 0045 §2.1: highest availability, then weekend, then later day.
+        val longDay = selectLongDay(days, availability, recovery, weekStart)
         val recoveryDays = days.map { weekStart.plusDays((it.value - 1).toLong()) }
             .filter { recovery?.isActive(it) == true }
         val recoveryActive = recoveryDays.isNotEmpty()
@@ -346,14 +342,45 @@ class WeeklyPlanGenerator {
             emptySet()
         }
 
+        // ADR 0045 §2.2: the long run is sized before the sessions exist. The
+        // other sessions' durations define the share target and the "longest
+        // other" preference; the availability of the long day is a hard ceiling.
+        val reducedByPeriodization = deload || taperLimitsQuality
+        val longFloor = if (reducedByPeriodization) MIN_LONG_MIN else longRunFloor(input.profile.experience)
+        val otherDurations = (days + postRaceDays)
+            .filter { it != longDay }
+            .associateWith { day ->
+                val date = weekStart.plusDays((day.value - 1).toLong())
+                plannedDuration(
+                    day = day,
+                    date = date,
+                    available = availability.getValue(day),
+                    plan = DurationPlan(
+                        qualityDays = qualityDays,
+                        microDoseDays = microDoseDays,
+                        stridesDay = stridesDay,
+                        postRaceDays = postRaceDays,
+                        recovery = recovery,
+                    ),
+                )
+            }
+        val longTarget = longDay?.let { day ->
+            longRunTarget(
+                maxAvailable = availability.getValue(day),
+                experience = input.profile.experience,
+                otherDurations = otherDurations.values,
+                reducedByPeriodization = reducedByPeriodization,
+            )
+        }
+        val durationByDay = otherDurations.toMutableMap().apply {
+            if (longDay != null && longTarget != null) put(longDay, longTarget)
+        }
+
         val sessions = (days + postRaceDays).sorted().map { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
-            val available = availability.getValue(day)
             when {
                 day in postRaceDays -> {
-                    val recoveryCap = recovery?.maxSessionMinutes(date)
-                    val duration = minOf(available, POST_RACE_EASY_MAX_MIN)
-                        .let { minutes -> recoveryCap?.let { cap -> minOf(minutes, cap) } ?: minutes }
+                    val duration = durationByDay.getValue(day)
                     PlannedSession(
                         date = date,
                         type = WorkoutType.EASY,
@@ -371,7 +398,7 @@ class WeeklyPlanGenerator {
                 }
 
                 day in qualityDays -> {
-                    val duration = available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN)
+                    val duration = durationByDay.getValue(day)
                     PlannedSession(
                         date = date,
                         type = WorkoutType.QUALITY,
@@ -398,30 +425,31 @@ class WeeklyPlanGenerator {
                 }
 
                 day in microDoseDays -> {
+                    val duration = durationByDay.getValue(day)
                     PlannedSession(
                         date = date,
                         type = WorkoutType.QUALITY,
                         title = templateTitle(SessionRole.STRIDES) ?: "Strides curtos",
-                        durationMin = MICRO_DOSE_MIN,
+                        durationMin = duration,
                         rationale = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
                         ruleIds = listOf("R-PLAN-05", "R-PLAN-10", "R-PLAN-06"),
                         evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.QUALITY,
                             profile = input.profile,
-                            durationMin = MICRO_DOSE_MIN,
+                            durationMin = duration,
                         ),
                     )
                 }
 
                 day == longDay -> {
-                    val duration = initialLongMinutes(available, input.profile.experience)
+                    val duration = durationByDay.getValue(day)
                     PlannedSession(
                         date = date,
                         type = WorkoutType.LONG,
-                        title = templateTitle(SessionRole.LONG_RUN) ?: "Longão",
+                        title = templateTitle(SessionRole.LONG_RUN) ?: LONG_RUN_TITLE,
                         durationMin = duration,
-                        rationale = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
+                        rationale = "Longão em ritmo fácil; a duração vem do piso e da disponibilidade.",
                         ruleIds = listOf("R-PLAN-03"),
                         evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
                         targets = PrescriptionPolicy.targets(
@@ -436,7 +464,7 @@ class WeeklyPlanGenerator {
                     val recoveryCap = recovery?.maxSessionMinutes(date)
                     val isRecoveryDay = recoveryCap != null
                     if (day == stridesDay) {
-                        val duration = minOf(available, MICRO_DOSE_MIN)
+                        val duration = durationByDay.getValue(day)
                         PlannedSession(
                             date = date,
                             type = WorkoutType.EASY,
@@ -453,8 +481,7 @@ class WeeklyPlanGenerator {
                             ),
                         )
                     } else {
-                        val duration = available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN)
-                            .let { minutes -> recoveryCap?.let { cap -> minOf(minutes, cap) } ?: minutes }
+                        val duration = durationByDay.getValue(day)
                         PlannedSession(
                             date = date,
                             type = WorkoutType.EASY,
@@ -486,19 +513,8 @@ class WeeklyPlanGenerator {
             }
         }
 
-        val easyMinutes = sessions
-            .filter { it.type != WorkoutType.LONG }
-            .sumOf { it.durationMin ?: 0 }
-        val maxLong = maxOf(MIN_LONG_MIN, (easyMinutes * LONG_SHARE_RATIO).roundToInt())
-        val limitedLong = sessions.map { session ->
-            if (session.type == WorkoutType.LONG && session.durationMin != null) {
-                if (session.durationMin > maxLong) session.copy(durationMin = maxLong) else session
-            } else {
-                session
-            }
-        }
         val taperActive = race?.isInTaperWindow(input.today) == true
-        val availabilityCeiling = limitedLong.sumOf { it.durationMin ?: 0 }
+        val availabilityCeiling = sessions.sumOf { it.durationMin ?: 0 }
         val postRecovery = isPostRecoveryWeek(combinedReferences, weekStart)
         val volumeDecision = VolumeProgression().decide(
             targetWeekStart = weekStart,
@@ -526,9 +542,10 @@ class WeeklyPlanGenerator {
                 strainOk = strainOk,
             ),
         )
-        val volumeAdjusted = fitToVolume(limitedLong, volumeDecision.minutes)
-        val adjusted = volumeAdjusted.sessions.map { session ->
-            val scaled = when {
+        val volumeAdjusted = fitToVolume(sessions, volumeDecision.minutes, longFloor)
+        val originalDurations = volumeAdjusted.sessions.associate { it.date to it.durationMin }
+        val scaled = volumeAdjusted.sessions.map { session ->
+            when {
                 race != null && race.isInTaperWindow(session.date) && session.durationMin != null ->
                     session.copy(durationMin = scaledMinutes(session, race.taperFactor(session.date)))
 
@@ -537,8 +554,17 @@ class WeeklyPlanGenerator {
 
                 else -> session
             }
-            scaled.withQualityCopy(input.profile, race, deload, session.durationMin)
-        }.map { it.withTargetsForDuration(input.profile) }
+        }
+        val adjusted = applyLongRunHonesty(
+            sessions = scaled,
+            profile = input.profile,
+            availability = availability,
+            reducedByPeriodization = reducedByPeriodization,
+        ).map { session ->
+            session
+                .withQualityCopy(input.profile, race, deload, originalDurations[session.date])
+                .withTargetsForDuration(input.profile)
+        }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
         val qualityCount = adjusted.count { it.type == WorkoutType.QUALITY }
@@ -594,7 +620,13 @@ class WeeklyPlanGenerator {
             if (postRaceDays.isNotEmpty()) {
                 append("Após a prova: só sessões leves e curtas. ")
             }
-            append(volumeRationale(volumeDecision, volumeAdjusted.droppedSessions))
+            append(
+                volumeRationale(
+                    volumeDecision,
+                    volumeAdjusted.droppedSessions,
+                    volumeAdjusted.minimalWeek,
+                ),
+            )
             append(" ")
             if (raceGoalWithoutDate) {
                 append(
@@ -811,14 +843,182 @@ class WeeklyPlanGenerator {
         return diff == 1 || diff == 6
     }
 
-    private fun initialLongMinutes(available: Int, experience: Experience): Int {
-        val cap = when (experience) {
-            Experience.BEGINNER -> 150
-            Experience.INTERMEDIATE -> 150
-            Experience.ADVANCED -> 180
+    /**
+     * ADR 0045 §2.1: availability is the primary key; ties prefer the weekend
+     * and, inside the weekend, the later day. Recovery days never receive the
+     * long run (ADR 0037).
+     */
+    private fun selectLongDay(
+        days: List<DayOfWeek>,
+        availability: Map<DayOfWeek, Int>,
+        recovery: RecoveryWindow?,
+        weekStart: LocalDate,
+    ): DayOfWeek? = days
+        .filter { day ->
+            val date = weekStart.plusDays((day.value - 1).toLong())
+            recovery?.allowsLongRun(date) != false
         }
-        return available.coerceIn(MIN_LONG_MIN, cap)
+        .maxWithOrNull(
+            compareBy(
+                { day: DayOfWeek -> availability.getValue(day) },
+                { day: DayOfWeek -> weekendPriority(day) },
+                { day: DayOfWeek -> day.value },
+            ),
+        )
+
+    /** Saturday/Sunday > Friday > the rest (ADR 0045 §2.1). */
+    private fun weekendPriority(day: DayOfWeek): Int = when (day) {
+        DayOfWeek.SATURDAY, DayOfWeek.SUNDAY -> 2
+        DayOfWeek.FRIDAY -> 1
+        else -> 0
     }
+
+    /**
+     * Duration of a non-long session; the long day is sized separately from
+     * these durations (ADR 0045 §2.2).
+     */
+    private fun plannedDuration(day: DayOfWeek, date: LocalDate, available: Int, plan: DurationPlan): Int = when {
+        day in plan.postRaceDays -> {
+            val cap = plan.recovery?.maxSessionMinutes(date)
+            minOf(available, POST_RACE_EASY_MAX_MIN).let { if (cap != null) minOf(it, cap) else it }
+        }
+
+        day in plan.qualityDays -> available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN)
+
+        day in plan.microDoseDays -> MICRO_DOSE_MIN
+
+        day == plan.stridesDay -> minOf(available, MICRO_DOSE_MIN)
+
+        else -> {
+            val cap = plan.recovery?.maxSessionMinutes(date)
+            available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN).let { if (cap != null) minOf(it, cap) else it }
+        }
+    }
+
+    private data class DurationPlan(
+        val qualityDays: Set<DayOfWeek>,
+        val microDoseDays: Set<DayOfWeek>,
+        val stridesDay: DayOfWeek?,
+        val postRaceDays: List<DayOfWeek>,
+        val recovery: RecoveryWindow?,
+    )
+
+    /** Product floor: 45 min for beginner/intermediate, 60 for advanced (FR-402). */
+    private fun longRunFloor(experience: Experience): Int = longRunFloorMinutes(experience)
+
+    private fun longRunCap(experience: Experience): Int = when (experience) {
+        Experience.BEGINNER, Experience.INTERMEDIATE -> 150
+        Experience.ADVANCED -> 180
+    }
+
+    /**
+     * ADR 0045 §2.2. Availability is a hard ceiling; the floor beats the
+     * 25–30% share target in small weeks; the long run prefers to be at least
+     * five minutes longer than the longest other session. Deload/taper lower
+     * the floor to 30 and let the post-scaling title stay honest.
+     */
+    private fun longRunTarget(
+        maxAvailable: Int,
+        experience: Experience,
+        otherDurations: Collection<Int>,
+        reducedByPeriodization: Boolean,
+    ): Int {
+        val floor = if (reducedByPeriodization) MIN_LONG_MIN else longRunFloor(experience)
+        val otherMinutes = otherDurations.sum()
+        val longestOther = otherDurations.maxOrNull() ?: 0
+        val shareTarget = (otherMinutes * LONG_TARGET_SHARE / (1.0 - LONG_TARGET_SHARE)).roundToInt()
+        val target = maxOf(floor, longestOther + LONG_LONGER_MARGIN, shareTarget)
+        return minOf(maxAvailable, longRunCap(experience), target)
+    }
+
+    /**
+     * Rebuilds the long-run title and copy from the final duration (ADR 0045
+     * §2.3). Below the floor, the plan never claims a long run: it explains the
+     * agenda limit and records `LONG_DAY_TOO_SHORT`. A deload/taper cut is not
+     * an agenda limit, so it gets the honest title without the agenda hint.
+     *
+     * The long run is also kept as the longest session or tied with it (§2.7):
+     * a per-date taper can shorten it more than an earlier easy day.
+     */
+    private fun applyLongRunHonesty(
+        sessions: List<PlannedSession>,
+        profile: AthleteProfile,
+        availability: Map<DayOfWeek, Int>,
+        reducedByPeriodization: Boolean,
+    ): List<PlannedSession> {
+        val long = sessions.firstOrNull { it.type == WorkoutType.LONG && it.durationMin != null }
+            ?: return sessions
+        val duration = long.durationMin ?: return sessions
+        val longestOther = sessions
+            .filter { it.type != WorkoutType.LONG }
+            .maxOfOrNull { it.durationMin ?: 0 } ?: 0
+        val floor = longRunFloor(profile.experience)
+        val dayMax = availability[long.date.dayOfWeek] ?: duration
+        val copy = when {
+            duration >= floor && duration >= longestOther -> LongRunCopy(
+                title = LONG_RUN_TITLE,
+                rationale = "Longão em ritmo fácil. Piso de $floor min preservado; 25–30% do " +
+                    "volume é um alvo, não um teto. Teto de ${longRunCap(profile.experience)} min.",
+                decision = null,
+            )
+
+            duration < floor && reducedByPeriodization -> LongRunCopy(
+                title = LONG_RUN_HONEST_TITLE,
+                rationale = "Corrida mais longa em ritmo fácil: a semana reduzida encurta a " +
+                    "sessão para $duration min; o piso de $floor min volta na semana normal.",
+                decision = null,
+            )
+
+            duration < longestOther -> LongRunCopy(
+                title = LONG_RUN_HONEST_TITLE,
+                rationale = "Corrida mais longa em ritmo fácil: $duration min, abaixo de outra " +
+                    "sessão de $longestOther min.",
+                decision = PlanDecision(
+                    reason = PlanDecisionReason.LONG_DAY_TOO_SHORT,
+                    detail = "O longão ficou em $duration min, abaixo de outra sessão de $longestOther min.",
+                ),
+            )
+
+            else -> {
+                val day = dayLabel(long.date.dayOfWeek)
+                val ceiling = minOf(floor + LONG_FLOOR_HINT_RANGE, longRunCap(profile.experience))
+                LongRunCopy(
+                    title = LONG_RUN_HONEST_TITLE,
+                    rationale = "Corrida mais longa em ritmo fácil: seu dia mais longo tem " +
+                        "$dayMax min; o piso para um longão é $floor min. Aumente a " +
+                        "disponibilidade de $day para $floor–$ceiling min.",
+                    decision = PlanDecision(
+                        reason = PlanDecisionReason.LONG_DAY_TOO_SHORT,
+                        detail = "Seu dia mais longo tem $dayMax min; o piso para um longão é $floor min.",
+                    ),
+                )
+            }
+        }
+        return sessions.map { session ->
+            if (session.type != WorkoutType.LONG) {
+                val minutes = session.durationMin
+                if (minutes != null && minutes > duration) {
+                    session.copy(durationMin = duration)
+                } else {
+                    session
+                }
+            } else {
+                session.copy(title = copy.title, rationale = copy.rationale, planDecision = copy.decision)
+            }
+        }
+    }
+
+    private fun dayLabel(day: DayOfWeek): String = when (day) {
+        DayOfWeek.MONDAY -> "segunda-feira"
+        DayOfWeek.TUESDAY -> "terça-feira"
+        DayOfWeek.WEDNESDAY -> "quarta-feira"
+        DayOfWeek.THURSDAY -> "quinta-feira"
+        DayOfWeek.FRIDAY -> "sexta-feira"
+        DayOfWeek.SATURDAY -> "sábado"
+        DayOfWeek.SUNDAY -> "domingo"
+    }
+
+    private data class LongRunCopy(val title: String, val rationale: String, val decision: PlanDecision?)
 
     /**
      * Distance targets are derived from duration; after volume/taper/deload
@@ -830,46 +1030,86 @@ class WeeklyPlanGenerator {
     /** Volume-only reduction; intensity is preserved by keeping the session type. */
     private fun scaledMinutes(session: PlannedSession, factor: Double): Int {
         val current = requireNotNull(session.durationMin) { "Scaled session must have a duration" }
-        val floor = if (session.type == WorkoutType.QUALITY) MIN_QUALITY_MIN else MIN_EASY_MIN
+        val floor = when (session.type) {
+            WorkoutType.QUALITY -> MIN_QUALITY_MIN
+            WorkoutType.LONG -> MIN_LONG_MIN
+            else -> MIN_EASY_MIN
+        }
         return maxOf(floor, (current * factor).roundToInt())
     }
 
     /**
      * Scales the availability layout down to the volume target (ADR 0038).
-     * Proportional scaling keeps the type mix and the long-run share. When the
-     * type floors do not fit the target, the shortest easy days leave the week:
-     * the demonstrated volume is the dose, availability is only a ceiling.
+     * The long run is the anchor: it shrinks proportionally but never below
+     * its floor (45/60; 30 in deload/taper) and never grows. The other sessions
+     * fit what remains of the target. If the floors do not fit, the shortest
+     * easy days leave the week; quality and the long run are never dropped and
+     * a minimal week keeps its floors and says the volume is above the target
+     * (ADR 0045 §2.4).
      */
-    private fun fitToVolume(sessions: List<PlannedSession>, targetMinutes: Int): FittedVolume {
+    private fun fitToVolume(sessions: List<PlannedSession>, targetMinutes: Int, longFloor: Int): FittedVolume {
         val current = sessions.sumOf { it.durationMin ?: 0 }
-        if (current == 0 || targetMinutes >= current) return FittedVolume(sessions, droppedSessions = 0)
-        val factor = targetMinutes.toDouble() / current
-        var scaled = sessions.map { session ->
-            val minutes = session.durationMin ?: return@map session
-            val floor = when (session.type) {
-                WorkoutType.QUALITY -> MIN_QUALITY_MIN
-                WorkoutType.LONG -> MIN_LONG_MIN
-                else -> MIN_EASY_MIN
-            }
-            session.copy(durationMin = maxOf(floor, (minutes * factor).roundToInt()))
+        if (current == 0 || targetMinutes >= current) {
+            return FittedVolume(sessions, droppedSessions = 0, minimalWeek = false)
         }
-        var total = scaled.sumOf { it.durationMin ?: 0 }
+        val factor = targetMinutes.toDouble() / current
+        val long = sessions.firstOrNull { it.type == WorkoutType.LONG && it.durationMin != null }
+        val longCurrent = long?.durationMin ?: 0
+        val longMinutes = if (long == null) 0 else scaledLongMinutes(longCurrent, longFloor, factor)
+        val otherCurrent = current - longCurrent
+        val otherTarget = targetMinutes - longMinutes
+        val otherFactor = if (otherCurrent == 0) {
+            0.0
+        } else {
+            (otherTarget.toDouble() / otherCurrent).coerceIn(0.0, 1.0)
+        }
+        val scaled = sessions.map { session -> scaleToVolume(session, longMinutes, otherFactor) }
+        val droppedVolume = dropShortestEasy(scaled, targetMinutes)
+        return FittedVolume(
+            sessions = droppedVolume.sessions.sortedBy { it.date },
+            droppedSessions = droppedVolume.dropped,
+            minimalWeek = droppedVolume.sessions.sumOf { it.durationMin ?: 0 } > targetMinutes,
+        )
+    }
+
+    /** The long run shrinks proportionally but never below its floor or above its current dose. */
+    private fun scaledLongMinutes(longCurrent: Int, longFloor: Int, factor: Double): Int {
+        val ownFloor = minOf(longFloor, longCurrent)
+        return minOf(longCurrent, maxOf(ownFloor, (longCurrent * factor).roundToInt()))
+    }
+
+    private fun scaleToVolume(session: PlannedSession, longMinutes: Int, otherFactor: Double): PlannedSession {
+        val minutes = session.durationMin ?: return session
+        if (session.type == WorkoutType.LONG) return session.copy(durationMin = longMinutes)
+        val floor = if (session.type == WorkoutType.QUALITY) MIN_QUALITY_MIN else MIN_EASY_MIN
+        return session.copy(durationMin = maxOf(floor, (minutes * otherFactor).roundToInt()))
+    }
+
+    /** Keep at least one easy day; quality and the long run are never dropped. */
+    private fun dropShortestEasy(sessions: List<PlannedSession>, targetMinutes: Int): DroppedVolume {
+        var current = sessions
+        var total = current.sumOf { it.durationMin ?: 0 }
         var dropped = 0
-        // Keep at least one easy day; quality and the long run are never dropped.
-        val easyByDuration = scaled
+        val easyByDuration = current
             .filter { it.type == WorkoutType.EASY }
             .sortedBy { it.durationMin ?: 0 }
         for (easy in easyByDuration) {
             if (total <= targetMinutes) break
-            if (scaled.count { it.type == WorkoutType.EASY } <= 1) break
-            scaled = scaled.filterNot { it.date == easy.date }
+            if (current.count { it.type == WorkoutType.EASY } <= 1) break
+            current = current.filterNot { it.date == easy.date }
             total -= easy.durationMin ?: 0
             dropped++
         }
-        return FittedVolume(scaled.sortedBy { it.date }, droppedSessions = dropped)
+        return DroppedVolume(current, dropped)
     }
 
-    private data class FittedVolume(val sessions: List<PlannedSession>, val droppedSessions: Int)
+    private data class DroppedVolume(val sessions: List<PlannedSession>, val dropped: Int)
+
+    private data class FittedVolume(
+        val sessions: List<PlannedSession>,
+        val droppedSessions: Int,
+        val minimalWeek: Boolean,
+    )
 
     private enum class QualityReduction { TAPER, DELOAD }
 
@@ -915,7 +1155,7 @@ class WeeklyPlanGenerator {
         return gap in 1..7
     }
 
-    private fun volumeRationale(decision: VolumeDecision, droppedSessions: Int): String {
+    private fun volumeRationale(decision: VolumeDecision, droppedSessions: Int, minimalWeek: Boolean): String {
         val base = decision.baseMinutes
         val week = decision.baseWeekStart?.format(WEEK_LABEL)
         val droppedHint = if (droppedSessions > 0) {
@@ -923,25 +1163,34 @@ class WeeklyPlanGenerator {
         } else {
             ""
         }
-        if (base == null || week == null) {
-            return "Volume definido pela sua disponibilidade: ainda não há semana concluída " +
-                "com evidência para ajustar."
+        val minimalHint = if (minimalWeek) {
+            " Semana mínima: o volume fica acima do alvo para preservar o piso do longão e a " +
+                "dose mínima de cada sessão; isso não é progressão."
+        } else {
+            ""
         }
-        val specialWeek = decision.block in SPECIAL_VOLUME_BLOCKS
-        if (specialWeek) {
-            return "Volume: base de $base min concluídos na semana de $week; sem aumento nesta " +
-                "semana${volumeBlockHint(decision.block)}.$droppedHint"
+        val suffix = "$droppedHint$minimalHint"
+        return when {
+            base == null || week == null ->
+                "Volume definido pela sua disponibilidade: ainda não há semana concluída " +
+                    "com evidência para ajustar.$suffix"
+
+            decision.block in SPECIAL_VOLUME_BLOCKS ->
+                "Volume: base de $base min concluídos na semana de $week; sem aumento nesta " +
+                    "semana${volumeBlockHint(decision.block)}.$suffix"
+
+            decision.cappedByAvailability ->
+                "Volume: base de $base min concluídos na semana de $week; limitado pela sua " +
+                    "disponibilidade em ${decision.minutes} min.$suffix"
+
+            decision.growthPercent > 0 ->
+                "Volume: base de $base min concluídos na semana de $week; " +
+                    "+${decision.growthPercent}% nesta semana, alvo de ${decision.minutes} min.$suffix"
+
+            else ->
+                "Volume: base de $base min concluídos na semana de $week; alvo mantido em " +
+                    "${decision.minutes} min${volumeBlockHint(decision.block)}.$suffix"
         }
-        if (decision.cappedByAvailability) {
-            return "Volume: base de $base min concluídos na semana de $week; limitado pela sua " +
-                "disponibilidade em ${decision.minutes} min."
-        }
-        if (decision.growthPercent > 0) {
-            return "Volume: base de $base min concluídos na semana de $week; " +
-                "+${decision.growthPercent}% nesta semana, alvo de ${decision.minutes} min.$droppedHint"
-        }
-        return "Volume: base de $base min concluídos na semana de $week; alvo mantido em " +
-            "${decision.minutes} min${volumeBlockHint(decision.block)}.$droppedHint"
     }
 
     private fun volumeBlockHint(block: VolumeGrowthBlock): String = when (block) {
@@ -990,6 +1239,8 @@ class WeeklyPlanGenerator {
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MICRO_DOSE_TITLE = "Strides curtos"
+        private const val LONG_RUN_TITLE = "Longão"
+        private const val LONG_RUN_HONEST_TITLE = "Corrida mais longa"
         private const val MICRO_DOSE_MIN = 25
 
         /** EASY curto após a prova na mesma semana (decisão do usuário 0, ADR 0043 §3.3). */
@@ -1005,7 +1256,11 @@ class WeeklyPlanGenerator {
         private const val MIN_INTERVALS = 3
         private const val MAX_INTERVALS = 5
         private const val MIN_LONG_MIN = 30
-        private const val LONG_SHARE_RATIO = 3.0 / 7.0
+
+        /** Long-run target: 28% of the final week, so the share is a target, not a ceiling. */
+        private const val LONG_TARGET_SHARE = 0.28
+        private const val LONG_LONGER_MARGIN = 5
+        private const val LONG_FLOOR_HINT_RANGE = 15
         private const val PROGRESSION_COMPLETION = 0.80
         private const val ACWR_MIN = 0.8
         private const val ACWR_MAX = 1.3
@@ -1020,4 +1275,14 @@ class WeeklyPlanGenerator {
         private val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
         private val WEEK_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM", PT_BR)
     }
+}
+
+/**
+ * Long-run floor by experience (ADR 0045 §2.2). Kept at package level so the
+ * replanner can bound a legacy long-run correction without duplicating the
+ * product constant.
+ */
+internal fun longRunFloorMinutes(experience: Experience): Int = when (experience) {
+    Experience.BEGINNER, Experience.INTERMEDIATE -> 45
+    Experience.ADVANCED -> 60
 }

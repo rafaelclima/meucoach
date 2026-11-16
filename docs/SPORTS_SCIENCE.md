@@ -314,8 +314,11 @@ Aquecimento de 10 min + mobilidade. A tabela mostra o estímulo canônico; no pl
 
 ### 8.5 Longão
 
-- 25–30% do volume semanal.
-- Iniciantes: 45–90 min; aumentar 5–10 min/semana.
+- 25–30% do volume semanal é um **alvo de distribuição**, não um teto: em semanas pequenas o piso vence.
+- Piso: 45 min para iniciante/intermediário e 60 min para avançado, sempre limitado pela disponibilidade do dia. Em deload/taper o piso cai para 30.
+- O longão é a sessão mais longa (ou empatada com a mais longa) da semana; nunca fica abaixo do fácil mais longo.
+- Abaixo do piso, a sessão é a mais longa que a agenda permite e recebe o título **“Corrida mais longa”**, com o limite explicado e sugestão de ajuste de disponibilidade.
+- Iniciantes: 45–90 min quando a agenda permite; aumentar 5–10 min/semana.
 - Z2, com opção de acelerar os últimos 10–20 min em Z3 no build.
 - Não fazer longão no dia seguinte a qualidade.
 
@@ -357,7 +360,7 @@ segunda→domingo:
   ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
   explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
   ADR 0026).
-- Longão é o dia mais longo disponível, limitado a 25–30% do volume semanal e a 150 min (iniciante).
+- Longão é o dia de maior disponibilidade (empate: sábado/domingo > sexta > o dia mais tarde na semana), com piso de 45/60 min (30 em deload/taper) e alvo de 25–30% como referência, não como teto. O piso vence em semanas pequenas; a disponibilidade continua sendo o teto rígido e o longão nunca fica abaixo do fácil mais longo. Abaixo do piso, o plano usa “Corrida mais longa” e explica o limite (`R-PLAN-03 v2`, ADR 0045).
 - Fácil entre 20–60 min; qualidade entre 25–45 min, como "Ritmo forte" (intermediário) ou "Intervalos" (avançado). O texto deriva aquecimento/bloco/desaquecimento da duração real e nunca descreve mais trabalho do que cabe.
 - Taper encurta a qualidade fora do corte (10 dias para 5k/10k, 14 para meia/maratona) com piso de 25 min; dentro do corte e na semana da prova vale 1 micro-dose ≤ 25 min, nunca zero estímulo (`R-PLAN-05`, `R-PLAN-10` v2 proposto).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% com intensidade mantida em micro-dose (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
@@ -577,7 +580,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
 | `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume concluído com evidência nas últimas 4 semanas, e só com a semana anterior ≥ 80% concluída, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike; ACWR fora de faixa sozinho apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT, FOSTER; ADR 0038; `R-LOAD-03` v2 proposto | MODERATE |
 | `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
-| `R-PLAN-03` | Longão 25–30% do volume; iniciante ≤150 min | PFITZINGER, DANIELS | MODERATE |
+| `R-PLAN-03 v2` | Longão é a sessão mais longa; piso 45/60 (30 em deload/taper), alvo 25–30% sem virar teto, disponibilidade como teto rígido; abaixo do piso, “Corrida mais longa” e ajuste de agenda | PFITZINGER, DANIELS; ADR 0045 | MODERATE (piso: LIMITED — convenção de produto) |
 | `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |
 | `R-PLAN-04 v2` | Deload a cada 4ª semana de carga demonstrada, derivado de `recentWeeks` reais; taper/recuperação prevalecem | ISSURIN; ADR 0041 | MODERATE |
 | `R-PLAN-05` | Taper 2 semanas (5k–meia) / 3 (maratona), volume −45–55%, intensidade mantida em micro-dose ≤25 min; qualidade fora do corte encurtada com piso 25 min | BOSQUET, MUJIKA | STRONG |

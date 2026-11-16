@@ -40,10 +40,10 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.qualityCount).isZero()
         assertThat(plan.sessions.map { it.type })
             .containsExactly(WorkoutType.EASY, WorkoutType.EASY, WorkoutType.LONG)
-        // Segunda é strides (EASY, 25 min): 25 + 40 + longão.
+        // Segunda é strides (EASY, 25 min): 25 + 40 + longão de 45 (piso do ADR 0045).
         assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Strides curtos")
-        assertThat(plan.longRunMinutes).isEqualTo(30)
-        assertThat(plan.weeklyMinutes).isEqualTo(95)
+        assertThat(plan.longRunMinutes).isEqualTo(45)
+        assertThat(plan.weeklyMinutes).isEqualTo(110)
         assertThat(plan.rationale).contains("iniciante")
         assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
     }
@@ -87,7 +87,8 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(plan.sessions.first { it.type == WorkoutType.QUALITY }.date)
             .isEqualTo(monday)
-        assertThat(plan.longRunMinutes).isEqualTo(51)
+        // ADR 0045: 45 min floor + the remaining volume share, no 25–30% cap.
+        assertThat(plan.longRunMinutes).isEqualTo(47)
         assertThat(plan.sessions.none { it.type == WorkoutType.QUALITY && it.date.dayOfWeek == DayOfWeek.FRIDAY })
             .isTrue()
     }
@@ -657,10 +658,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // Segunda é strides (EASY, 25 min): base 95, descarga 73 (piso de 20
-        // eleva a segunda de 19 para 20 no corte de 25%).
-        assertThat(baseline.weeklyMinutes).isEqualTo(95)
-        assertThat(deload.weeklyMinutes).isEqualTo(73)
+        // Segunda é strides (EASY, 25 min): base 110 com piso de 45 (ADR 0045);
+        // descarga de 25%: segunda 20 (piso), fácil 30 e longão 34 (45 × 0,75).
+        assertThat(baseline.weeklyMinutes).isEqualTo(110)
+        assertThat(deload.weeklyMinutes).isEqualTo(84)
         assertThat(deload.rationale).contains("Semana de descarga após 3 semanas", "−25%", "Fase BASE")
         assertThat(deload.ruleIds).contains("R-PLAN-04")
         assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
@@ -893,12 +894,13 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(128)
+        assertThat(plan.weeklyMinutes).isEqualTo(126)
         assertThat(plan.rationale).contains("base de 120 min", "+6%", "alvo de 127 min")
         assertThat(plan.ruleIds).contains("R-PLAN-01")
         assertThat(plan.evidenceIds).contains("EV-GABBETT-2016")
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
-        assertThat(quality.durationMin).isEqualTo(30)
+        // O piso de 45 do longão ancora o corte; o restante cabe em 82 min.
+        assertThat(quality.durationMin).isEqualTo(27)
         assertThat(quality.targets).isEqualTo(
             PrescriptionPolicy.targets(WorkoutType.QUALITY, profile, quality.durationMin),
         )
@@ -920,8 +922,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(126)
-        assertThat(plan.sessions).hasSize(5)
+        // O piso de 45 do longão obriga a remover os dois fáceis mais curtos:
+        // 45 + 25 + 25 + 20 = 115, abaixo do alvo de 127.
+        assertThat(plan.weeklyMinutes).isEqualTo(115)
+        assertThat(plan.sessions).hasSize(4)
         assertThat(plan.rationale).contains("base de 120 min", "permite mais dias")
     }
 
@@ -946,7 +950,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(75)
+        // Alvo mantido em 60, mas os pisos (45 do longão + 25 da qualidade + 20
+        // do fácil) elevam a semana mínima para 90; o rationale declara a dose
+        // mínima (ADR 0045 §2.4).
+        assertThat(plan.weeklyMinutes).isEqualTo(90)
         assertThat(plan.rationale).contains("alvo mantido em 60 min", "abaixo de 80%")
         assertThat(plan.rationale).doesNotContain("+6%")
     }
@@ -969,7 +976,8 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(171)
+        // Semana sem histórico: disponibilidade 40+40+40+47 = 167.
+        assertThat(plan.weeklyMinutes).isEqualTo(167)
         assertThat(plan.rationale).contains("ainda não há semana concluída")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-01")
         assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
@@ -1160,8 +1168,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(90)
-        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 90 min")
+        // O longão de 40 é o mais longo que a agenda permite (piso 45 não cabe):
+        // 30 qualidade + 30 fácil + 40 = 100, o teto real da disponibilidade.
+        assertThat(plan.weeklyMinutes).isEqualTo(100)
+        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 100 min")
         assertThat(plan.ruleIds).contains("R-PLAN-01")
     }
 
@@ -1188,8 +1198,9 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.rationale).contains("base de 200 min")
-        assertThat(plan.weeklyMinutes).isEqualTo(171)
-        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 171 min")
+        // O teto agora é a disponibilidade com o longão de 47: 167 min.
+        assertThat(plan.weeklyMinutes).isEqualTo(167)
+        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 167 min")
     }
 
     private fun volumeWeek(weekStart: LocalDate, durations: List<Int>): WeeklyPlan {
@@ -1674,7 +1685,9 @@ class WeeklyPlanGeneratorTest {
         assertThat(mondaySession.durationMin).isEqualTo(30)
         assertThat(plan.sessions.none { it.date == monday.plusDays(1) }).isTrue()
         assertThat(plan.qualityCount).isEqualTo(1)
-        assertThat(plan.longRunMinutes).isEqualTo(47)
+        // ADR 0045: o sábado de 90 recebe o piso de 45; a recuperação limita
+        // segunda/terça e a qualidade cai na quarta.
+        assertThat(plan.longRunMinutes).isEqualTo(45)
         assertThat(plan.rationale).contains("em parte da semana")
     }
 

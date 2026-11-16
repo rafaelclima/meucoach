@@ -129,7 +129,8 @@ object SessionLibrary {
         title = "Longão",
         qualityKind = null,
         durationPolicy = DurationPolicy.LONG_SIZED,
-        blurb = "Longão em ritmo fácil, 25–30% do volume semanal. Iniciante ≤ 150 min.",
+        blurb = "Longão em ritmo fácil; o piso de 45/60 min e o alvo de volume vêm da " +
+            "disponibilidade (ADR 0045).",
         ruleIds = listOf(RULE_ID, "R-PLAN-03"),
         evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
     )

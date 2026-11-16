@@ -1,6 +1,6 @@
 # ADR 0045 — Dimensionamento do longão e estrutura semanal
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-09..C4-13).
+**Status:** Aprovado em 2026-11-16 — implementado em 2026-11-16 (C4-09..C4-13, sessão S2).
 **Data:** 2026-11-16
 **Escopo:** `WeeklyPlanGenerator` (seleção do dia, duração, `fitToVolume`, títulos), `WeeklyPlan`, `PlanReplanner`.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0011 (deload), ADR 0038
@@ -128,7 +128,7 @@ Quando o alvo de volume é menor que a soma das sessões:
 |---|---|---|---:|---|---:|
 | Ter 40, Sex 40, Dom 40 | 40 + 40 | Dom 40 | 40 | Corrida mais longa | 33% (piso não cabe) |
 | Ter 40, Sex 40, Sáb 90 | 40 + 40 | Sáb 90 | 45 | Longão | 36% (piso vence) |
-| Ter 60, Qui 60, Sáb 60, Dom 60 | 60 + 60 + 60 | Sáb 60 | 60 | Longão | 25% |
+| Ter 60, Qui 60, Sáb 60, Dom 60 | 60 + 60 + 60 | Dom 60 | 60 | Longão | 25% |
 | Ter 60, Qui 60, Dom 60 | 60 + 60 | Dom 60 | 60 | Longão (empate) | 33% |
 | Deload 3×40 | 30 + 30 | Dom 30 | 30 | Corrida mais longa | 33% |
 

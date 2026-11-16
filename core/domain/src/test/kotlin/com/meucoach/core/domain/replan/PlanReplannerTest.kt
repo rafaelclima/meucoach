@@ -73,8 +73,8 @@ class PlanReplannerTest {
         assertThat(suggested.candidate.sessions.first { it.date == wednesday }).isEqualTo(current.sessions[1])
         assertThat(suggested.candidate.sessions.map { it.date })
             .containsExactly(monday, wednesday, saturday)
-        assertThat(suggested.candidate.sessions.first { it.date == saturday }.durationMin).isEqualTo(30)
-        assertThat(suggested.candidate.weeklyMinutes).isEqualTo(110)
+        assertThat(suggested.candidate.sessions.first { it.date == saturday }.durationMin).isEqualTo(45)
+        assertThat(suggested.candidate.weeklyMinutes).isEqualTo(125)
         assertThat(suggested.candidate.ruleIds).contains("R-PLAN-03")
         assertThat(suggested.candidate.ruleIds).doesNotContain("R-PLAN-09")
         assertThat(suggested.suggestion.ruleIds).isNotEmpty
@@ -246,7 +246,7 @@ class PlanReplannerTest {
         assertThat(suggested.candidate.sessions.map { it.date }).doesNotContain(thursday)
         val fridaySession = suggested.candidate.sessions.first { it.date == friday }
         assertThat(fridaySession.type).isEqualTo(WorkoutType.EASY)
-        assertThat(suggested.candidate.sessions.first { it.date == saturday }.durationMin).isEqualTo(34)
+        assertThat(suggested.candidate.sessions.first { it.date == saturday }.durationMin).isEqualTo(45)
     }
 
     @Test
@@ -692,7 +692,7 @@ class PlanReplannerTest {
         val suggested = result as ReplanResult.Suggest
         assertThat(suggested.candidate.sessions.first { it.date == friday }).isEqualTo(closed)
         assertThat(suggested.candidate.sessions.first { it.date == saturday }.durationMin)
-            .isEqualTo(34)
+            .isEqualTo(45)
     }
 
     @Test

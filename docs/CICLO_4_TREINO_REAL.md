@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 e S1 concluídas; **S2 é a próxima sessão**.
+**Status:** S0, S1 e S2 concluídas; **S3 é a próxima sessão**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S1
-> **Último commit:** S1 — `feat(domain): add quality opportunity and quality gate (C4-01, C4-03)` (S0: `8724c35`)
+> **Última atualização:** 16/11/2026 — S2
+> **Último commit:** S2 — `feat(domain): size the long run with a floor and honest title (C4-09..C4-13)` (S1: `9b0f414`)
 > **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S2 — Long day**
-> **Task atual:** C4-09 (TODO)
-> **Próxima task:** C4-09
+> **Sessão atual:** **S3 — Carga/ACWR v3**
+> **Task atual:** C4-22 (TODO)
+> **Próxima task:** C4-22
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 816 verdes; `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`
-> **Próxima ação:** ler ADR 0045; abrir C4-09; escrever o teste que falha do comparator do long day.
+> **Gates da última sessão:** `:core:domain:test` 825 verdes; `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`
+> **Próxima ação:** ler ADR 0046; abrir C4-22; escrever o teste que falha de `firstActivityAt`/pré-história como “sem dado”.
 
 ### 0.1 O que já está pronto
 
@@ -31,7 +31,7 @@
 - [x] ADR 0048 — prontidão de dados/upgrade/schema v18.
 - [x] ADR 0049 — prontidão/check-in/sono.
 - [x] ADR 0050 — volume real/treino extra/LEGACY.
-- [x] `docs/DECISIONS.md` r1.42 com os 7 ADRs.
+- [x] `docs/DECISIONS.md` r1.43 com os 7 ADRs.
 - [x] Este checklist.
 
 **S1 — domínio**
@@ -43,15 +43,28 @@
 - [x] `QualityGate.evaluate(...)` puro com a precedência do ADR 0044 §2.4.
 - [x] 42 testes novos: `QualityOpportunityTest` (15) e `QualityGateTest` (27).
 
+**S2 — longão**
+
+- [x] Comparador determinístico do long day: disponibilidade > sáb/dom > sexta > dia mais tarde (ADR 0045 §2.1).
+- [x] Piso 45/60 (30 em deload/taper), alvo 28% e `longestOther + 5`; disponibilidade e teto 150/180 como limites.
+- [x] Título honesto “Corrida mais longa” + `PlanDecision(LONG_DAY_TOO_SHORT)` abaixo do piso; deload/taper com título honesto sem dica de agenda.
+- [x] `fitToVolume` ancorado no piso: nunca cresce, nunca fica abaixo do piso; escala o restante e dropa só fácil (mínimo 1); semana mínima declarada no rationale.
+- [x] Longão nunca menor que o fácil mais longo, inclusive após taper/deload por data.
+- [x] Replanner mantém a guarda em T1/T2/T3; aceita a correção estrutural do longão legado até o piso e, em T4, a nova disponibilidade que move/cria o longão, sem crescer as demais sessões futuras.
+- [x] Golden `G-PER-04` (2×40 + sábado 90 → longão 45, “Longão”, volume 125, qualidade).
+- [x] 9 testes novos em `LongRunSizingTest`; testes legados atualizados com justificativa.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
 - O gate não bloqueia prontidão âmbar sozinho: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
 - A confiabilidade de carga é provisória até C4-22/C4-23; o gate já não usa ACWR não confiável, mas a janela completa de 28 dias chega nessa task.
-- Copy/catálogo de `R-PER-03`/`R-READY-06` e docs de `SPORTS_SCIENCE` ficam para C4-06/C4-08/C4-33/C4-52.
+- Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
 - A persistência/JSON de `qualityKind`/`planDecision` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip.
 - `role`/`structure` da oportunidade entram com o catálogo/estrutura (C4-14/C4-15); o read model atual cobre data, kind, motivo, status e decisão.
-- Nenhuma migração v18 foi escrita/testada; nenhuma UI foi alterada; nenhum golden do ciclo foi criado.
+- O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI foi alterada.
+- `G-PER-03`, `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem.
+- O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
 ---
 
@@ -195,56 +208,69 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 ---
 
-## 5. Sessão S1 — concluída
+## 5. Sessão S2 — concluída
 
-> Próxima sessão: substituir este bloco pelo caderno da S2 no início da sessão; o registro da S1 fica no §7.
+> Próxima sessão: substituir este bloco pelo caderno da S3 no início da sessão; o registro da S2 fica no §7.
 
-**Objetivo:** criar o modelo de oportunidade de qualidade e o `QualityGate` puro, com testes, sem UI e sem fiação no app.
+**Objetivo:** fazer o longão ser a sessão mais longa da semana, com piso 45/60, título honesto e `fitToVolume` ancorado no piso, sem UI nem migração.
 
 **Contexto obrigatório:**
 
-- `docs/adr/0044-quality-opportunity-day-authority.md` §2.1–2.7.
-- `docs/PRD_TREINO_REAL.md` FR-401 e §5.2/§5.4.
-- `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/WeeklyPlanGenerator.kt` (qualidade atual).
-- `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/DailyPrescriptionEngine.kt` (gates atuais).
-- `core/domain/src/test/kotlin/com/meucoach/core/domain/prescription/` (testes existentes).
+- `docs/adr/0045-long-run-sizing.md` §2.1–2.7.
+- `docs/PRD_TREINO_REAL.md` FR-402 e §5.6.
+- `core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/WeeklyPlanGenerator.kt`.
+- `core/domain/src/test/kotlin/com/meucoach/core/domain/prescription/WeeklyPlanGeneratorTest.kt`.
+- `core/domain/src/main/kotlin/com/meucoach/core/domain/replan/PlanReplanner.kt` (guarda de não compensação).
 
-**Task C4-01 — modelos**
+**Task C4-09 — comparator do long day**
 
-- [x] Criar `QualityKind` com `STRIDES_ONLY`, `CONTINUOUS`, `INTERVALS`, `FARTLEK`, `HILLS`, `RACE_PACE` (ou evoluir o enum existente; preservar compatibilidade de serialização).
-- [x] Criar `QualityOpportunity`/`QualityEligibility`/`QualityBlockReason`/`PlanDecisionReason` no domínio, sem Android/Room.
-- [x] `PlannedSession` ganha `qualityKind`/`planDecision` (estrutura fica para C4-14; se o campo for necessário, usar default null).
-- [x] `WeeklyPlan.qualityCount` documentado como oportunidades; sem mudar o comportamento do gerador ainda.
-- [x] Testes de valor/igualdade/serialização básica, se aplicável.
-- [x] Nenhuma UI; nenhum schema; nenhuma migração.
+- [x] Selecionar por disponibilidade, depois sáb/dom > sexta > outros, depois o dia mais tarde.
+- [x] Teste de empate 3×40 → domingo e de disponibilidade vencendo o fim de semana.
+- [x] Teste de 4×60 com sábado e domingo → domingo (a tabela do ADR foi corrigida).
 
-**Task C4-03 — `QualityGate` puro**
+**Task C4-10 — piso/share/availability e título honesto**
 
-- [x] Criar `QualityGate.evaluate(...)` com a precedência do ADR 0044 §2.4.
-- [x] Entradas: `PlannedSession` (tipo QUALITY), `ReadinessResult`, `LoadSnapshot?`, `RecoveryWindow?`, `AthleteProfile`, `LocalDate`.
-- [x] Saída: `QualityEligibility(eligible, reason, detail, ruleId, evidenceIds, unlockHint)`.
-- [x] Casos: doença/vermelho, beginner, sem check-in, sono curto, recovery/taper/race, load stale/insufficient, monotonia, strain, ACWR >1,5, elegível.
-- [x] Determinismo e precedência; nenhum `now()` no domínio.
-- [x] Testes de todos os reasons e do primeiro-que-falha.
-- [x] Não fiar no `DailyPrescriptionEngine` ainda (C4-04).
+- [x] Piso 45 (iniciante/intermediário) e 60 (avançado); 30 em deload/taper.
+- [x] Alvo `(0,28/0,72) × otherMinutes`, `longestOther + 5` e disponibilidade/teto 150/180 como limites.
+- [x] 2×40 + sábado 90 → 45 “Longão”; 3×40 → 40 “Corrida mais longa”; 4×60 → 60; avançado sem espaço → 50 “Corrida mais longa”.
+- [x] `PlanDecision(LONG_DAY_TOO_SHORT)` com detalhe e dica de agenda; deload/taper sem dica de agenda.
+
+**Task C4-11 — `fitToVolume`**
+
+- [x] Longão ancorado no piso: nunca cresce, nunca fica abaixo do piso (45/60; 30 em deload/taper).
+- [x] Demais sessões escalam para o restante do alvo; se ainda não couber, remove só fácil (mínimo 1), nunca qualidade/longão.
+- [x] Semana mínima preserva os pisos e declara no rationale que o volume está acima do alvo e não é progressão.
+- [x] Longão nunca menor que o fácil mais longo, inclusive após taper/deload por data.
+
+**Task C4-12 — golden e legado**
+
+- [x] `G-PER-04`: 2×40 + sábado 90, intermediário com carga → longão 45, “Longão”, volume 125, qualidade terça.
+- [x] `LongRunSizingTest` com 9 casos (comparator, piso, share, avançado, fit, semana mínima, deload).
+- [x] Testes legados atualizados com justificativa: 30→45, 51→47, 47→45, deload 73→84, volume 128→126, 171→167, 126→115, 75→90, 90→100, replanner 30/34→45.
+
+**Task C4-13 — docs**
+
+- [x] `SPORTS_SCIENCE` §8.5/§8.8 e `R-PLAN-03 v2`.
+- [x] ADR 0045 implementado; tabela 4×60 corrigida para domingo.
+- [x] `DECISIONS` r1.43; `PROGRESS` e este checklist.
 
 **Aceite da sessão:**
 
-- [x] `./gradlew :core:domain:test` verde (focado e módulo).
+- [x] `./gradlew :core:domain:test` verde (focado e módulo, 825).
 - [x] `./gradlew spotlessCheck` verde.
-- [x] Nenhum comportamento existente alterado (o gerador/daily ainda usam o código antigo).
+- [x] `:core:data:test`, `:app:testDebugUnitTest` e `:app:assembleDebug` verdes.
+- [x] `:core:domain:koverVerify` e `:core:domain:detekt` verdes.
 - [x] Nenhum dado real.
 - [x] §0/§6/§7/PROGRESS atualizados.
-- [x] Commit: `feat(domain): add quality opportunity and quality gate (C4-01, C4-03)`.
+- [x] Commit: `feat(domain): size the long run with a floor and honest title (C4-09..C4-13)`.
 
 **Notas de implementação:**
 
-- `phase: MesoPhase?` e `raceWeek: Boolean` entraram como contexto opcional do plano (default seguro); o gate não tem relógio nem conhece a prontidão da segunda.
-- A micro-dose de taper (`STRIDES_ONLY`) não é bloqueada pelo taper/semana de prova em si; segurança, recuperação e carga continuam valendo.
-- Âmbar **não** é bloqueado pelo gate: C4-28/C4-29 deve combinar `qualityEligibleByReadiness` (ADR 0049 §2.1).
-- `QualityBlockReason.NONE` não entrou no enum: elegível é `reason = null` (ADR 0044), evitando duas representações do mesmo estado.
-- A confiabilidade de ACWR/strain é provisória até C4-22/C4-23; o gate já ignora ACWR não confiável.
-- Nenhum comportamento do `WeeklyPlanGenerator`/`DailyPrescriptionEngine` foi alterado.
+- O bump `weekly-plan-v6` → `weekly-plan-v7` fica em C4-53; o JSON/schema de `planDecision` fica em C4-45/C4-46.
+- O share de 25–30% virou referência; em semanas pequenas o piso pode deixar o share acima de 30%, e o rationale diz isso.
+- O replanner mantém a guarda de não compensação em T1/T2/T3. Ele aceita a correção estrutural de um longão legado abaixo do piso e, em T4 (perfil/fuso), reflete uma nova disponibilidade que move/cria o longão; em ambos os casos, as demais sessões futuras não crescem.
+- O título “Corrida mais longa” ainda não tem link para Perfil/Disponibilidade na UI (C4-51).
+- O `PlanDecision` do longão é de domínio; ainda não é persistido nem exibido.
 
 **Se a sessão acabar no meio:** registre qual teste está vermelho, o comando exato, a saída e o próximo passo. Não marque `DONE`.
 
@@ -273,11 +299,11 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-09 | Comparator do long day | — | S | S2 | ADR 0045 | Empate 3×40 → domingo | — |
-| [ ] | C4-10 | Piso/share/availability e título honesto | C4-09 | M | S2 | ADR 0045 | 3×40→40; 2×40+90→45; título | — |
-| [ ] | C4-11 | `fitToVolume` preserva o piso | C4-10 | M | S2 | ADR 0045 | Longão nunca < fácil; dropa fácil | — |
-| [ ] | C4-12 | Golden `G-PER-04` + atualizar teste legado | C4-10/11 | M | S2 | ADR 0045 | Golden; teste de 30→45 justificado | — |
-| [ ] | C4-13 | Docs `R-PLAN-03 v2`, SPORTS_SCIENCE, ADR | C4-10..12 | S | S2 | ADR 0045 | Docs atualizados | — |
+| [x] | C4-09 | Comparator do long day | — | S | S2 | ADR 0045 | Empate 3×40 → domingo | `LongRunSizingTest` (comparator); commit S2 |
+| [x] | C4-10 | Piso/share/availability e título honesto | C4-09 | M | S2 | ADR 0045 | 3×40→40; 2×40+90→45; título | `LongRunSizingTest` (piso/título); commit S2 |
+| [x] | C4-11 | `fitToVolume` preserva o piso | C4-10 | M | S2 | ADR 0045 | Longão nunca < fácil; dropa fácil | `LongRunSizingTest` (fit/minimal); commit S2 |
+| [x] | C4-12 | Golden `G-PER-04` + atualizar teste legado | C4-10/11 | M | S2 | ADR 0045 | Golden; teste de 30→45 justificado | `G-PER-04`; legados atualizados; commit S2 |
+| [x] | C4-13 | Docs `R-PLAN-03 v2`, SPORTS_SCIENCE, ADR | C4-10..12 | S | S2 | ADR 0045 | Docs atualizados | `SPORTS_SCIENCE` §8.5/§8.8; DECISIONS r1.43; commit S2 |
 
 ### E3 — Catálogo/periodização
 
@@ -392,6 +418,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Notas/bloqueios:** gate ainda não fiado (C4-04); âmbar fica para `qualityEligibleByReadiness` (C4-28/29); confiabilidade de ACWR é provisória até C4-23; micro-dose de taper não é bloqueada pelo taper em si; nenhuma UI/schema/migração.
 - **Próximo:** S2 / C4-09 (comparator do long day), TDD sobre `WeeklyPlanGenerator`.
 
+### S2 — 2026-11-16 — Longão de verdade: piso, título honesto e `fitToVolume`
+
+- **Status:** DONE
+- **Tasks:** C4-09, C4-10, C4-11, C4-12, C4-13.
+- **Arquivos:** `core/domain/.../prescription/WeeklyPlanGenerator.kt`, `SessionLibrary.kt`, `ExplanationCatalog.kt`, `core/domain/.../replan/PlanReplanner.kt`, `LongRunSizingTest.kt` (novo), `WeeklyPlanGeneratorTest.kt`, `PlanReplannerTest.kt`, `TodayViewModelPersistTest.kt`, `docs/SPORTS_SCIENCE.md`, `docs/adr/0045-long-run-sizing.md`, `docs/DECISIONS.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 825 verdes (816 + 9 novos); `:core:data:test` 168; `:app:testDebugUnitTest` 881; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`.
+- **Commit:** `feat(domain): size the long run with a floor and honest title (C4-09..C4-13)`.
+- **Decisões/notas:** o comparador usa disponibilidade > sáb/dom > sexta > dia mais tarde; a tabela do ADR 0045 §2.5 foi corrigida (4×60 com sábado e domingo → domingo). O piso vence o share em semanas pequenas; o share pode passar de 30% e o rationale diz que é alvo, não teto. O replanner mantém a guarda em T1/T2/T3; aceita a correção estrutural do longão legado até o piso e, em T4, a nova disponibilidade que move/cria o longão, sem crescer as demais sessões futuras. Bump `weekly-plan-v7` fica em C4-53; persistência de `planDecision` em C4-45/C4-46; link de disponibilidade na UI em C4-51.
+- **Próximo:** S3 / C4-22 (`firstActivityAt`; pré-história como “sem dado”), TDD sobre `TrainingLoadEngine`/`TrainingLoadCalculator`.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -477,7 +513,7 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 881 | Atualizar conforme novos testes |
-| `:core:domain` | 816 | Atualizar conforme novos testes |
+| `:core:domain` | 825 | Atualizar conforme novos testes |
 | `:core:data` | 168 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -567,11 +603,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (S2)
+## 14. Próxima ação (S3)
 
-1. Abrir `docs/adr/0045-long-run-sizing.md` e o FR-402/§5.6 do PRD.
-2. Ler `WeeklyPlanGenerator` (seleção do long day e `fitToVolume`) e os testes de longão existentes.
-3. Escrever o teste que falha do comparator do long day (C4-09: empate 3×40 → domingo).
-4. Implementar C4-09..C4-12 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
+1. Abrir `docs/adr/0046-load-gate-v3-acwr-reliability.md` e o FR-403/§5.3 do PRD.
+2. Ler `TrainingLoadEngine`, `TrainingLoadCalculator`, `LoadSnapshot`/`LoadCoverage` e os testes de carga existentes.
+3. Escrever o teste que falha de `firstActivityAt`/pré-história como “sem dado” (C4-22): cold start não é descanso.
+4. Implementar C4-22..C4-25 com TDD, rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS, commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

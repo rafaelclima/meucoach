@@ -1,6 +1,38 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S1 do Ciclo 4: oportunidade de qualidade e `QualityGate` puro)
+**Atualizado:** 16/11/2026 (S2 do Ciclo 4: longão com piso, comparator e `fitToVolume`)
+
+## Sessão 2026-11-16 — Ciclo 4/S2: longão de verdade (C4-09..C4-13)
+
+**Objetivo:** fazer o longão ser a sessão mais longa da semana, com piso 45/60, título honesto e `fitToVolume` ancorado no piso, sem UI nem migração.
+
+### Concluído
+
+- **Comparador:** maior disponibilidade → sáb/dom (2) > sexta (1) > demais; empate desempata pelo dia mais tarde. 3×40 cai no domingo.
+- **Dimensionamento:** piso 45/60 (30 em deload/taper), alvo de 28% como referência, `longestOther + 5`, disponibilidade e teto 150/180 como limites. 2×40+90 → 45; 3×40 → 40 “Corrida mais longa”; 4×60 → 60; avançado sem espaço → 50 “Corrida mais longa”.
+- **Título/decisão:** abaixo do piso, “Corrida mais longa” com `PlanDecision(LONG_DAY_TOO_SHORT)` e dica de agenda; em deload/taper o título é honesto sem dica de agenda.
+- **`fitToVolume`:** longão ancorado no piso (nunca cresce, nunca abaixo), demais sessões escalam para o restante; drops apenas fácil (mínimo 1), qualidade/longão intactos; semana mínima declarada no rationale.
+- **Replanner:** aceita a correção estrutural de um longão legado até o piso; um T4 de perfil/fuso pode refletir a nova disponibilidade que move/cria o longão, sem aumentar as demais sessões futuras. T1/T2/T3 mantêm a guarda de não compensação.
+- **Docs:** `R-PLAN-03 v2` e §8.5/§8.8 no `SPORTS_SCIENCE`; ADR 0045 implementado; tabela 4×60 corrigida para domingo; `DECISIONS` r1.43.
+
+### Testes
+
+- `:core:domain:test` 825 verdes (816 + 9 novos de `LongRunSizingTest`).
+- Testes legados atualizados com justificativa: 30→45 no iniciante; 51→47; 47→45; deload 73→84; volume 128→126; 171→167; 126→115; 75→90; 90→100; replanner 30/34→45; app 128→126.
+- `:core:data:test`, `:app:testDebugUnitTest`, `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes.
+
+### Decisões e observações
+
+- O bump `weekly-plan-v6` → `weekly-plan-v7` fica para C4-53; o JSON/schema de `planDecision` fica para C4-45/C4-46.
+- O piso pode deixar o share acima de 30% em semanas pequenas; o rationale diz que o alvo é referência, não teto.
+- O replanner não repõe volume: T1/T2/T3 seguem bloqueados; só a estrutura do longão (piso ou nova disponibilidade via T4) pode subir, com as demais sessões futuras iguais ou menores.
+- O título “Corrida mais longa” ainda não tem link para Perfil/Disponibilidade na UI (C4-51).
+- Nenhum dado real; fixtures sintéticas.
+
+### Próximo passo
+
+1. S3/C4-22: `firstActivityAt` e pré-história como “sem dado”.
+2. Depois C4-23..C4-25: confiabilidade de ACWR/strain, 1,5 e permissões separadas.
 
 ## Sessão 2026-11-16 — Ciclo 4/S1: oportunidade de qualidade e `QualityGate` puro
 

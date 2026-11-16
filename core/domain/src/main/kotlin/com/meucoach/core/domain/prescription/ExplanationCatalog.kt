@@ -25,7 +25,7 @@ object ExplanationCatalog {
             "Carga estimada pelo esforço percebido: conserva, nunca libera aumento",
         ),
         "R-PLAN-02" to RuleExplanation("R-PLAN-02", "No máximo 2 treinos fortes por semana"),
-        "R-PLAN-03" to RuleExplanation("R-PLAN-03", "Longão entre 25–30% do volume semanal"),
+        "R-PLAN-03" to RuleExplanation("R-PLAN-03", "Longão é a sessão mais longa; piso 45/60 e alvo de 25–30%"),
         "R-PLAN-04" to RuleExplanation("R-PLAN-04", "Descarga a cada 4ª semana de carga demonstrada"),
         "R-PLAN-05" to RuleExplanation("R-PLAN-05", "Redução de volume antes da prova"),
         "R-PLAN-06" to RuleExplanation("R-PLAN-06", "80% do tempo em ritmo fácil"),
