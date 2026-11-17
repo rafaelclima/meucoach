@@ -92,7 +92,7 @@ class TimeDrivenStateTest {
         val before = withTimeout(5_000) { viewModel.uiState.first { !it.isLoading } }
         assertThat(before.date).isEqualTo(LocalDate.of(2026, 11, 6))
 
-        viewModel.update { it.copy(fatigue = 5) }
+        viewModel.update { it.copy(sleepQuality = 4, fatigue = 5, soreness = 2, stress = 3) }
         viewModel.save()
         withTimeout(5_000) { viewModel.uiState.first { it.isSaved } }
         assertThat(repository.get(LocalDate.of(2026, 11, 6))).isNotNull
@@ -103,7 +103,8 @@ class TimeDrivenStateTest {
             viewModel.uiState.first { it.date == LocalDate.of(2026, 11, 7) && !it.isLoading }
         }
         assertThat(after.existing).isFalse()
-        assertThat(after.form.fatigue).isEqualTo(3)
+        // ADR 0049 §2.2 option B: the new day suggests yesterday's answers as a draft.
+        assertThat(after.form.fatigue).isEqualTo(5)
 
         viewModel.update { it.copy(fatigue = 2) }
         viewModel.save()

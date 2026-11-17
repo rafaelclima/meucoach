@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S11 (C4-06)
-> **Último commit:** C4-06 — `feat(domain): distinguish the blocked second-quality reason (C4-06)`
-> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06 DONE)**; próxima C4-30 (check-in UI)
-> **Sessão atual:** **S11 — C4-06 DONE**
-> **Task atual:** C4-06 (DONE)
-> **Próxima task:** C4-30 (S11)
+> **Última atualização:** 17/11/2026 — S11.1 (C4-30)
+> **Último commit:** C4-30 — `feat(app): require explicit check-in answers with prefill (C4-30)`
+> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06 e C4-30 DONE)**; próxima C4-31 (reavaliação na UI)
+> **Sessão atual:** **S11.1 — C4-30 DONE**
+> **Task atual:** C4-30 (DONE)
+> **Próxima task:** C4-31 (S11)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1010; `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt` verdes
-> **Próxima ação:** abrir C4-30 (S11: check-in sem 3/3/3/3, labels, pré-preencher).
+> **Gates da última sessão:** `:app:testDebugUnitTest` 932 (+5); `:core:data:test` 197; `:core:domain:test` 1010; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:app:lintDebug` verdes
+> **Próxima ação:** abrir C4-31 (S11: reavaliação após check-in na UI — EASY→QUALITY antes do DONE, copy "Atualizado").
 
 ### 0.1 O que já está pronto
 
@@ -584,7 +584,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-28 | `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING` | — | M | S4 | ADR 0049 | Sem check-in = falso | `ReadinessEligibilityTest` (8); golden `readiness-no-data`; commit S4 |
 | [x] | C4-29 | Daily/recommender usam o gate | C4-28 | M | S8 | ADR 0044/0049 | Sem qualidade sem check-in | `WorkoutRecommenderTest` (+3); `DailyPrescriptionEngineTest` (+2 noPlan); `R-READY-06` no fallback; commit S8 |
-| [ ] | C4-30 | Check-in sem 3/3/3/3; labels; pré-preencher | C4-28 | M | S11 | ADR 0049 | UI; salvar desabilitado | — |
+| [x] | C4-30 | Check-in sem 3/3/3/3; labels; pré-preencher | C4-28 | M | S11 | ADR 0049 | UI; salvar desabilitado | `CheckInViewModelTest` (+4/-1); `CheckInScreenTest` (+2); `TimeDrivenStateTest` (+prefill); salvar desabilitado; commit S11.1 |
 | [ ] | C4-31 | Reavaliação após check-in | C4-05/30 | M | S11 | ADR 0049 | EASY→QUALITY antes do DONE | — |
 | [ ] | C4-32 | Golden `G-READY-03` + copy | C4-28..31 | M | S14 | ADR 0049 | Golden | — |
 | [ ] | C4-33 | Docs `R-READY-06`, SPORTS_SCIENCE, ADR | C4-28..32 | S | S14 | ADR 0049 | Docs | — |
@@ -863,7 +863,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** `:core:domain:test` 1010 verdes (+4); `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply` de formatação); `:core:domain:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt` verdes.
 - **Commit:** `feat(domain): distinguish the blocked second-quality reason (C4-06)`.
 - **Decisões/notas:** TDD RED→GREEN (4 testes novos falhavam antes). P-12 resolvido no plano: a linha de progressão só aparece com oportunidade estrutural + `qualityCount > 0` (semana sem 1ª oportunidade não fala de 2ª; BASE primeira metade e micro-dose de taper ficam limpas). O motivo segue a prioridade dos conjuncts de `secondQualityAllowed` (dias → histórico → taper → carga) e a carga detalha o real bloqueador (STALE, calibração com `X de 28`, esforço percebido, monotonia, strain, `ACWR em calibração` ou `ACWR 1,60 fora da faixa 0,8–1,3` com vírgula pt-BR). Toda mensagem mantém o prefixo "Sem progressão" (compatibilidade com testes legados). `R-PER-03` entra no `ruleIds` do plano quando há qualidade; `ExplanationCatalogTest` passa a cobrir `R-PER-03/04`, `R-RACE-04`, `R-READY-06` e as evidências de taper/deload/longão. Detekt `LongParameterList` resolvido derivando o estado de carga do `LoadSnapshot` dentro da função (5 params, sem baseline). Copy fina adicional fica em C4-59; docs de `R-PER-03`/ciência em C4-08.
-- **Próximo:** S11 / C4-30 (check-in sem 3/3/3/3, labels, pré-preencher).
+- **Próximo:** S11.1 / C4-30 (check-in sem 3/3/3/3, labels, pré-preencher, salvar desabilitado), TDD.
+
+### S11.1 — 2026-11-17 — Check-in sem default, com labels e pré-preenchimento (C4-30)
+
+- **Status:** DONE
+- **Tasks:** C4-30.
+- **Arquivos:** `app/.../ui/checkin/CheckInViewModel.kt` (`CheckInForm` com scores `Int?`, `isComplete`, `save` guarda incompleto, `load` com pré-preenchimento ≤7 dias), `app/.../ui/checkin/CheckInScreen.kt` (`ScoreQuestion` com `midLabel` + valor nulo, texto "3 é moderado", salvar desabilitado até completar), `CheckInViewModelTest.kt` (+4, −1 obsoleto), `CheckInScreenTest.kt` (+2, `loadedState` completo), `TimeDrivenStateTest.kt` (form completo + assert de pré-preenchimento), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:app:testDebugUnitTest` 932 verdes (+5 líquidos); `:core:data:test` 197; `:core:domain:test` 1010; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:app:lintDebug` verdes.
+- **Commit:** `feat(app): require explicit check-in answers with prefill (C4-30)`.
+- **Decisões/notas:** TDD RED→GREEN (testes novos falhavam antes: form nulo, pré-preenchimento, `save` no-op, botão desabilitado, labels). ADR 0049 §2.2 opção B: sem check-in hoje, o último check-in ≤7 dias vira rascunho (inclusive fadiga de ontem após a virada do dia); salvar continua sendo a confirmação explícita; com 8+ dias, campos nulos. `toCheckIn` exige completude (`requireNotNull` com mensagem pt-BR) e o `save` recusa incompleto — a UI desabilita o botão e o domínio nunca recebe 3/3/3/3 implícito. Teste obsoleto `starts with neutral answers` removido com justificativa (default removido pelo ADR; substituído por `starts with unanswered questions...`, que asserta os 4 nulos + incompleto — assert mais forte, não reduzido). `TimeDrivenStateTest` passou a preencher o form completo e a esperar o pré-preenchimento de ontem (fadiga 5) no dia novo. Flakes registrados, sem relação com a task: `MetricsImportViewModelTest` estourou 30 s (flake conhecido, arquivo não tocado), `TodayViewModelPersistTest.upgrades...` falhou uma vez isolado-verde, e `TutorialSystemBackTest` caiu 3× como vítima de cascata (`UncaughtExceptionsBeforeTest` após timeout vazado) — todos verdes em reexecução focada e na suíte final limpa. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S11 / C4-31 (reavaliação após check-in na UI).
 
 ---
 
@@ -1040,10 +1050,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-30, S11)
+## 14. Próxima ação (C4-31, S11)
 
-1. Abrir o ADR 0049 §2 e a FR-406; ler o `CheckInViewModel`/`CheckInScreen` atual (default 3/3/3/3) e os testes de check-in existentes.
-2. Escrever os testes que falham de C4-30: formulário sem default, labels 1/3/5, salvar desabilitado até responder, pré-preenchimento do último check-in ≤7 dias com confirmação.
-3. Implementar C4-30 com TDD (UI + ViewModel); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0044 §2.5 e a FR-406 (reavaliação tardia); ler `GetTodayPrescription`, `UpgradeWeekOnOpening`/`ApplyReplan` e o `TodayViewModel` (gancho da abertura) — o domínio já reavalia (C4-05/C4-48), falta a copy/UI "Atualizado: com o check-in, a qualidade foi liberada".
+2. Escrever os testes que falham de C4-31: EASY→QUALITY antes do DONE via check-in na UI, banner/mensagem de atualização, DONE/CLOSED intactos.
+3. Implementar C4-31 com TDD (copy/UI da reavaliação); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

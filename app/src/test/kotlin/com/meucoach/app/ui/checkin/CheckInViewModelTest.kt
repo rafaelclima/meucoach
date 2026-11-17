@@ -57,12 +57,58 @@ class CheckInViewModelTest {
     }
 
     @Test
-    fun `starts with neutral answers`(): Unit = runBlocking {
+    fun `starts with unanswered questions when there is no recent check-in`(): Unit = runBlocking {
         val state = CheckInViewModel(repository, FakeTimeProvider()).uiState.first { !it.isLoading }
 
         assertThat(state.existing).isFalse()
-        assertThat(state.form.sleepQuality).isEqualTo(3)
-        assertThat(state.form.fatigue).isEqualTo(3)
+        assertThat(state.form.sleepQuality).isNull()
+        assertThat(state.form.fatigue).isNull()
+        assertThat(state.form.soreness).isNull()
+        assertThat(state.form.stress).isNull()
+        assertThat(state.form.isComplete).isFalse()
+    }
+
+    @Test
+    fun `pre-fills the last check-in within seven days`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        repository.save(
+            DailyCheckIn(today.minusDays(6), sleepQuality = 5, fatigue = 1, soreness = 2, stress = 2),
+        )
+
+        val state = CheckInViewModel(repository, FakeTimeProvider()).uiState.first { !it.isLoading }
+
+        assertThat(state.existing).isFalse()
+        assertThat(state.form.sleepQuality).isEqualTo(5)
+        assertThat(state.form.fatigue).isEqualTo(1)
+        assertThat(state.form.soreness).isEqualTo(2)
+        assertThat(state.form.stress).isEqualTo(2)
+        assertThat(state.form.isComplete).isTrue()
+    }
+
+    @Test
+    fun `does not pre-fill a check-in older than seven days`(): Unit = runBlocking {
+        val today = LocalDate.now()
+        repository.save(
+            DailyCheckIn(today.minusDays(8), sleepQuality = 5, fatigue = 1, soreness = 2, stress = 2),
+        )
+
+        val state = CheckInViewModel(repository, FakeTimeProvider()).uiState.first { !it.isLoading }
+
+        assertThat(state.existing).isFalse()
+        assertThat(state.form.sleepQuality).isNull()
+        assertThat(state.form.isComplete).isFalse()
+    }
+
+    @Test
+    fun `save is a no-op when the form is incomplete`(): Unit = runBlocking {
+        val viewModel = CheckInViewModel(repository, FakeTimeProvider())
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.update { it.copy(fatigue = 2) }
+
+        viewModel.save()
+
+        assertThat(repository.get(LocalDate.now())).isNull()
+        assertThat(viewModel.uiState.value.isSaved).isFalse()
     }
 
     @Test
@@ -97,7 +143,7 @@ class CheckInViewModelTest {
     fun `history refreshes after saving`(): Unit = runBlocking {
         val viewModel = CheckInViewModel(repository, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
-        viewModel.update { it.copy(fatigue = 5) }
+        viewModel.update { it.copy(sleepQuality = 4, fatigue = 5, soreness = 2, stress = 3) }
 
         viewModel.save()
         val state = withTimeout(5_000) {
@@ -111,7 +157,9 @@ class CheckInViewModelTest {
     fun `saves the check-in`(): Unit = runBlocking {
         val viewModel = CheckInViewModel(repository, FakeTimeProvider())
         viewModel.uiState.first { !it.isLoading }
-        viewModel.update { it.copy(fatigue = 4, illnessOrInjury = true) }
+        viewModel.update {
+            it.copy(sleepQuality = 3, fatigue = 4, soreness = 2, stress = 3, illnessOrInjury = true)
+        }
 
         viewModel.save()
         withTimeout(5_000) { viewModel.uiState.first { it.isSaved } }

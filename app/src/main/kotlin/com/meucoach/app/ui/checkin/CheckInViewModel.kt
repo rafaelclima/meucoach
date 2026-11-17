@@ -17,19 +17,23 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 data class CheckInForm(
-    val sleepQuality: Int = 3,
-    val fatigue: Int = 3,
-    val soreness: Int = 3,
-    val stress: Int = 3,
+    val sleepQuality: Int? = null,
+    val fatigue: Int? = null,
+    val soreness: Int? = null,
+    val stress: Int? = null,
     val illnessOrInjury: Boolean = false,
     val heatLevel: HeatLevel = HeatLevel.NONE,
 ) {
+    /** ADR 0049 §2.2: no 3/3/3/3 default; save stays disabled until all four are answered. */
+    val isComplete: Boolean
+        get() = sleepQuality != null && fatigue != null && soreness != null && stress != null
+
     fun toCheckIn(date: LocalDate) = DailyCheckIn(
         date = date,
-        sleepQuality = sleepQuality,
-        fatigue = fatigue,
-        soreness = soreness,
-        stress = stress,
+        sleepQuality = requireNotNull(sleepQuality) { "Check-in incompleto: responda ao sono" },
+        fatigue = requireNotNull(fatigue) { "Check-in incompleto: responda à fadiga" },
+        soreness = requireNotNull(soreness) { "Check-in incompleto: responda à dor" },
+        stress = requireNotNull(stress) { "Check-in incompleto: responda ao estresse" },
         illnessOrInjury = illnessOrInjury,
         heatLevel = heatLevel,
     )
@@ -85,11 +89,17 @@ class CheckInViewModel @Inject constructor(
 
     private suspend fun load(date: LocalDate) {
         val existing = repository.get(date)
+        // ADR 0049 §2.2 option B: without a check-in today, suggest the most
+        // recent one within 7 days as a draft. Saving stays an explicit
+        // confirmation; older history never pre-fills.
+        val draft = existing ?: repository.getAll()
+            .filter { it.date.isBefore(date) && !it.date.isBefore(date.minusDays(PREFILL_WINDOW_DAYS.toLong())) }
+            .maxByOrNull { it.date }
         _uiState.update {
             it.copy(
                 date = date,
                 isLoading = false,
-                form = existing?.let(CheckInForm::from) ?: CheckInForm(),
+                form = draft?.let(CheckInForm::from) ?: CheckInForm(),
                 existing = existing != null,
                 isSaved = false,
             )
@@ -102,7 +112,7 @@ class CheckInViewModel @Inject constructor(
 
     fun save() {
         val state = _uiState.value
-        if (state.isSaving) return
+        if (state.isSaving || !state.form.isComplete) return
         val savedDate = state.date
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true)
@@ -125,5 +135,8 @@ class CheckInViewModel @Inject constructor(
 
     private companion object {
         const val HISTORY_LIMIT = 7
+
+        /** ADR 0049 §2.2 option B: only a check-in from the last 7 days pre-fills the form. */
+        const val PREFILL_WINDOW_DAYS = 7
     }
 }

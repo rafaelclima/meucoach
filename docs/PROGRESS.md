@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11 do Ciclo 4: copy da oportunidade sem contradição, C4-06)
+**Atualizado:** 17/11/2026 (S11.1 do Ciclo 4: check-in sem default, com pré-preenchimento, C4-30)
+
+## Sessão 2026-11-17 — Ciclo 4/S11.1: check-in sem default, com pré-preenchimento (C4-30)
+
+**Objetivo:** remover a inversão de incentivo do check-in (ADR 0049 §2.2) — sem 3/3/3/3 default, com labels 1/3/5, salvar desabilitado até completar e pré-preenchimento do último check-in ≤7 dias.
+
+### Concluído
+
+- **ViewModel:** `CheckInForm` com scores `Int?` + `isComplete`; `toCheckIn` exige completude; `save` recusa incompleto; `load` sugere o último check-in ≤7 dias como rascunho (confirmação explícita = salvar).
+- **Tela:** `ScoreQuestion` com `midLabel` (Regular/Moderada/Moderado) + estado não respondido; texto "3 é moderado, não normal"; botão salvar desabilitado até as 4 respostas.
+- **Testes:** 4 novos no ViewModel (sem default, pré-preenchimento ≤7d, sem pré-preenchimento 8+d, `save` no-op) + 2 na tela (botão desabilitado, labels do meio); `loadedState` completo; `TimeDrivenStateTest` com form completo + pré-preenchimento após virada do dia.
+
+### Testes
+
+- `:app:testDebugUnitTest` 932 verdes (+5 líquidos); `:core:data:test` 197; `:core:domain:test` 1010; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:app:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Teste `starts with neutral answers` removido com justificativa (default 3/3/3/3 removido pelo ADR; substituído por assert mais forte dos 4 nulos).
+- Flakes sem relação com a task, todos verdes em reexecução: `MetricsImportViewModelTest` 30 s (flake conhecido), `TodayViewModelPersistTest.upgrades...` 1× (isolado-verde), `TutorialSystemBackTest` 3× como vítima de cascata (`UncaughtExceptionsBeforeTest`); suíte final limpa com `--rerun-tasks`.
+- Pré-preenchimento copia o check-in inteiro (inclui doença/calor) como rascunho visível; o usuário confirma ao salvar.
+
+### Próximo passo
+
+1. S11 / C4-31: reavaliação após check-in na UI (EASY→QUALITY antes do DONE, copy "Atualizado").
+2. Depois S11 / C4-50 (persistência/decisão) e C4-51/C4-52 (copy/catálogo).
 
 ## Sessão 2026-11-17 — Ciclo 4/S11: copy da oportunidade sem contradição (C4-06)
 

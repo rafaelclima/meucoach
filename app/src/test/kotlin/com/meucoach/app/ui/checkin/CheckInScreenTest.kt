@@ -2,6 +2,8 @@ package com.meucoach.app.ui.checkin
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -46,6 +48,31 @@ class CheckInScreenTest {
     }
 
     @Test
+    fun `disables save until all four questions are answered`() {
+        setContent(
+            CheckInUiState(
+                isLoading = false,
+                date = LocalDate.of(2026, 11, 6),
+                form = CheckInForm(sleepQuality = 4, fatigue = 2, soreness = null, stress = 2),
+            ),
+        )
+
+        compose.onNodeWithTag("checkin-save").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `shows the middle labels explaining that three is moderate`() {
+        setContent(loadedState())
+
+        compose.onNodeWithText("3 é moderado", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Regular").assertIsDisplayed()
+        compose.onNodeWithTag("checkin-list").performScrollToNode(hasText("Dor muscular"))
+        compose.onAllNodesWithText("Moderada").assertCountEquals(2)
+        compose.onNodeWithTag("checkin-list").performScrollToNode(hasText("Moderado"))
+        compose.onNodeWithText("Moderado").assertIsDisplayed()
+    }
+
+    @Test
     fun `labels an existing check-in as update`() {
         setContent(loadedState().copy(existing = true))
 
@@ -54,7 +81,7 @@ class CheckInScreenTest {
 
     @Test
     fun `updates a score`() {
-        var sleep = 3
+        var sleep: Int? = null
         compose.setContent {
             McTheme(darkTheme = true) {
                 CheckInContent(
@@ -133,6 +160,6 @@ class CheckInScreenTest {
     private fun loadedState() = CheckInUiState(
         isLoading = false,
         date = LocalDate.of(2026, 11, 6),
-        form = CheckInForm(),
+        form = CheckInForm(sleepQuality = 4, fatigue = 2, soreness = 2, stress = 2),
     )
 }

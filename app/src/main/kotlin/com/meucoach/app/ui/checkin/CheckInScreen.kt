@@ -137,7 +137,8 @@ internal fun CheckInContent(
                         )
                         Text(
                             text = "Quatro respostas rápidas. Sem culpa e sem julgamento: " +
-                                "o app usa isso para ajustar o dia.",
+                                "o app usa isso para ajustar o dia. 3 é moderado, " +
+                                "não “normal”: responda às quatro para salvar.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -148,6 +149,7 @@ internal fun CheckInContent(
                         ScoreQuestion(
                             title = "Sono",
                             lowLabel = "Ruim",
+                            midLabel = "Regular",
                             highLabel = "Ótimo",
                             value = state.form.sleepQuality,
                             onSelect = { value -> onUpdate { it.copy(sleepQuality = value) } },
@@ -156,6 +158,7 @@ internal fun CheckInContent(
                         ScoreQuestion(
                             title = "Fadiga",
                             lowLabel = "Nenhuma",
+                            midLabel = "Moderada",
                             highLabel = "Muita",
                             value = state.form.fatigue,
                             onSelect = { value -> onUpdate { it.copy(fatigue = value) } },
@@ -164,6 +167,7 @@ internal fun CheckInContent(
                         ScoreQuestion(
                             title = "Dor muscular",
                             lowLabel = "Nenhuma",
+                            midLabel = "Moderada",
                             highLabel = "Muita",
                             value = state.form.soreness,
                             onSelect = { value -> onUpdate { it.copy(soreness = value) } },
@@ -172,6 +176,7 @@ internal fun CheckInContent(
                         ScoreQuestion(
                             title = "Estresse",
                             lowLabel = "Baixo",
+                            midLabel = "Moderado",
                             highLabel = "Alto",
                             value = state.form.stress,
                             onSelect = { value -> onUpdate { it.copy(stress = value) } },
@@ -274,7 +279,7 @@ internal fun CheckInContent(
                     else -> "Salvar check-in"
                 },
                 onClick = onSave,
-                enabled = !state.isSaving,
+                enabled = !state.isSaving && state.form.isComplete,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
@@ -346,7 +351,14 @@ private fun CheckInHistoryCard(history: List<DailyCheckIn>, today: LocalDate) {
 }
 
 @Composable
-private fun ScoreQuestion(title: String, lowLabel: String, highLabel: String, value: Int, onSelect: (Int) -> Unit) {
+private fun ScoreQuestion(
+    title: String,
+    lowLabel: String,
+    midLabel: String,
+    highLabel: String,
+    value: Int?,
+    onSelect: (Int) -> Unit,
+) {
     val colors = McTheme.colors
     Column {
         Text(
@@ -384,6 +396,7 @@ private fun ScoreQuestion(title: String, lowLabel: String, highLabel: String, va
         Spacer(modifier = Modifier.height(4.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(text = lowLabel, style = McTextStyles.caption, color = colors.textTertiary)
+            Text(text = midLabel, style = McTextStyles.caption, color = colors.textTertiary)
             Text(text = highLabel, style = McTextStyles.caption, color = colors.textTertiary)
         }
     }
