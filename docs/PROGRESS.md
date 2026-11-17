@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11.1 do Ciclo 4: check-in sem default, com pré-preenchimento, C4-30)
+**Atualizado:** 17/11/2026 (S11.2 do Ciclo 4: reavaliação após check-in na UI, C4-31)
+
+## Sessão 2026-11-17 — Ciclo 4/S11.2: reavaliação após check-in na UI (C4-31)
+
+**Objetivo:** fechar a FR-406/ADR 0044 §2.5 na superfície — quando o check-in restaura a qualidade planejada antes do DONE, a UI mostra "Atualizado: com o check-in, a qualidade foi liberada" (o domínio já reavaliava desde C4-05).
+
+### Concluído
+
+- **Domínio:** `List<DailyPrescription>.hasRestoredQuality()` puro (última KEEP QUALITY + anterior DOWNGRADE-de-QUALITY→EASY, ordem cronológica) + 7 testes.
+- **VM:** `TodayViewModel` injeta `DailyPrescriptionRepository`, deriva `qualityRestored` (com guarda PLANNED; DONE/CLOSED nunca mostram) e expõe em `TodayUiState`; `todayState` intacto (flag via `.copy`); baseline só na assinatura do ctor.
+- **Tela:** nota `quality-restored-note` no `NextWorkoutCard` quando restaurado e aberto.
+- **Testes:** E2E real (10 corridas FIT → carga confiável; sem check-in = DOWNGRADE sem nota → check-in 4/2/2/2 = KEEP + nota, 2 versões) + wiring falso + 2 de tela.
+
+### Testes
+
+- `:app:testDebugUnitTest` 936 verdes (+4); `:core:domain:test` 1017 (+7); `:core:data:test` 197; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:app:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `getVersions` só é lido quando a decisão atual já mantém QUALITY planejada (sem custo no caminho comum).
+- Flake rotativo sem relação: `TutorialSystemBackTest` 1× como vítima de cascata (`UncaughtExceptionsBeforeTest`); verde isolado e na reexecução limpa da suíte.
+
+### Próximo passo
+
+1. S11 / C4-50: `QualityBlockReason`/`PlanDecisionReason` + export `PlanJson` (serialização testada).
+2. Depois S11 / C4-51 (copy por gate + "Por quê?") e C4-52 (catálogo).
 
 ## Sessão 2026-11-17 — Ciclo 4/S11.1: check-in sem default, com pré-preenchimento (C4-30)
 

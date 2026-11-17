@@ -213,6 +213,7 @@ fun TodayScreen(
                     canComplete = hasPlannedSessionToday,
                     canCorrectManual = canCorrectManual,
                     completionMessage = state.completionMessage,
+                    qualityRestored = state.qualityRestored,
                     recovery = state.recovery,
                     onSwapClick = { swapOpen = true },
                     onStartClick = { startOpen = true },
@@ -542,6 +543,8 @@ private fun NextWorkoutCard(
     canComplete: Boolean,
     canCorrectManual: Boolean,
     completionMessage: String?,
+    /** A downgraded quality restored before done (ADR 0044 §2.5); shows the "Atualizado" note. */
+    qualityRestored: Boolean = false,
     recovery: RecoveryUi? = null,
     onSwapClick: () -> Unit,
     onStartClick: () -> Unit,
@@ -556,6 +559,9 @@ private fun NextWorkoutCard(
     val done = session?.status == SessionStatus.DONE
     val closed = session?.status == SessionStatus.CLOSED
     val adjusted = prescription?.differsFromPlan == true && !done && !closed
+    // C4-31 (ADR 0044 §2.5): the day confirms again only before done/closed;
+    // history never shows the "Atualizado" note.
+    val restored = qualityRestored && !done && !closed
     McCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -638,6 +644,15 @@ private fun NextWorkoutCard(
                     modifier = Modifier.testTag("planned-intent"),
                 )
             }
+        }
+        if (restored) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Atualizado: com o check-in, a qualidade foi liberada.",
+                style = McTextStyles.caption,
+                color = colors.success,
+                modifier = Modifier.testTag("quality-restored-note"),
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(

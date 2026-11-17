@@ -35,6 +35,7 @@ import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
@@ -46,6 +47,7 @@ import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.domain.prescription.SessionClosureReason
@@ -57,6 +59,8 @@ import com.meucoach.core.domain.prescription.SwapResult
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
+import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.prescription.hasRestoredQuality
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessCalculator
 import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
@@ -110,6 +114,7 @@ class TodayViewModel @Inject constructor(
     private val getTodayDecision: GetTodayDecision,
     private val healthSyncCoordinator: HealthSyncCoordinator,
     private val upgradeWeekOnOpening: UpgradeWeekOnOpening,
+    private val prescriptionRepository: DailyPrescriptionRepository,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
     private val matcher = SessionMatcher()
@@ -352,6 +357,14 @@ class TodayViewModel @Inject constructor(
                     ?.firstOrNull { it.date == context.today }
                     ?.let { session -> executionUi(effectivePlan, session, context) }
             }
+            // C4-31 (ADR 0044 §2.5): a planned quality that the day downgraded
+            // and later restored before it was done. History is read only when
+            // the current decision already keeps a planned quality.
+            val todaySession = effectivePlan?.sessions?.firstOrNull { it.date == context.today }
+            val qualityRestored = prescription?.prescribedType == WorkoutType.QUALITY &&
+                prescription.adjustment == PrescriptionAdjustment.KEEP &&
+                todaySession?.status == SessionStatus.PLANNED &&
+                prescriptionRepository.getVersions(context.today).hasRestoredQuality()
             todayState(
                 checkIn = context.checkIn,
                 metrics = context.metrics,
@@ -372,7 +385,7 @@ class TodayViewModel @Inject constructor(
                 activitySuggestions = suggestions,
                 todayExecution = todayExecution,
                 completionMessage = null,
-            )
+            ).copy(qualityRestored = qualityRestored)
         }
 
     val uiState: StateFlow<TodayUiState> = combine(dayState, completionMessage) { state, message ->

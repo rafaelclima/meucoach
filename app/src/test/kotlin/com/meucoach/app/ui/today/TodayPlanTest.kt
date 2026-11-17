@@ -991,6 +991,53 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows the restored quality note after the check-in liberates it`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = profile(today),
+                        today = today,
+                        plan = tempoPlan(today),
+                    ).copy(qualityRestored = true),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("TREINO DE HOJE"))
+        list.performScrollToNode(hasText("Atualizado:", substring = true))
+        compose.onNodeWithTag("quality-restored-note").assertIsDisplayed()
+        compose.onNodeWithText("Atualizado: com o check-in, a qualidade foi liberada.")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the restored quality note without a restoration`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = profile(today),
+                        today = today,
+                        plan = tempoPlan(today),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("TREINO DE HOJE"))
+        compose.onNodeWithTag("quality-restored-note").assertDoesNotExist()
+    }
+
+    @Test
     fun `explains planned versus adjusted in one sentence`() {
         val today = LocalDate.of(2026, 11, 2)
         val tempo = tempoPlan(today)

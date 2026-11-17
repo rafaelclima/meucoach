@@ -128,6 +128,12 @@ data class TodayUiState(
     val recovery: RecoveryUi? = null,
     /** True while the sync has not settled and the week was not generated yet (ADR 0048 §2.1). */
     val isSyncingData: Boolean = false,
+    /**
+     * A planned quality was downgraded and later restored before the session
+     * was done (ADR 0044 §2.5, C4-31). The UI shows "Atualizado: com o
+     * check-in, a qualidade foi liberada" only in this case.
+     */
+    val qualityRestored: Boolean = false,
 ) {
     /** The race event resolved for today, when the daily decision is competition. */
     val raceEvent: com.meucoach.core.model.RaceEvent?

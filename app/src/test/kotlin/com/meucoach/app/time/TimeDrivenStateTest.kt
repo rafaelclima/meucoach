@@ -183,6 +183,7 @@ class TimeDrivenStateTest {
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
             coordinator,
             UpgradeWeekOnOpening(contexts, plans),
+            prescriptions,
         )
 
         val sundayState = withTimeout(5_000) {

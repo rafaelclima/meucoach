@@ -270,6 +270,80 @@ class TodayViewModelPersistTest {
     }
 
     @Test
+    fun `restores the planned quality after the check-in arrives`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-03T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = LocalDate.of(2026, 11, 2)
+        profiles.saveProfile(profile(today, com.meucoach.core.model.Experience.INTERMEDIATE))
+        seedReliableLoad(today)
+        plans.saveWeek(qualityWeek(today, weekStart))
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+
+        val viewModel = createViewModel(timeProvider, coordinator)
+        // C4-31 (ADR 0044 §2.5): without the check-in the day downgrades the
+        // planned quality and shows no "Atualizado" note.
+        val downgraded = withTimeout(5_000) {
+            viewModel.uiState.first {
+                it.prescription?.adjustment ==
+                    com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE
+            }
+        }
+        assertThat(downgraded.prescription?.prescribedType)
+            .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.EASY)
+        assertThat(downgraded.qualityRestored).isFalse()
+
+        // The check-in arrives before the session is done: the day restores the
+        // planned quality in a new version and signals it to the UI.
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        val restored = withTimeout(5_000) {
+            viewModel.uiState.first {
+                it.prescription?.adjustment ==
+                    com.meucoach.core.domain.prescription.PrescriptionAdjustment.KEEP &&
+                    it.prescription?.prescribedType ==
+                    com.meucoach.core.domain.prescription.WorkoutType.QUALITY &&
+                    it.qualityRestored
+            }
+        }
+
+        assertThat(restored.qualityRestored).isTrue()
+        val versions = prescriptions.getVersions(today)
+        assertThat(versions).hasSize(2)
+        assertThat(versions.last().adjustment)
+            .isEqualTo(com.meucoach.core.domain.prescription.PrescriptionAdjustment.KEEP)
+    }
+
+    @Test
+    fun `keeps the restored flag off while the quality stays downgraded`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-03T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = LocalDate.of(2026, 11, 2)
+        profiles.saveProfile(profile(today, com.meucoach.core.model.Experience.INTERMEDIATE))
+        plans.saveWeek(qualityWeek(today, weekStart))
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+
+        val viewModel = createViewModel(timeProvider, coordinator)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.prescription != null }
+        }
+
+        assertThat(state.prescription?.adjustment)
+            .isEqualTo(com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE)
+        assertThat(state.qualityRestored).isFalse()
+    }
+
+    @Test
     fun `leaves a current week untouched on opening`(): Unit = runBlocking {
         val coordinator = syncCoordinator()
         val timeProvider = FakeTimeProvider(
@@ -780,6 +854,66 @@ class TodayViewModelPersistTest {
             .isEqualTo(com.meucoach.core.domain.prescription.WorkoutType.QUALITY)
     }
 
+    /**
+     * C4-31: a stored week with a planned quality today, so the day gate (not
+     * the generation) decides between DOWNGRADE and KEEP.
+     */
+    private fun qualityWeek(today: LocalDate, weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
+        weekStart = weekStart,
+        sessions = listOf(
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = today,
+                type = com.meucoach.core.domain.prescription.WorkoutType.QUALITY,
+                title = "Fartlek leve",
+                durationMin = 40,
+                rationale = "Oportunidade estrutural; o dia confirma.",
+                ruleIds = listOf("R-PLAN-02", "R-PER-03"),
+                evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+            ),
+            com.meucoach.core.domain.prescription.PlannedSession(
+                date = today.plusDays(2),
+                type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                title = "Fácil e conversável",
+                durationMin = 40,
+                rationale = "Base.",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        ),
+        weeklyMinutes = 80,
+        longRunMinutes = null,
+        qualityCount = 1,
+        rationale = "Qualidade planejada; o dia confirma.",
+        confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
+        ruleIds = listOf("R-PLAN-02", "R-PER-03"),
+        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+    )
+
+    /**
+     * C4-31: nine objective runs spread over the 28-day window (plus one
+     * older run so the whole window counts as known history). Fresh source,
+     * enough objective days, no subjective-only day: the ACWR is reliable and
+     * near 1.0, so the day gate can keep a planned quality.
+     */
+    private suspend fun seedReliableLoad(today: LocalDate) {
+        val zone = ZoneId.of("America/Sao_Paulo")
+        val offsets = listOf(30L, 24L, 21L, 18L, 15L, 12L, 9L, 6L, 3L, 1L)
+        offsets.forEachIndexed { index, daysAgo ->
+            activities.saveImportedActivity(
+                ImportedActivity(
+                    source = ActivitySource.FIT,
+                    sport = Sport.RUNNING,
+                    startTime = today.minusDays(daysAgo).atTime(7, 0).atZone(zone).toInstant(),
+                    durationSec = 1800,
+                    distanceM = 5000.0,
+                    sourceId = "seed-$index",
+                    averageHeartRate = 150,
+                    averagePace = Pace.fromSecondsPerKm(360),
+                ),
+            )
+        }
+    }
+
     private fun weekWith(today: LocalDate, weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
@@ -843,6 +977,7 @@ class TodayViewModelPersistTest {
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
             coordinator,
             UpgradeWeekOnOpening(contexts, plans),
+            prescriptions,
         )
     }
 

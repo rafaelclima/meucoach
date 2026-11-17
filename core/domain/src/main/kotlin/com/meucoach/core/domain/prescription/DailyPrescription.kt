@@ -103,3 +103,25 @@ data class DailyPrescription(
         const val COLLECTION = "daily_prescriptions"
     }
 }
+
+/**
+ * C4-31 (ADR 0044 §2.5): the day restored a planned quality that an earlier
+ * version downgraded — EASY back to QUALITY before the session was done.
+ * Versions must be chronological (oldest first), as persisted by
+ * `DailyPrescriptionRepository`. The UI shows "Atualizado: com o check-in, a
+ * qualidade foi liberada" only in this case.
+ */
+fun List<DailyPrescription>.hasRestoredQuality(): Boolean {
+    if (size < 2) return false
+    val latest = last()
+    if (latest.adjustment != PrescriptionAdjustment.KEEP ||
+        latest.prescribedType != WorkoutType.QUALITY
+    ) {
+        return false
+    }
+    return any {
+        it.adjustment == PrescriptionAdjustment.DOWNGRADE &&
+            it.plannedType == WorkoutType.QUALITY &&
+            it.prescribedType == WorkoutType.EASY
+    }
+}
