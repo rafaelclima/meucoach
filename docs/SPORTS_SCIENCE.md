@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.7 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.8 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -8,6 +8,7 @@
 > Revisão 1.5 (16/11/2026, Ciclo 4/S5, ADR 0050 implementado no domínio): volume real — a base é `max(strongMinutes)` das corridas fortes importadas (planejadas ou não), a adesão continua planejada e o mesociclo/graduação usam `strongSessions`/`StrongRun` (longão real 60/90). Golden `G-VOL-02`, reparo `LEGACY` e docs de `R-LVL-03` ficam para C4-40..C4-43.
 > Revisão 1.6 (17/11/2026, Ciclo 4/S13, C4-41/C4-42, ADR 0050): golden `G-VOL-02` congela o crédito do treino extra (3×38 concluídas + extra 28 → base real 142, alvo 151, adesão 3/3, copy "treino extra contou"); `LEGACY_UNVERIFIED` sem atividade não entra na base; `R-PLAN-01 v2` e `R-LVL-03` no §14 e §8.12. Resta o review "planejada/mantida/rebaixada" (C4-43).
 > Revisão 1.7 (17/11/2026, Ciclo 4/S14, C4-26/C4-27, ADR 0046): golden `G-LOAD-03` congela o cold-start (8 dias de carga objetiva + 13 de pré-história → `acwrReliable=false` mesmo com `acwr=1,6`; qualidade mantida, volume mantido, copy "8 de 28 dias de histórico; ACWR em calibração"); a UI mostra pill/“Aumento” em calibração em vez do número instável (`R-LOAD-03 v3`); renumeração `G-LOAD-02` → `G-LOAD-03` registrada no ADR 0046 e no PRD.
+> Revisão 1.8 (17/11/2026, Ciclo 4/S14, C4-32/C4-33, ADR 0049): golden `G-READY-05` congela a matriz do check-in (sem check-in: 76 verde parcial, qualidade bloqueada; 3/3/3/3: 67 âmbar, bloqueada; 4/2/2/2: 76 e 5/1/1/1: 84, verde, qualidade mantida); o "Por quê?" da prontidão cita `R-READY-06` e pede o check-in; renumeração `G-READY-03` → `G-READY-05` registrada no ADR 0049 e no PRD (o `G-READY-03` histórico de doença fica intacto).
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -242,6 +243,10 @@ No app, o texto visível é **Alta / Moderada / Baixa**; a cor acompanha o mesmo
 | **Baixa** | 1 entrada ou apenas subjetivo; sem HRV/RHR |
 
 A UI mostra os contribuintes e o que falta. "Sem dados" não é "recuperação ruim".
+
+**Check-in sem inversão (`R-READY-06`, SAW/BUCHHEIT, LIMITED):** sem check-in, a prontidão pode ser exibida como verde "com dados parciais" (pesos renormalizados), mas `qualityEligibleByReadiness=false` e o `QualityGate` rebaixa com `SUBJECTIVE_MISSING`; o "Por quê?" da prontidão cita a regra e pede o check-in. 3/3/3/3 não é default: o formulário abre sem seleção (ou com o último check-in ≤7 dias como rascunho a confirmar) e o salvar exige as quatro respostas. Um check-in tardio, antes do `DONE`, pode restaurar a qualidade planejada em nova versão da prescrição (`R-PRESC-02` emendada).
+
+**Caso canônico (`G-READY-05`, `fixtures/golden/readiness-checkin/`):** mesma base objetiva verde (sono 7h30, HRV, FC de repouso) com quatro check-ins — sem check-in: 76 verde com dados parciais, qualidade bloqueada (`R-READY-06`); 3/3/3/3: 67 âmbar, qualidade bloqueada (`R-READY-03`); 4/2/2/2: 76 verde e 5/1/1/1: 84 verde, qualidade mantida (`R-PER-03`).
 
 ### 7.4 HRV — regras técnicas
 
@@ -620,6 +625,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
 | `R-READY-04` | Sono <6 h ⇒ sem qualidade; <6,5 h por 3 dias ⇒ sem aumento de volume | WALSH, WATSON | STRONG |
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
+| `R-READY-06` | Sem check-in subjetivo, o treino forte não é liberado (verde parcial não basta); 3/3/3/3 não é default; check-in tardio antes do `DONE` pode restaurar a qualidade planejada em nova versão (golden `G-READY-05`) | SAW, BUCHHEIT | LIMITED — convenção de produto |
 | `R-PLAN-01 v2` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume real forte (`strongMinutes`, planejado ou extra) nas últimas 4 semanas, e só com a semana anterior ≥ 80% de adesão planejada, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike confiável + ACWR confiável em 0,8–1,3; ACWR em calibração ou fora de faixa apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz. O plano declara o crédito do extra (`G-VOL-02`); `LEGACY_UNVERIFIED` sem atividade não entra na base | SEILER, GABBETT, FOSTER; ADR 0038; ADR 0046; ADR 0050; `R-LOAD-03` v3 | MODERATE |
 | `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
 | `R-PLAN-03 v2` | Longão é a sessão mais longa; piso 45/60 (30 em deload/taper), alvo 25–30% sem virar teto, disponibilidade como teto rígido; abaixo do piso, “Corrida mais longa” e ajuste de agenda | PFITZINGER, DANIELS; ADR 0045 | MODERATE (piso: LIMITED — convenção de produto) |

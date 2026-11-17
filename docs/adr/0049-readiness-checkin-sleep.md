@@ -1,6 +1,6 @@
 # ADR 0049 — Prontidão, check-in e sono plausível
 
-**Status:** Aprovado em 2026-11-16 — domínio implementado (C4-28, C4-34..C4-36); UI, goldens e docs pendentes (C4-30..C4-33, C4-37).
+**Status:** Implementado em 2026-11-17 (C4-28..C4-32, C4-34..C4-36, sessões S4/S8/S11/S14); restam os docs desta task (C4-33) e o golden/docs de sono (C4-37).
 **Data:** 2026-11-16
 **Escopo:** `ReadinessCalculator`, `ReadinessResult`, `ReadinessFlag`,
 `DailyMetricsReadinessBuilder`, `HealthMetricsAggregator`, `CheckInViewModel`/`CheckInScreen`,
@@ -228,7 +228,7 @@ Sem migração de schema para este ADR (o `sleepDurationMin=null` já é suporta
 
 | Caso | Entrada | Saída |
 |---|---|---|
-| `G-READY-03` | sem check-in | `SUBJECTIVE_MISSING`; qualidade bloqueada; score exibido com dados parciais |
+| `G-READY-05` | sem check-in / 3-3-3-3 / 4-2-2-2 / 5-1-1-1 (base objetiva verde) | sem check-in: `SUBJECTIVE_MISSING`/bloqueada, score 76 verde parcial; 3-3-3-3: âmbar 67, bloqueada; 4-2-2-2 e 5-1-1-1: verde 76/84, mantida |
 | 3/3/3/3 | check-in | âmbar; qualidade bloqueada |
 | 4/2/2/2 | check-in | verde; qualidade mantida |
 | 5/1/1/1 | check-in | verde; qualidade mantida |
@@ -271,3 +271,29 @@ Sem migração de schema para este ADR (o `sleepDurationMin=null` já é suporta
 - ADR 0022, 0023, 0024, 0044, 0046, 0048.
 - `EV-SAW-2016`, `EV-BUCHHEIT-2014`, `EV-HALSON-2014`, `EV-WALSH-2021`,
   `EV-WATSON-2015`.
+- Golden `G-READY-05` (`fixtures/golden/readiness-checkin/`).
+
+---
+
+## 10. Registro de implementação
+
+- **C4-28/C4-34..C4-36 (S4):** `qualityEligibleByReadiness` + `SUBJECTIVE_MISSING`
+  (sem check-in = verde parcial, nunca liberação); `SleepNightValidator`
+  (janela 18:00–12:00, merge ≤120 min, faixa 180–840); suspeita → `null`;
+  sem `SHORT_SLEEP` falso. `ReadinessEligibilityTest` (8),
+  `SleepNightValidatorTest` (12), `SleepPlausibilityTest` (4).
+- **C4-29 (S8):** recomendador sem plano e `noPlan` pedem o check-in
+  (`R-READY-06`) em vez de soar "tudo certo".
+- **C4-30/C4-31 (S11):** check-in
+  sem default, com labels e pré-preenchimento ≤7 dias; reavaliação EASY→QUALITY
+  antes do `DONE` com copy "Atualizado: com o check-in...".
+- **C4-32 (S14):** golden `G-READY-05` (`fixtures/golden/readiness-checkin`):
+  mesma base objetiva verde com quatro check-ins — sem check-in: 76 verde
+  parcial, bloqueada (`R-READY-06`); 3/3/3/3: 67 âmbar, bloqueada
+  (`R-READY-03`); 4/2/2/2: 76 e 5/1/1/1: 84, verde, mantida (`R-PER-03`).
+  O "Por quê?" da prontidão cita `R-READY-06` e pede o check-in com a frase
+  exata do gate. `ReadinessCheckinGoldenTest` (1);
+  `TodayReadinessExplanationTest` (2).
+- **C4-33 (S14):** docs `R-READY-06` (`SPORTS_SCIENCE` §7.3/§14)
+  e renumeração `G-READY-03` → `G-READY-05` aqui e no PRD (o `G-READY-03`
+  histórico de doença, `readiness-illness`, fica intacto).

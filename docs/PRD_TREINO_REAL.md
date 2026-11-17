@@ -863,7 +863,7 @@ if (checkIn == null) flags += SUBJECTIVE_MISSING
 
 **Testes:**
 
-- Golden `G-READY-03`: sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1.
+- Golden `G-READY-05`: sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1 (numerado `G-READY-05` porque `G-READY-03` já nomeia o fixture de doença, anterior ao PRD).
 - A inversão desaparece: sem check-in não é mais verde para qualidade.
 - Reavaliação após check-in: EASY → QUALITY antes do DONE; DONE preservado.
 - UI: formulário sem 3/3/3/3 default; labels; botão salvar desabilitado até responder.
@@ -1377,7 +1377,7 @@ LONG_DAY_TOO_SHORT
 | `G-PER-04` | 2×40 + sábado 90 | longão 45 (“Longão”); qualidade; volume 125 |
 | `G-PER-05` | 5K a 6–8 semanas, intermediário | BUILD/PEAK; intervalos/fartlek/race-pace; longão; estrutura |
 | `G-LOAD-03` | 8 dias de carga, pré-história | `acwrReliable=false`; sem veto de ACWR; volume mantido; copy “em calibração” |
-| `G-READY-03` | sem check-in / 3/3/3/3 / 4/2/2/2 / 5/1/1/1 | sem qualidade / âmbar / verde / verde |
+| `G-READY-05` | sem check-in / 3/3/3/3 / 4/2/2/2 / 5/1/1/1 | sem qualidade / âmbar / verde / verde (`G-READY-03` é o fixture de doença, anterior ao PRD) |
 | `G-DATA-02` | 36 min / cochilo / 5h30 | suspeita / válida / curta |
 | `G-VOL-02` | 114 planejado + extra 28 + LEGACY 33 | base 127; adesão 3/3; long_run 60 não |
 | `G-UPGRADE-01` | plano v6 com DONE e futuro | v7; DONE preservado; oportunidade adicionada; histórico intacto |
@@ -1682,8 +1682,8 @@ O usuário 0 aprovou 12/12 decisões. A PRD v1.1 incorpora o resultado; a única
 | C4-29 | `DailyPrescriptionEngine`/`WorkoutRecommender` usam o gate; sem qualidade sem check-in | C4-28 | M | Testes; copy |
 | C4-30 | Check-in sem default 3/3/3/3; labels; pré-preencher último | C4-28 | M | UI; salvar desabilitado até responder |
 | C4-31 | Reavaliação após check-in: EASY→QUALITY antes de DONE | C4-05/30 | M | Teste de versão; DONE preservado |
-| C4-32 | Golden `G-READY-03`; copy “dados parciais” | C4-28..31 | M | Golden |
-| C4-33 | Docs `R-READY-06`, `SPORTS_SCIENCE` §7.3, ADR 0049 | C4-28..32 | S | Docs |
+| C4-32 | Golden `G-READY-05`; copy `R-READY-06` no "Por quê?" da prontidão | C4-28..31 | M | Golden + copy |
+| C4-33 | Docs `R-READY-06`, `SPORTS_SCIENCE` §7.3/§14, ADR 0049 + renumeração `G-READY-03/05` | C4-28..32 | S | Docs |
 
 #### E6 — Sono
 
@@ -1769,7 +1769,7 @@ Cada task:
 Ciclo:
 
 - [ ] Todos os P0/P1 concluídos; P2 avaliados.
-- [ ] Goldens `G-PER-03/04/05`, `G-LOAD-02/03`, `G-READY-03`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01` verdes.
+- [ ] Goldens `G-PER-03/04/05`, `G-LOAD-02/03`, `G-READY-05`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01` verdes.
 - [ ] Migração 17→18 testada.
 - [ ] Smoke no aparelho com dados sintéticos e leitura real.
 - [ ] Usuário 0 consegue explicar a decisão de qualidade pelo “Por quê?”.
@@ -1896,7 +1896,7 @@ Os exemplos derivam de `SPORTS_SCIENCE.md` §8.4 e são convenções de produto 
 | `G-PER-04` | 2×40 + sábado 90 | longão 45 “Longão”; volume 125; qualidade |
 | `G-PER-05` | 5K, intermediário, BUILD/PEAK | intervalos/fartlek/race-pace; PEAK específico |
 | `G-LOAD-03` | 8 dias, pré-história | ACWR não confiável; sem veto; volume mantido |
-| `G-READY-03` | sem check-in / 3/3/3/3 / 4/2/2/2 | sem qualidade / âmbar / verde |
+| `G-READY-05` | sem check-in / 3/3/3/3 / 4/2/2/2 | sem qualidade / âmbar / verde |
 | `G-DATA-02` | 36 min / 5h30 | suspeita / curta |
 | `G-VOL-02` | 114 + extra 28 + LEGACY 33 | base 127; adesão 3/3 |
 | `G-UPGRADE-01` | v6 com DONE e futuro | v7; DONE preservado; oportunidade |

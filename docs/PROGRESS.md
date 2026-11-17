@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S14 do Ciclo 4: matriz do check-in + copy no "Por quê?", C4-32 — S14 aberta)
+**Atualizado:** 17/11/2026 (S14 do Ciclo 4: docs `R-READY-06` e renumeração G-READY-03/05, C4-33 — S14 aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S14: docs `R-READY-06` e renumeração G-READY-03/05 (C4-33)
+
+**Objetivo:** fechar o ADR 0049 no papel — `R-READY-06` com golden, copy/UI e a renumeração da matriz do check-in, sem código.
+
+### Concluído
+
+- **`SPORTS_SCIENCE` v1.8:** §7.3 com a regra `R-READY-06` (verde parcial sem check-in não libera; 3/3/3/3 não é default; check-in tardio restaura via `R-PRESC-02`) + caso canônico `G-READY-05`; §14 com a linha da `R-READY-06` (SAW/BUCHHEIT, LIMITED).
+- **ADR 0049:** status implementado (C4-28..C4-33, C4-34..C4-36) + §10 com o registro S4/S8/S11/S14 + nota de renumeração (`G-READY-03` histórico de doença intacto; matriz é `G-READY-05`); resta C4-37.
+- **PRD:** `G-READY-03` → `G-READY-05` na matriz do check-in (FR-406, §9.2, backlog C4-32, anexo C) e no DoD; C4-32/C4-33 com aceite atualizado.
+- **`DECISIONS.md`:** r1.49 + linha do ADR 0049 como implementado em prontidão/check-in (sono fica para C4-37).
+
+### Testes
+
+- Docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-32 seguem verdes: 1051/955/204/40).
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `R-READY-06` não mudou (no código desde C4-04/C4-29, no catálogo desde C4-52); C4-33 só amarra regra, golden, copy e IDs.
+- S14 segue aberta; C4-37 (`G-DATA-02` + docs de sono) é a próxima.
+
+### Próximo passo
+
+1. S14 / C4-37: golden `G-DATA-02` + docs `R-DATA-02` (36 min vs cochilo vs 5h30), TDD.
+2. Depois S15 (C4-57..C4-60: alvos, horizonte, copy, `createdAt`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S14: matriz do check-in + copy no "Por quê?" (C4-32)
 
