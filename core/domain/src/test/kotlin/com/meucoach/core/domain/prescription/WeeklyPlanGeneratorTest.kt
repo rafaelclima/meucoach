@@ -116,8 +116,9 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(plan.sessions.first { it.type == WorkoutType.QUALITY }.date)
             .isEqualTo(monday)
-        // ADR 0045: 45 min floor + the remaining volume share, no 25–30% cap.
-        assertThat(plan.longRunMinutes).isEqualTo(47)
+        // ADR 0045: o share do longão segue os outros reais — com o strides de
+        // quarta (25 no lugar de 40), o alvo cai para 45 (C4-18).
+        assertThat(plan.longRunMinutes).isEqualTo(45)
         assertThat(plan.sessions.none { it.type == WorkoutType.QUALITY && it.date.dayOfWeek == DayOfWeek.FRIDAY })
             .isTrue()
     }
@@ -1054,7 +1055,8 @@ class WeeklyPlanGeneratorTest {
         )
 
         // D5: sRPE conserves — the base week is kept, never accelerated.
-        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides.
+        assertThat(plan.weeklyMinutes).isEqualTo(103)
         assertThat(plan.rationale).doesNotContain("+6%")
         assertThat(plan.rationale).contains("dados de carga insuficientes")
         assertThat(plan.ruleIds).contains("R-LOAD-04")
@@ -1084,7 +1086,8 @@ class WeeklyPlanGeneratorTest {
         )
 
         // ADR 0046: progression needs a reliable 28-day baseline.
-        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides.
+        assertThat(plan.weeklyMinutes).isEqualTo(103)
         assertThat(plan.rationale).contains("em calibração")
         assertThat(plan.rationale).doesNotContain("+6%")
         assertThat(plan.ruleIds).contains("R-PLAN-01")
@@ -1142,9 +1145,10 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // O piso de 45 do longão obriga a remover os dois fáceis mais curtos:
-        // 45 + 25 + 25 + 20 = 115, abaixo do alvo de 127.
-        assertThat(plan.weeklyMinutes).isEqualTo(115)
+        // O piso de 45 do longão obriga a remover dois dias (o strides não
+        // sobrevive ao fit): 45 + 25 + 25 + 21 = 116, abaixo do alvo de 127.
+        // O 21 em vez de 20 vem do arredondamento do fit com a nova base crua.
+        assertThat(plan.weeklyMinutes).isEqualTo(116)
         assertThat(plan.sessions).hasSize(4)
         assertThat(plan.rationale).contains("base de 120 min", "permite mais dias")
     }
@@ -1197,8 +1201,8 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // Semana sem histórico: disponibilidade 40+40+40+47 = 167.
-        assertThat(plan.weeklyMinutes).isEqualTo(167)
+        // Semana sem histórico: 40 + 25 strides + 40 + 45 = 150 (C4-18).
+        assertThat(plan.weeklyMinutes).isEqualTo(150)
         assertThat(plan.rationale).contains("ainda não há semana concluída")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-01")
         assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
@@ -1321,7 +1325,9 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides e
+        // fecha em 103 — mesma pressão que o iniciante já sofria.
+        assertThat(plan.weeklyMinutes).isEqualTo(103)
         assertThat(plan.rationale).contains("alvo mantido em 120 min", "prontidão não está alta")
     }
 
@@ -1365,8 +1371,10 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(highAcwr.rationale).contains("carga recente fora da faixa")
         assertThat(staleLoad.rationale).contains("dados de carga insuficientes")
-        assertThat(highAcwr.weeklyMinutes).isEqualTo(120)
-        assertThat(staleLoad.weeklyMinutes).isEqualTo(120)
+        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides e
+        // fecha em 103 — mesma pressão que o iniciante já sofria.
+        assertThat(highAcwr.weeklyMinutes).isEqualTo(103)
+        assertThat(staleLoad.weeklyMinutes).isEqualTo(103)
     }
 
     @Test
@@ -1390,9 +1398,9 @@ class WeeklyPlanGeneratorTest {
         )
 
         // O longão de 40 é o mais longo que a agenda permite (piso 45 não cabe):
-        // 30 qualidade + 30 fácil + 40 = 100, o teto real da disponibilidade.
-        assertThat(plan.weeklyMinutes).isEqualTo(100)
-        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 100 min")
+        // 25 strides + 30 fácil + 40 = 95, o teto real da disponibilidade (C4-18).
+        assertThat(plan.weeklyMinutes).isEqualTo(95)
+        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 95 min")
         assertThat(plan.ruleIds).contains("R-PLAN-01")
     }
 
@@ -1419,9 +1427,10 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.rationale).contains("base de 200 min")
-        // O teto agora é a disponibilidade com o longão de 47: 167 min.
-        assertThat(plan.weeklyMinutes).isEqualTo(167)
-        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 167 min")
+        // C4-18: o teto agora é a disponibilidade com o longão de 45 e o
+        // strides de 25 no lugar de um fácil 40: 40 + 25 + 40 + 45 = 150 min.
+        assertThat(plan.weeklyMinutes).isEqualTo(150)
+        assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 150 min")
     }
 
     private fun volumeWeek(weekStart: LocalDate, durations: List<Int>): WeeklyPlan {

@@ -485,9 +485,10 @@ class TodayViewModelPersistTest {
             viewModel.uiState.first { it.plan?.rationale?.contains("Volume: base de 120 min") == true }
         }
 
-        // O piso de 45 do longão ancora o corte do alvo de 127; o restante
-        // cabe em 81 min (3 × 27), totalizando 126.
-        assertThat(state.plan?.weeklyMinutes).isEqualTo(126)
+        // O piso de 45 do longão ancora o corte do alvo de 127; com o strides de
+        // segunda (C4-18), o restante cabe em 82 min (20 + 31 + 31),
+        // totalizando 127.
+        assertThat(state.plan?.weeklyMinutes).isEqualTo(127)
         assertThat(state.plan?.ruleIds).contains("R-PLAN-01")
     }
 

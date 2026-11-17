@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — C4-14 a C4-17 concluídas; C4-18..C4-21 pendentes.
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-18 concluídas; C4-19..C4-21 pendentes.
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -376,3 +376,11 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   `R-PER-04` entrou no catálogo de explicações. 7 testes em
   `QualityIntegrationTest` e 7 em `WorkoutStructureTest`; `:core:domain:test`
   963 verdes. Persistência de `qualityKind`/`structure` fica em C4-45/C4-46.
+- **C4-18 (S12):** `stridesDay` vale para todos os níveis em
+  `BASE`/`BUILD`/`PEAK` (fora de longão, qualidade, micro-dose e recuperação);
+  o iniciante com 4 semanas ≥80% de conclusão forte troca os strides pelo intro
+  fartlek (`INTRO_FARTLEK`, `EASY`, nunca qualidade). A sessão do intro não
+  carrega `structure` (duração `minOf(available, 25)` contra 18 min fixos do
+  template; C4-19 fia a exibição). `fitToVolume` segue dropando o strides
+  primeiro sob pressão. 3 testes novos em `BeginnerStridesTest`; 13 legados
+  atualizados com justificativa; `:core:domain:test` 1027 verdes.

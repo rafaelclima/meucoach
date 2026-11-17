@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11.6 do Ciclo 4: docs `R-PER-03` e `R-PRESC-02` emendada, C4-08)
+**Atualizado:** 17/11/2026 (S12 do Ciclo 4: strides para todos + intro fartlek do iniciante, C4-18)
+
+## Sessão 2026-11-17 — Ciclo 4/S12: strides para todos + intro fartlek (C4-18)
+
+**Objetivo:** fechar a política do iniciante da Q-05 no gerador — strides `EASY` para todos os níveis e intro fartlek `EASY` após 4 semanas consistentes, sem qualidade estruturada nova.
+
+### Concluído
+
+- **Gerador:** `stridesDay` para todos os níveis em `BASE`/`BUILD`/`PEAK` (fora de longão, qualidade, micro-dose e recuperação); `introFartlekEligible` (iniciante + 4 semanas ≥80% de conclusão forte) troca "Strides curtos" por "Fácil com surtos", ainda `EASY` e sem `qualityCount`.
+- **Testes:** 3 novos no `BeginnerStridesTest` (swap com 4 fortes, mantém com 3, intermediário com strides + qualidade intacta); `non beginners...` removido com justificativa (comportamento intencionalmente trocado).
+
+### Testes
+
+- `:core:domain:test` 1027 verdes (+2 líquidos); `:app:testDebugUnitTest` 939 (+1 valor); `:core:data:test` 203; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:app:koverVerify`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Consistência reusa `PROGRESSION_COMPLETION` (0,80); doença sem sinal semanal aparece como sessão perdida.
+- Sessão do intro sem `structure` (duração capada em 25 vs 18 min fixos do template — `fittedTo` lançaria; C4-19 fia a exibição).
+- `fitToVolume` segue dropando o strides primeiro sob pressão (trade-off pré-existente do iniciante); 13 legados atualizados sem reduzir asserts.
+- Replanner mantém `NoChange` nos dois testes; o motivo vira a guarda de volume (ordem pré-existente) porque o futuro com strides é mais leve.
+
+### Próximo passo
+
+1. S12 / C4-19: estrutura no briefing/UI (não promete mais tempo), TDD.
+2. Depois S12 / C4-20 (`G-PER-05` + matriz + guarda de iniciante).
 
 ## Sessão 2026-11-17 — Ciclo 4/S11.6: docs `R-PER-03` e `R-PRESC-02` emendada (C4-08)
 

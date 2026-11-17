@@ -315,23 +315,6 @@ class WeeklyPlanGenerator {
             val date = weekStart.plusDays((day.value - 1).toLong())
             (race?.allowsQuality(date) ?: true) && (recovery?.allowsQuality(date) ?: true)
         }
-        val stridesDay = if (input.profile.experience == Experience.BEGINNER &&
-            (meso.phase == MesoPhase.BASE || meso.phase == MesoPhase.BUILD || meso.phase == MesoPhase.PEAK)
-        ) {
-            // Decisão do usuário 0 (fatia 5): strides como EASY no dia leve mais
-            // curto (teto da disponibilidade intacto); tipo EASY de propósito —
-            // sobrevive à guarda `R-PRESC-04` e não conta como qualidade. Dias de
-            // recuperação ficam de fora; sem 2+ dias além do longão, não há strides.
-            days.filter { day ->
-                day != longDay &&
-                    recovery?.isActive(weekStart.plusDays((day.value - 1).toLong())) != true
-            }
-                .sortedWith(compareBy({ availability.getValue(it) }, { it.value }))
-                .takeIf { it.size >= 2 }
-                ?.first()
-        } else {
-            null
-        }
         val microDoseCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             (recovery?.allowsQuality(date) ?: true) &&
@@ -350,6 +333,13 @@ class WeeklyPlanGenerator {
             !isRaceWeek &&
             qualityCandidateDays.isNotEmpty()
         val completionRatio = input.previousWeek?.strongCompletionRatio() ?: 0.0
+        // ADR 0047 §2.2 (C4-18): the intro fartlek needs four consistent weeks
+        // (≥80% strong completion). Illness has no weekly signal in the plan
+        // history; it surfaces as missed sessions, and the day gate still
+        // applies to every session when the athlete is ill.
+        val consistentWeeks = combinedReferences.count { (it.strongCompletionRatio() ?: 0.0) >= PROGRESSION_COMPLETION }
+        val introFartlekEligible = input.profile.experience == Experience.BEGINNER &&
+            consistentWeeks >= INTRO_FARTLEK_CONSISTENT_WEEKS
         // The second opportunity still requires proven progression: completed
         // week, reliable ACWR in 0.8–1.3 and no taper/race/recovery week.
         val secondQualityAllowed = structuralQualityEligible &&
@@ -368,7 +358,11 @@ class WeeklyPlanGenerator {
         // escolhida pela rotação determinística do catálogo, que também decide
         // se a semana tem estímulo (BASE só na segunda metade, taper em
         // micro-dose, recovery sem qualidade).
-        val easyTemplates = SessionLibrary.easyTemplates(meso.phase, input.profile.experience)
+        val easyTemplates = SessionLibrary.easyTemplates(
+            meso.phase,
+            input.profile.experience,
+            includeIntroFartlek = introFartlekEligible,
+        )
         fun easyTemplate(role: SessionRole): SessionTemplate? = easyTemplates.singleOrNull { it.role == role }
         val qualitySelection = if (structuralQualityEligible) {
             SessionLibrary.qualityRotation(
@@ -412,6 +406,32 @@ class WeeklyPlanGenerator {
             )
         } else {
             emptySet()
+        }
+        // C4-18 (ADR 0047 §2.2): strides are an EASY stimulus for every level
+        // in BASE/BUILD/PEAK, on the shortest non-long day with room to spare.
+        // Quality and micro-dose days are excluded: the stimulus must not pile
+        // onto a hard day, and the branch order below keeps them winning any
+        // leftover collision. Recovery days stay out; without 2+ easy days
+        // beyond the long run there are no strides. The beginner swaps strides
+        // for the intro fartlek after four consistent weeks (still EASY, never
+        // a quality opportunity).
+        val stridesDay = if (
+            meso.phase == MesoPhase.BASE ||
+            meso.phase == MesoPhase.BUILD ||
+            meso.phase == MesoPhase.PEAK
+        ) {
+            days.filter { day ->
+                val date = weekStart.plusDays((day.value - 1).toLong())
+                day != longDay &&
+                    day !in qualityDays &&
+                    day !in microDoseDays &&
+                    recovery?.isActive(date) != true
+            }
+                .sortedWith(compareBy({ availability.getValue(it) }, { it.value }))
+                .takeIf { it.size >= 2 }
+                ?.first()
+        } else {
+            null
         }
 
         // ADR 0045 §2.2: the long run is sized before the sessions exist. The
@@ -562,12 +582,17 @@ class WeeklyPlanGenerator {
                     val isRecoveryDay = recoveryCap != null
                     if (day == stridesDay) {
                         val duration = durationByDay.getValue(day)
+                        val template = if (introFartlekEligible) {
+                            easyTemplate(SessionRole.INTRO_FARTLEK)
+                        } else {
+                            null
+                        } ?: easyTemplate(SessionRole.STRIDES)
                         PlannedSession(
                             date = date,
                             type = WorkoutType.EASY,
-                            title = easyTemplate(SessionRole.STRIDES)?.title ?: "Strides curtos",
+                            title = template?.title ?: "Strides curtos",
                             durationMin = duration,
-                            rationale = easyTemplate(SessionRole.STRIDES)?.blurb
+                            rationale = template?.blurb
                                 ?: "Estímulo neuromuscular curto, sem fadiga.",
                             ruleIds = listOf("R-ZONE-01", "R-PLAN-06", "R-PER-02"),
                             evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
@@ -1519,6 +1544,9 @@ class WeeklyPlanGenerator {
         private const val LONG_LONGER_MARGIN = 5
         private const val LONG_FLOOR_HINT_RANGE = 15
         private const val PROGRESSION_COMPLETION = 0.80
+
+        /** Consistent weeks before the beginner swaps strides for intro fartlek (ADR 0047 §2.2). */
+        private const val INTRO_FARTLEK_CONSISTENT_WEEKS = 4
         private const val DELOAD_FACTOR = 0.75
         private val SPECIAL_VOLUME_BLOCKS = setOf(
             VolumeGrowthBlock.DELOAD,

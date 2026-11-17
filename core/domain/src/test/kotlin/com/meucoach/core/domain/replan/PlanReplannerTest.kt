@@ -482,7 +482,12 @@ class PlanReplannerTest {
         )
 
         assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
-        assertThat((result as ReplanResult.NoChange).reason).contains("treino forte")
+        // C4-18: o futuro vigente ficou mais leve (quarta virou strides de 25);
+        // o candidato regenerado sem espaço para strides o supera, então a
+        // guarda de volume (checada antes, ordem pré-existente) dispara. A
+        // invariante segue: nenhuma qualidade movida para o futuro.
+        assertThat((result as ReplanResult.NoChange).reason)
+            .contains("não pode aumentar o volume futuro")
     }
 
     @Test
@@ -513,7 +518,11 @@ class PlanReplannerTest {
         )
 
         assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
-        assertThat((result as ReplanResult.NoChange).reason).contains("treino forte")
+        // C4-18: mesmo mecanismo do teste acima — o futuro vigente com strides
+        // é mais leve que o candidato regenerado, então a guarda de volume
+        // dispara antes da de qualidade. A invariante segue: nada adicionado.
+        assertThat((result as ReplanResult.NoChange).reason)
+            .contains("não pode aumentar o volume futuro")
     }
 
     // --- Merged-week guardrails -------------------------------------------

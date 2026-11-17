@@ -110,11 +110,12 @@ class LongRunSizingTest {
         assertThat(longRun.rationale)
             .contains("40 min", "piso para um longão é 45 min", "domingo")
         assertThat(plan.sessions.map { it.title }).doesNotContain("Longão")
-        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        // C4-18: o intermediário ganha strides (terça 25 no lugar de 40).
+        assertThat(plan.weeklyMinutes).isEqualTo(105)
     }
 
     @Test
-    fun `four sixty minute days keep the long run as the longest at twenty five percent`() {
+    fun `four sixty minute days keep the long run as the longest with strides`() {
         val plan = plan(
             experience = Experience.INTERMEDIATE,
             availability = mapOf(
@@ -129,8 +130,10 @@ class LongRunSizingTest {
         assertThat(longRun.date.dayOfWeek).isEqualTo(DayOfWeek.SUNDAY)
         assertThat(longRun.durationMin).isEqualTo(60)
         assertThat(longRun.title).isEqualTo("Longão")
-        assertThat(plan.weeklyMinutes).isEqualTo(240)
-        assertThat(longRun.durationMin!!.toDouble() / plan.weeklyMinutes).isEqualTo(0.25)
+        // C4-18: terça vira strides (25 no lugar de 60); o share do longão é
+        // alvo sobre os outros reais, não teto — 60/205 em vez de 60/240.
+        assertThat(plan.weeklyMinutes).isEqualTo(205)
+        assertThat(longRun.durationMin!!.toDouble() / plan.weeklyMinutes).isEqualTo(60.0 / 205.0)
         assertThat(longRun.durationMin).isGreaterThanOrEqualTo(
             plan.sessions.filter { it.type != WorkoutType.LONG }.maxOf { it.durationMin!! },
         )
