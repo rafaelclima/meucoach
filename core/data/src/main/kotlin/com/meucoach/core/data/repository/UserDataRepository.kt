@@ -262,6 +262,14 @@ private fun DailyPrescriptionEntity.toJson(): JSONObject = JSONObject().apply {
     put("engineVersion", engineVersion)
     put("inputsHash", inputsHash)
     putNullable("supersedesId", supersedesId)
+    // C4-50: the export carries the day quality decision (ADR 0044 §3.1).
+    put(
+        "structure",
+        structureJson?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject.NULL,
+    )
+    putNullable("qualityBlockReason", qualityBlockReason)
+    putNullable("decisionDetail", decisionDetail)
+    putNullable("unlockHint", unlockHint)
     put("createdAt", Instant.ofEpochMilli(createdAt).toString())
 }
 

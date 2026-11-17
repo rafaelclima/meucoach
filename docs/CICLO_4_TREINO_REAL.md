@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S11.2 (C4-31)
-> **Último commit:** C4-31 — `feat(app): show the restored quality note after check-in (C4-31)`
-> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30 e C4-31 DONE)**; próxima C4-50 (decisão/catálogo/export)
-> **Sessão atual:** **S11.2 — C4-31 DONE**
-> **Task atual:** C4-31 (DONE)
-> **Próxima task:** C4-50 (S11)
+> **Última atualização:** 17/11/2026 — S11.3 (C4-50)
+> **Último commit:** C4-50 — `feat(data): export the plan and day quality decisions (C4-50)`
+> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30, C4-31 e C4-50 DONE)**; próxima C4-51 (copy por gate + "Por quê?")
+> **Sessão atual:** **S11.3 — C4-50 DONE**
+> **Task atual:** C4-50 (DONE)
+> **Próxima task:** C4-51 (S11)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:app:testDebugUnitTest` 936 (+4); `:core:domain:test` 1017 (+7); `:core:data:test` 197; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
-> **Próxima ação:** abrir C4-50 (S11: `QualityBlockReason`/`PlanDecisionReason` + export `PlanJson`, serialização testada).
+> **Gates da última sessão:** `:core:data:test` 203 (+6); `:core:domain:test` 1017; `:app:testDebugUnitTest` 936; `:core:model` 40; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt` verdes (`:app:assembleDebug`/`lint`/`kover`/`detekt` seguem verdes de S11.2, sem código app)
+> **Próxima ação:** abrir C4-51 (S11: copy por gate + "Por quê?" + dica — `QualityBlockReason`/`PlanDecisionReason` + catálogo na UI).
 
 ### 0.1 O que já está pronto
 
@@ -155,16 +155,16 @@
 
 ### 0.2 O que **não** está pronto
 
-- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` já têm round-trip no Room (C4-45); a reavaliação agora pode ser provada também pelos campos persistidos. O export `PlanJson` desses campos fica para C4-50.
+- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` têm round-trip no Room (C4-45) e no export (C4-50); a reavaliação pode ser provada também pelos campos persistidos.
 - `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
-- O golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes. A copy/UI da reavaliação tardia está pronta (C4-31: nota "Atualizado: com o check-in, a qualidade foi liberada" quando EASY→QUALITY antes do DONE); o export `PlanJson` dos campos de decisão fica para C4-50.
+- O golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes. A copy/UI da reavaliação tardia está pronta (C4-31) e os campos de decisão estão no export (C4-50).
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
-- `qualityKind`/`structure`/`planDecision` já têm coluna e round-trip no Room (C4-45); `generatorVersion` tem coluna com default v6 e é preservada no re-save, mas o domínio ainda não a carrega — isso é C4-46. O export `PlanJson` desses campos fica para C4-50.
-- O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); o que falta é o export `PlanJson` (C4-50), `generatorVersion` no domínio (C4-46) e a passagem de fase/raceWeek pela produção (C4-47).
+- `qualityKind`/`structure`/`planDecision` têm coluna, round-trip no Room (C4-45) e export `PlanJson` (C4-50); `generatorVersion` tem coluna com default v6 e é preservada no re-save, e o domínio a carrega (C4-46).
+- O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
 - Strides para todos os níveis e intro fartlek do iniciante (C4-18), estrutura no briefing/UI (C4-19), golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para S12.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
@@ -624,7 +624,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-50 | `QualityBlockReason`/`PlanDecisionReason` + persistência | E1–E8 | L | S11 | ADR 0044/0048 | Serialização testada | — |
+| [x] | C4-50 | `QualityBlockReason`/`PlanDecisionReason` + persistência | E1–E8 | L | S11 | ADR 0044/0048 | Serialização testada | `PlanJsonTest` (5); export da decisão do plano + dia; commit S11.3 |
 | [ ] | C4-51 | Copy por gate + “Por quê?” + dica | C4-50 | M | S11 | FR-412 | UI; catálogo | — |
 | [ ] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | — |
 | [ ] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | — |
@@ -883,7 +883,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** `:app:testDebugUnitTest` 936 verdes (+4: VM 2, tela 2); `:core:domain:test` 1017 (+7); `:core:data:test` 197; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes.
 - **Commit:** `feat(app): show the restored quality note after check-in (C4-31)`.
 - **Decisões/notas:** TDD RED→GREEN (domínio primeiro, depois VM/tela). A regra é pura no domínio: última versão KEEP QUALITY + alguma anterior DOWNGRADE-de-QUALITY→EASY (ordem cronológica do DAO); DONE/CLOSED nunca mostram a nota (guarda de status no VM). O VM lê `getVersions` só quando a decisão atual já mantém QUALITY planejada (1 query extra, sem custo no caminho comum). `todayState` intacto (flag via `.copy`); baseline só na assinatura do ctor (precedente C4-48). E2E real do user story: 10 corridas FIT importadas (TRIMP objetivo, ACWR confiável) → sem check-in = DOWNGRADE `SUBJECTIVE_MISSING` sem nota → check-in 4/2/2/2 = KEEP + nota, 2 versões. Flakes rotativos sem relação (1× `TutorialSystemBackTest` como vítima de cascata `UncaughtExceptionsBeforeTest`, verde isolado e na reexecução limpa da suíte). Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
-- **Próximo:** S11 / C4-50 (`QualityBlockReason`/`PlanDecisionReason` + export `PlanJson`).
+- **Próximo:** S11.3 / C4-50 (export `PlanJson` dos campos de decisão, serialização testada).
+
+### S11.3 — 2026-11-17 — Export `PlanJson` dos campos de decisão (C4-50)
+
+- **Status:** DONE
+- **Tasks:** C4-50.
+- **Arquivos:** `core/data/.../prescription/PlanJson.kt` (`structure`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` no `sessionToJson` + leitura com descarte de desconhecido), `core/data/.../repository/UserDataRepository.kt` (`structure`/`qualityBlockReason`/`decisionDetail`/`unlockHint` no export da prescrição), `PlanJsonTest.kt` (novo, 5), `UserDataRepositoryTest.kt` (+1 export da decisão do plano + dia), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:data:test` 203 verdes (+6: `PlanJsonTest` 5, export 1); `:core:domain:test` 1017; `:app:testDebugUnitTest` 936; `:core:model` 40; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt` verdes (`:app`/`domain` sem código alterado; gates de S11.2 seguem verdes).
+- **Commit:** `feat(data): export the plan and day quality decisions (C4-50)`.
+- **Decisões/notas:** TDD RED→GREEN (5 testes falhavam: chaves ausentes no export). Semântica espelha C4-45: código desconhecido → `null` (nunca parcial); detalhe sem código conhecido é descartado junto; kind em sessão não-`QUALITY` é descartado (nunca gera linha que quebra o `toModel`); legado sem as chaves decodifica como nulos. `structure` exporta como objeto (espelha `targets`) e volta como string do entity; `replacedSessionsJson` ganha as chaves automaticamente (mesmo `sessionsToJson`). Prescrição no export é write-only (sem import de JSON de volta; `toModel` com desconhecido→nulo já coberto em C4-45). Flake pré-existente sem relação: `TodayViewModelPersistTest.upgrades a stale stored week on opening` falhou 2× na suíte cheia (3ª sessão seguida, `completionMessage` nulo por race de `combine` sob carga) e passou isolado + na reexecução limpa; `TutorialSystemBackTest` 1× como vítima de cascata. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S11 / C4-51 (copy por gate + "Por quê?" + dica — UI).
 
 ---
 
@@ -1060,10 +1070,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-50, S11)
+## 14. Próxima ação (C4-51, S11)
 
-1. Abrir o ADR 0048 §2.3 e a FR-412; ler `PlanJson`/`PrescriptionJson` e o round-trip do Room (C4-45) — os campos `qualityKind`/`structure`/`planDecision` e `qualityBlockReason`/`decisionDetail`/`unlockHint` já sobrevivem no banco; falta o export JSON.
-2. Escrever os testes que falham de C4-50: serialização com os campos de decisão (round-trip + versão desconhecida/ausente → `null`, nunca parcial).
-3. Implementar C4-50 com TDD (export + catálogo); rodar `:core:data:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-412 (tabela de copy por gate) e o ADR 0044 §2.4; ler o `NextWorkoutCard`, o `ExplanationCatalog` e os campos de decisão persistidos/exportados (C4-45/C4-50).
+2. Escrever os testes que falham de C4-51: cada gate tem copy + `ruleId` catalogado + dica no "Por quê?"; rationale não contradiz o código.
+3. Implementar C4-51 com TDD (copy/UI do "Por quê?"); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

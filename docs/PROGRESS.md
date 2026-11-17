@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11.2 do Ciclo 4: reavaliação após check-in na UI, C4-31)
+**Atualizado:** 17/11/2026 (S11.3 do Ciclo 4: export `PlanJson` dos campos de decisão, C4-50)
+
+## Sessão 2026-11-17 — Ciclo 4/S11.3: export `PlanJson` dos campos de decisão (C4-50)
+
+**Objetivo:** fechar a FR-412 na persistência/export — `qualityKind`/`structure`/`planDecision` da sessão e `qualityBlockReason`/`decisionDetail`/`unlockHint` da prescrição passam a sair no export JSON, com leitura que nunca reconstrói decisão parcial.
+
+### Concluído
+
+- **Export:** `PlanJson.sessionToJson` grava `structure` (objeto), `qualityKind`, `planDecisionCode/Detail`; `sessionsFromJson` lê com descarte de código desconhecido, detalhe sem código e kind em sessão não-`QUALITY`; `DailyPrescriptionEntity.toJson` grava `structure` + 3 campos do gate.
+- **Testes:** `PlanJsonTest` (5: round-trip, kind desconhecido, detalhe sem código, kind em EASY, legado sem chaves) + export DB da decisão do plano + dia.
+
+### Testes
+
+- `:core:data:test` 203 verdes (+6); `:core:domain:test` 1017; `:app:testDebugUnitTest` 936; `:core:model` 40.
+- `spotlessCheck`, `:core:data:koverVerify`, `:core:data:detekt` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Semântica espelha C4-45 (desconhecido→nulo, detalhe cai com o código); `replacedSessionsJson` ganha as chaves automaticamente (mesmo `sessionsToJson`).
+- Export da prescrição é write-only (sem import de JSON de volta; `toModel` com desconhecido→nulo já coberto em C4-45).
+- Flake pré-existente sem relação: `upgrades a stale stored week on opening` 2× na suíte cheia (3ª sessão seguida; `completionMessage` nulo por race de `combine` sob carga) + `TutorialSystemBackTest` 1× cascata; todos verdes isolados e na suíte final limpa.
+
+### Próximo passo
+
+1. S11 / C4-51: copy por gate + "Por quê?" + dica (UI).
+2. Depois S11 / C4-52 (catálogo de regras/evidências + teste) e C4-08 (docs `R-PER-03`/ciência).
 
 ## Sessão 2026-11-17 — Ciclo 4/S11.2: reavaliação após check-in na UI (C4-31)
 

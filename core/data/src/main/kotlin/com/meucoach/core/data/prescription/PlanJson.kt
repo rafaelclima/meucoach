@@ -3,6 +3,8 @@ package com.meucoach.core.data.prescription
 import com.meucoach.core.data.db.entity.PlannedSessionEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanEntity
 import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
+import com.meucoach.core.domain.prescription.PlanDecisionReason
+import com.meucoach.core.domain.prescription.QualityKind
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -96,6 +98,16 @@ internal object PlanJson {
         putNullable("activityId", session.activityId)
         putNullable("closureReason", session.closureReason?.name)
         putNullable("closedAt", session.closedAt?.let { Instant.ofEpochMilli(it).toString() })
+        // C4-50: the export carries the quality decision (ADR 0044 §3.1); the
+        // reader drops unknown codes instead of rebuilding a partial decision.
+        put(
+            "structure",
+            session.structureJson?.let { runCatching { JSONObject(it) }.getOrNull() }
+                ?: JSONObject.NULL,
+        )
+        putNullable("qualityKind", session.qualityKind)
+        putNullable("planDecisionCode", session.planDecisionCode)
+        putNullable("planDecisionDetail", session.planDecisionDetail)
     }
 
     fun sessionsToJson(sessions: List<PlannedSessionEntity>): String =
@@ -110,26 +122,40 @@ internal object PlanJson {
         return List(array.length()) { index -> sessionFromJson(array.getJSONObject(index), weekStart) }
     }
 
-    private fun sessionFromJson(json: JSONObject, weekStart: String) = PlannedSessionEntity(
-        id = json.getString("id"),
-        weekStart = weekStart,
-        date = json.getString("date"),
-        type = WorkoutType.valueOf(json.getString("type")),
-        title = json.getString("title"),
-        durationMin = if (json.isNull("durationMin")) null else json.getInt("durationMin"),
-        rationale = json.getString("rationale"),
-        ruleIdsJson = json.getJSONArray("ruleIds").toString(),
-        evidenceIdsJson = json.getJSONArray("evidenceIds").toString(),
-        targetsJson = json.getJSONObject("targets").toString(),
-        status = SessionStatus.valueOf(json.getString("status")),
-        skipReason = json.optNullableString("skipReason"),
-        completedAt = json.optNullableString("completedAt")?.let { Instant.parse(it).toEpochMilli() },
-        completionEvidence = json.optNullableString("completionEvidence")?.let(CompletionEvidence::valueOf),
-        executionId = json.optNullableString("executionId"),
-        activityId = json.optNullableString("activityId"),
-        closureReason = json.optNullableString("closureReason")?.let(SessionClosureReason::valueOf),
-        closedAt = json.optNullableString("closedAt")?.let { Instant.parse(it).toEpochMilli() },
-    )
+    private fun sessionFromJson(json: JSONObject, weekStart: String): PlannedSessionEntity {
+        val type = WorkoutType.valueOf(json.getString("type"))
+        val planDecisionCode = json.optNullableString("planDecisionCode")
+            ?.takeIf { code -> runCatching { PlanDecisionReason.valueOf(code) }.isSuccess }
+        return PlannedSessionEntity(
+            id = json.getString("id"),
+            weekStart = weekStart,
+            date = json.getString("date"),
+            type = type,
+            title = json.getString("title"),
+            durationMin = if (json.isNull("durationMin")) null else json.getInt("durationMin"),
+            rationale = json.getString("rationale"),
+            ruleIdsJson = json.getJSONArray("ruleIds").toString(),
+            evidenceIdsJson = json.getJSONArray("evidenceIds").toString(),
+            targetsJson = json.getJSONObject("targets").toString(),
+            status = SessionStatus.valueOf(json.getString("status")),
+            skipReason = json.optNullableString("skipReason"),
+            completedAt = json.optNullableString("completedAt")?.let { Instant.parse(it).toEpochMilli() },
+            completionEvidence = json.optNullableString("completionEvidence")?.let(CompletionEvidence::valueOf),
+            executionId = json.optNullableString("executionId"),
+            activityId = json.optNullableString("activityId"),
+            closureReason = json.optNullableString("closureReason")?.let(SessionClosureReason::valueOf),
+            closedAt = json.optNullableString("closedAt")?.let { Instant.parse(it).toEpochMilli() },
+            structureJson = json.optJSONObject("structure")?.toString(),
+            qualityKind = json.optNullableString("qualityKind")
+                // Only a QUALITY session carries a kind; anything else (including
+                // an unknown code) decodes as null, never as a partial decision.
+                .takeIf { type == WorkoutType.QUALITY }
+                ?.takeIf { code -> runCatching { QualityKind.valueOf(code) }.isSuccess },
+            // A detail without a known code is dropped with it (C4-45 invariant).
+            planDecisionCode = planDecisionCode,
+            planDecisionDetail = planDecisionCode?.let { json.optNullableString("planDecisionDetail") },
+        )
+    }
 
     private fun <T> List<T>.toJsonArray(toJson: (T) -> JSONObject): JSONArray {
         val array = JSONArray()

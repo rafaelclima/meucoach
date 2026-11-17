@@ -143,6 +143,30 @@ class UserDataRepositoryTest {
     }
 
     @Test
+    fun `export carries the plan and day quality decisions`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        plans.saveWeek(qualityPlan())
+        prescriptions.append(downgradedPrescription())
+
+        val export = JSONObject(userData.exportJson())
+
+        val session = export.getJSONArray("weeklyPlans").getJSONObject(0)
+            .getJSONArray("sessions").getJSONObject(0)
+        assertThat(session.getString("qualityKind")).isEqualTo("FARTLEK")
+        assertThat(session.getString("planDecisionCode")).isEqualTo("QUALITY_OPPORTUNITY")
+        assertThat(session.getString("planDecisionDetail"))
+            .isEqualTo("Oportunidade estrutural da semana.")
+        assertThat(session.getJSONObject("structure").getInt("totalMin")).isEqualTo(40)
+
+        val prescription = export.getJSONArray("dailyPrescriptions").getJSONObject(0)
+        assertThat(prescription.getString("qualityBlockReason")).isEqualTo("SUBJECTIVE_MISSING")
+        assertThat(prescription.getString("decisionDetail"))
+            .isEqualTo("check-in subjetivo de hoje ainda não foi respondido")
+        assertThat(prescription.getString("unlockHint"))
+            .isEqualTo("Faça o check-in de hoje para liberar o treino forte.")
+    }
+
+    @Test
     fun `export includes the completion source of an inferred race`(): Unit = runBlocking {
         val saved = events.create(
             NewRaceEvent(RaceDistance.TEN_K, monday.plusDays(20)),
@@ -331,6 +355,70 @@ class UserDataRepositoryTest {
         confidence = DataConfidence.MEDIUM,
         engineVersion = "daily-prescription-v1",
         inputsHash = "hash-1",
+    )
+
+    private fun qualityPlan() = WeeklyPlan(
+        weekStart = monday,
+        sessions = listOf(
+            PlannedSession(
+                date = monday,
+                type = WorkoutType.QUALITY,
+                title = "Fartlek leve",
+                durationMin = 40,
+                rationale = "Oportunidade estrutural; o dia confirma.",
+                ruleIds = listOf("R-PLAN-02", "R-PER-03"),
+                evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+                qualityKind = com.meucoach.core.domain.prescription.QualityKind.FARTLEK,
+                planDecision = com.meucoach.core.domain.prescription.PlanDecision(
+                    reason = com.meucoach.core.domain.prescription.PlanDecisionReason.QUALITY_OPPORTUNITY,
+                    detail = "Oportunidade estrutural da semana.",
+                ),
+                structure = com.meucoach.core.domain.prescription.WorkoutStructure(
+                    version = 1,
+                    warmupMin = 10,
+                    blocks = listOf(
+                        com.meucoach.core.domain.prescription.WorkoutBlock(
+                            kind = com.meucoach.core.domain.prescription.BlockKind.WORK,
+                            repetitions = 5,
+                            workSec = 180,
+                            recoverySec = 120,
+                            target = "I",
+                        ),
+                    ),
+                    cooldownMin = 5,
+                    totalMin = 40,
+                ),
+            ),
+        ),
+        weeklyMinutes = 40,
+        longRunMinutes = null,
+        qualityCount = 1,
+        rationale = "Qualidade planejada; o dia confirma.",
+        confidence = DataConfidence.MEDIUM,
+        ruleIds = listOf("R-PLAN-02", "R-PER-03"),
+        evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+    )
+
+    private fun downgradedPrescription() = com.meucoach.core.domain.prescription.DailyPrescription(
+        date = monday,
+        plannedSessionId = "2026-11-02-2026-11-02",
+        plannedType = WorkoutType.QUALITY,
+        plannedTitle = "Fartlek leve",
+        plannedDurationMin = 40,
+        prescribedType = WorkoutType.EASY,
+        title = "Fácil, sem pressa",
+        prescribedDurationMin = 30,
+        targets = com.meucoach.core.domain.prescription.PrescriptionTargets(),
+        adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE,
+        rationale = "Planejado: Fartlek leve (40 min). Hoje: fácil.",
+        ruleIds = listOf("R-PRESC-02", "R-READY-06"),
+        evidenceIds = listOf("EV-SAW-2016"),
+        confidence = DataConfidence.MEDIUM,
+        engineVersion = "daily-prescription-v1",
+        inputsHash = "hash-2",
+        qualityBlockReason = com.meucoach.core.domain.prescription.QualityBlockReason.SUBJECTIVE_MISSING,
+        decisionDetail = "check-in subjetivo de hoje ainda não foi respondido",
+        unlockHint = "Faça o check-in de hoje para liberar o treino forte.",
     )
 
     private fun plan() = WeeklyPlan(
