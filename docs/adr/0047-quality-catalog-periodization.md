@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — C4-14 a C4-19 concluídas; C4-20..C4-21 pendentes.
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-20 concluídas; C4-21 pendente.
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -393,3 +393,11 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   leva kind/structure/planDecision; `DailyPrescriptionRepository` faz
   round-trip da coluna v18. 9 testes novos no domínio + 1 no data + 2
   de tela; `:core:domain:test` 1036 verdes.
+- **C4-20 (S12):** `G-PER-05` em `fixtures/golden/per-quality/` congela a
+  semana 5K do catálogo (intermediário, prova em 34 dias, seg/qua/sex 40 e dom
+  90): BUILD bloco 1 de 3, "Ritmo forte" `CONTINUOUS` 40 com estrutura 10+20T+5,
+  "Strides curtos" `EASY` 25 com estrutura `6×20 s`, fácil 40, "Longão" 45 e
+  150 min. `PlanQualityGoldenTest` (3): golden BUILD com matriz completa da
+  semana, PEAK (prova em 14 dias) com "Pace de prova 5K" `RACE_PACE` ≠ BUILD,
+  e guarda de iniciante (mesma agenda, 0 `QUALITY`, strides `EASY` com
+  estrutura); `:core:domain:test` 1039 verdes.

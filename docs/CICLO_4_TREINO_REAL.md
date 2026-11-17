@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S12 (C4-19)
-> **Último commit:** C4-19 — `feat(domain): show the executable structure in briefing and UI (C4-19)`
-> **Fase:** 3 — UI/copy — **S12 em andamento (C4-19 DONE)**; próxima C4-20 (golden `G-PER-05`)
-> **Sessão atual:** **S12 — C4-19 DONE**
-> **Task atual:** C4-19 (DONE)
-> **Próxima task:** C4-20 (S12)
+> **Última atualização:** 17/11/2026 — S12 (C4-20)
+> **Último commit:** C4-20 — `feat(domain): freeze the 5K catalog week as golden G-PER-05 (C4-20)`
+> **Fase:** 3 — UI/copy — **S12 em andamento (C4-20 DONE)**; próxima C4-21 (docs `R-PER-04`)
+> **Sessão atual:** **S12 — C4-20 DONE**
+> **Task atual:** C4-20 (DONE)
+> **Próxima task:** C4-21 (S12)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1036 (+9); `:app:testDebugUnitTest` 941 (+2); `:core:data:test` 204 (+1); `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
-> **Próxima ação:** abrir C4-20 (S12: golden `G-PER-05` + matriz + guarda de iniciante).
+> **Gates da última sessão:** `:core:domain:test` 1039 (+3); `:app:testDebugUnitTest` 941; `:core:data:test` 204; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
+> **Próxima ação:** abrir C4-21 (S12: docs `R-PER-04`, `SPORTS_SCIENCE`, evidências).
 
 ### 0.1 O que já está pronto
 
@@ -165,9 +165,9 @@
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
 - `qualityKind`/`structure`/`planDecision` têm coluna, round-trip no Room (C4-45) e export `PlanJson` (C4-50); `generatorVersion` tem coluna com default v6 e é preservada no re-save, e o domínio a carrega (C4-46).
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
-- Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para o resto da S12.
+- Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20 DONE); docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para o resto da S12.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
-- `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
+- `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`, `G-PER-05` em `fixtures/golden/per-quality` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
 - O rationale da primeira oportunidade diz "o dia confirma" e cita `R-PER-03`; a copy de "sem progressão" distingue falta de histórico, dias, taper e o motivo real de carga (calibração, ACWR com valor, monotonia, strain, esforço percebido) sem contradição (C4-06). Restam em C4-59 os refinamentos finos de copy do rationale.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
@@ -564,7 +564,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-17 | Gerador usa estrutura/kind; PEAK específico | C4-15/16 | L | S6.3 | ADR 0047 | PEAK ≠ BUILD; testes | `QualityIntegrationTest` (7); `WorkoutStructureTest` (+7); `:core:domain:test` 963; commit S6.3 |
 | [x] | C4-18 | Strides para todos + intro fartlek do iniciante | C4-15 | M | S12 | ADR 0047 | Iniciante EASY; qualidade 0 | `BeginnerStridesTest` (+3/-1; 4 fortes→intro, 3→strides, intermediário com strides+quality); 13 legados atualizados com justificativa; commit S12 |
 | [x] | C4-19 | Briefing/UI da estrutura | C4-14/17 | M | S12 | ADR 0047 | Não promete mais tempo | `WorkoutStructureBriefingTest` (2); `EasyStructureTest` (3); `DailyStructureTest` (3); `SessionSwapperTest` (+1); `DailyPrescriptionRepositoryTest` (+1 round-trip); `TodayBriefingTest` (+2 tela); commit S12 |
-| [ ] | C4-20 | Golden `G-PER-05` + matriz + guarda | C4-15..19 | M | S12 | ADR 0047 | Golden; iniciante sem QUALITY | — |
+| [x] | C4-20 | Golden `G-PER-05` + matriz + guarda | C4-15..19 | M | S12 | ADR 0047 | Golden; iniciante sem QUALITY | `fixtures/golden/per-quality` (input/expected/README); `PlanQualityGoldenTest` (3: golden BUILD, PEAK `RACE_PACE` ≠ BUILD, guarda de iniciante); `fixtures/golden/README` + `TESTING.md`; commit S12 |
 | [ ] | C4-21 | Docs `R-PER-04`, SPORTS_SCIENCE, evidências | C4-15..20 | S | S12 | ADR 0047 | Docs/IDs atualizados | — |
 
 ### E4 — Carga/ACWR v3
@@ -945,6 +945,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (`EasyStructureTest` 3× `IllegalArgumentException` com `structure` nula; `WorkoutStructureBriefingTest` não compilava sem os campos). `WorkoutStructure.steps()` vira a fonte única do texto executável (plano e briefing usam a mesma lista; o gerador só faz `joinToString`). `DailyPrescription.structure` exige `totalMin == prescribedDurationMin` (nunca promete mais tempo); `SessionBriefing` exige `steps` ↔ `structure` juntos. O dia ajusta com `fittedTo` e derruba a forma quando a duração não comporta warm-up + volta à calma (em vez de prometer). `build()` manteve 12 params para o detekt: a estrutura entra via `.copy(structure = fitted...)` após o `build`, sem baseline novo. `inputsHash` passa a cobrir `qualityKind` + `structure` do plano (versões antigas viram nova versão na reavaliação, auto-corretivo). Nenhum dado real; nenhuma migração nova (coluna v18 já existia); sem `fallbackToDestructiveMigration`.
 - **Próximo:** S12 / C4-20 (golden `G-PER-05` + matriz + guarda de iniciante).
 
+### S12.2 — 2026-11-17 — Golden `G-PER-05` + matriz + guarda de iniciante (C4-20)
+
+- **Status:** DONE
+- **Tasks:** C4-20.
+- **Arquivos:** `fixtures/golden/per-quality/` (input/expected/README novos), `core/domain/.../golden/PlanQualityGoldenTest.kt` (novo, 3), `fixtures/golden/README.md`, `docs/TESTING.md` (tabela + lista de testes), `docs/adr/0047-quality-catalog-periodization.md` (§10), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1039 verdes (+3); `:core:data:test` 204; `:app:testDebugUnitTest` 941; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes.
+- **Commit:** `feat(domain): freeze the 5K catalog week as golden G-PER-05 (C4-20)`.
+- **Decisões/notas:** TDD RED→GREEN (1 falha: `expected.json` ausente → `IllegalStateException`; peak/guarda já passavam e travam o comportamento). Input espelha `QualityIntegrationTest.plan()` (seg/qua/sex 40, dom 90, 5K em 34 dias, verde com check-in, ACWR 1,0): BUILD bloco 1 de 3, "Ritmo forte" `CONTINUOUS` 40 (qua, `QUALITY_OPPORTUNITY`, estrutura 10+20T+5 = 40), "Strides curtos" `EASY` 25 (seg, estrutura `6×20 s` = 25), fácil 40 (sex), "Longão" 45 (dom, piso, nunca "Corrida mais longa"), 150 min, 1 oportunidade. `expected.json` congela a matriz completa da semana (4 sessões com kind/`hasStructure` + estrutura que cabe na duração) e os títulos proibidos travam a rotação (`Intervalos`/`Fartlek`/`Colinas`/`Pace de prova 5K` ausentes). PEAK (mesma agenda, prova em 14 dias) dá "Pace de prova 5K" `RACE_PACE` ≠ BUILD, com estrutura que cabe. Iniciante com a mesma agenda: 0 oportunidades, nenhum `QUALITY`, strides `EASY` com estrutura. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S12 / C4-21 (docs `R-PER-04`, `SPORTS_SCIENCE`, evidências).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1120,9 +1130,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-20, S12)
+## 14. Próxima ação (C4-21, S12)
 
-1. Abrir o ADR 0047 §2.5/§2.7 e a FR-403/FR-404; ler `SessionLibrary` + `QualityRotationTest` + `fixtures/golden/per-opportunity` — C4-15..C4-19 garantem matriz, rotação, kind/estrutura e briefing; C4-20 congela o golden `G-PER-05` (5K BUILD/PEAK) com a guarda de iniciante sem `QUALITY`.
-2. Implementar C4-20 com TDD (golden + propriedades); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0047 §2.2/§5 e a FR-403/FR-404; ler `docs/SPORTS_SCIENCE.md` §8.4/§8.8/§13/§14 + `ExplanationCatalog` — C4-15..C4-20 provam matriz, rotação, kind/estrutura, briefing e golden `G-PER-05`; C4-21 documenta `R-PER-04`, registra `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` (ou justifica a ausência) e fecha o `SPORTS_SCIENCE`.
+2. Implementar C4-21 (docs apenas, sem código); rodar `git diff --check` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -1,0 +1,41 @@
+{
+  "scenarioId": "G-PER-05",
+  "description": "5K em 34 dias, intermediário, 4 dias (seg 40, qua 40, sex 40, dom 90): BUILD com qualidade estruturada do catálogo, strides EASY com estrutura e longão de domingo. Sem dados reais de saúde.",
+  "weekStart": "2026-11-02",
+  "today": "2026-11-02",
+  "profile": {
+    "id": "athlete-1",
+    "birthDate": "1988-01-01",
+    "sex": "MALE",
+    "restingHeartRate": 58,
+    "maxHeartRateObserved": 187,
+    "lactateThresholdHeartRate": 180,
+    "thresholdPaceSecPerKm": 360,
+    "experience": "INTERMEDIATE",
+    "timezone": "America/Sao_Paulo",
+    "availability": {
+      "MONDAY": 40,
+      "WEDNESDAY": 40,
+      "FRIDAY": 40,
+      "SUNDAY": 90
+    }
+  },
+  "readiness": {
+    "score": 80,
+    "level": "GREEN",
+    "confidence": "HIGH",
+    "components": { "SUBJECTIVE": 80 },
+    "missing": [],
+    "flags": []
+  },
+  "load": {
+    "acwr": 1.0,
+    "monotony": 1.2,
+    "strain": 400.0
+  },
+  "race": {
+    "eventId": "race-1",
+    "distance": "FIVE_K",
+    "targetDate": "2026-12-06"
+  }
+}

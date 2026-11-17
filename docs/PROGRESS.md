@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S12 do Ciclo 4: estrutura no briefing/UI, C4-19)
+**Atualizado:** 17/11/2026 (S12 do Ciclo 4: golden `G-PER-05`, C4-20)
+
+## Sessão 2026-11-17 — Ciclo 4/S12: golden `G-PER-05` + matriz + guarda (C4-20)
+
+**Objetivo:** congelar a semana 5K do catálogo como golden (ADR 0047 §6, FR-403/FR-404): BUILD com qualidade estruturada, PEAK específico e guarda de iniciante sem `QUALITY`.
+
+### Concluído
+
+- **Golden:** `fixtures/golden/per-quality/` (input/expected/README): intermediário, 5K em 34 dias, seg/qua/sex 40 + dom 90 → BUILD bloco 1 de 3, "Ritmo forte" `CONTINUOUS` 40 (qua, `QUALITY_OPPORTUNITY`, estrutura 10+20T+5), "Strides curtos" `EASY` 25 (seg, estrutura `6×20 s`), fácil 40 (sex), "Longão" 45 (dom), 150 min.
+- **Testes:** `PlanQualityGoldenTest` (3): golden BUILD com matriz completa da semana (kind/`hasStructure`/estrutura que cabe + títulos proibidos que travam a rotação); PEAK (prova em 14 dias) com "Pace de prova 5K" `RACE_PACE` ≠ BUILD; iniciante com a mesma agenda com 0 `QUALITY` e strides `EASY` com estrutura.
+- **Docs:** `fixtures/golden/README.md` + `docs/TESTING.md` (tabela de goldens + lista de testes) com `G-PER-05`.
+
+### Testes
+
+- `:core:domain:test` 1039 verdes (+3); `:core:data:test` 204; `:app:testDebugUnitTest` 941; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:app:koverVerify`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (1 falha: `expected.json` ausente; peak/guarda já passavam e travam o comportamento existente).
+- Input espelha `QualityIntegrationTest.plan()` para determinismo (rotação por `weekInPhase` do macro: 34 dias → contínuo, 27 → intervalos, 14 → PEAK).
+- O `expected.json` congela títulos proibidos (`Intervalos`/`Fartlek`/`Colinas`/`Pace de prova 5K`/`Corrida mais longa` ausentes) para travar a rotação da semana 1.
+
+### Próximo passo
+
+1. S12 / C4-21: docs `R-PER-04`, `SPORTS_SCIENCE`, evidências (sem código).
+2. Depois S13 (C4-41..C4-43: crédito do treino extra, review).
 
 ## Sessão 2026-11-17 — Ciclo 4/S12: estrutura no briefing/UI (C4-19)
 

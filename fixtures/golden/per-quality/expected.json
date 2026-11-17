@@ -1,0 +1,63 @@
+{
+  "scenarioId": "G-PER-05",
+  "phase": "BUILD",
+  "qualityCount": 1,
+  "weeklyMinutes": 150,
+  "quality": {
+    "dayOfWeek": "WEDNESDAY",
+    "title": "Ritmo forte",
+    "kind": "CONTINUOUS",
+    "durationMin": 40,
+    "planDecision": "QUALITY_OPPORTUNITY"
+  },
+  "strides": {
+    "dayOfWeek": "MONDAY",
+    "title": "Strides curtos",
+    "durationMin": 25
+  },
+  "easy": {
+    "dayOfWeek": "FRIDAY",
+    "title": "Fácil e conversável",
+    "durationMin": 40
+  },
+  "longRun": {
+    "dayOfWeek": "SUNDAY",
+    "title": "Longão",
+    "durationMin": 45
+  },
+  "sessions": [
+    {
+      "dayOfWeek": "MONDAY",
+      "type": "EASY",
+      "title": "Strides curtos",
+      "durationMin": 25,
+      "kind": null,
+      "hasStructure": true
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "type": "QUALITY",
+      "title": "Ritmo forte",
+      "durationMin": 40,
+      "kind": "CONTINUOUS",
+      "hasStructure": true
+    },
+    {
+      "dayOfWeek": "FRIDAY",
+      "type": "EASY",
+      "title": "Fácil e conversável",
+      "durationMin": 40,
+      "kind": null,
+      "hasStructure": false
+    },
+    {
+      "dayOfWeek": "SUNDAY",
+      "type": "LONG",
+      "title": "Longão",
+      "durationMin": 45,
+      "kind": null,
+      "hasStructure": false
+    }
+  ],
+  "forbiddenTitles": ["Intervalos", "Fartlek", "Fartlek leve", "Colinas", "Pace de prova 5K", "Corrida mais longa"]
+}

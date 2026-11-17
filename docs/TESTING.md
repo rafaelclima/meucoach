@@ -169,6 +169,7 @@ Evidência atual (12/11/2026):
 - `StructuralQualityTest`: primeira oportunidade sem check-in/carga, com âmbar/vermelho/doença, ACWR alto e monotonia alta; segunda só com progressão (≥80%, ACWR confiável 0,8–1,3, 4+ dias); micro-dose estrutural no taper/race week; recovery/iniciante sem qualidade.
 - `QualityPlanPropertiesTest`: ≤2 oportunidades, nunca adjacentes ao longão ou consecutivas, taper/race só `STRIDES_ONLY` ≤25 min, estrutura cabe na duração e determinismo em matriz de nível/fase/agenda.
 - `PlanGoldenTest`: cenário `G-PER-03` (oportunidade estrutural, longão honesto e fácil de sexta).
+- `PlanQualityGoldenTest`: cenário `G-PER-05` (semana 5K do catálogo em BUILD com matriz completa da semana; PEAK vira `RACE_PACE` e nunca copia o BUILD; iniciante com a mesma agenda recebe strides `EASY` com estrutura e zero `QUALITY`).
 - `VolumeProgressionTest`: sem histórico → teto; +6% sobre a semana anterior; semana < 80% mantém; base antiga não cresce; deload/taper/prova/recuperação; prontidão/carga/ACWR; teto da agenda; plano parcial e janela de 4 semanas; empate pela mais recente; só evidência forte conta.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `RecoveryWindowTest`: janela 2/3/5/10, borda inclusiva, dia da prova fora, tetos por distância, `blocks`, `dayOfWindow`, `intersects`, escolha da prova mais recente e invariantes.
@@ -304,6 +305,7 @@ Cenários implementados hoje:
 | `G-LOAD-01` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
 | `G-LOAD-02` | Série diária e PMC de 28 dias |
 | `G-PER-03` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
+| `G-PER-05` | Semana 5K do catálogo em BUILD (contínuo estruturado, strides EASY com estrutura, longão 45); PEAK específico; iniciante sem `QUALITY` |
 | `G-UPGRADE-01` | Upgrade v6→v7: terça `DONE` preservada, sexta vira oportunidade, volume intacto |
 | `G-READY-01` | Dia verde com dados completos |
 | `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
@@ -311,7 +313,7 @@ Cenários implementados hoje:
 | `G-READY-04` | Sono curto bloqueia qualidade |
 
 Os cenários `G-001`…`G-006` continuam não existindo. O plano já tem os goldens
-`G-PER-03` e `G-UPGRADE-01`; prescrição diária e volume ainda entram quando os
+`G-PER-03`, `G-PER-05` e `G-UPGRADE-01`; prescrição diária e volume ainda entram quando os
 fluxos correspondentes fecharem. Plano e prescrição também são cobertos por testes
 unitários determinísticos (`WeeklyPlanGeneratorTest`, `DailyPrescriptionEngineTest`,
 `Cycle1RegressionTest`, `StructuralQualityTest`, `QualityPlanPropertiesTest`,
