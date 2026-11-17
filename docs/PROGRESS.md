@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S15 do Ciclo 4: copy do rationale sem contradição, C4-59 — S15 segue aberta)
+**Atualizado:** 17/11/2026 (S15 do Ciclo 4: `createdAt` estável e higiene do plano, C4-60 — S15 encerrada)
+
+## Sessão 2026-11-17 — Ciclo 4/S15: `createdAt` estável e higiene do plano (C4-60)
+
+**Objetivo:** fechar a FR-413 — o plano não confunde mais “criação” com “última gravação”; `createdAt`/`createdOn` ficam estáveis e só `revisedAt` muda em revisão.
+
+### Concluído
+
+- **`saveWeek`:** preserva `createdAt` e `createdOn` da linha existente; a primeira gravação carimba, as seguintes herdam. Conteúdo re-salvo não reescreve a data de criação.
+- **Revisão:** `applyReplan`/`applyUpgrade` continuam movendo só `revisedAt` (e `version`), mantendo `createdAt`/`createdOn`.
+- **Auditoria:** `StoredWeeklyPlan` ganhou `createdAt`; `PlanJson` já exportava `createdAt`/`revisedAt`.
+- **Teste de repositório:** criar → re-salvar com `createdOn` diferente → revisar; `createdAt`/`createdOn` estáveis, `revisedAt` muda, metadados do `PlanJson` consistentes. O upgrade também tem assert de `createdAt`.
+
+### Testes
+
+- `:core:data:testDebugUnitTest` 208 verdes (+1); `:app:testDebugUnitTest` 958; `:core:domain:test` 1097; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:data:koverVerify` e `:core:data:detekt` verdes; FIT 93,01%.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (o teste falhava no `createdAt` e no `createdOn` reescritos).
+- `saveWeek` não virou revisão: `version`, `revisionReason`, `revisedAt` e fingerprints continuam preservados; só os caminhos explícitos de revisão avançam `revisedAt`.
+- S15 encerrada; S16 abre com C4-53 (versões de motor).
+
+### Próximo passo
+
+1. S16 / C4-53: `weekly-plan-v7`/`daily-v6`, TDD.
+2. Depois S16 / C4-54 (suíte completa/goldens/Kover/detekt/spotless).
 
 ## Sessão 2026-11-17 — Ciclo 4/S15: copy do rationale sem contradição (C4-59)
 

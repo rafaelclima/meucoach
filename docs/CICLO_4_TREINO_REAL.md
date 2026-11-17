@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S14 concluídas; **C4-57, C4-58 e C4-59 (S15) concluídas; C4-60 é a próxima task**.
+**Status:** S0 a S15 concluídas; **próxima é S16/C4-53**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S15 (C4-59)
-> **Último commit:** C4-59 — `fix(domain): remove contradictory rationale copy (C4-59)`
-> **Fase:** 3 — UI/copy — **S15 aberta**; próxima C4-60
-> **Sessão atual:** **S15 — C4-59 DONE**
-> **Task atual:** C4-59 (DONE)
-> **Próxima task:** C4-60 (S15)
+> **Última atualização:** 17/11/2026 — S15 (C4-60)
+> **Último commit:** C4-60 — `fix(data): keep the original plan creation timestamps (C4-60)`
+> **Fase:** 4 — Fechamento — **S15 encerrada**; próxima S16/C4-53
+> **Sessão atual:** **S15 — C4-60 DONE**
+> **Task atual:** C4-60 (DONE)
+> **Próxima task:** C4-53 (S16)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1097, `:app:testDebugUnitTest` 958, `:core:data:test` 207, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt` verdes; app/data sem código alterado (gates de C4-58 seguem verdes)
-> **Próxima ação:** abrir S15/C4-60 (`createdAt` estável no `saveWeek`).
+> **Gates da última sessão:** `:core:domain:test` 1097, `:app:testDebugUnitTest` 958, `:core:data:test` 208, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, `:core:data:koverVerify` e `:core:data:detekt` verdes; domínio sem código alterado
+> **Próxima ação:** abrir S16/C4-53 (versões de motor `weekly-plan-v7`/`daily-v6`).
 
 ### 0.1 O que já está pronto
 
@@ -648,7 +648,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-57 | `TargetKind`/precedência FC×pace | E3/E9 | M | S15 | FR-410 | Testes; copy | `TargetKind` + `primary` em `PrescriptionTargets` (policy única); briefing por precedência; sheet com destaque vs referência; `R-ZONE-01 v2` no `SPORTS_SCIENCE`; `TargetPrecedenceTest` (11), `PrescriptionJsonTargetsTest` (3), briefing UI (+2); screenshots do briefing re-gravados; commit S15 |
 | [x] | C4-58 | Horizonte 5K/base + pace dinâmico | E3/E9 | L | S15 | FR-411 | Golden; sem regressão | `macro-plan-v2` (5K 12 sem; entrada tardia 8); general com qualidade; `RacePaceResolver` (previsão, gap, RPE 8); `G-PER-06`; `RacePaceTest` 15, `RacePaceIntegrationTest` 3, `RaceHorizonTest` 2, `PlanHorizonGoldenTest` 5; gap no card; commit S15 |
 | [x] | C4-59 | Copy contraditória do rationale | E9 | S | S15 | FR-412 | Teste de copy | `WeeklyPlanGeneratorTest` (+5: slot único após progressão, catálogo de 1 estímulo, deload, monotonia não calculável, evidência manual); commit S15.2 |
-| [ ] | C4-60 | `createdAt` estável no `saveWeek` | E8 | S | S15 | FR-413 | Teste de repositório | — |
+| [x] | C4-60 | `createdAt` estável no `saveWeek` | E8 | S | S15 | FR-413 | Teste de repositório | `TrainingPlanRepositoryTest` (+1: create → re-save → revision, `createdAt`/`createdOn` estáveis, `revisedAt` muda); `StoredWeeklyPlan.createdAt`; `TrainingPlanRepositoryUpgradeTest` preserva `createdAt`; commit S15.3 |
 
 ---
 
@@ -1084,6 +1084,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (5 testes falhavam). A progressão liberada só usa o texto original com 2 qualidades; com 1, nomeia o catálogo de 1 estímulo ou a agenda sem outro dia seguro separado do longão. A frase genérica “O volume segue limitado pela disponibilidade” saiu: ela contradizia a descarga (volume −25%) e a linha de volume imediatamente anterior. Monotonia nula deixou de ser descrita como “≥2,0” e virou “não calculável”; a conclusão passou a dizer “com evidência”, porque `strongCompletionRatio` não é conclusão bruta (MANUAL/LEGACY não contam). `progressionBlockedRationale` foi dividido em `progressionBlockedByLoad` para o detekt (complexidade 20). Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S15 / C4-60 (`createdAt` estável no `saveWeek`).
 
+### S15.3 — 2026-11-17 — `createdAt` estável e higiene do plano (C4-60)
+
+- **Status:** DONE
+- **Tasks:** C4-60.
+- **Arquivos:** `core/data/.../repository/TrainingPlanRepository.kt` (`saveWeek` preserva `createdAt`/`createdOn`; `StoredWeeklyPlan.createdAt`), `TrainingPlanRepositoryTest.kt` (+1), `TrainingPlanRepositoryUpgradeTest.kt` (assert de `createdAt`), `docs/DATA_MODEL.md` (semântica dos timestamps), `docs/adr/0028-versioned-plan-replanning.md` (A1b + status), `docs/CICLO_4_TREINO_REAL.md`, `docs/PROGRESS.md`.
+- **Testes/gates:** `:core:data:testDebugUnitTest` 208 verdes (+1); `:app:testDebugUnitTest` 958; `:core:domain:test` 1097; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt`; domínio sem código alterado. FIT 93,01% de branches.
+- **Commit:** `fix(data): keep the original plan creation timestamps (C4-60)`.
+- **Decisões/notas:** TDD RED→GREEN (o teste falhava no `createdAt` e no `createdOn` reescritos). `saveWeek` passou a usar `existing?.createdAt ?: clock.millis()` e `existing?.createdOn ?: plan.createdOn`; a primeira gravação carimba, as seguintes preservam. `saveWeek` continua não sendo revisão: `version`, `revisionReason`, `revisedAt` e fingerprints são herdados, e só `applyReplan`/`applyUpgrade` movem `revisedAt`. O upgrade preserva `createdAt` (assert novo). `PlanJson` já exportava os dois campos; o `StoredWeeklyPlan` agora também expõe `createdAt` para a UI de auditoria. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S16 / C4-53 (versões de motor `weekly-plan-v7`/`daily-v6`).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1260,9 +1270,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-60, S15)
+## 14. Próxima ação (C4-53, S16)
 
-1. Abrir a FR-413 e `TrainingPlanRepository.saveWeek`/`createdAt`; o teste de repositório falha antes (criar, salvar de novo, revisar; `createdAt` muda hoje).
-2. Implementar C4-60 com TDD; rodar `:core:data:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-413/ADR 0048 e os pontos que carregam `ENGINE_VERSION` (`WeeklyPlanGenerator`, `DailyPrescriptionEngine`, `WeeklyPlan.engineVersion`, `PlanJson`, `PlanUpgrade`); planejar o bump coordenado para `weekly-plan-v7`/`daily-v6`.
+2. Implementar C4-53 com TDD; rodar `:core:domain:test` + `:core:data:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

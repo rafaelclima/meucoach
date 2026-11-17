@@ -1,6 +1,6 @@
 # ADR 0028 — Replanejamento versionado e sugerido da semana
 
-**Status:** aceito e implementado (R-01, R-02 e R-03, 08/11/2026)
+**Status:** aceito e implementado (R-01, R-02 e R-03, 08/11/2026); `createdAt`/`createdOn` estabilizados na C4-60 (FR-413, 17/11/2026)
 **Data:** 2026-11-08
 **Responsável:** planejamento com Rafael (usuário 0)
 **Implementação:** `PlanReplanner` puro no `core:domain`; schema 13 com `weekly_plan_revisions`; `TrainingPlanRepository.applyReplan` transacional; `EvaluateReplan`/`ApplyReplan` no app; card de sugestão com versão, diff e aceitar/recusar/suprimir.
@@ -69,6 +69,7 @@ A tabela append-only `weekly_plan_revisions` guarda:
 Decisões registradas:
 
 - **A1:** `createdOn` permanece o original para revisões da semana vigente.
+- **A1b:** `createdAt` e `createdOn` são gravados na primeira persistência e preservados em re-save; `revisedAt` só muda em revisão aceita (FR-413/C4-60).
 - **A2:** uma linha vigente em `weekly_plans` + snapshots completos append-only; não há PK composta por semana/versão.
 - Planos legados da migração têm hash desconhecido; a migração não inventa histórico.
 - A disponibilidade atual pode ser capturada como baseline explícito após a migração; isso não afirma qual era a disponibilidade original.

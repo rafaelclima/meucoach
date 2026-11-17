@@ -66,6 +66,7 @@ class TrainingPlanRepositoryUpgradeTest {
     @Test
     fun `applies the upgrade preserving history and recording engine upgrade`(): Unit = runBlocking {
         repository.saveWeek(storedWeek())
+        val originalCreatedAt = repository.getWeekRecord(monday)!!.createdAt
 
         val outcome = repository.applyUpgrade(
             candidate = regeneratedWeek(),
@@ -83,6 +84,7 @@ class TrainingPlanRepositoryUpgradeTest {
         assertThat(stored.generatorVersion).isEqualTo(target)
         assertThat(stored.plan.engineVersion).isEqualTo(target)
         assertThat(stored.plan.createdOn).isEqualTo(monday)
+        assertThat(stored.createdAt).isEqualTo(originalCreatedAt)
         assertThat(stored.revisionReason).isEqualTo(regeneratedWeek().rationale)
         assertThat(stored.revisedAt).isEqualTo(clock.instant())
 

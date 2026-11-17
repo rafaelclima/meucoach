@@ -305,6 +305,55 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `keeps createdAt and createdOn stable across re-saves and moves only revisedAt on revision`(): Unit =
+        runBlocking {
+            repository.saveWeek(plan())
+            val first = database.trainingPlanDao().getPlan(monday.toString())!!
+            val createdAt = first.createdAt
+
+            val laterAt = Instant.parse("2026-11-06T12:00:00Z")
+            val laterRepository = TrainingPlanRepository(database, Clock.fixed(laterAt, ZoneOffset.UTC))
+            laterRepository.saveWeek(
+                plan().copy(
+                    createdOn = monday.plusDays(2),
+                    rationale = "Conteúdo re-salvo.",
+                ),
+            )
+
+            val resaved = database.trainingPlanDao().getPlan(monday.toString())!!
+            assertThat(resaved.createdAt).isEqualTo(createdAt)
+            assertThat(resaved.createdOn).isEqualTo(monday.toString())
+            assertThat(resaved.revisedAt).isNull()
+            val resavedRecord = laterRepository.getWeekRecord(monday)!!
+            assertThat(resavedRecord.createdAt).isEqualTo(Instant.ofEpochMilli(createdAt))
+            assertThat(resavedRecord.plan.createdOn).isEqualTo(monday)
+            assertThat(resavedRecord.revisedAt).isNull()
+
+            val outcome = laterRepository.applyReplan(
+                suggestion = suggestion(),
+                candidate = candidateWeek(),
+                today = today,
+                currentInputsHash = "inputs-2",
+            )
+            assertThat(outcome).isInstanceOf(ReplanApplyOutcome.Applied::class.java)
+
+            val revised = database.trainingPlanDao().getPlan(monday.toString())!!
+            assertThat(revised.createdAt).isEqualTo(createdAt)
+            assertThat(revised.createdOn).isEqualTo(monday.toString())
+            assertThat(revised.revisedAt).isEqualTo(laterAt.toEpochMilli())
+            val revisedRecord = laterRepository.getWeekRecord(monday)!!
+            assertThat(revisedRecord.createdAt).isEqualTo(Instant.ofEpochMilli(createdAt))
+            assertThat(revisedRecord.plan.createdOn).isEqualTo(monday)
+            assertThat(revisedRecord.revisedAt).isEqualTo(laterAt)
+
+            val metadata = com.meucoach.core.data.prescription.PlanJson.planMetadataToJson(revised)
+            assertThat(Instant.parse(metadata.getString("createdAt")).toEpochMilli())
+                .isEqualTo(createdAt)
+            assertThat(Instant.parse(metadata.getString("revisedAt")).toEpochMilli())
+                .isEqualTo(laterAt.toEpochMilli())
+        }
+
+    @Test
     fun `applies a revision atomically and keeps an append-only snapshot`(): Unit = runBlocking {
         repository.saveWeek(revisionWeek())
 

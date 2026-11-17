@@ -38,6 +38,8 @@ data class StoredWeeklyPlan(
     val plan: WeeklyPlan,
     val version: Int,
     val revisionReason: String?,
+    /** Original plan creation instant; never moves on re-save (FR-413). */
+    val createdAt: Instant,
     val revisedAt: Instant?,
     val inputsHash: String?,
     val availabilityHash: String?,
@@ -171,8 +173,11 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         dao.upsertPlan(
             WeeklyPlanEntity(
                 weekStart = weekStart,
-                createdAt = clock.millis(),
-                createdOn = plan.createdOn.toString(),
+                // FR-413: re-saving content must not turn "created" into "last saved".
+                // The first write stamps the row; later writes inherit both the
+                // instant and the local creation date used to cut adherence.
+                createdAt = existing?.createdAt ?: clock.millis(),
+                createdOn = existing?.createdOn ?: plan.createdOn.toString(),
                 confidence = plan.confidence,
                 rationale = plan.rationale,
                 weeklyMinutes = plan.weeklyMinutes,
@@ -548,6 +553,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         plan = toModel(sessions),
         version = version,
         revisionReason = revisionReason,
+        createdAt = Instant.ofEpochMilli(createdAt),
         revisedAt = revisedAt?.let(Instant::ofEpochMilli),
         inputsHash = inputsHash,
         availabilityHash = availabilityHash,
