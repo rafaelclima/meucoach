@@ -309,15 +309,19 @@ com prova 12–16 semanas à frente, `BASE` até −8 semanas, `BUILD` até −3
 
 ### 8.4 Sessões de qualidade
 
-| Tipo | Exemplo | Alvo |
-|---|---|---|
-| **Strides** | 6×20 s rápido controlado, 60 s trote | Neuromuscular, economia |
-| **Tempo** | 20–30 min contínuos em Z3–Z4 | Limiar |
-| **Intervalos VO2max** | 5×3 min Z4–Z5, 2 min trote | VO2max |
-| **Colinas** | 6×45 s subida forte, caminhada desce | Força específica |
-| **Treadmill** | 6×2 min a 5–10% inclinação, Z4 | Controle de calor/impacto |
+| Tipo (`QualityKind`) | Exemplo | Alvo | Quem recebe |
+|---|---|---|---|
+| **Strides** (`STRIDES_ONLY`, micro-dose) | 6×20 s rápido controlado, 60 s trote | Neuromuscular, economia | Todos como `EASY`; micro-dose ≤25 min em taper/prova |
+| **Contínuo** (`CONTINUOUS`) | 20–25 min em T | Limiar | Intermediário/avançado em `BUILD` |
+| **Intervalos VO2max** (`INTERVALS`) | 5×3 min em I, 2 min trote | VO2max | Intermediário/avançado em `BUILD` |
+| **Fartlek** (`FARTLEK`) | 8×(1 min forte/1 min fácil), por RPE | Variação por esforço | Intermediário/avançado (2ª metade da `BASE` em dose baixa; `BUILD`) |
+| **Colinas** (`HILLS`) | 6×45 s subida forte, caminhada desce | Força específica | Intermediário/avançado em `BUILD` |
+| **Pace de prova** (`RACE_PACE`) | Blocos no pace atual da distância | Especificidade | `PEAK` por distância (5K/10K/meia/maratona) |
+| **Intro fartlek** (sem kind, `EASY`) | 6–8×30 s “confortavelmente forte”/1–2 min fácil, RPE 7 | Transição segura | Iniciante após 4 semanas consistentes |
 
-Aquecimento de 10 min + mobilidade. A tabela mostra o estímulo canônico; no plano, a duração total da qualidade é 25–45 min e o texto deriva o bloco dessa duração: 10 min de aquecimento; no contínuo, o bloco principal é o restante menos 5 min de desaquecimento (mínimo 10 min); nos intervalos, 3 min fortes com 2 min leves, de 3 a 5 repetições, e o restante em ritmo leve. Sessões curtas usam a dose menor e nenhum texto promete mais trabalho do que cabe. Qualidade nunca em dia de sono < 6 h.
+O pace de prova usa a previsão atual (VDOT), nunca a meta; a meta é referência com gap explícito. A seleção rotaciona por `weekInPhase` e não repete o kind em semanas seguidas; `PEAK` nunca é cópia do `BUILD` (`R-PER-04`). O iniciante nunca recebe `QUALITY` estruturada (`R-PRESC-04`): strides desde a semana 1 e intro fartlek `EASY` após 4 semanas ≥80% — a dose é convenção de produto (`LIMITED`), sustentada por base majoritariamente fácil (`EV-TID-2021`, `EV-SEILER-2010`), maior incidência de lesão em novatos (17,8 vs 7,7/1000 h; `EV-INJURY-2015`) e literatura de HIIT majoritariamente recreacional, sem base para intervalado estruturado em novatos (`EV-HIIT-2016`, `EV-HIIT-2024`). Com acesso à esteira, a qualidade ganha dica de inclinação/velocidade sem virar um tipo separado (`R-PLAN-08`).
+
+Aquecimento de 10 min + mobilidade nas sessões de qualidade. A tabela mostra o estímulo canônico; no plano, a duração total da qualidade é 25–45 min e o texto deriva o bloco dessa duração: 10 min de aquecimento; no contínuo, o bloco principal é o restante menos 5 min de desaquecimento (mínimo 10 min); nos intervalos, 3 min fortes com 2 min leves, de 3 a 5 repetições; no fartlek, 1 min forte/1 min fácil por RPE; nas colinas, 45 s de subida; no bloco de prova, o pace atual da distância — e o restante sempre em ritmo leve. A estrutura é ajustada à duração real (`fittedTo`) e nenhum texto promete mais trabalho do que cabe. Sessões curtas usam a dose menor. Qualidade nunca em dia de sono < 6 h.
 
 ### 8.5 Longão
 
@@ -369,13 +373,13 @@ segunda→domingo:
   explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
   ADR 0026).
 - Longão é o dia de maior disponibilidade (empate: sábado/domingo > sexta > o dia mais tarde na semana), com piso de 45/60 min (30 em deload/taper) e alvo de 25–30% como referência, não como teto. O piso vence em semanas pequenas; a disponibilidade continua sendo o teto rígido e o longão nunca fica abaixo do fácil mais longo. Abaixo do piso, o plano usa “Corrida mais longa” e explica o limite (`R-PLAN-03 v2`, ADR 0045).
-- Fácil entre 20–60 min; qualidade entre 25–45 min, como "Ritmo forte" (intermediário) ou "Intervalos" (avançado). O texto deriva aquecimento/bloco/desaquecimento da duração real e nunca descreve mais trabalho do que cabe.
+- Fácil entre 20–60 min; qualidade entre 25–45 min ("Ritmo forte", "Intervalos", "Fartlek", "Colinas" ou "Pace de prova" conforme fase/nível/distância e rotação; `R-PER-04`). O iniciante recebe "Strides curtos" ou "Fácil com surtos" como `EASY` com estrutura, nunca `QUALITY` (`R-PER-02`, `R-PRESC-04`). O texto deriva aquecimento/bloco/desaquecimento da duração real e nunca descreve mais trabalho do que cabe.
 - Taper encurta a qualidade fora do corte (10 dias para 5k/10k, 14 para meia/maratona) com piso de 25 min; dentro do corte e na semana da prova vale 1 micro-dose ≤ 25 min, nunca zero estímulo (`R-PLAN-05`, `R-PLAN-10` v2 proposto).
 - Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% com intensidade mantida em micro-dose (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
 - Sem data de prova, não há taper: a meta de prova sem data não define quando reduzir o volume. O plano mantém o volume normal e diz isso explicitamente, sem inventar uma data (`R-PLAN-11`, BUG-08).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
-- Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão (ADR 0013, `R-PLAN-02`, `R-PLAN-03`).
+- Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo (tipo, título, duração, alvos, rationale, `qualityKind`, `planDecision` e estrutura executável) e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão (ADR 0013, `R-PLAN-02`, `R-PLAN-03`).
 - Replanejamento da semana vigente ([ADR 0028](adr/0028-versioned-plan-replanning.md), R-01): regenera apenas os dias estritamente futuros com o mesmo gerador, preserva hoje/passado e sessões `DONE`/`CLOSED` e valida a semana mesclada (máximo de 2 qualidades, um longão, espaçamento e disponibilidade). Sessões passadas `PLANNED` elegíveis são contadas como perdidas sem serem fechadas; o limiar de 2 é heurística de produto (A6), não limiar científico. A revisão não repõe carga nem adiciona treino forte além da intenção futura vigente e não cria `ruleId`/`evidenceId`: apenas reaplica o que o gerador emitiu.
 - Confiança do plano é capturada quando a semana é montada e fica no máximo média; ela não muda durante a semana. Novos dados entram no plano seguinte. A UI explica isso em “Por que este plano?” e lista os dados usados e ausentes (`R-DATA-01`).
 
@@ -561,6 +565,10 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `EV-WATSON-2015` | Watson, N. F. et al. Recommended amount of sleep for a healthy adult. *Sleep* 38(6):843–844, 2015. doi:10.5665/sleep.4716 | A | 7–9 h |
 | `EV-SCHUBERT-2014` | Schubert, A. G., Kempf, J., Heiderscheit, B. C. Influence of stride frequency and length on running mechanics. *Sports Health* 6(3):210–217, 2014. doi:10.1177/1941738113508544 | A | Cadência individual |
 | `EV-ISSURIN-2010` | Issurin, V. B. New horizons for the methodology and physiology of training periodization. *Sports Med* 40(3):189–206, 2010. | A | Periodização em blocos |
+| `EV-TID-2021` | Síntese da literatura de distribuição de intensidade (polarizado/piramidal): maioria do volume (≥70%) em baixa intensidade; âncora em `EV-SEILER-2010` | B | Base fácil do catálogo (`R-PER-02`, `R-PER-04`) |
+| `EV-INJURY-2015` | Videbæk, S. et al. Incidence of running-related injuries per 1000 h of running in different types of runners: systematic review and meta-analysis. *Sports Med* 2015. doi:10.1007/s40279-015-0333-8 | A | Trava de iniciante: 17,8 lesões/1000 h em novatos vs 7,7 em recreacionais (`R-PER-02`) |
+| `EV-HIIT-2016` | Literatura de HIIT em corredores recreacionais: eficácia aeróbia demonstrada em amostras recreacionais; dados de lesão em novatos escassos | C | Intro fartlek por RPE no iniciante; sem intervalado estruturado (`R-PER-02`) |
+| `EV-HIIT-2024` | Atualização da literatura de HIIT/TID com amostras recreacionais e competitivas: efeitos dependem do nível; sem base nova para prescrever intervalado estruturado a novatos | C | Trava de intervalado estruturado no iniciante (`R-PER-02`, `R-PRESC-04`) |
 | `EV-BEATTIE-2014` | Beattie, K. et al. The effect of strength training on performance in endurance athletes. *Sports Med* 44(6):845–865, 2014. | A | Contexto de força (fora do escopo de prescrição) |
 | `EV-ACSM-2007` | Sawka, M. N. et al. ACSM position stand: Exercise and fluid replacement. *Med Sci Sports Exerc* 39(2):377–390, 2007. doi:10.1249/00005768-200702000-00016 | A | Individualização da hidratação; risco de hiperhidratação (ADR 0029) |
 | `EV-NATA-2017` | McDermott, B. P. et al. NATA position statement: Fluid Replacement for the Physically Active. *J Athl Train* 52(9):877–895, 2017. doi:10.4085/1062-6050-52.9.02 | A | Hidratação individualizada (SOR A); não ganhar massa durante o exercício (ADR 0029) |
@@ -598,7 +606,10 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
 | `R-PLAN-10` | Corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) + semana civil sem `QUALITY` longa/`LONG`; dentro do corte vale 1 micro-dose ≤25 min, nunca zero estímulo; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
 | `R-PLAN-11` | Meta de prova sem data não agenda redução de volume: o plano mantém o volume normal e declara a ausência da data na UI, sem inventar uma data | BUG-08; `R-DATA-01` (dado ausente é ausente) | LIMITED — regra de transparência de produto, sem alegação fisiológica |
+| `R-PER-01` | Blocos de preparação por distância: com prova, blocos até o `PEAK`; sem prova ou prova distante, modo geral com oportunidade semanal de qualidade | ISSURIN | MODERATE |
+| `R-PER-02` | Sessões por fase e nível, com trava de iniciante: intermediário/avançado recebem os estímulos do catálogo; iniciante recebe strides + intro fartlek `EASY`, sem `QUALITY` estruturada | DANIELS, SEILER, TID-2021, INJURY-2015, HIIT-2016, HIIT-2024 | MODERATE (trava e dose do iniciante: LIMITED — convenção de produto) |
 | `R-PER-03` | Oportunidade de qualidade é estrutural; o dia confirma com prontidão/carga; a primeira oportunidade não depende da prontidão da segunda | DANIELS, SEILER; ADR 0023/0044 | LIMITED — convenção de produto |
+| `R-PER-04` | Catálogo de qualidade por fase, nível e distância, com `PEAK` específico da prova (pace atual, nunca a meta) e rotação determinística que não repete o estímulo em semanas seguidas | DANIELS, SEILER, FOSTER, TID-2021 | MODERATE |
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |

@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — C4-14 a C4-20 concluídas; C4-21 pendente.
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-21 concluídas; restam C4-53 (versões) e C4-57 (precedência FC×pace).
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -401,3 +401,12 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   semana, PEAK (prova em 14 dias) com "Pace de prova 5K" `RACE_PACE` ≠ BUILD,
   e guarda de iniciante (mesma agenda, 0 `QUALITY`, strides `EASY` com
   estrutura); `:core:domain:test` 1039 verdes.
+- **C4-21 (S12, docs):** `R-PER-01/02/04` no `SPORTS_SCIENCE` §14;
+  `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` registradas no
+  §13 (`INJURY-2015` com citação completa verificada; TID/HIIT como sínteses
+  honestas da literatura, sem paper inventado) e citadas em §8.4/§14; §8.4
+  reescrita para espelhar o catálogo (7 linhas + trava de iniciante) e §8.8
+  com exemplos e swapper atualizados. O `ExplanationCatalog` em código não
+  muda de propósito: ele cobre IDs emitidos em rationales (C4-52) e nenhum
+  rationale emite as 4 novas — mesma situação do `R-RACE-01`, documentado sem
+  emissão. Sem código, sem migração, sem dados reais.

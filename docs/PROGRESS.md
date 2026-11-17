@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S12 do Ciclo 4: golden `G-PER-05`, C4-20)
+**Atualizado:** 17/11/2026 (S12 do Ciclo 4: docs `R-PER-04` e evidências, C4-21 — S12 encerrada)
+
+## Sessão 2026-11-17 — Ciclo 4/S12: docs `R-PER-04` e evidências do catálogo (C4-21)
+
+**Objetivo:** fechar o ADR 0047 no papel — `R-PER-01/02/04` no catálogo de regras, as 4 evidências propostas registradas e o §8.4 espelhando o catálogo real (sem código).
+
+### Concluído
+
+- **`SPORTS_SCIENCE`:** §8.4 reescrita para os 7 kinds + intro fartlek `EASY` + trava de iniciante (a linha "Treadmill" saiu: esteira é dica `R-PLAN-08`, não kind); §8.8 com exemplos do catálogo e swapper levando kind/estrutura; §13 com `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024`; §14 com `R-PER-01`/`R-PER-02`/`R-PER-04`.
+- **Evidências:** `INJURY-2015` com citação completa verificada (Videbæk et al., Sports Med 2015, doi confirmado, 17,8 vs 7,7/1000 h); TID/HIIT como sínteses honestas da literatura (força B/C, dose LIMITED) — nenhum paper inventado.
+- **Código inalterado:** `ExplanationCatalog` cobre só IDs emitidos (C4-52); nenhum rationale emite as 4 novas (precedente `R-RACE-01`).
+- **Docs:** ADR 0047 (status + §10) e `DECISIONS.md` (r1.46 + linha do ADR 0047).
+
+### Testes
+
+- Docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-20 seguem verdes).
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `R-PER-01/02` faltavam no §14 desde o ADR 0043 (apontado em C4-08); entraram junto com `R-PER-04`.
+- ADR 0047 segue com pendências fora desta task: C4-53 (versões) e C4-57 (precedência FC×pace).
+- S12 encerrada (C4-18..C4-21).
+
+### Próximo passo
+
+1. S13 / C4-41: golden `G-VOL-02` + copy do treino extra, TDD.
+2. Depois S13 / C4-42 (docs `R-PLAN-01 v2`, `R-LVL-03`) e C4-43 (review).
 
 ## Sessão 2026-11-17 — Ciclo 4/S12: golden `G-PER-05` + matriz + guarda (C4-20)
 
