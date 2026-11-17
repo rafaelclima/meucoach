@@ -1,12 +1,13 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.6 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.7 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
 > Revisão 1.4 (16/11/2026, Ciclo 4/S3, ADR 0046 implementado no domínio): load gate v3 — ACWR 1,5 em todos os caminhos, `acwrReliable` com janela completa de 28 dias, pré-história como “sem dado”, `permitsQuality`/`permitsProgression` separados e strain confiável; versões de motor e UI ficam para C4-53/C4-26.
 > Revisão 1.5 (16/11/2026, Ciclo 4/S5, ADR 0050 implementado no domínio): volume real — a base é `max(strongMinutes)` das corridas fortes importadas (planejadas ou não), a adesão continua planejada e o mesociclo/graduação usam `strongSessions`/`StrongRun` (longão real 60/90). Golden `G-VOL-02`, reparo `LEGACY` e docs de `R-LVL-03` ficam para C4-40..C4-43.
 > Revisão 1.6 (17/11/2026, Ciclo 4/S13, C4-41/C4-42, ADR 0050): golden `G-VOL-02` congela o crédito do treino extra (3×38 concluídas + extra 28 → base real 142, alvo 151, adesão 3/3, copy "treino extra contou"); `LEGACY_UNVERIFIED` sem atividade não entra na base; `R-PLAN-01 v2` e `R-LVL-03` no §14 e §8.12. Resta o review "planejada/mantida/rebaixada" (C4-43).
+> Revisão 1.7 (17/11/2026, Ciclo 4/S14, C4-26/C4-27, ADR 0046): golden `G-LOAD-03` congela o cold-start (8 dias de carga objetiva + 13 de pré-história → `acwrReliable=false` mesmo com `acwr=1,6`; qualidade mantida, volume mantido, copy "8 de 28 dias de histórico; ACWR em calibração"); a UI mostra pill/“Aumento” em calibração em vez do número instável (`R-LOAD-03 v3`); renumeração `G-LOAD-02` → `G-LOAD-03` registrada no ADR 0046 e no PRD.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -185,6 +186,13 @@ Ambos são expressos em **pontos de carga** na mesma ordem de grandeza: 100 pont
 - Dia sem atividade só conta como descanso quando a fonte está fresca **e** o
   dia já pertence ao histórico conhecido. Com fonte desatualizada ou antes do
   primeiro import, o dia é “sem dado”, não um zero fisiológico.
+- **Caso canônico (`G-LOAD-03`, `fixtures/golden/load-calibration/`):** 8 dias
+  de carga objetiva (rTSS) com 13 dias de pré-história → `acwrReliable=false`
+  mesmo com `acwr=1,6` (acima do limite, e mesmo assim `acwrHigh=false`);
+  qualidade mantida (`R-PER-03`), volume mantido (`ACWR_UNRELIABLE`) e a copy
+  "8 de 28 dias de histórico; ACWR em calibração". A UI nunca exibe o número
+  instável como veredito: o pill do Hoje e o "Aumento" de Tendências mostram
+  "em calibração" com o progresso da base objetiva.
 
 ### 6.4 Distribuição semanal
 
@@ -222,7 +230,7 @@ No app, o texto visível é **Alta / Moderada / Baixa**; a cor acompanha o mesmo
 - Doença febril, dor aguda, lesão ou tontura ⇒ vermelho.
 - RHR +7 bpm por 2 dias consecutivos ⇒ no mínimo âmbar.
 - Sono < 6 h na noite anterior ⇒ sem qualidade.
-- ACWR confiável > 1,5 ⇒ flag de redução no dia (fácil/reduzido); não veta a semana sozinho. ACWR em calibração (janela incompleta) não reduz nem veta (`R-LOAD-03` v3, ADR 0046).
+- ACWR confiável > 1,5 ⇒ flag de redução no dia (fácil/reduzido); não veta a semana sozinho. ACWR em calibração (janela incompleta) não reduz nem veta (`R-LOAD-03` v3, ADR 0046). A calibração é um estado da carga, ortogonal ao nível de prontidão: um dia verde pode exibir "em calibração" sem deixar de ser verde; o veto de qualidade vem do gate do dia, nunca do rótulo.
 - HRV abaixo do SWC por 3+ dias + RHR elevada ⇒ âmbar/vermelho.
 
 ### 7.3 Confiança
@@ -295,7 +303,7 @@ Crescer exige **todas** as condições:
   evidência forte **planejada** (um clique não conta, `ADR 0024`; treino extra não
   infla a adesão);
 - prontidão verde, sem doença/lesão, sono curto ou `NO_QUALITY`;
-- carga **objetiva** conhecida (TRIMP/rTSS), monotonia 7d < 2,0, strain sem spike confiável > 2× e ACWR confiável dentro de 0,8–1,3 (`R-LOAD-03` v3, ADR 0046); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039); sem janela completa de 28 dias, o volume é mantido (“em calibração”);
+- carga **objetiva** conhecida (TRIMP/rTSS), monotonia 7d < 2,0, strain sem spike confiável > 2× e ACWR confiável dentro de 0,8–1,3 (`R-LOAD-03` v3, ADR 0046); carga estimada por sRPE conserva, nunca libera aumento (`R-LOAD-04`, ADR 0039); sem janela completa de 28 dias, o volume é mantido (“em calibração”; o golden `G-LOAD-03` congela o caso com `acwr=1,6` não confiável e volume mantido);
 - a semana de destino não é deload, taper, semana de prova ou recuperação.
 
 Fora disso o alvo é **mantido**; uma semana fraca nunca reduz o plano por conta
@@ -605,7 +613,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |
 | `R-LOAD-01` | Calcular TRIMP e rTSS separadamente; não somar | BANISTER, COGGAN | STRONG |
 | `R-LOAD-02` | CTL 42d / ATL 7d / TSB; exibir tendência, não rótulo | MORTON, COGGAN | MODERATE |
-| `R-LOAD-03` | ACWR é flag soft, nunca meta nem veto semanal: confiável >1,5 reduz o dia; qualidade exige carga objetiva + monotonia 7d <2,0 + strain sem spike confiável + ACWR confiável ≤1,5; progressão exige adicionalmente ACWR confiável em 0,8–1,3; janela incompleta é “em calibração” e não decide | GABBETT, IMPELLIZZERI, FOSTER; ADR 0046 | LIMITED |
+| `R-LOAD-03` | ACWR é flag soft, nunca meta nem veto semanal: confiável >1,5 reduz o dia; qualidade exige carga objetiva + monotonia 7d <2,0 + strain sem spike confiável + ACWR confiável ≤1,5; progressão exige adicionalmente ACWR confiável em 0,8–1,3; janela incompleta é “em calibração” e não decide (golden `G-LOAD-03`) | GABBETT, IMPELLIZZERI, FOSTER; ADR 0046 | LIMITED |
 | `R-LOAD-04` | sRPE (`RPE × min`) preenche o dia sem FC/pace; subjetiva: conserva, nunca libera aumento | FOSTER | LIMITED |
 | `R-READY-01` | Prontidão combina subjetivo, sono, HRV e RHR com pesos renormalizados | SAW, PLEWS, BUCHHEIT | MODERATE |
 | `R-READY-02` | Sem HRV/RHR, confiança cai; ausência não é recuperação ruim | BUCHHEIT, SAW | STRONG |

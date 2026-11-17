@@ -808,7 +808,7 @@ permitsProgression =
 
 **Testes:**
 
-- Golden `G-LOAD-02`: cold start → `acwrReliable=false`, qualidade não bloqueada por ACWR, volume mantido, copy “em calibração”.
+- Golden `G-LOAD-03`: cold start → `acwrReliable=false`, qualidade não bloqueada por ACWR, volume mantido, copy “em calibração”.
 - Janela completa + ACWR 1,6 → qualidade rebaixada.
 - Janela completa + ACWR 1,4 → qualidade mantida, progressão bloqueada.
 - ACWR 0,7 → mantém.
@@ -1376,7 +1376,7 @@ LONG_DAY_TOO_SHORT
 | `G-PER-03` | 3×40, intermediário, 2 semanas | 1 oportunidade; longão domingo 40 (“Corrida mais longa”); fácil sexta; sem “Longão 34” |
 | `G-PER-04` | 2×40 + sábado 90 | longão 45 (“Longão”); qualidade; volume 125 |
 | `G-PER-05` | 5K a 6–8 semanas, intermediário | BUILD/PEAK; intervalos/fartlek/race-pace; longão; estrutura |
-| `G-LOAD-02` | 8 dias de carga, pré-história | `acwrReliable=false`; sem veto de ACWR; volume mantido; copy “em calibração” |
+| `G-LOAD-03` | 8 dias de carga, pré-história | `acwrReliable=false`; sem veto de ACWR; volume mantido; copy “em calibração” |
 | `G-READY-03` | sem check-in / 3/3/3/3 / 4/2/2/2 / 5/1/1/1 | sem qualidade / âmbar / verde / verde |
 | `G-DATA-02` | 36 min / cochilo / 5h30 | suspeita / válida / curta |
 | `G-VOL-02` | 114 planejado + extra 28 + LEGACY 33 | base 127; adesão 3/3; long_run 60 não |
@@ -1671,7 +1671,7 @@ O usuário 0 aprovou 12/12 decisões. A PRD v1.1 incorpora o resultado; a única
 | C4-23 | `LoadSnapshot.acwrReliable`, `strainReliable`, `historyDays` | C4-22 | M | Flags; testes de janela |
 | C4-24 | ACWR 1,5 em todos os caminhos; remover 1,3 | C4-23 | S | Grep/teste de consistência |
 | C4-25 | `permitsQuality`/`permitsProgression` separados; volume só com ACWR confiável | C4-23/24 | M | Testes 1,4/1,6/0,7/cold start |
-| C4-26 | Golden `G-LOAD-02`; copy “em calibração”; UI | C4-23..25 | M | Golden; copy |
+| C4-26 | Golden `G-LOAD-03`; copy “em calibração”; UI | C4-23..25 | M | Golden; copy |
 | C4-27 | Docs `R-LOAD-03 v3`, `SPORTS_SCIENCE` §6.3/§7.2/§8.3, ADR 0046 | C4-22..26 | S | Docs atualizados |
 
 #### E5 — Prontidão/check-in
@@ -1769,7 +1769,7 @@ Cada task:
 Ciclo:
 
 - [ ] Todos os P0/P1 concluídos; P2 avaliados.
-- [ ] Goldens `G-PER-03/04/05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01` verdes.
+- [ ] Goldens `G-PER-03/04/05`, `G-LOAD-02/03`, `G-READY-03`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01` verdes.
 - [ ] Migração 17→18 testada.
 - [ ] Smoke no aparelho com dados sintéticos e leitura real.
 - [ ] Usuário 0 consegue explicar a decisão de qualidade pelo “Por quê?”.
@@ -1895,7 +1895,7 @@ Os exemplos derivam de `SPORTS_SCIENCE.md` §8.4 e são convenções de produto 
 | `G-PER-03` | 3×40, intermediário, 2 semanas | 1 oportunidade; longão domingo 40 “Corrida mais longa”; fácil sexta; sem “Longão 34” |
 | `G-PER-04` | 2×40 + sábado 90 | longão 45 “Longão”; volume 125; qualidade |
 | `G-PER-05` | 5K, intermediário, BUILD/PEAK | intervalos/fartlek/race-pace; PEAK específico |
-| `G-LOAD-02` | 8 dias, pré-história | ACWR não confiável; sem veto; volume mantido |
+| `G-LOAD-03` | 8 dias, pré-história | ACWR não confiável; sem veto; volume mantido |
 | `G-READY-03` | sem check-in / 3/3/3/3 / 4/2/2/2 | sem qualidade / âmbar / verde |
 | `G-DATA-02` | 36 min / 5h30 | suspeita / curta |
 | `G-VOL-02` | 114 + extra 28 + LEGACY 33 | base 127; adesão 3/3 |

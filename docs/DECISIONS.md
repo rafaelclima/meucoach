@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.47 · **Data:** 17/11/2026
+**Versão:** 1.48 · **Data:** 17/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -47,6 +47,7 @@
 > Revisão 1.45 (17/11/2026): ADR 0044 implementado (C4-01..C4-08, C4-29, C4-50..C4-52) — oportunidade estrutural, `QualityGate` no dia com precedência e `LOW_READINESS`, reavaliação EASY→QUALITY antes do `DONE`, copy sem contradição, check-in sem default, persistência/export da decisão, copy por gate no "Por quê?" e catálogo com todos os IDs; golden `G-PER-03`; `R-PER-03` no `SPORTS_SCIENCE` §8.8/§14 e `R-PRESC-02` emendada. Restam os docs das regras irmãs (C4-33 `R-READY-06`, C4-21 `R-PER-04`, C4-27 `R-LOAD-03 v3`).
 > Revisão 1.46 (17/11/2026): ADR 0047 documentado por completo no Ciclo 4/S12 (C4-19..C4-21) — estrutura executável no briefing/UI ("PASSO A PASSO", sem tempo extra), golden `G-PER-05` da semana 5K, `R-PER-01/02/04` no `SPORTS_SCIENCE` §14 e `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` registradas no §13 (`INJURY-2015` com citação verificada; TID/HIIT como sínteses honestas, força C); `ExplanationCatalog` em código inalterado (só IDs emitidos). Restam C4-53 (versões) e C4-57 (precedência FC×pace).
 > Revisão 1.47 (17/11/2026): ADR 0050 com golden e docs no Ciclo 4/S13 (C4-41/C4-42) — `G-VOL-02` congela o crédito do treino extra (base real 142, alvo 151, adesão 3/3, copy "treino extra contou"; `LEGACY` sem atividade fora da base; reconciliação base 142→151), `R-PLAN-01 v2` e `R-LVL-03` no `SPORTS_SCIENCE` (§8.3/§8.12/§14). Resta o review "planejada/mantida/rebaixada" (C4-43).
+> Revisão 1.48 (17/11/2026): ADR 0046 implementado (C4-22..C4-27, S3/S14) — `acwrReliable` com janela completa, ACWR 1,5 único limite, `permitsQuality`/`permitsProgression` separados, golden `G-LOAD-03` do cold-start (8 dias + 13 de pré-história; sem veto, volume mantido, copy "em calibração") e `R-LOAD-03 v3` no `SPORTS_SCIENCE` (§6.3/§7.2/§8.3/§14); renumeração `G-LOAD-02` → `G-LOAD-03` no ADR/PRD (o `G-LOAD-02` histórico do `load-engine` fica intocado). Resta o bump `weekly-plan-v7`/`daily-v6` (C4-53).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -95,7 +96,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0043](adr/0043-periodization-by-level.md) | Periodização por nível e plano de prova (FR-012) | Implementado em 15/11/2026 (fatias 1–6: macro + biblioteca + fiação fase/títulos/strides/EASY pós-prova, `R-PER-01/02`, goldens; sem supressão na `BASE`, sem migração) | 15/11/2026 |
 | [0044](adr/0044-quality-opportunity-day-authority.md) | Oportunidade de qualidade estrutural e autoridade do dia (`QualityGate`, reavaliação, `R-PRESC-02` emendada) | Implementado em 17/11/2026 (C4-01..C4-08, C4-29, C4-50..C4-52; `G-PER-03`; `R-PER-03` no `SPORTS_SCIENCE`) | 16/11/2026 |
 | [0045](adr/0045-long-run-sizing.md) | Longão: seleção do dia, piso 45/60, 25–30% como alvo, título honesto e `fitToVolume` | Implementado em 16/11/2026 (C4-09..C4-13: comparator, piso/título honesto, `fitToVolume` ancorado no piso, `G-PER-04`; bump para `weekly-plan-v7` fica em C4-53) | 16/11/2026 |
-| [0046](adr/0046-load-gate-v3-acwr-reliability.md) | Load gate v3: ACWR 1,5, confiabilidade de 28 dias, pré-história como ausência, progressão separada | Aprovado — implementação pendente (C4-22..C4-27) | 16/11/2026 |
+| [0046](adr/0046-load-gate-v3-acwr-reliability.md) | Load gate v3: ACWR 1,5, confiabilidade de 28 dias, pré-história como ausência, progressão separada | Implementado (C4-22..C4-27) | 17/11/2026 |
 | [0047](adr/0047-quality-catalog-periodization.md) | Catálogo/periodização por fase, nível e distância; estrutura executável; iniciante com strides + intro fartlek `EASY`; intermediário com intervalado/fartlek/colinas | Documentado e fiado em S12 (C4-14..C4-21: estrutura + matriz + rotação + fiação + strides/intro + briefing + `G-PER-05` + docs `R-PER-01/02/04` e 4 evidências); restam C4-53 (versões) e C4-57 (precedência FC×pace) | 16/11/2026 |
 | [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Implementado (C4-44..C4-48); restam export `PlanJson` (C4-50), bump v7 (C4-53) e smoke (C4-55) | 16/11/2026 |
 | [0049](adr/0049-readiness-checkin-sleep.md) | Prontidão/check-in sem inversão, reavaliação tardia, sono plausível e `QualityGate` | Aprovado — implementação pendente (C4-28..C4-37) | 16/11/2026 |

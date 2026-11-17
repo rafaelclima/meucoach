@@ -1,6 +1,6 @@
 # ADR 0046 — Load gate v3: ACWR confiável e limite único
 
-**Status:** Aprovado em 2026-11-16 — domínio implementado em 2026-11-16 (C4-22..C4-25, sessão S3); UI/copy e golden ficam para C4-26/C4-27.
+**Status:** Implementado em 2026-11-17 (C4-22..C4-27, sessões S3/S14); bump de versões em C4-53.
 **Data:** 2026-11-16
 **Escopo:** `TrainingLoadEngine`, `LoadSnapshot`, `LoadCoverage`, `ActivitySourceStatus`,
 `DailyPrescriptionEngine`, `WeeklyPlanGenerator`, `WorkoutRecommender`, `VolumeProgression`.
@@ -210,7 +210,12 @@ Sem migração de schema para este ADR (as decisões usam os campos do ADR 0048)
 
 | Caso | Entrada | Saída |
 |---|---|---|
-| `G-LOAD-02` | 8 dias de carga, 13 dias pré-história | `acwrReliable=false`; qualidade não vetada por ACWR; volume mantido; copy “em calibração” |
+| `G-LOAD-03` | 8 dias de carga, 13 dias pré-história | `acwrReliable=false`; qualidade não vetada por ACWR; volume mantido; copy “em calibração” |
+
+> **Renumeração (C4-26/C4-27):** a matriz original chamava este cenário de
+> `G-LOAD-02`, mas o ID já nomeava o fixture `load-engine` de série completa
+> (commit anterior ao PRD). O cold-start foi congelado como **`G-LOAD-03`**
+> (`fixtures/golden/load-calibration/`); o `G-LOAD-02` histórico fica intocado.
 | Janela completa 1,6 | 28 dias cobertos | qualidade rebaixada; detalhe “1,62 > 1,50” |
 | Janela completa 1,4 | 28 dias cobertos | qualidade mantida; progressão bloqueada |
 | Janela completa 0,7 | 28 dias cobertos | mantém; não acelera |
@@ -250,3 +255,26 @@ verde; adicionar o caso verde + 1,4 (mantém) e verde + 1,6 (rebaixa).
 - `docs/SPORTS_SCIENCE.md` §6.1, §6.3, §7.2, §8.3.
 - ADR 0026, 0038, 0039, 0044.
 - `EV-GABBETT-2016`, `EV-IMPELLIZZERI-2020`, `EV-FOSTER-2001`.
+- Golden `G-LOAD-03` (`fixtures/golden/load-calibration/`).
+
+---
+
+## 10. Registro de implementação
+
+- **C4-22..C4-25 (S3):** `firstActivityAt` + `daysBeforeHistory` (pré-história
+  como “sem dado”); `acwrReliable`/`strainReliable`/`historyDays`/`baselineDays`
+  com janela completa de 28 dias; `ACWR_MAX = 1,5` como único limite de redução
+  em `QualityGate`, `DailyPrescriptionEngine`, `WeeklyPlanGenerator` e
+  `WorkoutRecommender`; `permitsQuality`/`permitsProgression` separados.
+  `LoadReliabilityTest` (7), `LoadGateV3Test` (10).
+- **C4-26 (S14):** golden `G-LOAD-03` (`fixtures/golden/load-calibration`):
+  8 dias de carga rTSS + 13 de pré-história → `acwrReliable=false` com
+  `acwr=1,6` (acima do veto, e mesmo assim `acwrHigh=false`); qualidade mantida
+  via `QualityGate` (`R-PER-03`, verde + check-in); volume mantido com
+  `ACWR_UNRELIABLE`; copy "8 de 28 dias de histórico; ACWR em calibração"
+  (`LoadSnapshot.calibrationNote()`, com `baselineDays`). UI: pill "Carga em
+  calibração" no Hoje, "Aumento" + nota em Tendências, nota no "Por quê?".
+  `LoadCalibrationGoldenTest` (1); `TodayPlanTest` (+1), `TodayExplanationLoadTest`
+  (+1), `TrendsScreenTest` (+2).
+- **C4-27 (S14):** docs `R-LOAD-03 v3` (`SPORTS_SCIENCE` §6.3/§7.2/§8.3/§14)
+  e renumeração `G-LOAD-02` → `G-LOAD-03` aqui e no PRD.

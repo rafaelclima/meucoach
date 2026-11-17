@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S14 (C4-26)
-> **Último commit:** C4-26 — `feat(app): freeze the cold-start load golden and show the calibration copy (C4-26)`
-> **Fase:** 3 — UI/copy — **S14 aberta (C4-26 DONE)**; próxima C4-27 (docs `R-LOAD-03 v3` + renumeração G-LOAD-02/03)
-> **Sessão atual:** **S14 — C4-26 DONE**
-> **Task atual:** C4-26 (DONE)
-> **Próxima task:** C4-27 (S14)
+> **Última atualização:** 17/11/2026 — S14 (C4-27)
+> **Último commit:** C4-27 — `docs(c4): record R-LOAD-03 v3 and the load calibration golden (C4-27)`
+> **Fase:** 3 — UI/copy — **S14 aberta (C4-26/C4-27 DONE)**; próxima C4-32 (golden `G-READY-03` + copy)
+> **Sessão atual:** **S14 — C4-27 DONE**
+> **Task atual:** C4-27 (DONE)
+> **Próxima task:** C4-32 (S14)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1050 verdes; `:app:testDebugUnitTest` 953 verdes; `:core:data:test` 204 verdes; `:core:model` 40 intacto; `spotlessCheck` verde; `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes; `:app:assembleDebug` verde
-> **Próxima ação:** abrir C4-27 (docs `R-LOAD-03 v3`, SPORTS_SCIENCE §6.3/§7.2/§8.3, ADR 0046 — incluindo a renumeração G-LOAD-02/03).
+> **Gates da última sessão:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-26 seguem verdes: `:core:domain:test` 1050, `:app:testDebugUnitTest` 953, `:core:data:test` 204, `:core:model` 40)
+> **Próxima ação:** abrir C4-32 (golden `G-READY-03` + copy).
 
 ### 0.1 O que já está pronto
 
@@ -576,7 +576,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-24 | ACWR 1,5 em todos os caminhos | C4-23 | S | S3 | ADR 0046 | Nenhum 1,3 como veto | `LoadSnapshot.ACWR_MAX`; testes diário/gerador; commit S3 |
 | [x] | C4-25 | `permitsQuality`/`permitsProgression` separados | C4-23/24 | M | S3 | ADR 0046 | 1,4 mantém; 1,6 rebaixa; 0,7 mantém | `LoadGateV3Test` (10); commit S3 |
 | [x] | C4-26 | Golden `G-LOAD-03` + copy “em calibração” | C4-23..25 | M | S14 | ADR 0046 | `fixtures/golden/load-calibration` (cold start 8+13, sem veto, volume mantido, copy); `LoadCalibrationGoldenTest` (1); `TodayPlanTest` (+1 pill), `TodayExplanationLoadTest` (+1), `TrendsScreenTest` (+2 nota); commit S14 |
-| [ ] | C4-27 | Docs `R-LOAD-03 v3`, SPORTS_SCIENCE, ADR | C4-22..26 | S | S14 | ADR 0046 | Docs atualizados | — |
+| [x] | C4-27 | Docs `R-LOAD-03 v3`, SPORTS_SCIENCE, ADR | C4-22..26 | S | S14 | ADR 0046 | Docs atualizados | `SPORTS_SCIENCE` v1.7 (§6.3/§7.2/§8.3/§14, `G-LOAD-03`); ADR 0046 §10 + status + renumeração; PRD (`G-LOAD-02`→`G-LOAD-03`); `DECISIONS` r1.48; commit S14 |
 
 ### E5 — Prontidão/check-in
 
@@ -1003,7 +1003,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** `:core:domain:test` 1050 verdes (+1); `:app:testDebugUnitTest` 953 verdes (+4); `:core:data:test` 204 verdes; `:core:model` 40 intacto; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`; `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`; `:app:lintDebug` verdes.
 - **Commit:** `feat(app): freeze the cold-start load golden and show the calibration copy (C4-26)`.
 - **Decisões/notas:** TDD RED→GREEN (expected ausente → `IllegalStateException`; pill sem o campo não compilava; `BEGINNER_GUARD` travou o gate do golden até o perfil virar `INTERMEDIATE`; smart cast de `snapshot.acwr` cross-module resolvido com `takeIf`). Colisão de IDs (load-bearing, com decisão do usuário): `G-LOAD-02` já nomeava o `load-engine` de série completa (commit anterior ao PRD); o PRD/ADR 0046 reutilizaram o ID para o cold-start. O cold-start foi congelado como **`G-LOAD-03`**; o `G-LOAD-02` histórico fica intocado e a renumeração vai ao ADR 0046/PRD na C4-27 (docs). O golden prova 8 dias rTSS + 13 de pré-história → `acwrReliable=false` com `acwr=1,6` acima do veto (e mesmo assim `acwrHigh=false`), qualidade mantida via `R-PER-03`, volume mantido com `ACWR_UNRELIABLE` e a copy exata da FR-405 ("8 de 28 dias de histórico; ACWR em calibração"). A copy usa `baselineDays` (dias objetivos, o "8" da FR-405), não `historyDays` (15); registrado aqui para C4-27 conferir. `calibrationNote()` devolve `null` com fonte stale/sem baseline, então o Hoje vazio e o stale mantêm as copies antigas. `TodayUiState.acwrReliable` default `true` preserva previews/testes sem snapshot. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
-- **Próximo:** S14 / C4-27 (docs `R-LOAD-03 v3`, SPORTS_SCIENCE, ADR 0046 + renumeração).
+- **Próximo:** S14 / C4-32 (golden `G-READY-03` + copy).
+
+### S14.1 — 2026-11-17 — Docs `R-LOAD-03 v3` e renumeração G-LOAD-02/03 (C4-27)
+
+- **Status:** DONE
+- **Tasks:** C4-27 (docs apenas, sem código).
+- **Arquivos:** `docs/SPORTS_SCIENCE.md` (v1.7: §6.3 com `G-LOAD-03` + copy/UI, §7.2 com a ortogonalidade calibração × prontidão, §8.3 com o golden no volume mantido, §14 com o golden na `R-LOAD-03`), `docs/adr/0046-load-gate-v3-acwr-reliability.md` (status implementado + §10 + renumeração), `docs/PRD_TREINO_REAL.md` (`G-LOAD-02`→`G-LOAD-03` em FR-405/§9.2/§12/§13), `docs/DECISIONS.md` (r1.48 + linha do ADR 0046), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-26 seguem verdes: 1050/953/204/40).
+- **Commit:** `docs(c4): record R-LOAD-03 v3 and the load calibration golden (C4-27)`.
+- **Decisões/notas:** `R-LOAD-03 v3` já estava completa no §14 desde S3; C4-27 acrescenta o golden, a copy/UI e a renumeração, sem mudar a regra. A frase "8 de 28 dias" usa `baselineDays` (decisão C4-26); o ADR §10 a registra para C4-59 não reinterpretar. `G-LOAD-02` histórico (`load-engine`) intocado; PRD/ADR/DECISIONS/TESTING agora dizem `G-LOAD-03` para o cold-start. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S14 / C4-32 (golden `G-READY-03` + copy).
 
 ---
 
@@ -1181,9 +1191,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-27, S14)
+## 14. Próxima ação (C4-32, S14)
 
-1. Abrir o ADR 0046 §6/§9 e a FR-405; registrar a renumeração (cold-start congelado como `G-LOAD-03` em C4-26 porque `G-LOAD-02` já nomeava o `load-engine`).
-2. Documentar `R-LOAD-03 v3` no `SPORTS_SCIENCE` §6.3/§7.2/§8.3 + evidências, sem código; rodar `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-406 e o ADR 0049 §2; ler `ReadinessCalculator` + `qualityEligibleByReadiness` como base — C4-28/29 dão o gate e C4-30/31 a UI; C4-32 congela o `G-READY-03` (sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1) + copy.
+2. Implementar C4-32 com TDD (golden + copy); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

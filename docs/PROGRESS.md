@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S14 do Ciclo 4: golden do cold-start + copy "em calibração", C4-26 — S14 aberta)
+**Atualizado:** 17/11/2026 (S14 do Ciclo 4: docs `R-LOAD-03 v3` e renumeração G-LOAD-02/03, C4-27 — S14 aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S14: docs `R-LOAD-03 v3` e renumeração G-LOAD-02/03 (C4-27)
+
+**Objetivo:** fechar o ADR 0046 no papel — `R-LOAD-03 v3` com golden, copy/UI e a renumeração do cold-start, sem código.
+
+### Concluído
+
+- **`SPORTS_SCIENCE` v1.7:** §6.3 com o caso canônico `G-LOAD-03` + copy/UI de calibração, §7.2 com a ortogonalidade calibração × prontidão (dia verde pode exibir "em calibração"), §8.3 com o golden no volume mantido, §14 com o golden na linha da `R-LOAD-03`.
+- **ADR 0046:** status implementado (C4-22..C4-27) + §10 com o registro S3/S14 + nota de renumeração (`G-LOAD-02` histórico do `load-engine` intocado; cold-start é `G-LOAD-03`); rollout inalterado (bump segue em C4-53).
+- **PRD:** `G-LOAD-02` → `G-LOAD-03` no cold-start (FR-405, §9.2, backlog C4-26, anexo C) e `G-LOAD-02/03` no DoD.
+- **`DECISIONS.md`:** r1.48 + linha do ADR 0046 como implementado.
+
+### Testes
+
+- Docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-26 seguem verdes: 1050/953/204/40).
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `R-LOAD-03 v3` não mudou (completa desde S3); C4-27 só amarra golden, copy/UI e IDs.
+- A frase "8 de 28 dias" usa `baselineDays` (C4-26); registrada no ADR §10 para C4-59 não reinterpretar.
+- S14 segue aberta; C4-32 (`G-READY-03` + copy) é a próxima.
+
+### Próximo passo
+
+1. S14 / C4-32: golden `G-READY-03` + copy (sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1), TDD.
+2. Depois S14 (C4-33, C4-37: docs de prontidão/sono + `G-DATA-02`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S14: golden do cold-start + copy "em calibração" (C4-26)
 
