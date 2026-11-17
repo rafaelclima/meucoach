@@ -395,6 +395,12 @@ screenshot podem esperar pela tag para garantir que o gráfico entrou na árvore
 roda em invocação própria (`verifyRoborazziDebug --tests "*ScreenshotTest"`), porque a suíte
 inteira pode disputar frames com o Compose/Roborazzi.
 
+### 8.1 Relógio virtual nos testes de ViewModel
+
+- O padrão da suíte é `runBlocking` + `UnconfinedTestDispatcher` (via `setMain`) + `withTimeout` real.
+- `UnconfinedTestDispatcher` executa ansioso, mas virtualiza `delay` sem `runTest`: um `delay` no código nunca dispara sozinho. Avance manualmente com `dispatcher.scheduler.advanceTimeBy(...)` antes de esperar o efeito.
+- `runTest` + `StandardTestDispatcher` é a alternativa para controlar o tempo, mas exige bombear emissões assíncronas (Room/invalidação) com `advanceUntilIdle`; prefira o padrão da suíte quando houver Room no caminho.
+
 ## 9. Health Connect
 
 - Interface `HealthConnectSource` + fake para testes.

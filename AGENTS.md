@@ -89,6 +89,7 @@ Leia primeiro:
 - Funções puras no domínio; efeitos colaterais nas bordas.
 - Evitar `!!`; usar `require`/`check` com mensagens claras.
 - Sem comentários óbvios; comentar decisões e fórmulas.
+- Sem KDoc em parâmetro individual dentro dos parênteses de função coberta pelo baseline do detekt (o ID da supressão inclui o texto; documente a função, não o param).
 - Commits: Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 
 ## 9. Definition of Done
