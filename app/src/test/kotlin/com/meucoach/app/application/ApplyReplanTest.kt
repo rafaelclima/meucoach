@@ -259,7 +259,7 @@ class ApplyReplanTest {
                 easySession(REPLAN_TODAY, durationMin = 40),
                 easySession(friday, durationMin = 30),
             ),
-        ).copy(engineVersion = "weekly-plan-v5")
+        ).copy(engineVersion = "weekly-plan-v6")
         plans.saveWeek(stored)
         val candidate = stored.copy(
             sessions = stored.sessions.map {

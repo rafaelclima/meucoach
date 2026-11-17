@@ -36,6 +36,13 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `weekly engine version is weekly-plan-v7`() {
+        // C4-53/ADR 0048 §2.4: the treino real engine is a new persisted
+        // contract. v6 rows are upgraded by PlanUpgrade on opening.
+        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v7")
+    }
+
+    @Test
     fun `dataIncomplete adds an explicit note with R-DATA-01`() {
         val plan = generator.generate(
             input(

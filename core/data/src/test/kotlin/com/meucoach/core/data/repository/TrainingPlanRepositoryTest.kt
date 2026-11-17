@@ -192,7 +192,7 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
-    fun `round-trips the generator version with default v6`(): Unit = runBlocking {
+    fun `round-trips the current generator version`(): Unit = runBlocking {
         repository.saveWeek(plan())
 
         assertThat(repository.getWeek(monday)?.engineVersion)

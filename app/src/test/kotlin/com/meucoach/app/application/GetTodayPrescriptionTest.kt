@@ -79,6 +79,25 @@ class GetTodayPrescriptionTest {
     }
 
     @Test
+    fun `a previous daily engine version is superseded by the current one`(): Unit = runBlocking {
+        val current = useCase(request(plan = plan()))
+        repository.append(
+            current.copy(
+                id = null,
+                supersedesId = null,
+                engineVersion = "daily-prescription-v5",
+            ),
+        )
+
+        val upgraded = useCase(request(plan = plan()))
+
+        assertThat(upgraded.engineVersion).isEqualTo("daily-prescription-v6")
+        assertThat(upgraded.id).isNotEqualTo(current.id)
+        assertThat(repository.getLatest(today)?.id).isEqualTo(upgraded.id)
+        assertThat(repository.getVersions(today)).hasSize(3)
+    }
+
+    @Test
     fun `a changed check-in appends a version that supersedes the previous`(): Unit = runBlocking {
         val first = useCase(request(plan = plan(), readiness = readiness(ReadinessLevel.GREEN)))
         val second = useCase(

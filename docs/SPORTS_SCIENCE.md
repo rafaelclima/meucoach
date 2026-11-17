@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.11 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.12 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -12,6 +12,7 @@
 > Revisão 1.9 (17/11/2026, Ciclo 4/S14, C4-37, ADR 0049): golden `G-DATA-02` congela o sono plausível (36 min → suspeita/`null`, qualidade mantida; 6 h + cochilo → 360 min válidos; 5h30 → 330 min `SHORT_SLEEP`; fragmentada → maior bloco 240 min `SHORT_SLEEP`); `R-DATA-02` no `SPORTS_SCIENCE` (§9.3/§14); ADR 0049 implementado por completo.
 > Revisão 1.10 (17/11/2026, Ciclo 4/S15, C4-57, ADR 0047 §2.8/FR-410): precedência FC×pace explícita (`TargetKind` em `PrescriptionTargets`, `R-ZONE-01 v2` no §14) — fácil/longo liderado por FC/RPE com pace de referência (sem LTHR, RPE 4 + pace de referência), qualidade liderada pelo pace do bloco com FC como guarda-corpo; briefing e briefing sheet com destaque vs referência.
 > Revisão 1.11 (17/11/2026, Ciclo 4/S15, C4-58, FR-411): horizonte de 5K em 12 semanas (`macro-plan-v2`) a partir de 9 semanas; entrada tardia mantém a tabela curta; prova distante fica no modo geral com qualidade. O `PEAK` usa o pace da previsão atual (VDOT), nunca a meta; gap explícito, meta >5% mais rápida é ambiciosa e não vira pace; sem previsão recente, RPE 8. Golden `G-PER-06`; `R-PER-01`/`R-PER-04` atualizadas no §14.
+> Revisão 1.12 (17/11/2026, Ciclo 4/S16, C4-53, ADR 0048 §2.4): versões de motor `weekly-plan-v7`/`daily-prescription-v6`; nenhuma regra científica mudou. O plano v6 é atualizado pelo `PlanUpgrade` na abertura e a prescrição v5 é superseded por v6; `macro-plan-v2` permanece.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 

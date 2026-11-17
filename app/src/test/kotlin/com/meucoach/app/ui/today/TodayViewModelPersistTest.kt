@@ -247,7 +247,7 @@ class TodayViewModelPersistTest {
                 ruleIds = listOf("R-PLAN-03"),
                 evidenceIds = listOf("EV-PFITZINGER-2008"),
                 createdOn = weekStart,
-                engineVersion = "weekly-plan-v5",
+                engineVersion = "weekly-plan-v6",
             ),
         )
         coordinator.syncOnResume()

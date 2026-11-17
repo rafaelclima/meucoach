@@ -6,6 +6,7 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.QualityKind
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
@@ -26,7 +27,7 @@ class PlanUpgradeTest {
     private val today = LocalDate.of(2026, 11, 4)
     private val friday = monday.plusDays(4)
     private val sunday = monday.plusDays(6)
-    private val target = "weekly-plan-v7"
+    private val target = WeeklyPlanGenerator.ENGINE_VERSION
 
     @Test
     fun `adds one structural quality without growing volume`() {

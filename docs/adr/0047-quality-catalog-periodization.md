@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — C4-14 a C4-21 concluídas; C4-57 e C4-58 concluídas; resta C4-53 (versões).
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-21 concluídas; C4-57 e C4-58 concluídas; C4-53 concluída (`weekly-plan-v7`/`daily-prescription-v6`).
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.

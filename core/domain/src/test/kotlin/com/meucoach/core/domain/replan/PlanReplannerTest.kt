@@ -1317,7 +1317,7 @@ class PlanReplannerTest {
     fun `suggests an engine upgrade when the stored version is stale`() {
         val fresh = freshThreeDayWeek()
         assertThat(fresh.sessions.count { it.type == WorkoutType.QUALITY }).isEqualTo(1)
-        val stored = downgradedToEasy(fresh).copy(engineVersion = "weekly-plan-v5")
+        val stored = downgradedToEasy(fresh).copy(engineVersion = "weekly-plan-v6")
 
         val result = planner.evaluate(
             input(
@@ -1341,7 +1341,7 @@ class PlanReplannerTest {
     @Test
     fun `engine upgrade without the slot cannot add quality`() {
         val fresh = freshThreeDayWeek()
-        val stored = downgradedToEasy(fresh).copy(engineVersion = "weekly-plan-v5")
+        val stored = downgradedToEasy(fresh).copy(engineVersion = "weekly-plan-v6")
 
         val result = planner.evaluate(
             input(
@@ -1363,7 +1363,7 @@ class PlanReplannerTest {
         val fresh = freshThreeDayWeek()
         val stored = downgradedToEasy(fresh).copy(
             weekStart = monday.minusWeeks(1),
-            engineVersion = "weekly-plan-v5",
+            engineVersion = "weekly-plan-v6",
         )
 
         val result = planner.evaluate(

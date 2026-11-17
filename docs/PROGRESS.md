@@ -1,6 +1,35 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S15 do Ciclo 4: `createdAt` estável e higiene do plano, C4-60 — S15 encerrada)
+**Atualizado:** 17/11/2026 (S16 do Ciclo 4: versões de motor, C4-53)
+
+## Sessão 2026-11-17 — Ciclo 4/S16: versões de motor `weekly-plan-v7`/`daily-prescription-v6` (C4-53)
+
+**Objetivo:** fechar o versionamento do motor — todo plano v6 da semana vigente passa pelo `PlanUpgrade`, e toda prescrição v5 é superseded por uma v6 sem reescrever o histórico.
+
+### Concluído
+
+- **Plano:** `WeeklyPlanGenerator.ENGINE_VERSION` = `weekly-plan-v7`; todo plano v6 vira alvo real do `PlanUpgrade` na abertura (`G-UPGRADE-01` deixa de usar versão simulada).
+- **Dia:** `PrescriptionPolicy.ENGINE_VERSION` = `daily-prescription-v6`; uma prescrição v5 com o mesmo `inputsHash` gera nova linha v6 com `supersedesId`, mantendo a anterior.
+- **Testes:** strings exatas das duas versões, fluxo v5→v6 da prescrição, alvos de upgrade derivados da constante e fixtures stale atualizadas para v6.
+- **Docs:** `ARCHITECTURE`, `DATA_MODEL`, `SPORTS_SCIENCE`, ADRs 0047/0048 e `DECISIONS` (r1.52) com o esquema real de versões.
+
+### Testes
+
+- `:core:domain:test` 1099 verdes (+2); `:app:testDebugUnitTest` 959 (+1); `:core:data:test` 208; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, kover e detekt (domain/data/app) verdes; FIT 93,01%.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (duas strings exatas + prescrição v5 falhavam antes).
+- O default da coluna `weekly_plans.generatorVersion` continua `'weekly-plan-v6'` (legado da migração v18); o motor grava v7 em toda linha nova.
+- `session-library-v2` permanece implícito no catálogo; o contrato persistido de upgrade é `weekly-plan-v7`.
+- S16 segue com C4-54 (suíte completa/goldens/Kover/detekt/spotless).
+
+### Próximo passo
+
+1. S16 / C4-54: rodar a suíte completa e os gates da fase; registrar flakes.
+2. Depois S17 / C4-55 (smoke no aparelho) e C4-56 (docs de fechamento).
 
 ## Sessão 2026-11-17 — Ciclo 4/S15: `createdAt` estável e higiene do plano (C4-60)
 

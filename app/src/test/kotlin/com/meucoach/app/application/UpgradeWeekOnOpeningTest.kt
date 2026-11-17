@@ -102,7 +102,7 @@ class UpgradeWeekOnOpeningTest {
 
     @Test
     fun `upgrades a stale week when the engine moved on`(): Unit = runBlocking {
-        plans.saveWeek(storedWeek(engineVersion = "weekly-plan-v5"))
+        plans.saveWeek(storedWeek(engineVersion = "weekly-plan-v6"))
 
         val result = upgrade(ready)
 
@@ -168,7 +168,7 @@ class UpgradeWeekOnOpeningTest {
 
     @Test
     fun `waits for the gate instead of upgrading blind`(): Unit = runBlocking {
-        plans.saveWeek(storedWeek(engineVersion = "weekly-plan-v5"))
+        plans.saveWeek(storedWeek(engineVersion = "weekly-plan-v6"))
 
         val result = upgrade(HealthSyncGate.Syncing)
 

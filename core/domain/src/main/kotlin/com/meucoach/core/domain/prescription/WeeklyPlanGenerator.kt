@@ -1611,7 +1611,7 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v6"
+        const val ENGINE_VERSION = "weekly-plan-v7"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MICRO_DOSE_TITLE = "Strides curtos"

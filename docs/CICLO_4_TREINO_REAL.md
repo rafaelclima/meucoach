@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S15 concluídas; **próxima é S16/C4-53**.
+**Status:** S0 a S15 concluídas; **C4-53 (S16) concluída; C4-54 é a próxima task**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S15 (C4-60)
-> **Último commit:** C4-60 — `fix(data): keep the original plan creation timestamps (C4-60)`
-> **Fase:** 4 — Fechamento — **S15 encerrada**; próxima S16/C4-53
-> **Sessão atual:** **S15 — C4-60 DONE**
-> **Task atual:** C4-60 (DONE)
-> **Próxima task:** C4-53 (S16)
+> **Última atualização:** 17/11/2026 — S16 (C4-53)
+> **Último commit:** C4-53 — `feat(domain): bump the plan and daily engine versions (C4-53)`
+> **Fase:** 4 — Fechamento — **S16 aberta**; próxima C4-54
+> **Sessão atual:** **S16 — C4-53 DONE**
+> **Task atual:** C4-53 (DONE)
+> **Próxima task:** C4-54 (S16)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1097, `:app:testDebugUnitTest` 958, `:core:data:test` 208, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, `:core:data:koverVerify` e `:core:data:detekt` verdes; domínio sem código alterado
-> **Próxima ação:** abrir S16/C4-53 (versões de motor `weekly-plan-v7`/`daily-v6`).
+> **Gates da última sessão:** `:core:domain:test` 1099, `:app:testDebugUnitTest` 959, `:core:data:test` 208, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, kover e detekt (domain/data/app) verdes
+> **Próxima ação:** abrir S16/C4-54 (suíte completa/goldens/Kover/detekt/spotless).
 
 ### 0.1 O que já está pronto
 
@@ -175,7 +175,7 @@
 - `qualityKind`/`structure`/`planDecision` têm coluna, round-trip no Room (C4-45) e export `PlanJson` (C4-50); `generatorVersion` tem coluna com default v6 e é preservada no re-save, e o domínio a carrega (C4-46).
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
 - Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20 DONE); docs `R-PER-01/02/04` + evidências (C4-21 DONE). S12 encerrada.
-- O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
+- O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-prescription-v5` → `daily-prescription-v6` foi concluído em C4-53; o `PlanUpgrade`/`GetTodayPrescription` comparam qualquer versão armazenada com a atual. Nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-READY-05` (matriz do check-in) em `fixtures/golden/readiness-checkin`; `G-DATA-02` ainda não existe; `G-PER-03` está em `fixtures/golden/per-opportunity`, `G-PER-05` em `fixtures/golden/per-quality`, `G-VOL-02` em `fixtures/golden/vol-02`, `G-UPGRADE-01` em `fixtures/golden/plan-upgrade` e `G-LOAD-03` (cold-start) em `fixtures/golden/load-calibration`. `G-LOAD-02` segue sendo a série completa do `load-engine` (anterior ao PRD; a colisão de IDs está registrada na S14 e a renumeração foi ao ADR/PRD na C4-27). `G-READY-03` segue sendo o fixture de doença (`readiness-illness`), anterior ao PRD; a matriz do check-in foi congelada como `G-READY-05` e a renumeração foi ao ADR 0049/PRD na C4-33.
 - O rationale da primeira oportunidade diz "o dia confirma" e cita `R-PER-03`; a copy de "sem progressão" distingue falta de histórico, dias, taper e o motivo real de carga (calibração, ACWR com valor, monotonia, strain, esforço percebido) sem contradição (C4-06). Os refinamentos finos fecharam em C4-59: progressão liberada sem 2ª oportunidade segura, monotonia não calculável, conclusão com evidência e volume de descarga sem culpa da disponibilidade.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
@@ -636,7 +636,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-50 | `QualityBlockReason`/`PlanDecisionReason` + persistência | E1–E8 | L | S11 | ADR 0044/0048 | Serialização testada | `PlanJsonTest` (5); export da decisão do plano + dia; commit S11.3 |
 | [x] | C4-51 | Copy por gate + "Por quê?" + dica | C4-50 | M | S11 | FR-412 | UI; catálogo | `QualityGateCopyTest` (2); títulos do rebaixamento (5); bloco no "Por quê?" (2 + 1 tela); commit S11.4 |
 | [x] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | `ExplanationCatalogTest` (+IDs + comportamento); `R-ACT-01/02`, `R-CAL-01`, `EV-ABBISS-2008`; commit S11.5 |
-| [ ] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | — |
+| [x] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | `weekly-plan-v7`/`daily-prescription-v6`; `WeeklyPlanGeneratorTest`/`DailyPrescriptionEngineTest` (strings exatas) + `GetTodayPrescriptionTest` (v5→v6); stale fixtures v5→v6; upgrade v6→v7 real; commit S16 |
 | [ ] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | — |
 | [ ] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | — |
 | [ ] | C4-56 | Docs `PROGRESS`, `ROADMAP`, `DECISIONS`, `TESTING` | C4-54/55 | S | S17 | AGENTS | Docs | — |
@@ -1094,6 +1094,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (o teste falhava no `createdAt` e no `createdOn` reescritos). `saveWeek` passou a usar `existing?.createdAt ?: clock.millis()` e `existing?.createdOn ?: plan.createdOn`; a primeira gravação carimba, as seguintes preservam. `saveWeek` continua não sendo revisão: `version`, `revisionReason`, `revisedAt` e fingerprints são herdados, e só `applyReplan`/`applyUpgrade` movem `revisedAt`. O upgrade preserva `createdAt` (assert novo). `PlanJson` já exportava os dois campos; o `StoredWeeklyPlan` agora também expõe `createdAt` para a UI de auditoria. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S16 / C4-53 (versões de motor `weekly-plan-v7`/`daily-v6`).
 
+### S16 — 2026-11-17 — Versões de motor `weekly-plan-v7`/`daily-prescription-v6` (C4-53)
+
+- **Status:** DONE
+- **Tasks:** C4-53.
+- **Arquivos:** `core/domain/.../prescription/WeeklyPlanGenerator.kt` (`ENGINE_VERSION = weekly-plan-v7`), `PrescriptionTargets.kt` (`daily-prescription-v6`), `WeeklyPlanGeneratorTest.kt` (+1), `DailyPrescriptionEngineTest.kt` (+1), `GetTodayPrescriptionTest.kt` (+1 v5→v6), `PlanUpgradeTest.kt`/`TrainingPlanRepositoryUpgradeTest.kt` (target pela constante), fixtures stale `weekly-plan-v5`→`v6` (`UpgradeWeekOnOpeningTest`, `TodayViewModelPersistTest`, `ApplyReplanTest`, `PlanReplannerTest`), `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/SPORTS_SCIENCE.md`, ADRs 0047/0048, `docs/DECISIONS.md`, `docs/CICLO_4_TREINO_REAL.md`, `docs/PROGRESS.md`.
+- **Testes/gates:** `:core:domain:test` 1099 verdes (+2); `:app:testDebugUnitTest` 959 (+1); `:core:data:test` 208; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; kover e detekt (domain/data/app) verdes; FIT 93,01% de branches.
+- **Commit:** `feat(domain): bump the plan and daily engine versions (C4-53)`.
+- **Decisões/notas:** TDD RED→GREEN (as duas strings exatas e a prescrição v5 falhavam). O `weekly-plan-v7` faz todo plano v6 da semana vigente ser reavaliado pelo `PlanUpgrade` na abertura; o `G-UPGRADE-01` (v6→v7) agora é o caminho real, não um alvo simulado. O `daily-prescription-v6` faz a prescrição v5 ser superseded por uma nova linha com o mesmo `inputsHash`, sem reescrever a anterior. O default da coluna `weekly_plans.generatorVersion` continua `'weekly-plan-v6'` (legado da migração v18); o motor grava v7 em toda linha nova. `session-library-v2` permanece implícito no catálogo (não é coluna nem engine persistida); o contrato persistido é `weekly-plan-v7`. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S16 / C4-54 (suíte completa, goldens, Kover, detekt, spotless).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1270,9 +1280,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-53, S16)
+## 14. Próxima ação (C4-54, S16)
 
-1. Abrir a FR-413/ADR 0048 e os pontos que carregam `ENGINE_VERSION` (`WeeklyPlanGenerator`, `DailyPrescriptionEngine`, `WeeklyPlan.engineVersion`, `PlanJson`, `PlanUpgrade`); planejar o bump coordenado para `weekly-plan-v7`/`daily-v6`.
-2. Implementar C4-53 com TDD; rodar `:core:domain:test` + `:core:data:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir `docs/TESTING.md` e o gate da fase: `./gradlew check`, `:app:assembleDebug`, `koverVerify`, `spotlessCheck`; goldens `G-PER-03/04/05/06`, `G-LOAD-03`, `G-READY-05`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01`; registrar flakes sem ignorar.
+2. Rodar a suíte completa; se houver flake, isolar/repetir e registrar; atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.
