@@ -81,6 +81,7 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
+                race = buildRace(),
             ),
         )
 
@@ -141,6 +142,7 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.6, daysWithoutData = 2),
+                race = buildRace(),
             ),
         )
 
@@ -233,6 +235,7 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 0.79),
+                race = buildRace(),
             ),
         )
 
@@ -252,6 +255,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 0.8),
+                race = buildRace(),
             ),
         )
         val upper = generator.generate(
@@ -259,6 +263,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.3),
+                race = buildRace(),
             ),
         )
         val above = generator.generate(
@@ -266,6 +271,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.31),
+                race = buildRace(),
             ),
         )
 
@@ -488,6 +494,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
         val advanced = generator.generate(
@@ -495,6 +502,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.ADVANCED, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
@@ -518,6 +526,7 @@ class WeeklyPlanGeneratorTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
                 previousWeek = previousWeek(completed = 4, total = 4),
+                race = buildRace(),
             ),
         )
 
@@ -542,6 +551,7 @@ class WeeklyPlanGeneratorTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
                 previousWeek = previousWeek(completed = 2, total = 4),
+                race = buildRace(),
             ),
         )
 
@@ -562,6 +572,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
         val highAcwr = generator.generate(
@@ -570,6 +581,7 @@ class WeeklyPlanGeneratorTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.6),
                 previousWeek = previousWeek(completed = 4, total = 4),
+                race = buildRace(),
             ),
         )
 
@@ -591,6 +603,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability, treadmillAccess = true),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
@@ -617,6 +630,7 @@ class WeeklyPlanGeneratorTest {
                     .copy(thresholdPace = null),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
@@ -637,6 +651,7 @@ class WeeklyPlanGeneratorTest {
                 profile = profile(Experience.INTERMEDIATE, availability),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
@@ -733,7 +748,9 @@ class WeeklyPlanGeneratorTest {
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(quality.durationMin).isEqualTo(30)
-        assertThat(quality.title).isEqualTo("Ritmo forte")
+        assertThat(quality.title).isEqualTo("Fartlek leve")
+        assertThat(quality.qualityKind).isEqualTo(QualityKind.FARTLEK)
+        assertThat(quality.structure?.plannedSeconds).isLessThanOrEqualTo(30L * 60L)
         assertThat(quality.rationale)
             .contains("Semana de descarga: bloco mais curto, mesmo esforço.")
         assertThat(plan.ruleIds).contains("R-PLAN-04")
@@ -814,6 +831,7 @@ class WeeklyPlanGeneratorTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
                 previousWeek = previousWeek(completed = 4, total = 4),
+                race = buildRace(),
             ),
         )
 
@@ -940,6 +958,7 @@ class WeeklyPlanGeneratorTest {
                 load = load(1.0),
                 previousWeek = previous,
                 recentWeeks = listOf(previous),
+                race = buildRace(),
             ),
         )
 
@@ -968,6 +987,7 @@ class WeeklyPlanGeneratorTest {
                 load = load(1.0),
                 previousWeek = previous,
                 recentWeeks = listOf(previous),
+                race = buildRace(),
             ),
         )
 
@@ -996,6 +1016,7 @@ class WeeklyPlanGeneratorTest {
                 load = load(1.0),
                 previousWeek = previous,
                 recentWeeks = listOf(previous),
+                race = buildRace(),
             ),
         )
 
@@ -1411,6 +1432,7 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
@@ -1418,8 +1440,8 @@ class WeeklyPlanGeneratorTest {
         assertThat(quality.durationMin).isEqualTo(25)
         assertThat(quality.title).isEqualTo("Ritmo forte")
         assertThat(quality.rationale).contains("Aqueça 10 min em ritmo leve")
-        assertThat(quality.rationale).contains("corra 10 min em esforço moderado a forte")
-        assertThat(quality.rationale).contains("termine com 5 min em ritmo leve")
+        assertThat(quality.rationale).contains("Corra 10 min em ritmo forte sustentado")
+        assertThat(quality.rationale).contains("Termine com 5 min em ritmo leve")
         assertThat(quality.rationale).doesNotContain("20 min")
         assertThat(quality.rationale).doesNotContain("Z3–Z4")
     }
@@ -1438,12 +1460,14 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(quality.durationMin).isEqualTo(45)
-        assertThat(quality.rationale).contains("corra 30 min em esforço moderado a forte")
+        assertThat(quality.rationale).contains("Corra 20 min em ritmo forte sustentado")
+        assertThat(quality.rationale).contains("Complete os 10 min restantes em ritmo leve")
     }
 
     @Test
@@ -1461,6 +1485,7 @@ class WeeklyPlanGeneratorTest {
                     ),
                     readiness = readiness(ReadinessLevel.GREEN),
                     load = load(1.0),
+                    race = buildRace(),
                 ),
             )
             return plan.sessions.first { it.type == WorkoutType.QUALITY }
@@ -1470,8 +1495,8 @@ class WeeklyPlanGeneratorTest {
         val long = qualityFor(45)
 
         assertThat(short.title).isEqualTo("Intervalos")
-        assertThat(short.rationale).contains("3 repetições de 3 min fortes")
-        assertThat(long.rationale).contains("5 repetições de 3 min fortes")
+        assertThat(short.rationale).contains("Faça 2 × 3 min em ritmo de intervalado")
+        assertThat(long.rationale).contains("Faça 6 × 3 min em ritmo de intervalado")
         assertThat(short.rationale).doesNotContain("trote")
     }
 
@@ -1495,10 +1520,9 @@ class WeeklyPlanGeneratorTest {
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(quality.durationMin).isEqualTo(25)
-        assertThat(quality.title).isEqualTo("Ritmo forte")
-        assertThat(quality.rationale)
-            .contains("Semana de prova: bloco mais curto, mesmo esforço.")
-        assertThat(quality.rationale).contains("corra 10 min em esforço moderado a forte")
+        assertThat(quality.title).isEqualTo("Strides curtos")
+        assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
+        assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
         assertThat(quality.ruleIds).contains("R-PLAN-05")
         assertThat(quality.targets.zone).isEqualTo("Z3–Z4")
     }
@@ -1523,8 +1547,10 @@ class WeeklyPlanGeneratorTest {
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(quality.durationMin).isEqualTo(25)
+        assertThat(quality.title).isEqualTo("Strides curtos")
+        assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         assertThat(quality.rationale).doesNotContain("bloco mais curto")
-        assertThat(quality.rationale).contains("corra 10 min em esforço moderado a forte")
+        assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
         assertThat(quality.ruleIds).contains("R-PLAN-05")
     }
 
@@ -1543,6 +1569,7 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(1.0),
+                race = buildRace(),
             ),
         )
 
@@ -1726,6 +1753,7 @@ class WeeklyPlanGeneratorTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
                 recovery = postRace,
+                race = buildRace(),
             ),
         )
 
@@ -1871,6 +1899,8 @@ class WeeklyPlanGeneratorTest {
         subjectiveDaysInWindow = subjectiveDaysInWindow,
         strain = strain,
     )
+
+    private fun buildRace(): RacePlan = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34))
 
     private fun coverage(daysWithLoad: Int, sourceFresh: Boolean = true, daysWithoutData: Int = 0): LoadCoverage {
         val daysInWindow = 28

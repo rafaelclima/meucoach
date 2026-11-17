@@ -824,6 +824,7 @@ class DailyPrescriptionEngineTest {
             load = load(acwr = 1.0),
             weekStart = monday,
             today = monday,
+            race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34)),
         ),
     )
 

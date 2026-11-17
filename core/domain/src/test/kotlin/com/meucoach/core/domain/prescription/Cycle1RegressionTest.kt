@@ -10,6 +10,7 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
@@ -69,6 +70,7 @@ class Cycle1RegressionTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
                 previousWeek = previousWeek(completed = 4, total = 4),
+                race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34)),
             ),
         )
 
@@ -232,6 +234,7 @@ class Cycle1RegressionTest {
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0),
                 previousWeek = previousWeek(completed = 4, total = 4, strong = false),
+                race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34)),
             ),
         )
 
@@ -248,6 +251,7 @@ class Cycle1RegressionTest {
         today: LocalDate = weekStart,
         previousWeek: WeeklyPlan? = null,
         weekNumberInBlock: Int = 1,
+        race: RacePlan? = null,
     ) = WeeklyPlanInput(
         profile = profile,
         readiness = readiness,
@@ -256,6 +260,7 @@ class Cycle1RegressionTest {
         today = today,
         previousWeek = previousWeek,
         weekNumberInBlock = weekNumberInBlock,
+        race = race,
     )
 
     private fun readiness(

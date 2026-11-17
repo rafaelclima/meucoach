@@ -89,19 +89,12 @@ data class SessionTemplate(
  * fácil e `BASE` só expõe o fartlek leve para intermediário/avançado (a
  * segunda metade da fase é decidida pela rotação, C4-16).
  *
- * [templates] keeps the one-main/one-second projection used by the v6
- * generator until C4-17 consumes the full matrix. [qualityTemplates] and
- * [easyTemplates] are the catalog: they never invent a duration and expose
- * every eligible stimulus with its executable structure.
+ * [qualityTemplates] and [easyTemplates] are the catalog: they never invent a
+ * duration and expose every eligible stimulus with its executable structure.
+ * The generator (C4-17) consumes the rotation directly; there is no legacy
+ * one-main/one-second projection anymore.
  */
 object SessionLibrary {
-    fun templates(phase: MesoPhase, level: Experience, distance: RaceDistance? = null): List<SessionTemplate> =
-        buildList {
-            addAll(easyTemplates(phase, level))
-            if (phase != MesoPhase.RECOVERY) add(long())
-            addAll(legacyQualityProjection(phase, level, distance))
-        }
-
     /**
      * Easy sessions eligible in [phase]. [includeIntroFartlek] only matters
      * for a beginner after four consistent weeks (ADR 0047 §2.2); it never
@@ -263,33 +256,6 @@ object SessionLibrary {
         -> listOf(peakRacePace(distance), continuous(workMin = 25))
     }
 
-    /**
-     * One-main/one-second projection for the v6 generator. `BASE` stays
-     * quality-free here because the light fartlek is only available in the
-     * second half of the phase; C4-16/17 owns that gate. Remove once C4-17
-     * reads the matrix.
-     */
-    private fun legacyQualityProjection(
-        phase: MesoPhase,
-        level: Experience,
-        distance: RaceDistance?,
-    ): List<SessionTemplate> = when (phase) {
-        MesoPhase.RECOVERY,
-        MesoPhase.BASE,
-        -> emptyList()
-
-        MesoPhase.TAPER -> qualityTemplates(phase, level, distance)
-
-        MesoPhase.BUILD -> qualityTemplates(phase, level, distance)
-            .distinctBy { it.qualityKind }
-            .take(2)
-            .mapIndexed { index, template ->
-                if (index == 0) template else template.copy(role = SessionRole.QUALITY_SECOND)
-            }
-
-        MesoPhase.PEAK -> qualityTemplates(phase, level, distance).take(1)
-    }
-
     private fun easy(recovery: Boolean): SessionTemplate = SessionTemplate(
         role = SessionRole.EASY_RUN,
         type = WorkoutType.EASY,
@@ -303,18 +269,6 @@ object SessionLibrary {
         },
         ruleIds = if (recovery) listOf(RULE_ID, "R-RACE-04") else listOf(RULE_ID),
         evidenceIds = listOf("EV-SEILER-2010"),
-    )
-
-    private fun long(): SessionTemplate = SessionTemplate(
-        role = SessionRole.LONG_RUN,
-        type = WorkoutType.LONG,
-        title = "Longão",
-        qualityKind = null,
-        durationPolicy = DurationPolicy.LONG_SIZED,
-        blurb = "Longão em ritmo fácil; o piso de 45/60 min e o alvo de volume vêm da " +
-            "disponibilidade (ADR 0045).",
-        ruleIds = listOf(RULE_ID, "R-PLAN-03"),
-        evidenceIds = listOf("EV-PFITZINGER-2008", "EV-DANIELS-2014"),
     )
 
     private fun stridesBase(): SessionTemplate = SessionTemplate(
@@ -363,7 +317,7 @@ object SessionLibrary {
         qualityKind = QualityKind.STRIDES_ONLY,
         durationPolicy = DurationPolicy.MICRO_DOSE_25,
         blurb = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
-        ruleIds = listOf(RULE_ID, "R-PLAN-05"),
+        ruleIds = listOf(RULE_ID, "R-PER-04", "R-PLAN-05", "R-PLAN-10"),
         evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
         structure = stridesStructure(note = "Micro-dose de semana de prova; sem fadiga."),
     )
@@ -623,6 +577,6 @@ object SessionLibrary {
     private const val INTERVAL_RECOVERY_SEC = 120
     private const val INTERVAL_CYCLE_MIN = 5
     private const val MAX_QUALITIES_PER_WEEK = 2
-    private val QUALITY_RULES = listOf(RULE_ID, "R-PLAN-02")
+    private val QUALITY_RULES = listOf(RULE_ID, "R-PER-04", "R-PLAN-02")
     private val QUALITY_EVIDENCE = listOf("EV-DANIELS-2014", "EV-SEILER-2010", "EV-FOSTER-2001")
 }

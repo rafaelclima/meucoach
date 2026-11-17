@@ -1,6 +1,39 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S6.2 do Ciclo 4: rotação determinística do catálogo)
+**Atualizado:** 16/11/2026 (S6.3 do Ciclo 4: gerador consome o catálogo de qualidade)
+
+## Sessão 2026-11-16 — Ciclo 4/S6.3: gerador consome o catálogo (C4-17)
+
+**Objetivo:** fiar a matriz e a rotação da `SessionLibrary` no `WeeklyPlanGenerator`, preencher `qualityKind`/`structure` dentro da duração real e tornar o `PEAK` específico da distância, sem persistência nem UI nova.
+
+### Concluído
+
+- **Posição da fase:** `MacroWeekIntent` e `MesoState` carregam `weekInPhase`/`phaseWeeks`; com prova dentro do horizonte a posição vem da tabela macro; sem prova, `BASE`/`BUILD` alternam em blocos de 4 semanas demonstradas. O gerador não lê relógio.
+- **Rotação no gerador:** `qualityRotation` escolhe 1–2 estímulos; a segunda qualidade só entra com kind diferente e o dia ainda decide. `easyTemplates` fornece títulos/descrições dos dias fáceis.
+- **Estrutura:** `WorkoutStructure.fittedTo(minutes)` encolhe repetições/blocos contínuos para caber na duração final, cresce `totalMin` quando sobra tempo e mantém a invariante de nunca prometer mais trabalho do que cabe. A estrutura é reajustada depois de volume/taper/deload.
+- **Copy:** o rationale da qualidade descreve a estrutura final (aquecimento, repetições, recuperação e volta à calma); o texto de taper/descarga só aparece quando a sessão foi encurtada.
+- **PEAK:** `Pace de prova 5K/10K/meia/maratona` com `RACE_PACE`; não é cópia do `BUILD`.
+- **Guardas:** `BASE` sem qualidade na primeira metade (fartlek leve na segunda); `TAPER` vira micro-dose de strides com kind/estrutura; `RECOVERY` sem qualidade; iniciante sem `QUALITY`.
+- **Catálogo:** `R-PER-04` entrou no `ExplanationCatalog`; a projeção legada `SessionLibrary.templates(...)` foi removida.
+
+### Testes
+
+- `:core:domain:test` 963 verdes (+13 líquidos: `QualityIntegrationTest` 7, `WorkoutStructureTest` +7, `SessionLibraryTest`/`QualityCatalogTest` migrados); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `./gradlew check`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:core:domain:detekt`, `:core:data:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01% de branches.
+- Na primeira execução da suíte do app, `MetricsImportViewModelTest` estourou o timeout de 30 s (arquivo não tocado); passou isolado e na reexecução.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+
+### Decisões e observações
+
+- A `BASE` da primeira metade não recebe qualidade; o rationale diz explicitamente “primeira metade da base” em vez de culpar a agenda.
+- A estrutura é a fonte da copy: o plano não pode descrever um bloco que não cabe na duração final.
+- A micro-dose de taper usa o template `STRIDES_ONLY` e preserva `qualityKind`/estrutura; o iniciante continua barrado por `R-PRESC-04`.
+- `qualityKind`/`structure` ainda não são persistidos; o round-trip do banco continua devolvendo `null` até o schema v18 (C4-45).
+
+### Próximo passo
+
+1. S7 / C4-02: separar gates estrutural × do dia no gerador; primeira oportunidade sem prontidão/carga e segunda só com progressão.
+2. Depois C4-07 (`G-PER-03` + propriedades) e C4-04/C4-05 (gate diário/reavaliação).
 
 ## Sessão 2026-11-16 — Ciclo 4/S6.2: rotação determinística do catálogo (C4-16)
 

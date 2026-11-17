@@ -6,106 +6,129 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
 /**
- * Fatia 2 — ADR 0043: biblioteca de sessões por (fase, nível) (TDD RED).
+ * ADR 0043/0047: session catalog by (phase, level, distance).
  *
- * Contrato: [SessionLibrary.templates] devolve estruturas de sessão sem pace
- * inventado (durações resolve a fiação pela disponibilidade); iniciante nunca
- * recebe qualidade contínua/intervalada; `TAPER` só tem micro-dose de strides;
- * `RECOVERY` é só fácil; `BASE` não tem qualidade principal. Tudo cita
- * `R-PER-02`.
+ * The catalog exposes easy and quality templates separately; quality rotation
+ * decides which stimulus a week receives. There is no legacy weekly projection.
+ * The generator (C4-17) consumes these APIs directly.
  */
 class SessionLibraryTest {
     @Test
-    fun `beginner never receives continuous or interval quality in any phase`() {
-        MesoPhase.entries.forEach { phase ->
-            val kinds = SessionLibrary.templates(phase, Experience.BEGINNER)
-                .mapNotNull { it.qualityKind }
-
-            assertThat(kinds)
-                .describedAs("phase $phase")
-                .doesNotContain(QualityKind.CONTINUOUS, QualityKind.INTERVALS)
-        }
-    }
-
-    @Test
     fun `beginner has no structured quality outside the taper micro-dose`() {
         listOf(MesoPhase.BASE, MesoPhase.BUILD, MesoPhase.PEAK).forEach { phase ->
-            val qualities = SessionLibrary.templates(phase, Experience.BEGINNER)
-                .filter { it.type == WorkoutType.QUALITY }
-
-            assertThat(qualities)
+            assertThat(SessionLibrary.qualityTemplates(phase, Experience.BEGINNER))
                 .describedAs("phase $phase")
                 .isEmpty()
         }
 
-        val taper = SessionLibrary.templates(MesoPhase.TAPER, Experience.BEGINNER)
-            .filter { it.type == WorkoutType.QUALITY }
+        val taper = SessionLibrary.qualityTemplates(MesoPhase.TAPER, Experience.BEGINNER)
         assertThat(taper.map { it.qualityKind }).containsExactly(QualityKind.STRIDES_ONLY)
+        assertThat(taper.single().type).isEqualTo(WorkoutType.QUALITY)
+    }
+
+    @Test
+    fun `beginner easy catalog carries strides and the optional intro fartlek`() {
+        val base = SessionLibrary.easyTemplates(MesoPhase.BASE, Experience.BEGINNER)
+        assertThat(base.map { it.role }).containsExactly(SessionRole.EASY_RUN, SessionRole.STRIDES)
+
+        val withIntro = SessionLibrary.easyTemplates(
+            MesoPhase.BUILD,
+            Experience.BEGINNER,
+            includeIntroFartlek = true,
+        )
+        assertThat(withIntro.map { it.role }).contains(
+            SessionRole.EASY_RUN,
+            SessionRole.STRIDES,
+            SessionRole.INTRO_FARTLEK,
+        )
+        assertThat(withIntro.first { it.role == SessionRole.INTRO_FARTLEK }.type)
+            .isEqualTo(WorkoutType.EASY)
     }
 
     @Test
     fun `build gives two qualities with distinct kinds to intermediate and advanced`() {
-        val intermediate = SessionLibrary.templates(MesoPhase.BUILD, Experience.INTERMEDIATE)
-        assertThat(intermediate.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
-            .containsExactly(QualityKind.CONTINUOUS)
-        assertThat(intermediate.filter { it.role == SessionRole.QUALITY_SECOND }.map { it.qualityKind })
-            .containsExactly(QualityKind.INTERVALS)
+        val intermediate = SessionLibrary.qualityRotation(
+            phase = MesoPhase.BUILD,
+            level = Experience.INTERMEDIATE,
+            weekInPhase = 0,
+            maxQualities = 2,
+        )
+        assertThat(intermediate.map { it.role })
+            .containsExactly(SessionRole.QUALITY_MAIN, SessionRole.QUALITY_SECOND)
+        assertThat(intermediate.map { it.qualityKind })
+            .containsExactly(QualityKind.CONTINUOUS, QualityKind.INTERVALS)
 
-        val advanced = SessionLibrary.templates(MesoPhase.BUILD, Experience.ADVANCED)
-        assertThat(
-            advanced.filter { it.role == SessionRole.QUALITY_MAIN || it.role == SessionRole.QUALITY_SECOND }
-                .map { it.qualityKind },
-        ).containsExactly(QualityKind.INTERVALS, QualityKind.HILLS)
+        val advanced = SessionLibrary.qualityRotation(
+            phase = MesoPhase.BUILD,
+            level = Experience.ADVANCED,
+            weekInPhase = 0,
+            maxQualities = 2,
+        )
+        assertThat(advanced.map { it.qualityKind })
+            .containsExactly(QualityKind.INTERVALS, QualityKind.HILLS)
     }
 
     @Test
     fun `taper only carries the strides micro-dose for every level`() {
         Experience.entries.forEach { level ->
-            val templates = SessionLibrary.templates(MesoPhase.TAPER, level)
+            val qualities = SessionLibrary.qualityTemplates(MesoPhase.TAPER, level)
 
-            assertThat(templates.map { it.role })
+            assertThat(qualities.map { it.role })
                 .describedAs("level $level")
-                .doesNotContain(SessionRole.QUALITY_MAIN, SessionRole.QUALITY_SECOND)
-            val strides = templates.single { it.role == SessionRole.STRIDES }
+                .containsExactly(SessionRole.STRIDES)
+            val strides = qualities.single()
             assertThat(strides.type).isEqualTo(WorkoutType.QUALITY)
             assertThat(strides.durationPolicy).isEqualTo(DurationPolicy.MICRO_DOSE_25)
+            assertThat(strides.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         }
     }
 
     @Test
     fun `recovery is easy only for every level`() {
         Experience.entries.forEach { level ->
-            val templates = SessionLibrary.templates(MesoPhase.RECOVERY, level)
+            val easy = SessionLibrary.easyTemplates(MesoPhase.RECOVERY, level)
 
-            assertThat(templates).describedAs("level $level").hasSize(1)
-            assertThat(templates.single().role).isEqualTo(SessionRole.EASY_RUN)
+            assertThat(easy).describedAs("level $level").hasSize(1)
+            assertThat(easy.single().role).isEqualTo(SessionRole.EASY_RUN)
+            assertThat(SessionLibrary.qualityTemplates(MesoPhase.RECOVERY, level))
+                .describedAs("level $level")
+                .isEmpty()
         }
     }
 
     @Test
     fun `peak carries one specific race-pace quality per distance`() {
         RaceDistance.entries.forEach { distance ->
-            val intermediate = SessionLibrary.templates(MesoPhase.PEAK, Experience.INTERMEDIATE, distance)
-            assertThat(intermediate.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
+            val intermediate = SessionLibrary.qualityRotation(
+                phase = MesoPhase.PEAK,
+                level = Experience.INTERMEDIATE,
+                distance = distance,
+                weekInPhase = 0,
+            )
+            assertThat(intermediate.map { it.qualityKind })
                 .describedAs("intermediate $distance")
                 .containsExactly(QualityKind.RACE_PACE)
-            assertThat(intermediate.map { it.role }).doesNotContain(SessionRole.QUALITY_SECOND)
 
-            val advanced = SessionLibrary.templates(MesoPhase.PEAK, Experience.ADVANCED, distance)
-            assertThat(advanced.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
+            val advanced = SessionLibrary.qualityRotation(
+                phase = MesoPhase.PEAK,
+                level = Experience.ADVANCED,
+                distance = distance,
+                weekInPhase = 0,
+            )
+            assertThat(advanced.first().qualityKind)
                 .describedAs("advanced $distance")
-                .containsExactly(QualityKind.RACE_PACE)
+                .isEqualTo(QualityKind.RACE_PACE)
         }
     }
 
     @Test
-    fun `base has no main quality for any level`() {
+    fun `base exposes easy and strides for every level`() {
         Experience.entries.forEach { level ->
-            val roles = SessionLibrary.templates(MesoPhase.BASE, level).map { it.role }
+            val easy = SessionLibrary.easyTemplates(MesoPhase.BASE, level)
 
-            assertThat(roles)
+            assertThat(easy.map { it.role })
                 .describedAs("level $level")
-                .contains(SessionRole.EASY_RUN, SessionRole.LONG_RUN, SessionRole.STRIDES)
+                .contains(SessionRole.EASY_RUN, SessionRole.STRIDES)
                 .doesNotContain(SessionRole.QUALITY_MAIN, SessionRole.QUALITY_SECOND)
         }
     }
@@ -114,7 +137,12 @@ class SessionLibraryTest {
     fun `every template is auditable and displayable`() {
         MesoPhase.entries.forEach { phase ->
             Experience.entries.forEach { level ->
-                SessionLibrary.templates(phase, level).forEach { template ->
+                val templates = SessionLibrary.easyTemplates(phase, level) +
+                    SessionLibrary.qualityTemplates(phase, level) +
+                    RaceDistance.entries.flatMap { distance ->
+                        SessionLibrary.qualityTemplates(phase, level, distance)
+                    }
+                templates.forEach { template ->
                     assertThat(template.title)
                         .describedAs("$phase/$level/${template.role}")
                         .isNotBlank()
@@ -139,8 +167,19 @@ class SessionLibraryTest {
 
     @Test
     fun `library is deterministic`() {
-        assertThat(SessionLibrary.templates(MesoPhase.BUILD, Experience.ADVANCED)).isEqualTo(
-            SessionLibrary.templates(MesoPhase.BUILD, Experience.ADVANCED),
+        val first = SessionLibrary.qualityRotation(
+            phase = MesoPhase.BUILD,
+            level = Experience.ADVANCED,
+            weekInPhase = 1,
+            maxQualities = 2,
         )
+        val second = SessionLibrary.qualityRotation(
+            phase = MesoPhase.BUILD,
+            level = Experience.ADVANCED,
+            weekInPhase = 1,
+            maxQualities = 2,
+        )
+
+        assertThat(first).isEqualTo(second)
     }
 }

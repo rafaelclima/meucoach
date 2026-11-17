@@ -143,7 +143,12 @@ class TodayViewModelPersistTest {
         checkIns.save(
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
-        plans.saveWeek(previousWeek(weekStart.minusWeeks(1)))
+        // ADR 0047: the first half of BASE has no quality. Four demonstrated
+        // load weeks put the plan in BUILD, where progression can add the
+        // second quality.
+        (1L..4L).forEach { weeksAgo ->
+            plans.saveWeek(previousWeek(weekStart.minusWeeks(weeksAgo)))
+        }
         seedLoad(today)
 
         val viewModel = createViewModel(timeProvider)

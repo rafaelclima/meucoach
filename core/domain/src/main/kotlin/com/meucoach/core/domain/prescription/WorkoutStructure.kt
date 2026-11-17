@@ -52,6 +52,38 @@ data class WorkoutBlock(
             val recovery = recoverySec?.toLong() ?: 0L
             return effectiveRepetitions.toLong() * (work + recovery)
         }
+
+    /**
+     * Shrinks the block to [maxSeconds], preserving its kind and target.
+     *
+     * Repetition blocks lose repetitions first; a single repetition then loses
+     * work/recovery time. Continuous blocks shrink their work time. One second
+     * is the floor so a block is never emitted with a non-positive duration.
+     */
+    internal fun fittedTo(maxSeconds: Long): WorkoutBlock {
+        if (plannedSeconds <= maxSeconds) return this
+        val work = requireNotNull(workSec) { "Block work duration must be positive" }
+        val recovery = recoverySec?.toLong() ?: 0L
+        val repetitions = repetitions
+        if (repetitions == null) {
+            return copy(workSec = maxSeconds.coerceIn(1L, work.toLong()).toInt())
+        }
+        val cycle = work.toLong() + recovery
+        val fittedRepetitions = (maxSeconds / cycle).toInt().coerceIn(1, repetitions)
+        if (fittedRepetitions > 1 || cycle <= maxSeconds) {
+            return copy(repetitions = fittedRepetitions)
+        }
+        if (recovery == 0L) {
+            return copy(repetitions = 1, workSec = maxSeconds.coerceIn(1L, work.toLong()).toInt())
+        }
+        val fittedRecovery = recovery.coerceIn(1L, (maxSeconds - 1).coerceAtLeast(1L))
+        val fittedWork = (maxSeconds - fittedRecovery).coerceIn(1L, work.toLong()).toInt()
+        return copy(
+            repetitions = 1,
+            workSec = fittedWork,
+            recoverySec = fittedRecovery.toInt(),
+        )
+    }
 }
 
 /**
@@ -89,6 +121,43 @@ data class WorkoutStructure(
     /** Rounded-up planned time; a partial minute still occupies the session. */
     val plannedMinutes: Int
         get() = ((plannedSeconds + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE).toInt()
+
+    /**
+     * Fits the executable blocks into a real session duration (ADR 0047 §2.1).
+     *
+     * A longer session keeps the prescribed work and raises [totalMin]; the
+     * spare time is easy running described by the plan copy. A shorter session
+     * shrinks repetitions or a continuous block so the structure never promises
+     * more than the athlete has time for. Warm-up and cool-down are fixed: a
+     * duration that cannot hold them is invalid, not silently cut.
+     */
+    fun fittedTo(minutes: Int): WorkoutStructure {
+        require(minutes > 0) { "Session duration must be positive" }
+        val budget = minutes.toLong() * SECONDS_PER_MINUTE
+        if (plannedSeconds <= budget) return copy(totalMin = minutes)
+        val fixedSeconds = (warmupMin + cooldownMin).toLong() * SECONDS_PER_MINUTE
+        require(fixedSeconds < budget) {
+            "Warm-up and cool-down must fit in $minutes min"
+        }
+        return copy(blocks = fitBlocks(blocks, budget - fixedSeconds), totalMin = minutes)
+    }
+
+    private fun fitBlocks(source: List<WorkoutBlock>, budget: Long): List<WorkoutBlock> {
+        require(budget >= source.size) { "Not enough time for every block" }
+        val totalWeight = source.sumOf { it.plannedSeconds }.coerceAtLeast(1L)
+        var remaining = budget
+        return source.mapIndexed { index, block ->
+            val left = source.size - index - 1
+            val share = if (index == source.lastIndex) {
+                remaining
+            } else {
+                budget * block.plannedSeconds / totalWeight
+            }
+            val fittedShare = share.coerceIn(1L, remaining - left)
+            remaining -= fittedShare
+            block.fittedTo(fittedShare)
+        }
+    }
 
     private companion object {
         const val SECONDS_PER_MINUTE = 60L

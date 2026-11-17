@@ -373,6 +373,7 @@ class PlanReplannerTest {
             profile(availability),
             today = monday,
             previousWeek = previousWeek,
+            race = buildRace(),
         )
 
         val result = planner.evaluate(
@@ -382,6 +383,7 @@ class PlanReplannerTest {
                 trigger = ReplanTrigger.USER_REQUEST,
                 profile = profile(availability, treadmillAccess = true),
                 previousWeek = previousWeek,
+                race = buildRace(),
                 currentAvailabilityHash = PlanReplanner.availabilityHash(
                     WeeklyAvailability(availability),
                 ),
@@ -389,11 +391,12 @@ class PlanReplannerTest {
         )
 
         val suggested = result as ReplanResult.Suggest
+        val qualityDate = current.sessions.first { it.type == WorkoutType.QUALITY }.date
         val currentQuality = current.sessions.first {
-            it.date == wednesday && it.type == WorkoutType.QUALITY
+            it.date == qualityDate && it.type == WorkoutType.QUALITY
         }
         val candidateQuality = suggested.candidate.sessions.first {
-            it.date == wednesday && it.type == WorkoutType.QUALITY
+            it.date == qualityDate && it.type == WorkoutType.QUALITY
         }
         assertThat(currentQuality.ruleIds).doesNotContain("R-PLAN-08")
         assertThat(candidateQuality.ruleIds).contains("R-PLAN-08")
@@ -462,13 +465,14 @@ class PlanReplannerTest {
             DayOfWeek.THURSDAY to 40,
             DayOfWeek.SATURDAY to 90,
         )
-        val current = generatedPlan(profile(availability), today = monday)
+        val current = generatedPlan(profile(availability), today = monday, race = buildRace())
 
         val result = planner.evaluate(
             input(
                 current = current,
                 today = tuesday,
                 profile = profile(availability),
+                race = buildRace(),
                 missedSessionThreshold = 1,
                 currentAvailabilityHash = PlanReplanner.availabilityHash(
                     WeeklyAvailability(availability),
@@ -489,7 +493,12 @@ class PlanReplannerTest {
             DayOfWeek.SATURDAY to 90,
         )
         // Created when load was not trusted: the week had no quality.
-        val current = generatedPlan(profile(availability), today = monday, load = null)
+        val current = generatedPlan(
+            profile(availability),
+            today = monday,
+            load = null,
+            race = buildRace(),
+        )
 
         val result = planner.evaluate(
             input(
@@ -498,6 +507,7 @@ class PlanReplannerTest {
                 trigger = ReplanTrigger.USER_REQUEST,
                 profile = profile(availability),
                 load = knownLoad(),
+                race = buildRace(),
             ),
         )
 
@@ -540,6 +550,7 @@ class PlanReplannerTest {
                 trigger = ReplanTrigger.USER_REQUEST,
                 profile = profile(availability),
                 previousWeek = completedPreviousWeek(),
+                race = buildRace(),
             ),
         )
 
@@ -615,6 +626,7 @@ class PlanReplannerTest {
                 today = monday,
                 trigger = ReplanTrigger.AVAILABILITY_CHANGED,
                 profile = profile(newAvailability),
+                race = buildRace(),
                 currentAvailabilityHash = PlanReplanner.availabilityHash(
                     WeeklyAvailability(oldAvailability),
                 ),
@@ -802,7 +814,12 @@ class PlanReplannerTest {
         )
         val previousWeek = completedPreviousWeek()
         val original = profile(availability)
-        val current = generatedPlan(original, today = monday, previousWeek = previousWeek)
+        val current = generatedPlan(
+            original,
+            today = monday,
+            previousWeek = previousWeek,
+            race = buildRace(),
+        )
         val changedProfile = profile(availability, treadmillAccess = true)
         val originalFingerprint = PlanningFingerprints.of(original)
 
@@ -812,6 +829,7 @@ class PlanReplannerTest {
                 today = monday,
                 profile = changedProfile,
                 previousWeek = previousWeek,
+                race = buildRace(),
                 currentAvailabilityHash = PlanReplanner.availabilityHash(
                     WeeklyAvailability(availability),
                 ),
@@ -1332,6 +1350,7 @@ class PlanReplannerTest {
         today: LocalDate,
         load: LoadSnapshot? = knownLoad(),
         previousWeek: WeeklyPlan? = null,
+        race: RacePlan? = null,
     ) = generator.generate(
         WeeklyPlanInput(
             profile = profile,
@@ -1340,8 +1359,11 @@ class PlanReplannerTest {
             weekStart = monday,
             today = today,
             previousWeek = previousWeek,
+            race = race,
         ),
     )
+
+    private fun buildRace(): RacePlan = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34))
 
     private fun planOf(vararg sessions: PlannedSession, createdOn: LocalDate = monday) = WeeklyPlan(
         weekStart = monday,

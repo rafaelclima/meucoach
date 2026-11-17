@@ -32,7 +32,7 @@ class SessionRolesTest {
     private val monday = LocalDate.of(2026, 11, 9)
 
     @Test
-    fun `base phase without race keeps guardrail-gated quality`() {
+    fun `base first half without race keeps no quality`() {
         val history = listOf(loadWeek(monday.minusWeeks(1)))
 
         val plan = generator.generate(
@@ -45,14 +45,12 @@ class SessionRolesTest {
             ),
         )
 
-        // A biblioteca de C4-15 expõe o fartlek leve em
-        // `qualityTemplates(BASE, ...)`, mas a projeção legada usada pelo
-        // gerador v6 continua sem qualidade na BASE até C4-16/17 decidirem a
-        // segunda metade da fase. A qualidade genérica abaixo é o
-        // comportamento vigente.
-        assertThat(plan.sessions.map { it.type }).contains(WorkoutType.QUALITY)
+        // ADR 0047: in the first half of BASE the catalog exposes no quality;
+        // the light fartlek starts in the second half (C4-17).
+        assertThat(plan.sessions.map { it.type }).doesNotContain(WorkoutType.QUALITY)
         assertThat(plan.ruleIds).doesNotContain("R-PER-02")
         assertThat(plan.rationale).doesNotContain("Bloco")
+        assertThat(plan.rationale).contains("primeira metade da base")
     }
 
     @Test
@@ -70,11 +68,15 @@ class SessionRolesTest {
             ),
         )
 
-        val libraryTitle = SessionLibrary.templates(MesoPhase.BUILD, Experience.ADVANCED)
-            .first { it.role == SessionRole.QUALITY_MAIN }.title
+        val libraryTitles = SessionLibrary.qualityRotation(
+            phase = MesoPhase.BUILD,
+            level = Experience.ADVANCED,
+            weekInPhase = 0,
+            maxQualities = 2,
+        ).map { it.title }
         val qualities = plan.sessions.filter { it.type == WorkoutType.QUALITY }
         assertThat(qualities).isNotEmpty()
-        assertThat(qualities.map { it.title }).containsOnly(libraryTitle)
+        assertThat(qualities.map { it.title }).containsExactlyElementsOf(libraryTitles)
         assertThat(plan.rationale).contains("Bloco 1 de 3", "Faltam 4 semanas para a prova")
         assertThat(plan.ruleIds).contains("R-PER-02")
     }

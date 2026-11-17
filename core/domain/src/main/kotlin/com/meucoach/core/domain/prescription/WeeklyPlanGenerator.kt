@@ -298,6 +298,8 @@ class WeeklyPlanGenerator {
             references = volumeReferences,
             fallbackWeekNumberInBlock = input.weekNumberInBlock,
             phaseOverride = macroIntent?.phase,
+            overrideWeekInPhase = macroIntent?.weekInPhase ?: 0,
+            overridePhaseWeeks = macroIntent?.phaseWeeks,
         )
         val postRecoveryForDeload = isPostRecoveryWeek(combinedReferences, weekStart)
         // Taper, recovery, pós-recovery e semana de prova nunca são descarga;
@@ -336,24 +338,48 @@ class WeeklyPlanGenerator {
                 !race.allowsQuality(date) &&
                 !race.isRaceDayOrLater(date)
         }
-        // ADR 0043 §3.2: papéis da semana pela biblioteca (fase, nível). Títulos
-        // vêm dos templates (fonte única); durações seguem a disponibilidade.
-        // A biblioteca define estruturas e travas (iniciante, taper, recovery);
-        // a elegibilidade de qualidade continua pelos guardrails vigentes —
-        // suprimir qualidade na BASE seria mudar 45 comportamentos testados e
-        // exige decisão explícita (fatia futura).
-        val templates = SessionLibrary.templates(meso.phase, input.profile.experience)
-        fun templateTitle(role: SessionRole): String? = templates.singleOrNull { it.role == role }?.title
-        val qualityDays = if (qualityAllowed) {
+        // ADR 0043 §3.2/ADR 0047: papéis da semana pela biblioteca (fase, nível).
+        // Títulos das sessões fáceis vêm de `easyTemplates`; a qualidade é
+        // escolhida pela rotação determinística do catálogo, que também decide
+        // se a semana tem estímulo (BASE só na segunda metade, taper em
+        // micro-dose, recovery sem qualidade).
+        val easyTemplates = SessionLibrary.easyTemplates(meso.phase, input.profile.experience)
+        fun easyTemplate(role: SessionRole): SessionTemplate? = easyTemplates.singleOrNull { it.role == role }
+        val qualitySelection = if (qualityAllowed) {
+            SessionLibrary.qualityRotation(
+                phase = meso.phase,
+                level = input.profile.experience,
+                distance = race?.distance,
+                weekInPhase = meso.weekInPhase,
+                maxQualities = if (progressed && !taperLimitsQuality) 2 else 1,
+                phaseWeeks = meso.phaseWeeks,
+            )
+        } else {
+            emptyList()
+        }
+        val qualityDays = if (qualitySelection.isEmpty()) {
+            emptySet()
+        } else {
             selectQualityDays(
                 days = qualityCandidateDays,
                 longDay = longDay,
-                maxQualities = if (progressed && !taperLimitsQuality) 2 else 1,
+                maxQualities = qualitySelection.size,
             )
-        } else {
-            emptySet()
         }
-        val microDoseDays = if (qualityAllowed && qualityDays.isEmpty() && microDoseCandidateDays.isNotEmpty()) {
+        val qualityByDay = qualityDays.sortedBy { it.value }.zip(qualitySelection).toMap()
+        val microDoseTemplate = if (qualityAllowed && qualityDays.isEmpty() && microDoseCandidateDays.isNotEmpty()) {
+            SessionLibrary.qualityRotation(
+                phase = MesoPhase.TAPER,
+                level = input.profile.experience,
+                distance = race?.distance,
+                weekInPhase = meso.weekInPhase,
+                maxQualities = 1,
+                phaseWeeks = meso.phaseWeeks,
+            ).singleOrNull()
+        } else {
+            null
+        }
+        val microDoseDays = if (microDoseTemplate != null) {
             selectQualityDays(
                 days = microDoseCandidateDays,
                 longDay = longDay,
@@ -420,21 +446,29 @@ class WeeklyPlanGenerator {
 
                 day in qualityDays -> {
                     val duration = durationByDay.getValue(day)
+                    val template = qualityByDay.getValue(day)
+                    val structure = requireNotNull(template.structure) {
+                        "Quality template ${template.title} must carry a structure"
+                    }.fittedTo(duration)
+                    val rationale = if (template.durationPolicy == DurationPolicy.MICRO_DOSE_25) {
+                        "Semana de prova: micro-dose para manter o estímulo, sem fadiga. " +
+                            describeStructure(structure)
+                    } else {
+                        qualityRationale(input.profile, duration, structure, reduction = null)
+                    }
                     PlannedSession(
                         date = date,
                         type = WorkoutType.QUALITY,
-                        title = templateTitle(SessionRole.QUALITY_MAIN)
-                            ?: qualityTitle(input.profile.experience),
+                        title = template.title,
                         durationMin = duration,
-                        rationale = qualityRationale(input.profile, duration, null),
+                        rationale = rationale,
                         ruleIds = buildList {
-                            add("R-PLAN-02")
+                            addAll(template.ruleIds)
                             add("R-PLAN-06")
                             if (input.profile.treadmillAccess) add("R-PLAN-08")
                         },
                         evidenceIds = buildList {
-                            add("EV-SEILER-2010")
-                            add("EV-DANIELS-2014")
+                            addAll(template.evidenceIds)
                             if (input.profile.treadmillAccess) add("EV-ELY-2007")
                         },
                         targets = PrescriptionPolicy.targets(
@@ -442,24 +476,39 @@ class WeeklyPlanGenerator {
                             profile = input.profile,
                             durationMin = duration,
                         ),
+                        qualityKind = requireNotNull(template.qualityKind) {
+                            "Quality session ${template.title} must carry a kind"
+                        },
+                        structure = structure,
                     )
                 }
 
                 day in microDoseDays -> {
                     val duration = durationByDay.getValue(day)
+                    val template = requireNotNull(microDoseTemplate) {
+                        "A micro-dose day requires a taper template"
+                    }
                     PlannedSession(
                         date = date,
                         type = WorkoutType.QUALITY,
-                        title = templateTitle(SessionRole.STRIDES) ?: "Strides curtos",
+                        title = template.title,
                         durationMin = duration,
-                        rationale = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
-                        ruleIds = listOf("R-PLAN-05", "R-PLAN-10", "R-PLAN-06"),
-                        evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
+                        rationale = "Semana de prova: micro-dose para manter o estímulo, sem fadiga. " +
+                            describeStructure(requireNotNull(template.structure).fittedTo(duration)),
+                        ruleIds = buildList {
+                            addAll(template.ruleIds)
+                            add("R-PLAN-06")
+                        },
+                        evidenceIds = template.evidenceIds,
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.QUALITY,
                             profile = input.profile,
                             durationMin = duration,
                         ),
+                        qualityKind = requireNotNull(template.qualityKind) {
+                            "Micro-dose ${template.title} must carry a kind"
+                        },
+                        structure = requireNotNull(template.structure).fittedTo(duration),
                     )
                 }
 
@@ -468,7 +517,7 @@ class WeeklyPlanGenerator {
                     PlannedSession(
                         date = date,
                         type = WorkoutType.LONG,
-                        title = templateTitle(SessionRole.LONG_RUN) ?: LONG_RUN_TITLE,
+                        title = LONG_RUN_TITLE,
                         durationMin = duration,
                         rationale = "Longão em ritmo fácil; a duração vem do piso e da disponibilidade.",
                         ruleIds = listOf("R-PLAN-03"),
@@ -489,9 +538,9 @@ class WeeklyPlanGenerator {
                         PlannedSession(
                             date = date,
                             type = WorkoutType.EASY,
-                            title = templateTitle(SessionRole.STRIDES) ?: "Strides curtos",
+                            title = easyTemplate(SessionRole.STRIDES)?.title ?: "Strides curtos",
                             durationMin = duration,
-                            rationale = templates.singleOrNull { it.role == SessionRole.STRIDES }?.blurb
+                            rationale = easyTemplate(SessionRole.STRIDES)?.blurb
                                 ?: "Estímulo neuromuscular curto, sem fadiga.",
                             ruleIds = listOf("R-ZONE-01", "R-PLAN-06", "R-PER-02"),
                             evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
@@ -509,7 +558,7 @@ class WeeklyPlanGenerator {
                             title = if (isRecoveryDay) {
                                 RECOVERY_TITLE
                             } else {
-                                templateTitle(SessionRole.EASY_RUN) ?: "Fácil e conversável"
+                                easyTemplate(SessionRole.EASY_RUN)?.title ?: "Fácil e conversável"
                             },
                             durationMin = duration,
                             rationale = if (isRecoveryDay) {
@@ -694,6 +743,10 @@ class WeeklyPlanGenerator {
 
                         days.size < 3 -> "menos de 3 dias disponíveis."
 
+                        meso.phase == MesoPhase.BASE && qualitySelection.isEmpty() ->
+                            "a primeira metade da base é só fácil, longão e strides; " +
+                                "o fartlek leve entra na segunda metade."
+
                         else -> "sem dia seguro separado do longão."
                     },
                 )
@@ -765,52 +818,90 @@ class WeeklyPlanGenerator {
         return selected.toSet()
     }
 
-    private fun qualityTitle(experience: Experience): String = when (experience) {
-        Experience.ADVANCED -> "Intervalos"
-        else -> "Ritmo forte"
-    }
-
     /**
-     * Quality sessions are described from their real duration, never from a
-     * fixed block (N-03). Ten minutes are reserved for the warm-up; the
-     * continuous block uses the rest minus a five-minute cool-down, and
-     * intervals use 3 min of work with 2 min of easy running, scaled between
-     * three and five repetitions. This is a product convention derived from
-     * the examples in SPORTS_SCIENCE §8.4, not a new physiological claim.
+     * Quality copy comes from the executable structure, never from a fixed
+     * block (N-03). The same text describes the real repetitions, recovery and
+     * cool-down after volume/taper/deload fitting, so the plan cannot promise
+     * more work than the session duration holds.
      *
-     * The taper note only appears when the session was actually shortened: a
-     * 25-minute quality is already at the floor and must not claim a cut.
+     * The taper/deload note only appears when the session was actually
+     * shortened: a 25-minute quality is already at the floor and must not claim
+     * a cut.
      */
-    private fun qualityRationale(profile: AthleteProfile, durationMin: Int, reduction: QualityReduction?): String {
+    private fun qualityRationale(
+        profile: AthleteProfile,
+        durationMin: Int,
+        structure: WorkoutStructure,
+        reduction: QualityReduction?,
+    ): String {
         require(durationMin >= MIN_QUALITY_MIN) {
             "Quality duration must be at least $MIN_QUALITY_MIN minutes"
         }
         val advanced = profile.experience == Experience.ADVANCED
-        val base = if (advanced) {
-            val reps = intervalRepetitions(durationMin)
-            "Aqueça $QUALITY_WARMUP_MIN min em ritmo leve, faça $reps repetições de " +
-                "$INTERVAL_WORK_MIN min fortes com $INTERVAL_RECOVERY_MIN min leves entre elas " +
-                "e complete o restante em ritmo leve."
-        } else {
-            val work = durationMin - QUALITY_WARMUP_MIN - QUALITY_COOLDOWN_MIN
-            "Aqueça $QUALITY_WARMUP_MIN min em ritmo leve, corra $work min em esforço " +
-                "moderado a forte e termine com $QUALITY_COOLDOWN_MIN min em ritmo leve."
-        }
         val note = when (reduction) {
             QualityReduction.TAPER -> "Semana de prova: ${qualityReductionNote(advanced)}"
             QualityReduction.DELOAD -> "Semana de descarga: ${qualityReductionNote(advanced)}"
             null -> null
         }
-        return listOfNotNull(note, base, treadmillQualityHint(profile)).joinToString(" ")
+        return listOfNotNull(note, describeStructure(structure), treadmillQualityHint(profile)).joinToString(" ")
     }
 
     private fun qualityReductionNote(advanced: Boolean): String =
         if (advanced) "menos repetições, mesmo esforço." else "bloco mais curto, mesmo esforço."
 
-    private fun intervalRepetitions(durationMin: Int): Int {
-        val available = durationMin - QUALITY_WARMUP_MIN
-        val cycle = INTERVAL_WORK_MIN + INTERVAL_RECOVERY_MIN
-        return ((available + INTERVAL_RECOVERY_MIN) / cycle).coerceIn(MIN_INTERVALS, MAX_INTERVALS)
+    private fun describeStructure(structure: WorkoutStructure): String = buildList {
+        if (structure.warmupMin > 0) {
+            add("Aqueça ${structure.warmupMin} min em ritmo leve.")
+        }
+        structure.blocks.forEach { block -> add(describeBlock(block)) }
+        if (structure.cooldownMin > 0) {
+            add("Termine com ${structure.cooldownMin} min em ritmo leve.")
+        }
+        val remaining = structure.totalMin - structure.plannedMinutes
+        if (remaining >= 1) {
+            add("Complete os $remaining min restantes em ritmo leve.")
+        }
+    }.joinToString(" ")
+
+    private fun describeBlock(block: WorkoutBlock): String {
+        val work = requireNotNull(block.workSec) { "Block work duration must be positive" }
+        val repetitions = block.repetitions
+        val recovery = block.recoverySec?.let { ", com ${durationLabel(it)} leves de recuperação" } ?: ""
+        val target = block.target?.let(::targetPhrase)
+        return when (block.kind) {
+            BlockKind.STRIDES ->
+                "Faça ${repetitions ?: 1} × ${durationLabel(work)} rápidos e relaxados$recovery."
+
+            BlockKind.RACE_PACE ->
+                "Faça ${repetitions ?: 1} × ${durationLabel(work)} no " +
+                    "${target ?: "pace de prova"}$recovery."
+
+            BlockKind.WORK -> if (repetitions != null) {
+                "Faça $repetitions × ${durationLabel(work)}${target?.let { " em $it" } ?: ""}$recovery."
+            } else {
+                "Corra ${durationLabel(work)}${target?.let { " em $it" } ?: ""}."
+            }
+
+            BlockKind.RECOVERY -> "Corra ${durationLabel(work)} em ritmo leve."
+        }
+    }
+
+    private fun durationLabel(seconds: Int): String {
+        if (seconds < SECONDS_PER_MINUTE) return "$seconds s"
+        val minutes = seconds / SECONDS_PER_MINUTE
+        val rest = seconds % SECONDS_PER_MINUTE
+        return if (rest == 0) "$minutes min" else "$minutes min ${rest}s"
+    }
+
+    private fun targetPhrase(target: String): String = when {
+        target.startsWith("RPE") -> "esforço ${target.removePrefix("RPE").trim()} de 10"
+        target == "T" -> "ritmo forte sustentado"
+        target == "I" -> "ritmo de intervalado"
+        target == "GOAL_5K" -> "pace atual de 5K"
+        target == "GOAL_10K" -> "pace atual de 10K"
+        target == "GOAL_HALF" -> "pace atual de meia maratona"
+        target == "GOAL_MARATHON" -> "pace atual de maratona"
+        else -> target
     }
 
     private fun treadmillQualityHint(profile: AthleteProfile): String? {
@@ -848,9 +939,14 @@ class WeeklyPlanGenerator {
             if (inTaper) add("R-PLAN-05")
             if (deload && !inTaper) add("R-PLAN-04")
         }
-        // Micro-dose de taper tem rationale próprio e duração fixa: só agrega regras.
+        val fitted = structure?.fittedTo(durationMin)
+        // Micro-dose de taper tem rationale próprio e duração fixa: só agrega
+        // regras e reajusta a estrutura (que já nasce em 25 min).
         if (title == MICRO_DOSE_TITLE && durationMin <= MICRO_DOSE_MIN) {
-            return copy(ruleIds = (ruleIds + weekRules).distinct())
+            return copy(
+                ruleIds = (ruleIds + weekRules).distinct(),
+                structure = fitted,
+            )
         }
         val reduction = when {
             originalDurationMin == null || durationMin >= originalDurationMin -> null
@@ -859,8 +955,9 @@ class WeeklyPlanGenerator {
             else -> null
         }
         return copy(
-            rationale = qualityRationale(profile, durationMin, reduction),
+            rationale = fitted?.let { qualityRationale(profile, durationMin, it, reduction) } ?: rationale,
             ruleIds = (ruleIds + weekRules).distinct(),
+            structure = fitted,
         )
     }
 
@@ -1277,12 +1374,7 @@ class WeeklyPlanGenerator {
         private const val MAX_EASY_MIN = 60
         private const val MIN_QUALITY_MIN = 25
         private const val MAX_QUALITY_MIN = 45
-        private const val QUALITY_WARMUP_MIN = 10
-        private const val QUALITY_COOLDOWN_MIN = 5
-        private const val INTERVAL_WORK_MIN = 3
-        private const val INTERVAL_RECOVERY_MIN = 2
-        private const val MIN_INTERVALS = 3
-        private const val MAX_INTERVALS = 5
+        private const val SECONDS_PER_MINUTE = 60
         private const val MIN_LONG_MIN = 30
 
         /** Long-run target: 28% of the final week, so the share is a target, not a ceiling. */

@@ -276,29 +276,26 @@ class QualityCatalogTest {
     }
 
     @Test
-    fun `legacy weekly projection keeps one main and one second with distinct kinds`() {
-        val intermediate = SessionLibrary.templates(MesoPhase.BUILD, Experience.INTERMEDIATE)
-        assertThat(intermediate.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
-            .containsExactly(QualityKind.CONTINUOUS)
-        assertThat(intermediate.filter { it.role == SessionRole.QUALITY_SECOND }.map { it.qualityKind })
-            .containsExactly(QualityKind.INTERVALS)
-
-        val advanced = SessionLibrary.templates(MesoPhase.BUILD, Experience.ADVANCED)
-        assertThat(advanced.filter { it.role == SessionRole.QUALITY_MAIN }.map { it.qualityKind })
-            .containsExactly(QualityKind.INTERVALS)
-        assertThat(advanced.filter { it.role == SessionRole.QUALITY_SECOND }.map { it.qualityKind })
-            .containsExactly(QualityKind.HILLS)
-    }
-
-    @Test
-    fun `legacy weekly projection keeps base free of quality until the generator is wired`() {
-        val base = SessionLibrary.templates(MesoPhase.BASE, Experience.INTERMEDIATE)
-
-        assertThat(base.map { it.role }).doesNotContain(
-            SessionRole.QUALITY_MAIN,
-            SessionRole.QUALITY_SECOND,
+    fun `base exposes the light fartlek but withholds it in the first half`() {
+        assertThat(
+            SessionLibrary.qualityTemplates(MesoPhase.BASE, Experience.INTERMEDIATE).map { it.qualityKind },
         )
-        assertThat(SessionLibrary.qualityTemplates(MesoPhase.BASE, Experience.INTERMEDIATE).map { it.qualityKind })
             .containsExactly(QualityKind.FARTLEK)
+        assertThat(
+            SessionLibrary.qualityRotation(
+                phase = MesoPhase.BASE,
+                level = Experience.INTERMEDIATE,
+                weekInPhase = 0,
+                phaseWeeks = 4,
+            ),
+        ).isEmpty()
+        assertThat(
+            SessionLibrary.qualityRotation(
+                phase = MesoPhase.BASE,
+                level = Experience.INTERMEDIATE,
+                weekInPhase = 2,
+                phaseWeeks = 4,
+            ).map { it.qualityKind },
+        ).containsExactly(QualityKind.FARTLEK)
     }
 }

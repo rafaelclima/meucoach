@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — em implementação (C4-14, C4-15 e C4-16 concluídas; C4-17..C4-21 pendentes).
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-17 concluídas; C4-18..C4-21 pendentes.
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -361,6 +361,18 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   determinística por `weekInPhase` (0-based); semanas seguidas não repetem o
   kind principal e a segunda qualidade só entra com kind diferente. O fartlek
   leve da `BASE` fica restrito à segunda metade via `phaseWeeks`; sem essa
-  informação, a `BASE` fica sem qualidade (conservador). A projeção legada
-  `templates(...)` continua intacta até C4-17. 14 testes em
+  informação, a `BASE` fica sem qualidade (conservador). 14 testes em
   `QualityRotationTest`.
+- **C4-17 (S6.3):** o `WeeklyPlanGenerator` consome `qualityRotation` e
+  `easyTemplates`; `MacroWeekIntent`/`MesoState` carregam `weekInPhase` e
+  `phaseWeeks` (macro ou blocos gerais de 4 semanas). Sessões de qualidade
+  recebem `qualityKind`, título do template e `structure`; a segunda qualidade
+  usa o template `QUALITY_SECOND`. `WorkoutStructure.fittedTo(minutes)` encolhe
+  repetições/blocos contínuos e ajusta `totalMin` sem prometer mais trabalho do
+  que cabe; o rationale nasce da estrutura final. `PEAK` usa `RACE_PACE` da
+  distância e não é cópia do `BUILD`; `BASE` fica sem qualidade na primeira
+  metade; `TAPER` vira micro-dose com kind/estrutura; `RECOVERY` e iniciante
+  continuam sem `QUALITY`. A projeção legada `templates(...)` foi removida e
+  `R-PER-04` entrou no catálogo de explicações. 7 testes em
+  `QualityIntegrationTest` e 7 em `WorkoutStructureTest`; `:core:domain:test`
+  963 verdes. Persistência de `qualityKind`/`structure` fica em C4-45/C4-46.

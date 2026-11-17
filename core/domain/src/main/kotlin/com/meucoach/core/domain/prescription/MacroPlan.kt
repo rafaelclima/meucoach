@@ -14,8 +14,18 @@ import java.time.temporal.TemporalAdjusters
  * [blockIndex] é a posição 1-based do bloco de fase a partir do início da
  * preparação (`BASE` = 1 …); [weeksToRace] conta as semanas até a semana da
  * prova e é `null` no caminho geral.
+ *
+ * [weekInPhase] é 0-based dentro da fase e alimenta a rotação determinística do
+ * catálogo (ADR 0047 §2.7); [phaseWeeks] é a duração total da fase na tabela.
  */
-data class MacroWeekIntent(val weekStart: LocalDate, val phase: MesoPhase, val blockIndex: Int, val weeksToRace: Int?)
+data class MacroWeekIntent(
+    val weekStart: LocalDate,
+    val phase: MesoPhase,
+    val blockIndex: Int,
+    val weeksToRace: Int?,
+    val weekInPhase: Int = 0,
+    val phaseWeeks: Int = 1,
+)
 
 /**
  * Preparação resolvida pelo macro-planejador (ADR 0043, `R-PER-01`).
@@ -67,11 +77,14 @@ object MacroPlanResolver {
         val intents = (0 until count).map { index ->
             val intentWeek = weekStart.plusWeeks(index.toLong())
             val position = ChronoUnit.WEEKS.between(prepStart, intentWeek).toInt()
+            val phase = table[position]
             MacroWeekIntent(
                 weekStart = intentWeek,
-                phase = table[position],
+                phase = phase,
                 blockIndex = 0,
                 weeksToRace = weeksToRaceWeek - index,
+                weekInPhase = phasePosition(table, position),
+                phaseWeeks = phaseLength(table, position),
             )
         }
         return MacroPlan(
@@ -112,6 +125,23 @@ object MacroPlanResolver {
             List(baseBuild - baseCount) { MesoPhase.BUILD } +
             List(peakWeeks) { MesoPhase.PEAK } +
             List(taperWeeks) { MesoPhase.TAPER }
+    }
+
+    /** 0-based position of [position] inside its contiguous phase run. */
+    private fun phasePosition(table: List<MesoPhase>, position: Int): Int {
+        var start = position
+        while (start > 0 && table[start - 1] == table[position]) start--
+        return position - start
+    }
+
+    /** Number of weeks the phase at [position] occupies in the macro table. */
+    private fun phaseLength(table: List<MesoPhase>, position: Int): Int {
+        val phase = table[position]
+        var start = position
+        var end = position
+        while (start > 0 && table[start - 1] == phase) start--
+        while (end < table.lastIndex && table[end + 1] == phase) end++
+        return end - start + 1
     }
 
     private fun withBlockIndexes(intents: List<MacroWeekIntent>): List<MacroWeekIntent> {

@@ -9,6 +9,7 @@ import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.WeeklyAvailability
@@ -74,6 +75,7 @@ class LongRunSizingTest {
                 DayOfWeek.SATURDAY to 90,
             ),
             load = load(),
+            race = buildRace(),
         )
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
@@ -177,6 +179,7 @@ class LongRunSizingTest {
             ),
             load = load(),
             previousWeek = previous,
+            race = buildRace(),
         )
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
@@ -208,6 +211,7 @@ class LongRunSizingTest {
             ),
             load = load(),
             previousWeek = previous,
+            race = buildRace(),
         )
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
@@ -253,6 +257,7 @@ class LongRunSizingTest {
         load: LoadSnapshot? = null,
         previousWeek: WeeklyPlan? = null,
         recentWeeks: List<WeeklyPlan> = emptyList(),
+        race: RacePlan? = null,
     ) = generator.generate(
         WeeklyPlanInput(
             profile = AthleteProfile(
@@ -280,6 +285,7 @@ class LongRunSizingTest {
             today = monday,
             previousWeek = previousWeek,
             recentWeeks = recentWeeks,
+            race = race,
         ),
     )
 
@@ -337,6 +343,8 @@ class LongRunSizingTest {
         ),
         strain = 400.0,
     )
+
+    private fun buildRace(): RacePlan = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34))
 
     private companion object {
         const val SESSIONS_PER_WEEK = 4
