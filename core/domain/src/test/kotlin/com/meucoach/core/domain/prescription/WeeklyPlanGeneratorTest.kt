@@ -639,6 +639,110 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `blocked second quality by unreliable load states calibration not history`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0, daysWithoutData = 2),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = buildRace(),
+            ),
+        )
+
+        // C4-06/FR-412: history exists (4/4), so the copy must name the real
+        // blocker (calibration), never "até existir histórico".
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("Sem progressão")
+        assertThat(plan.rationale).contains("calibração")
+        assertThat(plan.rationale).doesNotContain("até existir histórico")
+    }
+
+    @Test
+    fun `blocked second quality by high ACWR states the value not history`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.6),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = buildRace(),
+            ),
+        )
+
+        // C4-06/P-12: with 4/4 history, "até existir histórico" contradicts
+        // the facts; the copy must carry the failing ACWR value.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("Sem progressão")
+        assertThat(plan.rationale).contains("1,6")
+        assertThat(plan.rationale).doesNotContain("até existir histórico")
+    }
+
+    @Test
+    fun `omits the progression line without a structural opportunity`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.BEGINNER,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+            ),
+        )
+
+        // C4-06: without a first opportunity there is no second slot to
+        // discuss; the "Sem treino forte" reason already explains the week.
+        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.rationale).contains("iniciante")
+        assertThat(plan.rationale).doesNotContain("Sem progressão")
+        assertThat(plan.rationale).doesNotContain("Progressão liberada")
+    }
+
+    @Test
+    fun `cites R-PER-03 when the week has a quality opportunity`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                race = buildRace(),
+            ),
+        )
+
+        // C4-06/FR-412: the opportunity copy ("o dia confirma") must be backed
+        // by its rule id, and every emitted id must be catalogued.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("o dia confirma")
+        assertThat(plan.ruleIds).contains("R-PER-03")
+        assertThat(ExplanationCatalog.hasRule("R-PER-03")).isTrue()
+        (plan.ruleIds + plan.sessions.flatMap { it.ruleIds }).forEach { id ->
+            assertThat(ExplanationCatalog.hasRule(id)).describedAs(id).isTrue()
+        }
+        (plan.evidenceIds + plan.sessions.flatMap { it.evidenceIds }).forEach { id ->
+            assertThat(ExplanationCatalog.hasEvidence(id)).describedAs(id).isTrue()
+        }
+    }
+
+    @Test
     fun `treadmill access adds a heat-proof quality option with speed`() {
         val availability = mapOf(
             DayOfWeek.MONDAY to 40,

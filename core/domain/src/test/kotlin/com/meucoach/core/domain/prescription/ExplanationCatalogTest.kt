@@ -38,8 +38,12 @@ class ExplanationCatalogTest {
             "R-LVL-02",
             "R-PER-01",
             "R-PER-02",
+            "R-PER-03",
+            "R-PER-04",
             "R-FEEDBACK-01",
             "R-REVIEW-01",
+            "R-RACE-04",
+            "R-READY-06",
         )
 
         ids.forEach { id ->
@@ -63,6 +67,11 @@ class ExplanationCatalogTest {
             "EV-BUCHHEIT-2014",
             "EV-WALSH-2021",
             "EV-WATSON-2015",
+            "EV-BOSQUET-2007",
+            "EV-MUJIKA-2003",
+            "EV-HALSON-2014",
+            "EV-ISSURIN-2010",
+            "EV-PFITZINGER-2008",
         )
 
         ids.forEach { id ->

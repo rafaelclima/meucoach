@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S10.3 do Ciclo 4: docs do rollout de dados/upgrade, C4-49 — Fase 2 concluída)
+**Atualizado:** 17/11/2026 (S11 do Ciclo 4: copy da oportunidade sem contradição, C4-06)
+
+## Sessão 2026-11-17 — Ciclo 4/S11: copy da oportunidade sem contradição (C4-06)
+
+**Objetivo:** resolver o P-12 no plano — a copy de "sem progressão" passa a nomear o bloqueador real em vez de culpar o histórico, sem contradição, com `R-PER-03` citado e IDs catalogados.
+
+### Concluído
+
+- **Domínio:** `progressionBlockedRationale` no `WeeklyPlanGenerator` com prioridade dias → histórico → taper → carga; carga detalha STALE, calibração (`X de 28 dias`), esforço percebido, monotonia, strain, `ACWR em calibração` e `ACWR 1,60 fora da faixa 0,8–1,3`. Linha de progressão só com oportunidade estrutural + `qualityCount > 0`.
+- **Regras:** plano com qualidade cita `R-PER-03`; `ExplanationCatalogTest` cobre `R-PER-03/04`, `R-RACE-04`, `R-READY-06` e evidências de taper/deload/longão.
+- **Testes:** 4 novos em `WeeklyPlanGeneratorTest` (TDD RED→GREEN) + catálogo estendido.
+
+### Testes
+
+- `:core:domain:test` 1010 verdes (+4); `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck` (com `spotlessApply`), `:core:domain:koverVerify`, `:core:domain:detekt`, `:core:data:detekt`, `:app:detekt` verdes.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Prefixo "Sem progressão" mantido (testes legados `WeeklyPlanGeneratorTest`/`Cycle1RegressionTest` continuam verdes).
+- Detekt `LongParameterList` resolvido derivando o estado de carga do `LoadSnapshot` dentro da função (5 params, sem baseline).
+- Copy fina adicional em C4-59; docs de `R-PER-03`/ciência em C4-08.
+
+### Próximo passo
+
+1. S11 / C4-30: check-in sem 3/3/3/3, labels, pré-preencher.
+2. Depois S11 / C4-31 (reavaliação após check-in na UI).
 
 ## Sessão 2026-11-17 — Ciclo 4/S10.3: docs do rollout de dados/upgrade (C4-49)
 

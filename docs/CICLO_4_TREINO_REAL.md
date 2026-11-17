@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S10.3 (C4-49)
-> **Último commit:** C4-49 — `docs(c4): record data readiness and upgrade rollout (C4-49)`
-> **Fase:** 2 — Fiação — **concluída (S10.3; C4-49 DONE)**; próxima S11 (copy/check-in/UI)
-> **Sessão atual:** **S10.3 — C4-49 DONE**
-> **Task atual:** C4-49 (DONE)
-> **Próxima task:** C4-06 (S11)
+> **Última atualização:** 17/11/2026 — S11 (C4-06)
+> **Último commit:** C4-06 — `feat(domain): distinguish the blocked second-quality reason (C4-06)`
+> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06 DONE)**; próxima C4-30 (check-in UI)
+> **Sessão atual:** **S11 — C4-06 DONE**
+> **Task atual:** C4-06 (DONE)
+> **Próxima task:** C4-30 (S11)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** docs apenas; `spotlessCheck` verde; sem código alterado (gates de C4-48 seguem verdes: `:core:domain:test` 1006; `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40)
-> **Próxima ação:** abrir C4-06 (S11: copy/rationale da oportunidade e rebaixamento), TDD sobre rationale do gerador/diário.
+> **Gates da última sessão:** `:core:domain:test` 1010; `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt` verdes
+> **Próxima ação:** abrir C4-30 (S11: check-in sem 3/3/3/3, labels, pré-preencher).
 
 ### 0.1 O que já está pronto
 
@@ -168,7 +168,7 @@
 - Strides para todos os níveis e intro fartlek do iniciante (C4-18), estrutura no briefing/UI (C4-19), golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para S12.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
-- O rationale da primeira oportunidade já diz “o dia confirma”, mas a copy de “sem progressão” ainda não distingue falta de histórico de carga fora da faixa; a revisão fica em C4-06/C4-59.
+- O rationale da primeira oportunidade diz "o dia confirma" e cita `R-PER-03`; a copy de "sem progressão" distingue falta de histórico, dias, taper e o motivo real de carga (calibração, ACWR com valor, monotonia, strain, esforço percebido) sem contradição (C4-06). Restam em C4-59 os refinamentos finos de copy do rationale.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
 ---
@@ -540,7 +540,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-03 | `QualityGate` puro | C4-01 | L | S1 | ADR 0044 | Precedência completa; determinístico | `QualityGateTest` (27); commit S1 |
 | [x] | C4-04 | Daily engine usa `QualityGate` | C4-03 | M | S8 | ADR 0044 | Mantém/rebaixa com motivo; `R-PRESC-02` | `DailyPrescriptionEngineTest` (+6); `QualityGateTest` (+2); `qualityBlockReason`/`decisionDetail`/`unlockHint`; commit S8 |
 | [x] | C4-05 | Reavaliação com check-in/carga antes do DONE | C4-04 | M | S8 | ADR 0044/0049 | EASY→QUALITY antes do DONE; DONE intacto | `GetTodayPrescriptionTest` (+6); `DailyPrescriptionEngineTest` (+2); `inputsHash` cobre prontidão/carga; commit S8 |
-| [ ] | C4-06 | Copy/rationale da oportunidade e rebaixamento | C4-03 | M | S11 | ADR 0044/FR-412 | Sem contradição; IDs catalogados | — |
+| [x] | C4-06 | Copy/rationale da oportunidade e rebaixamento | C4-03 | M | S11 | ADR 0044/FR-412 | Sem contradição; `R-PER-03` no plano; IDs catalogados | `QualityCopy` (4 em `WeeklyPlanGeneratorTest`); `ExplanationCatalogTest` estendido; commit S11 |
 | [x] | C4-07 | Golden `G-PER-03` + propriedades | C4-02/03 | M | S7 | ADR 0044 | Golden e invariantes | `fixtures/golden/per-opportunity`; `PlanGoldenTest` (1); `QualityPlanPropertiesTest` (4); commit S7 |
 | [ ] | C4-08 | Docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS | C4-02..07 | S | S11 | ADR 0044 | Docs atualizados | — |
 
@@ -855,6 +855,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** `RACE_COMPLETED` entrou na tabela de triggers do DATA_MODEL junto (estava ausente desde C3-07; mesma linha, mesma precisão). Versões do motor documentadas no esquema real (`weekly-plan-v6` etc.; §6.2 dizia “semântica 1.0.0”). `16→17` documentada (proveniência de calibração, ADR 0036) — estava ausente nos dois docs. Fase 2 (Fiação) concluída com S10.3; S11 abre com C4-06.
 - **Próximo:** S11 / C4-06 (copy/rationale da oportunidade e rebaixamento, sem contradição), TDD.
 
+### S11 — 2026-11-17 — Copy da oportunidade sem contradição (C4-06)
+
+- **Status:** DONE
+- **Tasks:** C4-06.
+- **Arquivos:** `core/domain/.../prescription/WeeklyPlanGenerator.kt` (`progressionBlockedRationale`, `R-PER-03` no plano), `WeeklyPlanGeneratorTest.kt` (+4), `ExplanationCatalogTest.kt` (IDs faltantes), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1010 verdes (+4); `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply` de formatação); `:core:domain:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt` verdes.
+- **Commit:** `feat(domain): distinguish the blocked second-quality reason (C4-06)`.
+- **Decisões/notas:** TDD RED→GREEN (4 testes novos falhavam antes). P-12 resolvido no plano: a linha de progressão só aparece com oportunidade estrutural + `qualityCount > 0` (semana sem 1ª oportunidade não fala de 2ª; BASE primeira metade e micro-dose de taper ficam limpas). O motivo segue a prioridade dos conjuncts de `secondQualityAllowed` (dias → histórico → taper → carga) e a carga detalha o real bloqueador (STALE, calibração com `X de 28`, esforço percebido, monotonia, strain, `ACWR em calibração` ou `ACWR 1,60 fora da faixa 0,8–1,3` com vírgula pt-BR). Toda mensagem mantém o prefixo "Sem progressão" (compatibilidade com testes legados). `R-PER-03` entra no `ruleIds` do plano quando há qualidade; `ExplanationCatalogTest` passa a cobrir `R-PER-03/04`, `R-RACE-04`, `R-READY-06` e as evidências de taper/deload/longão. Detekt `LongParameterList` resolvido derivando o estado de carga do `LoadSnapshot` dentro da função (5 params, sem baseline). Copy fina adicional fica em C4-59; docs de `R-PER-03`/ciência em C4-08.
+- **Próximo:** S11 / C4-30 (check-in sem 3/3/3/3, labels, pré-preencher).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1030,10 +1040,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-06, S11)
+## 14. Próxima ação (C4-30, S11)
 
-1. Abrir o ADR 0044 §4 (copy/rationale) e a FR-412; ler o rationale atual da primeira oportunidade (`WeeklyPlanGenerator`), do rebaixamento (`DailyPrescriptionEngine`) e o `ExplanationCatalog` (`R-PER-03`, `R-PRESC-02`, `R-READY-06`).
-2. Escrever os testes que falham de C4-06: oportunidade sem contradição (“planejada, o dia confirma” + motivo do dia quando rebaixada), “sem progressão” distinguindo falta de histórico de carga fora da faixa, IDs catalogados.
-3. Implementar C4-06 com TDD (copy no domínio + catálogo); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0049 §2 e a FR-406; ler o `CheckInViewModel`/`CheckInScreen` atual (default 3/3/3/3) e os testes de check-in existentes.
+2. Escrever os testes que falham de C4-30: formulário sem default, labels 1/3/5, salvar desabilitado até responder, pré-preenchimento do último check-in ≤7 dias com confirmação.
+3. Implementar C4-30 com TDD (UI + ViewModel); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -768,11 +768,21 @@ class WeeklyPlanGenerator {
                 )
                 append(" ")
             }
-            if (secondQualityAllowed) {
-                append("Progressão liberada: você concluiu pelo menos 80% da semana anterior. ")
-                append("O volume segue limitado pela disponibilidade.")
-            } else {
-                append("Sem progressão até existir histórico de conclusão.")
+            if (structuralQualityEligible) {
+                if (secondQualityAllowed) {
+                    append("Progressão liberada: você concluiu pelo menos 80% da semana anterior. ")
+                    append("O volume segue limitado pela disponibilidade.")
+                } else if (qualityCount > 0) {
+                    append(
+                        progressionBlockedRationale(
+                            days = days.size,
+                            hasPreviousWeek = input.previousWeek != null,
+                            completionRatio = completionRatio,
+                            taperLimitsQuality = taperLimitsQuality,
+                            load = input.load,
+                        ),
+                    )
+                }
             }
             if (input.dataIncomplete) {
                 append(
@@ -793,6 +803,7 @@ class WeeklyPlanGenerator {
                 add("R-PLAN-02")
                 add("R-PLAN-03")
                 add("R-PLAN-06")
+                if (qualityCount > 0) add("R-PER-03")
                 if (volumeDecision.hasHistory) add("R-PLAN-01")
                 if (!loadTrusted) add("R-DATA-01")
                 if (loadState == LoadDataState.KNOWN && !loadTrusted) add("R-LOAD-04")
@@ -864,6 +875,85 @@ class WeeklyPlanGenerator {
             detail = "Oportunidade estrutural da semana; o dia confirma com prontidão e carga.",
         )
     }
+
+    /**
+     * C4-06/FR-412 (P-12): the "no second quality" copy names the real blocker,
+     * never a generic history note when history exists. Priority follows the
+     * `secondQualityAllowed` conjuncts; only the first failing gate is named so
+     * the rationale cannot contradict the facts.
+     */
+    private fun progressionBlockedRationale(
+        days: Int,
+        hasPreviousWeek: Boolean,
+        completionRatio: Double,
+        taperLimitsQuality: Boolean,
+        load: LoadSnapshot?,
+    ): String {
+        if (days < 4) {
+            return "Sem progressão: para 2 estímulos, o app precisa de 4+ dias; " +
+                "com $days dias, a semana tem 1 oportunidade. "
+        }
+        if (!hasPreviousWeek) {
+            return "Sem progressão: ainda não há semana concluída para liberar o 2º estímulo; " +
+                "a semana tem 1 oportunidade. "
+        }
+        if (completionRatio < PROGRESSION_COMPLETION) {
+            val percent = (completionRatio * 100).roundToInt()
+            return "Sem progressão: a semana anterior ficou em $percent% de conclusão " +
+                "(abaixo de 80%); a semana tem 1 oportunidade. "
+        }
+        if (taperLimitsQuality) {
+            return "Sem progressão: semana de prova/taper tem 1 estímulo; a semana tem 1 oportunidade. "
+        }
+        val loadState = load?.dataState ?: LoadDataState.INSUFFICIENT
+        val loadTrusted = load?.objectiveDataState == LoadDataState.KNOWN
+        val monotonyOk = load?.monotonyOk ?: false
+        val strainSpikeReliable = load?.let { it.strainSpike && it.strainReliable } ?: false
+        return when {
+            load == null ->
+                "Sem progressão: carga em calibração (sem dados de carga); " +
+                    "a qualidade continua planejada, o dia decide. "
+
+            loadState == LoadDataState.STALE ->
+                "Sem progressão: fonte de carga desatualizada; " +
+                    "a qualidade continua planejada, o dia decide. "
+
+            loadState == LoadDataState.INSUFFICIENT -> {
+                val withLoad = load.coverage.daysWithLoad
+                val window = load.coverage.daysInWindow
+                "Sem progressão: carga em calibração ($withLoad de $window dias de histórico); " +
+                    "a qualidade continua planejada, o dia decide. "
+            }
+
+            !loadTrusted ->
+                "Sem progressão: carga recente vem do esforço percebido; " +
+                    "a qualidade continua planejada, o dia decide. "
+
+            !monotonyOk ->
+                "Sem progressão: a semana variou pouco (monotonia ≥2,0); " +
+                    "a qualidade continua planejada, o dia decide. "
+
+            strainSpikeReliable ->
+                "Sem progressão: a carga concentrou demais nesta semana; " +
+                    "a qualidade continua planejada, o dia decide. "
+
+            !load.acwrReliable ->
+                "Sem progressão: ACWR em calibração; " +
+                    "a qualidade continua planejada, o dia decide. "
+
+            load.acwr != null -> {
+                val value = decimal(load.acwr)
+                "Sem progressão: ACWR $value fora da faixa 0,8–1,3; " +
+                    "a qualidade continua planejada, o dia decide. "
+            }
+
+            else ->
+                "Sem progressão: carga recente fora da faixa; " +
+                    "a qualidade continua planejada, o dia decide. "
+        }
+    }
+
+    private fun decimal(value: Double): String = String.format(Locale.ROOT, "%.2f", value).replace('.', ',')
 
     /**
      * Quality copy comes from the executable structure, never from a fixed
