@@ -45,10 +45,15 @@ data class DailyPrescriptionInput(
 /**
  * The single day-level decision (ADR 0023).
  *
- * It starts from the weekly plan intent and may only keep it, reduce it or
- * downgrade it — never increase type, volume, duration or intensity. Safety
- * (illness/red readiness), readiness, load coverage and heat can all lower the
- * day; the plan itself is never rewritten here.
+ * It starts from the weekly plan intent and, with the same inputs, may only
+ * keep it, reduce it or downgrade it — never increase type, volume, duration or
+ * intensity. Safety (illness/red readiness), readiness, load coverage and heat
+ * can all lower the day; the plan itself is never rewritten here.
+ *
+ * New inputs are a new evaluation, not an increase (ADR 0044 §2.5): when a
+ * check-in or a load update arrives before the session is done and the
+ * [QualityGate] is now eligible, the planned quality is restored. The caller
+ * persists that as a new version; the previous decision stays in history.
  */
 class DailyPrescriptionEngine {
     fun prescribe(input: DailyPrescriptionInput): DailyPrescription {
@@ -607,11 +612,36 @@ class DailyPrescriptionEngine {
             append("readiness=").append(input.readiness.score).append(',')
             append(input.readiness.level).append(',')
             append(input.readiness.confidence).append(',')
-            append(input.readiness.flags.map { it.name }.sorted()).append('|')
+            append(input.readiness.flags.map { it.name }.sorted()).append(',')
+            // ADR 0044 §2.5/FR-406: a check-in can arrive without changing the
+            // score (objective-only data may already be green), so the
+            // subjective component itself must change the fingerprint.
+            append(
+                input.readiness.components.entries
+                    .sortedBy { it.key.name }
+                    .joinToString(",") { "${it.key.name}=${it.value}" },
+            ).append(',')
+            append(input.readiness.missing.map { it.name }.sorted()).append(',')
+            append(input.readiness.qualityEligibleByReadiness).append('|')
             append("load=").append(input.load?.dataState).append(',')
+            append(input.load?.objectiveDataState).append(',')
             append(input.load?.acwr).append(',')
+            append(input.load?.acwrReliable).append(',')
+            append(input.load?.acwrHigh).append(',')
+            append(input.load?.monotony).append(',')
+            append(input.load?.monotonyOk).append(',')
+            append(input.load?.strain).append(',')
+            append(input.load?.strainReliable).append(',')
+            append(input.load?.strainSpike).append(',')
+            append(input.load?.permitsQuality).append(',')
+            append(input.load?.subjectiveDaysInWindow).append(',')
+            append(input.load?.coverage?.daysInWindow).append(',')
             append(input.load?.coverage?.daysWithLoad).append(',')
-            append(input.load?.coverage?.sourceFresh).append('|')
+            append(input.load?.coverage?.daysWithoutActivity).append(',')
+            append(input.load?.coverage?.daysWithoutData).append(',')
+            append(input.load?.coverage?.daysBeforeHistory).append(',')
+            append(input.load?.coverage?.sourceFresh).append(',')
+            append(input.load?.coverage?.lastActivityAt).append('|')
             append("heat=").append(input.heatLevel).append('|')
             append("recovery=").append(
                 input.recovery?.takeIf { it.isActive(input.date) }

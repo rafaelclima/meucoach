@@ -80,6 +80,67 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `the inputs hash covers the subjective component even without the flag`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val objectiveOnly = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN, components = emptyMap(), score = 80),
+                load = load(acwr = 1.0),
+            ),
+        )
+        val checkedIn = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    components = mapOf(ReadinessComponent.SUBJECTIVE to 80),
+                    score = 80,
+                ),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(objectiveOnly.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(checkedIn.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(objectiveOnly.inputsHash).isNotEqualTo(checkedIn.inputsHash)
+    }
+
+    @Test
+    fun `the inputs hash covers load values that change the gate`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        val highMonotony = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, monotony = 2.4),
+            ),
+        )
+        val variedWeek = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0, monotony = 1.2),
+            ),
+        )
+
+        assertThat(highMonotony.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(highMonotony.qualityBlockReason).isEqualTo(QualityBlockReason.MONOTONY_HIGH)
+        assertThat(variedWeek.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(highMonotony.inputsHash).isNotEqualTo(variedWeek.inputsHash)
+    }
+
+    @Test
     fun `taper blocks a main quality but keeps the structural strides micro dose`() {
         val main = plannedQuality(kind = QualityKind.CONTINUOUS, durationMin = 40)
         val mainPrescription = engine.prescribe(

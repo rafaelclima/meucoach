@@ -30,8 +30,10 @@ data class TodayPrescriptionRequest(
  * Reads or appends today's single prescription (ADR 0023).
  *
  * The decision is persisted once per (date, engineVersion, inputsHash). A
- * changed check-in/readiness produces a new version that supersedes the last
- * one; nothing is overwritten.
+ * changed check-in/readiness/load produces a new version that supersedes the
+ * last one; nothing is overwritten. Before the session is done, new inputs can
+ * restore a planned quality that the day had downgraded (ADR 0044 §2.5); a
+ * `DONE`/`CLOSED` day is history and is never re-evaluated.
  */
 class GetTodayPrescription @Inject constructor(private val repository: DailyPrescriptionRepository) {
     private val engine = DailyPrescriptionEngine()

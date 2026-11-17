@@ -193,6 +193,190 @@ class GetTodayPrescriptionTest {
     }
 
     @Test
+    fun `a missing check-in downgrades a planned quality and leaves the plan intact`(): Unit = runBlocking {
+        val plan = qualityPlan()
+        plans.saveWeek(plan)
+        val before = plans.getWeek(plan.weekStart)
+
+        val prescription = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    components = emptyMap(),
+                ),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.plannedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.rationale).contains("check-in")
+        assertThat(prescription.ruleIds).contains("R-READY-06", "R-PRESC-02")
+        assertThat(plans.getWeek(plan.weekStart)).isEqualTo(before)
+    }
+
+    @Test
+    fun `a check-in before done restores the planned quality as a new version`(): Unit = runBlocking {
+        val plan = qualityPlan()
+        val first = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    components = emptyMap(),
+                ),
+            ),
+        )
+        val restored = useCase(
+            request(plan = plan, profile = profile(experience = Experience.INTERMEDIATE)),
+        )
+
+        assertThat(first.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(restored.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(restored.plannedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(restored.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(restored.prescribedDurationMin).isEqualTo(40)
+        assertThat(restored.targets).isEqualTo(plan.sessions.single().targets)
+        assertThat(restored.qualityBlockReason).isNull()
+        assertThat(restored.ruleIds).contains("R-PRESC-01", "R-PER-03")
+        assertThat(restored.id).isNotEqualTo(first.id)
+        assertThat(restored.supersedesId).isEqualTo(first.id)
+        assertThat(repository.getVersions(today).map { it.prescribedType })
+            .containsExactly(WorkoutType.EASY, WorkoutType.QUALITY)
+    }
+
+    @Test
+    fun `a load update before done restores the planned quality as a new version`(): Unit = runBlocking {
+        val plan = qualityPlan()
+        val first = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                load = load(acwr = 1.0, monotony = 2.4),
+            ),
+        )
+        val restored = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                load = load(acwr = 1.0, monotony = 1.2),
+            ),
+        )
+
+        assertThat(first.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(first.rationale).contains("monotonia")
+        assertThat(first.ruleIds).contains("R-LOAD-03", "R-PRESC-02")
+        assertThat(restored.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(restored.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(restored.id).isNotEqualTo(first.id)
+        assertThat(restored.supersedesId).isEqualTo(first.id)
+        assertThat(repository.getVersions(today)).hasSize(2)
+    }
+
+    @Test
+    fun `a check-in that still blocks keeps the easy day in a new version`(): Unit = runBlocking {
+        val plan = qualityPlan()
+        val first = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    components = emptyMap(),
+                ),
+            ),
+        )
+        val after = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.AMBER, score = 55),
+            ),
+        )
+
+        assertThat(after.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(after.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(after.rationale).contains("prontidão moderada")
+        assertThat(after.ruleIds).contains("R-READY-03", "R-PRESC-02")
+        assertThat(after.id).isNotEqualTo(first.id)
+        assertThat(after.supersedesId).isEqualTo(first.id)
+        assertThat(repository.getVersions(today)).hasSize(2)
+    }
+
+    @Test
+    fun `a done day is never restored by a later check-in`(): Unit = runBlocking {
+        val plan = qualityPlan()
+        val first = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    components = emptyMap(),
+                ),
+            ),
+        )
+        val done = plan.copy(
+            sessions = plan.sessions.map {
+                it.copy(
+                    status = SessionStatus.DONE,
+                    completionEvidence = CompletionEvidence.MANUAL,
+                    executionId = "execution-1",
+                )
+            },
+        )
+
+        val after = useCase(
+            request(plan = done, profile = profile(experience = Experience.INTERMEDIATE)),
+        )
+
+        assertThat(after.id).isEqualTo(first.id)
+        assertThat(after.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(after.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(repository.getVersions(today)).hasSize(1)
+    }
+
+    @Test
+    fun `a closed day is never restored by a later check-in`(): Unit = runBlocking {
+        val plan = qualityPlan()
+        val first = useCase(
+            request(
+                plan = plan,
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    components = emptyMap(),
+                ),
+            ),
+        )
+        val closed = plan.copy(
+            sessions = plan.sessions.map {
+                it.copy(
+                    status = SessionStatus.CLOSED,
+                    closureReason = SessionClosureReason.USER_SKIPPED,
+                    closedAt = Instant.EPOCH,
+                )
+            },
+        )
+
+        val after = useCase(
+            request(plan = closed, profile = profile(experience = Experience.INTERMEDIATE)),
+        )
+
+        assertThat(after.id).isEqualTo(first.id)
+        assertThat(after.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(repository.getVersions(today)).hasSize(1)
+    }
+
+    @Test
     fun `a done day keeps the persisted prescription without applying the guard again`(): Unit = runBlocking {
         val plan = qualityPlan()
         val first = useCase(
@@ -292,11 +476,12 @@ class GetTodayPrescriptionTest {
         plan: WeeklyPlan?,
         readiness: ReadinessResult = readiness(ReadinessLevel.GREEN),
         profile: AthleteProfile = profile(),
+        load: LoadSnapshot = load(acwr = 1.0),
     ) = TodayPrescriptionRequest(
         date = today,
         profile = profile,
         readiness = readiness,
-        load = load(acwr = 1.0),
+        load = load,
         plan = plan,
     )
 
@@ -366,16 +551,17 @@ class GetTodayPrescriptionTest {
         level: ReadinessLevel,
         flags: Set<ReadinessFlag> = emptySet(),
         score: Int = if (level == ReadinessLevel.RED) 20 else 80,
+        components: Map<ReadinessComponent, Int> = mapOf(ReadinessComponent.SUBJECTIVE to score),
     ) = ReadinessResult(
         score = score,
         level = level,
         confidence = DataConfidence.HIGH,
-        components = mapOf(ReadinessComponent.SUBJECTIVE to score),
+        components = components,
         missing = emptySet(),
         flags = flags,
     )
 
-    private fun load(acwr: Double?) = LoadSnapshot(
+    private fun load(acwr: Double?, monotony: Double = 1.2) = LoadSnapshot(
         daily = emptyList(),
         ctlSeries = emptyList(),
         atlSeries = emptyList(),
@@ -385,7 +571,7 @@ class GetTodayPrescriptionTest {
         acuteAverage7d = 0.0,
         chronicAverage28d = 0.0,
         acwr = acwr,
-        monotony = 1.2,
+        monotony = monotony,
         missingDays = 16,
         coverage = LoadCoverage(
             daysInWindow = 28,

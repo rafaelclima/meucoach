@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S8 do Ciclo 4: gate do dia no diário, C4-04)
+**Atualizado:** 17/11/2026 (S8 do Ciclo 4: reavaliação antes do DONE, C4-05)
+
+## Sessão 2026-11-17 — Ciclo 4/S8.1: reavaliação antes do DONE (C4-05)
+
+**Objetivo:** permitir que um check-in ou uma atualização de carga, chegando antes de a sessão ser concluída, restaure a qualidade planejada que o dia havia rebaixado — como nova versão da prescrição, sem reescrever o plano nem o histórico.
+
+### Concluído
+
+- **Restauração:** `GetTodayPrescription` reavalia toda sessão `PLANNED` quando o `inputsHash` muda; com o `QualityGate` elegível, o `EASY` rebaixado volta a `QUALITY` em uma versão que supersede a anterior (`supersedesId`), mantendo duração, alvos e o plano intactos.
+- **Hash completo:** o `inputsHash` passou a cobrir componentes/faltantes de prontidão, `qualityEligibleByReadiness` e os valores de carga que decidem o gate (estado objetivo, ACWR/confiabilidade, monotonia, strain, cobertura e dias subjetivos). Antes, um check-in com o mesmo score ou uma mudança de monotonia/strain podia devolver a versão rebaixada.
+- **Histórico:** `DONE`/`CLOSED` continuam intocados; nenhum gate roda e nenhuma versão é acrescentada, mesmo com check-in verde depois. A versão anterior permanece em `getVersions`.
+- **Ainda bloqueado:** um check-in novo que não libera o gate (âmbar) também gera nova versão, mas mantém o fácil e explica o motivo no rationale.
+- **Testes:** 6 novos no `GetTodayPrescriptionTest` (sem check-in, restauração por check-in, restauração por carga, check-in ainda bloqueado, `DONE` e `CLOSED`) e 2 no `DailyPrescriptionEngineTest` (hash de prontidão e de carga).
+
+### Testes
+
+- `:core:domain:test` 985 verdes (+2); `:core:data:test` 186; `:app:testDebugUnitTest` 907 (+6); `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01% de branches.
+- A suíte do app falhou uma vez no flake conhecido `MetricsImportViewModelTest` (timeout de 30 s, arquivo não tocado); passou isolado e na reexecução; `check -x :app:testDebugUnitTest` verde.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+
+### Decisões e observações
+
+- A reavaliação não é aumento: o plano continua sendo a intenção máxima e a qualidade restaurada já estava planejada. `PrescriptionAdjustment.KEEP` descreve a decisão final; a UI de C4-31 pode comparar versões para mostrar “Atualizado: com o check-in, a qualidade foi liberada”.
+- O hash inclui os valores derivados do gate, não as séries completas de carga: o fingerprint continua determinístico e barato, mas cobre tudo que pode mudar a decisão.
+- `qualityBlockReason`/`decisionDetail`/`unlockHint` continuam sem round-trip (C4-45/C4-50); os testes de reavaliação verificam tipo, rationale, regras e versões.
+- A copy/UI da reavaliação tardia (C4-31), o check-in UI (C4-30) e o golden `G-READY-03` (C4-32) continuam pendentes.
+
+### Próximo passo
+
+1. S8 / C4-29: o recomendador sem plano passa a usar `qualityEligibleByReadiness`/`QualityGate`; sem check-in não há qualidade.
+2. Depois S9 (C4-45/C4-46): schema v18, JSON e `generatorVersion`.
 
 ## Sessão 2026-11-16 — Ciclo 4/S8: gate do dia no diário (C4-04)
 
@@ -5643,3 +5674,5 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 16/11/2026 | Ciclo 4/S6.2: rotação determinística do catálogo (C4-16); 950 testes de domínio |
 | 16/11/2026 | Ciclo 4/S6.3: gerador consome catálogo/estrutura e PEAK por distância (C4-17); 963 testes de domínio |
 | 16/11/2026 | Ciclo 4/S7: gates estrutural × do dia, `planDecision` e golden `G-PER-03` (C4-02, C4-07); 975 testes de domínio |
+| 16/11/2026 | Ciclo 4/S8: gate do dia no diário, `LOW_READINESS` e motivo auditável (C4-04); 983 testes de domínio |
+| 17/11/2026 | Ciclo 4/S8.1: reavaliação antes do `DONE` restaura a qualidade em nova versão; hash cobre prontidão/carga (C4-05); 985 testes de domínio |
