@@ -111,6 +111,12 @@ data class TodayUiState(
     val readinessExplanation: TodayExplanationUi? = null,
     /** Null when there is not enough load history; the UI must not invent a ratio. */
     val acwr: Double? = null,
+    /**
+     * False while the 28-day window is not fully covered (ADR 0046). The day
+     * pill shows "em calibração" instead of the unstable ratio; defaults to
+     * true so previews without a snapshot keep the previous behavior.
+     */
+    val acwrReliable: Boolean = true,
     /** Explains why load/ACWR are missing or outdated; null when no load snapshot exists. */
     val loadDataState: LoadDataState? = null,
     /** Load metric of today; `SRPE` means the day is estimated from perceived effort (ADR 0039). */

@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S13 (C4-43)
-> **Último commit:** C4-43 — `feat(app): show the quality outcome and extra credit in the review (C4-43)`
-> **Fase:** 3 — UI/copy — **S13 encerrada (C4-41..C4-43 DONE)**; próxima S14 (C4-26, golden `G-LOAD-02` + copy "em calibração")
-> **Sessão atual:** **S13 — C4-43 DONE**
-> **Task atual:** C4-43 (DONE)
-> **Próxima task:** C4-26 (S14)
+> **Última atualização:** 17/11/2026 — S14 (C4-26)
+> **Último commit:** C4-26 — `feat(app): freeze the cold-start load golden and show the calibration copy (C4-26)`
+> **Fase:** 3 — UI/copy — **S14 aberta (C4-26 DONE)**; próxima C4-27 (docs `R-LOAD-03 v3` + renumeração G-LOAD-02/03)
+> **Sessão atual:** **S14 — C4-26 DONE**
+> **Task atual:** C4-26 (DONE)
+> **Próxima task:** C4-27 (S14)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1049 verdes; `:app:testDebugUnitTest` 949 verdes; `:core:data:test` verde; `spotlessCheck` verde; `:core:domain:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes
-> **Próxima ação:** abrir S14/C4-26 (golden `G-LOAD-02` + copy "em calibração").
+> **Gates da última sessão:** `:core:domain:test` 1050 verdes; `:app:testDebugUnitTest` 953 verdes; `:core:data:test` 204 verdes; `:core:model` 40 intacto; `spotlessCheck` verde; `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes; `:app:assembleDebug` verde
+> **Próxima ação:** abrir C4-27 (docs `R-LOAD-03 v3`, SPORTS_SCIENCE §6.3/§7.2/§8.3, ADR 0046 — incluindo a renumeração G-LOAD-02/03).
 
 ### 0.1 O que já está pronto
 
@@ -156,10 +156,10 @@
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` têm round-trip no Room (C4-45) e no export (C4-50); a reavaliação pode ser provada também pelos campos persistidos.
-- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra, os docs `R-PLAN-01 v2`/`R-LVL-03` e o review "planejada/mantida/rebaixada" estão prontos (C4-41..C4-43). S13 encerrada; próxima S14 (C4-26, `G-LOAD-02`).
+- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra, os docs `R-PLAN-01 v2`/`R-LVL-03` e o review "planejada/mantida/rebaixada" estão prontos (C4-41..C4-43). O cold-start da carga foi congelado como `G-LOAD-03` com copy/UI "em calibração" (C4-26); os docs `R-LOAD-03 v3` ficam para C4-27. S14 aberta; próxima C4-27.
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
-- A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
+- A copy/UI de “em calibração” e o golden do cold-start estão prontos (C4-26, `G-LOAD-03`); os docs `R-LOAD-03 v3` ficam para C4-27. O domínio já expunha `acwrReliable`, `historyDays` e `baselineDays`.
 - `R-PER-03` documentado no `SPORTS_SCIENCE` §8.8/§14 e `R-PRESC-02` emendada (C4-08); o catálogo de código já os cobre desde C4-52. Os trechos de `SPORTS_SCIENCE` ligados a `R-READY-06` ficam para C4-33.
 - O golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes. A copy/UI da reavaliação tardia está pronta (C4-31) e os campos de decisão estão no export (C4-50).
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
@@ -167,7 +167,7 @@
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
 - Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20 DONE); docs `R-PER-01/02/04` + evidências (C4-21 DONE). S12 encerrada.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
-- `G-LOAD-02`, `G-READY-03`, `G-DATA-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`, `G-PER-05` em `fixtures/golden/per-quality`, `G-VOL-02` em `fixtures/golden/vol-02` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
+- `G-READY-03` e `G-DATA-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`, `G-PER-05` em `fixtures/golden/per-quality`, `G-VOL-02` em `fixtures/golden/vol-02`, `G-UPGRADE-01` em `fixtures/golden/plan-upgrade` e `G-LOAD-03` (cold-start) em `fixtures/golden/load-calibration`. `G-LOAD-02` segue sendo a série completa do `load-engine` (anterior ao PRD; a colisão de IDs está registrada na S14 e a renumeração vai ao ADR/PRD na C4-27).
 - O rationale da primeira oportunidade diz "o dia confirma" e cita `R-PER-03`; a copy de "sem progressão" distingue falta de histórico, dias, taper e o motivo real de carga (calibração, ACWR com valor, monotonia, strain, esforço percebido) sem contradição (C4-06). Restam em C4-59 os refinamentos finos de copy do rationale.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
@@ -575,7 +575,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-23 | `acwrReliable`/`strainReliable`/`historyDays` | C4-22 | M | S3 | ADR 0046 | Flags e testes de janela | `LoadReliabilityTest`; `LoadGateV3Test`; commit S3 |
 | [x] | C4-24 | ACWR 1,5 em todos os caminhos | C4-23 | S | S3 | ADR 0046 | Nenhum 1,3 como veto | `LoadSnapshot.ACWR_MAX`; testes diário/gerador; commit S3 |
 | [x] | C4-25 | `permitsQuality`/`permitsProgression` separados | C4-23/24 | M | S3 | ADR 0046 | 1,4 mantém; 1,6 rebaixa; 0,7 mantém | `LoadGateV3Test` (10); commit S3 |
-| [ ] | C4-26 | Golden `G-LOAD-02` + copy “em calibração” | C4-23..25 | M | S14 | ADR 0046 | Golden/copy | — |
+| [x] | C4-26 | Golden `G-LOAD-03` + copy “em calibração” | C4-23..25 | M | S14 | ADR 0046 | `fixtures/golden/load-calibration` (cold start 8+13, sem veto, volume mantido, copy); `LoadCalibrationGoldenTest` (1); `TodayPlanTest` (+1 pill), `TodayExplanationLoadTest` (+1), `TrendsScreenTest` (+2 nota); commit S14 |
 | [ ] | C4-27 | Docs `R-LOAD-03 v3`, SPORTS_SCIENCE, ADR | C4-22..26 | S | S14 | ADR 0046 | Docs atualizados | — |
 
 ### E5 — Prontidão/check-in
@@ -995,6 +995,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (formato compilou antes da função; 1 falha: "0 mantidas" — o formato omite partes zeradas, forma do PRD §8.4). Detekt `CyclomaticComplexMethod`/`LongMethod` do `calculate` ressurgiu porque o ID do baseline inclui a assinatura (precedente C4-44); baseline atualizado no formato vigente, sem achado novo. Regra 2 honrada: o VM só agrega (soma/vínculo `activityId`, precedente do `executedMin`); a decisão dia (mantida/rebaixada) é função pura do domínio. Sem decisão do dia gravada, a linha some (ausência é ausência, FR-011). `extraMin` conta resumos não vinculados ao plano; `LEGACY`/`MANUAL` sem corrida não geram resumo. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S14 / C4-26 (golden `G-LOAD-02` + copy "em calibração").
 
+### S14 — 2026-11-17 — Golden do cold-start + copy "em calibração" (C4-26)
+
+- **Status:** DONE
+- **Tasks:** C4-26.
+- **Arquivos:** `core/domain/.../load/LoadCalibration.kt` (novo: `LoadSnapshot.calibrationNote()`), `fixtures/golden/load-calibration/` (input/expected/README novos, `G-LOAD-03`), `core/domain/.../golden/LoadCalibrationGoldenTest.kt` (novo, 1), `app/.../ui/today/TodayDemoData.kt` (`TodayUiState.acwrReliable`, default `true`), `TodayViewModel.kt` (fia o flag), `TodayScreen.kt` (pill "Carga em calibração" quando não confiável), `TodayExplanation.kt` (nota no "Por quê?"), `app/.../ui/trends/TrendsScreen.kt` ("Aumento" vira "—" + nota `load-calibration-note` + ajuda), `TodayPlanTest.kt` (+1), `TodayExplanationLoadTest.kt` (+1), `TrendsScreenTest.kt` (+2), `fixtures/golden/README.md`, `docs/TESTING.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1050 verdes (+1); `:app:testDebugUnitTest` 953 verdes (+4); `:core:data:test` 204 verdes; `:core:model` 40 intacto; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`; `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`; `:app:lintDebug` verdes.
+- **Commit:** `feat(app): freeze the cold-start load golden and show the calibration copy (C4-26)`.
+- **Decisões/notas:** TDD RED→GREEN (expected ausente → `IllegalStateException`; pill sem o campo não compilava; `BEGINNER_GUARD` travou o gate do golden até o perfil virar `INTERMEDIATE`; smart cast de `snapshot.acwr` cross-module resolvido com `takeIf`). Colisão de IDs (load-bearing, com decisão do usuário): `G-LOAD-02` já nomeava o `load-engine` de série completa (commit anterior ao PRD); o PRD/ADR 0046 reutilizaram o ID para o cold-start. O cold-start foi congelado como **`G-LOAD-03`**; o `G-LOAD-02` histórico fica intocado e a renumeração vai ao ADR 0046/PRD na C4-27 (docs). O golden prova 8 dias rTSS + 13 de pré-história → `acwrReliable=false` com `acwr=1,6` acima do veto (e mesmo assim `acwrHigh=false`), qualidade mantida via `R-PER-03`, volume mantido com `ACWR_UNRELIABLE` e a copy exata da FR-405 ("8 de 28 dias de histórico; ACWR em calibração"). A copy usa `baselineDays` (dias objetivos, o "8" da FR-405), não `historyDays` (15); registrado aqui para C4-27 conferir. `calibrationNote()` devolve `null` com fonte stale/sem baseline, então o Hoje vazio e o stale mantêm as copies antigas. `TodayUiState.acwrReliable` default `true` preserva previews/testes sem snapshot. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S14 / C4-27 (docs `R-LOAD-03 v3`, SPORTS_SCIENCE, ADR 0046 + renumeração).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1013,6 +1023,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | Q-10 | Schema v18 + PlanUpgrade | 0048 |
 | Q-11 | Sem override manual | 0044 |
 | Q-12 | 2 qualidades com progressão | 0044/0047 |
+| Q-13 | Cold-start congelado como `G-LOAD-03` (`G-LOAD-02` já existia; renumeração vai ao ADR/PRD na C4-27) | 0046 |
 
 **Novas evidências propostas:** `EV-TID-2021`, `EV-INJURY-2015`, `EV-HIIT-2016`, `EV-HIIT-2024` (ADR 0047/PRD §11.5).
 
@@ -1079,8 +1090,8 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 949 | Atualizar conforme novos testes |
-| `:core:domain` | 1049 | Atualizar conforme novos testes |
+| `:app` | 953 | Atualizar conforme novos testes |
+| `:core:domain` | 1050 | Atualizar conforme novos testes |
 | `:core:data` | 204 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -1141,7 +1152,7 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 ### 12.3 Ciclo
 
 - [ ] Todos os P0/P1 concluídos; P2 avaliados.
-- [ ] Goldens `G-PER-03/04/05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01` verdes.
+- [ ] Goldens `G-PER-03/04/05`, `G-LOAD-02/03`, `G-READY-03`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01` verdes.
 - [ ] Migração 17→18 testada.
 - [ ] Smoke no aparelho (sintético + leitura real).
 - [ ] O usuário consegue explicar a decisão de qualidade no “Por quê?”.
@@ -1170,9 +1181,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-26, S14)
+## 14. Próxima ação (C4-27, S14)
 
-1. Abrir o ADR 0046 §2 e a FR-405; ler `TrainingLoadEngine` + `LoadSnapshot` como base — C4-22..C4-25 dão a confiabilidade (`acwrReliable`, janela de 28 dias, `permitsQuality`/`permitsProgression`) e C4-20/C4-41 o padrão de golden; C4-26 congela o `G-LOAD-02` (cold start: 8 dias de carga com pré-história → `acwrReliable=false`, sem veto de qualidade, volume mantido) e a copy "em calibração".
-2. Implementar C4-26 com TDD (golden + copy); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0046 §6/§9 e a FR-405; registrar a renumeração (cold-start congelado como `G-LOAD-03` em C4-26 porque `G-LOAD-02` já nomeava o `load-engine`).
+2. Documentar `R-LOAD-03 v3` no `SPORTS_SCIENCE` §6.3/§7.2/§8.3 + evidências, sem código; rodar `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

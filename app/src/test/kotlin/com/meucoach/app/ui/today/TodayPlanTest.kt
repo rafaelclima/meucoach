@@ -786,6 +786,26 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows calibration instead of the ratio when load is unreliable`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)).copy(
+                        acwr = 1.6,
+                        acwrReliable = false,
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Carga em calibração"))
+        compose.onNodeWithText("Carga em calibração").assertIsDisplayed()
+        compose.onAllNodesWithText("Aumento", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun `shows an empty load card without any data`() {
         val state = todayState(null, today = LocalDate.now())
 

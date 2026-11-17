@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S13 do Ciclo 4: review "planejada/mantida/rebaixada" + crédito do extra, C4-43 — S13 encerrada)
+**Atualizado:** 17/11/2026 (S14 do Ciclo 4: golden do cold-start + copy "em calibração", C4-26 — S14 aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S14: golden do cold-start + copy "em calibração" (C4-26)
+
+**Objetivo:** congelar o cold-start da carga como golden e mostrar "em calibração" em vez de número que parece veredito (FR-405, ADR 0046 §2.4/§2.5/§6).
+
+### Concluído
+
+- **Golden `G-LOAD-03`** (`fixtures/golden/load-calibration/`): 8 dias de carga rTSS + 13 de pré-história → `acwrReliable=false` com `acwr=1,6` (acima do veto, e mesmo assim `acwrHigh=false`); qualidade mantida via `QualityGate` (`R-PER-03`, verde + check-in); volume mantido com `ACWR_UNRELIABLE` (120 min, +0%); copy exata da FR-405 ("8 de 28 dias de histórico; ACWR em calibração"). Doubles com tolerância `1e-6`.
+- **Domínio:** `LoadSnapshot.calibrationNote()` puro (`null` quando confiável, stale ou sem baseline objetivo).
+- **App:** pill "Carga em calibração" no Hoje quando `!acwrReliable` (`TodayUiState.acwrReliable`, fiado no `TodayViewModel`); "Aumento" vira "—" + nota `load-calibration-note` em Tendências; mesma nota no "Por quê?" quando o snapshot é KNOWN mas não confiável; ajuda do "Aumento" declara a calibração.
+- **Testes:** `LoadCalibrationGoldenTest` (1: engine + gate + volume + copy), `TodayPlanTest` (+1 pill), `TodayExplanationLoadTest` (+1 nota), `TrendsScreenTest` (+2 nota presente/ausente).
+- **Docs:** `fixtures/golden/README` + `docs/TESTING.md` (tabela + lista) com `G-LOAD-03`; checklist com a colisão de IDs e a S14.
+
+### Testes
+
+- `:core:domain:test` 1050 verdes (+1); `:app:testDebugUnitTest` 953 verdes (+4); `:core:data:test` 204 verdes; `:core:model` 40 intacto.
+- `:app:assembleDebug`, `spotlessCheck` (com `spotlessApply`), `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (expected ausente → `IllegalStateException`; pill sem o campo não compilava; `BEGINNER_GUARD` travou o gate do golden até o perfil virar `INTERMEDIATE`; smart cast cross-module de `snapshot.acwr` resolvido com `takeIf`).
+- **Colisão de IDs (load-bearing, decidida com o usuário):** `G-LOAD-02` já nomeava o `load-engine` de série completa (commit anterior ao PRD); o PRD/ADR 0046 reutilizaram o ID para o cold-start. O cold-start foi congelado como **`G-LOAD-03`**; o `G-LOAD-02` histórico fica intocado; a renumeração vai ao ADR 0046/PRD na C4-27. Sem código do `load-engine` alterado.
+- A copy usa `baselineDays` (dias objetivos — o "8" da FR-405), não `historyDays` (15); C4-27 confere ao documentar.
+- `calibrationNote()` devolve `null` com fonte stale ou baseline zerado: Hoje vazio/stale e Tendências sem histórico mantêm as copies antigas.
+- `TodayUiState.acwrReliable` default `true` preserva previews e testes sem snapshot.
+
+### Próximo passo
+
+1. S14 / C4-27: docs `R-LOAD-03 v3`, `SPORTS_SCIENCE` §6.3/§7.2/§8.3, ADR 0046 (incluir a renumeração G-LOAD-02/03), sem código.
+2. Depois S14 (C4-32, C4-33, C4-37: goldens `G-READY-03`/`G-DATA-02` + docs de prontidão/sono).
 
 ## Sessão 2026-11-17 — Ciclo 4/S13: review "planejada/mantida/rebaixada" + crédito do extra (C4-43)
 

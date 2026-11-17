@@ -1,0 +1,51 @@
+{
+  "scenarioId": "G-LOAD-03",
+  "description": "Cold start: 8 objective load days with 13 pre-history days. The unstable ratio must not veto quality or grow volume; the UI shows calibration.",
+  "today": "2026-10-30",
+  "days": 28,
+  "lastImportedAt": "2026-10-29T10:00:00Z",
+  "checkedAt": "2026-10-30T10:00:00Z",
+  "firstActivityAt": "2026-10-16T00:00:00Z",
+  "profile": {
+    "dateOfBirth": "1988-01-01",
+    "sex": "MALE",
+    "restingHeartRate": 58,
+    "maxHeartRateObserved": 187,
+    "thresholdPaceSecPerKm": 360
+  },
+  "activities": [
+    { "date": "2026-10-16", "durationSec": 1800, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-17", "durationSec": 1800, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-18", "durationSec": 1800, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-19", "durationSec": 1800, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-20", "durationSec": 1800, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-21", "durationSec": 1800, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-27", "durationSec": 3600, "averagePaceSecPerKm": 360 },
+    { "date": "2026-10-29", "durationSec": 3600, "averagePaceSecPerKm": 360 }
+  ],
+  "volume": {
+    "targetWeekStart": "2026-10-26",
+    "availabilityCeilingMinutes": 200,
+    "references": [
+      {
+        "weekStart": "2026-10-19",
+        "plannedMinutes": 120,
+        "executedMinutes": 120,
+        "strongMinutes": 120,
+        "strongSessions": 3,
+        "plannedSessions": 3,
+        "createdOn": "2026-10-19",
+        "specialWeek": false
+      }
+    ],
+    "previousWeek": {
+      "weekStart": "2026-10-19",
+      "createdOn": "2026-10-19",
+      "sessions": [
+        { "date": "2026-10-19", "type": "EASY", "title": "Fácil", "durationMin": 40, "status": "DONE", "completionEvidence": "ACTIVITY", "activityId": "act-1" },
+        { "date": "2026-10-21", "type": "EASY", "title": "Fácil", "durationMin": 40, "status": "DONE", "completionEvidence": "ACTIVITY", "activityId": "act-2" },
+        { "date": "2026-10-24", "type": "LONG", "title": "Longão", "durationMin": 40, "status": "DONE", "completionEvidence": "ACTIVITY", "activityId": "act-3" }
+      ]
+    }
+  }
+}

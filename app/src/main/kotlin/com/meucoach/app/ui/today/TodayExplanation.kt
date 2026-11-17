@@ -3,6 +3,7 @@ package com.meucoach.app.ui.today
 import com.meucoach.app.ui.common.readinessLabelLowercase
 import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.load.calibrationNote
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.ExplanationCatalog
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
@@ -115,6 +116,12 @@ private fun missingData(result: ReadinessResult, prescription: DailyPrescription
             LoadDataState.STALE -> add("Atividades recentes (fonte desatualizada)")
             LoadDataState.INSUFFICIENT, null -> add("Histórico de carga das últimas 4 semanas")
             LoadDataState.KNOWN -> Unit
+        }
+        // ADR 0046 §2.4: a KNOWN snapshot can still carry an unreliable ratio
+        // (incomplete 28-day window). The used-data line above stays — there
+        // is load data — and this note declares the calibration.
+        if (load != null && load.dataState == LoadDataState.KNOWN && !load.acwrReliable) {
+            load.calibrationNote()?.let { add(it) }
         }
         if (load != null && load.dataState == LoadDataState.KNOWN &&
             load.objectiveDataState != LoadDataState.KNOWN

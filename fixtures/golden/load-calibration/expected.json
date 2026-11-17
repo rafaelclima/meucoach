@@ -1,0 +1,45 @@
+{
+  "scenarioId": "G-LOAD-03",
+  "daysBeforeHistory": 13,
+  "daysWithLoad": 8,
+  "daysWithoutActivity": 7,
+  "daysWithoutData": 13,
+  "historyDays": 15,
+  "baselineDays": 8,
+  "missingDays": 20,
+  "acwrReliable": false,
+  "strainReliable": false,
+  "acwrHigh": false,
+  "permitsQuality": true,
+  "permitsProgression": false,
+  "dataState": "KNOWN",
+  "objectiveDataState": "KNOWN",
+  "ctl": 9.957765711373451,
+  "atl": 28.77602685363422,
+  "tsb": -18.81826114226077,
+  "acuteAverage7d": 28.571428571428573,
+  "chronicAverage28d": 17.857142857142858,
+  "acwr": 1.6,
+  "monotony": 0.6324555320336759,
+  "strain": 126.49110640673517,
+  "calibrationNote": "8 de 28 dias de histórico; ACWR em calibração",
+  "gate": {
+    "eligible": true,
+    "ruleId": "R-PER-03"
+  },
+  "volume": {
+    "block": "ACWR_UNRELIABLE",
+    "growthPercent": 0,
+    "maintainedMinutes": 120
+  },
+  "days": {
+    "2026-10-16": { "load": 50.0, "metric": "RTSS" },
+    "2026-10-17": { "load": 50.0, "metric": "RTSS" },
+    "2026-10-18": { "load": 50.0, "metric": "RTSS" },
+    "2026-10-19": { "load": 50.0, "metric": "RTSS" },
+    "2026-10-20": { "load": 50.0, "metric": "RTSS" },
+    "2026-10-21": { "load": 50.0, "metric": "RTSS" },
+    "2026-10-27": { "load": 100.0, "metric": "RTSS" },
+    "2026-10-29": { "load": 100.0, "metric": "RTSS" }
+  }
+}

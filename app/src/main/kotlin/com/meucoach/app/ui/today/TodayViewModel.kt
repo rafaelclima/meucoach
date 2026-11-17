@@ -920,6 +920,7 @@ internal fun todayState(
         atl = load?.atl?.roundToInt(),
         tsb = load?.tsb?.roundToInt(),
         acwr = load?.acwr,
+        acwrReliable = load?.acwrReliable ?: true,
         loadDataState = load?.dataState,
         loadMetric = load?.daily?.lastOrNull()?.metric,
         hasCheckedIn = checkIn != null,

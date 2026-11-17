@@ -8,6 +8,7 @@ Estado atual (16/11/2026):
 |---|---|---|
 | `G-LOAD-01` | `TrainingLoadCalculator` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
 | `G-LOAD-02` | `TrainingLoadEngine` | Série diária de 28 dias e PMC |
+| `G-LOAD-03` | `TrainingLoadEngine` + gate + volume | Cold start: 8 dias de carga + 13 de pré-história; sem veto, volume mantido, copy "em calibração" |
 | `G-PER-03` | `WeeklyPlanGenerator` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
 | `G-PER-05` | `WeeklyPlanGenerator` | Semana 5K do catálogo: contínuo estruturado em BUILD, strides EASY com estrutura, longão 45; PEAK vira pace de prova; iniciante sem QUALITY |
 | `G-UPGRADE-01` | `PlanUpgrade` | v6→v7, terça `DONE` preservada, sexta vira oportunidade, volume intacto |

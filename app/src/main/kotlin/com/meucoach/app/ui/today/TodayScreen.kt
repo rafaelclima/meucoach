@@ -936,11 +936,17 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
                     }
                 }
                 state.acwr?.let { acwr ->
-                    McPill(
-                        text = "Aumento ${formatTwoDecimals(acwr)}× vs. 4 sem",
-                        containerColor = acwrColor(acwr).copy(alpha = 0.10f),
-                        contentColor = acwrColor(acwr),
-                    )
+                    // ADR 0046 §2.4: an unreliable ratio is "em calibração",
+                    // never a "carga subiu rápido" verdict.
+                    if (state.acwrReliable) {
+                        McPill(
+                            text = "Aumento ${formatTwoDecimals(acwr)}× vs. 4 sem",
+                            containerColor = acwrColor(acwr).copy(alpha = 0.10f),
+                            contentColor = acwrColor(acwr),
+                        )
+                    } else {
+                        McPill(text = "Carga em calibração")
+                    }
                 }
             }
         }

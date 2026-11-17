@@ -65,6 +65,7 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.load.calibrationNote
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.review.WeeklyReview
@@ -304,6 +305,7 @@ private fun LoadSummaryCard(snapshot: LoadSnapshot, onHelpClick: () -> Unit) {
         Spacer(modifier = Modifier.height(14.dp))
         McDivider()
         Spacer(modifier = Modifier.height(14.dp))
+        val localAcwr = snapshot.acwr
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             McStat(
                 label = "Carga",
@@ -314,7 +316,9 @@ private fun LoadSummaryCard(snapshot: LoadSnapshot, onHelpClick: () -> Unit) {
             McStat(
                 label = "Aumento",
                 hint = "7d ÷ 28d",
-                value = snapshot.acwr?.let { formatTwoDecimals(it) } ?: "—",
+                // ADR 0046 §2.4: an unreliable ratio is "em calibração",
+                // never a number that reads as a verdict.
+                value = localAcwr?.takeIf { snapshot.acwrReliable }?.let { formatTwoDecimals(it) } ?: "—",
                 modifier = Modifier.weight(1f),
             )
             McStat(
@@ -322,6 +326,15 @@ private fun LoadSummaryCard(snapshot: LoadSnapshot, onHelpClick: () -> Unit) {
                 hint = "menor é melhor",
                 value = snapshot.monotony?.let { formatTwoDecimals(it) } ?: "—",
                 modifier = Modifier.weight(1f),
+            )
+        }
+        snapshot.calibrationNote()?.let { note ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = note,
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("load-calibration-note"),
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -385,7 +398,8 @@ private fun LoadHelpSheet(onDismiss: () -> Unit) {
             LoadHelpItem(
                 title = "Aumento",
                 description = "Carga dos últimos 7 dias dividida pela média das últimas 4 semanas. " +
-                    "Entre 0,8 e 1,3 é a faixa de segurança; acima de 1,5 indica subida rápida.",
+                    "Entre 0,8 e 1,3 é a faixa de segurança; acima de 1,5 indica subida rápida. " +
+                    "Com menos de 28 dias de histórico, o aumento aparece em calibração e não decide treino forte.",
             )
             LoadHelpItem(
                 title = "Variedade",

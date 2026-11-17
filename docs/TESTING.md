@@ -151,6 +151,7 @@ Evidência atual (12/11/2026):
 - `HrZoneDistributionCalculatorTest`: alocação por zona, ordenação, intervalos sem FC e LTHR inválido.
 - `TrainingLoadEngineTest`: TRIMP vs rTSS, CTL/ATL/TSB, ACWR, monotonia, janela, dias ausentes e burn-in de 180 dias (histórico anterior à janela alimenta as EMAs; sem histórico, a série começa em zero; aquecimento não entra em cobertura nem em `lastActivityAt`).
 - `LoadEngineGoldenTest`: cenário `G-LOAD-02` de 28 dias.
+- `LoadCalibrationGoldenTest`: cenário `G-LOAD-03` de cold start (8 dias de carga + 13 de pré-história; sem veto de qualidade, volume mantido, copy "em calibração").
 - `TrendsViewModelTest` e `TrendsScreenTest`: carga a partir das atividades, estados vazios e PMC.
 - `DailyCheckInTest`: validação 1–5 e Hooper sum.
 - `CheckInRepositoryTest`: round-trip por data, upsert, exclusão e `createdAt`.
@@ -306,6 +307,7 @@ Cenários implementados hoje:
 |---|---|
 | `G-LOAD-01` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
 | `G-LOAD-02` | Série diária e PMC de 28 dias |
+| `G-LOAD-03` | Cold start: 8 dias de carga + 13 de pré-história; `acwrReliable=false`, sem veto, volume mantido, copy "em calibração" |
 | `G-PER-03` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
 | `G-PER-05` | Semana 5K do catálogo em BUILD (contínuo estruturado, strides EASY com estrutura, longão 45); PEAK específico; iniciante sem `QUALITY` |
 | `G-UPGRADE-01` | Upgrade v6→v7: terça `DONE` preservada, sexta vira oportunidade, volume intacto |

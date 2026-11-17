@@ -56,6 +56,44 @@ class TodayExplanationLoadTest {
             .doesNotContain("FC ou ritmo para medir a carga objetivamente")
     }
 
+    @Test
+    fun `declares calibration when the ratio is unreliable`() {
+        val explanation = buildExplanation(
+            checkIn = null,
+            inputs = DailyMetricsReadinessBuilder.build(emptyList(), today),
+            result = readiness(),
+            prescription = prescription(ruleIds = listOf("R-ZONE-01")),
+            load = calibratingLoad(),
+        )
+
+        assertThat(explanation.missingData)
+            .contains("8 de 28 dias de histórico; ACWR em calibração")
+    }
+
+    private fun calibratingLoad() = LoadSnapshot(
+        daily = listOf(DailyLoad(today, 100.0, LoadMetric.RTSS)),
+        ctlSeries = listOf(10.0),
+        atlSeries = listOf(12.0),
+        ctl = 10.0,
+        atl = 12.0,
+        tsb = -2.0,
+        acuteAverage7d = 50.0,
+        chronicAverage28d = 31.25,
+        acwr = 1.6,
+        monotony = 0.63,
+        missingDays = 20,
+        coverage = LoadCoverage(
+            daysInWindow = 28,
+            daysWithLoad = 8,
+            daysWithoutActivity = 7,
+            daysWithoutData = 13,
+            lastActivityAt = null,
+            sourceFresh = true,
+            daysBeforeHistory = 13,
+        ),
+        subjectiveDaysInWindow = 0,
+    )
+
     private fun subjectiveLoad(subjectiveDays: Int = 10) = LoadSnapshot(
         daily = listOf(DailyLoad(today, 250.0, LoadMetric.SRPE)),
         ctlSeries = listOf(10.0),

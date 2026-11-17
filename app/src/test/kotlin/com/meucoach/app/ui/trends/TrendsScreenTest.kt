@@ -2,11 +2,13 @@ package com.meucoach.app.ui.trends
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -109,6 +111,38 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("Como a carga acumulou"))
         compose.onNodeWithContentDescription("Gráfico de carga de base e fadiga recente dos últimos 42 dias")
             .assertExists()
+    }
+
+    @Test
+    fun `shows the calibration note when the ratio is unreliable`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true, reliable = false),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("8 de 28 dias de histórico; ACWR em calibração"))
+        compose.onNodeWithText("8 de 28 dias de histórico; ACWR em calibração").assertIsDisplayed()
+        compose.onNodeWithText("1,60", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `hides the calibration note when the ratio is reliable`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasText("Aumento", ignoreCase = true))
+        compose.onAllNodesWithText("em calibração", substring = true, ignoreCase = true)
+            .assertCountEquals(0)
     }
 
     @Test
@@ -625,7 +659,7 @@ class TrendsScreenTest {
         confidence = DataConfidence.MEDIUM,
     )
 
-    private fun snapshot(hasData: Boolean): LoadSnapshot {
+    private fun snapshot(hasData: Boolean, reliable: Boolean = true): LoadSnapshot {
         val start = LocalDate.of(2026, 9, 19)
         val daily = List(42) { index ->
             DailyLoad(
@@ -658,6 +692,24 @@ class TrendsScreenTest {
                 lastActivityAt = null,
                 sourceFresh = true,
             ),
-        )
+        ).let { snapshot ->
+            if (hasData && !reliable) {
+                snapshot.copy(
+                    acwr = 1.6,
+                    monotony = 0.63,
+                    coverage = com.meucoach.core.domain.load.LoadCoverage(
+                        daysInWindow = 28,
+                        daysWithLoad = 8,
+                        daysWithoutActivity = 7,
+                        daysWithoutData = 13,
+                        lastActivityAt = null,
+                        sourceFresh = true,
+                        daysBeforeHistory = 13,
+                    ),
+                )
+            } else {
+                snapshot
+            }
+        }
     }
 }
