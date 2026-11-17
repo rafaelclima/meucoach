@@ -31,6 +31,44 @@ class SessionSwapperTest {
     }
 
     @Test
+    fun `swap carries the quality kind and executable structure`() {
+        val structure = WorkoutStructure(
+            warmupMin = 10,
+            blocks = listOf(
+                WorkoutBlock(kind = BlockKind.WORK, repetitions = 5, workSec = 180, recoverySec = 120),
+            ),
+            cooldownMin = 5,
+            totalMin = 40,
+        )
+        val quality = session(monday, WorkoutType.EASY, "Fácil e conversável", 40).copy(
+            type = WorkoutType.QUALITY,
+            title = "Intervalos",
+            durationMin = 40,
+            qualityKind = QualityKind.INTERVALS,
+            planDecision = PlanDecision(PlanDecisionReason.QUALITY_OPPORTUNITY, "terça"),
+            structure = structure,
+        )
+        val tuesday = monday.plusDays(1)
+        val plan = plan(
+            quality,
+            session(tuesday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(saturday, WorkoutType.LONG, "Longão", 80),
+        )
+
+        val result = SessionSwapper.swap(plan, monday, tuesday, today = monday)
+
+        assertThat(result).isInstanceOf(SwapResult.Applied::class.java)
+        val swapped = (result as SwapResult.Applied).plan
+        val moved = swapped.sessions.first { it.date == tuesday }
+        assertThat(moved.qualityKind).isEqualTo(QualityKind.INTERVALS)
+        assertThat(moved.structure).isEqualTo(structure)
+        assertThat(moved.planDecision?.reason).isEqualTo(PlanDecisionReason.QUALITY_OPPORTUNITY)
+        val vacated = swapped.sessions.first { it.date == monday }
+        assertThat(vacated.qualityKind).isNull()
+        assertThat(vacated.structure).isNull()
+    }
+
+    @Test
     fun `rejects a swap involving a race date`() {
         val plan = plan(
             session(monday, WorkoutType.EASY, "Fácil e conversável", 40),

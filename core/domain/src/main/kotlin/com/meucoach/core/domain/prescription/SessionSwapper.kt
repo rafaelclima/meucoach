@@ -98,6 +98,9 @@ private data class SessionContent(
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
     val targets: PrescriptionTargets,
+    val qualityKind: QualityKind?,
+    val planDecision: PlanDecision?,
+    val structure: WorkoutStructure?,
 )
 
 private val PlannedSession.content: SessionContent
@@ -109,6 +112,9 @@ private val PlannedSession.content: SessionContent
         ruleIds = ruleIds,
         evidenceIds = evidenceIds,
         targets = targets,
+        qualityKind = qualityKind,
+        planDecision = planDecision,
+        structure = structure,
     )
 
 private fun PlannedSession.copy(content: SessionContent): PlannedSession = copy(
@@ -119,4 +125,7 @@ private fun PlannedSession.copy(content: SessionContent): PlannedSession = copy(
     ruleIds = content.ruleIds,
     evidenceIds = content.evidenceIds,
     targets = content.targets,
+    qualityKind = content.qualityKind,
+    planDecision = content.planDecision,
+    structure = content.structure,
 )

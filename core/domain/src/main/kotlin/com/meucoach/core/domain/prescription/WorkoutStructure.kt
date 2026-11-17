@@ -159,7 +159,71 @@ data class WorkoutStructure(
         }
     }
 
+    /**
+     * Human-readable steps of the executable session (ADR 0047 §2.1, C4-19).
+     *
+     * Single source for the plan rationale and the day briefing: warm-up,
+     * every block, cool-down and the remaining easy minutes. The list never
+     * promises more than [totalMin] because [plannedSeconds] is bounded by
+     * the invariant above.
+     */
+    fun steps(): List<String> = buildList {
+        if (warmupMin > 0) {
+            add("Aqueça $warmupMin min em ritmo leve.")
+        }
+        blocks.forEach { block -> add(describeBlock(block)) }
+        if (cooldownMin > 0) {
+            add("Termine com $cooldownMin min em ritmo leve.")
+        }
+        val remaining = totalMin - plannedMinutes
+        if (remaining >= 1) {
+            add("Complete os $remaining min restantes em ritmo leve.")
+        }
+    }
+
+    private fun describeBlock(block: WorkoutBlock): String {
+        val work = requireNotNull(block.workSec) { "Block work duration must be positive" }
+        val repetitions = block.repetitions
+        val recovery = block.recoverySec?.let { ", com ${durationLabel(it)} leves de recuperação" } ?: ""
+        val target = block.target?.let(::targetPhrase)
+        return when (block.kind) {
+            BlockKind.STRIDES ->
+                "Faça ${repetitions ?: 1} × ${durationLabel(work)} rápidos e relaxados$recovery."
+
+            BlockKind.RACE_PACE ->
+                "Faça ${repetitions ?: 1} × ${durationLabel(work)} no " +
+                    "${target ?: "pace de prova"}$recovery."
+
+            BlockKind.WORK -> if (repetitions != null) {
+                "Faça $repetitions × ${durationLabel(work)}${target?.let { " em $it" } ?: ""}$recovery."
+            } else {
+                "Corra ${durationLabel(work)}${target?.let { " em $it" } ?: ""}."
+            }
+
+            BlockKind.RECOVERY -> "Corra ${durationLabel(work)} em ritmo leve."
+        }
+    }
+
+    private fun durationLabel(seconds: Int): String {
+        if (seconds < MINUTE_SECONDS) return "$seconds s"
+        val minutes = seconds / MINUTE_SECONDS
+        val rest = seconds % MINUTE_SECONDS
+        return if (rest == 0) "$minutes min" else "$minutes min ${rest}s"
+    }
+
+    private fun targetPhrase(target: String): String = when {
+        target.startsWith("RPE") -> "esforço ${target.removePrefix("RPE").trim()} de 10"
+        target == "T" -> "ritmo forte sustentado"
+        target == "I" -> "ritmo de intervalado"
+        target == "GOAL_5K" -> "pace atual de 5K"
+        target == "GOAL_10K" -> "pace atual de 10K"
+        target == "GOAL_HALF" -> "pace atual de meia maratona"
+        target == "GOAL_MARATHON" -> "pace atual de maratona"
+        else -> target
+    }
+
     private companion object {
         const val SECONDS_PER_MINUTE = 60L
+        const val MINUTE_SECONDS = 60
     }
 }

@@ -252,7 +252,7 @@ class DailyPrescriptionEngine {
                     rules = rules + "R-PRESC-01",
                     evidence = evidence,
                     confidence = baseConfidence,
-                )
+                ).copy(structure = fittedStructure(planned, planned.durationMin))
             }
 
             WorkoutType.EASY -> {
@@ -287,7 +287,7 @@ class DailyPrescriptionEngine {
                             readinessRules(negativeReadiness, shortSleep),
                         evidence = evidence + readinessEvidence(shortSleep, negativeReadiness),
                         confidence = baseConfidence,
-                    )
+                    ).copy(structure = fittedStructure(planned, duration))
                 }
                 build(
                     input = input,
@@ -302,7 +302,7 @@ class DailyPrescriptionEngine {
                     rules = rules + "R-PRESC-01",
                     evidence = evidence,
                     confidence = baseConfidence,
-                )
+                ).copy(structure = fittedStructure(planned, planned.durationMin))
             }
 
             WorkoutType.REST -> plannedRest(input, planned)
@@ -371,7 +371,7 @@ class DailyPrescriptionEngine {
             rules = rules,
             evidence = evidence,
             confidence = confidence(input, loadTrusted = input.load?.permitsQuality ?: false),
-        )
+        ).copy(structure = fittedStructure(planned, planned.durationMin))
     }
 
     private fun plannedRest(input: DailyPrescriptionInput, planned: PlannedSession): DailyPrescription = build(
@@ -475,6 +475,17 @@ class DailyPrescriptionEngine {
             decisionDetail = gate?.detail,
             unlockHint = gate?.unlockHint,
         )
+    }
+
+    /**
+     * Fits the planned structure to the prescribed duration (ADR 0047 §2.1).
+     * A duration that cannot hold warm-up and cool-down drops the shape
+     * instead of promising more work than fits.
+     */
+    private fun fittedStructure(planned: PlannedSession?, durationMin: Int?): WorkoutStructure? {
+        val structure = planned?.structure ?: return null
+        if (durationMin == null) return null
+        return runCatching { structure.fittedTo(durationMin) }.getOrNull()
     }
 
     private fun plannedTargets(
@@ -664,7 +675,9 @@ class DailyPrescriptionEngine {
                 append(planned.title).append(',')
                 append(planned.targets).append(',')
                 append(planned.ruleIds.sorted()).append(',')
-                append(planned.evidenceIds.sorted())
+                append(planned.evidenceIds.sorted()).append(',')
+                append(planned.qualityKind).append(',')
+                append(planned.structure)
             }
         }
         return MessageDigest.getInstance("SHA-256")

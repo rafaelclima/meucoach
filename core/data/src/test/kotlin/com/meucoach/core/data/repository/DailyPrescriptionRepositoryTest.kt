@@ -122,6 +122,35 @@ class DailyPrescriptionRepositoryTest {
     }
 
     @Test
+    fun `round-trips the executable structure`(): Unit = runBlocking {
+        val structure = com.meucoach.core.domain.prescription.WorkoutStructure(
+            warmupMin = 10,
+            blocks = listOf(
+                com.meucoach.core.domain.prescription.WorkoutBlock(
+                    kind = com.meucoach.core.domain.prescription.BlockKind.WORK,
+                    repetitions = 5,
+                    workSec = 180,
+                    recoverySec = 120,
+                ),
+            ),
+            cooldownMin = 5,
+            totalMin = 40,
+        )
+        val stored = repository.append(
+            prescription().copy(
+                plannedType = WorkoutType.QUALITY,
+                prescribedType = WorkoutType.QUALITY,
+                title = "Intervalos",
+                structure = structure,
+            ),
+        )
+
+        val loaded = repository.getLatest(today)
+        assertThat(loaded).isEqualTo(stored)
+        assertThat(loaded?.structure).isEqualTo(structure)
+    }
+
+    @Test
     fun `versions are scoped by date`(): Unit = runBlocking {
         val yesterday = today.minusDays(1)
         repository.append(prescription(date = yesterday, hash = "old"))

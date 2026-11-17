@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S12 (C4-18)
-> **Último commit:** C4-18 — `feat(domain): assign easy strides to every level and swap in the intro fartlek (C4-18)`
-> **Fase:** 3 — UI/copy — **S12 em andamento (C4-18 DONE)**; próxima C4-19 (estrutura no briefing/UI)
-> **Sessão atual:** **S12 — C4-18 DONE**
-> **Task atual:** C4-18 (DONE)
-> **Próxima task:** C4-19 (S12)
+> **Última atualização:** 17/11/2026 — S12 (C4-19)
+> **Último commit:** C4-19 — `feat(domain): show the executable structure in briefing and UI (C4-19)`
+> **Fase:** 3 — UI/copy — **S12 em andamento (C4-19 DONE)**; próxima C4-20 (golden `G-PER-05`)
+> **Sessão atual:** **S12 — C4-19 DONE**
+> **Task atual:** C4-19 (DONE)
+> **Próxima task:** C4-20 (S12)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1027 (+2); `:app:testDebugUnitTest` 939; `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
-> **Próxima ação:** abrir C4-19 (S12: estrutura no briefing/UI — não promete mais tempo).
+> **Gates da última sessão:** `:core:domain:test` 1036 (+9); `:app:testDebugUnitTest` 941 (+2); `:core:data:test` 204 (+1); `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:app:koverVerify`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
+> **Próxima ação:** abrir C4-20 (S12: golden `G-PER-05` + matriz + guarda de iniciante).
 
 ### 0.1 O que já está pronto
 
@@ -165,7 +165,7 @@
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
 - `qualityKind`/`structure`/`planDecision` têm coluna, round-trip no Room (C4-45) e export `PlanJson` (C4-50); `generatorVersion` tem coluna com default v6 e é preservada no re-save, e o domínio a carrega (C4-46).
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
-- Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19), golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para o resto da S12.
+- Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para o resto da S12.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
 - O rationale da primeira oportunidade diz "o dia confirma" e cita `R-PER-03`; a copy de "sem progressão" distingue falta de histórico, dias, taper e o motivo real de carga (calibração, ACWR com valor, monotonia, strain, esforço percebido) sem contradição (C4-06). Restam em C4-59 os refinamentos finos de copy do rationale.
@@ -563,7 +563,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-16 | Rotação determinística e 2 kinds | C4-15 | M | S6.2 | ADR 0047 | Duas semanas não repetem | `QualityRotationTest` (14); commit S6.2 |
 | [x] | C4-17 | Gerador usa estrutura/kind; PEAK específico | C4-15/16 | L | S6.3 | ADR 0047 | PEAK ≠ BUILD; testes | `QualityIntegrationTest` (7); `WorkoutStructureTest` (+7); `:core:domain:test` 963; commit S6.3 |
 | [x] | C4-18 | Strides para todos + intro fartlek do iniciante | C4-15 | M | S12 | ADR 0047 | Iniciante EASY; qualidade 0 | `BeginnerStridesTest` (+3/-1; 4 fortes→intro, 3→strides, intermediário com strides+quality); 13 legados atualizados com justificativa; commit S12 |
-| [ ] | C4-19 | Briefing/UI da estrutura | C4-14/17 | M | S12 | ADR 0047 | Não promete mais tempo | — |
+| [x] | C4-19 | Briefing/UI da estrutura | C4-14/17 | M | S12 | ADR 0047 | Não promete mais tempo | `WorkoutStructureBriefingTest` (2); `EasyStructureTest` (3); `DailyStructureTest` (3); `SessionSwapperTest` (+1); `DailyPrescriptionRepositoryTest` (+1 round-trip); `TodayBriefingTest` (+2 tela); commit S12 |
 | [ ] | C4-20 | Golden `G-PER-05` + matriz + guarda | C4-15..19 | M | S12 | ADR 0047 | Golden; iniciante sem QUALITY | — |
 | [ ] | C4-21 | Docs `R-PER-04`, SPORTS_SCIENCE, evidências | C4-15..20 | S | S12 | ADR 0047 | Docs/IDs atualizados | — |
 
@@ -935,6 +935,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (3 falhas: 2 de comportamento novo + 1 de volume colapsado no teste fraco). `stridesDay` agora vale para todos os níveis em `BASE`/`BUILD`/`PEAK` (`TAPER`/`RECOVERY` fora, como antes), excluindo longão, dias de qualidade/micro-dose e recuperação; a precedência da sessão (qualidade > micro-dose > longão > strides) e da duração (`plannedDuration` checa quality antes) absorvem colisões sem código novo. Consistência = semanas distintas de `recentWeeks` + `previousWeek` com `strongCompletionRatio ≥ 0,80` (`PROGRESSION_COMPLETION` reutilizado, sem número novo); doença sem sinal semanal no histórico — aparece como sessão perdida e o gate do dia continua valendo. Intro sem `structure` na sessão (duração é `minOf(available, 25)` e o fixo do template é 18 min — `fittedTo` lançaria com disponibilidade menor; C4-19 fia a exibição). Trade-off registrado: `fitToVolume` continua dropando o strides primeiro sob pressão (igual ao iniciante antes) — semanas 120→103 perdem o strides; proteger o strides no drop ficaria para proposta futura, fora do escopo. 13 legados atualizados sem reduzir asserts (só totais/títulos/motivo que o novo comportamento move): longão 47→45 (share sobre outros reais), `G-PER-03` intacto (só 1 dia livre além do longão/qualidade → sem strides), replanner mantém `NoChange` e troca o motivo para a guarda de volume (checada antes, ordem pré-existente). ADR 0047 §10 + linha do `DECISIONS` atualizados; `R-PER-01/02` seguem fora do §14 (C4-21).
 - **Próximo:** S12 / C4-19 (estrutura no briefing/UI).
 
+### S12.1 — 2026-11-17 — Estrutura no briefing/UI (C4-19)
+
+- **Status:** DONE
+- **Tasks:** C4-19.
+- **Arquivos:** `core/domain/.../prescription/WorkoutStructure.kt` (`steps()` fonte única), `WeeklyPlanGenerator.kt` (strides/intro com `structure` ajustada + `withFittedEasyStructure` pós-escala; `describeStructure` delega a `steps()`), `DailyPrescription.kt`/`DailyPrescriptionEngine.kt` (`structure` no dia: KEEP copia/ajusta, DOWNGRADE derruba, `inputsHash` cobre o plano), `briefing/SessionBriefing.kt`/`SessionBriefingEngine.kt` (`structure` + `steps`, nunca acima da duração), `SessionSwapper.kt` (leva `qualityKind`/`planDecision`/`structure`), `DailyPrescriptionRepository.kt` (round-trip via `structureJson`), `SessionBriefingSheet.kt` (seção "PASSO A PASSO" `briefing-steps`), `WorkoutStructureBriefingTest.kt` (novo, 2), `EasyStructureTest.kt` (novo, 3), `DailyStructureTest.kt` (novo, 3), `SessionSwapperTest.kt` (+1 leva kind/estrutura), `DailyPrescriptionRepositoryTest.kt` (+1 round-trip), `TodayBriefingTest.kt` (+2 tela mostra/oculta passos), `docs/adr/0047-quality-catalog-periodization.md` (§10), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1036 verdes (+9); `:core:data:test` 204 (+1); `:app:testDebugUnitTest` 941 (+2); `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:app:koverVerify`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes.
+- **Commit:** `feat(domain): show the executable structure in briefing and UI (C4-19)`.
+- **Decisões/notas:** TDD RED→GREEN (`EasyStructureTest` 3× `IllegalArgumentException` com `structure` nula; `WorkoutStructureBriefingTest` não compilava sem os campos). `WorkoutStructure.steps()` vira a fonte única do texto executável (plano e briefing usam a mesma lista; o gerador só faz `joinToString`). `DailyPrescription.structure` exige `totalMin == prescribedDurationMin` (nunca promete mais tempo); `SessionBriefing` exige `steps` ↔ `structure` juntos. O dia ajusta com `fittedTo` e derruba a forma quando a duração não comporta warm-up + volta à calma (em vez de prometer). `build()` manteve 12 params para o detekt: a estrutura entra via `.copy(structure = fitted...)` após o `build`, sem baseline novo. `inputsHash` passa a cobrir `qualityKind` + `structure` do plano (versões antigas viram nova versão na reavaliação, auto-corretivo). Nenhum dado real; nenhuma migração nova (coluna v18 já existia); sem `fallbackToDestructiveMigration`.
+- **Próximo:** S12 / C4-20 (golden `G-PER-05` + matriz + guarda de iniciante).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1110,9 +1120,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-19, S12)
+## 14. Próxima ação (C4-20, S12)
 
-1. Abrir o ADR 0047 §2.1/§2.8 e a FR-403/FR-410; ler `SessionBriefingEngine` + `PlannedSession.structure` — C4-14/17 garantem estrutura executável na qualidade; C4-19 mostra a estrutura no briefing/UI sem prometer mais tempo do que cabe.
-2. Implementar C4-19 com TDD (domínio/UI); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0047 §2.5/§2.7 e a FR-403/FR-404; ler `SessionLibrary` + `QualityRotationTest` + `fixtures/golden/per-opportunity` — C4-15..C4-19 garantem matriz, rotação, kind/estrutura e briefing; C4-20 congela o golden `G-PER-05` (5K BUILD/PEAK) com a guarda de iniciante sem `QUALITY`.
+2. Implementar C4-20 com TDD (golden + propriedades); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

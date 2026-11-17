@@ -408,4 +408,73 @@ class TodayBriefingTest {
         )
         return SessionBriefingEngine().brief(prescription, SessionStatus.PLANNED)!!
     }
+
+    @Test
+    fun `structured quality shows the step by step without extra time`() {
+        val structure = com.meucoach.core.domain.prescription.WorkoutStructure(
+            warmupMin = 10,
+            blocks = listOf(
+                com.meucoach.core.domain.prescription.WorkoutBlock(
+                    kind = com.meucoach.core.domain.prescription.BlockKind.WORK,
+                    repetitions = 5,
+                    workSec = 180,
+                    recoverySec = 120,
+                    target = "I",
+                ),
+            ),
+            cooldownMin = 5,
+            totalMin = 40,
+        )
+        val prescription = DailyPrescription(
+            date = today,
+            plannedSessionId = "plan-$today",
+            plannedType = WorkoutType.QUALITY,
+            plannedTitle = "Intervalos",
+            plannedDurationMin = 40,
+            prescribedType = WorkoutType.QUALITY,
+            title = "Intervalos",
+            prescribedDurationMin = 40,
+            targets = PrescriptionTargets(),
+            adjustment = PrescriptionAdjustment.KEEP,
+            rationale = "Plano mantido: Intervalos, 40 min.",
+            ruleIds = listOf("R-PRESC-01"),
+            evidenceIds = listOf("EV-DANIELS-2014"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v2",
+            inputsHash = "inputs-hash",
+            structure = structure,
+        )
+        val briefing = SessionBriefingEngine().brief(prescription, SessionStatus.PLANNED)!!
+
+        assertThat(briefing.steps).isNotEmpty
+        assertThat(briefing.structure?.totalMin).isEqualTo(40)
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                SessionBriefingContent(
+                    state = SessionBriefingSheetState.Ready(briefing),
+                    onClose = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("briefing-steps").assertIsDisplayed()
+        compose.onNodeWithTag("briefing-step-0").assertIsDisplayed()
+        compose.onNodeWithText("Aqueça 10 min", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("sem tempo extra", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `easy day without structure hides the step by step`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                SessionBriefingContent(
+                    state = SessionBriefingSheetState.Ready(briefing()),
+                    onClose = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("briefing-steps").assertDoesNotExist()
+    }
 }

@@ -601,6 +601,9 @@ class WeeklyPlanGenerator {
                                 profile = input.profile,
                                 durationMin = duration,
                             ),
+                            structure = template?.structure?.let { structure ->
+                                runCatching { structure.fittedTo(duration) }.getOrNull()
+                            },
                         )
                     } else {
                         val duration = durationByDay.getValue(day)
@@ -687,6 +690,7 @@ class WeeklyPlanGenerator {
         ).map { session ->
             session
                 .withQualityCopy(input.profile, race, deload, originalDurations[session.date])
+                .withFittedEasyStructure()
                 .withTargetsForDuration(input.profile)
         }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
@@ -1011,60 +1015,7 @@ class WeeklyPlanGenerator {
     private fun qualityReductionNote(advanced: Boolean): String =
         if (advanced) "menos repetições, mesmo esforço." else "bloco mais curto, mesmo esforço."
 
-    private fun describeStructure(structure: WorkoutStructure): String = buildList {
-        if (structure.warmupMin > 0) {
-            add("Aqueça ${structure.warmupMin} min em ritmo leve.")
-        }
-        structure.blocks.forEach { block -> add(describeBlock(block)) }
-        if (structure.cooldownMin > 0) {
-            add("Termine com ${structure.cooldownMin} min em ritmo leve.")
-        }
-        val remaining = structure.totalMin - structure.plannedMinutes
-        if (remaining >= 1) {
-            add("Complete os $remaining min restantes em ritmo leve.")
-        }
-    }.joinToString(" ")
-
-    private fun describeBlock(block: WorkoutBlock): String {
-        val work = requireNotNull(block.workSec) { "Block work duration must be positive" }
-        val repetitions = block.repetitions
-        val recovery = block.recoverySec?.let { ", com ${durationLabel(it)} leves de recuperação" } ?: ""
-        val target = block.target?.let(::targetPhrase)
-        return when (block.kind) {
-            BlockKind.STRIDES ->
-                "Faça ${repetitions ?: 1} × ${durationLabel(work)} rápidos e relaxados$recovery."
-
-            BlockKind.RACE_PACE ->
-                "Faça ${repetitions ?: 1} × ${durationLabel(work)} no " +
-                    "${target ?: "pace de prova"}$recovery."
-
-            BlockKind.WORK -> if (repetitions != null) {
-                "Faça $repetitions × ${durationLabel(work)}${target?.let { " em $it" } ?: ""}$recovery."
-            } else {
-                "Corra ${durationLabel(work)}${target?.let { " em $it" } ?: ""}."
-            }
-
-            BlockKind.RECOVERY -> "Corra ${durationLabel(work)} em ritmo leve."
-        }
-    }
-
-    private fun durationLabel(seconds: Int): String {
-        if (seconds < SECONDS_PER_MINUTE) return "$seconds s"
-        val minutes = seconds / SECONDS_PER_MINUTE
-        val rest = seconds % SECONDS_PER_MINUTE
-        return if (rest == 0) "$minutes min" else "$minutes min ${rest}s"
-    }
-
-    private fun targetPhrase(target: String): String = when {
-        target.startsWith("RPE") -> "esforço ${target.removePrefix("RPE").trim()} de 10"
-        target == "T" -> "ritmo forte sustentado"
-        target == "I" -> "ritmo de intervalado"
-        target == "GOAL_5K" -> "pace atual de 5K"
-        target == "GOAL_10K" -> "pace atual de 10K"
-        target == "GOAL_HALF" -> "pace atual de meia maratona"
-        target == "GOAL_MARATHON" -> "pace atual de maratona"
-        else -> target
-    }
+    private fun describeStructure(structure: WorkoutStructure): String = structure.steps().joinToString(" ")
 
     private fun treadmillQualityHint(profile: AthleteProfile): String? {
         if (!profile.treadmillAccess) return null
@@ -1121,6 +1072,19 @@ class WeeklyPlanGenerator {
             ruleIds = (ruleIds + weekRules).distinct(),
             structure = fitted,
         )
+    }
+
+    /**
+     * Refits an easy executable shape after volume/taper scaling (C4-19).
+     * Quality sessions keep their own copy path; a duration that cannot hold
+     * warm-up and cool-down drops the shape instead of promising extra time.
+     */
+    private fun PlannedSession.withFittedEasyStructure(): PlannedSession {
+        val current = structure ?: return this
+        val minutes = durationMin ?: return this
+        if (type != WorkoutType.EASY) return this
+        val fitted = runCatching { current.fittedTo(minutes) }.getOrNull()
+        return copy(structure = fitted)
     }
 
     private fun adjacentDays(a: DayOfWeek, b: DayOfWeek): Boolean {
@@ -1536,7 +1500,6 @@ class WeeklyPlanGenerator {
         private const val MAX_EASY_MIN = 60
         private const val MIN_QUALITY_MIN = 25
         private const val MAX_QUALITY_MIN = 45
-        private const val SECONDS_PER_MINUTE = 60
         private const val MIN_LONG_MIN = 30
 
         /** Long-run target: 28% of the final week, so the share is a target, not a ceiling. */

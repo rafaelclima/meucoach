@@ -178,6 +178,12 @@ private fun ReadyContent(briefing: SessionBriefing, onClose: () -> Unit) {
         }
     }
 
+    if (briefing.steps.isNotEmpty()) {
+        BriefingSection(title = "PASSO A PASSO", tag = "briefing-steps") {
+            BriefingSteps(briefing.steps)
+        }
+    }
+
     BriefingSection(title = "POR QUE HOJE", tag = "briefing-why") {
         Text(
             text = briefing.rationale,
@@ -256,6 +262,27 @@ private fun BriefingTargets(targets: PrescriptionTargets) {
     Spacer(modifier = Modifier.height(2.dp))
     Text(
         text = "Números copiados da prescrição de hoje.",
+        style = McTextStyles.caption,
+        color = colors.textTertiary,
+    )
+}
+
+@Composable
+private fun BriefingSteps(steps: List<String>) {
+    val colors = McTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        steps.forEachIndexed { index, step ->
+            Text(
+                text = "${index + 1}. $step",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("briefing-step-$index"),
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(2.dp))
+    Text(
+        text = "Passos copiados da prescrição de hoje, sem tempo extra.",
         style = McTextStyles.caption,
         color = colors.textTertiary,
     )

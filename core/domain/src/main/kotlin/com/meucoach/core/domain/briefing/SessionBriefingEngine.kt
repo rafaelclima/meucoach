@@ -32,6 +32,8 @@ class SessionBriefingEngine {
             evidenceIds = prescription.evidenceIds.distinct(),
             howToRun = howToRun(prescription),
             ifHard = ifHard(prescription.prescribedType),
+            structure = prescription.structure,
+            steps = prescription.structure?.steps() ?: emptyList(),
         )
     }
 

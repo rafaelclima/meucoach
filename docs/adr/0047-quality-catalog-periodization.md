@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — C4-14 a C4-18 concluídas; C4-19..C4-21 pendentes.
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-19 concluídas; C4-20..C4-21 pendentes.
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -384,3 +384,12 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   template; C4-19 fia a exibição). `fitToVolume` segue dropando o strides
   primeiro sob pressão. 3 testes novos em `BeginnerStridesTest`; 13 legados
   atualizados com justificativa; `:core:domain:test` 1027 verdes.
+- **C4-19 (S12):** `WorkoutStructure.steps()` vira a fonte única do texto
+  executável; strides/intro passam a carregar `structure` ajustada com
+  `fittedTo` (nulo quando a duração não comporta); `DailyPrescription`
+  carrega `structure` (KEEP copia/ajusta, DOWNGRADE derruba) e o
+  `inputsHash` cobre kind + estrutura; `SessionBriefing` carrega
+  `structure` + `steps` e a UI mostra "PASSO A PASSO"; `SessionSwapper`
+  leva kind/structure/planDecision; `DailyPrescriptionRepository` faz
+  round-trip da coluna v18. 9 testes novos no domínio + 1 no data + 2
+  de tela; `:core:domain:test` 1036 verdes.

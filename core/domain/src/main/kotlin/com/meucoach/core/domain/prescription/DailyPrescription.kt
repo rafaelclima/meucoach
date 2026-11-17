@@ -54,6 +54,12 @@ data class DailyPrescription(
     val decisionDetail: String? = null,
     /** What unlocks the strong session, e.g. "Faça o check-in de hoje...". */
     val unlockHint: String? = null,
+    /**
+     * Executable structure prescribed for the day (ADR 0047 §2.1, C4-19).
+     * Copied from the plan and fitted to [prescribedDurationMin]; a downgraded
+     * quality drops it. Null for rest, no-plan and sessions without a shape.
+     */
+    val structure: WorkoutStructure? = null,
     /** Persistence id; null for a decision that was just computed and not stored yet. */
     val id: String? = null,
     val supersedesId: String? = null,
@@ -86,6 +92,12 @@ data class DailyPrescription(
         }
         require((qualityBlockReason == null) == (unlockHint == null)) {
             "A quality block reason and its unlock hint must come together"
+        }
+        require(structure == null || prescribedDurationMin != null) {
+            "A structured prescription requires a duration"
+        }
+        require(structure == null || structure.totalMin == prescribedDurationMin) {
+            "Structure must fit the prescribed duration"
         }
     }
 

@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S12 do Ciclo 4: strides para todos + intro fartlek do iniciante, C4-18)
+**Atualizado:** 17/11/2026 (S12 do Ciclo 4: estrutura no briefing/UI, C4-19)
+
+## Sessão 2026-11-17 — Ciclo 4/S12: estrutura no briefing/UI (C4-19)
+
+**Objetivo:** mostrar a estrutura executável no briefing e na UI sem prometer mais tempo do que cabe (ADR 0047 §2.1/§2.8, FR-403/FR-410).
+
+### Concluído
+
+- **Domínio:** `WorkoutStructure.steps()` como fonte única (plano e briefing); strides/intro `EASY` com `structure` ajustada (`withFittedEasyStructure` pós-escala); `DailyPrescription.structure` (KEEP copia/ajusta, DOWNGRADE derruba, `inputsHash` cobre kind + estrutura); `SessionBriefing.structure` + `steps`; `SessionSwapper` leva `qualityKind`/`planDecision`/`structure`.
+- **Dados:** `DailyPrescriptionRepository` com round-trip da `structure` via `structureJson` (coluna v18 já existia).
+- **UI:** seção "PASSO A PASSO" (`briefing-steps`, `briefing-step-N`) no sheet, com nota "sem tempo extra"; oculta sem estrutura.
+- **Testes:** `WorkoutStructureBriefingTest` (2), `EasyStructureTest` (3), `DailyStructureTest` (3), `SessionSwapperTest` (+1), `DailyPrescriptionRepositoryTest` (+1), `TodayBriefingTest` (+2 tela).
+
+### Testes
+
+- `:core:domain:test` 1036 verdes (+9); `:app:testDebugUnitTest` 941 (+2); `:core:data:test` 204 (+1); `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:app:koverVerify`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração nova; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `build()` manteve 12 params para o detekt: estrutura entra via `.copy(structure = fitted...)`, sem baseline novo.
+- Duração que não comporta warm-up + volta à calma derruba a forma (nulo) em vez de prometer; invariantes `totalMin == duração` no dia e no briefing.
+- `inputsHash` agora cobre kind + estrutura do plano; versões antigas geram nova versão na reavaliação (auto-corretivo).
+
+### Próximo passo
+
+1. S12 / C4-20: golden `G-PER-05` + matriz + guarda de iniciante, TDD.
+2. Depois S12 / C4-21 (docs `R-PER-04`/`SPORTS_SCIENCE`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S12: strides para todos + intro fartlek (C4-18)
 

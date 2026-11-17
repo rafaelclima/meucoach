@@ -5,6 +5,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
 import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.prescription.PrescriptionJson
+import com.meucoach.core.data.prescription.WorkoutStructureJson
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.QualityBlockReason
 import kotlinx.coroutines.flow.Flow
@@ -73,9 +74,7 @@ class DailyPrescriptionRepository(
             inputsHash = inputsHash,
             supersedesId = supersedesId,
             createdAt = createdAt,
-            // The domain does not carry a day-level structure yet; the column
-            // stays null until then instead of inventing a payload.
-            structureJson = null,
+            structureJson = structure?.let(WorkoutStructureJson::toJson),
             qualityBlockReason = qualityBlockReason?.name,
             decisionDetail = decisionDetail,
             unlockHint = unlockHint,
@@ -105,6 +104,7 @@ class DailyPrescriptionRepository(
             qualityBlockReason = reason,
             decisionDetail = decisionDetail.takeIf { reason != null },
             unlockHint = unlockHint.takeIf { reason != null },
+            structure = WorkoutStructureJson.fromJson(structureJson),
             id = id,
             supersedesId = supersedesId,
         )

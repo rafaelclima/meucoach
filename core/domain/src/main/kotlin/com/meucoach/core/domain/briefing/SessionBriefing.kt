@@ -1,6 +1,7 @@
 package com.meucoach.core.domain.briefing
 
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.WorkoutStructure
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import java.time.LocalDate
@@ -28,6 +29,14 @@ data class SessionBriefing(
     val howToRun: String,
     /** Conservative guidance without numbers or an unevaluated alternative workout. */
     val ifHard: String,
+    /**
+     * Executable structure copied from the prescription (ADR 0047 §2.1, C4-19).
+     * Null when the day has no shape; when present, [steps] lists the same
+     * work in order and never promises more than [durationMin].
+     */
+    val structure: WorkoutStructure? = null,
+    /** Ordered steps derived from [structure]; empty when there is no shape. */
+    val steps: List<String> = emptyList(),
     /** Identifies the briefing template version; the text itself is not persisted. */
     val engineVersion: String = SessionBriefingEngine.ENGINE_VERSION,
 ) {
@@ -39,6 +48,15 @@ data class SessionBriefing(
         require(howToRun.isNotBlank()) { "Briefing must explain how to run" }
         require(ifHard.isNotBlank()) { "Briefing must explain what to do when it is hard" }
         require(engineVersion.isNotBlank()) { "Briefing engine version must not be blank" }
+        require(structure == null || durationMin != null) {
+            "A structured briefing requires a duration"
+        }
+        require(structure == null || structure.totalMin == durationMin) {
+            "Briefing structure must fit the briefing duration"
+        }
+        require((structure == null) == steps.isEmpty()) {
+            "Briefing steps must come from the structure"
+        }
     }
 
     val isRest: Boolean get() = workoutType == WorkoutType.REST
