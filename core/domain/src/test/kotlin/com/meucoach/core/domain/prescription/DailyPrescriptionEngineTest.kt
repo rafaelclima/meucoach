@@ -80,6 +80,108 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `downgraded quality without check-in asks to confirm it`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    components = emptyMap(),
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    score = 80,
+                ),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.title).isEqualTo("Qualidade a confirmar")
+    }
+
+    @Test
+    fun `downgraded quality with high ACWR stays an easy day`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.6),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.ACWR_HIGH)
+        assertThat(prescription.title).isEqualTo("Hoje é fácil")
+    }
+
+    @Test
+    fun `downgraded quality without load data is calibrating`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = null,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.LOAD_INSUFFICIENT)
+        assertThat(prescription.title).isEqualTo("Carga em calibração")
+    }
+
+    @Test
+    fun `downgraded beginner quality starts with base`() {
+        val quality = plannedQuality(QualityKind.CONTINUOUS, 30)
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                profile = profile(experience = Experience.BEGINNER),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.BEGINNER_GUARD)
+        assertThat(prescription.title).isEqualTo("Base primeiro")
+    }
+
+    @Test
+    fun `taper blocks a main quality as race week`() {
+        val quality = plannedQuality(QualityKind.CONTINUOUS, 30)
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                phase = MesoPhase.TAPER,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.TAPER_WINDOW)
+        assertThat(prescription.title).isEqualTo("Semana de prova")
+    }
+
+    @Test
     fun `the inputs hash covers the subjective component even without the flag`() {
         val plan = planWithQuality()
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }

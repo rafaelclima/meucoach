@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S11.3 (C4-50)
-> **Último commit:** C4-50 — `feat(data): export the plan and day quality decisions (C4-50)`
-> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30, C4-31 e C4-50 DONE)**; próxima C4-51 (copy por gate + "Por quê?")
-> **Sessão atual:** **S11.3 — C4-50 DONE**
-> **Task atual:** C4-50 (DONE)
-> **Próxima task:** C4-51 (S11)
+> **Última atualização:** 17/11/2026 — S11.4 (C4-51)
+> **Último commit:** C4-51 — `feat(domain): title the downgraded card by gate and show the block (C4-51)`
+> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30, C4-31, C4-50 e C4-51 DONE)**; próxima C4-52 (catálogo de regras/evidências + teste)
+> **Sessão atual:** **S11.4 — C4-51 DONE**
+> **Task atual:** C4-51 (DONE)
+> **Próxima task:** C4-52 (S11)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:data:test` 203 (+6); `:core:domain:test` 1017; `:app:testDebugUnitTest` 936; `:core:model` 40; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt` verdes (`:app:assembleDebug`/`lint`/`kover`/`detekt` seguem verdes de S11.2, sem código app)
-> **Próxima ação:** abrir C4-51 (S11: copy por gate + "Por quê?" + dica — `QualityBlockReason`/`PlanDecisionReason` + catálogo na UI).
+> **Gates da última sessão:** `:core:domain:test` 1024 (+7); `:app:testDebugUnitTest` 939 (+3); `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:app:koverVerify`; `:core:domain:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
+> **Próxima ação:** abrir C4-52 (S11: catálogo de regras/evidências + teste — todos os IDs).
 
 ### 0.1 O que já está pronto
 
@@ -625,7 +625,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-50 | `QualityBlockReason`/`PlanDecisionReason` + persistência | E1–E8 | L | S11 | ADR 0044/0048 | Serialização testada | `PlanJsonTest` (5); export da decisão do plano + dia; commit S11.3 |
-| [ ] | C4-51 | Copy por gate + “Por quê?” + dica | C4-50 | M | S11 | FR-412 | UI; catálogo | — |
+| [x] | C4-51 | Copy por gate + "Por quê?" + dica | C4-50 | M | S11 | FR-412 | UI; catálogo | `QualityGateCopyTest` (2); títulos do rebaixamento (5); bloco no "Por quê?" (2 + 1 tela); commit S11.4 |
 | [ ] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | — |
 | [ ] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | — |
 | [ ] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | — |
@@ -893,7 +893,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** `:core:data:test` 203 verdes (+6: `PlanJsonTest` 5, export 1); `:core:domain:test` 1017; `:app:testDebugUnitTest` 936; `:core:model` 40; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt` verdes (`:app`/`domain` sem código alterado; gates de S11.2 seguem verdes).
 - **Commit:** `feat(data): export the plan and day quality decisions (C4-50)`.
 - **Decisões/notas:** TDD RED→GREEN (5 testes falhavam: chaves ausentes no export). Semântica espelha C4-45: código desconhecido → `null` (nunca parcial); detalhe sem código conhecido é descartado junto; kind em sessão não-`QUALITY` é descartado (nunca gera linha que quebra o `toModel`); legado sem as chaves decodifica como nulos. `structure` exporta como objeto (espelha `targets`) e volta como string do entity; `replacedSessionsJson` ganha as chaves automaticamente (mesmo `sessionsToJson`). Prescrição no export é write-only (sem import de JSON de volta; `toModel` com desconhecido→nulo já coberto em C4-45). Flake pré-existente sem relação: `TodayViewModelPersistTest.upgrades a stale stored week on opening` falhou 2× na suíte cheia (3ª sessão seguida, `completionMessage` nulo por race de `combine` sob carga) e passou isolado + na reexecução limpa; `TutorialSystemBackTest` 1× como vítima de cascata. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
-- **Próximo:** S11 / C4-51 (copy por gate + "Por quê?" + dica — UI).
+- **Próximo:** S11.4 / C4-51 (copy por gate + "Por quê?" + dica).
+
+### S11.4 — 2026-11-17 — Copy por gate + "Por quê?" + dica (C4-51)
+
+- **Status:** DONE
+- **Tasks:** C4-51.
+- **Arquivos:** `core/domain/.../prescription/QualityOpportunity.kt` (`QualityBlockReason.cardTitle()`), `core/domain/.../prescription/DailyPrescriptionEngine.kt` (título do rebaixamento por gate), `app/.../ui/today/TodayExplanation.kt` (`QualityBlockUi` + `qualityBlock`), `app/.../ui/today/TodayScreen.kt` (bloco "O QUE ACONTECEU" + `quality-block-title/detail` + `quality-unlock-hint`), `QualityGateCopyTest.kt` (novo, 2), `DailyPrescriptionEngineTest.kt` (+5 títulos), `TodayExplanationBlockTest.kt` (novo, 2), `TodayPlanTest.kt` (+1 tela), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1024 verdes (+7: copy 2, engine 5); `:app:testDebugUnitTest` 939 (+3: bloco 2, tela 1); `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply` de formatação); `:app:koverVerify`; `:core:domain:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes.
+- **Commit:** `feat(domain): title the downgraded card by gate and show the block (C4-51)`.
+- **Decisões/notas:** TDD RED→GREEN (domínio primeiro, depois app). FR-412 vira código: `SUBJECTIVE_MISSING` → "Qualidade a confirmar"; `LOAD_*` → "Carga em calibração"; `BEGINNER_GUARD` → "Base primeiro"; `TAPER/RACE_WEEK` → "Semana de prova"; resto → "Hoje é fácil"/"Hoje é descanso"/"Recuperação: fácil e curto". O card do rebaixamento usa o título do gate (recovery mantém o título de recuperação); LONG/EASY/recomendador intactos. O "Por quê?" ganha o bloco "O QUE ACONTECEU" (título + valor que falhou + "Para liberar: ...") só com os 3 campos juntos (invariante do domínio). Nenhum teste legado quebrou (títulos de rebaixamento não eram asseridos). Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S11 / C4-52 (catálogo de regras/evidências + teste — todos os IDs).
 
 ---
 
@@ -1070,10 +1080,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-51, S11)
+## 14. Próxima ação (C4-52, S11)
 
-1. Abrir a FR-412 (tabela de copy por gate) e o ADR 0044 §2.4; ler o `NextWorkoutCard`, o `ExplanationCatalog` e os campos de decisão persistidos/exportados (C4-45/C4-50).
-2. Escrever os testes que falham de C4-51: cada gate tem copy + `ruleId` catalogado + dica no "Por quê?"; rationale não contradiz o código.
-3. Implementar C4-51 com TDD (copy/UI do "Por quê?"); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0044 e a FR-412; ler o `ExplanationCatalog` + `ExplanationCatalogTest` e os testes de catálogo do diário/plano (`DailyPrescriptionEngineTest`, `WeeklyPlanGeneratorTest`, C4-06) — C4-51 garante copy por gate; C4-52 garante que todo ID emitido existe e tem título/fonte.
+2. Escrever o teste que falha de C4-52: varredura de todos os `ruleId`/`evidenceId` emitidos pelo motor (plano, prescrição, catálogo, review) contra o catálogo.
+3. Implementar C4-52 com TDD (catálogo/teste); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

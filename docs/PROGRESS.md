@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11.3 do Ciclo 4: export `PlanJson` dos campos de decisão, C4-50)
+**Atualizado:** 17/11/2026 (S11.4 do Ciclo 4: copy por gate + "Por quê?" + dica, C4-51)
+
+## Sessão 2026-11-17 — Ciclo 4/S11.4: copy por gate + "Por quê?" + dica (C4-51)
+
+**Objetivo:** fechar a tabela de copy da FR-412 — o card do rebaixamento diz qual gate bloqueou e o "Por quê?" mostra valor + dica de desbloqueio.
+
+### Concluído
+
+- **Domínio:** `QualityBlockReason.cardTitle()` (13 headlines; FR-412 exatos para os 7 da tabela); o rebaixamento de `QUALITY` usa o título do gate (recovery mantém o seu).
+- **UI:** `TodayExplanationUi.qualityBlock` (título + detalhe + hint, só com os 3 juntos) + bloco "O QUE ACONTECEU" no sheet.
+- **Testes:** copy (2) + títulos do rebaixamento (5) + bloco (2) + tela (1).
+
+### Testes
+
+- `:core:domain:test` 1024 verdes (+7); `:app:testDebugUnitTest` 939 (+3); `:core:data:test` 203; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck` (com `spotlessApply`), `:app:koverVerify`, `:core:domain:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- LONG/EASY/recomendador intactos (fora do gate de qualidade); nenhum teste legado quebrou.
+- Rationale do rebaixamento já continha motivo + dica; o bloco dedicado torna a dica explícita ("Para liberar: ...").
+
+### Próximo passo
+
+1. S11 / C4-52: catálogo de regras/evidências + teste (todos os IDs).
+2. Depois S11 / C4-08 (docs `R-PER-03`/ciência) e S12.
 
 ## Sessão 2026-11-17 — Ciclo 4/S11.3: export `PlanJson` dos campos de decisão (C4-50)
 

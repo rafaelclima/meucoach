@@ -162,6 +162,10 @@ class DailyPrescriptionEngine {
                     } else {
                         downgraded
                     }
+                    // The eligibility invariant guarantees a reason when blocked.
+                    val blockReason = requireNotNull(gate.reason) {
+                        "A downgraded quality must name the blocking gate"
+                    }
                     val perceivedEffort = subjectiveOnlyLoad &&
                         gate.reason == QualityBlockReason.LOAD_INSUFFICIENT
                     val reason = buildString {
@@ -176,7 +180,9 @@ class DailyPrescriptionEngine {
                         input = input,
                         planned = planned,
                         type = WorkoutType.EASY,
-                        title = if (recoveryActive) RECOVERY_REDUCED_TITLE else EASY_REDUCED_TITLE,
+                        // C4-51 (FR-412): the card says which gate blocked the
+                        // quality instead of a generic easy label.
+                        title = if (recoveryActive) RECOVERY_REDUCED_TITLE else blockReason.cardTitle(),
                         durationMin = duration,
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.EASY,

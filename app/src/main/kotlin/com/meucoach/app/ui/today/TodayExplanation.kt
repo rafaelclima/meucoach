@@ -8,6 +8,7 @@ import com.meucoach.core.domain.prescription.ExplanationCatalog
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.prescription.cardTitle
 import com.meucoach.core.domain.readiness.HrvMetrics
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
@@ -25,6 +26,9 @@ data class ExplanationRuleUi(val id: String, val title: String)
 
 data class ExplanationEvidenceUi(val id: String, val title: String, val source: String)
 
+/** Day-level gate that blocked a planned quality (ADR 0044 §2.4, C4-51, FR-412). */
+data class QualityBlockUi(val title: String, val detail: String, val hint: String)
+
 data class TodayExplanationUi(
     val rationale: String,
     val confidence: DataConfidence,
@@ -36,6 +40,8 @@ data class TodayExplanationUi(
     val planComparison: String? = null,
     /** Explains where the confidence comes from and why it does not change during the week. */
     val confidenceNote: String? = null,
+    /** Non-null only when the day downgraded a planned quality; the sheet shows value + hint. */
+    val qualityBlock: QualityBlockUi? = null,
 )
 
 internal fun buildExplanation(
@@ -58,7 +64,20 @@ internal fun buildExplanation(
         ExplanationEvidenceUi(id = item.id, title = item.title, source = item.source)
     },
     planComparison = planComparison(prescription),
+    qualityBlock = qualityBlock(prescription),
 )
+
+/**
+ * C4-51 (FR-412): the "Por quê?" sheet names the blocking gate with the
+ * failing value and the unlock hint. Only a downgraded quality carries the
+ * three fields together (domain invariant); anything else shows no block.
+ */
+private fun qualityBlock(prescription: DailyPrescription): QualityBlockUi? {
+    val reason = prescription.qualityBlockReason ?: return null
+    val detail = prescription.decisionDetail ?: return null
+    val hint = prescription.unlockHint ?: return null
+    return QualityBlockUi(title = reason.cardTitle(), detail = detail, hint = hint)
+}
 
 private fun usedData(
     checkIn: DailyCheckIn?,

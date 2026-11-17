@@ -33,6 +33,27 @@ data class PlanDecision(val reason: PlanDecisionReason, val detail: String? = nu
 }
 
 /**
+ * FR-412 card headline per day-level block reason (C4-51). The engine uses it
+ * as the downgraded card title and the "Por quê?" sheet shows it with the
+ * failing value and the unlock hint.
+ */
+fun QualityBlockReason.cardTitle(): String = when (this) {
+    QualityBlockReason.ILLNESS_OR_RED_READINESS -> "Hoje é descanso"
+    QualityBlockReason.BEGINNER_GUARD -> "Base primeiro"
+    QualityBlockReason.SUBJECTIVE_MISSING -> "Qualidade a confirmar"
+    QualityBlockReason.SHORT_SLEEP -> "Hoje é fácil"
+    QualityBlockReason.LOW_READINESS -> "Hoje é fácil"
+    QualityBlockReason.RECOVERY_WINDOW -> "Recuperação: fácil e curto"
+    QualityBlockReason.TAPER_WINDOW -> "Semana de prova"
+    QualityBlockReason.RACE_WEEK -> "Semana de prova"
+    QualityBlockReason.LOAD_STALE -> "Carga em calibração"
+    QualityBlockReason.LOAD_INSUFFICIENT -> "Carga em calibração"
+    QualityBlockReason.MONOTONY_HIGH -> "Hoje é fácil"
+    QualityBlockReason.STRAIN_SPIKE -> "Hoje é fácil"
+    QualityBlockReason.ACWR_HIGH -> "Hoje é fácil"
+}
+
+/**
  * Read contract over a planned `QUALITY` session (ADR 0044 §2.2, PRD §5.2).
  *
  * The opportunity is structural: it never carries the readiness of the week's

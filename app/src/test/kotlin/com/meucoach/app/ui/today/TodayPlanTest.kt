@@ -1038,6 +1038,32 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `shows the blocking gate with its unlock hint`() {
+        val today = LocalDate.of(2026, 11, 2)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = todayState(
+                        checkIn = checkIn(),
+                        profile = profile(today),
+                        today = today,
+                        plan = tempoPlan(today),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver explicação"))
+        compose.onNodeWithText("Ver explicação").performClick()
+
+        compose.onNodeWithTag("quality-block-title").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("quality-block-detail").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("quality-unlock-hint").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun `explains planned versus adjusted in one sentence`() {
         val today = LocalDate.of(2026, 11, 2)
         val tempo = tempoPlan(today)

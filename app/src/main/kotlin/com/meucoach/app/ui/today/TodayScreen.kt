@@ -1438,6 +1438,35 @@ private fun ExplanationSheet(
                     modifier = Modifier.testTag("explanation-plan-comparison"),
                 )
             }
+            explanation.qualityBlock?.let { block ->
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "O QUE ACONTECEU",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = block.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                    modifier = Modifier.testTag("quality-block-title"),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = block.detail,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("quality-block-detail"),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Para liberar: ${block.hint}",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("quality-unlock-hint"),
+                )
+            }
             explanation.confidenceNote?.let { note ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
