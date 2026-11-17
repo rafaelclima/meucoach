@@ -1,0 +1,25 @@
+{
+  "scenarioId": "G-PER-03",
+  "phase": "BASE",
+  "qualityCount": 1,
+  "weeklyMinutes": 120,
+  "quality": {
+    "dayOfWeek": "TUESDAY",
+    "title": "Fartlek leve",
+    "kind": "FARTLEK",
+    "durationMin": 40,
+    "planDecision": "QUALITY_OPPORTUNITY"
+  },
+  "easy": {
+    "dayOfWeek": "FRIDAY",
+    "title": "Fácil e conversável",
+    "durationMin": 40
+  },
+  "longRun": {
+    "dayOfWeek": "SUNDAY",
+    "title": "Corrida mais longa",
+    "durationMin": 40,
+    "planDecision": "LONG_DAY_TOO_SHORT"
+  },
+  "forbiddenTitles": ["Longão"]
+}

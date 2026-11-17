@@ -95,7 +95,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `blocks quality on amber readiness`() {
+    fun `keeps the structural opportunity on amber readiness for the day to decide`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -106,15 +106,21 @@ class WeeklyPlanGeneratorTest {
                     ReadinessLevel.AMBER,
                     flags = setOf(ReadinessFlag.NO_QUALITY),
                 ),
+                load = load(acwr = 1.0),
+                race = buildRace(),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("não está alta")
+        // ADR 0044 §2.1: the plan is structural; Monday's amber readiness is the
+        // day gate's input (QualityGate, C4-04), not a generation veto.
+        val quality = plan.sessions.single { it.type == WorkoutType.QUALITY }
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(quality.planDecision?.reason).isEqualTo(PlanDecisionReason.QUALITY_OPPORTUNITY)
+        assertThat(plan.rationale).contains("o dia confirma")
     }
 
     @Test
-    fun `reliable high ACWR blocks weekly quality`() {
+    fun `reliable high ACWR keeps the opportunity for the day to decide`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -123,12 +129,15 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.6),
+                race = buildRace(),
             ),
         )
 
-        // R-LOAD-03 v3: a reliable ACWR above 1.5 removes the strong session.
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("passou de 1,50")
+        // R-LOAD-03 v3: 1.6 blocks progression and is evaluated by the day; the
+        // structural opportunity remains so the day can keep or downgrade it.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.sessions.single { it.type == WorkoutType.QUALITY }.planDecision?.reason)
+            .isEqualTo(PlanDecisionReason.QUALITY_OPPORTUNITY)
         assertThat(plan.ruleIds).contains("R-LOAD-03")
     }
 
@@ -151,7 +160,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `blocks weekly quality on monotony high even with normal ACWR`() {
+    fun `high monotony keeps the opportunity for the day to decide`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -160,16 +169,18 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0, monotony = 2.5, strain = 900.0),
+                race = buildRace(),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("variou pouco")
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.sessions.single { it.type == WorkoutType.QUALITY }.planDecision?.reason)
+            .isEqualTo(PlanDecisionReason.QUALITY_OPPORTUNITY)
         assertThat(plan.ruleIds).contains("R-LOAD-03")
     }
 
     @Test
-    fun `blocks weekly quality on strain spike even with normal ACWR`() {
+    fun `strain spike keeps the opportunity for the day to decide`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -180,15 +191,16 @@ class WeeklyPlanGeneratorTest {
                 // baseline semanal = 50 * 7 = 350 em série real; aqui o snapshot
                 // injeta strain alto com crônico positivo via helper abaixo.
                 load = load(acwr = 1.0, monotony = 1.5, strain = 900.0).copy(chronicAverage28d = 50.0),
+                race = buildRace(),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(plan.ruleIds).contains("R-LOAD-03")
     }
 
     @Test
-    fun `blocks quality when load data is stale`() {
+    fun `stale load keeps the structural opportunity and lowers confidence`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -197,17 +209,18 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = 1.0, sourceFresh = false),
+                race = buildRace(),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("dados de carga estão desatualizados")
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("o dia confirma")
         assertThat(plan.ruleIds).contains("R-DATA-01")
         assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
     }
 
     @Test
-    fun `blocks quality when coverage is below eight days`() {
+    fun `insufficient load coverage keeps the structural opportunity`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -216,11 +229,11 @@ class WeeklyPlanGeneratorTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = null, daysWithLoad = 7),
+                race = buildRace(),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("faltam dados de carga", "8 dias")
+        assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(plan.ruleIds).contains("R-DATA-01")
         assertThat(plan.confidence).isEqualTo(DataConfidence.LOW)
     }
@@ -281,7 +294,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `blocks quality with illness`() {
+    fun `illness keeps the structural opportunity for the day to stop`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -292,11 +305,15 @@ class WeeklyPlanGeneratorTest {
                     ReadinessLevel.GREEN,
                     flags = setOf(ReadinessFlag.ILLNESS_OR_INJURY, ReadinessFlag.NO_QUALITY),
                 ),
+                load = load(acwr = 1.0),
+                race = buildRace(),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.rationale).contains("não está alta")
+        // Safety belongs to the day: the plan may hold the opportunity, but
+        // DailyPrescriptionEngine returns rest when illness is present.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("o dia confirma")
     }
 
     @Test
@@ -585,10 +602,12 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // ADR 0046: a reliable 1.6 removes quality; without a previous week the
-        // single structural opportunity remains.
+        // ADR 0044/0046: a reliable 1.6 blocks progression (the second slot) but
+        // not the structural opportunity; the day evaluates the kept one.
         assertThat(withoutHistory.qualityCount).isEqualTo(1)
-        assertThat(highAcwr.qualityCount).isZero()
+        assertThat(highAcwr.qualityCount).isEqualTo(1)
+        assertThat(highAcwr.sessions.single { it.type == WorkoutType.QUALITY }.planDecision?.reason)
+            .isEqualTo(PlanDecisionReason.QUALITY_OPPORTUNITY)
     }
 
     @Test
@@ -905,7 +924,7 @@ class WeeklyPlanGeneratorTest {
         // D5: sRPE conserves — the base week is kept, never accelerated.
         assertThat(plan.weeklyMinutes).isEqualTo(120)
         assertThat(plan.rationale).doesNotContain("+6%")
-        assertThat(plan.rationale).contains("esforço percebido")
+        assertThat(plan.rationale).contains("dados de carga insuficientes")
         assertThat(plan.ruleIds).contains("R-LOAD-04")
         assertThat(ExplanationCatalog.hasRule("R-LOAD-04")).isTrue()
     }

@@ -1,0 +1,52 @@
+{
+  "scenarioId": "G-PER-03",
+  "description": "3x40 min, intermediate, two load weeks, no check-in and no load: one structural opportunity, honest 40 min longest run and an easy Friday.",
+  "weekStart": "2026-11-02",
+  "today": "2026-11-02",
+  "profile": {
+    "id": "athlete-1",
+    "birthDate": "1988-01-01",
+    "sex": "MALE",
+    "restingHeartRate": 58,
+    "maxHeartRateObserved": 187,
+    "lactateThresholdHeartRate": 180,
+    "thresholdPaceSecPerKm": 360,
+    "experience": "INTERMEDIATE",
+    "timezone": "America/Sao_Paulo",
+    "availability": {
+      "TUESDAY": 40,
+      "FRIDAY": 40,
+      "SUNDAY": 40
+    }
+  },
+  "readiness": {
+    "score": 50,
+    "level": "AMBER",
+    "confidence": "LOW",
+    "components": {},
+    "missing": ["HRV", "RESTING_HEART_RATE", "SLEEP", "SUBJECTIVE"],
+    "flags": ["INSUFFICIENT_DATA", "SUBJECTIVE_MISSING"]
+  },
+  "volumeReferences": [
+    {
+      "weekStart": "2026-10-19",
+      "plannedMinutes": 120,
+      "executedMinutes": 120,
+      "strongMinutes": 120,
+      "strongSessions": 3,
+      "plannedSessions": 3,
+      "createdOn": "2026-10-19",
+      "specialWeek": false
+    },
+    {
+      "weekStart": "2026-10-26",
+      "plannedMinutes": 120,
+      "executedMinutes": 120,
+      "strongMinutes": 120,
+      "strongSessions": 3,
+      "plannedSessions": 3,
+      "createdOn": "2026-10-26",
+      "specialWeek": false
+    }
+  ]
+}

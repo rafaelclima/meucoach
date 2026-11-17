@@ -86,7 +86,7 @@ class Cycle1RegressionTest {
     }
 
     @Test
-    fun `does not create quality when readiness is red`() {
+    fun `red readiness keeps the structural opportunity for the day to stop`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -99,11 +99,14 @@ class Cycle1RegressionTest {
                 ),
                 readiness = readiness(ReadinessLevel.RED),
                 load = load(acwr = 1.0),
+                race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34)),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
-        assertThat(plan.sessions.none { it.type == WorkoutType.QUALITY }).isTrue()
+        // ADR 0044 §2.1: the plan is structural; the daily engine returns rest
+        // for a red day (DailyPrescriptionEngineTest).
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("o dia confirma")
     }
 
     @Test
@@ -135,7 +138,7 @@ class Cycle1RegressionTest {
     }
 
     @Test
-    fun `quality is blocked when acute chronic load is unknown`() {
+    fun `unknown load keeps the structural opportunity for the day`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -149,14 +152,17 @@ class Cycle1RegressionTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = null,
+                race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34)),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
+        // ADR 0044 §2.1: the first opportunity is structural; the day gate
+        // downgrades it when objective load is missing.
+        assertThat(plan.qualityCount).isEqualTo(1)
     }
 
     @Test
-    fun `quality is blocked when load coverage is insufficient`() {
+    fun `insufficient load coverage keeps the structural opportunity`() {
         val plan = generator.generate(
             input(
                 profile = profile(
@@ -170,10 +176,11 @@ class Cycle1RegressionTest {
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
                 load = load(acwr = null, daysWithLoad = 2, missingDays = 26),
+                race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(34)),
             ),
         )
 
-        assertThat(plan.qualityCount).isZero()
+        assertThat(plan.qualityCount).isEqualTo(1)
     }
 
     @Test

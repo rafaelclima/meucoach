@@ -170,10 +170,12 @@ data class WeeklyPlanInput(
  * The availability is a hard ceiling. Volume grows at most 6% over the highest
  * recently completed week and only with a green, evidenced, known-load week
  * (ADR 0038); otherwise it is maintained. The plan allows at most two quality
- * sessions, only on a green day with calibration-adjacent guardrails, and keeps
- * them away from the long run. The deload derives from 3 consecutive load weeks
- * in `recentWeeks` (R-PLAN-04 v2, ADR 0041). A taper or recovery always takes
- * precedence over the deload, and a race week is never a deload.
+ * **opportunities**: the first is structural (level, days, phase and a safe day),
+ * the second additionally requires proven progression, and the day gate decides
+ * whether each one is kept or downgraded (ADR 0044). They are kept away from the
+ * long run. The deload derives from 3 consecutive load weeks in `recentWeeks`
+ * (R-PLAN-04 v2, ADR 0041). A taper or recovery always takes precedence over the
+ * deload, and a race week is never a deload.
  */
 class WeeklyPlanGenerator {
     fun generate(input: WeeklyPlanInput): WeeklyPlan {
@@ -248,9 +250,6 @@ class WeeklyPlanGenerator {
             .filter { recovery?.isActive(it) == true }
         val recoveryActive = recoveryDays.isNotEmpty()
         val fullyRecovering = days.isNotEmpty() && recoveryDays.size == days.size
-        val safetyBlock = input.readiness.flags.any {
-            it == ReadinessFlag.ILLNESS_OR_INJURY || it == ReadinessFlag.NO_QUALITY
-        } || input.readiness.level != ReadinessLevel.GREEN
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
         // D5 (ADR 0039) + R-LOAD-03 v3 (ADR 0046): quality needs objective load,
         // low monotony, no reliable strain spike and no reliable ACWR > 1.5.
@@ -265,15 +264,6 @@ class WeeklyPlanGenerator {
         val acwrHigh = input.load?.acwrHigh ?: false
         val acwrInRange = acwr != null &&
             acwr in LoadSnapshot.ACWR_PROGRESSION_MIN..LoadSnapshot.ACWR_PROGRESSION_MAX
-        val qualityAllowed = !safetyBlock &&
-            input.profile.experience != Experience.BEGINNER &&
-            permitsQuality &&
-            days.size >= 3
-        val completionRatio = input.previousWeek?.strongCompletionRatio() ?: 0.0
-        val progressed = qualityAllowed &&
-            permitsProgression &&
-            completionRatio >= PROGRESSION_COMPLETION &&
-            days.size >= 4
         // ADR 0041: mesociclo e descarga derivam de `recentWeeks` reais (até 12
         // semanas). O contador `weekNumberInBlock` só vale sem histórico.
         val combinedReferences =
@@ -338,6 +328,29 @@ class WeeklyPlanGenerator {
                 !race.allowsQuality(date) &&
                 !race.isRaceDayOrLater(date)
         }
+        // ADR 0044 §2.1–2.3: the first opportunity is structural. Level, days,
+        // phase, race week and a safe day decide it; readiness and load of the
+        // week's first day belong to the day gate (C4-04), never to generation.
+        val structuralQualityEligible = input.profile.experience != Experience.BEGINNER &&
+            days.size >= 3 &&
+            meso.phase != MesoPhase.TAPER &&
+            meso.phase != MesoPhase.RECOVERY &&
+            !isRaceWeek &&
+            qualityCandidateDays.isNotEmpty()
+        val completionRatio = input.previousWeek?.strongCompletionRatio() ?: 0.0
+        // The second opportunity still requires proven progression: completed
+        // week, reliable ACWR in 0.8–1.3 and no taper/race/recovery week.
+        val secondQualityAllowed = structuralQualityEligible &&
+            permitsProgression &&
+            completionRatio >= PROGRESSION_COMPLETION &&
+            days.size >= 4 &&
+            !taperLimitsQuality
+        // A taper/race week keeps its structural micro-dose even without a
+        // check-in or load: the plan never starts with zero stimulus (ADR 0044
+        // §2.3). Recovery weeks stay empty.
+        val structuralMicroDoseEligible = input.profile.experience != Experience.BEGINNER &&
+            meso.phase != MesoPhase.RECOVERY &&
+            microDoseCandidateDays.isNotEmpty()
         // ADR 0043 §3.2/ADR 0047: papéis da semana pela biblioteca (fase, nível).
         // Títulos das sessões fáceis vêm de `easyTemplates`; a qualidade é
         // escolhida pela rotação determinística do catálogo, que também decide
@@ -345,13 +358,13 @@ class WeeklyPlanGenerator {
         // micro-dose, recovery sem qualidade).
         val easyTemplates = SessionLibrary.easyTemplates(meso.phase, input.profile.experience)
         fun easyTemplate(role: SessionRole): SessionTemplate? = easyTemplates.singleOrNull { it.role == role }
-        val qualitySelection = if (qualityAllowed) {
+        val qualitySelection = if (structuralQualityEligible) {
             SessionLibrary.qualityRotation(
                 phase = meso.phase,
                 level = input.profile.experience,
                 distance = race?.distance,
                 weekInPhase = meso.weekInPhase,
-                maxQualities = if (progressed && !taperLimitsQuality) 2 else 1,
+                maxQualities = if (secondQualityAllowed) 2 else 1,
                 phaseWeeks = meso.phaseWeeks,
             )
         } else {
@@ -367,7 +380,7 @@ class WeeklyPlanGenerator {
             )
         }
         val qualityByDay = qualityDays.sortedBy { it.value }.zip(qualitySelection).toMap()
-        val microDoseTemplate = if (qualityAllowed && qualityDays.isEmpty() && microDoseCandidateDays.isNotEmpty()) {
+        val microDoseTemplate = if (structuralMicroDoseEligible && qualityDays.isEmpty()) {
             SessionLibrary.qualityRotation(
                 phase = MesoPhase.TAPER,
                 level = input.profile.experience,
@@ -479,6 +492,7 @@ class WeeklyPlanGenerator {
                         qualityKind = requireNotNull(template.qualityKind) {
                             "Quality session ${template.title} must carry a kind"
                         },
+                        planDecision = qualityPlanDecision(template),
                         structure = structure,
                     )
                 }
@@ -508,6 +522,7 @@ class WeeklyPlanGenerator {
                         qualityKind = requireNotNull(template.qualityKind) {
                             "Micro-dose ${template.title} must carry a kind"
                         },
+                        planDecision = qualityPlanDecision(template),
                         structure = requireNotNull(template.structure).fittedTo(duration),
                     )
                 }
@@ -713,35 +728,24 @@ class WeeklyPlanGenerator {
                 append("Plano criado hoje: dias anteriores não entram nesta semana. ")
             }
             append("${adjusted.size} dias, $weeklyMinutes min no total. ")
-            if (qualityCount == 0) {
+            if (qualityCount > 0) {
+                val qualityDaysLabel = adjusted
+                    .filter { it.type == WorkoutType.QUALITY }
+                    .joinToString(" e ") { dayLabel(it.date.dayOfWeek) }
+                append("Qualidade planejada para $qualityDaysLabel; o dia confirma com prontidão e carga. ")
+            } else {
                 append("Sem treino forte: ")
                 append(
                     when {
-                        safetyBlock -> "prontidão não está alta."
-
                         input.profile.experience == Experience.BEGINNER -> "iniciante prioriza base."
 
-                        loadState == LoadDataState.STALE ->
-                            "seus dados de carga estão desatualizados; importe atividades recentes."
-
-                        loadState == LoadDataState.INSUFFICIENT ->
-                            "faltam dados de carga: são necessários ${LoadSnapshot.MIN_DAYS_WITH_LOAD} " +
-                                "dias com carga em 28."
-
-                        loadState == LoadDataState.KNOWN && !loadTrusted ->
-                            "sua carga recente vem do esforço percebido: treino forte precisa " +
-                                "de carga medida por FC ou ritmo."
-
-                        loadTrusted && acwrHigh ->
-                            "sua carga recente passou de 1,50; a qualidade volta quando o ACWR estabilizar."
-
-                        loadTrusted && !monotonyOk ->
-                            "sua semana variou pouco: treino forte precisa de monotonia abaixo de 2,0."
-
-                        loadTrusted && !strainOk ->
-                            "sua carga concentrou demais: reduza antes de treino forte."
-
                         days.size < 3 -> "menos de 3 dias disponíveis."
+
+                        meso.phase == MesoPhase.RECOVERY ->
+                            "semana de recuperação: sem treino forte."
+
+                        meso.phase == MesoPhase.TAPER || isRaceWeek ->
+                            "semana de prova: sem dia elegível para a micro-dose."
 
                         meso.phase == MesoPhase.BASE && qualitySelection.isEmpty() ->
                             "a primeira metade da base é só fácil, longão e strides; " +
@@ -752,7 +756,7 @@ class WeeklyPlanGenerator {
                 )
                 append(" ")
             }
-            if (progressed) {
+            if (secondQualityAllowed) {
                 append("Progressão liberada: você concluiu pelo menos 80% da semana anterior. ")
                 append("O volume segue limitado pela disponibilidade.")
             } else {
@@ -816,6 +820,28 @@ class WeeklyPlanGenerator {
             selected += day
         }
         return selected.toSet()
+    }
+
+    /**
+     * Auditable reason the opportunity exists (ADR 0044 §2.2). The first slot
+     * is structural; the second names the progression proof. The micro-dose is
+     * structural as well and stays in the taper/race week.
+     */
+    private fun qualityPlanDecision(template: SessionTemplate): PlanDecision = when {
+        template.qualityKind == QualityKind.STRIDES_ONLY -> PlanDecision(
+            reason = PlanDecisionReason.QUALITY_OPPORTUNITY,
+            detail = "Micro-dose estrutural da semana de prova; o dia confirma por segurança.",
+        )
+
+        template.role == SessionRole.QUALITY_SECOND -> PlanDecision(
+            reason = PlanDecisionReason.PROGRESSION_COMPLETED,
+            detail = "Segunda oportunidade: semana anterior com pelo menos 80% e carga confiável em 0,8–1,3.",
+        )
+
+        else -> PlanDecision(
+            reason = PlanDecisionReason.QUALITY_OPPORTUNITY,
+            detail = "Oportunidade estrutural da semana; o dia confirma com prontidão e carga.",
+        )
     }
 
     /**

@@ -165,7 +165,10 @@ Evidência atual (12/11/2026):
 - `HealthConnectViewModelTest`: status, permissões faltantes, sync, indisponibilidade e erro.
 - `HealthConnectContentTest`: estados do card, autorização e sincronização.
 - `WorkoutRecommenderTest`: guardrails, fácil Z2 calibrado, RPE, ACWR e duração.
-- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia; recuperação pós-prova bloqueia qualidade/longão, aplica tetos por fase e volta ao normal depois da janela; volume parte do concluído (base 120 → 128), mantém abaixo de 80%, não cresce em deload/taper/prova/recuperação, respeita o teto da agenda e limita a distância ao alvo depois da escala.
+- `WeeklyPlanGeneratorTest`: disponibilidade, longão 25–30%, qualidade única/dupla, progressão, taper, ACWR e semana vazia; recuperação pós-prova bloqueia qualidade/longão, aplica tetos por fase e volta ao normal depois da janela; a oportunidade estrutural sobrevive a prontidão/carga do dia e delega o rebaixamento; volume parte do concluído (base 120 → 128), mantém abaixo de 80%, não cresce em deload/taper/prova/recuperação, respeita o teto da agenda e limita a distância ao alvo depois da escala.
+- `StructuralQualityTest`: primeira oportunidade sem check-in/carga, com âmbar/vermelho/doença, ACWR alto e monotonia alta; segunda só com progressão (≥80%, ACWR confiável 0,8–1,3, 4+ dias); micro-dose estrutural no taper/race week; recovery/iniciante sem qualidade.
+- `QualityPlanPropertiesTest`: ≤2 oportunidades, nunca adjacentes ao longão ou consecutivas, taper/race só `STRIDES_ONLY` ≤25 min, estrutura cabe na duração e determinismo em matriz de nível/fase/agenda.
+- `PlanGoldenTest`: cenário `G-PER-03` (oportunidade estrutural, longão honesto e fácil de sexta).
 - `VolumeProgressionTest`: sem histórico → teto; +6% sobre a semana anterior; semana < 80% mantém; base antiga não cresce; deload/taper/prova/recuperação; prontidão/carga/ACWR; teto da agenda; plano parcial e janela de 4 semanas; empate pela mais recente; só evidência forte conta.
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `RecoveryWindowTest`: janela 2/3/5/10, borda inclusiva, dia da prova fora, tetos por distância, `blocks`, `dayOfWindow`, `intersects`, escolha da prova mais recente e invariantes.
@@ -300,16 +303,18 @@ Cenários implementados hoje:
 |---|---|
 | `G-LOAD-01` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
 | `G-LOAD-02` | Série diária e PMC de 28 dias |
+| `G-PER-03` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
 | `G-READY-01` | Dia verde com dados completos |
 | `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
 | `G-READY-03` | Sinal de doença/lesão suspende qualidade |
 | `G-READY-04` | Sono curto bloqueia qualidade |
 
-Cenários de plano/prescrição (`G-001`…`G-006`) **não existem**. Hoje, plano e
-prescrição são cobertos por testes unitários determinísticos
-(`WeeklyPlanGeneratorTest`, `DailyPrescriptionEngineTest`, `Cycle1RegressionTest`);
-um golden de plano/prescrição só entra se o cenário provar algo que os testes de
-contrato não provam.
+Os cenários `G-001`…`G-006` continuam não existindo. O plano já tem o golden
+`G-PER-03`; prescrição diária, upgrade e volume ainda entram quando os fluxos
+correspondentes fecharem. Plano e prescrição também são cobertos por testes
+unitários determinísticos (`WeeklyPlanGeneratorTest`, `DailyPrescriptionEngineTest`,
+`Cycle1RegressionTest`, `StructuralQualityTest`, `QualityPlanPropertiesTest`); um
+golden novo só entra se o cenário provar algo que os testes de contrato não provam.
 
 Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra
 no expected quando o cenário for auditado.

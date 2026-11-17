@@ -1,6 +1,6 @@
 # ADR 0044 — Oportunidade de qualidade e autoridade do dia
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-01..C4-08).
+**Status:** Aprovado em 2026-11-16 — implementação em andamento: C4-01, C4-02, C4-03 e C4-07 concluídas; C4-04..C4-06 e C4-08 pendentes.
 **Data:** 2026-11-16
 **Escopo:** `WeeklyPlanGenerator`, `DailyPrescriptionEngine`, `GetTodayPrescription`, `PlanReplanner`, `PlanUpgrade`, Hoje/Plano/Por quê.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0023 (plano × prescrição),

@@ -2,12 +2,13 @@
 
 Cenários de regressão do motor em JSON: `input.json` + `expected.json` + `README.md`.
 
-Estado atual (30/10/2026):
+Estado atual (16/11/2026):
 
 | ID | Motor | Prova |
 |---|---|---|
 | `G-LOAD-01` | `TrainingLoadCalculator` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
 | `G-LOAD-02` | `TrainingLoadEngine` | Série diária de 28 dias e PMC |
+| `G-PER-03` | `WeeklyPlanGenerator` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
 | `G-READY-01` | `ReadinessCalculator` | Dia verde com dados completos |
 | `G-READY-02` | `ReadinessCalculator` | Ausência total de dados |
 | `G-READY-03` | `ReadinessCalculator` | Sinal de doença/lesão |

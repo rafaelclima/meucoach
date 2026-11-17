@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S6.3 do Ciclo 4: gerador consome o catálogo de qualidade)
+**Atualizado:** 16/11/2026 (S7 do Ciclo 4: gates estrutural × do dia e golden `G-PER-03`)
+
+## Sessão 2026-11-16 — Ciclo 4/S7: gates estrutural × do dia (C4-02, C4-07)
+
+**Objetivo:** separar a elegibilidade estrutural da semana do gate do dia, para a primeira oportunidade de qualidade existir mesmo com prontidão/carga de segunda desfavoráveis, e provar o comportamento com golden e propriedades.
+
+### Concluído
+
+- **Gerador estrutural:** `WeeklyPlanGenerator` decide a primeira oportunidade por nível, dias, fase, race week e dia seguro; prontidão, sono, check-in e carga deixam de decidir a existência dela. A segunda continua exigindo `permitsProgression`, semana anterior ≥80%, 4+ dias e ausência de taper/race/recovery.
+- **Micro-dose estrutural:** taper/race week mantém a micro-dose `STRIDES_ONLY` mesmo sem check-in/carga, desde que haja dia elegível; recovery e iniciante continuam sem qualidade.
+- **Auditoria:** cada sessão de qualidade recebe `PlanDecision` (`QUALITY_OPPORTUNITY` na primeira/micro-dose; `PROGRESSION_COMPLETED` na segunda) e o rationale passa a dizer “qualidade planejada para \<dia\>; o dia confirma”.
+- **Golden `G-PER-03`:** 3×40 min, intermediário, duas semanas de carga, sem check-in/carga → 1 oportunidade (fartlek de terça), fácil de sexta 40, “Corrida mais longa” de domingo 40, 120 min e nenhum “Longão”.
+- **Propriedades:** `QualityPlanPropertiesTest` cobre ≤2 oportunidades, espaçamento, taper/race só micro-dose, recovery/iniciante zero, estrutura dentro da duração e determinismo.
+- **Testes legados migrados:** os testes que esperavam “bloqueio na geração” agora provam “oportunidade estrutural + decisão do dia”, com a justificativa do ADR 0044 §2.1.
+
+### Testes
+
+- `:core:domain:test` 975 verdes (+12: `StructuralQualityTest` 7, `QualityPlanPropertiesTest` 4, `PlanGoldenTest` 1); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `./gradlew check`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01% de branches.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+
+### Decisões e observações
+
+- O PRD/ADR 0044 §2.3 usa `days >= 4` para a segunda oportunidade; o texto da task dizia “5+ dias”. Seguimos o PRD/ADR (4) e registramos a divergência.
+- `DailyPrescriptionEngine` já reduz por doença/vermelho/âmbar/sono/carga, então o estado intermediário é seguro; o motivo catalogado do `QualityGate` e a reavaliação entram em C4-04/C4-05/C4-29.
+- `planDecision`/`structure` continuam sem persistência até C4-45; o round-trip do banco segue devolvendo `null`.
+- A copy “Sem progressão até existir histórico de conclusão” ainda não distingue falta de histórico de carga fora da faixa; fica para C4-06/C4-59.
+
+### Próximo passo
+
+1. S8 / C4-04: `DailyPrescriptionEngine` usa `QualityGate`; mantém/rebaixa com motivo, `detail` e `unlockHint`, citando `R-PRESC-02`.
+2. Depois C4-05/C4-29 (reavaliação com check-in/carga e gate de prontidão no diário/recomendador).
 
 ## Sessão 2026-11-16 — Ciclo 4/S6.3: gerador consome o catálogo (C4-17)
 
@@ -5575,3 +5606,8 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 16/11/2026 | Ciclo 4/S4: prontidão sem inversão e sono plausível (C4-28, C4-34..C4-36); 873 testes de domínio |
 | 16/11/2026 | Ciclo 4/S5: `VolumeReference`/`StrongRun` e projeção determinística do volume real (C4-38); 887 testes de domínio |
 | 16/11/2026 | Ciclo 4/S5.1: reparo `LEGACY_UNVERIFIED` do mesmo dia com confirmação (C4-40); 906 testes de domínio |
+| 16/11/2026 | Ciclo 4/S6: `WorkoutStructure`/`WorkoutBlock` e codec JSON versionado (C4-14); 919 testes de domínio |
+| 16/11/2026 | Ciclo 4/S6.1: matriz do catálogo de qualidade e `INTRO_FARTLEK` (C4-15); 936 testes de domínio |
+| 16/11/2026 | Ciclo 4/S6.2: rotação determinística do catálogo (C4-16); 950 testes de domínio |
+| 16/11/2026 | Ciclo 4/S6.3: gerador consome catálogo/estrutura e PEAK por distância (C4-17); 963 testes de domínio |
+| 16/11/2026 | Ciclo 4/S7: gates estrutural × do dia, `planDecision` e golden `G-PER-03` (C4-02, C4-07); 975 testes de domínio |
