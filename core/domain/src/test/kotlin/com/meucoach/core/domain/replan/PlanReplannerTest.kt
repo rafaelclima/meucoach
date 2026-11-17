@@ -11,6 +11,7 @@ import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
+import com.meucoach.core.domain.prescription.VolumeReference
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WeeklyPlanInput
@@ -1300,6 +1301,238 @@ class PlanReplannerTest {
         assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
     }
 
+    // --- ENGINE_UPGRADE / DATA_READY (ADR 0048 §2.2, C4-48) ---
+
+    @Test
+    fun `suggests an engine upgrade when the stored version is stale`() {
+        val fresh = freshThreeDayWeek()
+        assertThat(fresh.sessions.count { it.type == WorkoutType.QUALITY }).isEqualTo(1)
+        val stored = downgradedToEasy(fresh).copy(engineVersion = "weekly-plan-v5")
+
+        val result = planner.evaluate(
+            input(
+                current = stored,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                allowStructuralQualitySlot = true,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.ENGINE_UPGRADE)
+        assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.ENGINE_UPGRADE)
+        assertThat(suggested.candidate.sessions.count { it.type == WorkoutType.QUALITY }).isEqualTo(1)
+        assertThat(suggested.candidate.engineVersion).isEqualTo(WeeklyPlanGenerator.ENGINE_VERSION)
+    }
+
+    @Test
+    fun `engine upgrade without the slot cannot add quality`() {
+        val fresh = freshThreeDayWeek()
+        val stored = downgradedToEasy(fresh).copy(engineVersion = "weekly-plan-v5")
+
+        val result = planner.evaluate(
+            input(
+                current = stored,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                allowStructuralQualitySlot = false,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat((result as ReplanResult.NoChange).reason).contains("treino forte")
+    }
+
+    @Test
+    fun `a stale past week is left alone`() {
+        val fresh = freshThreeDayWeek()
+        val stored = downgradedToEasy(fresh).copy(
+            weekStart = monday.minusWeeks(1),
+            engineVersion = "weekly-plan-v5",
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = stored,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                allowStructuralQualitySlot = true,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat((result as ReplanResult.NoChange).reason).contains("semana vigente")
+    }
+
+    @Test
+    fun `re-evaluates a data-incomplete week when the data arrives`() {
+        val fresh = freshThreeDayWeek()
+        val stored = downgradedToEasy(fresh).copy(
+            ruleIds = (fresh.ruleIds + "R-DATA-01").distinct(),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = stored,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                allowStructuralQualitySlot = true,
+                dataNowComplete = true,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.Suggest::class.java)
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.DATA_READY)
+        assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.DATA_READY)
+        assertThat(suggested.candidate.sessions.count { it.type == WorkoutType.QUALITY }).isEqualTo(1)
+    }
+
+    @Test
+    fun `an incomplete week stays as is while the data is missing`() {
+        val fresh = freshThreeDayWeek()
+        val stored = downgradedToEasy(fresh).copy(
+            ruleIds = (fresh.ruleIds + "R-DATA-01").distinct(),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = stored,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                allowStructuralQualitySlot = true,
+                dataNowComplete = false,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+    }
+
+    @Test
+    fun `a complete week is not re-evaluated when the data arrives`() {
+        val fresh = freshThreeDayWeek()
+        // A week born with trusted data carries no incomplete marker, even
+        // though the content below matches the incomplete one.
+        val stored = downgradedToEasy(fresh).copy(
+            ruleIds = fresh.ruleIds - DATA_INCOMPLETE_RULE_ID,
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = stored,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                allowStructuralQualitySlot = true,
+                dataNowComplete = true,
+            ),
+        )
+
+        assertThat(result).isInstanceOf(ReplanResult.NoChange::class.java)
+    }
+
+    @Test
+    fun `readiness alone never triggers a revision`() {
+        val fresh = freshThreeDayWeek()
+        val amberWithoutCheckIn = readiness().copy(
+            score = 50,
+            level = ReadinessLevel.AMBER,
+            missing = setOf(ReadinessComponent.SUBJECTIVE),
+            flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+        )
+        val availabilityHash = PlanReplanner.availabilityHash(profile(threeDayAvailability()).weeklyAvailability)
+
+        val green = planner.evaluate(
+            input(
+                current = fresh,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                load = null,
+                volumeReferences = volumeHistory(),
+                currentAvailabilityHash = availabilityHash,
+            ),
+        )
+        val amber = planner.evaluate(
+            input(
+                current = fresh,
+                today = monday,
+                profile = profile(threeDayAvailability()),
+                readiness = amberWithoutCheckIn,
+                load = null,
+                volumeReferences = volumeHistory(),
+                currentAvailabilityHash = availabilityHash,
+            ),
+        )
+
+        assertThat(green).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat(amber).isInstanceOf(ReplanResult.NoChange::class.java)
+        assertThat((amber as ReplanResult.NoChange).reason)
+            .isEqualTo((green as ReplanResult.NoChange).reason)
+    }
+
+    private fun threeDayAvailability(): Map<DayOfWeek, Int> = mapOf(
+        DayOfWeek.TUESDAY to 40,
+        DayOfWeek.FRIDAY to 40,
+        DayOfWeek.SUNDAY to 40,
+    )
+
+    private fun volumeHistory(): List<VolumeReference> = listOf(2, 1).map { weeksAgo ->
+        VolumeReference(
+            weekStart = monday.minusWeeks(weeksAgo.toLong()),
+            plannedMinutes = 120,
+            executedMinutes = 120,
+            strongMinutes = 120,
+            strongSessions = 3,
+            plannedSessions = 3,
+            createdOn = monday.minusWeeks(weeksAgo.toLong()),
+            specialWeek = false,
+        )
+    }
+
+    private fun freshThreeDayWeek(): WeeklyPlan = generator.generate(
+        WeeklyPlanInput(
+            profile = profile(threeDayAvailability()),
+            readiness = readiness(),
+            load = null,
+            weekStart = monday,
+            today = monday,
+            volumeReferences = volumeHistory(),
+        ),
+    )
+
+    private fun downgradedToEasy(plan: WeeklyPlan): WeeklyPlan {
+        val sessions = plan.sessions.map { session ->
+            if (session.type == WorkoutType.QUALITY) {
+                session.copy(
+                    type = WorkoutType.EASY,
+                    title = "Fácil e conversável",
+                    qualityKind = null,
+                    planDecision = null,
+                    structure = null,
+                )
+            } else {
+                session
+            }
+        }
+        return plan.copy(
+            sessions = sessions,
+            weeklyMinutes = sessions.sumOf { it.durationMin ?: 0 },
+            qualityCount = 0,
+        )
+    }
+
     @Suppress("DEPRECATION")
     private fun input(
         current: WeeklyPlan,
@@ -1310,6 +1543,7 @@ class PlanReplannerTest {
         load: LoadSnapshot? = knownLoad(),
         previousWeek: WeeklyPlan? = null,
         recentWeeks: List<WeeklyPlan> = emptyList(),
+        volumeReferences: List<VolumeReference>? = null,
         weekNumberInBlock: Int = 1,
         nonTrainablePastDates: Set<LocalDate> = emptySet(),
         missedSessionThreshold: Int = PlanReplanner.PRODUCT_MISSED_SESSION_THRESHOLD,
@@ -1322,6 +1556,8 @@ class PlanReplannerTest {
         race: RacePlan? = null,
         eventDates: Set<LocalDate> = emptySet(),
         recovery: RecoveryWindow? = null,
+        allowStructuralQualitySlot: Boolean = false,
+        dataNowComplete: Boolean = false,
     ) = ReplanInput(
         currentPlan = current,
         currentVersion = currentVersion,
@@ -1336,6 +1572,7 @@ class PlanReplannerTest {
         load = load,
         previousWeek = previousWeek,
         recentWeeks = recentWeeks,
+        volumeReferences = volumeReferences,
         weekNumberInBlock = weekNumberInBlock,
         nonTrainablePastDates = nonTrainablePastDates,
         race = race,
@@ -1343,6 +1580,8 @@ class PlanReplannerTest {
         recovery = recovery,
         missedSessionThreshold = missedSessionThreshold,
         today = today,
+        allowStructuralQualitySlot = allowStructuralQualitySlot,
+        dataNowComplete = dataNowComplete,
     )
 
     private fun generatedPlan(

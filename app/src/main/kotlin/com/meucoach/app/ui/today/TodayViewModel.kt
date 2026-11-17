@@ -12,11 +12,13 @@ import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.CompleteSessionRequest
 import com.meucoach.app.application.CompleteSessionResult
 import com.meucoach.app.application.GetTodayDecision
+import com.meucoach.app.application.OpeningUpgradeResult
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.ReplaceManualCompletionRequest
 import com.meucoach.app.application.ReplaceManualCompletionResult
 import com.meucoach.app.application.TodayDecisionRequest
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.application.UpgradeWeekOnOpening
 import com.meucoach.app.application.VolumeReferenceProjection
 import com.meucoach.app.application.buildLoadSnapshot
 import com.meucoach.app.application.readinessResult
@@ -58,6 +60,8 @@ import com.meucoach.core.domain.prescription.WeeklyPlanInput
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessCalculator
 import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
+import com.meucoach.core.domain.replan.DATA_INCOMPLETE_RULE_ID
+import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.domain.today.TodayDecision
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
@@ -105,6 +109,7 @@ class TodayViewModel @Inject constructor(
     private val timeProvider: TimeProvider,
     private val getTodayDecision: GetTodayDecision,
     private val healthSyncCoordinator: HealthSyncCoordinator,
+    private val upgradeWeekOnOpening: UpgradeWeekOnOpening,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
     private val matcher = SessionMatcher()
@@ -120,6 +125,8 @@ class TodayViewModel @Inject constructor(
     private data class ResolvedDay(
         val context: TodayContext,
         val plan: WeeklyPlan?,
+        /** True when [plan] is the persisted week rather than a fresh generation. */
+        val planIsStored: Boolean,
         val events: List<RaceEvent>,
         val recovery: RecoveryWindow?,
         val dataGate: HealthSyncGate,
@@ -269,15 +276,45 @@ class TodayViewModel @Inject constructor(
             } else {
                 null
             }
-            ResolvedDay(context = context, plan = planned, events = events, recovery = recovery, dataGate = gate)
+            ResolvedDay(
+                context = context,
+                plan = planned,
+                planIsStored = plan != null,
+                events = events,
+                recovery = recovery,
+                dataGate = gate,
+            )
         }
 
     private val dayState = resolvedDay
         .mapLatest { resolved ->
             val context = resolved.context
-            val plan = resolved.plan?.let { generated ->
-                planRepository.getWeek(generated.weekStart) ?: generated.also { planRepository.saveWeek(it) }
+            val existing = if (resolved.planIsStored) resolved.plan else null
+            val plan = existing ?: resolved.plan?.also { planRepository.saveWeek(it) }
+            // ADR 0048 §2.1–§2.2: a stored week that predates the engine or was
+            // born with incomplete data upgrades itself on opening once the
+            // gate settles. Anything else stays untouched for the user.
+            val gateSettled = resolved.dataGate is HealthSyncGate.Ready ||
+                resolved.dataGate is HealthSyncGate.Failed
+            val upgraded = if (existing != null && gateSettled &&
+                openingUpgradeDue(existing, resolved.dataGate)
+            ) {
+                when (val result = upgradeWeekOnOpening(resolved.dataGate)) {
+                    is OpeningUpgradeResult.Upgraded -> {
+                        completionMessage.value = if (result.trigger == ReplanTrigger.DATA_READY) {
+                            "Plano atualizado com os dados da sincronização."
+                        } else {
+                            "Plano atualizado: nova versão do coach."
+                        }
+                        planRepository.getWeek(existing.weekStart) ?: existing
+                    }
+
+                    else -> null
+                }
+            } else {
+                null
             }
+            val effectivePlan = upgraded ?: plan
             val readiness = readinessResult(context.checkIn, context.metrics, context.today)
             // Competition wins and prevents any prescription calculation/persist
             // for the race day; the resolver owns the single branch.
@@ -288,21 +325,21 @@ class TodayViewModel @Inject constructor(
                     readiness = readiness,
                     load = context.load,
                     heatLevel = context.checkIn?.heatLevel ?: HeatLevel.NONE,
-                    plan = plan,
+                    plan = effectivePlan,
                     recovery = resolved.recovery,
                 ),
             )
             val prescription = (decision as? TodayDecision.Training)?.prescription
             val competition = decision is TodayDecision.Competition
             closeBlockedSessionIfNeeded(
-                plan = plan,
+                plan = effectivePlan,
                 prescription = prescription,
                 today = context.today,
                 illnessOrInjury = context.checkIn?.illnessOrInjury == true ||
                     com.meucoach.core.domain.readiness.ReadinessFlag.ILLNESS_OR_INJURY in readiness.flags,
             )
             val suggestions = suggestionsFor(
-                plan = plan,
+                plan = effectivePlan,
                 prescription = prescription,
                 context = context,
                 zone = timeProvider.zoneId.value,
@@ -311,9 +348,9 @@ class TodayViewModel @Inject constructor(
             val todayExecution = if (competition) {
                 null
             } else {
-                plan?.sessions
+                effectivePlan?.sessions
                     ?.firstOrNull { it.date == context.today }
-                    ?.let { session -> executionUi(plan, session, context) }
+                    ?.let { session -> executionUi(effectivePlan, session, context) }
             }
             todayState(
                 checkIn = context.checkIn,
@@ -322,7 +359,7 @@ class TodayViewModel @Inject constructor(
                 load = context.load,
                 today = context.today,
                 now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
-                plan = plan,
+                plan = effectivePlan,
                 prescription = prescription,
                 decision = decision,
                 eventDates = resolved.events.map { event -> event.targetDate }.toSet(),
@@ -349,6 +386,15 @@ class TodayViewModel @Inject constructor(
             now = timeProvider.now().atZone(timeProvider.zoneId.value).toLocalTime(),
         ),
     )
+
+    /**
+     * Cheap opening filter for the automatic upgrade (ADR 0048 §2.1–§2.2).
+     * The use case re-checks the same conditions against the rebuilt context;
+     * this only avoids waking it on weeks that cannot need it.
+     */
+    private fun openingUpgradeDue(stored: WeeklyPlan, gate: HealthSyncGate): Boolean =
+        stored.engineVersion != WeeklyPlanGenerator.ENGINE_VERSION ||
+            (DATA_INCOMPLETE_RULE_ID in stored.ruleIds && gate is HealthSyncGate.Ready)
 
     private suspend fun closeBlockedSessionIfNeeded(
         plan: WeeklyPlan?,

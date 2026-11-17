@@ -60,6 +60,8 @@ internal fun ReplanSuggestion.toUi(changes: List<ReplanChange>): ReplanSuggestio
 private fun ReplanSuggestion.headline(): String = when {
     causes.size > 1 -> "Vale ajustar o resto da semana?"
     causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) -> "Seu fuso mudou"
+    trigger == ReplanTrigger.ENGINE_UPGRADE -> "Nova versão do treino disponível"
+    trigger == ReplanTrigger.DATA_READY -> "Chegaram dados novos do seu relógio"
     trigger == ReplanTrigger.PROFILE_CHANGED -> "Seu perfil mudou"
     trigger == ReplanTrigger.USER_REQUEST -> "Reorganizar o resto da semana?"
     trigger == ReplanTrigger.RACE_COMPLETED -> "Ajustar o resto da semana após a prova?"
@@ -76,6 +78,14 @@ private fun ReplanSuggestion.body(): String = when {
     causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) ->
         "O fuso que define seus dias mudou. Posso reorganizar só os próximos dias, " +
             "sem aumentar a carga e sem mexer no que já passou."
+
+    trigger == ReplanTrigger.ENGINE_UPGRADE ->
+        "O motor do plano evoluiu. Posso regenerar só os próximos dias, " +
+            "sem aumentar a carga e sem mexer no que já passou."
+
+    trigger == ReplanTrigger.DATA_READY ->
+        "Os dados da sincronização chegaram. Posso reavaliar só os próximos dias " +
+            "com os dados completos, sem aumentar a carga e sem mexer no que já passou."
 
     trigger == ReplanTrigger.PROFILE_CHANGED ->
         "Seu perfil de planejamento mudou. Posso reorganizar só os próximos dias, " +
@@ -104,6 +114,8 @@ private fun ReplanCause.label(): String = when (this) {
     ReplanCause.AVAILABILITY_CHANGED -> "disponibilidade"
     ReplanCause.USER_REQUEST -> "pedido seu"
     ReplanCause.RACE_COMPLETED -> "recuperação após a prova"
+    ReplanCause.DATA_READY -> "dados da sincronização"
+    ReplanCause.ENGINE_UPGRADE -> "nova versão do motor"
 }
 
 internal fun ReplanChange.toUi(): ReplanChangeUi = ReplanChangeUi(

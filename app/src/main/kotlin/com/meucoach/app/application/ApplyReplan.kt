@@ -1,11 +1,14 @@
 package com.meucoach.app.application
 
+import com.meucoach.core.data.repository.PlanUpgradeOutcome
 import com.meucoach.core.data.repository.ReplanApplyFailure
 import com.meucoach.core.data.repository.ReplanApplyOutcome
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.ReplanSuggestion
+import com.meucoach.core.domain.replan.ReplanTrigger
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -49,6 +52,24 @@ class ApplyReplan @Inject constructor(
         val currentInputsHash = PlanReplanner.inputsHash(context.input)
         if (currentInputsHash != request.suggestion.expectedInputsHash) {
             return stale(request)
+        }
+
+        // ADR 0048 §2.2: an accepted engine upgrade persists through the
+        // versioned upgrade (which bumps `generatorVersion`) instead of the
+        // plain replan path, which never touches it.
+        if (request.suggestion.trigger == ReplanTrigger.ENGINE_UPGRADE) {
+            return when (
+                val outcome = plans.applyUpgrade(
+                    candidate = request.candidate,
+                    today = request.today,
+                    targetVersion = WeeklyPlanGenerator.ENGINE_VERSION,
+                    experience = context.input.profile.experience,
+                )
+            ) {
+                is PlanUpgradeOutcome.Applied -> ApplyReplanResult.Applied(outcome.version)
+                is PlanUpgradeOutcome.Skipped -> stale(request)
+                is PlanUpgradeOutcome.Failed -> ApplyReplanResult.Rejected(outcome.message)
+            }
         }
 
         return when (

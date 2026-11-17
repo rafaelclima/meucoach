@@ -7,7 +7,10 @@ import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
+import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.application.UpgradeWeekOnOpening
 import com.meucoach.app.health.HealthSyncCoordinator
 import com.meucoach.app.health.HealthSyncGate
 import com.meucoach.app.importer.RaceAutoCompletionStore
@@ -150,6 +153,14 @@ class TimeDrivenStateTest {
         val executions = SessionExecutionRepository(database, clock)
         val raceEvents = RaceEventRepository(database, clock)
         val coordinator = settledCoordinator()
+        val contexts = ReplanContextBuilder(
+            plans = plans,
+            profiles = profiles,
+            checkIns = checkIns,
+            signals = TrainingSignalSource(checkIns, metrics, activities, executions),
+            raceEvents = raceEvents,
+            timeProvider = time,
+        )
         val viewModel = TodayViewModel(
             checkIns,
             metrics,
@@ -170,6 +181,7 @@ class TimeDrivenStateTest {
             time,
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
             coordinator,
+            UpgradeWeekOnOpening(contexts, plans),
         )
 
         val sundayState = withTimeout(5_000) {

@@ -17,8 +17,16 @@ import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
+import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.replan.PlanReplanner
+import com.meucoach.core.domain.replan.PlanUpgrade
 import com.meucoach.core.domain.replan.PlanningFingerprints
+import com.meucoach.core.domain.replan.ReplanCause
+import com.meucoach.core.domain.replan.ReplanSuggestion
+import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.CompletionEvidence
+import com.meucoach.core.model.DataConfidence
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
@@ -44,6 +52,7 @@ class ApplyReplanTest {
     private lateinit var getPrescription: GetTodayPrescription
     private lateinit var evaluate: EvaluateReplan
     private lateinit var apply: ApplyReplan
+    private lateinit var contexts: ReplanContextBuilder
     private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
     private val timeProvider = FakeTimeProvider(clock.instant(), ZoneOffset.UTC)
 
@@ -74,6 +83,7 @@ class ApplyReplanTest {
             raceEvents = RaceEventRepository(database, clock),
             timeProvider = timeProvider,
         )
+        this.contexts = contexts
         evaluate = EvaluateReplan(contexts, plans)
         apply = ApplyReplan(plans, contexts, evaluate)
     }
@@ -235,6 +245,67 @@ class ApplyReplanTest {
         assertThat((outcome as ApplyReplanResult.Stale).reevaluated)
             .isInstanceOf(EvaluateReplanResult.Unavailable::class.java)
         assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `routes an engine upgrade suggestion to the versioned upgrade`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        checkIns.save(replanCheckIn())
+        val friday = REPLAN_WEEK_START.plusDays(4)
+        val stored = replanPlan(
+            sessions = listOf(
+                easySession(REPLAN_WEEK_START, durationMin = 40),
+                easySession(REPLAN_WEEK_START.plusDays(1), durationMin = 35),
+                easySession(REPLAN_TODAY, durationMin = 40),
+                easySession(friday, durationMin = 30),
+            ),
+        ).copy(engineVersion = "weekly-plan-v5")
+        plans.saveWeek(stored)
+        val candidate = stored.copy(
+            sessions = stored.sessions.map {
+                if (it.date == friday) qualitySession(friday) else it
+            },
+            qualityCount = 1,
+            engineVersion = WeeklyPlanGenerator.ENGINE_VERSION,
+        )
+        val input = contexts.build(explicit = true)!!.input
+        val suggestion = ReplanSuggestion(
+            weekStart = REPLAN_WEEK_START,
+            trigger = ReplanTrigger.ENGINE_UPGRADE,
+            causes = listOf(ReplanCause.ENGINE_UPGRADE),
+            missedTrainableCount = 0,
+            expectedVersion = 1,
+            expectedInputsHash = PlanReplanner.inputsHash(input),
+            expectedAvailabilityHash = null,
+            availabilityHash = PlanReplanner.availabilityHash(replanProfile().weeklyAvailability),
+            expectedFingerprintVersion = PlanningFingerprints.VERSION,
+            expectedFingerprint = PlanningFingerprints.of(replanProfile()).hash,
+            profileSnapshot = PlanningFingerprints.of(replanProfile()).snapshot,
+            expectedTemporalContextHash = PlanningFingerprints.temporalContextHash(replanProfile()),
+            rationale = "Nova versão do motor do plano disponível.",
+            ruleIds = listOf("R-PLAN-03"),
+            evidenceIds = listOf("EV-PFITZINGER-2008"),
+            confidence = DataConfidence.MEDIUM,
+        )
+
+        val outcome = apply(
+            ApplyReplanRequest(
+                suggestion = suggestion,
+                candidate = candidate,
+                today = REPLAN_TODAY,
+                explicit = true,
+            ),
+        )
+
+        assertThat(outcome).isInstanceOf(ApplyReplanResult.Applied::class.java)
+        assertThat((outcome as ApplyReplanResult.Applied).version).isEqualTo(2)
+        val record = plans.getWeekRecord(REPLAN_WEEK_START)!!
+        assertThat(record.generatorVersion).isEqualTo(WeeklyPlanGenerator.ENGINE_VERSION)
+        assertThat(record.plan.engineVersion).isEqualTo(WeeklyPlanGenerator.ENGINE_VERSION)
+        assertThat(record.plan.sessions.first { it.date == friday }.type)
+            .isEqualTo(WorkoutType.QUALITY)
+        assertThat(plans.getLatestRevision(REPLAN_WEEK_START)!!.trigger)
+            .isEqualTo(PlanUpgrade.ENGINE_UPGRADE_TRIGGER)
     }
 
     private suspend fun prescriptionFor(plan: WeeklyPlan) = getPrescription(

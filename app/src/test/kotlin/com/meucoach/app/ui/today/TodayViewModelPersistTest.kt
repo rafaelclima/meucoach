@@ -8,7 +8,10 @@ import com.meucoach.app.application.CompleteSession
 import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
+import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.application.UpgradeWeekOnOpening
 import com.meucoach.app.health.HealthSyncCoordinator
 import com.meucoach.app.health.HealthSyncGate
 import com.meucoach.app.importer.RaceAutoCompletionStore
@@ -187,6 +190,112 @@ class TodayViewModelPersistTest {
         assertThat(state.plan!!.rationale).contains("sincronização")
         assertThat(state.plan!!.ruleIds).contains("R-DATA-01")
         assertThat(state.plan!!.evidenceIds).contains("EV-IMPELLIZZERI-2020")
+    }
+
+    @Test
+    fun `upgrades a stale stored week on opening`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-04T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = LocalDate.of(2026, 11, 2)
+        val friday = weekStart.plusDays(4)
+        val sunday = weekStart.plusDays(6)
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(
+            com.meucoach.core.domain.prescription.WeeklyPlan(
+                weekStart = weekStart,
+                sessions = listOf(
+                    com.meucoach.core.domain.prescription.PlannedSession(
+                        date = today,
+                        type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                        title = "Fácil e conversável",
+                        durationMin = 40,
+                        rationale = "Base.",
+                        ruleIds = listOf("R-PLAN-03"),
+                        evidenceIds = listOf("EV-SEILER-2010"),
+                    ),
+                    com.meucoach.core.domain.prescription.PlannedSession(
+                        date = friday,
+                        type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                        title = "Fácil de sexta",
+                        durationMin = 60,
+                        rationale = "Base.",
+                        ruleIds = listOf("R-PLAN-03"),
+                        evidenceIds = listOf("EV-SEILER-2010"),
+                    ),
+                    com.meucoach.core.domain.prescription.PlannedSession(
+                        date = sunday,
+                        type = com.meucoach.core.domain.prescription.WorkoutType.LONG,
+                        title = "Longão",
+                        durationMin = 90,
+                        rationale = "Base.",
+                        ruleIds = listOf("R-PLAN-03"),
+                        evidenceIds = listOf("EV-PFITZINGER-2008"),
+                    ),
+                ),
+                weeklyMinutes = 190,
+                longRunMinutes = 90,
+                qualityCount = 0,
+                rationale = "Semana antiga.",
+                confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
+                ruleIds = listOf("R-PLAN-03"),
+                evidenceIds = listOf("EV-PFITZINGER-2008"),
+                createdOn = weekStart,
+                engineVersion = "weekly-plan-v5",
+            ),
+        )
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+
+        val viewModel = createViewModel(timeProvider, coordinator)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
+        }
+
+        assertThat(state.plan!!.sessions.first { it.date == friday }.durationMin).isEqualTo(40)
+        val record = plans.getWeekRecord(weekStart)!!
+        assertThat(record.version).isEqualTo(2)
+        assertThat(record.generatorVersion).isEqualTo(
+            com.meucoach.core.domain.prescription.WeeklyPlanGenerator.ENGINE_VERSION,
+        )
+        assertThat(plans.getLatestRevision(weekStart)!!.trigger)
+            .isEqualTo(com.meucoach.core.domain.replan.PlanUpgrade.ENGINE_UPGRADE_TRIGGER)
+        assertThat(state.completionMessage).contains("nova versão do coach")
+    }
+
+    @Test
+    fun `leaves a current week untouched on opening`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-04T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val weekStart = LocalDate.of(2026, 11, 2)
+        val friday = weekStart.plusDays(4)
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(weekWith(today, weekStart))
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+
+        val viewModel = createViewModel(timeProvider, coordinator)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
+        }
+
+        assertThat(state.plan!!.sessions.first { it.date == today }.durationMin).isEqualTo(40)
+        assertThat(plans.getWeekRecord(weekStart)!!.version).isEqualTo(1)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+        assertThat(state.completionMessage).isNull()
     }
 
     @Test
@@ -705,6 +814,14 @@ class TodayViewModelPersistTest {
             }
         }
         val executions = SessionExecutionRepository(database)
+        val contexts = ReplanContextBuilder(
+            plans = plans,
+            profiles = profiles,
+            checkIns = checkIns,
+            signals = TrainingSignalSource(checkIns, metrics, activities, executions),
+            raceEvents = raceEvents,
+            timeProvider = timeProvider,
+        )
         return TodayViewModel(
             checkIns,
             metrics,
@@ -725,6 +842,7 @@ class TodayViewModelPersistTest {
             timeProvider,
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
             coordinator,
+            UpgradeWeekOnOpening(contexts, plans),
         )
     }
 

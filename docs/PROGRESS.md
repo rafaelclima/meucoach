@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S10.1 do Ciclo 4: `PlanUpgrade` idempotente, C4-47)
+**Atualizado:** 17/11/2026 (S10.2 do Ciclo 4: triggers de upgrade + fiação na abertura, C4-48)
+
+## Sessão 2026-11-17 — Ciclo 4/S10.2: upgrade automático na abertura (C4-48)
+
+**Objetivo:** detectar semana defasada ou nascida incompleta e atualizá-la sozinha na abertura — com revisão auditável — sem que a prontidão do dia dispare replanejamento.
+
+### Concluído
+
+- **Domínio:** `ReplanTrigger`/`ReplanCause` ganham `ENGINE_UPGRADE` (versão armazenada ≠ motor) e `DATA_READY` (semana com `R-DATA-01` + dados completos); `ReplanInput` ganha `allowStructuralQualitySlot` (default falso) e `dataNowComplete` (default falso). O slot só abre acoplado ao trigger detectado, nunca no fluxo manual. Prontidão sozinha nunca dispara (teste dedicado).
+- **Abertura:** `UpgradeWeekOnOpening` avalia e auto-aplica só os 2 triggers de sistema (`ENGINE_UPGRADE` via `applyUpgrade` com bump de versão, `DATA_READY` via `applyReplan`); o resto continua com o usuário. `TodayViewModel` chama com gate assentado e filtro barato, com banner “Plano atualizado…” via `completionMessage`. `ApplyReplan` aceita `ENGINE_UPGRADE` manual via `applyUpgrade`; `ReplanUi` ganhou copy dos 2 triggers.
+- **Testes:** 7 no `PlanReplannerTest`, 6 no `UpgradeWeekOnOpeningTest`, 1 de roteamento no `ApplyReplanTest`, 2 de abertura no `TodayViewModelPersistTest`.
+
+### Testes
+
+- `:core:domain:test` 1006 verdes (+7); `:core:data:test` 197; `:app:testDebugUnitTest` 927 (+9); `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`, `:core:domain:detekt`, `:core:data:detekt`, `:app:detekt` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; nenhuma UI nova; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `ENGINE_UPGRADE` domina `DATA_READY`; causas múltiplas preservadas no rationale.
+- `R-DATA-01` também marca o fallback sem disponibilidade — nesse caso a regeneração é idêntica e dá `NoChange` (auto-corretivo, sem escrita).
+- Detekt resolvido sem baseline novo (booleanos intermediários + `buildList` inline); só a assinatura do `TodayViewModel` entrou no baseline vigente (dívida pré-existente).
+- Passagem de `phase`/`raceWeek` pela produção continua pendente; export `PlanJson` é C4-50.
+
+### Próximo passo
+
+1. S10 / C4-49: docs ADR 0048, ARCHITECTURE, DATA_MODEL (sem código).
+2. Depois S11 / C4-06 (copy da oportunidade).
 
 ## Sessão 2026-11-17 — Ciclo 4/S10.1: upgrade idempotente do plano (C4-47)
 
