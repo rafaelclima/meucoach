@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S3 concluídas; **S4 é a próxima sessão**.
+**Status:** S0 a S6.2 concluídas; **C4-17 é a próxima task**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S6.1 (C4-15)
-> **Último commit:** C4-15 — `feat(domain): add quality catalog matrix and structures (C4-15)`
+> **Última atualização:** 16/11/2026 — S6.2 (C4-16)
+> **Último commit:** C4-16 — `feat(domain): add deterministic quality rotation (C4-16)`
 > **Fase:** 1 — Domínio — **em andamento**
-> **Sessão atual:** **S6.1 concluída — C4-15 DONE**
-> **Task atual:** C4-16 (TODO)
-> **Próxima task:** C4-16
+> **Sessão atual:** **S6.2 concluída — C4-16 DONE**
+> **Task atual:** C4-17 (TODO)
+> **Próxima task:** C4-17
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 936 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`
-> **Próxima ação:** abrir C4-16 (rotação determinística por `weekInPhase`, duas qualidades com kinds diferentes e filtro da segunda metade da BASE), TDD sobre `SessionLibrary`.
+> **Gates da última sessão:** `:core:domain:test` 950 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`
+> **Próxima ação:** abrir C4-17 (o gerador consome `qualityTemplates`/`easyTemplates`/`qualityRotation`, preenche `qualityKind`/`structure` e torna o `PEAK` específico), TDD sobre `WeeklyPlanGenerator`.
 
 ### 0.1 O que já está pronto
 
@@ -104,6 +104,14 @@
 - [x] `PEAK` específico por distância (`RACE_PACE`, alvos `GOAL_5K`/`GOAL_10K`/`GOAL_HALF`/`GOAL_MARATHON`); avançado soma um segundo estímulo.
 - [x] 17 testes em `QualityCatalogTest`; `SessionLibraryTest` atualizado para a nova matriz.
 
+**S6.2 — rotação do catálogo (C4-16)**
+
+- [x] `SessionLibrary.qualityRotation(phase, level, distance, weekInPhase, maxQualities, phaseWeeks)`; a seleção é determinística e não depende do relógio.
+- [x] Semanas seguidas não repetem o kind principal quando o catálogo tem mais de um estímulo; a segunda qualidade sempre tem kind diferente.
+- [x] O fartlek leve da `BASE` só entra na segunda metade da fase (`weekInPhase * 2 >= phaseWeeks`); sem `phaseWeeks`, a `BASE` fica sem qualidade.
+- [x] `rotateQualities` interno separa a rotação do filtro de fase e atribui `QUALITY_MAIN`/`QUALITY_SECOND`; catálogo de um só kind devolve só a principal.
+- [x] 14 testes em `QualityRotationTest`; `SessionLibrary` com 100% de linhas e 98,98% de branches.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-02/C4-04/C4-05).
@@ -115,7 +123,7 @@
 - O check-in UI (C4-30), a reavaliação tardia (C4-31), o golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes.
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
 - A persistência de `qualityKind`/`planDecision`/`structure` fica para C4-45/C4-46 (schema v18); por enquanto os campos são `null` no round-trip. O codec JSON de `structure` já existe (C4-14), mas ainda não está ligado ao `PlanJson`/banco.
-- O catálogo de `role`/`qualityKind`/`structure` já existe em `SessionLibrary` (C4-15); o gerador e a oportunidade ainda não o consomem (C4-17). `WorkoutStructure` já existe no domínio, mas o gerador ainda não o preenche.
+- O catálogo de `role`/`qualityKind`/`structure` já existe em `SessionLibrary` (C4-15) e a rotação determinística também (C4-16); o gerador e a oportunidade ainda não a consomem (C4-17). `WorkoutStructure` já existe no domínio, mas o gerador ainda não o preenche.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-03`, `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
@@ -248,7 +256,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S4** | C4-28, C4-34..C4-36 | Prontidão, check-in, sono | testes de readiness/health | commit + testes |
 | **S5** | C4-38, C4-39 | `VolumeReference`/`StrongRun`; meso/graduação | testes de volume | C4-38 e C4-39 concluídas (`VolumeReferenceTest`, `VolumeReferenceProjectionTest`, base/meso/graduação reais) |
 | **S5.1** | C4-40 | Reparo `LEGACY` do mesmo dia, com confirmação | testes de reparo; migrado intocado | C4-40 concluída (`SessionCompletionRulesTest`, repositório, `RepairLegacyCompletionTest`, prompt) |
-| **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | C4-14 e C4-15 concluídas (`WorkoutStructureTest` 13, `WorkoutStructureJsonTest` 11, `QualityCatalogTest` 17); C4-16..C4-17 pendentes |
+| **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | C4-14, C4-15 e C4-16 concluídas (`WorkoutStructureTest` 13, `WorkoutStructureJsonTest` 11, `QualityCatalogTest` 17, `QualityRotationTest` 14); C4-17 pendente |
 | **S7** | C4-02, C4-07 | Gerador estrutural + `G-PER-03` | `G-PER-03`; propriedades | commit + golden |
 | **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | commit + testes |
 | **S9** | C4-45, C4-46 | Schema v18, JSON, `generatorVersion` | migração 17→18; round-trip | commit + migração |
@@ -466,7 +474,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-14 | `WorkoutStructure`/`WorkoutBlock` + JSON | C4-01 | L | S6 | ADR 0047/0048 | Round-trip; retrocompatível | `WorkoutStructureTest` (13); `WorkoutStructureJsonTest` (11); commit S6 |
 | [x] | C4-15 | `QualityKind` + matriz da `SessionLibrary` | C4-14 | XL | S6.1 | ADR 0047 | Matriz fase/nível/distância | `QualityCatalogTest` (17); `SessionLibraryTest` atualizado; commit S6.1 |
-| [ ] | C4-16 | Rotação determinística e 2 kinds | C4-15 | M | S6 | ADR 0047 | Duas semanas não repetem | — |
+| [x] | C4-16 | Rotação determinística e 2 kinds | C4-15 | M | S6.2 | ADR 0047 | Duas semanas não repetem | `QualityRotationTest` (14); commit S6.2 |
 | [ ] | C4-17 | Gerador usa estrutura/kind; PEAK específico | C4-15/16 | L | S6 | ADR 0047 | PEAK ≠ BUILD; testes | — |
 | [ ] | C4-18 | Strides para todos + intro fartlek do iniciante | C4-15 | M | S12 | ADR 0047 | Iniciante EASY; qualidade 0 | — |
 | [ ] | C4-19 | Briefing/UI da estrutura | C4-14/17 | M | S12 | ADR 0047 | Não promete mais tempo | — |
@@ -643,6 +651,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** `qualityTemplates` expõe todos os estímulos elegíveis; a rotação escolhe 1–2 por semana (C4-16) e o gerador preenche `qualityKind`/`structure` (C4-17). A projeção legada `templates` mantém main/second e BASE sem qualidade para não mudar o gerador v6 antes de C4-17; a segunda metade da BASE é decisão da rotação. As formas de PEAK são baseadas em tempo (`WorkoutBlock` não carrega metros) e cabem no teto de 45 min; o alvo `GOAL_*` é um rótulo de distância, não a meta de tempo. O iniciante continua sem `QUALITY` estruturada; a micro-dose de `TAPER` permanece `STRIDES_ONLY` no catálogo, mas o gerador já bloqueia qualidade para `BEGINNER` (`R-PRESC-04`). `structure` ainda não é persistida nem usada pelo gerador.
 - **Próximo:** S6 / C4-16 (rotação determinística por `weekInPhase`, duas qualidades com kinds diferentes e filtro da segunda metade da BASE), TDD.
 
+### S6.2 — 2026-11-16 — Rotação determinística do catálogo (C4-16)
+
+- **Status:** DONE
+- **Tasks:** C4-16.
+- **Arquivos:** `core/domain/.../prescription/SessionLibrary.kt`, `QualityRotationTest.kt` (novo), `docs/adr/0047-quality-catalog-periodization.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 950 verdes (+14: `QualityRotationTest`); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`; FIT 93,01% de branches. `SessionLibrary` com 100% de linhas e 98,98% de branches.
+- **Commit:** `feat(domain): add deterministic quality rotation (C4-16)`.
+- **Decisões/notas:** `weekInPhase` é 0-based e vem do plano/mesociclo; a rotação é pura e não lê relógio. `qualityRotation` filtra a `BASE` pela segunda metade quando `phaseWeeks` é conhecido; sem ele, a `BASE` fica conservadoramente sem qualidade. A segunda qualidade só entra se houver kind diferente; catálogo de um kind devolve só a principal. A projeção legada `templates(...)` continua intacta até o gerador consumir a matriz (C4-17). Nenhum schema, migração ou UI alterada.
+- **Próximo:** S6 / C4-17 (o gerador consome `qualityTemplates`/`easyTemplates`/`qualityRotation`, preenche `qualityKind`/`structure` e torna o `PEAK` específico), TDD sobre `WeeklyPlanGenerator`.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -728,7 +746,7 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 901 | Atualizar conforme novos testes |
-| `:core:domain` | 919 | Atualizar conforme novos testes |
+| `:core:domain` | 950 | Atualizar conforme novos testes |
 | `:core:data` | 186 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -818,11 +836,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-15, S6)
+## 14. Próxima ação (C4-17, S6)
 
-1. Abrir `docs/adr/0047-quality-catalog-periodization.md` §2.3–2.5 e o FR-403 do PRD.
-2. Ler `SessionLibrary`, `SessionTemplate`, `SessionLibraryTest`, `SessionRolesTest` e os testes do gerador que fixam títulos/roles.
-3. Escrever os testes que falham de C4-15: matriz fase × nível × distância, `BEGINNER` sem `QUALITY` (strides/intro fartlek `EASY`), `INTERMEDIATE/BUILD` com `INTERVALS`/`FARTLEK`/`HILLS`, `PEAK` específico (5K/maratona), `INTRO_FARTLEK` e `structure` presente nos templates de qualidade.
-4. Implementar C4-15 com TDD, rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir `docs/adr/0047-quality-catalog-periodization.md` §2.1–2.7 e o FR-403/FR-404 do PRD.
+2. Ler `WeeklyPlanGenerator`, `SessionLibrary`, `SessionRolesTest` e os testes que fixam títulos/roles/durações.
+3. Escrever os testes que falham de C4-17: o gerador usa `qualityRotation`/`easyTemplates`, preenche `qualityKind`/`structure` dentro da duração, torna o `PEAK` específico e mantém iniciante/taper/recovery.
+4. Implementar C4-17 com TDD, rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

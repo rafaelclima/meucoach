@@ -148,6 +148,83 @@ object SessionLibrary {
             MesoPhase.PEAK -> peakTemplates(level, distance)
         }
 
+    /**
+     * Deterministic weekly rotation over the eligible quality matrix (ADR 0047
+     * §2.7). [weekInPhase] is the 0-based position inside the current phase and
+     * comes from the plan/mesocycle, never from the clock.
+     *
+     * Consecutive weeks never repeat the main stimulus when the catalog carries
+     * more than one kind. With [maxQualities] = 2 the rotation adds a second
+     * template with a kind different from the main one, when one exists; the
+     * day still decides whether to keep it (ADR 0044).
+     *
+     * The light `BASE` fartlek is only eligible in the second half of the
+     * phase. Without [phaseWeeks] the rotation stays conservative and exposes
+     * no `BASE` quality: the caller must know how long the phase is.
+     */
+    fun qualityRotation(
+        phase: MesoPhase,
+        level: Experience,
+        distance: RaceDistance? = null,
+        weekInPhase: Int,
+        maxQualities: Int = 1,
+        phaseWeeks: Int? = null,
+    ): List<SessionTemplate> {
+        require(phaseWeeks == null || phaseWeeks > 0) { "phaseWeeks must be positive" }
+        require(phaseWeeks == null || weekInPhase < phaseWeeks) {
+            "weekInPhase must be inside the phase"
+        }
+        val catalog = qualityTemplates(phase, level, distance)
+        val eligible = if (phase == MesoPhase.BASE && !isSecondHalfOfPhase(weekInPhase, phaseWeeks)) {
+            emptyList()
+        } else {
+            catalog
+        }
+        return rotateQualities(eligible, weekInPhase, maxQualities)
+    }
+
+    /**
+     * Rotation core over an already filtered catalog, exposed internally so the
+     * catalog tests can prove the distinct-kind guarantee with synthetic
+     * duplicates. Roles are assigned here: main first, second when allowed.
+     */
+    internal fun rotateQualities(
+        templates: List<SessionTemplate>,
+        weekInPhase: Int,
+        maxQualities: Int,
+    ): List<SessionTemplate> {
+        require(weekInPhase >= 0) { "weekInPhase must not be negative" }
+        require(maxQualities in 1..MAX_QUALITIES_PER_WEEK) {
+            "maxQualities must be between 1 and $MAX_QUALITIES_PER_WEEK"
+        }
+        if (templates.isEmpty()) return emptyList()
+        val mainIndex = weekInPhase % templates.size
+        val main = templates[mainIndex]
+        val selected = mutableListOf(main.copy(role = SessionRole.QUALITY_MAIN))
+        if (maxQualities < 2) return selected
+        val second = distinctKindAfter(templates, mainIndex, main.qualityKind) ?: return selected
+        selected += second.copy(role = SessionRole.QUALITY_SECOND)
+        return selected
+    }
+
+    private fun distinctKindAfter(
+        templates: List<SessionTemplate>,
+        mainIndex: Int,
+        mainKind: QualityKind?,
+    ): SessionTemplate? {
+        for (offset in 1 until templates.size) {
+            val candidate = templates[(mainIndex + offset) % templates.size]
+            if (candidate.qualityKind != mainKind) return candidate
+        }
+        return null
+    }
+
+    /** 0-based [weekInPhase] belongs to the later half; odd lengths round up. */
+    private fun isSecondHalfOfPhase(weekInPhase: Int, phaseWeeks: Int?): Boolean {
+        if (phaseWeeks == null) return false
+        return weekInPhase * 2 >= phaseWeeks
+    }
+
     private fun buildTemplates(level: Experience): List<SessionTemplate> = when (level) {
         Experience.BEGINNER -> emptyList()
 
@@ -545,6 +622,7 @@ object SessionLibrary {
     private const val INTERVAL_WORK_SEC = 180
     private const val INTERVAL_RECOVERY_SEC = 120
     private const val INTERVAL_CYCLE_MIN = 5
+    private const val MAX_QUALITIES_PER_WEEK = 2
     private val QUALITY_RULES = listOf(RULE_ID, "R-PLAN-02")
     private val QUALITY_EVIDENCE = listOf("EV-DANIELS-2014", "EV-SEILER-2010", "EV-FOSTER-2001")
 }

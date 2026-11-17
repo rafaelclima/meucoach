@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — em implementação (C4-14 e C4-15 concluídas; C4-16..C4-21 pendentes).
+**Status:** Aprovado em 2026-11-16 — em implementação (C4-14, C4-15 e C4-16 concluídas; C4-17..C4-21 pendentes).
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -190,8 +190,11 @@ if (maxQualities == 2) {
 }
 ```
 
-`weekInPhase` é derivado do plano/mesociclo, não do relógio. Duas semanas seguidas
-não repetem o mesmo kind quando há mais de um template.
+`weekInPhase` é 0-based e derivado do plano/mesociclo, não do relógio. A rotação
+recebe também `phaseWeeks` (duração da fase) para a segunda metade da `BASE`;
+sem essa informação ela não expõe qualidade na `BASE`. Duas semanas seguidas não
+repetem o mesmo kind quando há mais de um template; a segunda qualidade sempre
+tem kind diferente da principal.
 
 ### 2.8 Precedência de alvos (`R-ZONE-01 v2`)
 
@@ -353,3 +356,11 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   C4-17. As formas de `PEAK` são baseadas em tempo porque `WorkoutBlock` não
   carrega metros; C4-17 converte a previsão atual em pace real e ajusta a
   estrutura à duração disponível.
+- **C4-16 (S6.2):** `SessionLibrary.qualityRotation(phase, level, distance,
+  weekInPhase, maxQualities, phaseWeeks)` seleciona 1–2 templates com rotação
+  determinística por `weekInPhase` (0-based); semanas seguidas não repetem o
+  kind principal e a segunda qualidade só entra com kind diferente. O fartlek
+  leve da `BASE` fica restrito à segunda metade via `phaseWeeks`; sem essa
+  informação, a `BASE` fica sem qualidade (conservador). A projeção legada
+  `templates(...)` continua intacta até C4-17. 14 testes em
+  `QualityRotationTest`.

@@ -1,6 +1,35 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S6.1 do Ciclo 4: matriz do catálogo de qualidade)
+**Atualizado:** 16/11/2026 (S6.2 do Ciclo 4: rotação determinística do catálogo)
+
+## Sessão 2026-11-16 — Ciclo 4/S6.2: rotação determinística do catálogo (C4-16)
+
+**Objetivo:** transformar a matriz da `SessionLibrary` em uma seleção semanal determinística, sem depender do relógio, que não repete o estímulo principal em semanas seguidas e respeita a segunda metade da `BASE`.
+
+### Concluído
+
+- **Rotação:** `SessionLibrary.qualityRotation(phase, level, distance, weekInPhase, maxQualities, phaseWeeks)` seleciona 1–2 templates; `weekInPhase` é 0-based e vem do plano/mesociclo.
+- **Kinds distintos:** a segunda qualidade só entra se houver um kind diferente da principal; um catálogo de um só kind devolve apenas a principal.
+- **BASE:** o fartlek leve só fica elegível na segunda metade da fase (`weekInPhase * 2 >= phaseWeeks`); sem `phaseWeeks`, a `BASE` fica sem qualidade.
+- **Papéis:** a rotação atribui `QUALITY_MAIN`/`QUALITY_SECOND`; a projeção legada `templates(...)` continua intacta até C4-17.
+
+### Testes
+
+- `:core:domain:test` 950 verdes (+14: `QualityRotationTest`); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01% de branches.
+- `SessionLibrary`: 100% de linhas e 98,98% de branches.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+
+### Decisões e observações
+
+- A rotação é pura: o mesmo `weekInPhase` e catálogo produzem a mesma seleção; o relógio nunca entra.
+- `phaseWeeks` é necessário para saber onde começa a segunda metade da `BASE`; sem ele, a escolha conservadora é não prescrever qualidade na base.
+- O gerador ainda não consome a rotação; a fiação, o preenchimento de `qualityKind`/`structure` e o `PEAK` específico são C4-17.
+
+### Próximo passo
+
+1. S6 / C4-17: o gerador consome `qualityTemplates`/`easyTemplates`/`qualityRotation`, preenche `qualityKind`/`structure` e torna o `PEAK` específico.
+2. Depois C4-18 (`strides` para todos + intro fartlek do iniciante) e C4-19 (estrutura no briefing).
 
 ## Sessão 2026-11-16 — Ciclo 4/S6.1: matriz do catálogo de qualidade (C4-15)
 
