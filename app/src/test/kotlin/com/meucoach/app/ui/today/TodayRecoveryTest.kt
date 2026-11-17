@@ -45,7 +45,7 @@ class TodayRecoveryTest {
         )
 
         val state = todayState(
-            checkIn = null,
+            checkIn = checkIn(),
             profile = profile(),
             today = today,
             plan = qualityPlan(today),
@@ -67,7 +67,7 @@ class TodayRecoveryTest {
         )
 
         val state = todayState(
-            checkIn = null,
+            checkIn = checkIn(),
             profile = profile(),
             today = today,
             plan = qualityPlan(today),
@@ -100,6 +100,14 @@ class TodayRecoveryTest {
         compose.onNodeWithTag("today-list").performScrollToNode(hasTestTag("today-recovery"))
         compose.onNodeWithText("Recuperação após a prova · dia 1 de 5 · até 06/11").assertIsDisplayed()
     }
+
+    private fun checkIn() = com.meucoach.core.model.DailyCheckIn(
+        date = today,
+        sleepQuality = 4,
+        fatigue = 2,
+        soreness = 1,
+        stress = 2,
+    )
 
     private fun qualityPlan(date: LocalDate) = WeeklyPlan(
         weekStart = date,

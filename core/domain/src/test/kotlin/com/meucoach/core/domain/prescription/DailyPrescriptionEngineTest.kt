@@ -44,7 +44,167 @@ class DailyPrescriptionEngineTest {
         assertThat(prescription.prescribedDurationMin).isEqualTo(quality.durationMin)
         assertThat(prescription.targets).isEqualTo(quality.targets)
         assertThat(prescription.differsFromPlan).isFalse()
-        assertThat(prescription.ruleIds).contains("R-PRESC-01", "R-PRESC-03")
+        assertThat(prescription.ruleIds).contains("R-PRESC-01", "R-PER-03", "R-PRESC-03")
+        assertThat(prescription.qualityBlockReason).isNull()
+        assertThat(prescription.decisionDetail).isNull()
+        assertThat(prescription.unlockHint).isNull()
+    }
+
+    @Test
+    fun `missing check-in downgrades a green planned quality through the gate`() {
+        val plan = planWithQuality()
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+
+        val prescription = engine.prescribe(
+            input(
+                date = quality.date,
+                planned = quality,
+                plan = plan,
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    components = emptyMap(),
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    score = 80,
+                ),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.SUBJECTIVE_MISSING)
+        assertThat(prescription.decisionDetail).contains("check-in")
+        assertThat(prescription.unlockHint).contains("check-in")
+        assertThat(prescription.rationale).contains("check-in")
+        assertThat(prescription.ruleIds).contains("R-READY-06", "R-PRESC-02")
+    }
+
+    @Test
+    fun `taper blocks a main quality but keeps the structural strides micro dose`() {
+        val main = plannedQuality(kind = QualityKind.CONTINUOUS, durationMin = 40)
+        val mainPrescription = engine.prescribe(
+            input(
+                planned = main,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                phase = MesoPhase.TAPER,
+            ),
+        )
+
+        assertThat(mainPrescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(mainPrescription.qualityBlockReason).isEqualTo(QualityBlockReason.TAPER_WINDOW)
+        assertThat(mainPrescription.ruleIds).contains("R-PLAN-05", "R-PRESC-02")
+
+        val strides = plannedQuality(kind = QualityKind.STRIDES_ONLY, durationMin = 20)
+        val stridesPrescription = engine.prescribe(
+            input(
+                planned = strides,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                phase = MesoPhase.TAPER,
+            ),
+        )
+
+        assertThat(stridesPrescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(stridesPrescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(stridesPrescription.qualityBlockReason).isNull()
+    }
+
+    @Test
+    fun `race week blocks a main quality before load`() {
+        val prescription = engine.prescribe(
+            input(
+                planned = plannedQuality(kind = QualityKind.RACE_PACE, durationMin = 40),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = null,
+                phase = MesoPhase.TAPER,
+                raceWeek = true,
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.RACE_WEEK)
+        assertThat(prescription.ruleIds).contains("R-PLAN-10", "R-PRESC-02")
+    }
+
+    @Test
+    fun `done quality is history and is not re-evaluated by the gate`() {
+        val quality = planWithQuality().sessions.first { it.type == WorkoutType.QUALITY }
+        val done = quality.copy(
+            status = SessionStatus.DONE,
+            completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = done.date,
+                planned = done,
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    components = emptyMap(),
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                ),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.qualityBlockReason).isNull()
+        assertThat(prescription.ruleIds).doesNotContain("R-READY-06")
+        assertThat(prescription.rationale).contains("Histórico")
+    }
+
+    @Test
+    fun `closed quality is history and is not re-evaluated by the gate`() {
+        val quality = planWithQuality().sessions.first { it.type == WorkoutType.QUALITY }
+        val closed = quality.copy(
+            status = SessionStatus.CLOSED,
+            closureReason = SessionClosureReason.ILLNESS_OR_INJURY,
+            closedAt = java.time.Instant.EPOCH,
+        )
+
+        val prescription = engine.prescribe(
+            input(
+                date = closed.date,
+                planned = closed,
+                readiness = readiness(
+                    ReadinessLevel.RED,
+                    components = emptyMap(),
+                    flags = setOf(ReadinessFlag.ILLNESS_OR_INJURY),
+                    score = 20,
+                ),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
+        assertThat(prescription.qualityBlockReason).isNull()
+        assertThat(prescription.ruleIds).doesNotContain("R-SAFE-01", "R-READY-03")
+    }
+
+    @Test
+    fun `input hash changes with the plan phase because the gate depends on it`() {
+        val quality = plannedQuality(kind = QualityKind.CONTINUOUS, durationMin = 40)
+        val building = engine.prescribe(
+            input(
+                planned = quality,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                phase = MesoPhase.BUILD,
+            ),
+        )
+        val tapering = engine.prescribe(
+            input(
+                planned = quality,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                phase = MesoPhase.TAPER,
+            ),
+        )
+
+        assertThat(tapering.inputsHash).isNotEqualTo(building.inputsHash)
     }
 
     @Test
@@ -197,8 +357,10 @@ class DailyPrescriptionEngineTest {
 
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
-        assertThat(prescription.rationale).contains("carga subiu rápido")
+        assertThat(prescription.rationale).contains("ACWR").contains("1,60").contains("1,50")
         assertThat(prescription.ruleIds).contains("R-LOAD-03")
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.ACWR_HIGH)
+        assertThat(prescription.decisionDetail).contains("ACWR 1,60 > 1,50")
     }
 
     @Test
@@ -219,7 +381,8 @@ class DailyPrescriptionEngineTest {
 
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.QUALITY)
-        assertThat(prescription.rationale).doesNotContain("carga subiu rápido")
+        assertThat(prescription.qualityBlockReason).isNull()
+        assertThat(prescription.rationale).doesNotContain("ACWR")
         assertThat(prescription.ruleIds).doesNotContain("R-LOAD-03")
     }
 
@@ -347,6 +510,9 @@ class DailyPrescriptionEngineTest {
         assertThat(prescription.rationale).contains("Planejado:")
         assertThat(prescription.rationale).doesNotContain("Plano mantido")
         assertThat(prescription.ruleIds).contains("R-READY-03", "R-PRESC-02")
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.LOW_READINESS)
+        assertThat(prescription.decisionDetail).contains("moderada").contains("55")
+        assertThat(prescription.unlockHint).isNotBlank()
     }
 
     @Test
@@ -605,8 +771,9 @@ class DailyPrescriptionEngineTest {
 
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
-        assertThat(prescription.rationale).contains("faltam dados de recuperação")
-        assertThat(prescription.ruleIds).contains("R-PRESC-02")
+        assertThat(prescription.rationale).contains("check-in")
+        assertThat(prescription.ruleIds).contains("R-READY-06", "R-PRESC-02")
+        assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.SUBJECTIVE_MISSING)
     }
 
     @Test
@@ -797,6 +964,8 @@ class DailyPrescriptionEngineTest {
         load: LoadSnapshot?,
         heat: HeatLevel = HeatLevel.NONE,
         recovery: RecoveryWindow? = null,
+        phase: MesoPhase? = null,
+        raceWeek: Boolean = false,
     ) = DailyPrescriptionInput(
         date = date,
         profile = profile,
@@ -807,6 +976,8 @@ class DailyPrescriptionEngineTest {
         plannedSessionId = planned?.let { "${plan?.weekStart}-${it.date}" },
         planConfidence = plan?.confidence,
         recovery = recovery,
+        phase = phase,
+        raceWeek = raceWeek,
     )
 
     private fun planWithQuality(): WeeklyPlan = WeeklyPlanGenerator().generate(
@@ -838,6 +1009,18 @@ class DailyPrescriptionEngineTest {
         evidenceIds = listOf("EV-SEILER-2010"),
     )
 
+    private fun plannedQuality(kind: QualityKind, durationMin: Int) = PlannedSession(
+        date = monday,
+        type = WorkoutType.QUALITY,
+        title = "Ritmo forte",
+        durationMin = durationMin,
+        rationale = "Qualidade planejada.",
+        ruleIds = listOf("R-PER-02", "R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        qualityKind = kind,
+        planDecision = PlanDecision(PlanDecisionReason.QUALITY_OPPORTUNITY),
+    )
+
     private fun readiness(
         level: ReadinessLevel,
         flags: Set<ReadinessFlag> = emptySet(),
@@ -847,12 +1030,13 @@ class DailyPrescriptionEngineTest {
             ReadinessLevel.AMBER -> 55
             ReadinessLevel.RED -> 20
         },
+        components: Map<ReadinessComponent, Int> = mapOf(ReadinessComponent.SUBJECTIVE to 80),
     ) = ReadinessResult(
         score = score,
         level = level,
         confidence = confidence,
-        components = mapOf(ReadinessComponent.SUBJECTIVE to 80),
-        missing = emptySet(),
+        components = components,
+        missing = ReadinessComponent.entries.toSet() - components.keys,
         flags = flags,
     )
 

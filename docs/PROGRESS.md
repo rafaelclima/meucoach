@@ -1,6 +1,38 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 16/11/2026 (S7 do Ciclo 4: gates estrutural × do dia e golden `G-PER-03`)
+**Atualizado:** 16/11/2026 (S8 do Ciclo 4: gate do dia no diário, C4-04)
+
+## Sessão 2026-11-16 — Ciclo 4/S8: gate do dia no diário (C4-04)
+
+**Objetivo:** fazer o `DailyPrescriptionEngine` chamar o `QualityGate` puro para toda oportunidade de qualidade aberta, mantendo ou rebaixando o dia com motivo, detalhe e dica de desbloqueio, sem reescrever histórico.
+
+### Concluído
+
+- **Autoridade do dia:** o diário avalia `QualityGate.evaluate(...)` para a sessão `QUALITY` `PLANNED`; o plano só é mantido quando o gate é elegível, com `R-PER-03`.
+- **Motivo auditável:** o rebaixamento carrega `qualityBlockReason`, `decisionDetail` e `unlockHint` no `DailyPrescription`, além da regra/evidência do gate e de `R-PRESC-02`.
+- **Prontidão:** o gate ganhou `LOW_READINESS` (âmbar) depois de sono curto; a precedência do ADR 0044 §2.4 foi atualizada. Sem check-in, `SUBJECTIVE_MISSING` rebaixa mesmo com score verde.
+- **Histórico:** `DONE`/`CLOSED` não passam pelo gate; a prescrição mantém o plano e o rationale diz que o dia já foi encerrado.
+- **Contexto:** `phase`/`raceWeek` entraram no `DailyPrescriptionInput` e no `inputsHash`; taper aceita a micro-dose `STRIDES_ONLY` e race week bloqueia qualidade principal.
+- **Catálogo:** `R-PER-03`, `R-READY-06` e `EV-HALSON-2014` entraram no `ExplanationCatalog`.
+
+### Testes
+
+- `:core:domain:test` 983 verdes (+8: `DailyPrescriptionEngineTest` +6, `QualityGateTest` +2); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes; FIT 93,01% de branches.
+- `./gradlew check` falhou uma vez no flake conhecido `MetricsImportViewModelTest` (timeout de 30 s); passou isolado e na reexecução da suíte do app; `check -x :app:testDebugUnitTest` verde.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada (apenas o teste de recovery passou a usar check-in).
+
+### Decisões e observações
+
+- O gate é a autoridade única do dia para qualidade; o diário não repete a precedência em paralelo. O caso âmbar virou `LOW_READINESS` para honrar `qualityEligibleByReadiness`/FR-406 sem confundir com doença ou vermelho.
+- A carga subjetiva continua citando `R-LOAD-04` além do motivo do gate; os demais rebaixamentos citam só a regra que falhou.
+- `phase`/`raceWeek` ainda não vêm da produção porque o plano não persiste a fase; a fiação será feita com o schema v18/`PlanUpgrade`. Os novos campos também ainda não são persistidos (C4-45/C4-50).
+- `R-PER-03`/`R-READY-06` foram catalogados aqui para o teste de catálogo não quebrar; a copy completa e os docs de regra continuam em C4-06/C4-08/C4-52.
+
+### Próximo passo
+
+1. S8 / C4-05: reavaliação com check-in/carga antes do `DONE`; `EASY`→`QUALITY` em nova versão, versão anterior no histórico, `DONE`/`CLOSED` intactos.
+2. Depois C4-29 (recomendador sem plano usa `qualityEligibleByReadiness`/gate).
 
 ## Sessão 2026-11-16 — Ciclo 4/S7: gates estrutural × do dia (C4-02, C4-07)
 

@@ -22,7 +22,7 @@
     <ID>LongMethod:PlanReplanner.kt$PlanReplanner$fun evaluate(input: ReplanInput): ReplanResult</ID>
     <ID>LongMethod:WeeklyPlanGenerator.kt$WeeklyPlanGenerator$fun generate(input: WeeklyPlanInput): WeeklyPlan</ID>
     <ID>LongMethod:WeeklyReview.kt$WeeklyReviewCalculator$fun calculate( weekStart: LocalDate, today: LocalDate, hasPlan: Boolean = false, completion: PlanCompletionWeek? = null, plannedDurationMin: Int? = null, executedDurationMin: Int? = null, intensity: WeeklyIntensity? = null, intensitySessions: Int = 0, readinessDays: List&lt;ReadinessHistoryDay&gt; = emptyList(), metrics: List&lt;DailyMetrics&gt; = emptyList(), checkIns: List&lt;DailyCheckIn&gt; = emptyList(), ): WeeklyReview</ID>
-    <ID>LongParameterList:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$( input: DailyPrescriptionInput, planned: PlannedSession?, type: WorkoutType, title: String, durationMin: Int?, targets: PrescriptionTargets, adjustment: PrescriptionAdjustment, rationale: String, rules: List&lt;String&gt;, evidence: List&lt;String&gt;, confidence: DataConfidence, )</ID>
+    <ID>LongParameterList:DailyPrescriptionEngine.kt$DailyPrescriptionEngine$( input: DailyPrescriptionInput, planned: PlannedSession?, type: WorkoutType, title: String, durationMin: Int?, targets: PrescriptionTargets, adjustment: PrescriptionAdjustment, rationale: String, rules: List&lt;String&gt;, evidence: List&lt;String&gt;, confidence: DataConfidence, gate: QualityEligibility? = null, )</ID>
     <ID>LoopWithTooManyJumpStatements:FitParser.kt$FitParser$for</ID>
     <ID>LoopWithTooManyJumpStatements:FitReader.kt$FitReader$for</ID>
     <ID>LoopWithTooManyJumpStatements:GpxParser.kt$GpxParser$for</ID>

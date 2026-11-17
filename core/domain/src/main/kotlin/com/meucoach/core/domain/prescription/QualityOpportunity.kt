@@ -84,6 +84,9 @@ enum class QualityBlockReason {
     BEGINNER_GUARD,
     SUBJECTIVE_MISSING,
     SHORT_SLEEP,
+
+    /** Amber readiness: partial recovery; the day does not confirm quality. */
+    LOW_READINESS,
     RECOVERY_WINDOW,
     TAPER_WINDOW,
     RACE_WEEK,

@@ -22,12 +22,13 @@ import java.util.Locale
  * 2. beginner guard;
  * 3. missing subjective check-in;
  * 4. short sleep;
- * 5. post-race recovery, race week, recovery week or taper;
- * 6. stale or insufficient objective load;
- * 7. high monotony;
- * 8. reliable strain spike;
- * 9. reliable ACWR above 1.5;
- * 10. otherwise eligible.
+ * 5. non-green readiness (amber: partial recovery);
+ * 6. post-race recovery, race week, recovery week or taper;
+ * 7. stale or insufficient objective load;
+ * 8. high monotony;
+ * 9. reliable strain spike;
+ * 10. reliable ACWR above 1.5;
+ * 11. otherwise eligible.
  *
  * [phase] and [raceWeek] are the plan context the day must respect. A taper
  * micro-dose (`STRIDES_ONLY`) is structural and is not blocked by the taper
@@ -63,6 +64,7 @@ object QualityGate {
             ?: beginnerBlock(context)
             ?: subjectiveBlock(context)
             ?: sleepBlock(context)
+            ?: lowReadinessBlock(context)
             ?: postRaceBlock(context)
             ?: raceWeekBlock(context)
             ?: recoveryWeekBlock(context)
@@ -125,6 +127,21 @@ object QualityGate {
             ruleId = "R-READY-04",
             evidenceIds = listOf("EV-WALSH-2021", "EV-WATSON-2015"),
             unlockHint = "Priorize uma noite de sono de pelo menos 6 h.",
+        )
+    }
+
+    /**
+     * ADR 0049 §2.1/FR-406: only a green day confirms quality. Amber is a
+     * partial-recovery signal, not an illness; it still lowers the day.
+     */
+    private fun lowReadinessBlock(context: GateContext): QualityEligibility? {
+        if (context.readiness.level == ReadinessLevel.GREEN) return null
+        return blocked(
+            reason = QualityBlockReason.LOW_READINESS,
+            detail = "prontidão moderada (score ${context.readiness.score})",
+            ruleId = "R-READY-03",
+            evidenceIds = listOf("EV-SAW-2016"),
+            unlockHint = "Recupere até a prontidão ficar verde e confirme no check-in.",
         )
     }
 

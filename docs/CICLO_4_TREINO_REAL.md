@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S7 concluídas; **C4-04 (S8) é a próxima task**.
+**Status:** S0 a S7 concluídas; **C4-04 (S8) concluída; C4-05 é a próxima task**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 16/11/2026 — S7 (C4-02, C4-07)
-> **Último commit:** C4-02/C4-07 — `feat(domain): separate structural and day quality gates (C4-02, C4-07)`
-> **Fase:** 2 — Fiação — **em andamento (S7 concluída)**; próxima S8
-> **Sessão atual:** **S7 concluída — C4-02 e C4-07 DONE**
-> **Task atual:** C4-02, C4-07 (DONE)
-> **Próxima task:** C4-04 (S8)
+> **Última atualização:** 16/11/2026 — S8 (C4-04)
+> **Último commit:** C4-04 — `feat(domain): use the day quality gate in daily prescription (C4-04)`
+> **Fase:** 2 — Fiação — **em andamento (S8 em andamento; C4-04 DONE)**; próxima C4-05
+> **Sessão atual:** **S8 — C4-04 DONE**
+> **Task atual:** C4-04 (DONE)
+> **Próxima task:** C4-05 (S8)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 975 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`; `./gradlew check`
-> **Próxima ação:** abrir C4-04 (Daily engine usa `QualityGate`: mantém/rebaixa com motivo e `R-PRESC-02`), TDD sobre `DailyPrescriptionEngine`.
+> **Gates da última sessão:** `:core:domain:test` 983 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`; `./gradlew check -x :app:testDebugUnitTest` + suíte do app isolada (flake `MetricsImportViewModelTest`)
+> **Próxima ação:** abrir C4-05 (reavaliação com check-in/carga antes do DONE; `EASY`→`QUALITY` em nova versão; `DONE`/`CLOSED` intactos), TDD sobre `GetTodayPrescription`/`DailyPrescriptionEngine`.
 
 ### 0.1 O que já está pronto
 
@@ -135,12 +135,21 @@
 - [x] `QualityPlanPropertiesTest`: ≤2 oportunidades, nunca adjacentes ao longão, nunca consecutivas, taper/race só `STRIDES_ONLY` ≤25 min, recovery/iniciante zero, estrutura cabe na duração e determinismo.
 - [x] 12 testes novos (7 `StructuralQualityTest`, 4 propriedades, 1 golden); testes legados de “bloqueio na geração” migrados para “oportunidade estrutural + decisão do dia”, com justificativa ADR 0044 §2.1.
 
+**S8 — gate do dia (C4-04)**
+
+- [x] `DailyPrescriptionEngine` avalia `QualityGate` para toda sessão `QUALITY` aberta (`PLANNED`), com `phase`/`raceWeek` no input e no `inputsHash`.
+- [x] `QualityGate` ganhou `LOW_READINESS` (âmbar) depois de sono curto e antes de recovery/taper/race; a precedência do ADR 0044 §2.4 foi atualizada.
+- [x] O dia mantém a qualidade elegível com `R-PER-03`; bloqueado, rebaixa com `qualityBlockReason`, `decisionDetail`, `unlockHint`, regra/evidência do gate e `R-PRESC-02`.
+- [x] Sem check-in (`SUBJECTIVE_MISSING`) rebaixa mesmo com score verde; `DONE`/`CLOSED` são história e não passam pelo gate.
+- [x] `R-PER-03`, `R-READY-06` e `EV-HALSON-2014` entraram no `ExplanationCatalog`.
+- [x] 6 testes novos em `DailyPrescriptionEngineTest` e 2 em `QualityGateTest`; `TodayRecoveryTest` passou a usar check-in para chegar ao gate de recovery.
+
 ### 0.2 O que **não** está pronto
 
-- `QualityGate` ainda **não** está fiado no `DailyPrescriptionEngine`/plano (C4-04/C4-05). O gerador já cria a oportunidade estrutural mesmo com prontidão/carga do dia desfavoráveis; o `DailyPrescriptionEngine` atual já rebaixa por doença/vermelho/âmbar/sono/carga, mas o motivo catalogado do gate só entra em C4-04.
+- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), mas ainda **não** no `WorkoutRecommender`/recomendação sem plano (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; a fiação vem com o schema v18/`PlanUpgrade` (C4-45..C4-47). Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` ainda não são persistidos (C4-45/C4-50), então o round-trip do banco os devolve `null`.
 - `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
-- `qualityEligibleByReadiness` já existe, mas o diário e o recomendador ainda não o leem; a fiação é C4-04/C4-29.
+- `qualityEligibleByReadiness` já existe e o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença); o recomendador sem plano ainda não o lê; a fiação restante é C4-29.
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
 - O check-in UI (C4-30), a reavaliação tardia (C4-31), o golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes.
@@ -283,7 +292,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | **S5.1** | C4-40 | Reparo `LEGACY` do mesmo dia, com confirmação | testes de reparo; migrado intocado | C4-40 concluída (`SessionCompletionRulesTest`, repositório, `RepairLegacyCompletionTest`, prompt) |
 | **S6** | C4-14..C4-17 | `WorkoutStructure`, catálogo, rotação, gerador | testes de catálogo/estrutura | C4-14..C4-17 concluídas (`WorkoutStructureTest` 20, `WorkoutStructureJsonTest` 11, `QualityCatalogTest` 16, `QualityRotationTest` 14, `QualityIntegrationTest` 7); gerador consome a rotação e preenche kind/estrutura |
 | **S7** | C4-02, C4-07 | Gerador estrutural + `G-PER-03` | `G-PER-03`; propriedades | C4-02/C4-07 concluídas (`StructuralQualityTest` 7, `QualityPlanPropertiesTest` 4, `PlanGoldenTest` 1); `:core:domain:test` 975 |
-| **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | commit + testes |
+| **S8** | C4-04, C4-05, C4-29 | `QualityGate` no dia; reavaliação de domínio | testes do daily engine | C4-04 concluída (`DailyPrescriptionEngineTest` +6, `QualityGateTest` +2); C4-05/C4-29 pendentes |
 | **S9** | C4-45, C4-46 | Schema v18, JSON, `generatorVersion` | migração 17→18; round-trip | commit + migração |
 | **S10** | C4-44, C4-47, C4-48, C4-49 | Gate de dados, upgrade, replanner | `G-UPGRADE-01`; idempotência | commit + golden |
 | **S11** | C4-06, C4-30, C4-31, C4-50..C4-52, C4-08 | Copy, check-in UI, reavaliação tardia, decisão/catálogo | UI tests; catálogo | commit + testes |
@@ -520,7 +529,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-01 | Modelos de oportunidade/gate | — | M | S1 | ADR 0044/FR-401 | Tipos puros, testes, sem UI | `QualityOpportunityTest` (15); commit S1 |
 | [x] | C4-02 | Separar gates estrutural × do dia no gerador | C4-01 | L | S7 | ADR 0044 | 3×40 gera 1 oportunidade; 2ª com progressão | `StructuralQualityTest` (7); `QualityPlanPropertiesTest` (4); `planDecision` no plano; commit S7 |
 | [x] | C4-03 | `QualityGate` puro | C4-01 | L | S1 | ADR 0044 | Precedência completa; determinístico | `QualityGateTest` (27); commit S1 |
-| [ ] | C4-04 | Daily engine usa `QualityGate` | C4-03 | M | S8 | ADR 0044 | Mantém/rebaixa com motivo; `R-PRESC-02` | — |
+| [x] | C4-04 | Daily engine usa `QualityGate` | C4-03 | M | S8 | ADR 0044 | Mantém/rebaixa com motivo; `R-PRESC-02` | `DailyPrescriptionEngineTest` (+6); `QualityGateTest` (+2); `qualityBlockReason`/`decisionDetail`/`unlockHint`; commit S8 |
 | [ ] | C4-05 | Reavaliação com check-in/carga antes do DONE | C4-04 | M | S8 | ADR 0044/0049 | EASY→QUALITY antes do DONE; DONE intacto | — |
 | [ ] | C4-06 | Copy/rationale da oportunidade e rebaixamento | C4-03 | M | S11 | ADR 0044/FR-412 | Sem contradição; IDs catalogados | — |
 | [x] | C4-07 | Golden `G-PER-03` + propriedades | C4-02/03 | M | S7 | ADR 0044 | Golden e invariantes | `fixtures/golden/per-opportunity`; `PlanGoldenTest` (1); `QualityPlanPropertiesTest` (4); commit S7 |
@@ -749,6 +758,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** o gerador não olha mais prontidão, sono, check-in ou carga para decidir a **primeira** oportunidade; ele olha nível, dias, fase, race week e dia seguro. A segunda continua exigindo `permitsProgression`, semana anterior ≥80%, 4+ dias e ausência de taper/race/recovery. `planDecision` passa a marcar `QUALITY_OPPORTUNITY`/`PROGRESSION_COMPLETED` e o rationale diz “o dia confirma”. A micro-dose do taper/race week também é estrutural. O ADR 0044 §2.3 fala em `days >= 4` para a segunda; o texto da task dizia “5+ dias”. Seguimos o PRD/ADR (4) e registramos a divergência aqui. `DailyPrescriptionEngine` já reduz por doença/vermelho/âmbar/sono/carga, então o estado intermediário é seguro; o motivo catalogado do `QualityGate` entra em C4-04. A copy “Sem progressão até existir histórico de conclusão” ainda não distingue falta de histórico de carga fora da faixa; fica para C4-06/C4-59.
 - **Próximo:** S8 / C4-04 (`DailyPrescriptionEngine` usa `QualityGate`; mantém/rebaixa com motivo e `R-PRESC-02`), TDD.
 
+### S8 — 2026-11-16 — Gate do dia no diário (C4-04)
+
+- **Status:** DONE
+- **Tasks:** C4-04.
+- **Arquivos:** `core/domain/.../prescription/DailyPrescriptionEngine.kt`, `DailyPrescription.kt`, `QualityGate.kt`, `QualityOpportunity.kt`, `ExplanationCatalog.kt`, `DailyPrescriptionEngineTest.kt`, `QualityGateTest.kt`, `QualityOpportunityTest.kt`, `app/.../ui/today/TodayRecoveryTest.kt`, `core/domain/config/detekt/baseline.xml`, `docs/adr/0044-quality-opportunity-day-authority.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 983 verdes (+8: `DailyPrescriptionEngineTest` +6, `QualityGateTest` +2); `:core:data:test` 186; `:app:testDebugUnitTest` 901; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`; FIT 93,01% de branches. `./gradlew check` falhou uma vez no flake conhecido `MetricsImportViewModelTest` (timeout de 30 s, arquivo não tocado); passou isolado e na reexecução da suíte do app; `check -x :app:testDebugUnitTest` verde.
+- **Commit:** `feat(domain): use the day quality gate in daily prescription (C4-04)`.
+- **Decisões/notas:** o `QualityGate` agora é a autoridade única para manter/rebaixar uma sessão `QUALITY` aberta; `phase`/`raceWeek` entram no input e no `inputsHash`. O gate ganhou `LOW_READINESS` (âmbar) depois de sono curto para honrar `qualityEligibleByReadiness`/FR-406; a precedência do ADR 0044 §2.4 foi atualizada. O diário cita só a regra/evidência do gate que falhou, mais `R-LOAD-04` quando a carga é subjetiva; `R-PRESC-02` acompanha todo rebaixamento. `DONE`/`CLOSED` são história: o gate não os reavalia e a prescrição mantém o plano. `R-PER-03`, `R-READY-06` e `EV-HALSON-2014` entraram no catálogo. A persistência dos novos campos e a passagem de fase/raceWeek pela produção ficam para C4-45/C4-47/C4-50; a reavaliação com check-in tardio é C4-05.
+- **Próximo:** S8 / C4-05 (reavaliação com inputs novos antes do `DONE`; `EASY`→`QUALITY` em nova versão), TDD sobre `GetTodayPrescription`.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -834,7 +853,7 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 901 | Atualizar conforme novos testes |
-| `:core:domain` | 975 | Atualizar conforme novos testes |
+| `:core:domain` | 983 | Atualizar conforme novos testes |
 | `:core:data` | 186 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -924,11 +943,11 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-04, S8)
+## 14. Próxima ação (C4-05, S8)
 
-1. Abrir `docs/adr/0044-quality-opportunity-day-authority.md` §2.4–2.5 e o FR-401/FR-406 do PRD.
-2. Ler `QualityGate`, `DailyPrescriptionEngine`, `QualityGateTest` e os testes do diário que fixam downgrade/rebaixamento.
-3. Escrever os testes que falham de C4-04: o diário chama `QualityGate` para a sessão `QUALITY` planejada; mantém quando elegível, rebaixa com `qualityBlockReason`/`detail`/`unlockHint` quando bloqueado, cita `R-PRESC-02` e nunca reescreve `DONE`/`CLOSED`; o caso sem check-in (`SUBJECTIVE_MISSING`) rebaixa mesmo com score verde.
-4. Implementar C4-04 com TDD, rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir `docs/adr/0044-quality-opportunity-day-authority.md` §2.5 e o FR-406 do PRD; ler `GetTodayPrescription`, `DailyPrescriptionEngine` e os testes de versão/`inputsHash`.
+2. Escrever os testes que falham de C4-05: uma prescrição `EASY` por falta de check-in volta a `QUALITY` quando o check-in chega antes do `DONE`, como nova versão que supersede a anterior; `DONE`/`CLOSED` nunca são reavaliados; a versão antiga fica no histórico.
+3. Implementar C4-05 com TDD; conferir que o `inputsHash` cobre readiness/check-in/carga e que a restauração só ocorre com gate elegível.
+4. Rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

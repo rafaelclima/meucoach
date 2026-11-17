@@ -45,6 +45,15 @@ data class DailyPrescription(
     val confidence: DataConfidence,
     val engineVersion: String,
     val inputsHash: String,
+    /**
+     * Why the day did not confirm a planned quality (ADR 0044 §2.4/§3.1).
+     * Null when there was no quality opportunity or when it was kept.
+     */
+    val qualityBlockReason: QualityBlockReason? = null,
+    /** The value that failed, e.g. "ACWR 1,62 > 1,50" or "check-in ...". */
+    val decisionDetail: String? = null,
+    /** What unlocks the strong session, e.g. "Faça o check-in de hoje...". */
+    val unlockHint: String? = null,
     /** Persistence id; null for a decision that was just computed and not stored yet. */
     val id: String? = null,
     val supersedesId: String? = null,
@@ -66,6 +75,18 @@ data class DailyPrescription(
             plannedDurationMin == null || prescribedDurationMin == null ||
                 prescribedDurationMin <= plannedDurationMin,
         ) { "Prescription must never increase the planned duration" }
+        require(qualityBlockReason == null || plannedType == WorkoutType.QUALITY) {
+            "Only a planned quality can carry a quality block reason"
+        }
+        require(qualityBlockReason == null || prescribedType != WorkoutType.QUALITY) {
+            "A blocked quality cannot be prescribed as quality"
+        }
+        require((qualityBlockReason == null) == (decisionDetail == null)) {
+            "A quality block reason and its detail must come together"
+        }
+        require((qualityBlockReason == null) == (unlockHint == null)) {
+            "A quality block reason and its unlock hint must come together"
+        }
     }
 
     val isRest: Boolean get() = prescribedType == WorkoutType.REST

@@ -19,6 +19,10 @@ object ExplanationCatalog {
         ),
         "R-READY-03" to RuleExplanation("R-READY-03", "Prontidão limita a intensidade"),
         "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
+        "R-READY-06" to RuleExplanation(
+            "R-READY-06",
+            "Sem check-in subjetivo o treino forte não é liberado",
+        ),
         "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
         "R-LOAD-04" to RuleExplanation(
             "R-LOAD-04",
@@ -81,6 +85,10 @@ object ExplanationCatalog {
         "R-PER-02" to RuleExplanation(
             "R-PER-02",
             "Sessões por fase e nível, com trava de iniciante",
+        ),
+        "R-PER-03" to RuleExplanation(
+            "R-PER-03",
+            "Oportunidade de qualidade: o plano propõe e o dia confirma",
         ),
         "R-PER-04" to RuleExplanation(
             "R-PER-04",
@@ -151,6 +159,11 @@ object ExplanationCatalog {
             "EV-BOSQUET-2007",
             "Redução antes da prova",
             "Bosquet et al., MSSE 2007",
+        ),
+        "EV-HALSON-2014" to EvidenceExplanation(
+            "EV-HALSON-2014",
+            "Recuperação após a prova",
+            "Halson, Sports Med 2014",
         ),
         "EV-MUJIKA-2003" to EvidenceExplanation(
             "EV-MUJIKA-2003",

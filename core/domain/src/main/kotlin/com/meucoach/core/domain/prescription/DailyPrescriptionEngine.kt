@@ -6,7 +6,6 @@ import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
-import com.meucoach.core.model.Experience
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.ReadinessLevel
 import java.security.MessageDigest
@@ -33,6 +32,14 @@ data class DailyPrescriptionInput(
      * quality/long run are downgraded and easy sessions are capped.
      */
     val recovery: RecoveryWindow? = null,
+    /**
+     * Plan context for the day-level quality gate (ADR 0044 §2.4). `null`
+     * phase means a legacy caller without a persisted mesocycle; the gate
+     * then still applies readiness and load.
+     */
+    val phase: MesoPhase? = null,
+    /** Race week context; a main quality is not confirmed (micro-dose still is). */
+    val raceWeek: Boolean = false,
 )
 
 /**
@@ -48,9 +55,35 @@ class DailyPrescriptionEngine {
         val readiness = input.readiness
         val planned = input.plannedSession
         val illness = ReadinessFlag.ILLNESS_OR_INJURY in readiness.flags
+        val sessionStatus = input.sessionStatus ?: planned?.status
+        val openQuality = planned?.type == WorkoutType.QUALITY &&
+            sessionStatus == SessionStatus.PLANNED
+        val finishedQuality = planned?.type == WorkoutType.QUALITY &&
+            sessionStatus != null &&
+            sessionStatus != SessionStatus.PLANNED
+        // ADR 0044 §2.4: the day gate is the single authority for keeping or
+        // downgrading a planned opportunity. History bypasses it entirely.
+        val qualityGate = if (openQuality) {
+            QualityGate.evaluate(
+                plannedSession = planned,
+                readiness = readiness,
+                load = input.load,
+                recovery = input.recovery,
+                profile = input.profile,
+                date = input.date,
+                phase = input.phase,
+                raceWeek = input.raceWeek,
+            )
+        } else {
+            null
+        }
 
+        // ADR 0023/0049: a finished day is history; the gate never rewrites it.
+        if (finishedQuality) {
+            return keptQuality(input, planned, gate = null, history = true)
+        }
         if (illness || readiness.level == ReadinessLevel.RED) {
-            return rest(input, illness = illness)
+            return rest(input, illness = illness, gate = qualityGate)
         }
         if (planned == null) {
             return noPlan(input)
@@ -59,68 +92,55 @@ class DailyPrescriptionEngine {
             return plannedRest(input, planned)
         }
 
-        val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
+        val load = input.load
+        val loadState = load?.dataState ?: LoadDataState.INSUFFICIENT
         // D5 (ADR 0039) + R-LOAD-03 v3 (ADR 0046): trust for quality is
         // objective load plus monotony < 2.0, no reliable strain spike and no
         // reliable ACWR > 1.5. An unreliable ratio never vetoes the day.
-        val loadTrusted = input.load?.objectiveDataState == LoadDataState.KNOWN
-        val permitsQuality = input.load?.permitsQuality ?: false
-        val monotonyOk = input.load?.monotonyOk ?: false
-        val strainSpike = input.load?.strainSpike ?: false
-        val strainReliable = input.load?.strainReliable ?: false
+        val loadTrusted = load?.objectiveDataState == LoadDataState.KNOWN
+        val permitsQuality = load?.permitsQuality ?: false
+        val acwrHigh = load?.acwrHigh ?: false
         val subjectiveOnlyLoad = loadState == LoadDataState.KNOWN && !loadTrusted
-        val acwrHigh = input.load?.acwrHigh ?: false
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         // Missing data lowers confidence and blocks quality, but it is not bad
         // recovery: the plan duration is kept instead of being reduced.
         val absenceOnly = ReadinessFlag.INSUFFICIENT_DATA in readiness.flags && readiness.components.isEmpty()
         val negativeReadiness = readiness.level != ReadinessLevel.GREEN && !absenceOnly
         val safetyReduce = negativeReadiness || shortSleep
-        // D-6 v0.1: a beginner never receives today's strong session, even when
-        // the saved plan has one. Finished days bypass the guard (history).
-        val beginnerGuard = planned.type == WorkoutType.QUALITY &&
-            input.profile.experience == Experience.BEGINNER &&
-            input.sessionStatus == SessionStatus.PLANNED
         // ADR 0037: after a completed race the day is never strong and the session
         // is capped, even when the persisted plan still has a full session.
-        val recovery = input.recovery
-        val recoveryActive = recovery?.isActive(input.date) == true &&
-            input.sessionStatus == SessionStatus.PLANNED
-        val recoveryCap = if (recoveryActive) recovery?.maxSessionMinutes(input.date) else null
-        val recoveryReason = if (recoveryActive && recovery != null) {
-            "recuperação após a prova (dia ${recovery.dayOfWindow(input.date)} de ${recovery.totalDays})"
-        } else {
-            null
+        val activeRecovery = input.recovery?.takeIf {
+            it.isActive(input.date) && sessionStatus == SessionStatus.PLANNED
         }
-        val recoveryGuard = recoveryActive && planned.type == WorkoutType.QUALITY
-        val qualityBlocked =
-            safetyReduce || absenceOnly || !permitsQuality || acwrHigh ||
-                beginnerGuard || recoveryGuard
+        val recoveryActive = activeRecovery != null
+        val recoveryCap = activeRecovery?.maxSessionMinutes(input.date)
+        val recoveryReason = activeRecovery?.let {
+            "recuperação após a prova (dia ${it.dayOfWindow(input.date)} de ${it.totalDays})"
+        }
         val safetyReasons = safetyReasons(input, shortSleep, negativeReadiness, absenceOnly)
         val qualityReasons = qualityReasons(
             loadState,
             loadTrusted,
             acwrHigh,
             permitsQuality,
-            monotonyOk,
-            strainSpike && strainReliable,
+            load?.let { it.monotonyOk } ?: false,
+            load?.let { it.strainSpike && it.strainReliable } ?: false,
         )
-        val guardReasons = buildList {
-            if (beginnerGuard) add(BEGINNER_REASON)
-            if (recoveryGuard && recoveryReason != null) add(recoveryReason)
-        }
-        val uncertainLoad = !permitsQuality || acwrHigh
 
         val baseConfidence = confidence(input, loadTrusted = permitsQuality)
         val rules = baseRules(planned)
         val evidence = baseEvidence(planned)
-        if (!permitsQuality) {
-            rules += "R-DATA-01"
-            evidence += "EV-IMPELLIZZERI-2020"
-        }
-        if (loadTrusted && !permitsQuality) {
-            rules += "R-LOAD-03"
-            evidence += "EV-FOSTER-2001"
+        // A quality day cites only the gate that actually failed; the generic
+        // load reasons below belong to the long run and the easy day.
+        if (planned.type != WorkoutType.QUALITY) {
+            if (!permitsQuality) {
+                rules += "R-DATA-01"
+                evidence += "EV-IMPELLIZZERI-2020"
+            }
+            if (loadTrusted && !permitsQuality) {
+                rules += "R-LOAD-03"
+                evidence += "EV-FOSTER-2001"
+            }
         }
         if (subjectiveOnlyLoad) {
             rules += "R-LOAD-04"
@@ -129,21 +149,29 @@ class DailyPrescriptionEngine {
 
         return when (planned.type) {
             WorkoutType.QUALITY -> {
-                if (qualityBlocked) {
+                val gate = requireNotNull(qualityGate) { "An open quality must always be evaluated" }
+                if (!gate.eligible) {
                     val downgraded = reducedDuration(planned.durationMin, PrescriptionPolicy.DOWNGRADE_FACTOR)
-                    val duration = if (recoveryGuard && recoveryCap != null) {
+                    val duration = if (recoveryActive && recoveryCap != null) {
                         downgraded?.let { minOf(it, recoveryCap) }
                     } else {
                         downgraded
                     }
-                    val reason = (safetyReasons + qualityReasons + guardReasons)
-                        .distinct()
-                        .joinToString("; ")
+                    val perceivedEffort = subjectiveOnlyLoad &&
+                        gate.reason == QualityBlockReason.LOAD_INSUFFICIENT
+                    val reason = buildString {
+                        append(gate.detail.orEmpty())
+                        if (perceivedEffort) append("; carga recente vem do esforço percebido")
+                    }
+                    val gateRules = listOf(gate.ruleId) +
+                        if (perceivedEffort) listOf("R-LOAD-04") else emptyList()
+                    val gateEvidence = gate.evidenceIds +
+                        if (perceivedEffort) listOf("EV-FOSTER-2001") else emptyList()
                     return build(
                         input = input,
                         planned = planned,
                         type = WorkoutType.EASY,
-                        title = if (recoveryGuard) RECOVERY_REDUCED_TITLE else EASY_REDUCED_TITLE,
+                        title = if (recoveryActive) RECOVERY_REDUCED_TITLE else EASY_REDUCED_TITLE,
                         durationMin = duration,
                         targets = PrescriptionPolicy.targets(
                             type = WorkoutType.EASY,
@@ -154,30 +182,14 @@ class DailyPrescriptionEngine {
                         adjustment = PrescriptionAdjustment.DOWNGRADE,
                         rationale = "Planejado: ${planned.title} (${planned.durationMin ?: "—"} min). " +
                             "Hoje: fácil, ${duration ?: "—"} min. Motivo: $reason. " +
-                            "Treino forte não foi prescrito hoje.",
-                        rules = rules + "R-PRESC-02" + beginnerRules(beginnerGuard) +
-                            recoveryRules(recoveryGuard) +
-                            readinessRules(negativeReadiness, shortSleep) +
-                            loadRules(uncertainLoad, acwrHigh),
-                        evidence = evidence + readinessEvidence(shortSleep, negativeReadiness) +
-                            loadEvidence(uncertainLoad, acwrHigh),
+                            "${gate.unlockHint} Treino forte não foi prescrito hoje.",
+                        rules = rules + "R-PRESC-02" + gateRules,
+                        evidence = evidence + gateEvidence,
                         confidence = baseConfidence,
+                        gate = gate,
                     )
                 }
-                build(
-                    input = input,
-                    planned = planned,
-                    type = WorkoutType.QUALITY,
-                    title = planned.title,
-                    durationMin = planned.durationMin,
-                    targets = plannedTargets(planned, WorkoutType.QUALITY, input),
-                    adjustment = PrescriptionAdjustment.KEEP,
-                    rationale = "Plano mantido: ${planned.title}, ${planned.durationMin ?: "—"} min. " +
-                        "Prontidão e carga permitem o treino forte de hoje.",
-                    rules = rules + "R-PRESC-01",
-                    evidence = evidence,
-                    confidence = baseConfidence,
-                )
+                keptQuality(input, planned, gate = gate, history = false)
             }
 
             WorkoutType.LONG -> {
@@ -286,11 +298,16 @@ class DailyPrescriptionEngine {
         }
     }
 
-    private fun rest(input: DailyPrescriptionInput, illness: Boolean): DailyPrescription {
+    private fun rest(input: DailyPrescriptionInput, illness: Boolean, gate: QualityEligibility?): DailyPrescription {
         val planned = input.plannedSession
         val plannedNote = planned?.let {
             "Planejado: ${it.title} (${it.durationMin ?: "—"} min). "
         }.orEmpty()
+        val gateRules = gate?.let { listOf(it.ruleId) } ?: if (illness) {
+            listOf("R-SAFE-01", "R-READY-03")
+        } else {
+            listOf("R-READY-03")
+        }
         return build(
             input = input,
             planned = planned,
@@ -304,15 +321,45 @@ class DailyPrescriptionEngine {
             } else {
                 "Prontidão baixa: o corpo pede descanso. Não reponha o treino de outra forma."
             },
-            rules = (
-                planned?.ruleIds.orEmpty() + if (illness) {
-                    listOf("R-SAFE-01", "R-READY-03", "R-PRESC-02")
-                } else {
-                    listOf("R-READY-03", "R-PRESC-02")
-                }
-                ).distinct(),
-            evidence = (planned?.evidenceIds.orEmpty() + "EV-SAW-2016").distinct(),
+            rules = (planned?.ruleIds.orEmpty() + gateRules + "R-PRESC-02").distinct(),
+            evidence = (planned?.evidenceIds.orEmpty() + gate?.evidenceIds.orEmpty() + "EV-SAW-2016").distinct(),
             confidence = DataConfidence.HIGH,
+            gate = gate,
+        )
+    }
+
+    /**
+     * Keeps the planned quality. Finished days are history: the rationale says
+     * so and no gate is applied (ADR 0023/0049).
+     */
+    private fun keptQuality(
+        input: DailyPrescriptionInput,
+        planned: PlannedSession,
+        gate: QualityEligibility?,
+        history: Boolean,
+    ): DailyPrescription {
+        val rules = baseRules(planned) + "R-PRESC-01" +
+            if (!history && gate != null) listOf(gate.ruleId) else emptyList()
+        val evidence = baseEvidence(planned) +
+            if (!history && gate != null) gate.evidenceIds else emptyList()
+        return build(
+            input = input,
+            planned = planned,
+            type = WorkoutType.QUALITY,
+            title = planned.title,
+            durationMin = planned.durationMin,
+            targets = plannedTargets(planned, WorkoutType.QUALITY, input),
+            adjustment = PrescriptionAdjustment.KEEP,
+            rationale = if (history) {
+                "Plano mantido: ${planned.title}, ${planned.durationMin ?: "—"} min. " +
+                    "Histórico: o dia já foi encerrado e não é reavaliado."
+            } else {
+                "Plano mantido: ${planned.title}, ${planned.durationMin ?: "—"} min. " +
+                    "Prontidão e carga permitem o treino forte de hoje."
+            },
+            rules = rules,
+            evidence = evidence,
+            confidence = confidence(input, loadTrusted = input.load?.permitsQuality ?: false),
         )
     }
 
@@ -384,6 +431,7 @@ class DailyPrescriptionEngine {
         rules: List<String>,
         evidence: List<String>,
         confidence: DataConfidence,
+        gate: QualityEligibility? = null,
     ): DailyPrescription {
         val finalRationale = rationale + heatHint(input, targets, adjustment)
         val heatRules = if (input.heatLevel == HeatLevel.HOT) {
@@ -412,6 +460,9 @@ class DailyPrescriptionEngine {
             confidence = confidence,
             engineVersion = PrescriptionPolicy.ENGINE_VERSION,
             inputsHash = inputsHash(input),
+            qualityBlockReason = gate?.reason,
+            decisionDetail = gate?.detail,
+            unlockHint = gate?.unlockHint,
         )
     }
 
@@ -499,24 +550,6 @@ class DailyPrescriptionEngine {
         if (negativeReadiness || shortSleep) add("EV-SAW-2016")
     }
 
-    private fun loadRules(uncertain: Boolean, acwrHigh: Boolean): List<String> = buildList {
-        if (acwrHigh) add("R-LOAD-03")
-        if (uncertain && !acwrHigh) {
-            add("R-DATA-01")
-            add("R-LOAD-03")
-        }
-    }
-
-    private fun loadEvidence(uncertain: Boolean, acwrHigh: Boolean): List<String> = buildList {
-        if (acwrHigh) add("EV-GABBETT-2016")
-        if (uncertain && !acwrHigh) {
-            add("EV-IMPELLIZZERI-2020")
-            add("EV-FOSTER-2001")
-        }
-    }
-
-    private fun beginnerRules(active: Boolean): List<String> = if (active) listOf("R-PRESC-04") else emptyList()
-
     /** ADR 0037: recovery is a product convention, never a physiological claim. */
     private fun recoveryRules(active: Boolean): List<String> = if (active) listOf("R-RACE-04") else emptyList()
 
@@ -586,6 +619,8 @@ class DailyPrescriptionEngine {
             ).append('|')
             append("planConfidence=").append(input.planConfidence).append('|')
             append("status=").append(input.sessionStatus).append('|')
+            append("phase=").append(input.phase).append('|')
+            append("raceWeek=").append(input.raceWeek).append('|')
             if (planned != null) {
                 append("planned=").append(planned.date).append(',')
                 append(planned.type).append(',')
@@ -604,6 +639,5 @@ class DailyPrescriptionEngine {
     private companion object {
         const val EASY_REDUCED_TITLE = "Fácil, sem pressa"
         const val RECOVERY_REDUCED_TITLE = "Recuperação: fácil e curto"
-        const val BEGINNER_REASON = "seu nível é iniciante e o treino forte fica para depois"
     }
 }

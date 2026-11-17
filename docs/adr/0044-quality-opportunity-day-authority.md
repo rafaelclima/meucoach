@@ -1,6 +1,6 @@
 # ADR 0044 — Oportunidade de qualidade e autoridade do dia
 
-**Status:** Aprovado em 2026-11-16 — implementação em andamento: C4-01, C4-02, C4-03 e C4-07 concluídas; C4-04..C4-06 e C4-08 pendentes.
+**Status:** Aprovado em 2026-11-16 — implementação em andamento: C4-01, C4-02, C4-03, C4-04 e C4-07 concluídas; C4-05, C4-06 e C4-08 pendentes.
 **Data:** 2026-11-16
 **Escopo:** `WeeklyPlanGenerator`, `DailyPrescriptionEngine`, `GetTodayPrescription`, `PlanReplanner`, `PlanUpgrade`, Hoje/Plano/Por quê.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0023 (plano × prescrição),
@@ -132,12 +132,14 @@ Precedência determinística (primeiro que falha vence):
 2. `BEGINNER_GUARD` — iniciante com `QUALITY` planejada (`R-PRESC-04`).
 3. `SUBJECTIVE_MISSING` — sem check-in (`R-READY-06`).
 4. `SHORT_SLEEP` — sono válido < 6 h (`R-READY-04`).
-5. `RECOVERY_WINDOW` / `TAPER_WINDOW` / `RACE_WEEK`.
-6. `LOAD_STALE` / `LOAD_INSUFFICIENT`.
-7. `MONOTONY_HIGH`.
-8. `STRAIN_SPIKE` (só se `strainReliable`).
-9. `ACWR_HIGH` (só se `acwrReliable && acwr > 1.5`).
-10. Caso contrário, elegível.
+5. `LOW_READINESS` — prontidão âmbar: recuperação parcial; o dia não confirma
+   a qualidade (`R-READY-03`, ADR 0049 §2.1/FR-406).
+6. `RECOVERY_WINDOW` / `TAPER_WINDOW` / `RACE_WEEK`.
+7. `LOAD_STALE` / `LOAD_INSUFFICIENT`.
+8. `MONOTONY_HIGH`.
+9. `STRAIN_SPIKE` (só se `strainReliable`).
+10. `ACWR_HIGH` (só se `acwrReliable && acwr > 1.5`).
+11. Caso contrário, elegível.
 
 O gate não olha a prontidão da segunda. O detalhe deve trazer o valor que falhou
 (ex.: “ACWR 1,62 > 1,50”; “sono 5h20 < 6h”; “7 de 28 dias de carga”) e o

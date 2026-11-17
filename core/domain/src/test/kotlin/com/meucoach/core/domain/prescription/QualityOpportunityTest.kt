@@ -117,6 +117,7 @@ class QualityOpportunityTest {
             QualityBlockReason.BEGINNER_GUARD,
             QualityBlockReason.SUBJECTIVE_MISSING,
             QualityBlockReason.SHORT_SLEEP,
+            QualityBlockReason.LOW_READINESS,
             QualityBlockReason.RECOVERY_WINDOW,
             QualityBlockReason.TAPER_WINDOW,
             QualityBlockReason.RACE_WEEK,

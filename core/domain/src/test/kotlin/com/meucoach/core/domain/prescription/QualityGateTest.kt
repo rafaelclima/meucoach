@@ -70,6 +70,32 @@ class QualityGateTest {
     }
 
     @Test
+    fun `amber readiness blocks with the low readiness reason`() {
+        val eligibility = evaluate(
+            readiness = readiness(level = ReadinessLevel.AMBER, score = 55),
+        )
+
+        assertThat(eligibility.reason).isEqualTo(QualityBlockReason.LOW_READINESS)
+        assertThat(eligibility.ruleId).isEqualTo("R-READY-03")
+        assertThat(eligibility.detail).contains("moderada").contains("55")
+        assertThat(eligibility.evidenceIds).contains("EV-SAW-2016")
+        assertThat(eligibility.unlockHint).contains("verde")
+    }
+
+    @Test
+    fun `missing check-in wins over low readiness`() {
+        val eligibility = evaluate(
+            readiness = readiness(
+                level = ReadinessLevel.AMBER,
+                components = emptyMap(),
+                score = 55,
+            ),
+        )
+
+        assertThat(eligibility.reason).isEqualTo(QualityBlockReason.SUBJECTIVE_MISSING)
+    }
+
+    @Test
     fun `beginner guard blocks before missing check-in and short sleep`() {
         val eligibility = evaluate(
             profile = profile(experience = Experience.BEGINNER),
