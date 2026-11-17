@@ -9,10 +9,17 @@ import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.health.HealthSyncCoordinator
+import com.meucoach.app.health.HealthSyncGate
 import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.health.HealthConnectReadResult
+import com.meucoach.core.data.health.HealthConnectStatus
+import com.meucoach.core.data.health.HealthDailySource
+import com.meucoach.core.data.health.HealthSyncService
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
@@ -31,8 +38,10 @@ import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
 import com.meucoach.core.model.WeeklyAvailability
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -100,6 +109,110 @@ class TodayViewModelPersistTest {
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `does not generate a plan while the sync gate is open`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-02T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+
+        val viewModel = createViewModel(timeProvider, coordinator, settleGate = false)
+        val state = withTimeout(5_000) { viewModel.uiState.first { it.isSyncingData } }
+
+        try {
+            assertThat(state.plan).isNull()
+            assertThat(database.trainingPlanDao().getAllPlans()).isEmpty()
+        } finally {
+            coordinator.syncOnResume()
+            withTimeout(5_000) {
+                coordinator.gate.first { it is HealthSyncGate.Ready || it is HealthSyncGate.Failed }
+            }
+        }
+    }
+
+    @Test
+    fun `generates the plan once the sync gate settles ready`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-02T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+
+        val viewModel = createViewModel(timeProvider, coordinator)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
+        }
+
+        assertThat(state.isSyncingData).isFalse()
+        assertThat(plans.getWeek(state.plan!!.weekStart)).isNotNull
+        assertThat(state.plan!!.rationale).doesNotContain("sincronização")
+    }
+
+    @Test
+    fun `failed gate generates with an explicit incomplete note`(): Unit = runBlocking {
+        val coordinator = syncCoordinator(status = HealthConnectStatus.UNAVAILABLE)
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-02T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Failed } }
+
+        val viewModel = createViewModel(timeProvider, coordinator)
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
+        }
+
+        assertThat(state.isSyncingData).isFalse()
+        assertThat(state.plan!!.rationale).contains("sincronização")
+        assertThat(state.plan!!.ruleIds).contains("R-DATA-01")
+        assertThat(state.plan!!.evidenceIds).contains("EV-IMPELLIZZERI-2020")
+    }
+
+    @Test
+    fun `open gate degrades to a noted plan after the timeout`(): Unit = runBlocking {
+        val coordinator = syncCoordinator()
+        val timeProvider = FakeTimeProvider(
+            Instant.parse("2026-11-02T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+
+        val viewModel = createViewModel(timeProvider, coordinator, settleGate = false)
+        withTimeout(5_000) { viewModel.uiState.first { it.isSyncingData } }
+        dispatcher.scheduler.advanceTimeBy(TodayViewModel.DATA_GATE_TIMEOUT_MS + 1)
+
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
+        }
+
+        assertThat(state.isSyncingData).isFalse()
+        assertThat(state.plan!!.rationale).contains("sincronização")
+        assertThat(state.plan!!.ruleIds).contains("R-DATA-01")
     }
 
     @Test
@@ -580,7 +693,17 @@ class TodayViewModelPersistTest {
         evidenceIds = listOf("EV-SEILER-2010"),
     )
 
-    private fun createViewModel(timeProvider: TimeProvider = FakeTimeProvider()): TodayViewModel {
+    private suspend fun createViewModel(
+        timeProvider: TimeProvider = FakeTimeProvider(),
+        coordinator: HealthSyncCoordinator = syncCoordinator(),
+        settleGate: Boolean = true,
+    ): TodayViewModel {
+        if (settleGate) {
+            coordinator.syncOnResume()
+            withTimeout(5_000) {
+                coordinator.gate.first { it is HealthSyncGate.Ready || it is HealthSyncGate.Failed }
+            }
+        }
         val executions = SessionExecutionRepository(database)
         return TodayViewModel(
             checkIns,
@@ -601,7 +724,36 @@ class TodayViewModelPersistTest {
             ),
             timeProvider,
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
+            coordinator,
         )
+    }
+
+    private fun syncCoordinator(status: HealthConnectStatus = HealthConnectStatus.AVAILABLE): HealthSyncCoordinator {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val source = FakeSource(status = status)
+        val store = HealthSyncStore(context, prefsName = "today-gate-${System.nanoTime()}")
+        val service = HealthSyncService(
+            source = source,
+            metricsRepository = metrics,
+            profileRepository = profiles,
+            syncStore = store,
+            clock = Clock.fixed(Instant.parse("2026-11-02T12:00:00Z"), ZoneOffset.UTC),
+        )
+        return HealthSyncCoordinator(source, service, store, CoroutineScope(SupervisorJob() + dispatcher))
+    }
+
+    private class FakeSource(var status: HealthConnectStatus = HealthConnectStatus.AVAILABLE) : HealthDailySource {
+        override val requiredPermissions: Set<String> = setOf("sleep", "hr")
+
+        override suspend fun status(): HealthConnectStatus = status
+
+        override suspend fun grantedPermissions(): Set<String> = requiredPermissions
+
+        override suspend fun read(from: LocalDate, to: LocalDate, zoneId: java.time.ZoneId): HealthConnectReadResult =
+            HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = emptySet(),
+            )
     }
 
     private fun previousWeek(weekStart: LocalDate) = com.meucoach.core.domain.prescription.WeeklyPlan(

@@ -8,10 +8,17 @@ import com.meucoach.app.application.GetTodayDecision
 import com.meucoach.app.application.GetTodayPrescription
 import com.meucoach.app.application.ReplaceManualCompletion
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.health.HealthSyncCoordinator
+import com.meucoach.app.health.HealthSyncGate
 import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.ui.checkin.CheckInViewModel
 import com.meucoach.app.ui.today.TodayViewModel
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.health.HealthConnectReadResult
+import com.meucoach.core.data.health.HealthConnectStatus
+import com.meucoach.core.data.health.HealthDailySource
+import com.meucoach.core.data.health.HealthSyncService
+import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
@@ -142,6 +149,7 @@ class TimeDrivenStateTest {
         val time = FakeTimeProvider(Instant.parse("2026-11-08T12:00:00Z"), ZoneId.of("America/Sao_Paulo"))
         val executions = SessionExecutionRepository(database, clock)
         val raceEvents = RaceEventRepository(database, clock)
+        val coordinator = settledCoordinator()
         val viewModel = TodayViewModel(
             checkIns,
             metrics,
@@ -161,6 +169,7 @@ class TimeDrivenStateTest {
             ),
             time,
             GetTodayDecision(raceEvents, GetTodayPrescription(prescriptions)),
+            coordinator,
         )
 
         val sundayState = withTimeout(5_000) {
@@ -181,6 +190,47 @@ class TimeDrivenStateTest {
     }
 
     private fun LocalDate.weekStart(): LocalDate = with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+    private suspend fun settledCoordinator(): HealthSyncCoordinator {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val source = FakeSource()
+        val store = HealthSyncStore(context, prefsName = "time-gate-${System.nanoTime()}")
+        val clock = Clock.fixed(Instant.parse("2026-11-08T12:00:00Z"), ZoneOffset.UTC)
+        val service = HealthSyncService(
+            source = source,
+            metricsRepository = com.meucoach.core.data.repository.DailyMetricsRepository(database),
+            profileRepository = com.meucoach.core.data.repository.ProfileRepository(database, clock),
+            syncStore = store,
+            clock = clock,
+        )
+        return HealthSyncCoordinator(
+            source,
+            service,
+            store,
+            kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.SupervisorJob() + dispatcher,
+            ),
+        ).also { coordinator ->
+            coordinator.syncOnResume()
+            withTimeout(5_000) {
+                coordinator.gate.first { it is HealthSyncGate.Ready || it is HealthSyncGate.Failed }
+            }
+        }
+    }
+
+    private class FakeSource : HealthDailySource {
+        override val requiredPermissions: Set<String> = setOf("sleep", "hr")
+
+        override suspend fun status(): HealthConnectStatus = HealthConnectStatus.AVAILABLE
+
+        override suspend fun grantedPermissions(): Set<String> = requiredPermissions
+
+        override suspend fun read(from: LocalDate, to: LocalDate, zoneId: ZoneId): HealthConnectReadResult =
+            HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = emptySet(),
+            )
+    }
 
     @Test
     fun `the profile timezone is the single source for the local day`(): Unit = runBlocking {

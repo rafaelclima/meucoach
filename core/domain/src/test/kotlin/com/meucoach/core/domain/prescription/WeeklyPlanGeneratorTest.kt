@@ -36,6 +36,22 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `dataIncomplete adds an explicit note with R-DATA-01`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+                dataIncomplete = true,
+            ),
+        )
+
+        assertThat(plan.rationale).contains("sincronização")
+        assertThat(plan.rationale).contains("reavaliado")
+        assertThat(plan.ruleIds).contains("R-DATA-01")
+        assertThat(plan.evidenceIds).contains("EV-IMPELLIZZERI-2020")
+    }
+
+    @Test
     fun `builds a conservative beginner week`() {
         val plan = generator.generate(
             input(
@@ -1854,6 +1870,7 @@ class WeeklyPlanGeneratorTest {
         race: RacePlan? = null,
         eventDates: Set<LocalDate> = emptySet(),
         recovery: RecoveryWindow? = null,
+        dataIncomplete: Boolean = false,
     ) = WeeklyPlanInput(
         profile = profile,
         readiness = readiness,
@@ -1865,6 +1882,7 @@ class WeeklyPlanGeneratorTest {
         race = race,
         eventDates = eventDates,
         recovery = recovery,
+        dataIncomplete = dataIncomplete,
     )
 
     private fun readiness(

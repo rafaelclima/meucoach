@@ -20,6 +20,8 @@ import com.meucoach.app.application.UndoRaceAutoCompletion
 import com.meucoach.app.application.VolumeReferenceProjection
 import com.meucoach.app.application.buildLoadSnapshot
 import com.meucoach.app.application.readinessResult
+import com.meucoach.app.health.HealthSyncCoordinator
+import com.meucoach.app.health.HealthSyncGate
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
 import com.meucoach.app.ui.activities.formatDateTime
@@ -69,6 +71,7 @@ import com.meucoach.core.model.SessionExecution
 import com.meucoach.core.model.Sport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -78,6 +81,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -100,6 +104,7 @@ class TodayViewModel @Inject constructor(
     private val undoRaceAutoCompletion: UndoRaceAutoCompletion,
     private val timeProvider: TimeProvider,
     private val getTodayDecision: GetTodayDecision,
+    private val healthSyncCoordinator: HealthSyncCoordinator,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
     private val matcher = SessionMatcher()
@@ -117,6 +122,7 @@ class TodayViewModel @Inject constructor(
         val plan: WeeklyPlan?,
         val events: List<RaceEvent>,
         val recovery: RecoveryWindow?,
+        val dataGate: HealthSyncGate,
     )
 
     private data class TodayContext(
@@ -193,52 +199,78 @@ class TodayViewModel @Inject constructor(
 
     private val events = raceEventRepository.observeAll()
 
-    private val resolvedDay = combine(context, storedPlan, planHistory, events) { context, plan, history, events ->
-        val weekStart = context.today.weekStart()
-        val historyReady = history.isReady && history.weekStart == weekStart
-        // ADR 0037: only completed races start a recovery window; the latest one
-        // applies while it intersects the visible week.
-        val recovery = RecoveryWindow.covering(
-            races = events.mapNotNull(CompletedRace::from),
-            start = weekStart,
-            end = weekStart.plusDays(6),
-        )
-        val planned = plan ?: if (historyReady) {
-            context.profile?.let {
-                val eventDates = events.map { event -> event.targetDate }.toSet()
-                val race = events
-                    .filter { event -> event.status == RaceStatus.PLANNED }
-                    .maxByOrNull { event -> event.updatedAt }
-                    ?.let(RacePlan::from)
-                val zone = runCatching { java.time.ZoneId.of(it.timezone) }
-                    .getOrNull() ?: timeProvider.zoneId.value
-                val volumeReferences = VolumeReferenceProjection.build(
-                    plans = history.recentWeeks + listOfNotNull(history.previousWeek),
-                    activities = context.activities,
-                    zoneId = zone,
-                ).references
-                planGenerator.generate(
-                    WeeklyPlanInput(
-                        profile = it,
-                        readiness = readinessResult(context.checkIn, context.metrics, context.today),
-                        load = context.load,
-                        weekStart = weekStart,
-                        today = context.today,
-                        previousWeek = history.previousWeek,
-                        recentWeeks = history.recentWeeks,
-                        volumeReferences = volumeReferences,
-                        weekNumberInBlock = history.weekNumberInBlock,
-                        race = race,
-                        eventDates = eventDates,
-                        recovery = recovery,
-                    ),
-                )
-            }
-        } else {
-            null
+    /**
+     * The sync outcome the generation waits for. An open gate ([Idle]/[Syncing])
+     * emits as-is so the UI can say it is syncing; after [DATA_GATE_TIMEOUT_MS]
+     * without settling it degrades to [Failed], generating with the available
+     * data and an explicit note instead of blocking the day (ADR 0048 §2.1).
+     */
+    private val settledGate = healthSyncCoordinator.gate.transformLatest { gate ->
+        emit(gate)
+        if (gate is HealthSyncGate.Idle || gate is HealthSyncGate.Syncing) {
+            delay(DATA_GATE_TIMEOUT_MS)
+            emit(HealthSyncGate.Failed("A sincronização demorou mais que o esperado."))
         }
-        ResolvedDay(context = context, plan = planned, events = events, recovery = recovery)
     }
+
+    private val resolvedDay =
+        combine(context, storedPlan, planHistory, events, settledGate) {
+                context,
+                plan,
+                history,
+                events,
+                gate,
+            ->
+            val weekStart = context.today.weekStart()
+            val historyReady = history.isReady && history.weekStart == weekStart
+            // ADR 0037: only completed races start a recovery window; the latest one
+            // applies while it intersects the visible week.
+            val recovery = RecoveryWindow.covering(
+                races = events.mapNotNull(CompletedRace::from),
+                start = weekStart,
+                end = weekStart.plusDays(6),
+            )
+            // ADR 0048 §2.1: no plan is generated before the sync settles. An
+            // open gate keeps the day without a plan (the UI shows it syncing);
+            // a failed gate generates with the available data and says so.
+            val gateSettled = gate is HealthSyncGate.Ready || gate is HealthSyncGate.Failed
+            val planned = plan ?: if (historyReady && gateSettled) {
+                context.profile?.let {
+                    val eventDates = events.map { event -> event.targetDate }.toSet()
+                    val race = events
+                        .filter { event -> event.status == RaceStatus.PLANNED }
+                        .maxByOrNull { event -> event.updatedAt }
+                        ?.let(RacePlan::from)
+                    val zone = runCatching { java.time.ZoneId.of(it.timezone) }
+                        .getOrNull() ?: timeProvider.zoneId.value
+                    val volumeReferences = VolumeReferenceProjection.build(
+                        plans = history.recentWeeks + listOfNotNull(history.previousWeek),
+                        activities = context.activities,
+                        zoneId = zone,
+                    ).references
+                    planGenerator.generate(
+                        WeeklyPlanInput(
+                            profile = it,
+                            readiness = readinessResult(context.checkIn, context.metrics, context.today),
+                            load = context.load,
+                            weekStart = weekStart,
+                            today = context.today,
+                            previousWeek = history.previousWeek,
+                            recentWeeks = history.recentWeeks,
+                            volumeReferences = volumeReferences,
+                            weekNumberInBlock = history.weekNumberInBlock,
+                            race = race,
+                            eventDates = eventDates,
+                            recovery = recovery,
+                            dataIncomplete = gate is HealthSyncGate.Failed,
+                        ),
+                    )
+                }
+            } else {
+                null
+            }
+            ResolvedDay(context = context, plan = planned, events = events, recovery = recovery, dataGate = gate)
+        }
 
     private val dayState = resolvedDay
         .mapLatest { resolved ->
@@ -295,6 +327,8 @@ class TodayViewModel @Inject constructor(
                 decision = decision,
                 eventDates = resolved.events.map { event -> event.targetDate }.toSet(),
                 recovery = resolved.recovery,
+                isSyncingData = resolved.dataGate is HealthSyncGate.Idle ||
+                    resolved.dataGate is HealthSyncGate.Syncing,
                 kmByDay = context.kmByDay,
                 weeklyLoadKm = context.weeklyLoadKm,
                 recentActivity = context.recentActivity,
@@ -648,8 +682,15 @@ class TodayViewModel @Inject constructor(
         }
     }
 
-    private companion object {
+    internal companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
+
+        /**
+         * How long plan generation waits for the Health Connect sync before
+         * degrading to a failed gate and generating with the available data
+         * (ADR 0048 §2.1, FR-409).
+         */
+        const val DATA_GATE_TIMEOUT_MS = 3_000L
     }
 }
 
@@ -726,6 +767,7 @@ internal fun todayState(
     todayExecution: TodayExecutionUi? = null,
     completionMessage: String? = null,
     recovery: RecoveryWindow? = null,
+    isSyncingData: Boolean = false,
 ): TodayUiState {
     val inputs = DailyMetricsReadinessBuilder.build(metrics, today)
     val signals = inputs.signals.copy(
@@ -840,6 +882,7 @@ internal fun todayState(
                 until = it.race.raceDate.plusDays(it.totalDays.toLong()),
             )
         },
+        isSyncingData = isSyncingData,
     )
 }
 

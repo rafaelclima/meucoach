@@ -167,6 +167,11 @@ fun TodayScreen(
                 )
             }
         }
+        if (state.isSyncingData) {
+            item {
+                SyncingDataNotice()
+            }
+        }
         item {
             ReadinessCard(
                 state = state,
@@ -2029,6 +2034,27 @@ private fun sessionStatusLabel(session: com.meucoach.core.domain.prescription.Pl
 
         SessionStatus.PLANNED -> null
     }
+
+@Composable
+private fun SyncingDataNotice() {
+    val colors = McTheme.colors
+    McCard(
+        variant = McCardVariant.INSET,
+        modifier = Modifier.testTag("today-syncing-data"),
+    ) {
+        Text(
+            text = "Sincronizando seus dados…",
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.size(3.dp))
+        Text(
+            text = "O plano da semana sai assim que a sincronização terminar.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
+    }
+}
 
 @Composable
 private fun RecentActivityCard(activity: RecentActivityUi, onClick: () -> Unit) {

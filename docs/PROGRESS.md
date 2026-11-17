@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S9 do Ciclo 4: `generatorVersion` no plano, C4-46)
+**Atualizado:** 17/11/2026 (S10 do Ciclo 4: gate de dados antes do plano, C4-44)
+
+## Sessão 2026-11-17 — Ciclo 4/S10: gate de dados antes do plano (C4-44)
+
+**Objetivo:** fechar o P-02 — nenhum plano nasce antes de o sync assentar; se assentar sem dados (ou em 3 s), nasce explícito como incompleto.
+
+### Concluído
+
+- **Gate:** `HealthSyncGate` (`Idle`/`Syncing`/`Ready`/`Failed`) exposto pelo `HealthSyncCoordinator`; todo ramo terminal do resume/manual estabiliza o gate (nome difere do ADR porque `HealthSyncState` já existe; semântica idêntica, ADR anotado).
+- **Geração:** `TodayViewModel` só gera a semana com gate `Ready`/`Failed` (timeout de 3 s degrada para `Failed`); sem plano antes disso, com aviso “Sincronizando seus dados…” no Hoje. `Failed` gera com `WeeklyPlanInput.dataIncomplete=true` → nota no rationale + `R-DATA-01`/`EV-IMPELLIZZERI-2020`.
+- **Testes:** 7 de gate no coordenador, 4 no ViewModel (sem plano com gate aberto, gera no `Ready`, nota no `Failed`, timeout com relógio virtual) e 1 de `dataIncomplete` no domínio.
+
+### Testes
+
+- `:core:domain:test` 992 verdes (+1); `:core:data:test` 192; `:app:testDebugUnitTest` 918 (+11); `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`, `:core:domain:detekt`, `:core:data:detekt`, `:app:detekt` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- O ID do baseline do detekt inclui KDoc dentro dos parênteses: dois KDocs adicionados quebraram supressões pré-existentes (resolvido removendo-os + baseline no formato vigente). Não documentar params inline em função com baseline.
+- Hilt/Dagger não resolveu `@Provides StateFlow<HealthSyncGate>` (`MissingBinding` mesmo com factory KSP gerada); pivot para injetar o `HealthSyncCoordinator` concreto. Testes usam coordenador real + fakes.
+- `UnconfinedTestDispatcher` virtualiza `delay` sem `runTest`: o teste de timeout avança `dispatcher.scheduler` manualmente.
+- `TutorialViewModel` continua fora do gate (fluxo explícito de primeiro uso); reavaliação quando os dados chegam é C4-47/C4-48.
+
+### Próximo passo
+
+1. S10 / C4-47: `PlanUpgrade` idempotente v6→v7 + `G-UPGRADE-01`, TDD.
+2. Depois C4-48 (triggers `DATA_READY`/`ENGINE_UPGRADE`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S9.1: `generatorVersion` no plano (C4-46)
 

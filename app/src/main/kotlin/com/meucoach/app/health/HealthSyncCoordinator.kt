@@ -53,15 +53,26 @@ class HealthSyncCoordinator @Inject constructor(
     )
     val state: StateFlow<HealthSyncState> = _state.asStateFlow()
 
+    /**
+     * Data-gate outcome for plan generation (ADR 0048 §2.1). Starts [Idle];
+     * every terminal branch of a resume/manual sync settles it as [Ready]
+     * (fresh data in) or [Failed] (generate with the available data and say
+     * so explicitly). Awaiting the check-in is never part of the gate.
+     */
+    private val _gate = MutableStateFlow<HealthSyncGate>(HealthSyncGate.Idle)
+    val gate: StateFlow<HealthSyncGate> = _gate.asStateFlow()
+
     /** Clears in-memory freshness after a full local reset. */
     fun resetState() {
         _state.value = HealthSyncState()
+        _gate.value = HealthSyncGate.Idle
     }
 
     fun syncOnResume() {
         scope.launch {
             if (!autoMutex.tryLock()) return@launch
             try {
+                _gate.value = HealthSyncGate.Syncing
                 _state.update {
                     it.copy(
                         isSyncing = true,
@@ -72,6 +83,7 @@ class HealthSyncCoordinator @Inject constructor(
                 }
                 val status = source.status()
                 if (status != HealthConnectStatus.AVAILABLE) {
+                    _gate.value = HealthSyncGate.Failed("Health Connect indisponível no aparelho.")
                     _state.update {
                         it.copy(
                             isSyncing = false,
@@ -83,6 +95,7 @@ class HealthSyncCoordinator @Inject constructor(
                 }
                 val missing = source.requiredPermissions - source.grantedPermissions()
                 if (missing.isNotEmpty()) {
+                    _gate.value = HealthSyncGate.Failed("Permissão do Health Connect pendente.")
                     _state.update {
                         it.copy(
                             isSyncing = false,
@@ -93,6 +106,12 @@ class HealthSyncCoordinator @Inject constructor(
                     return@launch
                 }
                 val result = service.syncIfStale()
+                if (result == null) {
+                    // Fresh: the store holds the last success by construction.
+                    _gate.value = HealthSyncGate.Ready(store.lastSyncedAt() ?: Instant.now())
+                } else {
+                    settleGate(result.error, result.missingPermissions.isNotEmpty())
+                }
                 _state.update {
                     it.copy(
                         isSyncing = false,
@@ -108,6 +127,9 @@ class HealthSyncCoordinator @Inject constructor(
                 _state.update { it.copy(isSyncing = false) }
                 throw cancellation
             } catch (error: Exception) {
+                _gate.value = HealthSyncGate.Failed(
+                    error.message ?: "Não foi possível atualizar o Health Connect.",
+                )
                 _state.update {
                     it.copy(
                         isSyncing = false,
@@ -122,9 +144,11 @@ class HealthSyncCoordinator @Inject constructor(
     }
 
     suspend fun syncNow(): HealthSyncResult {
+        _gate.value = HealthSyncGate.Syncing
         _state.update { it.copy(isSyncing = true, lastError = null) }
         return try {
             service.sync().also { result ->
+                settleGate(result.error, result.missingPermissions.isNotEmpty())
                 _state.update {
                     it.copy(
                         isSyncing = false,
@@ -142,6 +166,9 @@ class HealthSyncCoordinator @Inject constructor(
             _state.update { it.copy(isSyncing = false) }
             throw cancellation
         } catch (error: Exception) {
+            _gate.value = HealthSyncGate.Failed(
+                error.message ?: "Não foi possível atualizar o Health Connect.",
+            )
             _state.update {
                 it.copy(
                     isSyncing = false,
@@ -150,6 +177,16 @@ class HealthSyncCoordinator @Inject constructor(
                 )
             }
             throw error
+        }
+    }
+
+    private fun settleGate(error: String?, permissionMissing: Boolean) {
+        _gate.value = if (error != null) {
+            HealthSyncGate.Failed(error)
+        } else if (permissionMissing) {
+            HealthSyncGate.Failed("Permissão do Health Connect pendente.")
+        } else {
+            HealthSyncGate.Ready(store.lastSyncedAt() ?: Instant.now())
         }
     }
 }

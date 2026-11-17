@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S9 (C4-46)
-> **Último commit:** C4-46 — `feat(data): persist the plan generator version (C4-46)`
-> **Fase:** 2 — Fiação — **em andamento (S9; C4-45/C4-46 DONE)**; próxima C4-44 (S10)
-> **Sessão atual:** **S9 — C4-46 DONE**
-> **Task atual:** C4-46 (DONE)
-> **Próxima task:** C4-44 (S10)
+> **Última atualização:** 17/11/2026 — S10 (C4-44)
+> **Último commit:** C4-44 — `feat(app): gate plan generation on the Health Connect sync (C4-44)`
+> **Fase:** 2 — Fiação — **em andamento (S10; C4-44 DONE)**; próxima C4-47 (S10)
+> **Sessão atual:** **S10 — C4-44 DONE**
+> **Task atual:** C4-44 (DONE)
+> **Próxima task:** C4-47 (S10)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 991 verdes; `:core:data:test` 192; `:app:testDebugUnitTest` 907; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
-> **Próxima ação:** abrir C4-44 (gate de dados: `HealthSyncState` + gate no `TodayViewModel`), TDD sobre `HealthSyncCoordinator`/`TodayViewModel`.
+> **Gates da última sessão:** `:core:domain:test` 992 verdes; `:core:data:test` 192; `:app:testDebugUnitTest` 918; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
+> **Próxima ação:** abrir C4-47 (`PlanUpgrade` idempotente v6→v7), TDD sobre `PlanUpgrade`/`TrainingPlanRepository.applyReplan` com `G-UPGRADE-01`.
 
 ### 0.1 O que já está pronto
 
@@ -613,7 +613,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-44 | `HealthSyncState` + gate | — | M | S10 | ADR 0048 | Sem plano antes do sync | — |
+| [x] | C4-44 | `HealthSyncState` + gate | — | M | S10 | ADR 0048 | Sem plano antes do sync; timeout | `HealthSyncCoordinatorTest` (+7 gate); `TodayViewModelPersistTest` (+4 gate/timeout); `WeeklyPlanGeneratorTest` (+1 `dataIncomplete`); aviso “Sincronizando seus dados…” no Hoje; commit S10 |
 | [x] | C4-45 | Schema v18 + migração | C4-14/38 | L | S9 | ADR 0048 | 17→18 testada; sem perda | `MeuCoachDatabaseMigrationTest` (17→18 + round-trip das colunas); `TrainingPlanRepositoryTest` (+2); `DailyPrescriptionRepositoryTest` (+1); `18.json`; commit S9 |
 | [x] | C4-46 | `generatorVersion` no plano | C4-45 | M | S9 | ADR 0048 | Round-trip; default v6 | `WeeklyPlanGeneratorTest` (+1); `TrainingPlanRepositoryTest` (+2 round-trip/metadata); commit S9 |
 | [ ] | C4-47 | `PlanUpgrade` idempotente | C4-44/46 | L | S10 | ADR 0048 | `G-UPGRADE-01`; histórico | — |
@@ -815,7 +815,15 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** `:core:domain:test` 991 verdes (+1); `:core:data:test` 192 (+2: round-trip e metadata do snapshot); `:app:testDebugUnitTest` 907; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`.
 - **Commit:** `feat(data): persist the plan generator version (C4-46)`.
 - **Decisões/notas:** TDD RED→GREEN (campo inexistente não compilava). O domínio é a autoridade da versão do conteúdo: `saveWeek` escreve `plan.engineVersion` (troca o preserve-fallback de C4-45, que existia porque o domínio ainda não carregava o campo). `StoredWeeklyPlan` expõe `generatorVersion` para o `PlanUpgrade` (C4-47) comparar sem reler a entidade. Sem bump: o gerador continua emitindo v6; o bump para v7 é C4-53. Nenhum dado real; nenhuma migração nova; nenhuma UI.
-- **Próximo:** S10 / C4-44 (gate de dados: `HealthSyncState` + gate no `TodayViewModel`), TDD.
+### S10 — 2026-11-17 — Gate de dados: plano espera o sync (C4-44)
+
+- **Status:** DONE
+- **Tasks:** C4-44.
+- **Arquivos:** `app/.../health/HealthSyncGate.kt` (novo: `Idle`/`Syncing`/`Ready`/`Failed`), `HealthSyncCoordinator.kt` (`gate`), `app/.../ui/today/TodayViewModel.kt` (gate + timeout 3 s + `dataIncomplete` + `isSyncingData`), `TodayDemoData.kt`, `TodayScreen.kt` (aviso “Sincronizando seus dados…”), `core/domain/.../prescription/WeeklyPlanGenerator.kt` (`WeeklyPlanInput.dataIncomplete` + nota + `R-DATA-01`), `HealthSyncCoordinatorTest.kt` (+7), `TodayViewModelPersistTest.kt` (+4), `TimeDrivenStateTest.kt` (gate settled), `WeeklyPlanGeneratorTest.kt` (+1), `app/config/detekt/baseline.xml` (assinaturas), `docs/adr/0048-data-readiness-plan-upgrade-schema-v18.md`, `docs/CICLO_4_TREINO_REAL.md`, `docs/PROGRESS.md`.
+- **Testes/gates:** `:core:domain:test` 992 verdes (+1); `:core:data:test` 192; `:app:testDebugUnitTest` 918 (+11: 7 gate + 4 VM); `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`.
+- **Commit:** `feat(app): gate plan generation on the Health Connect sync (C4-44)`.
+- **Decisões/notas:** TDD RED→GREEN (gate/VM/campos inexistentes não compilavam). O gate chama-se `HealthSyncGate` e não `HealthSyncState`: o nome do ADR já descreve o estado detalhado da UI de sync; a semântica é idêntica (`Idle`/`Syncing` esperam; `Ready` gera; `Failed` gera com nota) e o ADR 0048 §3.1 foi anotado. `Failed` cobre indisponível/permissão/erro/timeout — todos geram com `dataIncomplete` + nota no rationale, e o `DATA_READY` de C4-48 reavalia quando os dados chegarem. Timeout de 3 s vive no `transformLatest` do ViewModel (cancela se o gate estabilizar); `UnconfinedTestDispatcher` virtualiza o `delay` sem `runTest`, então o teste de timeout avança o relógio virtual manualmente (`dispatcher.scheduler.advanceTimeBy`). Achado de ferramenta (load-bearing): o ID do baseline do detekt inclui KDoc dentro dos parênteses — dois KDocs adicionados em `TodayViewModel` quebraram as supressões pré-existentes; removidos (a doc vive no campo), baseline atualizado no formato vigente; nunca documentar params inline em função com baseline. Hilt/Dagger não resolveu binding de `StateFlow<HealthSyncGate>` via `@Provides` (`MissingBinding` mesmo com factory KSP gerada); pivot para injetar o `HealthSyncCoordinator` concreto no ViewModel — sem mudança de comportamento, testes com coordenador real + fakes. `TodayViewModel`/`TimeDrivenStateTest` passam coordenador com gate estabilizado por padrão; `TutorialViewModel` continua fora do gate (fluxo explícito de primeiro uso). O aviso no Hoje é um cartão neutro (`McCard.INSET`), sem bloquear a tela: o plano só não é gerado/persistido antes do gate.
+- **Próximo:** S10 / C4-47 (`PlanUpgrade` idempotente v6→v7 + `G-UPGRADE-01`), TDD.
 
 ---
 
@@ -901,8 +909,8 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 907 | Atualizar conforme novos testes |
-| `:core:domain` | 991 | Atualizar conforme novos testes |
+| `:app` | 918 | Atualizar conforme novos testes |
+| `:core:domain` | 992 | Atualizar conforme novos testes |
 | `:core:data` | 192 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -992,10 +1000,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-44, S10)
+## 14. Próxima ação (C4-47, S10)
 
-1. Abrir o ADR 0048 §2.1 e o FR-409 do PRD; ler `HealthSyncCoordinator`, `HealthSyncState` (se existir), `TodayViewModel` (geração na primeira composição) e os testes de sync/`TodayViewModel`.
-2. Escrever os testes que falham de C4-44: sem plano antes de `Ready`/`Failed` (ou timeout de 3 s com `dataIncomplete`); Hoje em loading durante `Syncing`.
-3. Implementar C4-44 com TDD, sem esperar o check-in (ausência de check-in é estado válido); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0048 §2.2 e o FR-409 (upgrade) do PRD; ler `TrainingPlanRepository.applyReplan` (transação, proteção de `DONE`/`CLOSED`, `stored.copy`), `PlanReplanner` (gates existentes) e o golden `G-PER-03` como modelo de fixture.
+2. Escrever os testes que falham de C4-47: `G-UPGRADE-01` (v6→v7: terça `DONE` preservada, oportunidade futura adicionada sem volume/longão extra/2ª qualidade), idempotência (2ª rodada sem mudança), transação (falha no meio preserva v6), semanas passadas intocadas.
+3. Implementar C4-47 com TDD (`PlanUpgrade` no `:app` ou domínio + fiação na abertura); rodar `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

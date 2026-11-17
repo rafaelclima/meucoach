@@ -126,6 +126,8 @@ data class TodayUiState(
     val illnessOrInjury: Boolean = false,
     /** Post-race recovery window for today, when active (ADR 0037). */
     val recovery: RecoveryUi? = null,
+    /** True while the sync has not settled and the week was not generated yet (ADR 0048 §2.1). */
+    val isSyncingData: Boolean = false,
 ) {
     /** The race event resolved for today, when the daily decision is competition. */
     val raceEvent: com.meucoach.core.model.RaceEvent?

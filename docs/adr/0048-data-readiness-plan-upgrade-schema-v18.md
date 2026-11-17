@@ -161,6 +161,8 @@ versão. O `PlanReplanner` inclui a versão no `inputsHash` e na revisão.
 ## 3. Dados e APIs
 
 - `HealthSyncState`/`HealthSyncCoordinator.state`.
+- `HealthSyncGate`/`HealthSyncCoordinator.gate` (o nome do ADR, `HealthSyncState`,
+  já descreve o estado detalhado da UI; o gate carrega a mesma semântica).
 - `TodayViewModel` gate + loading.
 - `PlanUpgrade` use case; `ReplanTrigger.DATA_READY`/`ENGINE_UPGRADE`.
 - `WeeklyPlanEntity.generatorVersion`.

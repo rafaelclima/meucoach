@@ -164,6 +164,12 @@ data class WeeklyPlanInput(
      * projection (an empty list means "no real reference" and never falls back).
      */
     val volumeReferences: List<VolumeReference>? = null,
+    /**
+     * Health sync had not settled when the week was generated (ADR 0048 §2.1).
+     * The plan is generated with the available data and says so explicitly;
+     * the upgrade path re-evaluates it when the data arrives.
+     */
+    val dataIncomplete: Boolean = false,
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
@@ -768,6 +774,12 @@ class WeeklyPlanGenerator {
             } else {
                 append("Sem progressão até existir histórico de conclusão.")
             }
+            if (input.dataIncomplete) {
+                append(
+                    "Dados de sincronização incompletos: o plano será reavaliado " +
+                        "quando chegarem. ",
+                )
+            }
         }
         return WeeklyPlan(
             weekStart = weekStart,
@@ -792,7 +804,8 @@ class WeeklyPlanGenerator {
                 if (deload) add("R-PLAN-04")
                 if (macroIntent != null) add("R-PER-01")
                 if (macroIntent != null) add("R-PER-02")
-            },
+                if (input.dataIncomplete) add("R-DATA-01")
+            }.distinct(),
             evidenceIds = buildList {
                 add("EV-SEILER-2010")
                 add("EV-DANIELS-2014")
@@ -812,7 +825,8 @@ class WeeklyPlanGenerator {
                 if (macroIntent != null && qualityCount > 0 && !(loadTrusted && !permitsQuality)) {
                     add("EV-FOSTER-2001")
                 }
-            },
+                if (input.dataIncomplete) add("EV-IMPELLIZZERI-2020")
+            }.distinct(),
             createdOn = input.today,
             engineVersion = ENGINE_VERSION,
         )

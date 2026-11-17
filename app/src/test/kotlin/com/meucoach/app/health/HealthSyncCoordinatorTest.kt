@@ -182,6 +182,92 @@ class HealthSyncCoordinatorTest {
         assertThat(source.reads).isEqualTo(1)
     }
 
+    @Test
+    fun `gate starts idle before any sync`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val coordinator = coordinator(FakeSource())
+
+        assertThat(coordinator.gate.value).isEqualTo(HealthSyncGate.Idle)
+    }
+
+    @Test
+    fun `gate settles ready on a fresh successful resume`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(today)),
+                missingPermissions = emptySet(),
+            ),
+        )
+        val coordinator = coordinator(source)
+
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+    }
+
+    @Test
+    fun `gate settles ready without reading when the last success is fresh`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        store.markSynced(now.minus(Duration.ofHours(1)), today)
+        val coordinator = coordinator(FakeSource())
+
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+    }
+
+    @Test
+    fun `gate settles failed when the provider is unavailable`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val coordinator = coordinator(FakeSource(status = HealthConnectStatus.UNAVAILABLE))
+
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Failed } }
+    }
+
+    @Test
+    fun `gate settles failed when permission is missing`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val coordinator = coordinator(FakeSource(granted = emptySet()))
+
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Failed } }
+    }
+
+    @Test
+    fun `gate settles failed on a read error`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = emptyList(),
+                missingPermissions = emptySet(),
+                error = "Falha de leitura.",
+            ),
+        )
+        val coordinator = coordinator(source)
+
+        coordinator.syncOnResume()
+        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Failed } }
+
+        assertThat((coordinator.gate.value as HealthSyncGate.Failed).message)
+            .isEqualTo("Falha de leitura.")
+    }
+
+    @Test
+    fun `manual sync settles the gate as ready`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val source = FakeSource(
+            result = HealthConnectReadResult(
+                days = listOf(metrics(today)),
+                missingPermissions = emptySet(),
+            ),
+        )
+        val coordinator = coordinator(source)
+
+        coordinator.syncNow()
+
+        assertThat(coordinator.gate.value).isInstanceOf(HealthSyncGate.Ready::class.java)
+    }
+
     private fun coordinator(source: HealthDailySource): HealthSyncCoordinator {
         val service = HealthSyncService(
             source = source,
