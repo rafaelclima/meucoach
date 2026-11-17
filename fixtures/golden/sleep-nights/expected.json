@@ -1,0 +1,89 @@
+{
+  "scenarioId": "G-DATA-02",
+  "diagnostics": {
+    "suspectSleepNights": 1,
+    "fragmentedSleepNights": 1
+  },
+  "cases": [
+    {
+      "id": "partial-36min",
+      "validator": { "minutes": null, "fragmented": false, "suspect": true },
+      "readiness": {
+        "score": 75,
+        "level": "GREEN",
+        "confidence": "LOW",
+        "components": { "SUBJECTIVE": 75 },
+        "missing": ["SLEEP", "HRV", "RESTING_HEART_RATE"],
+        "flags": [],
+        "qualityEligibleByReadiness": true
+      },
+      "gate": {
+        "eligible": true,
+        "reason": null,
+        "ruleId": "R-PER-03",
+        "detail": null,
+        "unlockHint": null
+      }
+    },
+    {
+      "id": "night-plus-nap",
+      "validator": { "minutes": 360, "fragmented": false, "suspect": false },
+      "readiness": {
+        "score": 60,
+        "level": "AMBER",
+        "confidence": "MEDIUM",
+        "components": { "SUBJECTIVE": 75, "SLEEP": 40 },
+        "missing": ["HRV", "RESTING_HEART_RATE"],
+        "flags": ["NO_QUALITY"],
+        "qualityEligibleByReadiness": false
+      },
+      "gate": {
+        "eligible": false,
+        "reason": "LOW_READINESS",
+        "ruleId": "R-READY-03",
+        "detail": "prontidão moderada (score 60)",
+        "unlockHint": "Recupere até a prontidão ficar verde e confirme no check-in."
+      }
+    },
+    {
+      "id": "valid-short-5h30",
+      "validator": { "minutes": 330, "fragmented": false, "suspect": false },
+      "readiness": {
+        "score": 52,
+        "level": "AMBER",
+        "confidence": "MEDIUM",
+        "components": { "SUBJECTIVE": 75, "SLEEP": 20 },
+        "missing": ["HRV", "RESTING_HEART_RATE"],
+        "flags": ["SHORT_SLEEP", "NO_QUALITY"],
+        "qualityEligibleByReadiness": false
+      },
+      "gate": {
+        "eligible": false,
+        "reason": "SHORT_SLEEP",
+        "ruleId": "R-READY-04",
+        "detail": "sono abaixo de 6 h",
+        "unlockHint": "Priorize uma noite de sono de pelo menos 6 h."
+      }
+    },
+    {
+      "id": "fragmented",
+      "validator": { "minutes": 240, "fragmented": true, "suspect": false },
+      "readiness": {
+        "score": 44,
+        "level": "AMBER",
+        "confidence": "MEDIUM",
+        "components": { "SUBJECTIVE": 75, "SLEEP": 0 },
+        "missing": ["HRV", "RESTING_HEART_RATE"],
+        "flags": ["SHORT_SLEEP", "NO_QUALITY"],
+        "qualityEligibleByReadiness": false
+      },
+      "gate": {
+        "eligible": false,
+        "reason": "SHORT_SLEEP",
+        "ruleId": "R-READY-04",
+        "detail": "sono abaixo de 6 h",
+        "unlockHint": "Priorize uma noite de sono de pelo menos 6 h."
+      }
+    }
+  ]
+}

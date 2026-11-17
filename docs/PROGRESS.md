@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S14 do Ciclo 4: docs `R-READY-06` e renumeração G-READY-03/05, C4-33 — S14 aberta)
+**Atualizado:** 17/11/2026 (S14 do Ciclo 4: sono plausível + docs `R-DATA-02`, C4-37 — S14 encerrada)
+
+## Sessão 2026-11-17 — Ciclo 4/S14: sono plausível + docs `R-DATA-02` (C4-37)
+
+**Objetivo:** congelar o sono plausível como golden (FR-407, ADR 0049 §2.4/§6) e fechar o ADR 0049 no papel, com teste + docs.
+
+### Concluído
+
+- **Golden `G-DATA-02`** (`fixtures/golden/sleep-nights/`): quatro noites com check-in 4/2/2/2 e carga que passa em tudo — 36 min → suspeita/`null`, prontidão 75 verde, qualidade mantida; 6 h + cochilo 30 min → 360 min válidos, 60 âmbar, gate `LOW_READINESS`; 5h30 → 330 min `SHORT_SLEEP`, 52 âmbar, gate `SHORT_SLEEP`; fragmentada (4 h + gap 3 h) → maior bloco 240 min, 44 âmbar, gate `SHORT_SLEEP`. Scores verificados à mão e confirmados pelo teste.
+- **Domínio:** `SleepNightsGoldenTest` (1: validador + agregador + prontidão + gate por caso, diagnóstico 1 suspeita/1 fragmentada).
+- **Docs:** `SPORTS_SCIENCE` v1.9 (§9.3 com `R-DATA-02` + caso canônico, §14 com a linha da regra); ADR 0049 (status implementado, matriz `G-DATA-02`, §10); PRD (§12 C4-37); `DECISIONS` r1.50; `fixtures/golden/README` + `TESTING` com `G-DATA-02`.
+- **ADR 0049 implementado por completo** (C4-28..C4-37, S4/S8/S11/S14). Sem colisão de IDs.
+
+### Testes
+
+- `:core:domain:test` 1052 verdes (+1); `spotlessCheck` verde.
+- App/data/model intactos (955/204/40; gates de C4-32 seguem verdes).
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (expected ausente → `IllegalStateException`; 2 imports ajustados).
+- A copy de diagnóstico ("1 noite ignorada por dados implausíveis de sono") já existia desde C4-35; C4-37 não mexe em UI.
+- S14 encerrada (C4-26/C4-27/C4-32/C4-33/C4-37); S15 abre com C4-57.
+
+### Próximo passo
+
+1. S15 / C4-57: `TargetKind`/precedência FC×pace (FR-410), TDD.
+2. Depois S15 (C4-58..C4-60: horizonte, copy, `createdAt`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S14: docs `R-READY-06` e renumeração G-READY-03/05 (C4-33)
 

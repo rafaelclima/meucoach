@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.8 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.9 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -9,6 +9,7 @@
 > Revisão 1.6 (17/11/2026, Ciclo 4/S13, C4-41/C4-42, ADR 0050): golden `G-VOL-02` congela o crédito do treino extra (3×38 concluídas + extra 28 → base real 142, alvo 151, adesão 3/3, copy "treino extra contou"); `LEGACY_UNVERIFIED` sem atividade não entra na base; `R-PLAN-01 v2` e `R-LVL-03` no §14 e §8.12. Resta o review "planejada/mantida/rebaixada" (C4-43).
 > Revisão 1.7 (17/11/2026, Ciclo 4/S14, C4-26/C4-27, ADR 0046): golden `G-LOAD-03` congela o cold-start (8 dias de carga objetiva + 13 de pré-história → `acwrReliable=false` mesmo com `acwr=1,6`; qualidade mantida, volume mantido, copy "8 de 28 dias de histórico; ACWR em calibração"); a UI mostra pill/“Aumento” em calibração em vez do número instável (`R-LOAD-03 v3`); renumeração `G-LOAD-02` → `G-LOAD-03` registrada no ADR 0046 e no PRD.
 > Revisão 1.8 (17/11/2026, Ciclo 4/S14, C4-32/C4-33, ADR 0049): golden `G-READY-05` congela a matriz do check-in (sem check-in: 76 verde parcial, qualidade bloqueada; 3/3/3/3: 67 âmbar, bloqueada; 4/2/2/2: 76 e 5/1/1/1: 84, verde, qualidade mantida); o "Por quê?" da prontidão cita `R-READY-06` e pede o check-in; renumeração `G-READY-03` → `G-READY-05` registrada no ADR 0049 e no PRD (o `G-READY-03` histórico de doença fica intacto).
+> Revisão 1.9 (17/11/2026, Ciclo 4/S14, C4-37, ADR 0049): golden `G-DATA-02` congela o sono plausível (36 min → suspeita/`null`, qualidade mantida; 6 h + cochilo → 360 min válidos; 5h30 → 330 min `SHORT_SLEEP`; fragmentada → maior bloco 240 min `SHORT_SLEEP`); `R-DATA-02` no `SPORTS_SCIENCE` (§9.3/§14); ADR 0049 implementado por completo.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -508,6 +509,10 @@ não infla adesão.
 - Média < 6,5 h por 3 noites ⇒ não aumentar volume; < 6 h ⇒ sem qualidade.
 - Sono é tratado como **limitador de treino**, não como métrica de culpa.
 
+**Sono plausível (`R-DATA-02`, HALSON/WALSH/WATSON, MODERATE):** só a janela noturna local 18:00–12:00 conta para a noite; sessões com gap ≤ 120 min são unidas sem contar o intervalo; blocos separados usam só o maior (noite fragmentada, sem soma); fora de 180–840 min a noite é `SUSPECT` e vira `null` (ausente), nunca `SHORT_SLEEP`. O diagnóstico de sync conta noites suspeitas/fragmentadas ("1 noite ignorada por dados implausíveis de sono"), sem valor bruto.
+
+**Caso canônico (`G-DATA-02`, `fixtures/golden/sleep-nights/`):** 36 min → suspeita/`null`, prontidão 75 verde só com o subjetivo e qualidade mantida (`R-PER-03`); 6 h + cochilo 30 min → 360 min válidos (cochilo fora da janela), prontidão 60 âmbar e gate `LOW_READINESS`/`R-READY-03`; 5h30 → 330 min, `SHORT_SLEEP`, qualidade bloqueada (`R-READY-04`); fragmentada (4 h + gap 3 h) → maior bloco 240 min, `SHORT_SLEEP`, qualidade bloqueada.
+
 ### 9.4 Peso e impacto
 
 - O app não prescreve emagrecimento nem dieta.
@@ -656,6 +661,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-SAFE-03` | Sem prescrição de peso/nutrição; única exceção é a copy educativa de hidratação do ADR 0029 (sem números) | Escopo; ADR 0029 | STRONG |
 | `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
 | `R-DATA-01` | Dado ausente não preenche valor neutro silencioso; cobertura/frescor de carga são declaradas | Produto | STRONG |
+| `R-DATA-02` | Sono implausível (<3 h ou sessão parcial) é ausente (`null`), não curto; noite válida <6 h bloqueia qualidade (golden `G-DATA-02`) | HALSON, WALSH, WATSON | MODERATE |
 | `R-PRESC-01` | A prescrição do dia parte da sessão planejada e a mantém quando os guardrails permitem | ADR 0023; R-PLAN/R-READY | MODERATE |
 | `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade) com os mesmos inputs; com inputs novos (check-in, sono, carga) antes do `DONE`, a qualidade planejada pode ser restaurada em nova versão, sem reescrever o histórico | ADR 0023/0044; R-READY/R-DATA | STRONG |
 | `R-PRESC-03` | Uma decisão por dia, versionada e a mesma em todas as telas | ADR 0023; Produto | STRONG |

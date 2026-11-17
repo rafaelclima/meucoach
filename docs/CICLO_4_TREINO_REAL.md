@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S14 (C4-33)
-> **Último commit:** C4-33 — `docs(c4): record R-READY-06 and the check-in matrix golden (C4-33)`
-> **Fase:** 3 — UI/copy — **S14 aberta (C4-37)**; C4-32/C4-33 DONE
-> **Sessão atual:** **S14 — C4-33 DONE**
-> **Task atual:** C4-33 (DONE)
-> **Próxima task:** C4-37 (S14)
+> **Última atualização:** 17/11/2026 — S14 (C4-37)
+> **Último commit:** C4-37 — `feat(domain): freeze the sleep plausibility golden and record R-DATA-02 (C4-37)`
+> **Fase:** 3 — UI/copy — **S14 encerrada**; próxima S15 (C4-57..C4-60)
+> **Sessão atual:** **S14 — C4-37 DONE**
+> **Task atual:** C4-37 (DONE)
+> **Próxima task:** C4-57 (S15)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-32 seguem verdes: `:core:domain:test` 1051, `:app:testDebugUnitTest` 955, `:core:data:test` 204, `:core:model` 40)
-> **Próxima ação:** abrir C4-37 (golden `G-DATA-02` + docs de sono, `R-DATA-02`).
+> **Gates da última sessão:** `:core:domain:test` 1052, `:app:testDebugUnitTest` 955, `:core:data:test` 204, `:core:model` 40; `spotlessCheck` verde; sem código de app/data alterado (gates de C4-32 seguem verdes)
+> **Próxima ação:** abrir S15 (C4-57: `TargetKind`/precedência FC×pace).
 
 ### 0.1 O que já está pronto
 
@@ -161,8 +161,8 @@
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29). O "Por quê?" da prontidão cita `R-READY-06` e pede o check-in quando ele falta (C4-32); os docs `R-READY-06` fecharam em C4-33 (`SPORTS_SCIENCE` §7.3/§14, ADR 0049 §10, PRD, `DECISIONS` r1.49).
 - A copy/UI de “em calibração” e o golden do cold-start estão prontos (C4-26, `G-LOAD-03`); os docs `R-LOAD-03 v3` ficam para C4-27. O domínio já expunha `acwrReliable`, `historyDays` e `baselineDays`.
 - `R-PER-03` documentado no `SPORTS_SCIENCE` §8.8/§14 e `R-PRESC-02` emendada (C4-08); o catálogo de código já os cobre desde C4-52. Os trechos de `SPORTS_SCIENCE` ligados a `R-READY-06` ficam para C4-33.
-- O golden `G-READY-05`/copy (C4-32) congela a matriz do check-in (sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1) e o "Por quê?" da prontidão cita `R-READY-06`; os docs de prontidão ficam para C4-33. O golden `G-DATA-02` continua pendente. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
-- O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
+- O golden `G-READY-05`/copy (C4-32) congela a matriz do check-in (sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1) e o "Por quê?" da prontidão cita `R-READY-06`; os docs `R-READY-06` fecharam em C4-33 (`SPORTS_SCIENCE` §7.3/§14, ADR 0049 §10, PRD, `DECISIONS` r1.49). O golden `G-DATA-02` e os docs `R-DATA-02` fecharam em C4-37 (`SPORTS_SCIENCE` §9.3/§14, `DECISIONS` r1.50); ADR 0049 implementado por completo. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
+- O diagnóstico de sono segue exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; `G-DATA-02` e `R-DATA-02` fecharam em C4-37.
 - `qualityKind`/`structure`/`planDecision` têm coluna, round-trip no Room (C4-45) e export `PlanJson` (C4-50); `generatorVersion` tem coluna com default v6 e é preservada no re-save, e o domínio a carrega (C4-46).
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
 - Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20 DONE); docs `R-PER-01/02/04` + evidências (C4-21 DONE). S12 encerrada.
@@ -596,7 +596,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-34 | `SleepNightValidator` | — | M | S4 | ADR 0049 | Janela/merge/180–840 | `SleepNightValidatorTest` (12); commit S4 |
 | [x] | C4-35 | Agregador usa o validador; suspeita → null | C4-34 | M | S4 | ADR 0049 | Testes; diagnóstico | `HealthMetricsAggregatorTest` (5 novos); sync/UI; commit S4 |
 | [x] | C4-36 | Readiness/review ignoram suspeita | C4-35 | M | S4 | ADR 0049 | Sem SHORT_SLEEP falso | `SleepPlausibilityTest` (4); commit S4 |
-| [ ] | C4-37 | Golden `G-DATA-02` + docs | C4-34..36 | S | S14 | ADR 0049 | Golden/docs | — |
+| [x] | C4-37 | Golden `G-DATA-02` + docs | C4-34..36 | S | S14 | ADR 0049 | Golden/docs | `fixtures/golden/sleep-nights` (36 min/cochilo/5h30/fragmentada + gate); `SleepNightsGoldenTest` (1); `SPORTS_SCIENCE` v1.9 (§9.3/§14, `R-DATA-02`); ADR 0049 completo; `DECISIONS` r1.50; commit S14 |
 
 ### E7 — Volume/treino extra
 
@@ -1033,7 +1033,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-32 seguem verdes: 1051/955/204/40).
 - **Commit:** `docs(c4): record R-READY-06 and the check-in matrix golden (C4-33)`.
 - **Decisões/notas:** `R-READY-06` já existia no `ExplanationCatalog` e no gate desde C4-04/C4-29; C4-33 amarra regra, golden, copy/UI e IDs, sem mudar a regra. `G-READY-03` histórico (`readiness-illness`) intacto; PRD/ADR/DECISIONS/TESTING agora dizem `G-READY-05` para a matriz do check-in (precedente C4-27). Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
-- **Próximo:** S14 / C4-37 (golden `G-DATA-02` + docs de sono).
+- **Próximo:** S15 / C4-57 (alvos pace×FC, `TargetKind`/precedência).
+
+### S14.4 — 2026-11-17 — Sono plausível + docs `R-DATA-02` (C4-37)
+
+- **Status:** DONE
+- **Tasks:** C4-37.
+- **Arquivos:** `fixtures/golden/sleep-nights/` (input/expected/README novos, `G-DATA-02`), `core/domain/.../golden/SleepNightsGoldenTest.kt` (novo, 1), `docs/SPORTS_SCIENCE.md` (v1.9: §9.3 com `R-DATA-02` + caso canônico, §14 com a linha da regra), `docs/adr/0049-readiness-checkin-sleep.md` (status implementado + matriz `G-DATA-02` + §10), `docs/PRD_TREINO_REAL.md` (§12 C4-37), `docs/DECISIONS.md` (r1.50 + linha do ADR 0049), `fixtures/golden/README.md`, `docs/TESTING.md` (tabela de goldens), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1052 verdes (+1); `spotlessCheck` verde; `:app:testDebugUnitTest` 955, `:core:data:test` 204 e `:core:model` 40 intactos (sem código de app/data alterado; gates de C4-32 seguem verdes).
+- **Commit:** `feat(domain): freeze the sleep plausibility golden and record R-DATA-02 (C4-37)`.
+- **Decisões/notas:** TDD RED→GREEN (expected ausente → `IllegalStateException`; imports `SleepMetrics`/`JSONArray` ajustados para compilar). O golden usa o mesmo check-in 4/2/2/2 e carga sintética que passa em tudo, para isolar o sono: 36 min → `null`/75 verde/qualidade mantida; 6 h + cochilo → 360 min/60 âmbar/gate `LOW_READINESS`; 5h30 → 330 min/`SHORT_SLEEP`/52 âmbar; fragmentada → 240 min/`SHORT_SLEEP`/44 âmbar. Scores verificados à mão (subjetivo 75; sono 40/20/0) e confirmados pelo teste. Sem colisão de IDs (`G-DATA-02` livre). A copy de diagnóstico ("1 noite ignorada por dados implausíveis de sono") já existia desde C4-35; C4-37 não mexe em UI. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S15 / C4-57 (alvos pace×FC, `TargetKind`/precedência). S14 encerrada.
 
 ---
 
@@ -1211,9 +1221,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-37, S14)
+## 14. Próxima ação (C4-57, S15)
 
-1. Abrir a FR-407 e o ADR 0049 §2.4/§6; ler `SleepNightValidator` + agregador como base — C4-34/35/36 dão o domínio; C4-37 congela o `G-DATA-02` (36 min vs cochilo vs 5h30) + docs `R-DATA-02`.
-2. Implementar C4-37 com TDD (golden + copy); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-410 e o ADR 0047 §8; ler `PrescriptionTargets` + `SessionBriefingEngine` como base — C4-10 (alvos) e C4-19 (briefing) dão o contexto; C4-57 define `TargetKind` e a precedência FC×pace.
+2. Implementar C4-57 com TDD (domínio + briefing + UI); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

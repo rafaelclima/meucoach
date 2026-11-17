@@ -1692,7 +1692,7 @@ O usuário 0 aprovou 12/12 decisões. A PRD v1.1 incorpora o resultado; a única
 | C4-34 | `SleepNightValidator`: janela noturna, merge 120 min, 180–840 | — | M | Testes |
 | C4-35 | `HealthMetricsAggregator` usa o validador; suspeita → null | C4-34 | M | Testes; diagnóstico |
 | C4-36 | Readiness/review ignoram suspeita; `SHORT_SLEEP` só válido | C4-35 | M | Testes |
-| C4-37 | Golden `G-DATA-02`; docs `R-DATA-02` | C4-34..36 | S | Golden/docs |
+| C4-37 | Golden `G-DATA-02`; docs `R-DATA-02` | C4-34..36 | S | Golden/docs; `SleepNightsGoldenTest` (1); `SPORTS_SCIENCE` §9.3/§14 |
 
 #### E7 — Volume/treino extra
 

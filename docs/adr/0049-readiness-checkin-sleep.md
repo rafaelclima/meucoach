@@ -1,6 +1,6 @@
 # ADR 0049 — Prontidão, check-in e sono plausível
 
-**Status:** Implementado em 2026-11-17 (C4-28..C4-32, C4-34..C4-36, sessões S4/S8/S11/S14); restam os docs desta task (C4-33) e o golden/docs de sono (C4-37).
+**Status:** Implementado em 2026-11-17 (C4-28..C4-37, sessões S4/S8/S11/S14).
 **Data:** 2026-11-16
 **Escopo:** `ReadinessCalculator`, `ReadinessResult`, `ReadinessFlag`,
 `DailyMetricsReadinessBuilder`, `HealthMetricsAggregator`, `CheckInViewModel`/`CheckInScreen`,
@@ -234,10 +234,7 @@ Sem migração de schema para este ADR (o `sleepDurationMin=null` já é suporta
 | 5/1/1/1 | check-in | verde; qualidade mantida |
 | Check-in tardio | EASY → check-in antes do DONE | nova versão QUALITY |
 | DONE | check-in depois | histórico intacto |
-| `G-DATA-02` | 36 min | suspect/null; sem SHORT_SLEEP |
-| 5h30 | válido | SHORT_SLEEP; qualidade bloqueada |
-| Cochilo | 6h + 30 min | 6h válido |
-| Fragmentado | 4h + gap 3h | maior bloco; sem soma |
+| `G-DATA-02` (`fixtures/golden/sleep-nights/`) | 36 min / 6 h + cochilo / 5h30 / fragmentada | 36 min: suspect/`null`, sem `SHORT_SLEEP`, qualidade mantida; 6 h + 30 min: 360 válidos; 5h30: `SHORT_SLEEP`, bloqueada; 4 h + gap 3 h: maior bloco 240, `SHORT_SLEEP` |
 | UI | formulário | sem 3/3/3/3; labels; salvar desabilitado |
 | A11y | labels/TalkBack/48 dp | ok |
 
@@ -297,3 +294,9 @@ Sem migração de schema para este ADR (o `sleepDurationMin=null` já é suporta
 - **C4-33 (S14):** docs `R-READY-06` (`SPORTS_SCIENCE` §7.3/§14)
   e renumeração `G-READY-03` → `G-READY-05` aqui e no PRD (o `G-READY-03`
   histórico de doença, `readiness-illness`, fica intacto).
+- **C4-37 (S14):** golden `G-DATA-02` (`fixtures/golden/sleep-nights`):
+  36 min → suspeita/`null` (qualidade mantida com check-in); 6 h + cochilo
+  30 min → 360 min válidos; 5h30 → 330 min `SHORT_SLEEP` (bloqueia);
+  fragmentada 4 h + gap 3 h → maior bloco 240 min `SHORT_SLEEP` (bloqueia).
+  `SleepNightsGoldenTest` (1). Docs `R-DATA-02` (`SPORTS_SCIENCE` §9.3/§14).
+  ADR 0049 implementado por completo.

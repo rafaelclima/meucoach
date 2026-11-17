@@ -1,0 +1,40 @@
+{
+  "scenarioId": "G-DATA-02",
+  "description": "Sleep plausibility on four nights (UTC): a 36-min partial session is suspect (absent, never a short night); a 6 h night plus a 30-min nap stays 6 h (the nap is outside the night window); a valid 5h30 night is SHORT_SLEEP and blocks quality; a fragmented night (4 h + 3 h gap) keeps only the largest 4 h block and blocks quality. Every case runs the validator, the aggregator, the readiness calculator with a 4/2/2/2 check-in and the day quality gate on a passing load.",
+  "zoneId": "UTC",
+  "from": "2026-11-13",
+  "to": "2026-11-16",
+  "checkIn": { "sleepQuality": 4, "fatigue": 2, "soreness": 2, "stress": 2 },
+  "cases": [
+    {
+      "id": "partial-36min",
+      "date": "2026-11-13",
+      "sessions": [
+        { "start": "2026-11-13T04:00:00Z", "end": "2026-11-13T04:36:00Z" }
+      ]
+    },
+    {
+      "id": "night-plus-nap",
+      "date": "2026-11-14",
+      "sessions": [
+        { "start": "2026-11-13T22:00:00Z", "end": "2026-11-14T04:00:00Z" },
+        { "start": "2026-11-14T13:00:00Z", "end": "2026-11-14T13:30:00Z" }
+      ]
+    },
+    {
+      "id": "valid-short-5h30",
+      "date": "2026-11-15",
+      "sessions": [
+        { "start": "2026-11-15T00:00:00Z", "end": "2026-11-15T05:30:00Z" }
+      ]
+    },
+    {
+      "id": "fragmented",
+      "date": "2026-11-16",
+      "sessions": [
+        { "start": "2026-11-15T22:00:00Z", "end": "2026-11-16T02:00:00Z" },
+        { "start": "2026-11-16T05:00:00Z", "end": "2026-11-16T09:00:00Z" }
+      ]
+    }
+  ]
+}
