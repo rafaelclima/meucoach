@@ -38,6 +38,7 @@ import com.meucoach.core.domain.briefing.SessionBriefing
 import com.meucoach.core.domain.prescription.HeartRateTarget
 import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import java.util.Locale
 
@@ -223,48 +224,60 @@ private fun ReadyContent(briefing: SessionBriefing, onClose: () -> Unit) {
 private fun BriefingTargets(targets: PrescriptionTargets) {
     val colors = McTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        targets.pace?.let { pace ->
-            BriefingTargetRow(
-                label = "Ritmo",
-                value = pace.value(),
-                tag = "briefing-target-pace",
-            )
-        }
-        targets.heartRate?.let { heartRate ->
-            BriefingTargetRow(
-                label = "FC-alvo",
-                value = heartRate.value(),
-                tag = "briefing-target-heart-rate",
-            )
-        }
-        targets.distanceKm?.let { distance ->
-            BriefingTargetRow(
-                label = "Distância",
-                value = distanceValue(distance),
-                tag = "briefing-target-distance",
-            )
-        }
-        targets.zone?.let { zone ->
-            BriefingTargetRow(
-                label = "Zona",
-                value = zone,
-                tag = "briefing-target-zone",
-            )
-        }
-        targets.rpe?.let { rpe ->
-            BriefingTargetRow(
-                label = "Esforço",
-                value = "$rpe/10",
-                tag = "briefing-target-rpe",
-            )
+        orderedTargetRows(targets).forEach { row ->
+            BriefingTargetRow(label = row.label, value = row.value, tag = row.tag)
         }
     }
+    Spacer(modifier = Modifier.height(2.dp))
+    Text(
+        text = primaryNote(targets),
+        style = McTextStyles.caption,
+        color = colors.textTertiary,
+        modifier = Modifier.testTag("briefing-target-primary-note"),
+    )
     Spacer(modifier = Modifier.height(2.dp))
     Text(
         text = "Números copiados da prescrição de hoje.",
         style = McTextStyles.caption,
         color = colors.textTertiary,
     )
+}
+
+private data class TargetRow(val label: String, val value: String, val tag: String)
+
+/**
+ * FR-410: the leading target renders first; the rest follows as reference.
+ * Tags are unchanged so existing tests keep passing.
+ */
+private fun orderedTargetRows(targets: PrescriptionTargets): List<TargetRow> {
+    val pace = targets.pace?.let { TargetRow("Ritmo", it.value(), "briefing-target-pace") }
+    val heartRate =
+        targets.heartRate?.let { TargetRow("FC-alvo", it.value(), "briefing-target-heart-rate") }
+    val distance =
+        targets.distanceKm?.let { TargetRow("Distância", distanceValue(it), "briefing-target-distance") }
+    val zone = targets.zone?.let { TargetRow("Zona", it, "briefing-target-zone") }
+    val rpe = targets.rpe?.let { TargetRow("Esforço", "$it/10", "briefing-target-rpe") }
+    val leading = when (targets.primary) {
+        TargetKind.HEART_RATE -> listOfNotNull(heartRate, rpe, pace)
+        TargetKind.PACE -> listOfNotNull(pace, heartRate, rpe)
+        TargetKind.MIXED -> listOfNotNull(heartRate, rpe, pace)
+        TargetKind.RPE -> listOfNotNull(rpe, pace, heartRate)
+    }
+    return leading + listOfNotNull(distance, zone)
+}
+
+private fun primaryNote(targets: PrescriptionTargets): String = when (targets.primary) {
+    TargetKind.HEART_RATE -> "Principal: FC e esforço; o pace é referência."
+
+    TargetKind.PACE -> "Principal: pace do bloco; a FC confirma."
+
+    TargetKind.MIXED -> "Principal: FC como teto; o esforço é o guia."
+
+    TargetKind.RPE -> if (targets.pace != null) {
+        "Principal: esforço percebido; o pace é referência."
+    } else {
+        "Principal: esforço percebido."
+    }
 }
 
 @Composable

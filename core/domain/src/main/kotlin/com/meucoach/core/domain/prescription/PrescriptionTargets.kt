@@ -5,6 +5,20 @@ import com.meucoach.core.model.Pace
 import kotlin.math.roundToInt
 
 /**
+ * Which target leads the session (FR-410, ADR 0047 §2.8).
+ *
+ * Easy/long sessions are led by heart rate (or RPE without calibration) with
+ * pace as reference; quality sessions are led by the block pace with heart
+ * rate as guardrail ([MIXED] covers heart rate without pace).
+ */
+enum class TargetKind {
+    HEART_RATE,
+    PACE,
+    RPE,
+    MIXED,
+}
+
+/**
  * Objective and subjective targets of a prescription.
  *
  * Pace and heart rate are only present when the profile is calibrated. Without
@@ -18,6 +32,11 @@ data class PrescriptionTargets(
     val distanceKm: Double? = null,
     /** Perceived effort on the 1–10 scale; null when pace/HR are available. */
     val rpe: Int? = null,
+    /**
+     * Which target leads the session. Set by [PrescriptionPolicy] from the
+     * workout type and the available targets; never derived in the UI.
+     */
+    val primary: TargetKind,
 ) {
     init {
         require(rpe == null || rpe in 1..10) { "RPE must be between 1 and 10" }
@@ -74,16 +93,35 @@ internal object PrescriptionPolicy {
         durationMin: Int?,
         heat: HeatLevel = HeatLevel.NONE,
     ): PrescriptionTargets {
-        if (type == WorkoutType.REST) return PrescriptionTargets()
+        if (type == WorkoutType.REST) return PrescriptionTargets(primary = TargetKind.RPE)
         val base = when (type) {
             WorkoutType.QUALITY -> qualityTargets(profile)
-            WorkoutType.LONG, WorkoutType.EASY -> easyTargets(profile)
-            WorkoutType.REST -> PrescriptionTargets()
+            WorkoutType.LONG, WorkoutType.EASY -> easyTargets(type, profile)
+            WorkoutType.REST -> PrescriptionTargets(primary = TargetKind.RPE)
         }
         return base.forDuration(durationMin).withHeat(heat)
     }
 
-    private fun easyTargets(profile: com.meucoach.core.model.AthleteProfile): PrescriptionTargets {
+    /**
+     * Single precedence rule (FR-410): easy/long is led by HR (RPE without
+     * LTHR, with pace as reference); quality is led by the block pace
+     * ([MIXED] covers HR without pace).
+     */
+    internal fun primaryFor(type: WorkoutType, pace: PaceTarget?, heartRate: HeartRateTarget?): TargetKind =
+        when (type) {
+            WorkoutType.EASY, WorkoutType.LONG ->
+                if (heartRate != null) TargetKind.HEART_RATE else TargetKind.RPE
+
+            WorkoutType.QUALITY -> when {
+                pace != null -> TargetKind.PACE
+                heartRate != null -> TargetKind.MIXED
+                else -> TargetKind.RPE
+            }
+
+            WorkoutType.REST -> TargetKind.RPE
+        }
+
+    private fun easyTargets(type: WorkoutType, profile: com.meucoach.core.model.AthleteProfile): PrescriptionTargets {
         val pace = profile.thresholdPace?.let { threshold ->
             val range = com.meucoach.core.domain.zones.PaceZoneCalculator
                 .ranges(threshold)
@@ -103,7 +141,9 @@ internal object PrescriptionPolicy {
             pace = pace,
             heartRate = heartRate,
             zone = "Z2",
-            rpe = if (pace == null && heartRate == null) EASY_RPE else null,
+            // FR-410: without LTHR, RPE leads and pace (when present) is reference.
+            rpe = if (heartRate == null) EASY_RPE else null,
+            primary = primaryFor(type, pace, heartRate),
         )
     }
 
@@ -128,6 +168,7 @@ internal object PrescriptionPolicy {
             heartRate = heartRate,
             zone = "Z3–Z4",
             rpe = if (pace == null && heartRate == null) QUALITY_RPE else null,
+            primary = primaryFor(WorkoutType.QUALITY, pace, heartRate),
         )
     }
 }

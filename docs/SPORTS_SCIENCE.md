@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.9 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.10 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -10,6 +10,7 @@
 > Revisão 1.7 (17/11/2026, Ciclo 4/S14, C4-26/C4-27, ADR 0046): golden `G-LOAD-03` congela o cold-start (8 dias de carga objetiva + 13 de pré-história → `acwrReliable=false` mesmo com `acwr=1,6`; qualidade mantida, volume mantido, copy "8 de 28 dias de histórico; ACWR em calibração"); a UI mostra pill/“Aumento” em calibração em vez do número instável (`R-LOAD-03 v3`); renumeração `G-LOAD-02` → `G-LOAD-03` registrada no ADR 0046 e no PRD.
 > Revisão 1.8 (17/11/2026, Ciclo 4/S14, C4-32/C4-33, ADR 0049): golden `G-READY-05` congela a matriz do check-in (sem check-in: 76 verde parcial, qualidade bloqueada; 3/3/3/3: 67 âmbar, bloqueada; 4/2/2/2: 76 e 5/1/1/1: 84, verde, qualidade mantida); o "Por quê?" da prontidão cita `R-READY-06` e pede o check-in; renumeração `G-READY-03` → `G-READY-05` registrada no ADR 0049 e no PRD (o `G-READY-03` histórico de doença fica intacto).
 > Revisão 1.9 (17/11/2026, Ciclo 4/S14, C4-37, ADR 0049): golden `G-DATA-02` congela o sono plausível (36 min → suspeita/`null`, qualidade mantida; 6 h + cochilo → 360 min válidos; 5h30 → 330 min `SHORT_SLEEP`; fragmentada → maior bloco 240 min `SHORT_SLEEP`); `R-DATA-02` no `SPORTS_SCIENCE` (§9.3/§14); ADR 0049 implementado por completo.
+> Revisão 1.10 (17/11/2026, Ciclo 4/S15, C4-57, ADR 0047 §2.8/FR-410): precedência FC×pace explícita (`TargetKind` em `PrescriptionTargets`, `R-ZONE-01 v2` no §14) — fácil/longo liderado por FC/RPE com pace de referência (sem LTHR, RPE 4 + pace de referência), qualidade liderada pelo pace do bloco com FC como guarda-corpo; briefing e briefing sheet com destaque vs referência.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -617,7 +618,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-CAL-01` | Prova/TT ≤ 8 semanas define VDOT e LTHR (Tier A) | DANIELS, FRIEL | STRONG |
 | `R-CAL-02` | Sem prova, ≥ 3 treinos com FC+pace permitem Tier B; senão Tier C. Tier B estima pace de limiar pelo melhor esforço sustentado de 20–35 min (VDOT derivado a 88%; LTHR só na janela 25–35 min), com confiança média e confirmação explícita | DANIELS, FRIEL | LIMITED |
 | `R-CAL-03` | Nunca estimar FC máxima por 220−idade | FRIEL, BUCHHEIT | STRONG |
-| `R-ZONE-01` | Zonas de FC por LTHR; paces por VDOT | FRIEL, DANIELS | STRONG |
+| `R-ZONE-01 v2` | Zonas de FC por LTHR; paces por VDOT; no fácil/longo, FC/RPE é principal e pace é referência; na qualidade, pace do bloco é principal e FC é guarda-corpo | FRIEL, DANIELS | STRONG |
 | `R-ZONE-02` | Distribuição medida em 3 zonas; alvo ~80/20 por tempo | SEILER | MODERATE |
 | `R-ACT-01` | Comparar metades: ritmo constante/negative split é positivo; queda > 3% é sinal de fadiga | ABBISS, DANIELS | MODERATE |
 | `R-ACT-02` | Deriva cardíaca: FC ≥ +5% com pace estável sugere fadiga/calor; não é diagnóstico | FRIEL | LIMITED |

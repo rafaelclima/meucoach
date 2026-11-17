@@ -4,6 +4,7 @@ import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.QualityBlockReason
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import org.assertj.core.api.Assertions.assertThat
@@ -115,7 +116,7 @@ class QualityWeekSummaryTest {
         prescribedType = if (downgraded) WorkoutType.EASY else WorkoutType.QUALITY,
         title = if (downgraded) "Fácil e conversável" else "Ritmo forte",
         prescribedDurationMin = 40,
-        targets = PrescriptionTargets(zone = "Z2", rpe = 4),
+        targets = PrescriptionTargets(zone = "Z2", rpe = 4, primary = TargetKind.RPE),
         adjustment = if (downgraded) PrescriptionAdjustment.DOWNGRADE else adjustment,
         rationale = "Decisão do dia.",
         ruleIds = listOf("R-PER-03", "R-PRESC-02"),

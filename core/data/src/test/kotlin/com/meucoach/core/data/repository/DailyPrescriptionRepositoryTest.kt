@@ -10,6 +10,7 @@ import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.QualityBlockReason
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Pace
@@ -91,6 +92,7 @@ class DailyPrescriptionRepositoryTest {
             heartRate = HeartRateTarget(146, 161),
             zone = "Z2",
             distanceKm = 6.4,
+            primary = TargetKind.HEART_RATE,
         )
         val stored = repository.append(prescription(targets = targets))
 
@@ -176,7 +178,7 @@ class DailyPrescriptionRepositoryTest {
         date: LocalDate = today,
         hash: String = "hash-1",
         adjustment: PrescriptionAdjustment = PrescriptionAdjustment.KEEP,
-        targets: PrescriptionTargets = PrescriptionTargets(zone = "Z2", rpe = 4),
+        targets: PrescriptionTargets = PrescriptionTargets(zone = "Z2", rpe = 4, primary = TargetKind.RPE),
     ) = DailyPrescription(
         date = date,
         plannedSessionId = "2026-11-02-$date",

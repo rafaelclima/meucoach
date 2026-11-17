@@ -998,7 +998,7 @@ class DailyPrescriptionEngineTest {
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.REST)
         assertThat(prescription.prescribedDurationMin).isNull()
-        assertThat(prescription.targets).isEqualTo(PrescriptionTargets())
+        assertThat(prescription.targets).isEqualTo(PrescriptionTargets(primary = TargetKind.RPE))
     }
 
     @Test

@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S14 (C4-37)
-> **Último commit:** C4-37 — `feat(domain): freeze the sleep plausibility golden and record R-DATA-02 (C4-37)`
-> **Fase:** 3 — UI/copy — **S14 encerrada**; próxima S15 (C4-57..C4-60)
-> **Sessão atual:** **S14 — C4-37 DONE**
-> **Task atual:** C4-37 (DONE)
-> **Próxima task:** C4-57 (S15)
+> **Última atualização:** 17/11/2026 — S15 (C4-57)
+> **Último commit:** C4-57 — `feat(domain): make the pace-heart-rate precedence explicit (C4-57)`
+> **Fase:** 3 — UI/copy — **S15 aberta**; próxima C4-58
+> **Sessão atual:** **S15 — C4-57 DONE**
+> **Task atual:** C4-57 (DONE)
+> **Próxima task:** C4-58 (S15)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1052, `:app:testDebugUnitTest` 955, `:core:data:test` 204, `:core:model` 40; `spotlessCheck` verde; sem código de app/data alterado (gates de C4-32 seguem verdes)
-> **Próxima ação:** abrir S15 (C4-57: `TargetKind`/precedência FC×pace).
+> **Gates da última sessão:** `:core:domain:test` 1063, `:app:testDebugUnitTest` 957, `:core:data:test` 207, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, kover (domain/data/app), detekt (domain/data/app), `:app:lintDebug` e `verifyRoborazziDebug` (briefing) verdes
+> **Próxima ação:** abrir S15/C4-58 (horizonte 5K/base + pace dinâmico).
 
 ### 0.1 O que já está pronto
 
@@ -636,7 +636,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | C4-57 | `TargetKind`/precedência FC×pace | E3/E9 | M | S15 | FR-410 | Testes; copy | — |
+| [x] | C4-57 | `TargetKind`/precedência FC×pace | E3/E9 | M | S15 | FR-410 | Testes; copy | `TargetKind` + `primary` em `PrescriptionTargets` (policy única); briefing por precedência; sheet com destaque vs referência; `R-ZONE-01 v2` no `SPORTS_SCIENCE`; `TargetPrecedenceTest` (11), `PrescriptionJsonTargetsTest` (3), briefing UI (+2); screenshots do briefing re-gravados; commit S15 |
 | [ ] | C4-58 | Horizonte 5K/base + pace dinâmico | E3/E9 | L | S15 | FR-411 | Golden; sem regressão | — |
 | [ ] | C4-59 | Copy contraditória do rationale | E9 | S | S15 | FR-412 | Teste de copy | — |
 | [ ] | C4-60 | `createdAt` estável no `saveWeek` | E8 | S | S15 | FR-413 | Teste de repositório | — |
@@ -1043,7 +1043,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** `:core:domain:test` 1052 verdes (+1); `spotlessCheck` verde; `:app:testDebugUnitTest` 955, `:core:data:test` 204 e `:core:model` 40 intactos (sem código de app/data alterado; gates de C4-32 seguem verdes).
 - **Commit:** `feat(domain): freeze the sleep plausibility golden and record R-DATA-02 (C4-37)`.
 - **Decisões/notas:** TDD RED→GREEN (expected ausente → `IllegalStateException`; imports `SleepMetrics`/`JSONArray` ajustados para compilar). O golden usa o mesmo check-in 4/2/2/2 e carga sintética que passa em tudo, para isolar o sono: 36 min → `null`/75 verde/qualidade mantida; 6 h + cochilo → 360 min/60 âmbar/gate `LOW_READINESS`; 5h30 → 330 min/`SHORT_SLEEP`/52 âmbar; fragmentada → 240 min/`SHORT_SLEEP`/44 âmbar. Scores verificados à mão (subjetivo 75; sono 40/20/0) e confirmados pelo teste. Sem colisão de IDs (`G-DATA-02` livre). A copy de diagnóstico ("1 noite ignorada por dados implausíveis de sono") já existia desde C4-35; C4-37 não mexe em UI. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
-- **Próximo:** S15 / C4-57 (alvos pace×FC, `TargetKind`/precedência). S14 encerrada.
+- **Próximo:** S15 / C4-58 (horizonte 5K/base + pace dinâmico, FR-411).
+
+### S15 — 2026-11-17 — Precedência FC×pace explícita (C4-57)
+
+- **Status:** DONE
+- **Tasks:** C4-57.
+- **Arquivos:** `core/domain/.../prescription/PrescriptionTargets.kt` (`TargetKind`, `primary` obrigatório, `primaryFor` único, RPE no fácil sem LTHR), `core/domain/.../briefing/SessionBriefingEngine.kt` (copy por precedência), `core/data/.../prescription/PrescriptionJson.kt` (chave `primary` + fallback legado por conteúdo), `app/.../ui/today/SessionBriefingSheet.kt` (ordem + nota "Principal: ..."), `TargetPrecedenceTest.kt` (novo, 11), `PrescriptionJsonTargetsTest.kt` (novo, 3), `TodayBriefingTest.kt` (+2), `SessionBriefingScreenshotTest.kt` (fixture com `primary`), `today-briefing-*.png` re-gravados, `docs/SPORTS_SCIENCE.md` (v1.10, `R-ZONE-01 v2` no §14), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1063 verdes (+12); `:app:testDebugUnitTest` 957 verdes (+2); `:core:data:test` 207 verdes (+3); `:core:model` 40 intacto; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply` + 1 quebra de linha manual >120); kover (domain/data/app), detekt (domain/data/app), `:app:lintDebug` e `verifyRoborazziDebug` (briefing) verdes.
+- **Commit:** `feat(domain): make the pace-heart-rate precedence explicit (C4-57)`.
+- **Decisões/notas:** TDD RED→GREEN (campo inexistente não compilava; copy nova falhava no teste novo). `primary` é obrigatório (sem default): o compilador listou os 53 sites e cada um ganhou valor explícito; `copy()` preserva (`forDuration`/`withHeat` não mudam presença). Fácil pace-only (LTHR ausente) agora carrega RPE 4 + pace de referência (FR-410 "Sem LTHR: RPE principal"); nenhum teste legado quebrou com a mudança. Codec legado deriva por conteúdo (HR→HEART_RATE, pace→PACE, senão RPE); linhas `PLANNED` antigas viram nova versão na reavaliação (inputsHash cobre `planned.targets`, precedente C4-19). Título do `R-ZONE-01` no catálogo inalterado de propósito (screenshots); a revisão vive no §14 do `SPORTS_SCIENCE`. Flakes rotativos sem relação (precedente S5/S8/S11): `TutorialSystemBackTest` 2× e `MetricsImportViewModelTest` 1× na suíte cheia (timeout/cascata sob carga), ambos verdes isolados e suíte final limpa. Nenhum dado real; nenhuma migração de schema (só chave no blob JSON); sem `fallbackToDestructiveMigration`.
+- **Próximo:** S15 / C4-58 (horizonte 5K/base + pace dinâmico).
 
 ---
 
@@ -1130,9 +1140,9 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 955 | Atualizar conforme novos testes |
-| `:core:domain` | 1051 | Atualizar conforme novos testes |
-| `:core:data` | 204 | Atualizar |
+| `:app` | 957 | Atualizar conforme novos testes |
+| `:core:domain` | 1063 | Atualizar conforme novos testes |
+| `:core:data` | 207 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -1221,9 +1231,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-57, S15)
+## 14. Próxima ação (C4-58, S15)
 
-1. Abrir a FR-410 e o ADR 0047 §8; ler `PrescriptionTargets` + `SessionBriefingEngine` como base — C4-10 (alvos) e C4-19 (briefing) dão o contexto; C4-57 define `TargetKind` e a precedência FC×pace.
-2. Implementar C4-57 com TDD (domínio + briefing + UI); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-411 e o ADR 0047/0043 (horizonte/macro); ler `MacroPlanResolver` + `CalibrationCalculator` como base — C4-58 avalia horizonte 5K/base + pace dinâmico com golden.
+2. Implementar C4-58 com TDD; rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

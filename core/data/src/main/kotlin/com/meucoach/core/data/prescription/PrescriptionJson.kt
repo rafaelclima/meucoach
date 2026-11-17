@@ -3,6 +3,7 @@ package com.meucoach.core.data.prescription
 import com.meucoach.core.domain.prescription.HeartRateTarget
 import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.model.Pace
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,12 +23,15 @@ internal object PrescriptionJson {
         targets.zone?.let { root.put("zone", it) }
         targets.distanceKm?.let { root.put("distanceKm", it) }
         targets.rpe?.let { root.put("rpe", it) }
+        root.put("primary", targets.primary.name)
         return root.toString()
     }
 
     fun targetsFromJson(json: String?): PrescriptionTargets {
-        if (json.isNullOrBlank()) return PrescriptionTargets()
-        val root = runCatching { JSONObject(json) }.getOrElse { return PrescriptionTargets() }
+        if (json.isNullOrBlank()) return PrescriptionTargets(primary = TargetKind.RPE)
+        val root = runCatching { JSONObject(json) }.getOrElse {
+            return PrescriptionTargets(primary = TargetKind.RPE)
+        }
         val fast = root.optNullableInt("paceFastSecPerKm")
         val slow = root.optNullableInt("paceSlowSecPerKm")
         val pace = if (fast != null && slow != null && fast > 0 && slow >= fast) {
@@ -50,13 +54,32 @@ internal object PrescriptionJson {
         } else {
             null
         }
+        val rpe = root.optNullableInt("rpe")
         return PrescriptionTargets(
             pace = pace,
             heartRate = heartRate,
             zone = if (root.has("zone") && !root.isNull("zone")) root.getString("zone") else null,
             distanceKm = distance,
-            rpe = root.optNullableInt("rpe"),
+            rpe = rpe,
+            primary = primaryFrom(root, pace, heartRate, rpe),
         )
+    }
+
+    /**
+     * Rows persisted before the precedence field decode from content (easy and
+     * quality share the same blob; HR-first matches the most common easy case
+     * and old PLANNED rows are re-evaluated with policy-fresh targets through
+     * the prescription inputs hash).
+     */
+    private fun primaryFrom(root: JSONObject, pace: PaceTarget?, heartRate: HeartRateTarget?, rpe: Int?): TargetKind {
+        val stored = if (root.has("primary") && !root.isNull("primary")) root.optString("primary") else null
+        if (stored != null) runCatching { TargetKind.valueOf(stored) }.getOrNull()?.let { return it }
+        return when {
+            heartRate != null -> TargetKind.HEART_RATE
+            pace != null -> TargetKind.PACE
+            rpe != null -> TargetKind.RPE
+            else -> TargetKind.RPE
+        }
     }
 
     fun idsToJson(ids: List<String>): String = JSONArray(ids).toString()

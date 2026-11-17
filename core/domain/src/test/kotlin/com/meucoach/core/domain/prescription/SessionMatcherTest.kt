@@ -79,7 +79,7 @@ class SessionMatcherTest {
         rationale = "Base.",
         ruleIds = listOf("R-ZONE-01"),
         evidenceIds = listOf("EV-SEILER-2010"),
-        targets = PrescriptionTargets(distanceKm = distanceKm),
+        targets = PrescriptionTargets(distanceKm = distanceKm, primary = TargetKind.RPE),
     )
 
     private fun activity(

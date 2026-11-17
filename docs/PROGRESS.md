@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S14 do Ciclo 4: sono plausível + docs `R-DATA-02`, C4-37 — S14 encerrada)
+**Atualizado:** 17/11/2026 (S15 do Ciclo 4: precedência FC×pace explícita, C4-57 — S15 aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S15: precedência FC×pace explícita (C4-57)
+
+**Objetivo:** fechar a FR-410 no motor e na superfície — `TargetKind` decide o alvo principal (FC/RPE no fácil, pace no quality) e o briefing/sheet mostra destaque vs referência (ADR 0047 §2.8).
+
+### Concluído
+
+- **Domínio:** `TargetKind` (`HEART_RATE`, `PACE`, `RPE`, `MIXED`) + `PrescriptionTargets.primary` obrigatório, decidido por `PrescriptionPolicy.primaryFor` (tipo + conteúdo); fácil sem LTHR carrega RPE 4 com pace de referência; calor preserva a precedência.
+- **Briefing:** `targetGuidance` por precedência ("Guie pelo esforço e pela FC…", "Use o pace do bloco; a FC confirma…", sem "Se usar…").
+- **UI:** seção ALVO do briefing com ordem principal-primeiro + nota "Principal: …" (`briefing-target-primary-note`); screenshots `today-briefing-*` re-gravados e verificados.
+- **Dados:** chave `primary` no JSON de alvos com fallback legado por conteúdo (sem migração de schema).
+- **Docs:** `SPORTS_SCIENCE` v1.10 (`R-ZONE-01 v2` no §14; título do catálogo inalterado de propósito).
+- **Testes:** `TargetPrecedenceTest` (11: 8 policy + 3 briefing), `PrescriptionJsonTargetsTest` (3: round-trip, legado, desconhecido), `TodayBriefingTest` (+2 ordem/nota).
+
+### Testes
+
+- `:core:domain:test` 1063 verdes (+12); `:app:testDebugUnitTest` 957 verdes (+2); `:core:data:test` 207 verdes (+3); `:core:model` 40 intacto.
+- `:app:assembleDebug`, `spotlessCheck`, kover (domain/data/app), detekt (domain/data/app), `:app:lintDebug` e `verifyRoborazziDebug` (briefing) verdes.
+- Nenhum dado real; nenhuma migração de schema; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (campo inexistente; copy nova). `primary` obrigatório: 53 sites atualizados explicitamente; `copy()` preserva.
+- Linhas `PLANNED` antigas (sem `primary`) derivam por conteúdo no codec e viram nova versão na reavaliação (inputsHash cobre `planned.targets`, precedente C4-19).
+- S15 aberta; C4-58 (horizonte 5K/base + pace dinâmico) é a próxima.
+
+### Próximo passo
+
+1. S15 / C4-58: horizonte 5K/base + pace dinâmico (FR-411), TDD.
+2. Depois S15 (C4-59/C4-60: copy do rationale, `createdAt` estável).
 
 ## Sessão 2026-11-17 — Ciclo 4/S14: sono plausível + docs `R-DATA-02` (C4-37)
 

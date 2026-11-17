@@ -3,6 +3,7 @@ package com.meucoach.core.domain.briefing
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 
 /**
@@ -65,24 +66,58 @@ class SessionBriefingEngine {
         }
     }
 
-    private fun targetGuidance(targets: PrescriptionTargets): String = buildList {
-        targets.pace?.let { pace ->
-            add("Se usar o ritmo, fique entre ${pace.fast.format()} e ${pace.slow.format()} por km.")
+    private fun targetGuidance(targets: PrescriptionTargets): String = when (targets.primary) {
+        TargetKind.HEART_RATE -> heartRateLed(targets)
+        TargetKind.PACE -> paceLed(targets)
+        TargetKind.MIXED -> mixedGuidance(targets)
+        TargetKind.RPE -> rpeLed(targets)
+    }
+
+    /** FR-410: easy/long is led by effort and HR; pace is reference. */
+    private fun heartRateLed(targets: PrescriptionTargets): String {
+        val heartRate = targets.heartRate ?: return rpeLed(targets)
+        val max = heartRate.maxBpm
+        val base = if (max != null) {
+            "Guie pelo esforço e pela FC: fique entre ${heartRate.minBpm} e $max bpm"
+        } else {
+            "Guie pelo esforço e pela FC: mantenha a partir de ${heartRate.minBpm} bpm"
         }
-        targets.heartRate?.let { heartRate ->
-            val max = heartRate.maxBpm
-            add(
-                if (max != null) {
-                    "Se usar a FC, fique entre ${heartRate.minBpm} e $max bpm."
-                } else {
-                    "Se usar a FC, mantenha a partir de ${heartRate.minBpm} bpm."
-                },
-            )
+        return base + paceReference(targets)
+    }
+
+    /** FR-410: quality is led by the block pace; HR confirms. */
+    private fun paceLed(targets: PrescriptionTargets): String {
+        val pace = targets.pace ?: return rpeLed(targets)
+        val base = "Use o pace do bloco: fique entre ${pace.fast.format()} e ${pace.slow.format()} por km"
+        val guardrail = targets.heartRate?.let { heartRate ->
+            val ceiling = heartRate.maxBpm
+            if (ceiling != null) {
+                "; a FC confirma (teto $ceiling bpm)."
+            } else {
+                "; a FC confirma (a partir de ${heartRate.minBpm} bpm)."
+            }
+        } ?: "."
+        return base + guardrail
+    }
+
+    private fun mixedGuidance(targets: PrescriptionTargets): String {
+        val heartRate = targets.heartRate ?: return rpeLed(targets)
+        val max = heartRate.maxBpm
+        return if (max != null) {
+            "Use a FC como teto (entre ${heartRate.minBpm} e $max bpm); o esforço percebido é o guia."
+        } else {
+            "Use a FC como teto (a partir de ${heartRate.minBpm} bpm); o esforço percebido é o guia."
         }
-        if (targets.pace == null && targets.heartRate == null) {
-            targets.rpe?.let { rpe -> add("Use o esforço percebido $rpe/10 como guia.") }
-        }
-    }.joinToString(" ")
+    }
+
+    private fun rpeLed(targets: PrescriptionTargets): String {
+        val base = targets.rpe?.let { rpe -> "Use o esforço percebido $rpe/10 como guia" } ?: return ""
+        return base + paceReference(targets)
+    }
+
+    private fun paceReference(targets: PrescriptionTargets): String = targets.pace?.let { pace ->
+        "; o pace é referência (entre ${pace.fast.format()} e ${pace.slow.format()} por km)."
+    } ?: "."
 
     private fun restGuidance(ruleIds: List<String>): String = if (STOP_RULE in ruleIds) {
         "Não treine hoje. O descanso é a prescrição do dia; se o sinal persistir, procure avaliação."

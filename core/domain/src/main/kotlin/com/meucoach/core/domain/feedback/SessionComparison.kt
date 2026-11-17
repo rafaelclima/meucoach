@@ -3,6 +3,7 @@ package com.meucoach.core.domain.feedback
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.DataConfidence
@@ -33,7 +34,7 @@ data class ComparisonPlan(
     val title: String,
     val type: WorkoutType,
     val durationMin: Int?,
-    val targets: PrescriptionTargets = PrescriptionTargets(),
+    val targets: PrescriptionTargets = PrescriptionTargets(primary = TargetKind.RPE),
 ) {
     init {
         require(title.isNotBlank()) { "Comparison plan title must not be blank" }

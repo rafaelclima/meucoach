@@ -36,7 +36,7 @@ data class PlannedSession(
     val ruleIds: List<String>,
     val evidenceIds: List<String>,
     /** Objective/subjective targets of the session; empty when not applicable. */
-    val targets: PrescriptionTargets = PrescriptionTargets(),
+    val targets: PrescriptionTargets = PrescriptionTargets(primary = TargetKind.RPE),
     val status: SessionStatus = SessionStatus.PLANNED,
     val skipReason: String? = null,
     /** Present only on [SessionStatus.DONE]; see ADR 0024. */

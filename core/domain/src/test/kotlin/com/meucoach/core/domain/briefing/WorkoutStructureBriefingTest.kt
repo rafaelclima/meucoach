@@ -5,6 +5,7 @@ import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutBlock
 import com.meucoach.core.domain.prescription.WorkoutStructure
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -44,7 +45,7 @@ class WorkoutStructureBriefingTest {
         prescribedType = WorkoutType.QUALITY,
         title = "Intervalos",
         prescribedDurationMin = 40,
-        targets = PrescriptionTargets(),
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.KEEP,
         rationale = "Plano mantido: Intervalos, 40 min.",
         ruleIds = listOf("R-PRESC-01"),

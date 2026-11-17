@@ -11,6 +11,7 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessResult
@@ -38,6 +39,7 @@ class SessionBriefingEngineTest {
                 pace = PaceTarget(Pace.of(7, 40), Pace.of(8, 20)),
                 heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
                 zone = "Z2",
+                primary = TargetKind.HEART_RATE,
                 distanceKm = 6.0,
             ),
         )
@@ -70,7 +72,7 @@ class SessionBriefingEngineTest {
     @Test
     fun `without calibration keeps the existing RPE and never computes pace or heart rate`() {
         val prescription = prescription(
-            targets = PrescriptionTargets(zone = "Z2", rpe = 4),
+            targets = PrescriptionTargets(zone = "Z2", rpe = 4, primary = TargetKind.RPE),
         )
 
         val briefing = engine.brief(prescription, SessionStatus.PLANNED)!!
@@ -91,6 +93,7 @@ class SessionBriefingEngineTest {
                 pace = PaceTarget(Pace.of(7, 40), Pace.of(8, 20)),
                 heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
                 zone = "Z2",
+                primary = TargetKind.HEART_RATE,
             ),
         )
 
@@ -109,6 +112,7 @@ class SessionBriefingEngineTest {
                 pace = PaceTarget(Pace.of(7, 40), Pace.of(8, 20)),
                 heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
                 zone = "Z2",
+                primary = TargetKind.HEART_RATE,
             ),
         )
 
@@ -211,7 +215,7 @@ class SessionBriefingEngineTest {
             type = WorkoutType.REST,
             title = "Descanso",
             durationMin = null,
-            targets = PrescriptionTargets(),
+            targets = PrescriptionTargets(primary = TargetKind.RPE),
             adjustment = PrescriptionAdjustment.REST,
         )
 
@@ -231,7 +235,7 @@ class SessionBriefingEngineTest {
             type = WorkoutType.REST,
             title = "Descanso",
             durationMin = null,
-            targets = PrescriptionTargets(),
+            targets = PrescriptionTargets(primary = TargetKind.RPE),
             adjustment = PrescriptionAdjustment.REST,
         ).copy(ruleIds = listOf("R-SAFE-01", "R-READY-03", "R-PRESC-02"))
 
@@ -248,6 +252,7 @@ class SessionBriefingEngineTest {
             targets = PrescriptionTargets(
                 heartRate = HeartRateTarget(minBpm = 150, maxBpm = null),
                 zone = "Z2",
+                primary = TargetKind.HEART_RATE,
             ),
         )
 
@@ -261,7 +266,7 @@ class SessionBriefingEngineTest {
         type: WorkoutType = WorkoutType.EASY,
         title: String = "Fácil e conversável",
         durationMin: Int? = 30,
-        targets: PrescriptionTargets = PrescriptionTargets(),
+        targets: PrescriptionTargets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment: PrescriptionAdjustment = PrescriptionAdjustment.KEEP,
     ) = DailyPrescription(
         date = date,

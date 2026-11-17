@@ -3,6 +3,7 @@ package com.meucoach.core.domain.today
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.RaceDistance
@@ -90,7 +91,7 @@ class TodayDecisionResolverTest {
         prescribedType = WorkoutType.EASY,
         title = "Fácil e conversável",
         prescribedDurationMin = 30,
-        targets = PrescriptionTargets(rpe = 4),
+        targets = PrescriptionTargets(rpe = 4, primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.KEEP,
         rationale = "Plano mantido: fácil, 30 min.",
         ruleIds = listOf("R-PRESC-01"),

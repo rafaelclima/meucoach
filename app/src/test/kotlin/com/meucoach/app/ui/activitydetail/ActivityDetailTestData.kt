@@ -8,6 +8,7 @@ import com.meucoach.core.domain.insights.ActivityInsightsCalculator
 import com.meucoach.core.domain.prescription.HeartRateTarget
 import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import com.meucoach.core.model.ActivityLap
@@ -44,6 +45,7 @@ internal object ActivityDetailTestData {
                 heartRate = HeartRateTarget(140, 155),
                 zone = "Z2",
                 distanceKm = 5.5,
+                primary = TargetKind.HEART_RATE,
             ),
         ),
         activity = summary(),

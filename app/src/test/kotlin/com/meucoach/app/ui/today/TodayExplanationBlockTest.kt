@@ -4,6 +4,7 @@ import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.QualityBlockReason
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessResult
@@ -73,7 +74,7 @@ class TodayExplanationBlockTest {
         prescribedType = WorkoutType.EASY,
         title = "Fácil, sem pressa",
         prescribedDurationMin = 30,
-        targets = PrescriptionTargets(),
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.DOWNGRADE,
         rationale = "Planejado: Fartlek leve (40 min). Hoje: fácil.",
         ruleIds = listOf("R-PRESC-02", "R-READY-06"),

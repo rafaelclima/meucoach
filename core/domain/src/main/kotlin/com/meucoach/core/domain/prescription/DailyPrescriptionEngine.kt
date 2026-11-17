@@ -325,7 +325,7 @@ class DailyPrescriptionEngine {
             type = WorkoutType.REST,
             title = "Descanso",
             durationMin = null,
-            targets = PrescriptionTargets(),
+            targets = PrescriptionTargets(primary = TargetKind.RPE),
             adjustment = PrescriptionAdjustment.REST,
             rationale = plannedNote + if (illness) {
                 "Sinal de doença ou lesão: sem treino hoje. Se persistir, procure avaliação."
@@ -380,7 +380,7 @@ class DailyPrescriptionEngine {
         type = WorkoutType.REST,
         title = "Descanso",
         durationMin = null,
-        targets = PrescriptionTargets(),
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.KEEP,
         rationale = "Hoje é descanso no plano. Descansar também faz parte do treino.",
         rules = (planned.ruleIds + "R-PRESC-01").distinct(),
@@ -412,12 +412,17 @@ class DailyPrescriptionEngine {
                 heartRate = recommendation.heartRate,
                 zone = if (recommendation.type == WorkoutType.EASY) "Z2" else null,
                 distanceKm = recommendation.distanceKm,
-                rpe = if (recommendation.pace == null && recommendation.heartRate == null) {
+                rpe = if (recommendation.heartRate == null) {
                     PrescriptionPolicy.EASY_RPE +
                         if (input.heatLevel == HeatLevel.HOT) PrescriptionPolicy.HEAT_RPE_STEP else 0
                 } else {
                     null
                 },
+                primary = PrescriptionPolicy.primaryFor(
+                    recommendation.type,
+                    recommendation.pace,
+                    recommendation.heartRate,
+                ),
             ),
             adjustment = PrescriptionAdjustment.NO_PLAN,
             rationale = "Sem plano para hoje: " + recommendation.rationale +

@@ -11,6 +11,7 @@ import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.VolumeReference
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
@@ -1643,7 +1644,7 @@ class PlanReplannerTest {
         rationale = "Conteúdo da sessão.",
         ruleIds = listOf("R-PLAN-02"),
         evidenceIds = listOf("EV-SEILER-2010"),
-        targets = PrescriptionTargets(),
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
         status = status,
         completionEvidence = completionEvidence,
         activityId = activityId,

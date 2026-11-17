@@ -21,6 +21,7 @@ import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.QualityBlockReason
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.review.WeeklyReviewObservationKind
@@ -624,7 +625,7 @@ class TrendsViewModelTest {
         prescribedType = WorkoutType.QUALITY,
         title = "Ritmo forte",
         prescribedDurationMin = 40,
-        targets = PrescriptionTargets(zone = "T", rpe = 7),
+        targets = PrescriptionTargets(zone = "T", rpe = 7, primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.KEEP,
         rationale = "Dia verde.",
         ruleIds = listOf("R-PER-03"),
@@ -643,7 +644,7 @@ class TrendsViewModelTest {
         prescribedType = WorkoutType.EASY,
         title = "Fácil e conversável",
         prescribedDurationMin = 40,
-        targets = PrescriptionTargets(zone = "Z2", rpe = 4),
+        targets = PrescriptionTargets(zone = "Z2", rpe = 4, primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.DOWNGRADE,
         rationale = "Sem check-in.",
         ruleIds = listOf("R-PER-03", "R-PRESC-02"),

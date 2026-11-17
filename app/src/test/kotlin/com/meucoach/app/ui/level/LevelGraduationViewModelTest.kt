@@ -29,6 +29,7 @@ import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivitySource
@@ -408,7 +409,7 @@ class LevelGraduationViewModelTest {
                 prescribedType = WorkoutType.EASY,
                 title = "Fácil",
                 prescribedDurationMin = 30,
-                targets = PrescriptionTargets(),
+                targets = PrescriptionTargets(primary = TargetKind.RPE),
                 adjustment = PrescriptionAdjustment.KEEP,
                 rationale = "Prescrição vigente sintética.",
                 ruleIds = listOf("R-PRESC-01"),

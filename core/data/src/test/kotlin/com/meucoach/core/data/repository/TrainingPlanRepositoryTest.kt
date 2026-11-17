@@ -290,6 +290,7 @@ class TrainingPlanRepositoryTest {
             heartRate = com.meucoach.core.domain.prescription.HeartRateTarget(146, 161),
             zone = "Z2",
             distanceKm = 6.4,
+            primary = com.meucoach.core.domain.prescription.TargetKind.HEART_RATE,
         )
         val withTargets = plan().copy(
             createdOn = createdOn,

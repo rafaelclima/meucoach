@@ -7,6 +7,7 @@ import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessComponent
@@ -135,7 +136,7 @@ class TodayExplanationLoadTest {
         prescribedType = WorkoutType.EASY,
         title = "Fácil",
         prescribedDurationMin = 40,
-        targets = PrescriptionTargets(),
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.KEEP,
         rationale = "Plano mantido.",
         ruleIds = ruleIds,

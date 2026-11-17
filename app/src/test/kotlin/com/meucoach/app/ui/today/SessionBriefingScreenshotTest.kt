@@ -16,6 +16,7 @@ import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Pace
@@ -79,6 +80,7 @@ class SessionBriefingScreenshotTest {
                 heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
                 zone = "Z2",
                 distanceKm = 6.0,
+                primary = TargetKind.HEART_RATE,
             ),
             adjustment = PrescriptionAdjustment.KEEP,
             rationale = "Plano mantido: fácil, 45 min, em ritmo fácil e conversável.",

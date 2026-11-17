@@ -347,7 +347,11 @@ class UserDataRepositoryTest {
         prescribedType = WorkoutType.EASY,
         title = "Fácil e conversável",
         prescribedDurationMin = 40,
-        targets = com.meucoach.core.domain.prescription.PrescriptionTargets(zone = "Z2", rpe = 4),
+        targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
+            zone = "Z2",
+            rpe = 4,
+            primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
+        ),
         adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.KEEP,
         rationale = "Plano mantido.",
         ruleIds = listOf("R-ZONE-01", "R-PRESC-01"),
@@ -408,7 +412,9 @@ class UserDataRepositoryTest {
         prescribedType = WorkoutType.EASY,
         title = "Fácil, sem pressa",
         prescribedDurationMin = 30,
-        targets = com.meucoach.core.domain.prescription.PrescriptionTargets(),
+        targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
+            primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
+        ),
         adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE,
         rationale = "Planejado: Fartlek leve (40 min). Hoje: fácil.",
         ruleIds = listOf("R-PRESC-02", "R-READY-06"),

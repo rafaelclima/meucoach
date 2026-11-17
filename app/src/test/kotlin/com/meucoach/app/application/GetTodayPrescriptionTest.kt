@@ -499,6 +499,7 @@ class GetTodayPrescriptionTest {
                 targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
                     zone = "Z2",
                     rpe = 4,
+                    primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
                 ),
             ),
         ),
@@ -522,7 +523,11 @@ class GetTodayPrescriptionTest {
                 rationale = "Qualidade planejada.",
                 ruleIds = listOf("R-PLAN-02", "R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
-                targets = PrescriptionTargets(zone = "Z3–Z4", rpe = 7),
+                targets = PrescriptionTargets(
+                    zone = "Z3–Z4",
+                    rpe = 7,
+                    primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
+                ),
             ),
         ),
         weeklyMinutes = 40,

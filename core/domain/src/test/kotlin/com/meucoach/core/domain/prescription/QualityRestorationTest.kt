@@ -89,7 +89,7 @@ class QualityRestorationTest {
         prescribedType = prescribedType,
         title = "Prescrito",
         prescribedDurationMin = 30,
-        targets = PrescriptionTargets(),
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment = adjustment,
         rationale = "Rationale.",
         ruleIds = listOf("R-PRESC-02"),

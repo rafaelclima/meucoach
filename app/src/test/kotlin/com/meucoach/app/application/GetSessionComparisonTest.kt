@@ -18,6 +18,7 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivitySource
@@ -231,7 +232,7 @@ class GetSessionComparisonTest {
         prescribedType = type,
         title = title,
         prescribedDurationMin = durationMin,
-        targets = if (type == WorkoutType.REST) PrescriptionTargets() else targets(),
+        targets = if (type == WorkoutType.REST) PrescriptionTargets(primary = TargetKind.RPE) else targets(),
         adjustment = if (type == WorkoutType.REST) PrescriptionAdjustment.REST else PrescriptionAdjustment.REDUCE,
         rationale = "Plano reduzido.",
         ruleIds = listOf("R-PRESC-02"),
@@ -246,6 +247,7 @@ class GetSessionComparisonTest {
         heartRate = HeartRateTarget(140, 155),
         zone = "Z2",
         distanceKm = 6.5,
+        primary = TargetKind.HEART_RATE,
     )
 
     private fun importedActivity() = ImportedActivity(

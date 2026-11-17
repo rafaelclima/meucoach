@@ -29,6 +29,7 @@ import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.AthleteProfile
@@ -397,6 +398,7 @@ class TodayBriefingTest {
                 heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
                 zone = "Z2",
                 distanceKm = 6.0,
+                primary = TargetKind.HEART_RATE,
             ),
             adjustment = PrescriptionAdjustment.KEEP,
             rationale = "Plano mantido: fácil, 45 min, em ritmo fácil e conversável.",
@@ -434,7 +436,7 @@ class TodayBriefingTest {
             prescribedType = WorkoutType.QUALITY,
             title = "Intervalos",
             prescribedDurationMin = 40,
-            targets = PrescriptionTargets(),
+            targets = PrescriptionTargets(primary = TargetKind.RPE),
             adjustment = PrescriptionAdjustment.KEEP,
             rationale = "Plano mantido: Intervalos, 40 min.",
             ruleIds = listOf("R-PRESC-01"),
@@ -476,5 +478,92 @@ class TodayBriefingTest {
         }
 
         compose.onNodeWithTag("briefing-steps").assertDoesNotExist()
+    }
+
+    @Test
+    fun `easy targets lead with heart rate and name it principal`() {
+        val prescription = DailyPrescription(
+            date = today,
+            plannedSessionId = "plan-$today",
+            plannedType = WorkoutType.EASY,
+            plannedTitle = "Fácil e conversável",
+            plannedDurationMin = 45,
+            prescribedType = WorkoutType.EASY,
+            title = "Fácil e conversável",
+            prescribedDurationMin = 45,
+            targets = PrescriptionTargets(
+                pace = PaceTarget(Pace.of(7, 30), Pace.of(8, 24)),
+                heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
+                zone = "Z2",
+                distanceKm = 6.0,
+                primary = TargetKind.HEART_RATE,
+            ),
+            adjustment = PrescriptionAdjustment.KEEP,
+            rationale = "Plano mantido.",
+            ruleIds = listOf("R-PRESC-01", "R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v5",
+            inputsHash = "inputs-hash",
+        )
+        val briefing = SessionBriefingEngine().brief(prescription, SessionStatus.PLANNED)!!
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                SessionBriefingContent(
+                    state = SessionBriefingSheetState.Ready(briefing),
+                    onClose = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("briefing-target-primary-note")
+            .assertTextEquals("Principal: FC e esforço; o pace é referência.")
+        val tree = compose.onNodeWithTag("briefing-content").printToString()
+        assertThat(tree.indexOf("briefing-target-heart-rate"))
+            .isLessThan(tree.indexOf("briefing-target-pace"))
+    }
+
+    @Test
+    fun `quality targets lead with pace and name it principal`() {
+        val prescription = DailyPrescription(
+            date = today,
+            plannedSessionId = "plan-$today",
+            plannedType = WorkoutType.QUALITY,
+            plannedTitle = "Ritmo forte",
+            plannedDurationMin = 40,
+            prescribedType = WorkoutType.QUALITY,
+            title = "Ritmo forte",
+            prescribedDurationMin = 40,
+            targets = PrescriptionTargets(
+                pace = PaceTarget(Pace.of(5, 20), Pace.of(5, 40)),
+                heartRate = HeartRateTarget(minBpm = 165, maxBpm = 178),
+                zone = "Z3–Z4",
+                primary = TargetKind.PACE,
+            ),
+            adjustment = PrescriptionAdjustment.KEEP,
+            rationale = "Plano mantido.",
+            ruleIds = listOf("R-PRESC-01", "R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v5",
+            inputsHash = "inputs-hash",
+        )
+        val briefing = SessionBriefingEngine().brief(prescription, SessionStatus.PLANNED)!!
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                SessionBriefingContent(
+                    state = SessionBriefingSheetState.Ready(briefing),
+                    onClose = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("briefing-target-primary-note")
+            .assertTextEquals("Principal: pace do bloco; a FC confirma.")
+        val tree = compose.onNodeWithTag("briefing-content").printToString()
+        assertThat(tree.indexOf("briefing-target-pace"))
+            .isLessThan(tree.indexOf("briefing-target-heart-rate"))
     }
 }

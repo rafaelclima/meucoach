@@ -6,6 +6,7 @@ import com.meucoach.core.domain.feedback.SessionComparisonCalculator
 import com.meucoach.core.domain.prescription.HeartRateTarget
 import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ActivitySummary
@@ -40,7 +41,7 @@ class ActivityComparisonFormatTest {
                     title = "Fácil",
                     type = WorkoutType.EASY,
                     durationMin = 30,
-                    targets = PrescriptionTargets(),
+                    targets = PrescriptionTargets(primary = TargetKind.RPE),
                 ),
                 activity = activity(heartRate = null, averagePace = null, distanceM = 0.0),
                 rpe = null,
@@ -58,7 +59,7 @@ class ActivityComparisonFormatTest {
                     title = "Fácil",
                     type = WorkoutType.EASY,
                     durationMin = 30,
-                    targets = PrescriptionTargets(),
+                    targets = PrescriptionTargets(primary = TargetKind.RPE),
                 ),
                 rpe = 7,
             ),
@@ -152,6 +153,7 @@ class ActivityComparisonFormatTest {
                 zone = "Z2",
                 distanceKm = 5.5,
                 rpe = 4,
+                primary = TargetKind.HEART_RATE,
             ),
         ),
         activity: ActivitySummary = activity(),

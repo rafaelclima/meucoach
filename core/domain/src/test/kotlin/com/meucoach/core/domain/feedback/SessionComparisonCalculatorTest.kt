@@ -7,6 +7,7 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ActivitySummary
@@ -90,7 +91,13 @@ class SessionComparisonCalculatorTest {
 
     @Test
     fun `compares heart rate without an upper bound conservatively`() {
-        val openEnded = plan(targets = PrescriptionTargets(heartRate = HeartRateTarget(minBpm = 140, maxBpm = null)))
+        val openEnded =
+            plan(
+                targets = PrescriptionTargets(
+                    heartRate = HeartRateTarget(minBpm = 140, maxBpm = null),
+                    primary = TargetKind.HEART_RATE,
+                ),
+            )
 
         assertThat(compare(plan = openEnded, activity = activity(heartRate = 150)).heartRateVerdict)
             .isEqualTo(ComparisonVerdict.WITHIN)
@@ -250,6 +257,7 @@ class SessionComparisonCalculatorTest {
         zone = "Z2",
         distanceKm = 6.5,
         rpe = 4,
+        primary = TargetKind.HEART_RATE,
     )
 
     private fun paceTarget() = PaceTarget(
@@ -284,7 +292,7 @@ class SessionComparisonCalculatorTest {
         prescribedType = type,
         title = "Fácil 40 min",
         prescribedDurationMin = if (type == WorkoutType.REST) null else 40,
-        targets = if (type == WorkoutType.REST) PrescriptionTargets() else targets(),
+        targets = if (type == WorkoutType.REST) PrescriptionTargets(primary = TargetKind.RPE) else targets(),
         adjustment = PrescriptionAdjustment.KEEP,
         rationale = "Plano mantido",
         ruleIds = listOf("R-PRESC-01"),
