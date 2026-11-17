@@ -21,8 +21,11 @@ import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
+import com.meucoach.core.domain.replan.PlanUpgrade
+import com.meucoach.core.domain.replan.PlanUpgradeResult
 import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanSuggestion
+import com.meucoach.core.model.Experience
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import org.json.JSONArray
@@ -74,6 +77,14 @@ sealed interface ReplanApplyOutcome {
     data class Applied(val version: Int, val revisionId: String) : ReplanApplyOutcome
 
     data class Failed(val failure: ReplanApplyFailure, val message: String) : ReplanApplyOutcome
+}
+
+sealed interface PlanUpgradeOutcome {
+    data class Applied(val version: Int, val revisionId: String) : PlanUpgradeOutcome
+
+    data class Skipped(val reason: String) : PlanUpgradeOutcome
+
+    data class Failed(val failure: ReplanApplyFailure, val message: String) : PlanUpgradeOutcome
 }
 
 class TrainingPlanRepository(private val database: MeuCoachDatabase, private val clock: Clock = Clock.systemUTC()) {
@@ -398,6 +409,125 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         database.sessionExecutionDao().deleteForWeek(weekStart.toString())
         dao.deleteSessions(weekStart.toString())
         dao.deletePlan(weekStart.toString())
+    }
+
+    /**
+     * Applies the idempotent engine upgrade of the stored week (ADR 0048 §2.2).
+     *
+     * The merge preserves today, the past and every future `DONE`/`CLOSED`
+     * session, replaces only strictly future `PLANNED` sessions and records a
+     * revision with trigger `ENGINE_UPGRADE`. A week already on [targetVersion],
+     * a past week or a regeneration the domain refuses all return [Skipped]
+     * without writing anything; a mid-write conflict rolls the transaction
+     * back and the v6 week stays intact.
+     */
+    suspend fun applyUpgrade(
+        candidate: WeeklyPlan,
+        today: LocalDate,
+        targetVersion: String = WeeklyPlanGenerator.ENGINE_VERSION,
+        experience: Experience? = null,
+    ): PlanUpgradeOutcome = runCatching {
+        database.withTransaction {
+            val weekStart = candidate.weekStart
+            val stored = dao.getPlan(weekStart.toString())
+                ?: return@withTransaction PlanUpgradeOutcome.Failed(
+                    ReplanApplyFailure.NO_PLAN,
+                    "O plano desta semana não existe mais.",
+                )
+            if (stored.generatorVersion == targetVersion) {
+                return@withTransaction PlanUpgradeOutcome.Skipped(
+                    "O plano já está na versão atual do motor.",
+                )
+            }
+            val storedSessions = dao.getSessions(weekStart.toString())
+            val currentPlan = stored.toModel(storedSessions)
+            when (val merged = PlanUpgrade.upgrade(currentPlan, candidate, today, targetVersion, experience)) {
+                is PlanUpgradeResult.Skipped -> PlanUpgradeOutcome.Skipped(merged.reason)
+
+                is PlanUpgradeResult.Upgraded -> {
+                    val upgraded = merged.plan
+                    val protectedDates = storedSessions
+                        .filter { LocalDate.parse(it.date).isAfter(today) && it.status != SessionStatus.PLANNED }
+                        .map { it.date }
+                        .toSet()
+                    val newFuture = upgraded.sessions.filter {
+                        it.date.isAfter(today) && it.date.toString() !in protectedDates
+                    }
+                    if (newFuture.any { it.status != SessionStatus.PLANNED }) {
+                        return@withTransaction PlanUpgradeOutcome.Failed(
+                            ReplanApplyFailure.INVALID_CANDIDATE,
+                            "A atualização só propõe sessões futuras planejadas.",
+                        )
+                    }
+                    val replaced = storedSessions.filter {
+                        LocalDate.parse(it.date).isAfter(today) && it.status == SessionStatus.PLANNED
+                    }
+                    val newFutureEntities = newFuture.map { it.toEntity(weekStart) }
+                    val toVersion = stored.version + 1
+                    val revision = WeeklyPlanRevisionEntity(
+                        id = "$weekStart-v$toVersion",
+                        weekStart = weekStart.toString(),
+                        fromVersion = stored.version,
+                        toVersion = toVersion,
+                        fromInputsHash = stored.inputsHash,
+                        // The upgrade keeps the stored inputs/availability baseline;
+                        // a legacy null is marked with the target version so the
+                        // non-null audit columns never invent a hash.
+                        toInputsHash = stored.inputsHash ?: targetVersion,
+                        fromAvailabilityHash = stored.availabilityHash,
+                        toAvailabilityHash = stored.availabilityHash ?: targetVersion,
+                        fromFingerprintVersion = stored.generatedFromFingerprintVersion,
+                        fromFingerprint = stored.generatedFromFingerprint,
+                        fromProfileSnapshotJson = stored.generatedFromProfileSnapshotJson,
+                        fromTemporalContextHash = stored.temporalContextHash,
+                        toFingerprintVersion = stored.generatedFromFingerprintVersion,
+                        toFingerprint = stored.generatedFromFingerprint,
+                        toProfileSnapshotJson = stored.generatedFromProfileSnapshotJson,
+                        toTemporalContextHash = stored.temporalContextHash,
+                        generatorVersion = targetVersion,
+                        previousPlanJson = PlanJson.planMetadataToJson(stored).toString(),
+                        replacedSessionsJson = PlanJson.sessionsToJson(replaced),
+                        trigger = PlanUpgrade.ENGINE_UPGRADE_TRIGGER,
+                        reason = upgraded.rationale,
+                        ruleIdsJson = upgraded.ruleIds.toJson(),
+                        evidenceIdsJson = upgraded.evidenceIds.toJson(),
+                        confidence = upgraded.confidence,
+                        createdAt = clock.millis(),
+                    )
+                    revisions.insert(revision)
+                    dao.deletePlannedSessionsAfter(weekStart.toString(), today.toString())
+                    dao.insertRevisionSessions(newFutureEntities)
+
+                    val mergedSessions = storedSessions.filter {
+                        !LocalDate.parse(it.date).isAfter(today) || it.status != SessionStatus.PLANNED
+                    } + newFutureEntities
+                    val updated = stored.copy(
+                        version = toVersion,
+                        revisionReason = upgraded.rationale,
+                        revisedAt = clock.millis(),
+                        generatorVersion = targetVersion,
+                        weeklyMinutes = mergedSessions.sumOf { it.durationMin ?: 0 },
+                        longRunMinutes = mergedSessions.firstOrNull { it.type == WorkoutType.LONG }?.durationMin,
+                        qualityCount = mergedSessions.count { it.type == WorkoutType.QUALITY },
+                        rationale = upgraded.rationale,
+                        confidence = upgraded.confidence,
+                        ruleIdsJson = upgraded.ruleIds.toJson(),
+                        evidenceIdsJson = upgraded.evidenceIds.toJson(),
+                    )
+                    check(dao.updatePlan(updated) == 1) { "Plan row disappeared during upgrade" }
+                    PlanUpgradeOutcome.Applied(version = toVersion, revisionId = revision.id)
+                }
+            }
+        }
+    }.getOrElse { error ->
+        when (error) {
+            is SQLiteConstraintException, is IllegalArgumentException -> PlanUpgradeOutcome.Failed(
+                ReplanApplyFailure.INVALID_CANDIDATE,
+                "A atualização conflitou com o estado atual; nada foi alterado.",
+            )
+
+            else -> throw error
+        }
     }
 
     private fun WeeklyPlanEntity.toModel(sessions: List<PlannedSessionEntity>) = WeeklyPlan(

@@ -1,0 +1,16 @@
+{
+  "scenarioId": "G-UPGRADE-01",
+  "engineVersion": "weekly-plan-v7",
+  "qualityCount": 1,
+  "weeklyMinutes": 200,
+  "preservedDone": "2026-11-03",
+  "quality": {
+    "date": "2026-11-06",
+    "dayOfWeek": "FRIDAY",
+    "title": "Fartlek leve",
+    "kind": "FARTLEK",
+    "durationMin": 40,
+    "planDecision": "QUALITY_OPPORTUNITY"
+  },
+  "forbiddenTitles": ["Longão"]
+}

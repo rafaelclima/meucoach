@@ -304,16 +304,18 @@ Cenários implementados hoje:
 | `G-LOAD-01` | TRIMP, rTSS, sRPE, CTL/ATL/TSB, ACWR e monotonia |
 | `G-LOAD-02` | Série diária e PMC de 28 dias |
 | `G-PER-03` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
+| `G-UPGRADE-01` | Upgrade v6→v7: terça `DONE` preservada, sexta vira oportunidade, volume intacto |
 | `G-READY-01` | Dia verde com dados completos |
 | `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
 | `G-READY-03` | Sinal de doença/lesão suspende qualidade |
 | `G-READY-04` | Sono curto bloqueia qualidade |
 
-Os cenários `G-001`…`G-006` continuam não existindo. O plano já tem o golden
-`G-PER-03`; prescrição diária, upgrade e volume ainda entram quando os fluxos
-correspondentes fecharem. Plano e prescrição também são cobertos por testes
+Os cenários `G-001`…`G-006` continuam não existindo. O plano já tem os goldens
+`G-PER-03` e `G-UPGRADE-01`; prescrição diária e volume ainda entram quando os
+fluxos correspondentes fecharem. Plano e prescrição também são cobertos por testes
 unitários determinísticos (`WeeklyPlanGeneratorTest`, `DailyPrescriptionEngineTest`,
-`Cycle1RegressionTest`, `StructuralQualityTest`, `QualityPlanPropertiesTest`); um
+`Cycle1RegressionTest`, `StructuralQualityTest`, `QualityPlanPropertiesTest`,
+`PlanUpgradeTest`); um
 golden novo só entra se o cenário provar algo que os testes de contrato não provam.
 
 Doubles comparados com tolerância `1e-6`; inteiros exatos. `engineVersion` entra

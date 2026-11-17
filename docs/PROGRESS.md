@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S10 do Ciclo 4: gate de dados antes do plano, C4-44)
+**Atualizado:** 17/11/2026 (S10.1 do Ciclo 4: `PlanUpgrade` idempotente, C4-47)
+
+## Sessão 2026-11-17 — Ciclo 4/S10.1: upgrade idempotente do plano (C4-47)
+
+**Objetivo:** dar ao plano vigente um caminho de upgrade idempotente para a nova versão do motor — regenerar só o futuro, preservar história, adicionar no máximo o slot estrutural de qualidade.
+
+### Concluído
+
+- **Domínio:** `PlanUpgrade` puro (`PlanUpgradeResult.Upgraded/Skipped`, `needsUpgrade`, `upgrade`): preserva hoje/passado/`DONE`/`CLOSED`, troca só o futuro `PLANNED`, permite 1 slot (futuro com 0 qualidade → 1), veta volume/long extra/2ª qualidade e valida a semana mesclada (≤2 qualidades, 1 longão, sem adjacência).
+- **Golden:** `G-UPGRADE-01` em `fixtures/golden/plan-upgrade/` (v6 com terça `DONE` + sexta fácil → v7 com sexta `QUALITY FARTLEK`, volume 200 intacto) + `PlanUpgradeGoldenTest` (inclui idempotência: 2ª rodada é `Skipped`).
+- **Persistência:** `TrainingPlanRepository.applyUpgrade` transacional (revisão `ENGINE_UPGRADE`, `createdOn`/`inputsHash`/fingerprints preservados, agregados recalculados); `Skipped` sem escrita para versão atual, semana passada ou regeneração recusada; conflito de insert aborta e mantém v6.
+
+### Testes
+
+- `:core:domain:test` 999 verdes (+7); `:core:data:test` 197 (+5); `:app:testDebugUnitTest` 918; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:app:koverVerify`, `:core:domain:detekt`, `:core:data:detekt`, `:app:detekt` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; nenhuma UI; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Sem bump de motor: o upgrade compara qualquer versão armazenada com o alvo, então o golden usa alvo simulado `weekly-plan-v7` com o gerador ainda em v6; o bump real (C4-53) ativa o mecanismo sem código novo.
+- Revisão grava trigger `ENGINE_UPGRADE` como string, sem novo enum no `PlanReplanner` — os triggers `DATA_READY`/`ENGINE_UPGRADE` na avaliação são C4-48.
+- Detekt `ReturnCount`/`LongParameterList` resolvidos com `when` de retorno único e `preconditions` de 6 params, sem baseline novo.
+- A fiação na abertura (quando rodar: versão defasada ou `dataIncomplete`) é C4-48.
+
+### Próximo passo
+
+1. S10 / C4-48: triggers `DATA_READY`/`ENGINE_UPGRADE` + fiação na abertura, TDD.
+2. Depois C4-49 (docs ADR 0048, ARCHITECTURE, DATA_MODEL).
 
 ## Sessão 2026-11-17 — Ciclo 4/S10: gate de dados antes do plano (C4-44)
 

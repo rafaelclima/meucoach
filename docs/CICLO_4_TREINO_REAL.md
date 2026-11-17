@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S10 (C4-44)
-> **Último commit:** C4-44 — `feat(app): gate plan generation on the Health Connect sync (C4-44)`
-> **Fase:** 2 — Fiação — **em andamento (S10; C4-44 DONE)**; próxima C4-47 (S10)
-> **Sessão atual:** **S10 — C4-44 DONE**
-> **Task atual:** C4-44 (DONE)
-> **Próxima task:** C4-47 (S10)
+> **Última atualização:** 17/11/2026 — S10.1 (C4-47)
+> **Último commit:** C4-47 — `feat(domain): add idempotent engine plan upgrade (C4-47)`
+> **Fase:** 2 — Fiação — **em andamento (S10.1; C4-47 DONE)**; próxima C4-48 (S10)
+> **Sessão atual:** **S10.1 — C4-47 DONE**
+> **Task atual:** C4-47 (DONE)
+> **Próxima task:** C4-48 (S10)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 992 verdes; `:core:data:test` 192; `:app:testDebugUnitTest` 918; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
-> **Próxima ação:** abrir C4-47 (`PlanUpgrade` idempotente v6→v7), TDD sobre `PlanUpgrade`/`TrainingPlanRepository.applyReplan` com `G-UPGRADE-01`.
+> **Gates da última sessão:** `:core:domain:test` 999 verdes; `:core:data:test` 197; `:app:testDebugUnitTest` 918; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
+> **Próxima ação:** abrir C4-48 (triggers `DATA_READY`/`ENGINE_UPGRADE` no `PlanReplanner` + fiação na abertura), TDD com semanas `dataIncomplete` e versão defasada.
 
 ### 0.1 O que já está pronto
 
@@ -155,7 +155,7 @@
 
 ### 0.2 O que **não** está pronto
 
-- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; a fiação vem com o `PlanUpgrade` (C4-47). Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` já têm round-trip no Room (C4-45); a reavaliação agora pode ser provada também pelos campos persistidos. O export `PlanJson` desses campos fica para C4-50.
+- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o `PlanUpgrade` (C4-47) já preserva o plano e adiciona o slot estrutural, mas a passagem de fase/raceWeek pela produção e o disparo automático na abertura ficam para C4-48. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` já têm round-trip no Room (C4-45); a reavaliação agora pode ser provada também pelos campos persistidos. O export `PlanJson` desses campos fica para C4-50.
 - `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
@@ -167,7 +167,7 @@
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); o que falta é o export `PlanJson` (C4-50), `generatorVersion` no domínio (C4-46) e a passagem de fase/raceWeek pela produção (C4-47).
 - Strides para todos os níveis e intro fartlek do iniciante (C4-18), estrutura no briefing/UI (C4-19), golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para S12.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
-- `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`.
+- `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
 - O rationale da primeira oportunidade já diz “o dia confirma”, mas a copy de “sem progressão” ainda não distingue falta de histórico de carga fora da faixa; a revisão fica em C4-06/C4-59.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
@@ -616,7 +616,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-44 | `HealthSyncState` + gate | — | M | S10 | ADR 0048 | Sem plano antes do sync; timeout | `HealthSyncCoordinatorTest` (+7 gate); `TodayViewModelPersistTest` (+4 gate/timeout); `WeeklyPlanGeneratorTest` (+1 `dataIncomplete`); aviso “Sincronizando seus dados…” no Hoje; commit S10 |
 | [x] | C4-45 | Schema v18 + migração | C4-14/38 | L | S9 | ADR 0048 | 17→18 testada; sem perda | `MeuCoachDatabaseMigrationTest` (17→18 + round-trip das colunas); `TrainingPlanRepositoryTest` (+2); `DailyPrescriptionRepositoryTest` (+1); `18.json`; commit S9 |
 | [x] | C4-46 | `generatorVersion` no plano | C4-45 | M | S9 | ADR 0048 | Round-trip; default v6 | `WeeklyPlanGeneratorTest` (+1); `TrainingPlanRepositoryTest` (+2 round-trip/metadata); commit S9 |
-| [ ] | C4-47 | `PlanUpgrade` idempotente | C4-44/46 | L | S10 | ADR 0048 | `G-UPGRADE-01`; histórico | — |
+| [x] | C4-47 | `PlanUpgrade` idempotente | C4-44/46 | L | S10.1 | ADR 0048 | `G-UPGRADE-01`; histórico | `PlanUpgradeTest` (6); `PlanUpgradeGoldenTest` (1); `TrainingPlanRepositoryUpgradeTest` (5); `fixtures/golden/plan-upgrade`; commit S10.1 |
 | [ ] | C4-48 | Triggers `DATA_READY`/`ENGINE_UPGRADE` | C4-47 | M | S10 | ADR 0048 | Testes; sem trigger de readiness | — |
 | [ ] | C4-49 | Docs ADR 0048, ARCHITECTURE, DATA_MODEL | C4-44..48 | S | S10 | ADR 0048 | Docs | — |
 
@@ -825,6 +825,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (gate/VM/campos inexistentes não compilavam). O gate chama-se `HealthSyncGate` e não `HealthSyncState`: o nome do ADR já descreve o estado detalhado da UI de sync; a semântica é idêntica (`Idle`/`Syncing` esperam; `Ready` gera; `Failed` gera com nota) e o ADR 0048 §3.1 foi anotado. `Failed` cobre indisponível/permissão/erro/timeout — todos geram com `dataIncomplete` + nota no rationale, e o `DATA_READY` de C4-48 reavalia quando os dados chegarem. Timeout de 3 s vive no `transformLatest` do ViewModel (cancela se o gate estabilizar); `UnconfinedTestDispatcher` virtualiza o `delay` sem `runTest`, então o teste de timeout avança o relógio virtual manualmente (`dispatcher.scheduler.advanceTimeBy`). Achado de ferramenta (load-bearing): o ID do baseline do detekt inclui KDoc dentro dos parênteses — dois KDocs adicionados em `TodayViewModel` quebraram as supressões pré-existentes; removidos (a doc vive no campo), baseline atualizado no formato vigente; nunca documentar params inline em função com baseline. Hilt/Dagger não resolveu binding de `StateFlow<HealthSyncGate>` via `@Provides` (`MissingBinding` mesmo com factory KSP gerada); pivot para injetar o `HealthSyncCoordinator` concreto no ViewModel — sem mudança de comportamento, testes com coordenador real + fakes. `TodayViewModel`/`TimeDrivenStateTest` passam coordenador com gate estabilizado por padrão; `TutorialViewModel` continua fora do gate (fluxo explícito de primeiro uso). O aviso no Hoje é um cartão neutro (`McCard.INSET`), sem bloquear a tela: o plano só não é gerado/persistido antes do gate.
 - **Próximo:** S10 / C4-47 (`PlanUpgrade` idempotente v6→v7 + `G-UPGRADE-01`), TDD.
 
+### S10.1 — 2026-11-17 — `PlanUpgrade` idempotente (C4-47)
+
+- **Status:** DONE
+- **Tasks:** C4-47.
+- **Arquivos:** `core/domain/.../replan/PlanUpgrade.kt` (novo: `PlanUpgradeResult`, `needsUpgrade`, `upgrade`), `core/data/.../repository/TrainingPlanRepository.kt` (`PlanUpgradeOutcome`, `applyUpgrade`), `PlanUpgradeTest.kt` (novo), `PlanUpgradeGoldenTest.kt` (novo), `TrainingPlanRepositoryUpgradeTest.kt` (novo), `fixtures/golden/plan-upgrade/` (input/expected/README), `fixtures/golden/README.md`, `docs/TESTING.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 999 verdes (+7: `PlanUpgradeTest` 6, `PlanUpgradeGoldenTest` 1); `:core:data:test` 197 (+5); `:app:testDebugUnitTest` 918; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply` de import order); `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`.
+- **Commit:** `feat(domain): add idempotent engine plan upgrade (C4-47)`.
+- **Decisões/notas:** TDD RED→GREEN (domínio e repositório inexistentes não compilavam). O `PlanUpgrade` é puro no domínio: preserva hoje/passado/`DONE`/`CLOSED`, troca só o futuro `PLANNED`, permite 1 slot estrutural (futuro com 0 qualidade → 1), veta volume/long extra/2ª qualidade e é idempotente (versão igual → `Skipped`). Sem `ENGINE_VERSION` nova: o upgrade compara qualquer versão armazenada com o alvo, então o `G-UPGRADE-01` usa alvo simulado `weekly-plan-v7` enquanto o motor segue em v6; o bump real é C4-53 e o mecanismo já o aplica sem código novo. O `applyUpgrade` escreve revisão `ENGINE_UPGRADE` (string, sem novo enum — os triggers do `PlanReplanner` são C4-48), preserva `createdOn`/`inputsHash`/fingerprints e é transacional (conflito de insert aborta e mantém v6). Detekt `ReturnCount`/`LongParameterList` resolvidos com `when` de retorno único + `preconditions` de 6 params, sem baseline novo. A fiação na abertura (quando rodar o upgrade: versão defasada ou `dataIncomplete`) é C4-48.
+- **Próximo:** S10 / C4-48 (triggers `DATA_READY`/`ENGINE_UPGRADE` + fiação na abertura), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1000,10 +1010,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-47, S10)
+## 14. Próxima ação (C4-48, S10)
 
-1. Abrir o ADR 0048 §2.2 e o FR-409 (upgrade) do PRD; ler `TrainingPlanRepository.applyReplan` (transação, proteção de `DONE`/`CLOSED`, `stored.copy`), `PlanReplanner` (gates existentes) e o golden `G-PER-03` como modelo de fixture.
-2. Escrever os testes que falham de C4-47: `G-UPGRADE-01` (v6→v7: terça `DONE` preservada, oportunidade futura adicionada sem volume/longão extra/2ª qualidade), idempotência (2ª rodada sem mudança), transação (falha no meio preserva v6), semanas passadas intocadas.
-3. Implementar C4-47 com TDD (`PlanUpgrade` no `:app` ou domínio + fiação na abertura); rodar `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0048 §2.1–2.2 e o FR-409 (`DATA_READY`); ler `PlanReplanner` (gates T1–T5), `ReplanContextBuilder`/`TrainingSignals` (de onde vêm readiness/carga do dia) e `TodayViewModel` (gate + geração) para decidir onde o upgrade dispara na abertura.
+2. Escrever os testes que falham de C4-48: `ReplanTrigger.DATA_READY`/`ENGINE_UPGRADE` no `PlanReplanner.evaluate` (semana `dataIncomplete` reavaliada quando os dados chegam; versão defasada sugere regeneração com `allowStructuralQualitySlot`), sem trigger de prontidão isolada.
+3. Implementar C4-48 com TDD (triggers + fiação na abertura via `TrainingPlanRepository.applyUpgrade`); rodar `:core:domain:test` + `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

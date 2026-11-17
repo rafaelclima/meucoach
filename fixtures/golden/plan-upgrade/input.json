@@ -1,0 +1,101 @@
+{
+  "scenarioId": "G-UPGRADE-01",
+  "description": "v6 with DONE Tuesday and easy Friday upgrades to v7: Tuesday preserved, Friday becomes the structural quality slot, volume unchanged.",
+  "weekStart": "2026-11-02",
+  "today": "2026-11-04",
+  "targetVersion": "weekly-plan-v7",
+  "stored": {
+    "engineVersion": "weekly-plan-v6",
+    "createdOn": "2026-11-02",
+    "rationale": "Semana base.",
+    "confidence": "MEDIUM",
+    "ruleIds": ["R-PLAN-03"],
+    "evidenceIds": ["EV-PFITZINGER-2008"],
+    "sessions": [
+      {
+        "date": "2026-11-02",
+        "type": "EASY",
+        "title": "Fácil de segunda",
+        "durationMin": 40,
+        "status": "PLANNED"
+      },
+      {
+        "date": "2026-11-03",
+        "type": "EASY",
+        "title": "Fácil de terça",
+        "durationMin": 40,
+        "status": "DONE",
+        "completionEvidence": "MANUAL"
+      },
+      {
+        "date": "2026-11-04",
+        "type": "EASY",
+        "title": "Fácil de hoje",
+        "durationMin": 40,
+        "status": "PLANNED"
+      },
+      {
+        "date": "2026-11-06",
+        "type": "EASY",
+        "title": "Fácil de sexta",
+        "durationMin": 40,
+        "status": "PLANNED"
+      },
+      {
+        "date": "2026-11-08",
+        "type": "LONG",
+        "title": "Corrida mais longa",
+        "durationMin": 40,
+        "status": "PLANNED"
+      }
+    ]
+  },
+  "regenerated": {
+    "engineVersion": "weekly-plan-v7",
+    "createdOn": "2026-11-02",
+    "rationale": "Semana base com oportunidade estrutural de qualidade na sexta; o dia confirma.",
+    "confidence": "MEDIUM",
+    "ruleIds": ["R-PLAN-03", "R-PER-03"],
+    "evidenceIds": ["EV-PFITZINGER-2008"],
+    "sessions": [
+      {
+        "date": "2026-11-02",
+        "type": "EASY",
+        "title": "Fácil de segunda",
+        "durationMin": 40,
+        "status": "PLANNED"
+      },
+      {
+        "date": "2026-11-03",
+        "type": "EASY",
+        "title": "Fácil de terça",
+        "durationMin": 40,
+        "status": "DONE",
+        "completionEvidence": "MANUAL"
+      },
+      {
+        "date": "2026-11-04",
+        "type": "EASY",
+        "title": "Fácil de hoje",
+        "durationMin": 40,
+        "status": "PLANNED"
+      },
+      {
+        "date": "2026-11-06",
+        "type": "QUALITY",
+        "title": "Fartlek leve",
+        "durationMin": 40,
+        "status": "PLANNED",
+        "qualityKind": "FARTLEK",
+        "planDecision": "QUALITY_OPPORTUNITY"
+      },
+      {
+        "date": "2026-11-08",
+        "type": "LONG",
+        "title": "Corrida mais longa",
+        "durationMin": 40,
+        "status": "PLANNED"
+      }
+    ]
+  }
+}
