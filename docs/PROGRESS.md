@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S12 do Ciclo 4: docs `R-PER-04` e evidências, C4-21 — S12 encerrada)
+**Atualizado:** 17/11/2026 (S13 do Ciclo 4: golden `G-VOL-02` + copy do treino extra, C4-41)
+
+## Sessão 2026-11-17 — Ciclo 4/S13: golden `G-VOL-02` + copy do treino extra (C4-41)
+
+**Objetivo:** congelar o crédito do treino extra como golden (ADR 0050 §2.1–§2.2, FR-408): base real, adesão só planejada e copy "treino extra contou".
+
+### Concluído
+
+- **Golden:** `fixtures/golden/vol-02/` (input/expected/README): 3×38 concluídas com `ACTIVITY` (114, 3/3) + extra 28 → base 142, alvo 151 (+6%), 1 oportunidade BUILD (5K a 34 dias), rationale com base/+6%/alvo/adesão e o crédito do extra.
+- **Copy:** `WeeklyPlanGenerator.extraTrainingNote` deriva o extra (`strongMinutes` da referência − plano concluído forte) e a adesão (`3/3`); `LEGACY` nunca aparece (só `ACTIVITY`/`GUIDED` provam volume).
+- **Testes:** `PlanVolumeGoldenTest` (2): golden do extra + `LEGACY` 33 fora da base.
+- **Docs:** `fixtures/golden/README` + `docs/TESTING.md` (tabela + lista) com `G-VOL-02`; checklist com a reconciliação numérica.
+
+### Testes
+
+- `:core:domain:test` 1041 verdes (+2); `spotlessCheck` verde.
+- Sem código de app/data alterado (gates de C4-20 seguem verdes: `:app:testDebugUnitTest` 941, `:core:data:test` 204, `:core:model` 40).
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (3 falhas: sem prova o plano vinha sem qualidade e com 150 min; com 5K virou BUILD com 151; copy ausente).
+- Reconciliação: o "base 127" do rascunho era o alvo do cenário antigo (120 → 127); o correto é base 142 → alvo 151. `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-42; review em C4-43.
+
+### Próximo passo
+
+1. S13 / C4-42: docs `R-PLAN-01 v2`, `R-LVL-03`, ADR 0050 (sem código).
+2. Depois S13 / C4-43 (review "planejada/mantida/rebaixada").
 
 ## Sessão 2026-11-17 — Ciclo 4/S12: docs `R-PER-04` e evidências do catálogo (C4-21)
 

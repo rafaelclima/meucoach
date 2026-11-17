@@ -1,0 +1,11 @@
+{
+  "scenarioId": "G-VOL-02",
+  "baseMinutes": 142,
+  "baseWeekStart": "2026-10-26",
+  "growthPercent": 6,
+  "targetMinutes": 151,
+  "adherence": "3/3",
+  "extraMinutes": 28,
+  "weeklyMinutes": 151,
+  "qualityCount": 1
+}

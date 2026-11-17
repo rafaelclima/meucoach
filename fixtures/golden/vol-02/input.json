@@ -1,0 +1,85 @@
+{
+  "scenarioId": "G-VOL-02",
+  "description": "3 planejadas de 38 min concluídas (114) + extra de 28 min: base real 142, adesão 3/3, alvo +6% (151). Sem dados reais de saúde.",
+  "weekStart": "2026-11-02",
+  "today": "2026-11-02",
+  "profile": {
+    "id": "athlete-1",
+    "birthDate": "1988-01-01",
+    "sex": "MALE",
+    "restingHeartRate": 58,
+    "maxHeartRateObserved": 187,
+    "lactateThresholdHeartRate": 180,
+    "thresholdPaceSecPerKm": 360,
+    "experience": "INTERMEDIATE",
+    "timezone": "America/Sao_Paulo",
+    "availability": {
+      "MONDAY": 60,
+      "WEDNESDAY": 60,
+      "SUNDAY": 90
+    }
+  },
+  "readiness": {
+    "score": 80,
+    "level": "GREEN",
+    "confidence": "HIGH",
+    "components": { "SUBJECTIVE": 80 },
+    "missing": [],
+    "flags": []
+  },
+  "load": {
+    "acwr": 1.0,
+    "monotony": 1.2,
+    "strain": 400.0
+  },
+  "race": {
+    "eventId": "race-1",
+    "distance": "FIVE_K",
+    "targetDate": "2026-12-06"
+  },
+  "previousWeek": {
+    "weekStart": "2026-10-26",
+    "createdOn": "2026-10-26",
+    "sessions": [
+      {
+        "date": "2026-10-26",
+        "type": "EASY",
+        "title": "Fácil",
+        "durationMin": 38,
+        "status": "DONE",
+        "completionEvidence": "ACTIVITY",
+        "activityId": "act-1"
+      },
+      {
+        "date": "2026-10-28",
+        "type": "EASY",
+        "title": "Fácil",
+        "durationMin": 38,
+        "status": "DONE",
+        "completionEvidence": "ACTIVITY",
+        "activityId": "act-2"
+      },
+      {
+        "date": "2026-10-30",
+        "type": "EASY",
+        "title": "Fácil",
+        "durationMin": 38,
+        "status": "DONE",
+        "completionEvidence": "ACTIVITY",
+        "activityId": "act-3"
+      }
+    ]
+  },
+  "volumeReferences": [
+    {
+      "weekStart": "2026-10-26",
+      "plannedMinutes": 114,
+      "executedMinutes": 142,
+      "strongMinutes": 142,
+      "strongSessions": 4,
+      "plannedSessions": 3,
+      "createdOn": "2026-10-26",
+      "specialWeek": false
+    }
+  ]
+}

@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S12 (C4-21)
-> **Último commit:** C4-21 — `docs(c4): record R-PER-04 and the catalog evidence (C4-21)`
-> **Fase:** 3 — UI/copy — **S12 encerrada (C4-18..C4-21 DONE)**; próxima S13 (C4-41, golden `G-VOL-02`)
-> **Sessão atual:** **S12 — C4-21 DONE**
-> **Task atual:** C4-21 (DONE)
-> **Próxima task:** C4-41 (S13)
+> **Última atualização:** 17/11/2026 — S13 (C4-41)
+> **Último commit:** C4-41 — `feat(domain): credit extra training in the volume base (C4-41)`
+> **Fase:** 3 — UI/copy — **S13 aberta (C4-41 DONE)**; próxima C4-42 (docs `R-PLAN-01 v2`/`R-LVL-03`)
+> **Sessão atual:** **S13 — C4-41 DONE**
+> **Task atual:** C4-41 (DONE)
+> **Próxima task:** C4-42 (S13)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-20 seguem verdes: `:core:domain:test` 1039, `:app:testDebugUnitTest` 941, `:core:data:test` 204, `:core:model` 40)
-> **Próxima ação:** abrir S13/C4-41 (golden `G-VOL-02` + copy do treino extra).
+> **Gates da última sessão:** `:core:domain:test` 1041 verdes; `spotlessCheck` verde; sem código de app/data alterado (gates de C4-20 seguem verdes: `:app:testDebugUnitTest` 941, `:core:data:test` 204, `:core:model` 40)
+> **Próxima ação:** abrir S13/C4-42 (docs `R-PLAN-01 v2`, `R-LVL-03`, ADR 0050).
 
 ### 0.1 O que já está pronto
 
@@ -156,7 +156,7 @@
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` têm round-trip no Room (C4-45) e no export (C4-50); a reavaliação pode ser provada também pelos campos persistidos.
-- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
+- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02` e a copy do treino extra estão prontos (C4-41); os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-42.
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
@@ -167,7 +167,7 @@
 - O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45) e ao export (C4-50). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); a copy da restauração está na UI (C4-31).
 - Intro fartlek do iniciante no gerador (C4-18 DONE); estrutura no briefing/UI (C4-19 DONE); golden `G-PER-05` (C4-20 DONE); docs `R-PER-01/02/04` + evidências (C4-21 DONE). S12 encerrada.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
-- `G-LOAD-02`, `G-READY-03`, `G-DATA-02` e `G-VOL-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`, `G-PER-05` em `fixtures/golden/per-quality` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
+- `G-LOAD-02`, `G-READY-03`, `G-DATA-02` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`, `G-PER-05` em `fixtures/golden/per-quality`, `G-VOL-02` em `fixtures/golden/vol-02` e `G-UPGRADE-01` em `fixtures/golden/plan-upgrade`.
 - O rationale da primeira oportunidade diz "o dia confirma" e cita `R-PER-03`; a copy de "sem progressão" distingue falta de histórico, dias, taper e o motivo real de carga (calibração, ACWR com valor, monotonia, strain, esforço percebido) sem contradição (C4-06). Restam em C4-59 os refinamentos finos de copy do rationale.
 - O novo título “Corrida mais longa” ainda não tem link de UI para Perfil/Disponibilidade (C4-51).
 
@@ -605,7 +605,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-38 | `VolumeReference` + builder | C4-22 | L | S5 | ADR 0050 | Projeção determinística | `VolumeReferenceTest` (14); `VolumeReferenceProjectionTest` (8); commit S5 |
 | [x] | C4-39 | Volume/meso/graduação usam referência real | C4-38 | L | S5 | ADR 0050 | Base real; adesão separada | `VolumeProgressionTest`/`MesoCycleTest`/`LevelGraduationEngineTest`; fiação app; commit S5 |
 | [x] | C4-40 | Reparo LEGACY do mesmo dia | C4-39 | M | S5.1 | ADR 0050 | Confirmação; migrado intacto | `SessionCompletionRulesTest` (7); `SessionExecutionRepositoryTest` (+4); `RepairLegacyCompletionTest` (7); prompt/UI (+4); commit S5.1 |
-| [ ] | C4-41 | Golden `G-VOL-02` + copy | C4-38..40 | M | S13 | ADR 0050 | Golden/copy | — |
+| [x] | C4-41 | Golden `G-VOL-02` + copy | C4-38..40 | M | S13 | ADR 0050 | Golden/copy | `fixtures/golden/vol-02` (base 142 → alvo 151, adesão 3/3, copy "treino extra contou"); `PlanVolumeGoldenTest` (2); commit S13 |
 | [ ] | C4-42 | Docs `R-PLAN-01 v2`, `R-LVL-03`, ADR | C4-38..41 | S | S13 | ADR 0050 | Docs | — |
 | [ ] | C4-43 | Review “planejada/mantida/rebaixada” | C4-39 | S | S13 | ADR 0050 | UI/teste | — |
 
@@ -965,6 +965,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** `R-PER-01/02/04` entram no §14 (faltavam desde o ADR 0043; `R-PER-03` entrou em C4-08). `EV-INJURY-2015` com citação completa verificada (Videbæk et al., Sports Med 2015, 17,8 vs 7,7/1000 h); `EV-TID-2021`/`EV-HIIT-2016`/`EV-HIIT-2024` registradas como sínteses honestas da literatura (força B/C, dose LIMITED) — nenhum paper inventado. O `ExplanationCatalog` em código não muda: cobre IDs emitidos em rationales (C4-52) e nenhum rationale emite as 4 novas (precedente `R-RACE-01`). §8.4 agora espelha os 7 kinds + intro fartlek + trava de iniciante; a linha "Treadmill" saiu (esteira é dica `R-PLAN-08`, não kind). S12 encerrada (C4-18..C4-21); S13 abre com C4-41.
 - **Próximo:** S13 / C4-41 (golden `G-VOL-02` + copy do treino extra).
 
+### S13 — 2026-11-17 — Golden `G-VOL-02` + copy do treino extra (C4-41)
+
+- **Status:** DONE
+- **Tasks:** C4-41.
+- **Arquivos:** `fixtures/golden/vol-02/` (input/expected/README novos), `core/domain/.../golden/PlanVolumeGoldenTest.kt` (novo, 2), `core/domain/.../prescription/WeeklyPlanGenerator.kt` (`extraTrainingNote` + `volumeRationale` com o crédito), `fixtures/golden/README.md`, `docs/TESTING.md` (tabela + lista de testes), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1041 verdes (+2); `spotlessCheck` verde; sem código de app/data alterado (gates de C4-20 seguem verdes: `:app:testDebugUnitTest` 941, `:core:data:test` 204, `:core:model` 40).
+- **Commit:** `feat(domain): credit extra training in the volume base (C4-41)`.
+- **Decisões/notas:** TDD RED→GREEN (1ª falha: `weeklyMinutes` 151 vs 150 sem prova; 2ª: `qualityCount` 0 — BASE sem `phaseWeeks` não agenda qualidade; com prova 5K a 34 dias vira BUILD com 1 oportunidade e 151 min; 3ª: copy ausente — o rationale já dizia "base de 142 min; +6%; alvo de 151 min"). Reconciliação numérica (dívida apontada em S5/S7): o "base 127" do rascunho misturava o alvo do cenário antigo (base 120 → alvo 127); o cenário correto é base **142** (114 + 28) → alvo **151** (+6%), adesão 3/3, `LEGACY` 33 fora da base (só `ACTIVITY`/`GUIDED` provam volume) e longão real 60/90 pendente. O crédito é derivado (`baseRef.strongMinutes − plano concluído forte`), não decorado: sem plano da semana-base no histórico ou sem extra, a nota some; `LEGACY` nunca gera `StrongRun`, então nunca aparece no extra. Docs `R-PLAN-01 v2`/`R-LVL-03` ficam em C4-42; review "planejada/mantida/rebaixada" em C4-43.
+- **Próximo:** S13 / C4-42 (docs `R-PLAN-01 v2`, `R-LVL-03`, ADR 0050).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1049,9 +1059,9 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 918 | Atualizar conforme novos testes |
-| `:core:domain` | 992 | Atualizar conforme novos testes |
-| `:core:data` | 192 | Atualizar |
+| `:app` | 941 | Atualizar conforme novos testes |
+| `:core:domain` | 1041 | Atualizar conforme novos testes |
+| `:core:data` | 204 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -1140,9 +1150,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-41, S13)
+## 14. Próxima ação (C4-42, S13)
 
-1. Abrir o ADR 0050 §2.1–2.5 e a FR-408; ler `VolumeProgression` + `VolumeReferenceProjection` + o golden `G-PER-04` como modelo — C4-38/39 dão a referência real e C4-20 o padrão de golden; C4-41 congela o `G-VOL-02` (3 planejadas/114 + extra 28 → base 127, adesão 3/3) e a copy "treino extra contou".
-2. Implementar C4-41 com TDD (golden + copy); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0050 §2 e a FR-408; registrar `R-PLAN-01 v2` (base real `strongMinutes`, adesão só planejada, copy do treino extra do `G-VOL-02`) e `R-LVL-03` (longão real 60/90 via `StrongRun`, treino extra conta, `LEGACY` 33 não conta) no `SPORTS_SCIENCE` §8.3/§13/§14 e no ADR 0050 §10 + status; atualizar `DECISIONS.md`.
+2. Implementar C4-42 sem código (docs apenas); rodar `git diff --check` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

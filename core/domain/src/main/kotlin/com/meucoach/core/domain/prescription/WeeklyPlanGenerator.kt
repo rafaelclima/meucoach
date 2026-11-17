@@ -753,6 +753,7 @@ class WeeklyPlanGenerator {
                     volumeDecision,
                     volumeAdjusted.droppedSessions,
                     volumeAdjusted.minimalWeek,
+                    extraTrainingNote(volumeDecision, volumeReferences, combinedReferences),
                 ),
             )
             append(" ")
@@ -1404,7 +1405,12 @@ class WeeklyPlanGenerator {
         return gap in 1..7
     }
 
-    private fun volumeRationale(decision: VolumeDecision, droppedSessions: Int, minimalWeek: Boolean): String {
+    private fun volumeRationale(
+        decision: VolumeDecision,
+        droppedSessions: Int,
+        minimalWeek: Boolean,
+        extraNote: String?,
+    ): String {
         val base = decision.baseMinutes
         val week = decision.baseWeekStart?.format(WEEK_LABEL)
         val droppedHint = if (droppedSessions > 0) {
@@ -1418,7 +1424,8 @@ class WeeklyPlanGenerator {
         } else {
             ""
         }
-        val suffix = "$droppedHint$minimalHint"
+        val extraHint = if (extraNote != null) " $extraNote" else ""
+        val suffix = "$droppedHint$minimalHint$extraHint"
         return when {
             base == null || week == null ->
                 "Volume definido pela sua disponibilidade: ainda não há semana concluída " +
@@ -1440,6 +1447,30 @@ class WeeklyPlanGenerator {
                 "Volume: base de $base min concluídos na semana de $week; alvo mantido em " +
                     "${decision.minutes} min${volumeBlockHint(decision.block)}.$suffix"
         }
+    }
+
+    /**
+     * FR-408 (ADR 0050 §2.2): credits the unplanned run without inflating
+     * adherence. The base already contains every strong minute, so the extra is
+     * the base minus the planned strong minutes the athlete actually completed;
+     * a LEGACY completion is never strong and cannot appear here.
+     */
+    private fun extraTrainingNote(
+        decision: VolumeDecision,
+        volumeReferences: List<VolumeReference>,
+        plans: List<WeeklyPlan>,
+    ): String? {
+        val baseWeekStart = decision.baseWeekStart ?: return null
+        val baseReference = volumeReferences.firstOrNull { it.weekStart == baseWeekStart } ?: return null
+        val basePlan = plans.firstOrNull { it.weekStart == baseWeekStart } ?: return null
+        val doneStrong = basePlan.sessions.filter {
+            it.status == SessionStatus.DONE && it.completionEvidence?.isStrong == true
+        }
+        val extra = baseReference.strongMinutes - doneStrong.sumOf { it.durationMin ?: 0 }
+        if (extra <= 0) return null
+        val trainable = basePlan.trainableSessions().size
+        return "Seu treino extra contou para o volume (+$extra min além do plano), " +
+            "mas a adesão considera só o plano (${doneStrong.size}/$trainable)."
     }
 
     private fun volumeBlockHint(block: VolumeGrowthBlock): String = when (block) {
