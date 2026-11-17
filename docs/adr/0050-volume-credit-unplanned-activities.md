@@ -1,6 +1,6 @@
 # ADR 0050 — Volume real, treino extra e reparo de evidência legada
 
-**Status:** Aprovado em 2026-11-16 — implementação em andamento (C4-38..C4-40 concluídas; golden, copy e docs em C4-41..C4-43).
+**Status:** Aprovado em 2026-11-16 — implementação em andamento (C4-38..C4-42 concluídas; review em C4-43).
 **Data:** 2026-11-16
 **Escopo:** `VolumeProgression`, `MesoCycle`, `LevelGraduationEngine`,
 `VolumeReference`, `StrongRun`, `TrainingPlanRepository`/`ActivityRepository` (projeção),
@@ -249,6 +249,33 @@ data class StrongRun(
 ## 9. Referências
 
 - `docs/PRD_TREINO_REAL.md` FR-404/FR-408, §11.5 (Q-03, Q-09).
-- `docs/SPORTS_SCIENCE.md` §8.3, §8.11.
+- `docs/SPORTS_SCIENCE.md` §8.3, §8.11, §8.12.
 - ADR 0024, 0038, 0041, 0042, 0044, 0046.
 - `EV-SEILER-2010`, `EV-PFITZINGER-2008`, `EV-DANIELS-2014`.
+
+---
+
+## 10. Registro de implementação
+
+- **C4-38 (S5):** `StrongRun`/`VolumeReference` puros e
+  `VolumeReferenceBuilder.build(...)` (agrega `strongMinutes`/`strongSessions`,
+  ignora corridas fora da semana); `VolumeReferenceProjection` na borda (`:app`).
+  14 testes em `VolumeReferenceTest`, 8 em `VolumeReferenceProjectionTest`.
+- **C4-39 (S5):** `VolumeProgression` usa `max(strongMinutes)` como base e lê a
+  adesão do plano (`strongCompletionRatio`); `MesoCycle` usa `strongSessions`;
+  `LevelGraduation` usa `StrongRun` real (60/90). Fiação em
+  `TodayViewModel`/`TutorialViewModel`/`ReplanContextBuilder`/
+  `LevelGraduationContextBuilder`.
+- **C4-40 (S5.1):** reparo `LEGACY_UNVERIFIED` do mesmo dia com confirmação
+  explícita (`SessionCompletionRules.checkLegacyRepair`,
+  `SessionExecutionRepository.repairLegacyWithActivity`,
+  `RepairLegacyCompletion`); o migrado antigo fica intocado.
+- **C4-41 (S13):** golden `G-VOL-02` (`fixtures/golden/vol-02`): 3×38 concluídas
+  + extra 28 → base real 142, alvo 151 (+6%), adesão 3/3, com a copy "Seu treino
+  extra contou para o volume (+28 min além do plano), mas a adesão considera só
+  o plano (3/3)" (`extraTrainingNote` deriva o extra, sem decorar; sem plano da
+  semana-base ou sem extra, a nota some). Reconciliação: o "base 127" do rascunho
+  misturava o alvo do cenário antigo (base 120 → alvo 127); o correto é base 142
+  → alvo 151. `LEGACY` 33 fora da base; longão real 60/90 pendente.
+- **C4-42 (S13):** docs `R-PLAN-01 v2` e `R-LVL-03` no `SPORTS_SCIENCE`
+  (§8.3/§8.12/§14). Resta o review "planejada/mantida/rebaixada" (C4-43).

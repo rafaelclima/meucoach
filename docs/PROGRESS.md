@@ -1,6 +1,31 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S13 do Ciclo 4: golden `G-VOL-02` + copy do treino extra, C4-41)
+**Atualizado:** 17/11/2026 (S13 do Ciclo 4: docs `R-PLAN-01 v2` e `R-LVL-03`, C4-42)
+
+## Sessão 2026-11-17 — Ciclo 4/S13: docs `R-PLAN-01 v2` e `R-LVL-03` (C4-42)
+
+**Objetivo:** fechar o ADR 0050 no papel — regra de volume real e de graduação com treino extra documentadas, sem código.
+
+### Concluído
+
+- **`SPORTS_SCIENCE` v1.6:** §8.3 com o caso `G-VOL-02` + copy do crédito e `LEGACY` fora da base; §8.12 novo com `R-LVL-03` (nível controla volume/frequência/complexidade; longão real 60/90 via `StrongRun`; duração planejada não basta); §14 com `R-PLAN-01 v2` e `R-LVL-03` (texto canônico do PRD §13).
+- **Docs:** ADR 0050 (status + §10 com o registro C4-38..C4-42 e a reconciliação base 142→151) e `DECISIONS.md` (r1.47 + linha do ADR 0050).
+
+### Testes
+
+- Docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-41 seguem verdes: `:core:domain:test` 1041).
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `R-PLAN-01 v2` é rótulo de docs (o código emite `R-PLAN-01`, precedente `R-PLAN-03 v2`); `ExplanationCatalog` inalterado (só IDs emitidos, C4-52).
+- §13 de evidências inalterado (SEILER/PFITZINGER/DANIELS/FRIEL já registradas).
+- S13 segue aberta; C4-43 (review "planejada/mantida/rebaixada") é a próxima.
+
+### Próximo passo
+
+1. S13 / C4-43: review "planejada/mantida/rebaixada" (copy/UI do treino extra no review), TDD.
+2. Depois S14 (C4-26/C4-27/C4-32/C4-33/C4-37: UI/copy de carga, prontidão, sono + docs).
 
 ## Sessão 2026-11-17 — Ciclo 4/S13: golden `G-VOL-02` + copy do treino extra (C4-41)
 

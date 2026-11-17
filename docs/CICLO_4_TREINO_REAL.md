@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S13 (C4-41)
-> **Último commit:** C4-41 — `feat(domain): credit extra training in the volume base (C4-41)`
-> **Fase:** 3 — UI/copy — **S13 aberta (C4-41 DONE)**; próxima C4-42 (docs `R-PLAN-01 v2`/`R-LVL-03`)
-> **Sessão atual:** **S13 — C4-41 DONE**
-> **Task atual:** C4-41 (DONE)
-> **Próxima task:** C4-42 (S13)
+> **Última atualização:** 17/11/2026 — S13 (C4-42)
+> **Último commit:** C4-42 — `docs(c4): record R-PLAN-01 v2 and R-LVL-03 (C4-42)`
+> **Fase:** 3 — UI/copy — **S13 aberta (C4-41/C4-42 DONE)**; próxima C4-43 (review "planejada/mantida/rebaixada")
+> **Sessão atual:** **S13 — C4-42 DONE**
+> **Task atual:** C4-42 (DONE)
+> **Próxima task:** C4-43 (S13)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1041 verdes; `spotlessCheck` verde; sem código de app/data alterado (gates de C4-20 seguem verdes: `:app:testDebugUnitTest` 941, `:core:data:test` 204, `:core:model` 40)
-> **Próxima ação:** abrir S13/C4-42 (docs `R-PLAN-01 v2`, `R-LVL-03`, ADR 0050).
+> **Gates da última sessão:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-41 seguem verdes: `:core:domain:test` 1041)
+> **Próxima ação:** abrir S13/C4-43 (review "planejada/mantida/rebaixada": copy/UI do treino extra no review).
 
 ### 0.1 O que já está pronto
 
@@ -156,7 +156,7 @@
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` têm round-trip no Room (C4-45) e no export (C4-50); a reavaliação pode ser provada também pelos campos persistidos.
-- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02` e a copy do treino extra estão prontos (C4-41); os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-42.
+- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs `R-PLAN-01 v2`/`R-LVL-03` estão prontos (C4-41/C4-42). Resta o review "planejada/mantida/rebaixada" (C4-43).
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
@@ -606,7 +606,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-39 | Volume/meso/graduação usam referência real | C4-38 | L | S5 | ADR 0050 | Base real; adesão separada | `VolumeProgressionTest`/`MesoCycleTest`/`LevelGraduationEngineTest`; fiação app; commit S5 |
 | [x] | C4-40 | Reparo LEGACY do mesmo dia | C4-39 | M | S5.1 | ADR 0050 | Confirmação; migrado intacto | `SessionCompletionRulesTest` (7); `SessionExecutionRepositoryTest` (+4); `RepairLegacyCompletionTest` (7); prompt/UI (+4); commit S5.1 |
 | [x] | C4-41 | Golden `G-VOL-02` + copy | C4-38..40 | M | S13 | ADR 0050 | Golden/copy | `fixtures/golden/vol-02` (base 142 → alvo 151, adesão 3/3, copy "treino extra contou"); `PlanVolumeGoldenTest` (2); commit S13 |
-| [ ] | C4-42 | Docs `R-PLAN-01 v2`, `R-LVL-03`, ADR | C4-38..41 | S | S13 | ADR 0050 | Docs | — |
+| [x] | C4-42 | Docs `R-PLAN-01 v2`, `R-LVL-03`, ADR | C4-38..41 | S | S13 | ADR 0050 | Docs | `SPORTS_SCIENCE` v1.6 (§8.3/§8.12/§14); ADR 0050 §10 + status; `DECISIONS` r1.47; commit S13 |
 | [ ] | C4-43 | Review “planejada/mantida/rebaixada” | C4-39 | S | S13 | ADR 0050 | UI/teste | — |
 
 ### E8 — Dados/upgrade/schema
@@ -975,6 +975,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (1ª falha: `weeklyMinutes` 151 vs 150 sem prova; 2ª: `qualityCount` 0 — BASE sem `phaseWeeks` não agenda qualidade; com prova 5K a 34 dias vira BUILD com 1 oportunidade e 151 min; 3ª: copy ausente — o rationale já dizia "base de 142 min; +6%; alvo de 151 min"). Reconciliação numérica (dívida apontada em S5/S7): o "base 127" do rascunho misturava o alvo do cenário antigo (base 120 → alvo 127); o cenário correto é base **142** (114 + 28) → alvo **151** (+6%), adesão 3/3, `LEGACY` 33 fora da base (só `ACTIVITY`/`GUIDED` provam volume) e longão real 60/90 pendente. O crédito é derivado (`baseRef.strongMinutes − plano concluído forte`), não decorado: sem plano da semana-base no histórico ou sem extra, a nota some; `LEGACY` nunca gera `StrongRun`, então nunca aparece no extra. Docs `R-PLAN-01 v2`/`R-LVL-03` ficam em C4-42; review "planejada/mantida/rebaixada" em C4-43.
 - **Próximo:** S13 / C4-42 (docs `R-PLAN-01 v2`, `R-LVL-03`, ADR 0050).
 
+### S13.1 — 2026-11-17 — Docs `R-PLAN-01 v2`, `R-LVL-03` e ADR 0050 (C4-42)
+
+- **Status:** DONE
+- **Tasks:** C4-42 (docs apenas, sem código).
+- **Arquivos:** `docs/SPORTS_SCIENCE.md` (v1.6: §8.3 com `G-VOL-02` + copy + `LEGACY` fora da base, §8.12 novo com `R-LVL-03`, §14 com `R-PLAN-01 v2` e `R-LVL-03`), `docs/adr/0050-volume-credit-unplanned-activities.md` (status + §10), `docs/DECISIONS.md` (r1.47 + linha do ADR 0050), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-41 seguem verdes).
+- **Commit:** `docs(c4): record R-PLAN-01 v2 and R-LVL-03 (C4-42)`.
+- **Decisões/notas:** `R-PLAN-01 v2` é rótulo de docs para a regra revisada (o código continua emitindo `R-PLAN-01`, precedente `R-PLAN-03`/`R-PLAN-03 v2`); o `ExplanationCatalog` não muda (cobre IDs emitidos, C4-52). `R-LVL-03` usa o texto canônico do PRD §13. §13 de evidências inalterado (SEILER/PFITZINGER/DANIELS/FRIEL já registradas). S13 segue aberta; C4-43 (review) é a próxima.
+- **Próximo:** S13 / C4-43 (review "planejada/mantida/rebaixada").
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1150,9 +1160,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-42, S13)
+## 14. Próxima ação (C4-43, S13)
 
-1. Abrir o ADR 0050 §2 e a FR-408; registrar `R-PLAN-01 v2` (base real `strongMinutes`, adesão só planejada, copy do treino extra do `G-VOL-02`) e `R-LVL-03` (longão real 60/90 via `StrongRun`, treino extra conta, `LEGACY` 33 não conta) no `SPORTS_SCIENCE` §8.3/§13/§14 e no ADR 0050 §10 + status; atualizar `DECISIONS.md`.
-2. Implementar C4-42 sem código (docs apenas); rodar `git diff --check` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-408 ("O plano explica 'seu treino extra contou para o volume, mas não para a adesão'"), o `WeeklyReviewCalculator`/`WeeklyReview` + `TrendsViewModel`/`TrendsScreen` e o teste `WeeklyReviewFormatTest` como modelo — C4-38/39 dão a referência real e C4-41 a copy do plano; C4-43 leva o crédito para o review ("planejada/mantida/rebaixada").
+2. Implementar C4-43 com TDD (review + teste); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

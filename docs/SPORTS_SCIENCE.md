@@ -1,11 +1,12 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.5 · **Data:** 16/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.6 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
 > Revisão 1.4 (16/11/2026, Ciclo 4/S3, ADR 0046 implementado no domínio): load gate v3 — ACWR 1,5 em todos os caminhos, `acwrReliable` com janela completa de 28 dias, pré-história como “sem dado”, `permitsQuality`/`permitsProgression` separados e strain confiável; versões de motor e UI ficam para C4-53/C4-26.
 > Revisão 1.5 (16/11/2026, Ciclo 4/S5, ADR 0050 implementado no domínio): volume real — a base é `max(strongMinutes)` das corridas fortes importadas (planejadas ou não), a adesão continua planejada e o mesociclo/graduação usam `strongSessions`/`StrongRun` (longão real 60/90). Golden `G-VOL-02`, reparo `LEGACY` e docs de `R-LVL-03` ficam para C4-40..C4-43.
+> Revisão 1.6 (17/11/2026, Ciclo 4/S13, C4-41/C4-42, ADR 0050): golden `G-VOL-02` congela o crédito do treino extra (3×38 concluídas + extra 28 → base real 142, alvo 151, adesão 3/3, copy "treino extra contou"); `LEGACY_UNVERIFIED` sem atividade não entra na base; `R-PLAN-01 v2` e `R-LVL-03` no §14 e §8.12. Resta o review "planejada/mantida/rebaixada" (C4-43).
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -278,10 +279,15 @@ A musculação é rotina do usuário e **não é prescrita** pelo app; o check-i
 ### 8.3 Progressão
 
 O volume cresce no máximo **6%** — o meio da faixa de 5–8% — sobre uma base que o
-atleta já demonstrou (`R-PLAN-01`, ADR 0038/0050). A base é o maior volume **real
+atleta já demonstrou (`R-PLAN-01 v2`, ADR 0038/0050). A base é o maior volume **real
 forte** (`strongMinutes`) nas últimas 4 semanas completas, planejado ou não;
 treino extra conta para volume, nunca para adesão. Exclui plano criado no meio da
-semana, deload, taper e recuperação pós-prova.
+semana, deload, taper e recuperação pós-prova. O golden `G-VOL-02` congela o caso
+canônico: 3 planejadas de 38 min concluídas (114, adesão 3/3) + 1 extra de 28 min
+→ base 142 e alvo 151 (+6%); o plano declara o crédito — "Seu treino extra contou
+para o volume (+28 min além do plano), mas a adesão considera só o plano (3/3)".
+Uma sessão `LEGACY_UNVERIFIED` de 33 min, sem atividade vinculada, não gera
+`StrongRun` e não entra na base: só `ACTIVITY`/`GUIDED` provam volume.
 
 Crescer exige **todas** as condições:
 
@@ -456,6 +462,18 @@ Descanso, doença e plano substituído encerram a sessão como `CLOSED` com moti
 não contam como falha de adesão. Doença não impede registrar uma corrida real — ela
 fica como treino livre, sem estímulo e sem crédito de progressão.
 
+### 8.12 Graduação e treino extra
+
+O nível controla volume, frequência e complexidade — nunca o direito ao estímulo
+(`R-LVL-03`, ADR 0050; FR-404): o intermediário recebe intervalado, fartlek e
+colinas sem precisar virar avançado. A graduação continua exigente e com aceite,
+sem downgrade automático. O critério de longão usa a **duração real** de corridas
+fortes (`StrongRun`), planejadas ou não: 60 min para `BEGINNER → INTERMEDIATE`,
+90 min para `INTERMEDIATE → ADVANCED`. A duração apenas planejada não basta, e
+`LEGACY_UNVERIFIED` sem atividade não conta. As semanas fortes da graduação
+continuam medidas pela adesão planejada (`strongCompletionRatio`): treino extra
+não infla adesão.
+
 ## 9. Segurança e guardrails
 
 ### 9.1 Sinais de parada
@@ -594,7 +612,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-READY-03` | Vermelho suspende qualidade; âmbar reduz 10–20% | SAW, HALSON | MODERATE |
 | `R-READY-04` | Sono <6 h ⇒ sem qualidade; <6,5 h por 3 dias ⇒ sem aumento de volume | WALSH, WATSON | STRONG |
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
-| `R-PLAN-01` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume real forte (`strongMinutes`, planejado ou extra) nas últimas 4 semanas, e só com a semana anterior ≥ 80% de adesão planejada, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike confiável + ACWR confiável em 0,8–1,3; ACWR em calibração ou fora de faixa apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz | SEILER, GABBETT, FOSTER; ADR 0038; ADR 0046; ADR 0050; `R-LOAD-03` v3 | MODERATE |
+| `R-PLAN-01 v2` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume real forte (`strongMinutes`, planejado ou extra) nas últimas 4 semanas, e só com a semana anterior ≥ 80% de adesão planejada, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike confiável + ACWR confiável em 0,8–1,3; ACWR em calibração ou fora de faixa apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz. O plano declara o crédito do extra (`G-VOL-02`); `LEGACY_UNVERIFIED` sem atividade não entra na base | SEILER, GABBETT, FOSTER; ADR 0038; ADR 0046; ADR 0050; `R-LOAD-03` v3 | MODERATE |
 | `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
 | `R-PLAN-03 v2` | Longão é a sessão mais longa; piso 45/60 (30 em deload/taper), alvo 25–30% sem virar teto, disponibilidade como teto rígido; abaixo do piso, “Corrida mais longa” e ajuste de agenda | PFITZINGER, DANIELS; ADR 0045 | MODERATE (piso: LIMITED — convenção de produto) |
 | `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |
@@ -616,6 +634,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-RACE-04` | Após prova concluída, janela por distância (5k 3, 10k 5, meia 10, maratona 16 dias) sem treino forte e sem longão, com sessões fáceis de até 30 min (45 nos dias 6–10 da meia; 60 nos dias 8–16 da maratona); retorno exige check-in sem dor e sem prontidão vermelha; sem progressão na semana seguinte; `CANCELLED`/`NO_SHOW` não iniciam | ADR 0037 revisto Ciclo 2 proposto; heurística de produto derivada de `SPORTS_SCIENCE` §8.10 | LIMITED — convenção conservadora de produto, sem alegação fisiológica |
 | `R-LVL-01` | `BEGINNER → INTERMEDIATE` só com 4/6 semanas ≥80% forte + 3 esforços 20–35 min + calibração válida + sem doença + longão **real** 60 min (planejado ou não; duração planejada não basta); sugestão com aceite, nunca automática | DANIELS, FRIEL, SEILER; ADR 0042 (domínio); ADR 0050 | LIMITED — convenção de produto |
 | `R-LVL-02` | `INTERMEDIATE → ADVANCED` exige `R-LVL-01` + CTL estável 4 sem + longão **real** 90 min + prova/TT + monotonia <2,0; sugestão com aceite | DANIELS, SEILER, FOSTER; ADR 0042 (domínio); ADR 0050 | LIMITED — convenção de produto |
+| `R-LVL-03` | Nível controla volume/frequência/complexidade, não o direito ao estímulo; longão real conta para a graduação (60/90 via `StrongRun`, planejado ou não; duração planejada não basta; `LEGACY` sem atividade não conta); semanas fortes continuam medidas pela adesão planejada | DANIELS, FRIEL, SEILER; ADR 0042 (graduação); ADR 0050 | LIMITED — convenção de produto |
 | `R-FEEDBACK-01` | Comparação planejado × executado é descritiva: usa o alvo prescrito do dia, tolera 10% em duração/distância e 1 ponto de RPE, mostra dado ausente como ausente e não julga qualidade nem prescreve; treino livre não inventa alvo | ADR 0033; DANIELS, FRIEL | STRONG como política de produto/copy |
 | `R-REVIEW-01` | A revisão semanal consolida adesão, volume, intensidade, prontidão e sono a partir de valores já calculados; reporta no máximo 3 observações determinísticas que citam regra/evidência, com dado ausente como ausente, sem LLM, sem nota, streak ou prescrição | ADR 0034; política de produto | STRONG como política de produto/copy |
 | `R-SAFE-01` | Sinais de alerta interrompem o treino e recomendam avaliação | Consenso clínico | STRONG |

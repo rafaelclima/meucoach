@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.46 · **Data:** 17/11/2026
+**Versão:** 1.47 · **Data:** 17/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -46,6 +46,7 @@
 > Revisão 1.44 (17/11/2026): ADR 0048 implementado (C4-44..C4-48) — gate de dados no Hoje (`HealthSyncGate`, timeout de 3 s, `dataIncomplete` + `R-DATA-01`), schema v18 + migração 17→18, `generatorVersion` no plano, `PlanUpgrade` idempotente (`G-UPGRADE-01`) e triggers `DATA_READY`/`ENGINE_UPGRADE` auto-aplicados na abertura com banner; prontidão sozinha nunca dispara revisão. Restam o export `PlanJson` (C4-50), o bump `weekly-plan-v7` (C4-53) e o smoke no aparelho (C4-55).
 > Revisão 1.45 (17/11/2026): ADR 0044 implementado (C4-01..C4-08, C4-29, C4-50..C4-52) — oportunidade estrutural, `QualityGate` no dia com precedência e `LOW_READINESS`, reavaliação EASY→QUALITY antes do `DONE`, copy sem contradição, check-in sem default, persistência/export da decisão, copy por gate no "Por quê?" e catálogo com todos os IDs; golden `G-PER-03`; `R-PER-03` no `SPORTS_SCIENCE` §8.8/§14 e `R-PRESC-02` emendada. Restam os docs das regras irmãs (C4-33 `R-READY-06`, C4-21 `R-PER-04`, C4-27 `R-LOAD-03 v3`).
 > Revisão 1.46 (17/11/2026): ADR 0047 documentado por completo no Ciclo 4/S12 (C4-19..C4-21) — estrutura executável no briefing/UI ("PASSO A PASSO", sem tempo extra), golden `G-PER-05` da semana 5K, `R-PER-01/02/04` no `SPORTS_SCIENCE` §14 e `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` registradas no §13 (`INJURY-2015` com citação verificada; TID/HIIT como sínteses honestas, força C); `ExplanationCatalog` em código inalterado (só IDs emitidos). Restam C4-53 (versões) e C4-57 (precedência FC×pace).
+> Revisão 1.47 (17/11/2026): ADR 0050 com golden e docs no Ciclo 4/S13 (C4-41/C4-42) — `G-VOL-02` congela o crédito do treino extra (base real 142, alvo 151, adesão 3/3, copy "treino extra contou"; `LEGACY` sem atividade fora da base; reconciliação base 142→151), `R-PLAN-01 v2` e `R-LVL-03` no `SPORTS_SCIENCE` (§8.3/§8.12/§14). Resta o review "planejada/mantida/rebaixada" (C4-43).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -98,7 +99,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0047](adr/0047-quality-catalog-periodization.md) | Catálogo/periodização por fase, nível e distância; estrutura executável; iniciante com strides + intro fartlek `EASY`; intermediário com intervalado/fartlek/colinas | Documentado e fiado em S12 (C4-14..C4-21: estrutura + matriz + rotação + fiação + strides/intro + briefing + `G-PER-05` + docs `R-PER-01/02/04` e 4 evidências); restam C4-53 (versões) e C4-57 (precedência FC×pace) | 16/11/2026 |
 | [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Implementado (C4-44..C4-48); restam export `PlanJson` (C4-50), bump v7 (C4-53) e smoke (C4-55) | 16/11/2026 |
 | [0049](adr/0049-readiness-checkin-sleep.md) | Prontidão/check-in sem inversão, reavaliação tardia, sono plausível e `QualityGate` | Aprovado — implementação pendente (C4-28..C4-37) | 16/11/2026 |
-| [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Aprovado — C4-38..C4-40 implementados (base real, meso, longão e reparo do mesmo dia); golden/copy/docs em C4-41..C4-43 | 16/11/2026 |
+| [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Aprovado — C4-38..C4-42 implementados (base real, meso, longão, reparo do mesmo dia, golden `G-VOL-02` + copy, docs `R-PLAN-01 v2`/`R-LVL-03`); resta o review em C4-43 | 16/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
