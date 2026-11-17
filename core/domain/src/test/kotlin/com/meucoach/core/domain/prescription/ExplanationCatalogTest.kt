@@ -1,7 +1,16 @@
 package com.meucoach.core.domain.prescription
 
+import com.meucoach.core.domain.calibration.CalibrationCalculator
+import com.meucoach.core.domain.calibration.CalibrationInput
+import com.meucoach.core.domain.calibration.CalibrationPerformance
+import com.meucoach.core.domain.insights.ActivityInsightRules
+import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.model.ActivityLap
+import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.Sex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import java.time.LocalDate
 
 class ExplanationCatalogTest {
     @Test
@@ -44,6 +53,9 @@ class ExplanationCatalogTest {
             "R-REVIEW-01",
             "R-RACE-04",
             "R-READY-06",
+            "R-ACT-01",
+            "R-ACT-02",
+            "R-CAL-01",
         )
 
         ids.forEach { id ->
@@ -72,11 +84,61 @@ class ExplanationCatalogTest {
             "EV-HALSON-2014",
             "EV-ISSURIN-2010",
             "EV-PFITZINGER-2008",
+            "EV-ABBISS-2008",
+            "EV-FOSTER-2001",
         )
 
         ids.forEach { id ->
             assertThat(ExplanationCatalog.hasEvidence(id)).describedAs(id).isTrue()
             assertThat(ExplanationCatalog.evidence(id).source).isNotBlank()
+        }
+    }
+
+    @Test
+    fun `catalogs the ids emitted by insights and calibration`() {
+        val insights = ActivityInsightsCalculator().calculate(
+            listOf(
+                ActivityLap(index = 0, durationSec = 360, distanceM = 1_000.0, averageHeartRate = 150),
+                ActivityLap(index = 1, durationSec = 360, distanceM = 1_000.0, averageHeartRate = 160),
+            ),
+        )
+        assertThat(insights).isNotEmpty()
+        insights.forEach { insight ->
+            assertThat(ExplanationCatalog.hasRule(insight.ruleId)).describedAs(insight.ruleId).isTrue()
+            insight.evidenceIds.forEach { id ->
+                assertThat(ExplanationCatalog.hasEvidence(id)).describedAs(id).isTrue()
+            }
+        }
+        assertThat(ExplanationCatalog.hasRule(ActivityInsightRules.PACING)).isTrue()
+        assertThat(ExplanationCatalog.hasRule(ActivityInsightRules.HEART_RATE_DRIFT)).isTrue()
+
+        val today = LocalDate.of(2026, 10, 30)
+        val profile = AthleteProfile(
+            id = "athlete-1",
+            birthDate = LocalDate.of(1988, 1, 1),
+            sex = Sex.MALE,
+            restingHeartRate = 58,
+            maxHeartRateObserved = 187,
+            timezone = "America/Sao_Paulo",
+        )
+        val tierA = CalibrationCalculator.calibrate(
+            CalibrationInput(
+                profile = profile,
+                today = today,
+                performance = CalibrationPerformance(
+                    distanceM = 5_000.0,
+                    durationSec = 1_859,
+                    date = LocalDate.of(2026, 10, 24),
+                    averageHeartRate = 181,
+                ),
+            ),
+        )
+        val tierC = CalibrationCalculator.calibrate(CalibrationInput(profile = profile, today = today))
+        listOf(tierA, tierC).forEach { result ->
+            assertThat(ExplanationCatalog.hasRule(result.ruleId)).describedAs(result.ruleId).isTrue()
+            result.evidenceIds.forEach { id ->
+                assertThat(ExplanationCatalog.hasEvidence(id)).describedAs(id).isTrue()
+            }
         }
     }
 

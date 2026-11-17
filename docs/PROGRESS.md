@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11.4 do Ciclo 4: copy por gate + "Por quê?" + dica, C4-51)
+**Atualizado:** 17/11/2026 (S11.5 do Ciclo 4: catálogo de regras/evidências + teste, C4-52)
+
+## Sessão 2026-11-17 — Ciclo 4/S11.5: catálogo de regras/evidências + teste (C4-52)
+
+**Objetivo:** fechar a FR-412 no catálogo — todo `ruleId`/`evidenceId` emitido pelo motor existe no `ExplanationCatalog` com título e fonte.
+
+### Concluído
+
+- **Domínio:** `R-ACT-01` ("Ritmo constante ou final forte; queda acima de 3% indica fadiga"), `R-ACT-02` ("FC alta com ritmo estável sugere fadiga ou calor"), `R-CAL-01` ("Prova ou teste recente define VDOT e LTHR") e `EV-ABBISS-2008` ("Estratégias de pacing", Abbiss & Laursen) no catálogo, com títulos/fontes do `SPORTS_SCIENCE` §13/§14.
+- **Testes:** listas do `ExplanationCatalogTest` estendidas (`R-ACT-01/02`, `R-CAL-01`, `EV-ABBISS-2008`, `EV-FOSTER-2001`) + novo teste comportamental que exercita os emissores reais (insights com 2 laps + drift; calibração Tier A e Tier C) e cobra o catálogo.
+
+### Testes
+
+- `:core:domain:test` 1025 verdes (+1); `:app:testDebugUnitTest` 939; `:core:data:test` 203; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck` (com `spotlessApply` de import order), `:app:koverVerify`, `:core:domain:koverVerify`, `:app:detekt`, `:core:domain:detekt`, `:core:data:detekt`, `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Varredura de todos os literais `"R-*"`/`"EV-*"` em `core/domain` + `core/data` + `app` (fora o catálogo): 40 regras e 19 evidências; só os 4 acima faltavam. `EV-FOSTER-2001` estava no catálogo mas sem cobertura no teste.
+- Extras mantidos com justificativa: `R-READY-01`/`EV-PLEWS-2013`/`EV-BUCHHEIT-2014` são emitidos pela UI (`buildReadinessExplanation`); `R-RACE-01` documenta o ADR 0032.
+- `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` continuam fora de propósito (propostas de ciência sem emissão; C4-21).
+
+### Próximo passo
+
+1. S11 / C4-08: docs `R-PER-03`, `SPORTS_SCIENCE`, `DECISIONS` (sem código).
+2. Depois S12 (C4-18..C4-21: strides/intro fartlek, estrutura no briefing, `G-PER-05`, docs).
 
 ## Sessão 2026-11-17 — Ciclo 4/S11.4: copy por gate + "Por quê?" + dica (C4-51)
 

@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S11.4 (C4-51)
-> **Último commit:** C4-51 — `feat(domain): title the downgraded card by gate and show the block (C4-51)`
-> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30, C4-31, C4-50 e C4-51 DONE)**; próxima C4-52 (catálogo de regras/evidências + teste)
-> **Sessão atual:** **S11.4 — C4-51 DONE**
-> **Task atual:** C4-51 (DONE)
-> **Próxima task:** C4-52 (S11)
+> **Última atualização:** 17/11/2026 — S11.5 (C4-52)
+> **Último commit:** C4-52 — `feat(domain): catalog every emitted rule and evidence id (C4-52)`
+> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30, C4-31, C4-50, C4-51 e C4-52 DONE)**; próxima C4-08 (docs `R-PER-03`/ciência)
+> **Sessão atual:** **S11.5 — C4-52 DONE**
+> **Task atual:** C4-52 (DONE)
+> **Próxima task:** C4-08 (S11)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1024 (+7); `:app:testDebugUnitTest` 939 (+3); `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:app:koverVerify`; `:core:domain:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
-> **Próxima ação:** abrir C4-52 (S11: catálogo de regras/evidências + teste — todos os IDs).
+> **Gates da última sessão:** `:core:domain:test` 1025 (+1); `:app:testDebugUnitTest` 939; `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:app:koverVerify`; `:core:domain:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
+> **Próxima ação:** abrir C4-08 (S11: docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS).
 
 ### 0.1 O que já está pronto
 
@@ -626,7 +626,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-50 | `QualityBlockReason`/`PlanDecisionReason` + persistência | E1–E8 | L | S11 | ADR 0044/0048 | Serialização testada | `PlanJsonTest` (5); export da decisão do plano + dia; commit S11.3 |
 | [x] | C4-51 | Copy por gate + "Por quê?" + dica | C4-50 | M | S11 | FR-412 | UI; catálogo | `QualityGateCopyTest` (2); títulos do rebaixamento (5); bloco no "Por quê?" (2 + 1 tela); commit S11.4 |
-| [ ] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | — |
+| [x] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | `ExplanationCatalogTest` (+IDs + comportamento); `R-ACT-01/02`, `R-CAL-01`, `EV-ABBISS-2008`; commit S11.5 |
 | [ ] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | — |
 | [ ] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | — |
 | [ ] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | — |
@@ -905,6 +905,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (domínio primeiro, depois app). FR-412 vira código: `SUBJECTIVE_MISSING` → "Qualidade a confirmar"; `LOAD_*` → "Carga em calibração"; `BEGINNER_GUARD` → "Base primeiro"; `TAPER/RACE_WEEK` → "Semana de prova"; resto → "Hoje é fácil"/"Hoje é descanso"/"Recuperação: fácil e curto". O card do rebaixamento usa o título do gate (recovery mantém o título de recuperação); LONG/EASY/recomendador intactos. O "Por quê?" ganha o bloco "O QUE ACONTECEU" (título + valor que falhou + "Para liberar: ...") só com os 3 campos juntos (invariante do domínio). Nenhum teste legado quebrou (títulos de rebaixamento não eram asseridos). Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S11 / C4-52 (catálogo de regras/evidências + teste — todos os IDs).
 
+### S11.5 — 2026-11-17 — Catálogo de regras/evidências + teste (C4-52)
+
+- **Status:** DONE
+- **Tasks:** C4-52.
+- **Arquivos:** `core/domain/.../prescription/ExplanationCatalog.kt` (`R-ACT-01`, `R-ACT-02`, `R-CAL-01`, `EV-ABBISS-2008`), `ExplanationCatalogTest.kt` (IDs + teste comportamental), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1025 verdes (+1: `catalogs the ids emitted by insights and calibration`); `:app:testDebugUnitTest` 939; `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply` de import order); `:app:koverVerify`; `:core:domain:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes.
+- **Commit:** `feat(domain): catalog every emitted rule and evidence id (C4-52)`.
+- **Decisões/notas:** TDD RED→GREEN (listas estendidas falhavam antes; varredura por script confirmou os 4 ausentes). Varredura de todos os literais `"R-*"`/`"EV-*"` em `core/domain` + `core/data` + `app` (fora o catálogo): 40 regras e 19 evidências emitidas; faltavam `R-ACT-01`/`R-ACT-02` (`ActivityInsightsCalculator`), `R-CAL-01` (`CalibrationCalculator`) e `EV-ABBISS-2008` (pacing) — todos com título/fonte do `SPORTS_SCIENCE` §13/§14. `EV-FOSTER-2001` estava no catálogo mas fora da lista do teste; entrou na lista (cobertura, sem RED). Extras no catálogo sem emissão (`R-RACE-01`, `R-READY-01`, `EV-PLEWS-2013`, `EV-BUCHHEIT-2014`) mantidos: `R-READY-01`/`PLEWS`/`BUCHHEIT` são emitidos pela UI (`TodayExplanation.buildReadinessExplanation`); `R-RACE-01` documenta o ADR 0032. Novo teste comportamental amarra o catálogo aos emissores reais (insights com 2 laps + drift; calibração Tier A e Tier C) em vez de só repetir strings. `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` continuam fora do catálogo de propósito: propostas de ciência, sem emissão em código; entram em C4-21. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S11 / C4-08 (docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1080,10 +1090,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-52, S11)
+## 14. Próxima ação (C4-08, S11)
 
-1. Abrir o ADR 0044 e a FR-412; ler o `ExplanationCatalog` + `ExplanationCatalogTest` e os testes de catálogo do diário/plano (`DailyPrescriptionEngineTest`, `WeeklyPlanGeneratorTest`, C4-06) — C4-51 garante copy por gate; C4-52 garante que todo ID emitido existe e tem título/fonte.
-2. Escrever o teste que falha de C4-52: varredura de todos os `ruleId`/`evidenceId` emitidos pelo motor (plano, prescrição, catálogo, review) contra o catálogo.
-3. Implementar C4-52 com TDD (catálogo/teste); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0044 e a FR-412/C4-06; redigir os docs de `R-PER-03` (regra, evidências, força) e os trechos de `SPORTS_SCIENCE` ligados a ela — C4-52 garante que todo ID emitido existe; C4-08 registra o significado.
+2. Atualizar `docs/DECISIONS.md` se alguma decisão mudar; sem código.
+3. Atualizar §0/§6/§7/PROGRESS e commitar como `docs(c4)`.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

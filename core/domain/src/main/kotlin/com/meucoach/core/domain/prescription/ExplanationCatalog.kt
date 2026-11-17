@@ -36,6 +36,18 @@ object ExplanationCatalog {
         "R-PLAN-07" to RuleExplanation("R-PLAN-07", "Calor pede ajuste conservador"),
         "R-PLAN-08" to RuleExplanation("R-PLAN-08", "Esteira vale como opção no calor"),
         "R-CAL-02" to RuleExplanation("R-CAL-02", "Sem calibração, prescrever pelo esforço percebido"),
+        "R-CAL-01" to RuleExplanation(
+            "R-CAL-01",
+            "Prova ou teste recente define VDOT e LTHR",
+        ),
+        "R-ACT-01" to RuleExplanation(
+            "R-ACT-01",
+            "Ritmo constante ou final forte; queda acima de 3% indica fadiga",
+        ),
+        "R-ACT-02" to RuleExplanation(
+            "R-ACT-02",
+            "FC alta com ritmo estável sugere fadiga ou calor",
+        ),
         "R-SAFE-01" to RuleExplanation("R-SAFE-01", "Sinal de alerta interrompe o treino"),
         "R-PLAN-01" to RuleExplanation(
             "R-PLAN-01",
@@ -114,6 +126,11 @@ object ExplanationCatalog {
             "EV-DANIELS-2014",
             "Ritmos e economia de corrida",
             "Daniels, Daniels' Running Formula, 2014",
+        ),
+        "EV-ABBISS-2008" to EvidenceExplanation(
+            "EV-ABBISS-2008",
+            "Estratégias de pacing",
+            "Abbiss & Laursen, Sports Med 2008",
         ),
         "EV-RIEGEL-1981" to EvidenceExplanation(
             "EV-RIEGEL-1981",
