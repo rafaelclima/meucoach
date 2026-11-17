@@ -192,6 +192,28 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `round-trips the generator version with default v6`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+
+        assertThat(repository.getWeek(monday)?.engineVersion)
+            .isEqualTo(com.meucoach.core.domain.prescription.WeeklyPlanGenerator.ENGINE_VERSION)
+        assertThat(repository.getWeekRecord(monday)?.generatorVersion)
+            .isEqualTo(com.meucoach.core.domain.prescription.WeeklyPlanGenerator.ENGINE_VERSION)
+    }
+
+    @Test
+    fun `revision snapshot metadata carries the generator version`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+        val entity = database.trainingPlanDao().getPlan(monday.toString())!!
+
+        assertThat(
+            JSONObject(
+                com.meucoach.core.data.prescription.PlanJson.planMetadataToJson(entity).toString(),
+            ).getString("generatorVersion"),
+        ).isEqualTo(com.meucoach.core.domain.prescription.WeeklyPlanGenerator.ENGINE_VERSION)
+    }
+
+    @Test
     fun `deletes the week and its sessions`(): Unit = runBlocking {
         repository.saveWeek(plan())
 

@@ -115,6 +115,12 @@ data class WeeklyPlan(
      * before it, so a plan created midweek does not punish the past (N-02).
      */
     val createdOn: LocalDate = weekStart,
+    /**
+     * Engine version that generated this plan (ADR 0048 §2.3). Legacy callers
+     * read the last v6 default; the upgrade path (C4-47) compares the stored
+     * version against the current engine to decide a regeneration.
+     */
+    val engineVersion: String = WeeklyPlanGenerator.ENGINE_VERSION,
 ) {
     init {
         require(weekStart.dayOfWeek == DayOfWeek.MONDAY) { "Week must start on Monday" }
@@ -808,6 +814,7 @@ class WeeklyPlanGenerator {
                 }
             },
             createdOn = input.today,
+            engineVersion = ENGINE_VERSION,
         )
     }
 

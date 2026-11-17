@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S9 (C4-45)
-> **Último commit:** C4-45 — `feat(data): add schema v18 with quality decision columns (C4-45)`
-> **Fase:** 2 — Fiação — **em andamento (S9; C4-45 DONE)**; próxima C4-46 (S9)
-> **Sessão atual:** **S9 — C4-45 DONE**
-> **Task atual:** C4-45 (DONE)
-> **Próxima task:** C4-46 (S9)
+> **Última atualização:** 17/11/2026 — S9 (C4-46)
+> **Último commit:** C4-46 — `feat(data): persist the plan generator version (C4-46)`
+> **Fase:** 2 — Fiação — **em andamento (S9; C4-45/C4-46 DONE)**; próxima C4-44 (S10)
+> **Sessão atual:** **S9 — C4-46 DONE**
+> **Task atual:** C4-46 (DONE)
+> **Próxima task:** C4-44 (S10)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 990 verdes; `:core:data:test` 190; `:app:testDebugUnitTest` 907; `:core:model` 40; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
-> **Próxima ação:** abrir C4-46 (`generatorVersion` no plano: `WeeklyPlan.engineVersion`, round-trip com default v6, `PlanJson` metadata), TDD sobre `TrainingPlanRepository`/`PlanJson`.
+> **Gates da última sessão:** `:core:domain:test` 991 verdes; `:core:data:test` 192; `:app:testDebugUnitTest` 907; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
+> **Próxima ação:** abrir C4-44 (gate de dados: `HealthSyncState` + gate no `TodayViewModel`), TDD sobre `HealthSyncCoordinator`/`TodayViewModel`.
 
 ### 0.1 O que já está pronto
 
@@ -615,7 +615,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 |---|---|---|---|---|---|---|---|---|
 | [ ] | C4-44 | `HealthSyncState` + gate | — | M | S10 | ADR 0048 | Sem plano antes do sync | — |
 | [x] | C4-45 | Schema v18 + migração | C4-14/38 | L | S9 | ADR 0048 | 17→18 testada; sem perda | `MeuCoachDatabaseMigrationTest` (17→18 + round-trip das colunas); `TrainingPlanRepositoryTest` (+2); `DailyPrescriptionRepositoryTest` (+1); `18.json`; commit S9 |
-| [ ] | C4-46 | `generatorVersion` no plano | C4-45 | M | S9 | ADR 0048 | Round-trip; default v6 | — |
+| [x] | C4-46 | `generatorVersion` no plano | C4-45 | M | S9 | ADR 0048 | Round-trip; default v6 | `WeeklyPlanGeneratorTest` (+1); `TrainingPlanRepositoryTest` (+2 round-trip/metadata); commit S9 |
 | [ ] | C4-47 | `PlanUpgrade` idempotente | C4-44/46 | L | S10 | ADR 0048 | `G-UPGRADE-01`; histórico | — |
 | [ ] | C4-48 | Triggers `DATA_READY`/`ENGINE_UPGRADE` | C4-47 | M | S10 | ADR 0048 | Testes; sem trigger de readiness | — |
 | [ ] | C4-49 | Docs ADR 0048, ARCHITECTURE, DATA_MODEL | C4-44..48 | S | S10 | ADR 0048 | Docs | — |
@@ -807,6 +807,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN: os 3 testes novos de round-trip falharam antes (colunas inexistentes/valores descartados); os 14 testes legados de migração quebraram com o bump de versão (Room exige o caminho até 18) e foram estendidos com `MIGRATION_17_18` + assert 18, sem reduzir asserts — a justificativa é o bump, não mudança de comportamento. `qualityKind` não estava na tabela do ADR 0048 §2.3; a coluna foi adicionada (NULL, aditiva) e a tabela do ADR atualizada, senão o kind seria descartado a cada leitura. Leituras desconhecidas viram `null` (nunca parcial): `valueOf` com `runCatching`, `detail`/`hint` caem junto com motivo desconhecido (invariante do domínio), `WorkoutStructureJson.fromJson` já fazia isso. `updateSessions` virou read-modify-write com `@Update` porque estender o `@Query` estouraria o `LongParameterList` do detekt (12 params); `updateSessionContent` foi removido (sem uso). `DailyPrescription.structureJson` existe como coluna mas o domínio ainda não tem o campo — fica `null` até lá. `generatorVersion` default v6 + preservação no re-save; o domínio a carrega em C4-46; export `PlanJson` em C4-50. Nenhum dado real; nenhuma UI; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S9 / C4-46 (`generatorVersion` no domínio + round-trip + `PlanJson` metadata), TDD.
 
+### S9.1 — 2026-11-17 — `generatorVersion` no plano (C4-46)
+
+- **Status:** DONE
+- **Tasks:** C4-46.
+- **Arquivos:** `core/domain/.../prescription/WeeklyPlanGenerator.kt` (`WeeklyPlan.engineVersion`, default `ENGINE_VERSION`; gerador carimba), `core/data/.../repository/TrainingPlanRepository.kt` (`toModel`/`toEntity`/`toRecord` + `StoredWeeklyPlan.generatorVersion`; `saveWeek` escreve a versão do domínio), `core/data/.../prescription/PlanJson.kt` (`generatorVersion` no metadata), `WeeklyPlanGeneratorTest.kt`, `TrainingPlanRepositoryTest.kt`, `docs/CICLO_4_TREINO_REAL.md`, `docs/PROGRESS.md`.
+- **Testes/gates:** `:core:domain:test` 991 verdes (+1); `:core:data:test` 192 (+2: round-trip e metadata do snapshot); `:app:testDebugUnitTest` 907; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`.
+- **Commit:** `feat(data): persist the plan generator version (C4-46)`.
+- **Decisões/notas:** TDD RED→GREEN (campo inexistente não compilava). O domínio é a autoridade da versão do conteúdo: `saveWeek` escreve `plan.engineVersion` (troca o preserve-fallback de C4-45, que existia porque o domínio ainda não carregava o campo). `StoredWeeklyPlan` expõe `generatorVersion` para o `PlanUpgrade` (C4-47) comparar sem reler a entidade. Sem bump: o gerador continua emitindo v6; o bump para v7 é C4-53. Nenhum dado real; nenhuma migração nova; nenhuma UI.
+- **Próximo:** S10 / C4-44 (gate de dados: `HealthSyncState` + gate no `TodayViewModel`), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -892,8 +902,8 @@ Se a task toca `:app`/`:data`:
 | Módulo | Testes | Observação |
 |---|---:|---|
 | `:app` | 907 | Atualizar conforme novos testes |
-| `:core:domain` | 990 | Atualizar conforme novos testes |
-| `:core:data` | 190 | Atualizar |
+| `:core:domain` | 991 | Atualizar conforme novos testes |
+| `:core:data` | 192 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -982,10 +992,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-46, S9)
+## 14. Próxima ação (C4-44, S10)
 
-1. Abrir o ADR 0048 §2.3/§3.1 e o FR-409/FR-413 do PRD; ler `WeeklyPlan` (domínio), `TrainingPlanRepository.toModel` e `PlanJson.planMetadataToJson`.
-2. Escrever os testes que falham de C4-46: `WeeklyPlan` com `engineVersion` (default v6 para semanas legadas), round-trip entidade↔domínio preservando a versão, e `PlanJson` com `generatorVersion` (ausente = v6).
-3. Implementar C4-46 com TDD, sem mudar a versão do gerador (bump é C4-53); rodar `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0048 §2.1 e o FR-409 do PRD; ler `HealthSyncCoordinator`, `HealthSyncState` (se existir), `TodayViewModel` (geração na primeira composição) e os testes de sync/`TodayViewModel`.
+2. Escrever os testes que falham de C4-44: sem plano antes de `Ready`/`Failed` (ou timeout de 3 s com `dataIncomplete`); Hoje em loading durante `Syncing`.
+3. Implementar C4-44 com TDD, sem esperar o check-in (ausência de check-in é estado válido); rodar `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

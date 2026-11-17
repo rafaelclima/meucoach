@@ -24,6 +24,18 @@ class WeeklyPlanGeneratorTest {
     private val monday = LocalDate.of(2026, 11, 2)
 
     @Test
+    fun `generated plan carries the engine version`() {
+        val plan = generator.generate(
+            input(
+                profile = profile(experience = Experience.INTERMEDIATE),
+                readiness = readiness(ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(plan.engineVersion).isEqualTo(WeeklyPlanGenerator.ENGINE_VERSION)
+    }
+
+    @Test
     fun `builds a conservative beginner week`() {
         val plan = generator.generate(
             input(

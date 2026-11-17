@@ -44,6 +44,8 @@ data class StoredWeeklyPlan(
     val lastEvaluatedFingerprintVersion: String? = null,
     val lastEvaluatedFingerprint: String? = null,
     val temporalContextHash: String? = null,
+    /** Engine version of the stored row; the upgrade path (C4-47) compares it. */
+    val generatorVersion: String,
 )
 
 /** The last accepted revision, with the future sessions it replaced. */
@@ -179,9 +181,9 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                 lastEvaluatedFingerprintVersion = existing?.lastEvaluatedFingerprintVersion,
                 lastEvaluatedFingerprint = existing?.lastEvaluatedFingerprint,
                 temporalContextHash = existing?.temporalContextHash,
-                // The domain does not carry the engine version yet (C4-46);
-                // keep the stored one so a re-save never resets it to the default.
-                generatorVersion = existing?.generatorVersion ?: WeeklyPlanGenerator.ENGINE_VERSION,
+                // The domain carries the version since C4-46; the entity column
+                // stays the source of truth for the stored row.
+                generatorVersion = plan.engineVersion,
             ),
         )
         dao.deleteSessions(weekStart)
@@ -409,6 +411,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         ruleIds = ruleIdsJson.toList(),
         evidenceIds = evidenceIdsJson.toList(),
         createdOn = LocalDate.parse(createdOn),
+        engineVersion = generatorVersion,
     )
 
     private fun WeeklyPlanEntity.toRecord(sessions: List<PlannedSessionEntity>) = StoredWeeklyPlan(
@@ -424,6 +427,7 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         lastEvaluatedFingerprintVersion = lastEvaluatedFingerprintVersion,
         lastEvaluatedFingerprint = lastEvaluatedFingerprint,
         temporalContextHash = temporalContextHash,
+        generatorVersion = generatorVersion,
     )
 
     private fun PlannedSessionEntity.toModel() = PlannedSession(

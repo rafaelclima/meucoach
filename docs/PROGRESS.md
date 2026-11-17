@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S9 do Ciclo 4: schema v18 e round-trip da decisão, C4-45)
+**Atualizado:** 17/11/2026 (S9 do Ciclo 4: `generatorVersion` no plano, C4-46)
+
+## Sessão 2026-11-17 — Ciclo 4/S9.1: `generatorVersion` no plano (C4-46)
+
+**Objetivo:** carregar a versão do gerador no `WeeklyPlan` do domínio e fechar o round-trip entidade↔domínio↔`PlanJson`, para o `PlanUpgrade` (C4-47) saber o que regenerar.
+
+### Concluído
+
+- **Domínio:** `WeeklyPlan.engineVersion` (default `WeeklyPlanGenerator.ENGINE_VERSION`, hoje v6); o gerador carimba toda semana gerada.
+- **Repositório:** `toModel`/`toEntity`/`toRecord` mapeiam a versão; `saveWeek` escreve a versão do domínio (autoridade do conteúdo — troca o preserve-fallback de C4-45); `StoredWeeklyPlan.generatorVersion` expõe a versão armazenada para comparação.
+- **`PlanJson`:** `planMetadataToJson` inclui `generatorVersion` (snapshots de revisão e export passam a registrar o motor).
+- **Testes:** plano gerado carimba a versão; round-trip preserva o default v6; metadata do snapshot contém a versão.
+
+### Testes
+
+- `:core:domain:test` 991 verdes (+1); `:core:data:test` 192 (+2); `:app:testDebugUnitTest` 907; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:data:koverVerify`, `:core:domain:detekt`, `:core:data:detekt`, `:app:detekt` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração nova; nenhuma UI; sem bump de versão (é C4-53).
+
+### Decisões e observações
+
+- Sem `fallbackToDestructiveMigration`; sem mudança de comportamento do gerador além do carimbo.
+- O upgrade de versão da semana vigente (v6→v7) é C4-47; o bump do motor é C4-53.
+
+### Próximo passo
+
+1. S10 / C4-44: gate de dados (`HealthSyncState` + gate no `TodayViewModel`), TDD.
+2. Depois C4-47 (`PlanUpgrade` idempotente) e C4-48 (triggers).
 
 ## Sessão 2026-11-17 — Ciclo 4/S9: schema v18 e round-trip da decisão (C4-45)
 

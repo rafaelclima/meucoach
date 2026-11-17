@@ -19,6 +19,7 @@ import java.time.Instant
 internal object PlanJson {
     fun planMetadataToJson(plan: WeeklyPlanEntity): JSONObject = JSONObject().apply {
         put("weekStart", plan.weekStart)
+        put("generatorVersion", plan.generatorVersion)
         put("createdAt", Instant.ofEpochMilli(plan.createdAt).toString())
         put("createdOn", plan.createdOn)
         put("confidence", plan.confidence.name)
