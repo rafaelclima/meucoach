@@ -1,6 +1,7 @@
 package com.meucoach.app.ui.trends
 
 import com.meucoach.core.domain.review.WeeklyAdherence
+import com.meucoach.core.domain.review.WeeklyQuality
 import com.meucoach.core.domain.review.WeeklyReadiness
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewObservation
@@ -43,6 +44,37 @@ internal object WeeklyReviewFormat {
     fun volume(value: Int?): String = value?.let(::minutes) ?: "—"
 
     fun volumePercent(volume: WeeklyVolume): String = volume.percentOfPlan?.let { "$it%" } ?: "—"
+
+    /**
+     * Quality opportunities versus day decisions (FR-401/FR-408, ADR 0044/0050):
+     * "1 planejada, 1 mantida" or "1 planejada, 1 rebaixada (motivo)". Only the
+     * stored reason appears; nothing is invented.
+     */
+    fun qualityLine(quality: WeeklyQuality): String {
+        val planned = "Qualidade: ${quality.planned} ${plural(quality.planned, "planejada", "planejadas")}"
+        val kept = if (quality.kept == 0) {
+            null
+        } else {
+            "${quality.kept} ${plural(quality.kept, "mantida", "mantidas")}"
+        }
+        val downgraded = if (quality.downgraded == 0) {
+            null
+        } else {
+            "${quality.downgraded} ${plural(quality.downgraded, "rebaixada", "rebaixadas")} " +
+                "(${quality.firstDowngradeDetail})"
+        }
+        return listOfNotNull(planned, kept, downgraded).joinToString(", ")
+    }
+
+    /**
+     * Extra training credit (ADR 0050 §2.2): the executed volume already counts
+     * runs without a planned session; the review says so out loud. Null when
+     * there is nothing extra to credit.
+     */
+    fun volumeExtra(extraMin: Int?): String? {
+        if (extraMin == null || extraMin <= 0) return null
+        return "Inclui ${minutes(extraMin)} de treino fora do plano — contou para o volume."
+    }
 
     fun readinessValue(readiness: WeeklyReadiness): String = readiness.averageScore?.toString() ?: "—"
 

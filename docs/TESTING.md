@@ -203,11 +203,12 @@ Evidência atual (12/11/2026):
 - `GetSessionComparisonTest`: prescrição preferida à sessão, fallback da semana, vínculo por execução, corrida não vinculada em dia com plano e corrida sem plano.
 - `ActivityComparisonFormatTest`: linhas, omissão de dado ausente, notas factuais, resumo “tudo dentro” e treino livre com “—”.
 - `ActivityDetailScreenTest` (FR-010): card no detalhe, ausência de IDs técnicos e treino livre sem alvo.
-- `WeeklyReviewCalculatorTest`: semana completa/parcial, semana sem plano, semana sem dados, doença primeiro, sono/prontidão repetidos, volume, intensidade, `NO_ALERTS`, determinismo, filtro de datas, deduplicação e invariantes.
+- `WeeklyReviewCalculatorTest`: semana completa/parcial, semana sem plano, semana sem dados, doença primeiro, sono/prontidão repetidos, volume, qualidade/extra repassados, intensidade, `NO_ALERTS`, determinismo, filtro de datas, deduplicação e invariantes.
+- `QualityWeekSummaryTest`: qualidade mantida/rebaixada com motivo do dia, sem decisão do dia, sem oportunidade, duas oportunidades em ordem e invariantes.
 - `WeeklyReviewTest`: invariantes de adesão, volume, prontidão, sono, janela, intensidade, limite de 3 observações e estado vazio.
-- `WeeklyReviewFormatTest`: data, adesão, minutos, volume, prontidão/sono, cada observação, singular/plural e ausência de `R-`/`EV-`.
-- `TrendsViewModelTest` (FR-011): última semana fechada, consolidação com plano/corridas/métricas e semana sem plano.
-- `TrendsScreenTest` (FR-011): card com adesão/volume/zonas/observações, estados vazios, ausência de IDs e fonte 200%.
+- `WeeklyReviewFormatTest`: data, adesão, minutos, volume, qualidade ("planejada/mantida/rebaixada" + motivo, plural), crédito do treino extra, prontidão/sono, cada observação, singular/plural e ausência de `R-`/`EV-`.
+- `TrendsViewModelTest` (FR-011): última semana fechada, consolidação com plano/corridas/métricas, semana sem plano, qualidade do dia (mantida/rebaixada) e treino extra fora do plano.
+- `TrendsScreenTest` (FR-011): card com adesão/qualidade/volume/zonas/observações, crédito do treino extra, estados vazios, ausência de IDs e fonte 200%.
 - `WeeklyReviewScreenshotTest`: goldens dark/light/estreito do card de revisão.
 - `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.
 - `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.

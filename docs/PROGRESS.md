@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S13 do Ciclo 4: docs `R-PLAN-01 v2` e `R-LVL-03`, C4-42)
+**Atualizado:** 17/11/2026 (S13 do Ciclo 4: review "planejada/mantida/rebaixada" + crédito do extra, C4-43 — S13 encerrada)
+
+## Sessão 2026-11-17 — Ciclo 4/S13: review "planejada/mantida/rebaixada" + crédito do extra (C4-43)
+
+**Objetivo:** levar a decisão do dia e o crédito do treino extra para o review semanal (FR-401/FR-408, ADR 0050 §7): "Qualidade: 1 planejada, 1 mantida" ou "1 planejada, 1 rebaixada (motivo)".
+
+### Concluído
+
+- **Domínio:** `WeeklyQuality` + `QualityWeekSummary` puros (mantida = dia manteve `QUALITY`; rebaixada = `qualityBlockReason` + detalhe; sem decisão gravada = sem linha); `WeeklyReview.quality` e `WeeklyVolume.extraMin` com a calculadora repassando.
+- **App:** `WeeklyReviewFormat.qualityLine` (plural, motivo do dia, sem inventar) e `volumeExtra` ("Inclui 28 min de treino fora do plano — contou para o volume."); card com bloco `weekly-review-quality` e legenda do extra no volume.
+- **Fiação:** `TrendsViewModel` com `DailyPrescriptionRepository` (última decisão de cada data de qualidade + resumos não vinculados como extra).
+- **Testes:** `QualityWeekSummaryTest` (7), calculadora (+1), formato (+4), VM (+3), tela (+1).
+- **Docs:** `docs/TESTING.md` (lista do review) com os novos testes.
+
+### Testes
+
+- `:core:domain:test` 1049 verdes (+8); `:app:testDebugUnitTest` 949 verdes (+8); `:core:data:test` verde.
+- `spotlessCheck`, `:core:domain:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (formato sem função; 1 falha: "0 mantidas" — partes zeradas omitidas, forma do PRD §8.4).
+- Detekt `CyclomaticComplexMethod`/`LongMethod` do `calculate` ressurgiu: o ID do baseline inclui a assinatura (precedente C4-44); baseline atualizado no formato vigente, sem achado novo.
+- Regra 2 honrada: o VM só agrega (soma/vínculo `activityId`); a decisão é função pura do domínio. Linha do review só com decisão gravada (FR-011).
+- S13 encerrada (C4-41..C4-43).
+
+### Próximo passo
+
+1. S14 / C4-26: golden `G-LOAD-02` + copy "em calibração", TDD.
+2. Depois S14 (C4-27, C4-32, C4-33, C4-37: docs de carga/prontidão/sono + goldens `G-READY-03`/`G-DATA-02`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S13: docs `R-PLAN-01 v2` e `R-LVL-03` (C4-42)
 

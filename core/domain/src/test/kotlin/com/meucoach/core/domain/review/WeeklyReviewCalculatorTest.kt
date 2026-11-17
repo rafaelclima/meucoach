@@ -194,6 +194,26 @@ class WeeklyReviewCalculatorTest {
     }
 
     @Test
+    fun `carries the quality outcome and the extra training through`() {
+        val quality = WeeklyQuality(
+            planned = 1,
+            kept = 0,
+            downgraded = 1,
+            firstDowngradeDetail = "check-in de hoje ausente",
+        )
+        val review = review(
+            plannedDurationMin = 114,
+            executedDurationMin = 142,
+            extraDurationMin = 28,
+            quality = quality,
+        )
+
+        assertThat(review.quality).isEqualTo(quality)
+        assertThat(review.volume?.extraMin).isEqualTo(28)
+        assertThat(review.volume?.percentOfPlan).isEqualTo(125)
+    }
+
+    @Test
     fun `keeps volume inside the tolerance band out of the observations`() {
         val review = review(plannedDurationMin = 100, executedDurationMin = 95)
 
@@ -423,6 +443,8 @@ class WeeklyReviewCalculatorTest {
         completion: PlanCompletionWeek = completionWeek(),
         plannedDurationMin: Int? = 150,
         executedDurationMin: Int? = 150,
+        extraDurationMin: Int? = null,
+        quality: WeeklyQuality? = null,
         intensity: WeeklyIntensity? = null,
         intensitySessions: Int = 0,
         readinessDays: List<ReadinessHistoryDay> = emptyList(),
@@ -435,6 +457,8 @@ class WeeklyReviewCalculatorTest {
         completion = completion,
         plannedDurationMin = plannedDurationMin,
         executedDurationMin = executedDurationMin,
+        extraDurationMin = extraDurationMin,
+        quality = quality,
         intensity = intensity,
         intensitySessions = intensitySessions,
         readinessDays = readinessDays,

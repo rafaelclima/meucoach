@@ -9,12 +9,17 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
+import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.QualityBlockReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -63,6 +68,7 @@ class TrendsViewModelTest {
     private lateinit var activities: ActivityRepository
     private lateinit var plans: TrainingPlanRepository
     private lateinit var raceEvents: RaceEventRepository
+    private lateinit var prescriptions: DailyPrescriptionRepository
     private lateinit var checkIns: CheckInRepository
     private lateinit var metrics: DailyMetricsRepository
     private lateinit var executionRepository: SessionExecutionRepository
@@ -81,6 +87,7 @@ class TrendsViewModelTest {
         profiles = ProfileRepository(database, clock)
         plans = TrainingPlanRepository(database, clock)
         raceEvents = RaceEventRepository(database, clock)
+        prescriptions = DailyPrescriptionRepository(database, clock)
         checkIns = CheckInRepository(database, clock)
         metrics = DailyMetricsRepository(database, clock)
         executionRepository = SessionExecutionRepository(database, clock)
@@ -110,6 +117,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         ).uiState.first {
@@ -130,6 +138,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         ).uiState.first {
@@ -149,6 +158,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         ).uiState.first {
@@ -178,6 +188,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         ).uiState.first {
@@ -208,6 +219,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         ).uiState.first {
@@ -249,6 +261,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         ).uiState.first {
@@ -293,6 +306,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             FakeTimeProvider(),
         )
@@ -312,6 +326,7 @@ class TrendsViewModelTest {
                 activities,
                 plans,
                 raceEvents,
+                prescriptions,
                 signals,
                 FakeTimeProvider(),
             )
@@ -370,6 +385,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             fixedTime(),
         )
@@ -405,6 +421,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             fixedTime(),
         )
@@ -432,6 +449,7 @@ class TrendsViewModelTest {
             activities,
             plans,
             raceEvents,
+            prescriptions,
             signals,
             fixedTime(),
         )
@@ -446,6 +464,205 @@ class TrendsViewModelTest {
     }
 
     private fun fixedTime() = FakeTimeProvider(Instant.parse("2026-10-30T12:00:00Z"), zone)
+
+    @Test
+    fun `reports a kept quality from the stored day decision`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.of(2026, 10, 30)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
+        val qualityDate = weekStart.plusDays(2)
+        val linked = savedId(
+            activities.saveImportedActivity(
+                activity().copy(
+                    startTime = qualityDate.atTime(7, 0).atZone(zone).toInstant(),
+                    durationSec = 2_400,
+                ),
+                "quality-sha",
+            ),
+        )
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = weekStart,
+                sessions = listOf(qualitySession(qualityDate, SessionStatus.DONE, linked)),
+                weeklyMinutes = 40,
+                longRunMinutes = null,
+                qualityCount = 1,
+                rationale = "Plano.",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-ZONE-01", "R-PER-03"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        )
+        prescriptions.append(keepPrescription(qualityDate))
+
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            prescriptions,
+            signals,
+            fixedTime(),
+        ).uiState.first { !it.isLoading }
+
+        val quality = state.weeklyReview?.quality
+        assertThat(quality?.planned).isEqualTo(1)
+        assertThat(quality?.kept).isEqualTo(1)
+        assertThat(quality?.downgraded).isZero()
+    }
+
+    @Test
+    fun `reports a downgraded quality with the day reason`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.of(2026, 10, 30)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
+        val qualityDate = weekStart.plusDays(2)
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = weekStart,
+                sessions = listOf(qualitySession(qualityDate, SessionStatus.PLANNED, null)),
+                weeklyMinutes = 40,
+                longRunMinutes = null,
+                qualityCount = 1,
+                rationale = "Plano.",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-ZONE-01", "R-PER-03"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        )
+        prescriptions.append(downgradePrescription(qualityDate))
+
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            prescriptions,
+            signals,
+            fixedTime(),
+        ).uiState.first { !it.isLoading }
+
+        val quality = state.weeklyReview?.quality
+        assertThat(quality?.planned).isEqualTo(1)
+        assertThat(quality?.kept).isZero()
+        assertThat(quality?.downgraded).isEqualTo(1)
+        assertThat(quality?.firstDowngradeDetail).isEqualTo("check-in de hoje ausente")
+    }
+
+    @Test
+    fun `credits unplanned runs as extra training in the volume`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val today = LocalDate.of(2026, 10, 30)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
+        val linked = savedId(
+            activities.saveImportedActivity(
+                activity().copy(
+                    startTime = weekStart.plusDays(1).atTime(7, 0).atZone(zone).toInstant(),
+                    durationSec = 2_400,
+                ),
+                "planned-sha",
+            ),
+        )
+        activities.saveImportedActivity(
+            activity().copy(
+                startTime = weekStart.plusDays(3).atTime(7, 0).atZone(zone).toInstant(),
+                durationSec = 1_680,
+            ),
+            "extra-sha",
+        )
+        plans.saveWeek(
+            WeeklyPlan(
+                weekStart = weekStart,
+                sessions = listOf(session(weekStart.plusDays(1), SessionStatus.DONE).copy(activityId = linked)),
+                weeklyMinutes = 40,
+                longRunMinutes = null,
+                qualityCount = 0,
+                rationale = "Plano.",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+            ),
+        )
+
+        val state = TrendsViewModel(
+            profiles,
+            activities,
+            plans,
+            raceEvents,
+            prescriptions,
+            signals,
+            fixedTime(),
+        ).uiState.first { !it.isLoading }
+
+        assertThat(state.weeklyReview?.volume?.executedMin).isEqualTo(68)
+        assertThat(state.weeklyReview?.volume?.extraMin).isEqualTo(28)
+    }
+
+    private fun qualitySession(date: LocalDate, status: SessionStatus, activityId: String?) = PlannedSession(
+        date = date,
+        type = WorkoutType.QUALITY,
+        title = "Ritmo forte",
+        durationMin = 40,
+        rationale = "Base.",
+        ruleIds = listOf("R-ZONE-01", "R-PER-03"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        status = status,
+        completionEvidence = if (status == SessionStatus.DONE) {
+            com.meucoach.core.model.CompletionEvidence.ACTIVITY
+        } else {
+            null
+        },
+        activityId = activityId,
+    )
+
+    private fun keepPrescription(date: LocalDate) = DailyPrescription(
+        date = date,
+        plannedSessionId = "plan-$date",
+        plannedType = WorkoutType.QUALITY,
+        plannedTitle = "Ritmo forte",
+        plannedDurationMin = 40,
+        prescribedType = WorkoutType.QUALITY,
+        title = "Ritmo forte",
+        prescribedDurationMin = 40,
+        targets = PrescriptionTargets(zone = "T", rpe = 7),
+        adjustment = PrescriptionAdjustment.KEEP,
+        rationale = "Dia verde.",
+        ruleIds = listOf("R-PER-03"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        confidence = DataConfidence.MEDIUM,
+        engineVersion = "daily-prescription-v6",
+        inputsHash = "hash-keep",
+    )
+
+    private fun downgradePrescription(date: LocalDate) = DailyPrescription(
+        date = date,
+        plannedSessionId = "plan-$date",
+        plannedType = WorkoutType.QUALITY,
+        plannedTitle = "Ritmo forte",
+        plannedDurationMin = 40,
+        prescribedType = WorkoutType.EASY,
+        title = "Fácil e conversável",
+        prescribedDurationMin = 40,
+        targets = PrescriptionTargets(zone = "Z2", rpe = 4),
+        adjustment = PrescriptionAdjustment.DOWNGRADE,
+        rationale = "Sem check-in.",
+        ruleIds = listOf("R-PER-03", "R-PRESC-02"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        confidence = DataConfidence.MEDIUM,
+        engineVersion = "daily-prescription-v6",
+        inputsHash = "hash-downgrade",
+        qualityBlockReason = QualityBlockReason.SUBJECTIVE_MISSING,
+        decisionDetail = "check-in de hoje ausente",
+        unlockHint = "Faça o check-in de hoje.",
+    )
+
+    private fun savedId(result: com.meucoach.core.data.repository.SaveActivityResult): String = when (result) {
+        is com.meucoach.core.data.repository.SaveActivityResult.Saved -> result.id
+        is com.meucoach.core.data.repository.SaveActivityResult.Duplicate -> result.id
+        is com.meucoach.core.data.repository.SaveActivityResult.Replaced -> result.id
+        is com.meucoach.core.data.repository.SaveActivityResult.Restored -> result.id
+        is com.meucoach.core.data.repository.SaveActivityResult.ConflictingTrash -> result.id
+    }
 
     private fun session(date: LocalDate, status: SessionStatus) = PlannedSession(
         date = date,

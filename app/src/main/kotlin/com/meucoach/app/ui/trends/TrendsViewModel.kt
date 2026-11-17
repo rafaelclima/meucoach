@@ -5,13 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionCalculator
+import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.review.QualityWeekSummary
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewCalculator
 import com.meucoach.core.domain.trends.ActivityTrends
@@ -58,6 +61,7 @@ class TrendsViewModel @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val planRepository: TrainingPlanRepository,
     private val raceEventRepository: RaceEventRepository,
+    private val prescriptionRepository: DailyPrescriptionRepository,
     private val signalSource: TrainingSignalSource,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
@@ -190,12 +194,21 @@ class TrendsViewModel @Inject constructor(
         val checkIns = signalSource.allCheckIns()
         val metrics = signalSource.allMetrics()
         val readiness = signalSource.readinessHistory(today, REVIEW_HEALTH_WINDOW_DAYS)
-        val executedMin = summaries
+        val weekSummaries = summaries
             .filter { it.sport == Sport.RUNNING || it.sport == Sport.TREADMILL }
             .filter { summary ->
                 val date = summary.startTime.atZone(zone).toLocalDate()
                 !date.isBefore(weekStart) && !date.isAfter(weekEnd)
             }
+        val executedMin = weekSummaries
+            .sumOf { it.durationSec }
+            .let { seconds -> if (seconds <= 0) null else (seconds / 60.0).roundToInt().takeIf { it > 0 } }
+        // Extra training (ADR 0050 §2.1): runs without a planned session behind
+        // them count for volume, never for adherence. Same linkage the volume
+        // projection uses: a summary counts as planned only when the plan links it.
+        val linkedIds = plan?.sessions.orEmpty().mapNotNull { it.activityId }.toSet()
+        val extraMin = weekSummaries
+            .filter { it.id !in linkedIds }
             .sumOf { it.durationSec }
             .let { seconds -> if (seconds <= 0) null else (seconds / 60.0).roundToInt().takeIf { it > 0 } }
         val plannedMin = plan
@@ -221,6 +234,8 @@ class TrendsViewModel @Inject constructor(
             completion = completionWeek,
             plannedDurationMin = if (hasPlan) plannedMin else null,
             executedDurationMin = executedMin,
+            extraDurationMin = extraMin,
+            quality = qualitySummary(plan),
             intensity = intensityWeek,
             intensitySessions = weekIntensitySessions,
             readinessDays = readiness,
@@ -228,6 +243,26 @@ class TrendsViewModel @Inject constructor(
             checkIns = checkIns,
         )
     }
+
+    /**
+     * Day decisions for the planned quality opportunities (FR-401/FR-408).
+     * The latest stored prescription of each quality date decides; without a
+     * stored decision the week reports none instead of inventing one.
+     */
+    private suspend fun qualitySummary(plan: WeeklyPlan?) = plan
+        ?.sessions.orEmpty()
+        .filter { it.type == WorkoutType.QUALITY }
+        .map { it.date }
+        .sorted()
+        .takeIf { it.isNotEmpty() }
+        ?.let { qualityDates ->
+            val latestByDate = qualityDates
+                .mapNotNull { date ->
+                    prescriptionRepository.getLatest(date)?.let { date to it }
+                }
+                .toMap()
+            QualityWeekSummary.summarize(qualityDates, latestByDate).takeIf { it.hasDecision }
+        }
 
     private companion object {
         const val INTENSITY_WINDOW_DAYS = 28

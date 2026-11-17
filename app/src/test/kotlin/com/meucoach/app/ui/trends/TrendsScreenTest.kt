@@ -20,6 +20,7 @@ import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionWeek
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.review.WeeklyAdherence
+import com.meucoach.core.domain.review.WeeklyQuality
 import com.meucoach.core.domain.review.WeeklyReadiness
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewObservation
@@ -369,6 +370,33 @@ class TrendsScreenTest {
         compose.onNodeWithText("O volume ficou 33% abaixo do planejado.").assertIsDisplayed()
         compose.onNodeWithText("R-REVIEW-01").assertDoesNotExist()
         compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows the quality outcome and the extra training credit`() {
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                weeklyReview = review().copy(
+                    quality = WeeklyQuality(
+                        planned = 1,
+                        kept = 0,
+                        downgraded = 1,
+                        firstDowngradeDetail = "check-in de hoje ausente",
+                    ),
+                    volume = ReviewVolume(plannedMin = 150, executedMin = 178, percentOfPlan = 119, extraMin = 28),
+                ),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasTestTag("weekly-review-quality"))
+        compose.onNodeWithTag("weekly-review-quality").assertIsDisplayed()
+        compose.onNodeWithText("Qualidade: 1 planejada, 1 rebaixada (check-in de hoje ausente)").assertIsDisplayed()
+        list.performScrollToNode(hasText("Inclui 28 min de treino fora do plano — contou para o volume."))
+        compose.onNodeWithText("Inclui 28 min de treino fora do plano — contou para o volume.").assertIsDisplayed()
     }
 
     @Test

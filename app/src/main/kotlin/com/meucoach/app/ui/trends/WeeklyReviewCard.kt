@@ -29,6 +29,7 @@ import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.review.WeeklyAdherence
+import com.meucoach.core.domain.review.WeeklyQuality
 import com.meucoach.core.domain.review.WeeklyReadiness
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewObservationKind
@@ -93,6 +94,7 @@ internal fun WeeklyReviewCard(review: WeeklyReview, modifier: Modifier = Modifie
                     Spacer(modifier = Modifier.height(6.dp))
                 }
                 review.adherence?.takeIf { it.planned > 0 }?.let { AdherenceBlock(it) }
+                review.quality?.takeIf { it.planned > 0 && it.hasDecision }?.let { QualityBlock(it) }
                 review.volume?.let { VolumeBlock(it) }
                 review.intensity?.let { IntensityBlock(review, it) }
                 if (review.readiness != null || review.sleep != null) {
@@ -141,6 +143,25 @@ private fun AdherenceBlock(adherence: WeeklyAdherence) {
 }
 
 @Composable
+private fun QualityBlock(quality: WeeklyQuality) {
+    val colors = McTheme.colors
+    Column(modifier = Modifier.testTag("weekly-review-quality")) {
+        McDivider(modifier = Modifier.padding(vertical = 10.dp))
+        Text(
+            text = "Qualidade",
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.textPrimary,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = WeeklyReviewFormat.qualityLine(quality),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+    }
+}
+
+@Composable
 private fun VolumeBlock(volume: WeeklyVolume) {
     val colors = McTheme.colors
     McDivider(modifier = Modifier.padding(vertical = 10.dp))
@@ -168,6 +189,14 @@ private fun VolumeBlock(volume: WeeklyVolume) {
             hint = "feito ÷ planejado",
             value = WeeklyReviewFormat.volumePercent(volume),
             modifier = Modifier.weight(1f),
+        )
+    }
+    WeeklyReviewFormat.volumeExtra(volume.extraMin)?.let { extra ->
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = extra,
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
         )
     }
 }

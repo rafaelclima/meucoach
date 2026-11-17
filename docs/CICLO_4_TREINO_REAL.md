@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S13 (C4-42)
-> **Último commit:** C4-42 — `docs(c4): record R-PLAN-01 v2 and R-LVL-03 (C4-42)`
-> **Fase:** 3 — UI/copy — **S13 aberta (C4-41/C4-42 DONE)**; próxima C4-43 (review "planejada/mantida/rebaixada")
-> **Sessão atual:** **S13 — C4-42 DONE**
-> **Task atual:** C4-42 (DONE)
-> **Próxima task:** C4-43 (S13)
+> **Última atualização:** 17/11/2026 — S13 (C4-43)
+> **Último commit:** C4-43 — `feat(app): show the quality outcome and extra credit in the review (C4-43)`
+> **Fase:** 3 — UI/copy — **S13 encerrada (C4-41..C4-43 DONE)**; próxima S14 (C4-26, golden `G-LOAD-02` + copy "em calibração")
+> **Sessão atual:** **S13 — C4-43 DONE**
+> **Task atual:** C4-43 (DONE)
+> **Próxima task:** C4-26 (S14)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-41 seguem verdes: `:core:domain:test` 1041)
-> **Próxima ação:** abrir S13/C4-43 (review "planejada/mantida/rebaixada": copy/UI do treino extra no review).
+> **Gates da última sessão:** `:core:domain:test` 1049 verdes; `:app:testDebugUnitTest` 949 verdes; `:core:data:test` verde; `spotlessCheck` verde; `:core:domain:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes
+> **Próxima ação:** abrir S14/C4-26 (golden `G-LOAD-02` + copy "em calibração").
 
 ### 0.1 O que já está pronto
 
@@ -156,7 +156,7 @@
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` têm round-trip no Room (C4-45) e no export (C4-50); a reavaliação pode ser provada também pelos campos persistidos.
-- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs `R-PLAN-01 v2`/`R-LVL-03` estão prontos (C4-41/C4-42). Resta o review "planejada/mantida/rebaixada" (C4-43).
+- `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra, os docs `R-PLAN-01 v2`/`R-LVL-03` e o review "planejada/mantida/rebaixada" estão prontos (C4-41..C4-43). S13 encerrada; próxima S14 (C4-26, `G-LOAD-02`).
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
@@ -607,7 +607,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-40 | Reparo LEGACY do mesmo dia | C4-39 | M | S5.1 | ADR 0050 | Confirmação; migrado intacto | `SessionCompletionRulesTest` (7); `SessionExecutionRepositoryTest` (+4); `RepairLegacyCompletionTest` (7); prompt/UI (+4); commit S5.1 |
 | [x] | C4-41 | Golden `G-VOL-02` + copy | C4-38..40 | M | S13 | ADR 0050 | Golden/copy | `fixtures/golden/vol-02` (base 142 → alvo 151, adesão 3/3, copy "treino extra contou"); `PlanVolumeGoldenTest` (2); commit S13 |
 | [x] | C4-42 | Docs `R-PLAN-01 v2`, `R-LVL-03`, ADR | C4-38..41 | S | S13 | ADR 0050 | Docs | `SPORTS_SCIENCE` v1.6 (§8.3/§8.12/§14); ADR 0050 §10 + status; `DECISIONS` r1.47; commit S13 |
-| [ ] | C4-43 | Review “planejada/mantida/rebaixada” | C4-39 | S | S13 | ADR 0050 | UI/teste | — |
+| [x] | C4-43 | Review “planejada/mantida/rebaixada” | C4-39 | S | S13 | ADR 0050 | UI/teste | `WeeklyQuality` + `QualityWeekSummary` (domínio); qualidade + `extraMin` no review; copy e bloco no card; `QualityWeekSummaryTest` (7), calculadora (1), formato (4), VM (3), tela (1); commit S13 |
 
 ### E8 — Dados/upgrade/schema
 
@@ -983,7 +983,17 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Testes/gates:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-41 seguem verdes).
 - **Commit:** `docs(c4): record R-PLAN-01 v2 and R-LVL-03 (C4-42)`.
 - **Decisões/notas:** `R-PLAN-01 v2` é rótulo de docs para a regra revisada (o código continua emitindo `R-PLAN-01`, precedente `R-PLAN-03`/`R-PLAN-03 v2`); o `ExplanationCatalog` não muda (cobre IDs emitidos, C4-52). `R-LVL-03` usa o texto canônico do PRD §13. §13 de evidências inalterado (SEILER/PFITZINGER/DANIELS/FRIEL já registradas). S13 segue aberta; C4-43 (review) é a próxima.
-- **Próximo:** S13 / C4-43 (review "planejada/mantida/rebaixada").
+- **Próximo:** S14 / C4-26 (golden `G-LOAD-02` + copy "em calibração").
+
+### S13.2 — 2026-11-17 — Review "planejada/mantida/rebaixada" + crédito do extra (C4-43)
+
+- **Status:** DONE
+- **Tasks:** C4-43.
+- **Arquivos:** `core/domain/.../review/WeeklyQuality.kt` (novo: `WeeklyQuality` + `QualityWeekSummary`), `WeeklyReview.kt` (`quality` + `extraMin`, calculadora repassa), `WeeklyReviewFormat.kt` (`qualityLine`, `volumeExtra`), `WeeklyReviewCard.kt` (bloco `weekly-review-quality` + legenda do extra no volume), `TrendsViewModel.kt` (+ `DailyPrescriptionRepository`, resumo da semana + `extraMin` fora do plano), `QualityWeekSummaryTest.kt` (novo, 7), `WeeklyReviewCalculatorTest.kt` (+1), `WeeklyReviewFormatTest.kt` (+4), `TrendsViewModelTest.kt` (+3 fiação + repo), `TrendsScreenTest.kt` (+1 tela), `docs/TESTING.md` (lista do review), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1049 verdes (+8); `:app:testDebugUnitTest` 949 verdes (+8); `:core:data:test` verde; `spotlessCheck` verde; `:core:domain:koverVerify`, `:app:koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes.
+- **Commit:** `feat(app): show the quality outcome and extra credit in the review (C4-43)`.
+- **Decisões/notas:** TDD RED→GREEN (formato compilou antes da função; 1 falha: "0 mantidas" — o formato omite partes zeradas, forma do PRD §8.4). Detekt `CyclomaticComplexMethod`/`LongMethod` do `calculate` ressurgiu porque o ID do baseline inclui a assinatura (precedente C4-44); baseline atualizado no formato vigente, sem achado novo. Regra 2 honrada: o VM só agrega (soma/vínculo `activityId`, precedente do `executedMin`); a decisão dia (mantida/rebaixada) é função pura do domínio. Sem decisão do dia gravada, a linha some (ausência é ausência, FR-011). `extraMin` conta resumos não vinculados ao plano; `LEGACY`/`MANUAL` sem corrida não geram resumo. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S14 / C4-26 (golden `G-LOAD-02` + copy "em calibração").
 
 ---
 
@@ -1069,8 +1079,8 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 941 | Atualizar conforme novos testes |
-| `:core:domain` | 1041 | Atualizar conforme novos testes |
+| `:app` | 949 | Atualizar conforme novos testes |
+| `:core:domain` | 1049 | Atualizar conforme novos testes |
 | `:core:data` | 204 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -1160,9 +1170,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-43, S13)
+## 14. Próxima ação (C4-26, S14)
 
-1. Abrir a FR-408 ("O plano explica 'seu treino extra contou para o volume, mas não para a adesão'"), o `WeeklyReviewCalculator`/`WeeklyReview` + `TrendsViewModel`/`TrendsScreen` e o teste `WeeklyReviewFormatTest` como modelo — C4-38/39 dão a referência real e C4-41 a copy do plano; C4-43 leva o crédito para o review ("planejada/mantida/rebaixada").
-2. Implementar C4-43 com TDD (review + teste); rodar `:core:domain:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0046 §2 e a FR-405; ler `TrainingLoadEngine` + `LoadSnapshot` como base — C4-22..C4-25 dão a confiabilidade (`acwrReliable`, janela de 28 dias, `permitsQuality`/`permitsProgression`) e C4-20/C4-41 o padrão de golden; C4-26 congela o `G-LOAD-02` (cold start: 8 dias de carga com pré-história → `acwrReliable=false`, sem veto de qualidade, volume mantido) e a copy "em calibração".
+2. Implementar C4-26 com TDD (golden + copy); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

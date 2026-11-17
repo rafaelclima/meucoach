@@ -52,14 +52,25 @@ data class WeeklyAdherence(
 /**
  * Planned versus executed duration. The percentage only exists when both sides
  * do, so a missing plan or a missing run is never reported as zero.
+ * [extraMin] is the executed volume without a planned session behind it: the
+ * extra training the plan did not schedule but the volume base credits.
  */
-data class WeeklyVolume(val plannedMin: Int?, val executedMin: Int?, val percentOfPlan: Int?) {
+data class WeeklyVolume(
+    val plannedMin: Int?,
+    val executedMin: Int?,
+    val percentOfPlan: Int?,
+    val extraMin: Int? = null,
+) {
     init {
         require(plannedMin == null || plannedMin > 0) { "Planned volume must be positive when present" }
         require(executedMin == null || executedMin > 0) { "Executed volume must be positive when present" }
         require(percentOfPlan == null || percentOfPlan >= 0) { "Volume percentage must not be negative" }
         require((percentOfPlan != null) == (plannedMin != null && executedMin != null)) {
             "Volume percentage requires both planned and executed durations"
+        }
+        require(extraMin == null || extraMin >= 0) { "Extra volume must not be negative" }
+        require(extraMin == null || executedMin == null || extraMin <= executedMin) {
+            "Extra volume must fit the executed volume"
         }
     }
 }
@@ -142,6 +153,7 @@ data class WeeklyReview(
     val status: WeeklyReviewStatus,
     val adherence: WeeklyAdherence?,
     val volume: WeeklyVolume?,
+    val quality: WeeklyQuality? = null,
     val intensity: WeeklyIntensity?,
     val intensitySessions: Int,
     val readiness: WeeklyReadiness?,
@@ -192,6 +204,8 @@ class WeeklyReviewCalculator {
         completion: PlanCompletionWeek? = null,
         plannedDurationMin: Int? = null,
         executedDurationMin: Int? = null,
+        extraDurationMin: Int? = null,
+        quality: WeeklyQuality? = null,
         intensity: WeeklyIntensity? = null,
         intensitySessions: Int = 0,
         readinessDays: List<ReadinessHistoryDay> = emptyList(),
@@ -285,6 +299,7 @@ class WeeklyReviewCalculator {
                 } else {
                     null
                 },
+                extraMin = extraDurationMin,
             )
         }
 
@@ -384,6 +399,7 @@ class WeeklyReviewCalculator {
             status = status,
             adherence = adherence,
             volume = volume,
+            quality = quality,
             intensity = intensity,
             intensitySessions = intensitySessions,
             readiness = readinessSummary,

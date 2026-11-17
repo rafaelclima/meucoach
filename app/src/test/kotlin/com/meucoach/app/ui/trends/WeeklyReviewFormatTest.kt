@@ -1,6 +1,7 @@
 package com.meucoach.app.ui.trends
 
 import com.meucoach.core.domain.review.WeeklyAdherence
+import com.meucoach.core.domain.review.WeeklyQuality
 import com.meucoach.core.domain.review.WeeklyReadiness
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewObservation
@@ -166,6 +167,42 @@ class WeeklyReviewFormatTest {
     fun `states an honest empty state`() {
         assertThat(WeeklyReviewFormat.emptyDescription())
             .isEqualTo("Quando houver plano, corridas ou check-ins, o resumo da semana aparece aqui.")
+    }
+
+    @Test
+    fun `formats a kept quality without blame`() {
+        assertThat(
+            WeeklyReviewFormat.qualityLine(
+                WeeklyQuality(planned = 1, kept = 1, downgraded = 0, firstDowngradeDetail = null),
+            ),
+        )
+            .isEqualTo("Qualidade: 1 planejada, 1 mantida")
+    }
+
+    @Test
+    fun `formats a downgraded quality with the day reason`() {
+        assertThat(
+            WeeklyReviewFormat.qualityLine(
+                WeeklyQuality(planned = 1, kept = 0, downgraded = 1, firstDowngradeDetail = "check-in de hoje ausente"),
+            ),
+        ).isEqualTo("Qualidade: 1 planejada, 1 rebaixada (check-in de hoje ausente)")
+    }
+
+    @Test
+    fun `formats mixed qualities with plural grammar`() {
+        assertThat(
+            WeeklyReviewFormat.qualityLine(
+                WeeklyQuality(planned = 2, kept = 1, downgraded = 1, firstDowngradeDetail = "ACWR 1,62 > 1,50"),
+            ),
+        ).isEqualTo("Qualidade: 2 planejadas, 1 mantida, 1 rebaixada (ACWR 1,62 > 1,50)")
+    }
+
+    @Test
+    fun `describes extra training without inventing volume`() {
+        assertThat(WeeklyReviewFormat.volumeExtra(28))
+            .isEqualTo("Inclui 28 min de treino fora do plano — contou para o volume.")
+        assertThat(WeeklyReviewFormat.volumeExtra(null)).isNull()
+        assertThat(WeeklyReviewFormat.volumeExtra(0)).isNull()
     }
 
     private fun review(
