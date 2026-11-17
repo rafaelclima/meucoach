@@ -1,0 +1,73 @@
+{
+  "scenarioId": "G-READY-05",
+  "cases": [
+    {
+      "id": "no-checkin",
+      "score": 76,
+      "level": "GREEN",
+      "confidence": "MEDIUM",
+      "components": { "SLEEP": 100, "HRV": 55, "RESTING_HEART_RATE": 70 },
+      "missing": ["SUBJECTIVE"],
+      "flags": ["SUBJECTIVE_MISSING"],
+      "qualityEligibleByReadiness": false,
+      "gate": {
+        "eligible": false,
+        "reason": "SUBJECTIVE_MISSING",
+        "ruleId": "R-READY-06",
+        "detail": "check-in subjetivo de hoje ainda não foi respondido",
+        "unlockHint": "Faça o check-in de hoje para liberar o treino forte."
+      }
+    },
+    {
+      "id": "neutral-3333",
+      "score": 67,
+      "level": "AMBER",
+      "confidence": "HIGH",
+      "components": { "SUBJECTIVE": 50, "SLEEP": 100, "HRV": 55, "RESTING_HEART_RATE": 70 },
+      "missing": [],
+      "flags": ["NO_QUALITY"],
+      "qualityEligibleByReadiness": false,
+      "gate": {
+        "eligible": false,
+        "reason": "LOW_READINESS",
+        "ruleId": "R-READY-03",
+        "detail": "prontidão moderada (score 67)",
+        "unlockHint": "Recupere até a prontidão ficar verde e confirme no check-in."
+      }
+    },
+    {
+      "id": "green-4222",
+      "score": 76,
+      "level": "GREEN",
+      "confidence": "HIGH",
+      "components": { "SUBJECTIVE": 75, "SLEEP": 100, "HRV": 55, "RESTING_HEART_RATE": 70 },
+      "missing": [],
+      "flags": [],
+      "qualityEligibleByReadiness": true,
+      "gate": {
+        "eligible": true,
+        "reason": null,
+        "ruleId": "R-PER-03",
+        "detail": null,
+        "unlockHint": null
+      }
+    },
+    {
+      "id": "green-5111",
+      "score": 84,
+      "level": "GREEN",
+      "confidence": "HIGH",
+      "components": { "SUBJECTIVE": 100, "SLEEP": 100, "HRV": 55, "RESTING_HEART_RATE": 70 },
+      "missing": [],
+      "flags": [],
+      "qualityEligibleByReadiness": true,
+      "gate": {
+        "eligible": true,
+        "reason": null,
+        "ruleId": "R-PER-03",
+        "detail": null,
+        "unlockHint": null
+      }
+    }
+  ]
+}

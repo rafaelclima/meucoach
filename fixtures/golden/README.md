@@ -17,6 +17,7 @@ Estado atual (16/11/2026):
 | `G-READY-02` | `ReadinessCalculator` | Ausência total de dados |
 | `G-READY-03` | `ReadinessCalculator` | Sinal de doença/lesão |
 | `G-READY-04` | `ReadinessCalculator` | Sono curto bloqueia qualidade |
+| `G-READY-05` | `ReadinessCalculator` + gate | Matriz do check-in (sem check-in vs 3/3/3/3 vs 4/2/2/2 vs 5/1/1/1) + copy |
 
 Os cenários `G-001`…`G-006` do `TESTING.md` cobrem plano, taper e calor; entram
 quando `PrescriptionEngine`/`PlanEngine` existirem.

@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S14 do Ciclo 4: docs `R-LOAD-03 v3` e renumeração G-LOAD-02/03, C4-27 — S14 aberta)
+**Atualizado:** 17/11/2026 (S14 do Ciclo 4: matriz do check-in + copy no "Por quê?", C4-32 — S14 aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S14: matriz do check-in + copy no "Por quê?" (C4-32)
+
+**Objetivo:** congelar a matriz do check-in como golden (FR-406, ADR 0049 §2.1/§6) e fazer o "Por quê?" da prontidão citar `R-READY-06` com o prompt do check-in.
+
+### Concluído
+
+- **Golden `G-READY-05`** (`fixtures/golden/readiness-checkin/`): mesma base objetiva verde dos goldens `G-READY-01/03/04` (sono 7h30, HRV, FC de repouso) com carga sintética que passa em tudo; 4 casos — sem check-in (76 `GREEN`, `SUBJECTIVE_MISSING`, gate `R-READY-06`), 3/3/3/3 (67 `AMBER`, gate `LOW_READINESS`/`R-READY-03`), 4/2/2/2 (76 `GREEN`) e 5/1/1/1 (84 `GREEN`), os dois últimos com gate `R-PER-03`. Valores verificados à mão e confirmados pelo teste.
+- **Domínio:** `ReadinessCheckinGoldenTest` (1: readiness + `QualityGate` + copy do gate por caso).
+- **App:** `buildReadinessExplanation` cita `R-READY-06` e alerta "Faça o check-in de hoje para liberar o treino forte." quando o check-in falta (frase exata do gate); `TodayReadinessExplanationTest` (2).
+- **Docs:** `fixtures/golden/README` + `docs/TESTING.md` (tabela de goldens) com `G-READY-05`; checklist com a colisão de IDs e a S14.2.
+
+### Testes
+
+- `:core:domain:test` 1051 verdes (+1); `:app:testDebugUnitTest` 955 verdes (+2); `:core:data:test` 204 verdes; `:core:model` 40 intacto.
+- `:app:assembleDebug`, `spotlessCheck` (com `spotlessApply` de import order), kover (domain/data/app), detekt (domain/data/app) e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (expected ausente → `IllegalStateException`; copy sem `R-READY-06` falhava).
+- **Colisão de IDs (load-bearing, precedente C4-26):** `G-READY-03` já nomeia o fixture de doença (`readiness-illness`), anterior ao PRD; o PRD/ADR 0049 reutilizaram o ID para a matriz do check-in. A matriz foi congelada como **`G-READY-05`**; o `G-READY-03` histórico fica intocado e a renumeração vai ao ADR 0049/PRD na C4-33.
+- S14 segue aberta; C4-33 (docs `R-READY-06` + renumeração) é a próxima.
+
+### Próximo passo
+
+1. S14 / C4-33: docs `R-READY-06`, `SPORTS_SCIENCE`, ADR 0049 (incluir a renumeração G-READY-03/05), sem código.
+2. Depois S14 (C4-37: golden `G-DATA-02` + docs de sono).
 
 ## Sessão 2026-11-17 — Ciclo 4/S14: docs `R-LOAD-03 v3` e renumeração G-LOAD-02/03 (C4-27)
 

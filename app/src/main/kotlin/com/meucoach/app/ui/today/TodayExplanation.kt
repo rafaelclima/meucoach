@@ -236,6 +236,7 @@ internal fun buildReadinessExplanation(
         if (result.missing.isNotEmpty()) add("R-DATA-01")
         if (result.level != ReadinessLevel.GREEN) add("R-READY-03")
         if (ReadinessFlag.SHORT_SLEEP in result.flags) add("R-READY-04")
+        if (ReadinessFlag.SUBJECTIVE_MISSING in result.flags) add("R-READY-06")
         if (ReadinessFlag.ILLNESS_OR_INJURY in result.flags) add("R-SAFE-01")
     }.distinct()
     val evidence = buildList {
@@ -279,6 +280,9 @@ private fun readinessRationale(result: ReadinessResult, inputs: ReadinessInputs,
     val base = "Sua prontidão está $level (${result.score}/100), com confiança $confidence: " +
         drivers.joinToString(", ") + "."
     val alerts = buildList {
+        if (ReadinessFlag.SUBJECTIVE_MISSING in result.flags) {
+            add("Faça o check-in de hoje para liberar o treino forte.")
+        }
         if (ReadinessFlag.SHORT_SLEEP in result.flags) {
             add("Sono abaixo de 6 h bloqueia treino forte.")
         }

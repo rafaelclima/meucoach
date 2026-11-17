@@ -316,6 +316,7 @@ Cenários implementados hoje:
 | `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
 | `G-READY-03` | Sinal de doença/lesão suspende qualidade |
 | `G-READY-04` | Sono curto bloqueia qualidade |
+| `G-READY-05` | Matriz do check-in sem check-in/3-3-3-3/4-2-2-2/5-1-1-1 + gate (`R-READY-06`/`R-READY-03`/`R-PER-03`) |
 
 Os cenários `G-001`…`G-006` continuam não existindo. O plano já tem os goldens
 `G-PER-03`, `G-PER-05`, `G-UPGRADE-01` e `G-VOL-02`; prescrição diária entra quando o
