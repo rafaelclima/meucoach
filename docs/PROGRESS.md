@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S8 do Ciclo 4: reavaliação antes do DONE, C4-05)
+**Atualizado:** 17/11/2026 (S8 do Ciclo 4: gate de check-in no recomendador sem plano, C4-29)
+
+## Sessão 2026-11-17 — Ciclo 4/S8.2: gate de check-in no recomendador sem plano (C4-29)
+
+**Objetivo:** fechar a inversão do check-in no fallback sem plano — verde objetivo sem subjetivo não pode soar como “tudo certo”; o fácil sem plano passa a pedir o check-in com `R-READY-06`.
+
+### Concluído
+
+- **Recomendador:** `WorkoutRecommender` lê `SUBJECTIVE` ausente (mesma leitura do `QualityGate.subjectiveBlock`): sem check-in, mesmo verde e com carga confiável, o dia fica em “Fácil, sem pressa” com `R-READY-06`/`EV-SAW-2016` e rationale pedindo o check-in. A precedência do rationale segue o gate (check-in antes de sono curto).
+- **Sem plano:** `DailyPrescriptionEngine.noPlan` herda o comportamento via delegação (`NO_PLAN` + `R-PRESC-03` + motivo do check-in); com check-in verde e carga elegível, continua fácil sem `R-READY-06` e sem inventar qualidade. `DONE`/`CLOSED` com plano continuam história e nunca passam pelo recomendador (cobertura pré-existente de C4-04).
+- **Testes:** 3 novos no `WorkoutRecommenderTest` (sem check-in conservador + `R-READY-06`, com check-in conversável sem a regra, check-in antes de sono curto) e 2 no `DailyPrescriptionEngineTest` (noPlan sem check-in pede check-in; noPlan com check-in nunca inventa qualidade).
+
+### Testes
+
+- `:core:domain:test` 990 verdes (+5); `:core:data:test` 186; `:app:testDebugUnitTest` 907; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; nenhuma UI alterada.
+
+### Decisões e observações
+
+- O recomendador nunca prescreve `QUALITY`; o gate aqui é o tom do fácil, não um veto de tipo. A mudança é de copy/confiança dirigida: “Fácil, sem pressa” + “Faça o check-in para confirmar a qualidade de hoje”.
+- Verificação explícita pelo componente (`SUBJECTIVE !in components`) em vez do flag, igual ao gate — flag e componente coincidem na prática (`ReadinessCalculator` adiciona o flag só sem check-in), mas o componente é a autoridade do gate.
+- `phase`/`raceWeek` da produção e a persistência dos motivos ficam para C4-45..C4-50; a copy de check-in na UI (C4-30/C4-31) continua pendente.
+
+### Próximo passo
+
+1. S9 / C4-45: schema v18 + migração 17→18, TDD.
+2. Depois C4-46 (round-trip de `generatorVersion`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S8.1: reavaliação antes do DONE (C4-05)
 

@@ -82,6 +82,60 @@ class WorkoutRecommenderTest {
     }
 
     @Test
+    fun `green without check-in stays conservative and asks for check-in`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(
+                    level = ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    score = 80,
+                    components = mapOf(ReadinessComponent.SLEEP to 80),
+                ),
+                load = knownLoad(acwr = 1.0),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
+        assertThat(recommendation.ruleIds).contains("R-READY-06")
+        assertThat(recommendation.evidenceIds).contains("EV-SAW-2016")
+        assertThat(recommendation.rationale).contains("check-in")
+    }
+
+    @Test
+    fun `green with check-in and trusted load stays conversable without check-in rule`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(level = ReadinessLevel.GREEN, confidence = DataConfidence.HIGH),
+                load = knownLoad(acwr = 1.0),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.title).isEqualTo("Fácil e conversável")
+        assertThat(recommendation.ruleIds).doesNotContain("R-READY-06")
+    }
+
+    @Test
+    fun `check-in missing outranks short sleep like the day gate`() {
+        val recommendation = recommender.recommend(
+            input(
+                readiness = readiness(
+                    level = ReadinessLevel.GREEN,
+                    flags = setOf(ReadinessFlag.SHORT_SLEEP, ReadinessFlag.SUBJECTIVE_MISSING),
+                    score = 80,
+                    components = mapOf(ReadinessComponent.SLEEP to 20),
+                ),
+                load = knownLoad(acwr = 1.0),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.ruleIds).contains("R-READY-06")
+        assertThat(recommendation.rationale).contains("check-in")
+    }
+
+    @Test
     fun `high ACWR blocks load increases`() {
         val recommendation = recommender.recommend(
             input(
@@ -327,12 +381,13 @@ class WorkoutRecommenderTest {
             ReadinessLevel.AMBER -> 55
             ReadinessLevel.RED -> 20
         },
+        components: Map<ReadinessComponent, Int> = mapOf(ReadinessComponent.SUBJECTIVE to score),
     ) = ReadinessResult(
         score = score,
         level = level,
         confidence = confidence,
-        components = mapOf(ReadinessComponent.SUBJECTIVE to score),
-        missing = emptySet(),
+        components = components,
+        missing = ReadinessComponent.entries.toSet() - components.keys,
         flags = flags,
     )
 

@@ -663,6 +663,42 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `no plan without check-in stays conservative and asks for check-in`() {
+        val prescription = engine.prescribe(
+            input(
+                planned = null,
+                readiness = readiness(
+                    ReadinessLevel.GREEN,
+                    components = emptyMap(),
+                    flags = setOf(ReadinessFlag.SUBJECTIVE_MISSING),
+                    score = 80,
+                ),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.NO_PLAN)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.ruleIds).contains("R-READY-06", "R-PRESC-03")
+        assertThat(prescription.rationale).contains("check-in")
+    }
+
+    @Test
+    fun `no plan never invents a quality even with check-in and trusted load`() {
+        val prescription = engine.prescribe(
+            input(
+                planned = null,
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.NO_PLAN)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.ruleIds).doesNotContain("R-READY-06")
+    }
+
+    @Test
     fun `without calibration the easy day prescribes RPE and never invents pace`() {
         val prescription = engine.prescribe(
             input(

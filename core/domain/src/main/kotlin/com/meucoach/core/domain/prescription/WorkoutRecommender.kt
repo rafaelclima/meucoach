@@ -2,6 +2,7 @@ package com.meucoach.core.domain.prescription
 
 import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.readiness.ReadinessComponent
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.domain.zones.HeartRateZoneCalculator
@@ -102,8 +103,14 @@ class WorkoutRecommender {
         val acwrHigh = input.load?.acwrHigh == true
         val shortSleep = ReadinessFlag.SHORT_SLEEP in readiness.flags
         val noQuality = ReadinessFlag.NO_QUALITY in readiness.flags
+        // ADR 0044 §2.4/FR-406: without a subjective check-in the day never
+        // confirms quality, even when the objective signals stay green. The
+        // gate reads the component (like QualityGate.subjectiveBlock), not just
+        // the flag, so an objective-only green stays conservative here too.
+        val subjectiveMissing = ReadinessComponent.SUBJECTIVE !in readiness.components
         val conservative =
-            readiness.level != ReadinessLevel.GREEN || noQuality || shortSleep || acwrHigh || !loadTrusted
+            readiness.level != ReadinessLevel.GREEN || noQuality || shortSleep || acwrHigh ||
+                !loadTrusted || subjectiveMissing
 
         val duration = minutes.takeIf { it > 0 }?.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN) ?: DEFAULT_EASY_MIN
         val availabilityMissing = available.minutesByDay.isEmpty()
@@ -127,6 +134,7 @@ class WorkoutRecommender {
             if (availabilityMissing) add("R-DATA-01")
             if (!loadTrusted) add("R-DATA-01")
             if (readiness.level == ReadinessLevel.AMBER || noQuality) add("R-READY-03")
+            if (subjectiveMissing) add("R-READY-06")
             if (shortSleep) add("R-READY-04")
             if (acwrHigh) add("R-LOAD-03")
             if (heat) add("R-PLAN-07")
@@ -136,13 +144,18 @@ class WorkoutRecommender {
         val evidence = buildList {
             add("EV-SEILER-2010")
             add("EV-DANIELS-2014")
-            if (shortSleep || readiness.level == ReadinessLevel.AMBER) add("EV-SAW-2016")
+            if (shortSleep || readiness.level == ReadinessLevel.AMBER || subjectiveMissing) add("EV-SAW-2016")
             if (acwrHigh) add("EV-GABBETT-2016")
             if (!loadTrusted) add("EV-IMPELLIZZERI-2020")
             if (heat) add("EV-ELY-2007")
             if (paceTarget == null && heartRateTarget == null) add("EV-FRIEL-2018")
         }
         val rationale = when {
+            subjectiveMissing ->
+                "Sem check-in hoje: fique no fácil e sem treino forte. " +
+                    "Faça o check-in para confirmar a qualidade de hoje. " +
+                    easyHint(paceTarget, heartRateTarget)
+
             shortSleep ->
                 "Sono abaixo de 6 h: hoje é fácil, sem treino forte. " +
                     easyHint(paceTarget, heartRateTarget)
