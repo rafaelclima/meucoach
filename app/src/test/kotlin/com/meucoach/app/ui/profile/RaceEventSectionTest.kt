@@ -78,6 +78,35 @@ class RaceEventSectionTest {
     }
 
     @Test
+    fun `shows the explicit gap between the goal and the current prediction`() {
+        val event = plannedEvent()
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(
+                        events = listOf(event),
+                        projection = RaceTargetProjector.project(event.distance, event.targetTimeSec),
+                        prediction = RaceTimePredictor.predict(calibratedProfile(), event.distance, today),
+                        athlete = calibratedProfile(),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("race-prediction-gap-note"))
+        compose.onNodeWithTag("race-prediction-gap").assertIsDisplayed()
+        compose.onNodeWithText("Meta × previsão").assertIsDisplayed()
+        compose.onNodeWithText("mais rápida · ambiciosa", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("race-prediction-gap-note").assertIsDisplayed()
+        compose.onNodeWithText("O pace do plano usa a previsão, não a meta.").assertIsDisplayed()
+    }
+
+    @Test
     fun `explains when the race prediction is unavailable`() {
         val event = plannedEvent()
         compose.setContent {

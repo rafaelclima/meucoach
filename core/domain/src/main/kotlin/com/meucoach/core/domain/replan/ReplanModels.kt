@@ -170,6 +170,11 @@ data class ReplanInput(
     val nonTrainablePastDates: Set<LocalDate> = emptySet(),
     /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */
     val race: RacePlan? = null,
+    /**
+     * Declared goal time for [race] (FR-411). It only changes the goal-gap
+     * copy; the prescribed race pace always comes from the current prediction.
+     */
+    val raceTargetTimeSec: Int? = null,
     /** Every event date that must not receive an ordinary session. */
     val eventDates: Set<LocalDate> = emptySet(),
     /** Post-race recovery window (ADR 0037). */
@@ -194,5 +199,8 @@ data class ReplanInput(
         require(currentVersion >= 1) { "Current plan version must be >= 1" }
         require(missedSessionThreshold >= 1) { "Missed session threshold must be >= 1" }
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
+        require(raceTargetTimeSec == null || raceTargetTimeSec > 0) {
+            "Race target time must be positive"
+        }
     }
 }

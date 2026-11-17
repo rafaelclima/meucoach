@@ -177,7 +177,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - `engineVersion` semântica (ex.: `1.0.0`) e `inputsHash` determinístico por decisão.
 - A `DailyPrescription` persiste `engineVersion`, `inputsHash`, `ruleIds`/`evidenceIds` e confiança; a versão anterior permanece com `supersedesId`.
 - Mudou regra? Nova versão do motor e nova linha. Não há `rulesVersion`/`evidenceVersion` como colunas separadas.
-- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v6`, `daily-prescription-v5`, `macro-plan-v1`, `planning-v1` (fingerprint). O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o bump para `weekly-plan-v7`/`daily-prescription-v6` é C4-53, e o mecanismo de upgrade já compara qualquer versão armazenada com o alvo.
+- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v6`, `daily-prescription-v5`, `macro-plan-v2`, `planning-v1` (fingerprint). O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o bump para `weekly-plan-v7`/`daily-prescription-v6` é C4-53, e o mecanismo de upgrade já compara qualquer versão armazenada com o alvo.
 
 ### 6.3 Tempo, prescrição e evidência
 

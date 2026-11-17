@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S7 concluídas; **C4-04 e C4-05 (S8) concluídas; C4-29 é a próxima task**.
+**Status:** S0 a S14 concluídas; **C4-57 e C4-58 (S15) concluídas; C4-59 é a próxima task**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S15 (C4-57)
-> **Último commit:** C4-57 — `feat(domain): make the pace-heart-rate precedence explicit (C4-57)`
-> **Fase:** 3 — UI/copy — **S15 aberta**; próxima C4-58
-> **Sessão atual:** **S15 — C4-57 DONE**
-> **Task atual:** C4-57 (DONE)
-> **Próxima task:** C4-58 (S15)
+> **Última atualização:** 17/11/2026 — S15 (C4-58)
+> **Último commit:** C4-58 — `feat(domain): extend the 5K horizon and make the peak pace dynamic (C4-58)`
+> **Fase:** 3 — UI/copy — **S15 aberta**; próxima C4-59
+> **Sessão atual:** **S15 — C4-58 DONE**
+> **Task atual:** C4-58 (DONE)
+> **Próxima task:** C4-59 (S15)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1063, `:app:testDebugUnitTest` 957, `:core:data:test` 207, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, kover (domain/data/app), detekt (domain/data/app), `:app:lintDebug` e `verifyRoborazziDebug` (briefing) verdes
-> **Próxima ação:** abrir S15/C4-58 (horizonte 5K/base + pace dinâmico).
+> **Gates da última sessão:** `:core:domain:test` 1092, `:app:testDebugUnitTest` 958, `:core:data:test` 207, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, kover (domain/data/app), detekt (domain/data/app), `:app:lintDebug` e `verifyRoborazziDebug` (ProfileScreenshot/TodayScreenshot) verdes; `check -x :app:testDebugUnitTest` verde
+> **Próxima ação:** abrir S15/C4-59 (copy contraditória do rationale).
 
 ### 0.1 O que já está pronto
 
@@ -153,6 +153,15 @@
 - [x] 6 testes no `GetTodayPrescriptionTest` (rebaixa sem check-in, restaura com check-in, restaura com carga, novo check-in ainda bloqueado, `DONE` e `CLOSED`) e 2 no `DailyPrescriptionEngineTest` (hash de prontidão e de carga).
 - [x] A versão anterior fica no histórico (`getVersions` devolve `EASY` → `QUALITY`).
 
+**S15 — horizonte 5K e pace dinâmico (C4-58)**
+
+- [x] `MacroPlanResolver` v2: 5K 12 semanas quando a prova está a 9+ semanas; entrada tardia (≤8) mantém a tabela curta com `BASE` + `BUILD`/`PEAK`; 10K 8, meia 12, maratona 16.
+- [x] Prova além do horizonte não congela em `BASE`: o gerador passa `race = null` ao `MesoCycle` e mantém a rotação geral com qualidade.
+- [x] `RacePaceResolver`: pace/bloco do `PEAK` vêm do `RaceTimePredictor` atual; meta é referência com gap explícito; >5% mais rápida é ambiciosa e não vira pace; sem previsão recente, RPE 8.
+- [x] UI do card de prova mostra a linha "Meta × previsão" (`race-prediction-gap`) e deixa claro que o plano usa a previsão.
+- [x] Golden `G-PER-06` (`fixtures/golden/per-horizon/`): 5K a 26 semanas em BUILD com "Intervalos"; bloco específico de 12 semanas; PEAK a 6:12/km contra meta de 29:00 (ambiciosa); meta mais lenta só muda o gap; sem prova, sem PEAK/taper.
+- [x] 29 testes novos no domínio (15 `RacePaceTest`, 3 `RacePaceIntegrationTest`, 2 `RaceHorizonTest`, 5 `PlanHorizonGoldenTest`, 4 `MacroPlanTest`); 1 teste de tela do gap.
+
 ### 0.2 O que **não** está pronto
 
 - `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; o disparo automático na abertura está implementado (C4-48: versão defasada → `ENGINE_UPGRADE`, semana incompleta + sync `Ready` → `DATA_READY`, com banner). A passagem de fase/raceWeek pela produção continua pendente. Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` têm round-trip no Room (C4-45) e no export (C4-50); a reavaliação pode ser provada também pelos campos persistidos.
@@ -282,7 +291,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 - C4-45 (schema v18) depende de C4-14 (estrutura) e C4-38 (volume) para as colunas fazerem sentido. Se o schema for necessário antes, faça a migração com as colunas e preencha os modelos depois; registre a ordem no §7.
 - C4-47 (PlanUpgrade) depende de C4-45/C4-46 e de C4-02/C4-04.
 - C4-55 (device) depende de C4-54 (gates completos).
-- C4-58 (pace/horizonte) é P2; não bloqueia o núcleo.
+- C4-58 (pace/horizonte) era P2 e foi concluída em S15; não bloqueava o núcleo.
 
 ---
 
@@ -637,7 +646,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
 | [x] | C4-57 | `TargetKind`/precedência FC×pace | E3/E9 | M | S15 | FR-410 | Testes; copy | `TargetKind` + `primary` em `PrescriptionTargets` (policy única); briefing por precedência; sheet com destaque vs referência; `R-ZONE-01 v2` no `SPORTS_SCIENCE`; `TargetPrecedenceTest` (11), `PrescriptionJsonTargetsTest` (3), briefing UI (+2); screenshots do briefing re-gravados; commit S15 |
-| [ ] | C4-58 | Horizonte 5K/base + pace dinâmico | E3/E9 | L | S15 | FR-411 | Golden; sem regressão | — |
+| [x] | C4-58 | Horizonte 5K/base + pace dinâmico | E3/E9 | L | S15 | FR-411 | Golden; sem regressão | `macro-plan-v2` (5K 12 sem; entrada tardia 8); general com qualidade; `RacePaceResolver` (previsão, gap, RPE 8); `G-PER-06`; `RacePaceTest` 15, `RacePaceIntegrationTest` 3, `RaceHorizonTest` 2, `PlanHorizonGoldenTest` 5; gap no card; commit S15 |
 | [ ] | C4-59 | Copy contraditória do rationale | E9 | S | S15 | FR-412 | Teste de copy | — |
 | [ ] | C4-60 | `createdAt` estável no `saveWeek` | E8 | S | S15 | FR-413 | Teste de repositório | — |
 
@@ -1055,6 +1064,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (campo inexistente não compilava; copy nova falhava no teste novo). `primary` é obrigatório (sem default): o compilador listou os 53 sites e cada um ganhou valor explícito; `copy()` preserva (`forDuration`/`withHeat` não mudam presença). Fácil pace-only (LTHR ausente) agora carrega RPE 4 + pace de referência (FR-410 "Sem LTHR: RPE principal"); nenhum teste legado quebrou com a mudança. Codec legado deriva por conteúdo (HR→HEART_RATE, pace→PACE, senão RPE); linhas `PLANNED` antigas viram nova versão na reavaliação (inputsHash cobre `planned.targets`, precedente C4-19). Título do `R-ZONE-01` no catálogo inalterado de propósito (screenshots); a revisão vive no §14 do `SPORTS_SCIENCE`. Flakes rotativos sem relação (precedente S5/S8/S11): `TutorialSystemBackTest` 2× e `MetricsImportViewModelTest` 1× na suíte cheia (timeout/cascata sob carga), ambos verdes isolados e suíte final limpa. Nenhum dado real; nenhuma migração de schema (só chave no blob JSON); sem `fallbackToDestructiveMigration`.
 - **Próximo:** S15 / C4-58 (horizonte 5K/base + pace dinâmico).
 
+### S15.1 — 2026-11-17 — Horizonte de 5K e pace dinâmico (C4-58)
+
+- **Status:** DONE
+- **Tasks:** C4-58.
+- **Arquivos:** `core/domain/.../prescription/MacroPlan.kt` (`macro-plan-v2`, 5K 12 semanas a partir de 9 semanas, entrada tardia em 8), `RacePace.kt` (novo: `GoalGap`, `RacePacePlan`, `RacePaceResolver`), `WeeklyPlanGenerator.kt` (`raceTargetTimeSec`, general sem congelar em BASE, template `GOAL_*` resolvido, targets/rationale dinâmicos), `PrescriptionTargets.kt` (`racePace` e faixa prevista/RPE 8), `PlanReplanner.kt`/`ReplanModels.kt` (`raceTargetTimeSec` no input/hash e meso canônico com macro), `TodayViewModel.kt`/`TutorialViewModel.kt`/`ReplanContextBuilder.kt` (fiação do tempo-meta), `RacePredictionBlock.kt` (gap "Meta × previsão"), `RaceEventCard.kt`/`RaceDayCard.kt` (gap no card), `RacePaceTest.kt` (novo, 15), `RacePaceIntegrationTest.kt` (novo, 3), `RaceHorizonTest.kt` (novo, 2), `PlanHorizonGoldenTest.kt` (novo, 5), `fixtures/golden/per-horizon/` (input/expected/README), `MacroPlanTest.kt` (+4), `MacroWiringTest.kt` (70→90 dias), `RaceEventSectionTest.kt` (+1), `profile-race-*.png`/`today-race-*.png` re-gravados, `docs/SPORTS_SCIENCE.md` (v1.11), `docs/adr/0043`/`0047`, `docs/DECISIONS.md` (r1.51), `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `fixtures/golden/README.md`, `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** `:core:domain:test` 1092 verdes (+29); `:app:testDebugUnitTest` 958 (+1); `:core:data:test` 207; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); kover (domain/data/app), detekt (domain/data/app) e `:app:lintDebug` verdes; FIT 93,01% de branches; `verifyRoborazziDebug` verde para `ProfileScreenshotTest`/`TodayScreenshotTest` após regravar os 4 PNGs de prova; `check -x :app:testDebugUnitTest` verde.
+- **Commit:** `feat(domain): extend the 5K horizon and make the peak pace dynamic (C4-58)`.
+- **Decisões/notas:** TDD RED→GREEN (horizonte, general mode, pace dinâmico e golden). O `MacroPlanTest` de "prova além do horizonte" e o `MacroWiringTest` foram atualizados de 10 para 12 semanas / de 70 para 90 dias com justificativa FR-411, sem reduzir asserts. O `RacePaceResolver` usa o `RaceTimePredictor` atual; a meta nunca vira pace (>5% mais rápida → ambiciosa; dentro de 5% → referência; mais lenta → não desacelera) e sem previsão recente o PEAK cai para RPE 8. O `withQualityCopy` reaplica o gap depois da escala, então o texto final não perde a explicação. `raceTargetTimeSec` entra no `WeeklyPlanInput`/`ReplanInput` e no `inputsHash` do replanner, mas não no fingerprint de perfil: mudar só a meta no meio da semana atualiza a próxima geração (o bump de versões fica em C4-53). O `check` completo falhou 2× no flake conhecido `TutorialSystemBackTest` (`UncaughtExceptionsBeforeTest`; "Database is closed" de um invalidation tracker Room vazado) — o arquivo não foi tocado, a suíte isolada do app passou 2× e o `check -x :app:testDebugUnitTest` ficou verde. O `verifyRoborazziDebug` completo continua com drift pré-existente em `activity-comparison-*`, `checkin-*` e `health-*` (arquivos não tocados; falham também isolados); os screenshots das telas alteradas foram regravados e verificados. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S15 / C4-59 (copy contraditória do rationale).
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1140,8 +1159,8 @@ Se a task toca `:app`/`:data`:
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 957 | Atualizar conforme novos testes |
-| `:core:domain` | 1063 | Atualizar conforme novos testes |
+| `:app` | 958 | Atualizar conforme novos testes |
+| `:core:domain` | 1092 | Atualizar conforme novos testes |
 | `:core:data` | 207 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
@@ -1231,9 +1250,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-58, S15)
+## 14. Próxima ação (C4-59, S15)
 
-1. Abrir a FR-411 e o ADR 0047/0043 (horizonte/macro); ler `MacroPlanResolver` + `CalibrationCalculator` como base — C4-58 avalia horizonte 5K/base + pace dinâmico com golden.
-2. Implementar C4-58 com TDD; rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir a FR-412 e os testes de copy do rationale (`WeeklyPlanGeneratorTest`, `QualityCopy`, `progressionBlockedRationale`); a task corrige a copy contraditória com um teste que falha antes.
+2. Implementar C4-59 com TDD; rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

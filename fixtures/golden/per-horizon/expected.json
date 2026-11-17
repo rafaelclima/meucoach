@@ -1,0 +1,97 @@
+{
+  "scenarioId": "G-PER-06",
+  "general": {
+    "phase": "BUILD",
+    "qualityCount": 1,
+    "weeklyMinutes": 150,
+    "sessions": [
+      {
+        "dayOfWeek": "MONDAY",
+        "type": "EASY",
+        "title": "Strides curtos",
+        "durationMin": 25,
+        "kind": null,
+        "hasStructure": true
+      },
+      {
+        "dayOfWeek": "WEDNESDAY",
+        "type": "QUALITY",
+        "title": "Intervalos",
+        "durationMin": 40,
+        "kind": "INTERVALS",
+        "planDecision": "QUALITY_OPPORTUNITY",
+        "hasStructure": true
+      },
+      {
+        "dayOfWeek": "FRIDAY",
+        "type": "EASY",
+        "title": "Fácil e conversável",
+        "durationMin": 40,
+        "kind": null,
+        "hasStructure": false
+      },
+      {
+        "dayOfWeek": "SUNDAY",
+        "type": "LONG",
+        "title": "Longão",
+        "durationMin": 45,
+        "kind": null,
+        "hasStructure": false
+      }
+    ],
+    "rationaleContains": [
+      "Fase BUILD",
+      "o dia confirma",
+      "150 min no total"
+    ],
+    "forbiddenTitles": [
+      "Pace de prova 5K",
+      "Colinas",
+      "Fartlek"
+    ]
+  },
+  "specificBlock": {
+    "today": "2027-02-08",
+    "phases": [
+      "BASE",
+      "BASE",
+      "BASE",
+      "BASE",
+      "BASE",
+      "BUILD",
+      "BUILD",
+      "BUILD",
+      "BUILD",
+      "PEAK",
+      "TAPER",
+      "TAPER"
+    ],
+    "firstWeekInPhase": 0,
+    "firstPhaseWeeks": 5,
+    "peakWeeks": 1,
+    "taperWeeks": 2
+  },
+  "peak": {
+    "today": "2027-04-12",
+    "title": "Pace de prova 5K",
+    "kind": "RACE_PACE",
+    "durationMin": 30,
+    "blockTarget": "6:12/km",
+    "goalPercent": -6,
+    "goalAlignment": "AMBITIOUS",
+    "goalPaceLabel": "5:48/km",
+    "rationaleContains": [
+      "ambiciosa",
+      "previsão atual (30:59)",
+      "nunca a meta"
+    ]
+  },
+  "conservativeGoalSec": 2000,
+  "noRace": {
+    "qualityCount": 1,
+    "forbiddenRationale": [
+      "Fase PEAK",
+      "Fase TAPER"
+    ]
+  }
+}

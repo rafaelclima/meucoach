@@ -143,7 +143,7 @@ internal fun RaceEventCard(
             }
             prediction?.let {
                 Spacer(modifier = Modifier.height(12.dp))
-                RacePredictionBlock(result = it)
+                RacePredictionBlock(result = it, goalSec = planned.targetTimeSec)
             }
             Spacer(modifier = Modifier.height(12.dp))
             McPrimaryButton(

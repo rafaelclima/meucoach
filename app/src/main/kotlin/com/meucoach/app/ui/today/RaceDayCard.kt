@@ -111,7 +111,7 @@ internal fun RaceDayCard(
         }
         prediction?.let {
             Spacer(modifier = Modifier.height(14.dp))
-            RacePredictionBlock(result = it)
+            RacePredictionBlock(result = it, goalSec = event.targetTimeSec)
         }
         Spacer(modifier = Modifier.height(14.dp))
         Text(

@@ -198,6 +198,7 @@ class TutorialViewModel @Inject constructor(
                 recentWeeks = recentWeeks,
                 volumeReferences = volumeReferences,
                 weekNumberInBlock = weekNumber,
+                raceTargetTimeSec = profile.goal?.targetTimeSec,
             ),
         ).also { planRepository.saveWeek(it) }
         val todayUi = todayState(

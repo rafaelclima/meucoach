@@ -249,10 +249,15 @@ class TodayViewModel @Inject constructor(
             val planned = plan ?: if (historyReady && gateSettled) {
                 context.profile?.let {
                     val eventDates = events.map { event -> event.targetDate }.toSet()
-                    val race = events
+                    val raceEvent = events
                         .filter { event -> event.status == RaceStatus.PLANNED }
                         .maxByOrNull { event -> event.updatedAt }
-                        ?.let(RacePlan::from)
+                    val race = raceEvent?.let(RacePlan::from)
+                    val raceTargetTimeSec = if (raceEvent != null) {
+                        raceEvent.targetTimeSec
+                    } else {
+                        it.goal?.targetTimeSec
+                    }
                     val zone = runCatching { java.time.ZoneId.of(it.timezone) }
                         .getOrNull() ?: timeProvider.zoneId.value
                     val volumeReferences = VolumeReferenceProjection.build(
@@ -272,6 +277,7 @@ class TodayViewModel @Inject constructor(
                             volumeReferences = volumeReferences,
                             weekNumberInBlock = history.weekNumberInBlock,
                             race = race,
+                            raceTargetTimeSec = raceTargetTimeSec,
                             eventDates = eventDates,
                             recovery = recovery,
                             dataIncomplete = gate is HealthSyncGate.Failed,

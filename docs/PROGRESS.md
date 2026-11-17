@@ -1,6 +1,39 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S15 do Ciclo 4: precedência FC×pace explícita, C4-57 — S15 aberta)
+**Atualizado:** 17/11/2026 (S15 do Ciclo 4: horizonte de 5K e pace dinâmico, C4-58 — S15 segue aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S15: horizonte de 5K e pace dinâmico (C4-58)
+
+**Objetivo:** fechar a FR-411 — prova de 5K distante não vira manutenção, o bloco específico entra no fim e o `PEAK` usa o pace da previsão atual com gap explícito da meta (ADR 0043/0047).
+
+### Concluído
+
+- **Horizonte:** `MacroPlanResolver` v2 usa 12 semanas para 5K quando a prova está a 9+ semanas; entrada tardia (≤8 semanas) mantém a tabela de 8 semanas com `BASE` curta + `BUILD`/`PEAK`/taper. 10K segue em 8; meia 12; maratona 16.
+- **Modo geral:** prova além do horizonte não congela mais em `BASE`; o gerador passa `race = null` ao `MesoCycle` e preserva a rotação `BASE`/`BUILD` com a oportunidade estrutural de qualidade.
+- **Pace dinâmico:** `RacePaceResolver` resolve o bloco `GOAL_*` a partir do `RaceTimePredictor` do dia. `PrescriptionTargets` do `PEAK` é `PACE` com a faixa prevista (sem teto de FC inventado) ou `RPE 8` sem previsão recente.
+- **Meta × previsão:** gap explícito no rationale e na UI da previsão; meta >5% mais rápida é chamada de ambiciosa e nunca vira pace; dentro de 5% é referência; mais lenta não desacelera. O card de prova ganhou a linha `race-prediction-gap`.
+- **Golden `G-PER-06`** (`fixtures/golden/per-horizon/`): 5K a 26 semanas no modo geral BUILD com "Intervalos"; bloco específico de 12 semanas; PEAK a 6:12/km diante da meta ambiciosa de 29:00; meta mais lenta só muda o gap; sem prova, sem PEAK/taper.
+- **Docs:** `SPORTS_SCIENCE` §8.1/§8.4/§14 (`R-PER-01`, `R-PER-04`), ADR 0043 (tabela 5K e status), ADR 0047 (status + C4-58), `DECISIONS` r1.51, `ARCHITECTURE` (`macro-plan-v2`), `TESTING` + `fixtures/golden/README`.
+
+### Testes
+
+- `:core:domain:test` 1092 verdes (+29: `RacePaceTest` 15, `RacePaceIntegrationTest` 3, `RaceHorizonTest` 2, `PlanHorizonGoldenTest` 5, `MacroPlanTest` +4); `:core:data:test` 207; `:app:testDebugUnitTest` 958 (+1 tela do gap).
+- `:app:assembleDebug`, `spotlessCheck`, kover (domain/data/app), detekt (domain/data/app) e `:app:lintDebug` verdes; FIT 93,01%.
+- `verifyRoborazziDebug` verde para `ProfileScreenshotTest`/`TodayScreenshotTest` após regravar `profile-race-*` e `today-race-*`.
+- `./gradlew check -x :app:testDebugUnitTest` verde; a suíte completa do app passou isolada. O `check` completo falhou no flake conhecido `TutorialSystemBackTest` (`UncaughtExceptionsBeforeTest`; "Database is closed" de um invalidation tracker Room vazado, arquivo não tocado), verde isolado e na suíte isolada.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (horizonte, general mode, pace dinâmico, golden). O `MacroPlanTest` antigo “prova além do horizonte” passou de 10 para 12 semanas (justificativa FR-411); `MacroWiringTest` idem (70 → 90 dias).
+- O pace de prova é a previsão do VDOT; a meta é referência. O `withQualityCopy` reaplica o gap depois da escala de volume/taper, então o texto final nunca perde a explicação.
+- O `raceTargetTimeSec` entra no `WeeklyPlanInput`/`ReplanInput` e no `inputsHash` do replanner, mas não no fingerprint de perfil (mudar só a meta no meio da semana atualiza a próxima geração; o bump de versões fica em C4-53).
+- S15 segue aberta; C4-59 (copy contraditória) e C4-60 (`createdAt` estável) são as próximas.
+
+### Próximo passo
+
+1. S15 / C4-59: copy contraditória do rationale (FR-412), TDD.
+2. Depois S15 / C4-60 e S16 (C4-53/C4-54).
 
 ## Sessão 2026-11-17 — Ciclo 4/S15: precedência FC×pace explícita (C4-57)
 

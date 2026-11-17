@@ -16,19 +16,25 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.GoalAlignment
+import com.meucoach.core.domain.prescription.GoalGap
+import com.meucoach.core.domain.prescription.RacePaceResolver
 import com.meucoach.core.domain.race.RacePrediction
 import com.meucoach.core.domain.race.RacePredictionResult
 import com.meucoach.core.domain.race.RacePredictionUnavailable
 import com.meucoach.core.model.DataConfidence
+import kotlin.math.abs
 
 /**
  * VDOT/Riegel race prediction (ADR 0036).
  *
  * It is a reference next to the declared goal, never a prescribed pace or a
  * promise. The block says why a prediction is absent instead of inventing one.
+ * When [goalSec] is present it also shows the explicit gap between the goal and
+ * the current prediction (FR-411).
  */
 @Composable
-internal fun RacePredictionBlock(result: RacePredictionResult, modifier: Modifier = Modifier) {
+internal fun RacePredictionBlock(result: RacePredictionResult, goalSec: Int? = null, modifier: Modifier = Modifier) {
     val colors = McTheme.colors
     Column(modifier = modifier.testTag("race-prediction")) {
         Text(
@@ -39,7 +45,7 @@ internal fun RacePredictionBlock(result: RacePredictionResult, modifier: Modifie
         )
         Spacer(modifier = Modifier.height(6.dp))
         when (result) {
-            is RacePredictionResult.Available -> PredictionContent(result.prediction)
+            is RacePredictionResult.Available -> PredictionContent(result.prediction, goalSec)
 
             is RacePredictionResult.Unavailable -> Text(
                 text = unavailableLabel(result.reason),
@@ -52,7 +58,7 @@ internal fun RacePredictionBlock(result: RacePredictionResult, modifier: Modifie
 }
 
 @Composable
-private fun PredictionContent(prediction: RacePrediction) {
+private fun PredictionContent(prediction: RacePrediction, goalSec: Int?) {
     val colors = McTheme.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -88,6 +94,32 @@ private fun PredictionContent(prediction: RacePrediction) {
             modifier = Modifier.testTag("race-prediction-range"),
         )
     }
+    val gap = goalSec?.let { RacePaceResolver.goalGap(it, prediction) }
+    if (gap != null) {
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "Meta × previsão",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            Text(
+                text = goalGapLabel(gap),
+                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                color = colors.textPrimary,
+                modifier = Modifier.testTag("race-prediction-gap"),
+            )
+        }
+        Text(
+            text = "O pace do plano usa a previsão, não a meta.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+            modifier = Modifier.testTag("race-prediction-gap-note"),
+        )
+    }
     Spacer(modifier = Modifier.height(4.dp))
     Text(
         text = confidenceLabel(prediction.confidence),
@@ -118,6 +150,21 @@ private fun confidenceLabel(confidence: DataConfidence): String = when (confiden
     DataConfidence.HIGH -> "Confiança alta"
     DataConfidence.MEDIUM -> "Confiança média"
     DataConfidence.LOW -> "Confiança baixa"
+}
+
+private fun goalGapLabel(gap: GoalGap): String {
+    val percent = abs(gap.percent)
+    return when (gap.alignment) {
+        GoalAlignment.AMBITIOUS -> "meta $percent% mais rápida · ambiciosa"
+
+        GoalAlignment.CONSERVATIVE -> "meta $percent% mais lenta"
+
+        GoalAlignment.ALIGNED -> when {
+            gap.percent == 0 -> "meta alinhada"
+            gap.percent < 0 -> "meta $percent% mais rápida · alinhada"
+            else -> "meta $percent% mais lenta · alinhada"
+        }
+    }
 }
 
 private fun sourceLabel(confidence: DataConfidence): String = when (confidence) {

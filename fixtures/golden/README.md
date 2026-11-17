@@ -11,6 +11,7 @@ Estado atual (16/11/2026):
 | `G-LOAD-03` | `TrainingLoadEngine` + gate + volume | Cold start: 8 dias de carga + 13 de pré-história; sem veto, volume mantido, copy "em calibração" |
 | `G-PER-03` | `WeeklyPlanGenerator` | Oportunidade de qualidade estrutural, longão honesto de 40 min e fácil de sexta |
 | `G-PER-05` | `WeeklyPlanGenerator` | Semana 5K do catálogo: contínuo estruturado em BUILD, strides EASY com estrutura, longão 45; PEAK vira pace de prova; iniciante sem QUALITY |
+| `G-PER-06` | `WeeklyPlanGenerator` + `MacroPlanResolver` | 5K a 26 semanas: modo geral BUILD com qualidade; bloco específico de 12 semanas (BASE curta, 1 PEAK); PEAK usa a previsão (6:12/km) e nomeia a meta ambiciosa |
 | `G-UPGRADE-01` | `PlanUpgrade` | v6→v7, terça `DONE` preservada, sexta vira oportunidade, volume intacto |
 | `G-VOL-02` | `WeeklyPlanGenerator` | 3×38 concluídas + extra 28 → base real 142, alvo 151 (+6%), adesão 3/3, copy "treino extra contou" |
 | `G-READY-01` | `ReadinessCalculator` | Dia verde com dados completos |

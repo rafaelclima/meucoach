@@ -10,10 +10,11 @@ import java.time.LocalDate
  * Fatia 1 — ADR 0043: macro-planejador puro (TDD RED).
  *
  * Contrato: [MacroPlanResolver.resolve] distribui blocos até a prova pela
- * tabela aprovada (5k/10k 8 sem, meia 12, maratona 16), com taper reutilizado
- * de [RacePlan.taperWindowDays] e `PEAK` estável; sem prova (ou prova além do
- * horizonte/passada), devolve o caminho geral sem `PEAK`/taper. Determinístico,
- * com `inputsHash` estável e `R-PER-01` emitido.
+ * tabela aprovada (5K 12 semanas a partir de 9 semanas, 10K 8, meia 12,
+ * maratona 16), com taper reutilizado de [RacePlan.taperWindowDays] e `PEAK`
+ * estável; sem prova (ou prova além do horizonte/passada), devolve o caminho
+ * geral sem `PEAK`/taper. Determinístico, com `inputsHash` estável e
+ * `R-PER-01` emitido.
  */
 class MacroPlanTest {
     private val monday = LocalDate.of(2026, 11, 9)
@@ -110,6 +111,67 @@ class MacroPlanTest {
     }
 
     @Test
+    fun `ten weeks out uses the longer twelve week table`() {
+        val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(10)), monday)
+
+        assertThat(plan.isGeneral).isFalse()
+        assertThat(plan.weeks.map { it.phase }).containsExactly(
+            MesoPhase.BASE,
+            MesoPhase.BASE,
+            MesoPhase.BASE,
+            MesoPhase.BASE,
+            MesoPhase.BUILD,
+            MesoPhase.BUILD,
+            MesoPhase.BUILD,
+            MesoPhase.BUILD,
+            MesoPhase.PEAK,
+            MesoPhase.TAPER,
+            MesoPhase.TAPER,
+        )
+        assertThat(plan.weeks.first().weekInPhase).isEqualTo(1)
+        assertThat(plan.weeks.first().phaseWeeks).isEqualTo(5)
+    }
+
+    @Test
+    fun `twelve weeks out starts the longer table at the first base week`() {
+        val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(11)), monday)
+
+        assertThat(plan.isGeneral).isFalse()
+        assertThat(plan.weeks).hasSize(12)
+        assertThat(plan.weeks.take(5).map { it.phase }).containsOnly(MesoPhase.BASE)
+        assertThat(plan.weeks.drop(5).take(4).map { it.phase }).containsOnly(MesoPhase.BUILD)
+        assertThat(plan.weeks[9].phase).isEqualTo(MesoPhase.PEAK)
+        assertThat(plan.weeks.takeLast(2).map { it.phase }).containsOnly(MesoPhase.TAPER)
+        assertThat(plan.weeks.first().weekInPhase).isZero()
+        assertThat(plan.weeks.first().phaseWeeks).isEqualTo(5)
+    }
+
+    @Test
+    fun `a six week 5K keeps the short entry with a single peak week`() {
+        val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(5)), monday)
+
+        assertThat(plan.isGeneral).isFalse()
+        assertThat(plan.weeks.map { it.phase }).containsExactly(
+            MesoPhase.BASE,
+            MesoPhase.BUILD,
+            MesoPhase.BUILD,
+            MesoPhase.PEAK,
+            MesoPhase.TAPER,
+            MesoPhase.TAPER,
+        )
+        assertThat(plan.weeks.count { it.phase == MesoPhase.PEAK }).isEqualTo(1)
+        assertThat(plan.weeks.count { it.phase == MesoPhase.BASE }).isEqualTo(1)
+    }
+
+    @Test
+    fun `ten k keeps the eight week horizon`() {
+        val plan = MacroPlanResolver.resolve(race(RaceDistance.TEN_K, monday.plusWeeks(10)), monday)
+
+        assertThat(plan.isGeneral).isTrue()
+        assertThat(plan.weeks).isEmpty()
+    }
+
+    @Test
     fun `no race resolves the general path without peak or taper`() {
         val plan = MacroPlanResolver.resolve(race = null, today = monday)
 
@@ -121,7 +183,7 @@ class MacroPlanTest {
 
     @Test
     fun `race beyond the horizon stays general`() {
-        val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(10)), monday)
+        val plan = MacroPlanResolver.resolve(race(RaceDistance.FIVE_K, monday.plusWeeks(12)), monday)
 
         assertThat(plan.isGeneral).isTrue()
         assertThat(plan.weeks).isEmpty()

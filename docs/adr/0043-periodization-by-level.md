@@ -1,6 +1,6 @@
 # ADR 0043 — Periodização por nível e plano de prova (FR-012)
 
-**Status:** Implementado em 2026-11-15 (fatia 1–6 no domínio + fiação; `G-PER-02`; FR-012 atendido).
+**Status:** Implementado em 2026-11-15 (fatia 1–6 no domínio + fiação; `G-PER-02`; FR-012 atendido). Horizonte de 5K revisado em 2026-11-17 (FR-411/C4-58, `macro-plan-v2`).
 **Data:** 2026-11-15
 **Escopo:** Motor do coach; `WeeklyPlanGenerator`, catálogo de sessões, `PlanningFingerprint`.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0011 (deload ancorado),
@@ -74,10 +74,18 @@ geral aberto. Distribuição proposta por distância (convenção de produto, `L
 
 | Prova | Horizonte | BASE | BUILD | PEAK | TAPER |
 |---|---|---|---|---|---|
-| 5k/10k | 8 sem | 3 | 2 | 1 | 2 |
+| 5K (9+ semanas) | 12 sem | 5 | 4 | 1 | 2 |
+| 5K (entrada tardia, ≤8 sem) | 8 sem | 3 | 2 | 1 | 2 |
+| 10K | 8 sem | 3 | 2 | 1 | 2 |
 | Meia | 12 sem | 4 | 4 | 2 | 2 |
 | Maratona | 16 sem | 6 | 5 | 2 | 3 |
 | Sem data | aberto | alterna `BASE`/`BUILD` em blocos de 4 (ADR 0041), sem `PEAK` | | | |
+
+> FR-411 (C4-58): o horizonte de 5K cresce para 12 semanas quando a prova está a
+> 9+ semanas; a 8 semanas ou menos ele mantém a tabela curta para não começar
+> direto no `BUILD`. Prova além do horizonte fica no modo geral (`BASE`/`BUILD`,
+> com qualidade) até a tabela específica começar. `PEAK` continua no fim; o pace
+> de prova da previsão atual e o gap da meta estão no ADR 0047 §2.6.
 
 Taper e recuperação reutilizam `R-PLAN-05/10` e `R-RACE-04` sem duplicar regra.
 `PEAK` mantém volume estável (base × 1,06, ADR 0041) e só especifica intensidade.

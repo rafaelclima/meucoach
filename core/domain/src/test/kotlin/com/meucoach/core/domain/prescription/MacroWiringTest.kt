@@ -85,7 +85,9 @@ class MacroWiringTest {
             loadWeek(monday.minusWeeks(2)),
             loadWeek(monday.minusWeeks(1)),
         )
-        val race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(70))
+        // FR-411: o horizonte de 5K agora é 12 semanas; uma prova a 90 dias
+        // (12,8 semanas) continua além dele.
+        val race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(90))
 
         val plan = generator.generate(
             input(recentWeeks = history, previousWeek = history.last(), race = race),

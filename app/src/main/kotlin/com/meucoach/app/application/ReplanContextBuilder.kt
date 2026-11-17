@@ -94,10 +94,11 @@ class ReplanContextBuilder @Inject constructor(
         )
         val events = raceEvents.listAll()
         val eventDates = events.map { it.targetDate }.toSet()
-        val race = events
+        val raceEvent = events
             .filter { it.status == RaceStatus.PLANNED }
             .maxByOrNull { it.updatedAt }
-            ?.let(RacePlan::from)
+        val race = raceEvent?.let(RacePlan::from)
+        val raceTargetTimeSec = if (raceEvent != null) raceEvent.targetTimeSec else profile.goal?.targetTimeSec
         // ADR 0037: only a completed race starts a recovery window.
         val recovery = RecoveryWindow.covering(
             races = events.mapNotNull(CompletedRace::from),
@@ -126,6 +127,7 @@ class ReplanContextBuilder @Inject constructor(
             weekNumberInBlock = weekNumberInBlock,
             nonTrainablePastDates = nonTrainablePastDates,
             race = race,
+            raceTargetTimeSec = raceTargetTimeSec,
             eventDates = eventDates,
             recovery = recovery,
             today = today,

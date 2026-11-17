@@ -1,6 +1,7 @@
 package com.meucoach.core.domain.replan
 
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.MacroPlanResolver
 import com.meucoach.core.domain.prescription.MesoCycle
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
@@ -107,6 +108,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 volumeReferences = input.volumeReferences,
                 weekNumberInBlock = input.weekNumberInBlock,
                 race = input.race,
+                raceTargetTimeSec = input.raceTargetTimeSec,
                 eventDates = input.eventDates,
                 recovery = input.recovery,
             ),
@@ -503,6 +505,7 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";race=").append(
         race?.let { "${it.eventId},${it.distance.name},${it.targetDate}" } ?: "null",
     )
+    append(";raceTargetTime=").append(raceTargetTimeSec?.toString() ?: "null")
     append(";eventDates=").append(eventDates.sorted().joinToString(","))
     append(";recovery=").append(
         recovery?.let { "${it.race.eventId},${it.race.distance.name},${it.race.raceDate}" } ?: "null",
@@ -520,14 +523,23 @@ private fun ReplanInput.mesoCanonical(): String {
     val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
     val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
     val recoveryActive = recovery != null && recovery.intersects(weekStart, weekStart.plusDays(6))
+    // Mirrors the generator: a race beyond the macro horizon uses the general
+    // rotation, and a macro week carries its phase/rotation position. Without
+    // this the canonical hash would describe a different mesocycle than the
+    // generated one (FR-411).
+    val macroPlan = MacroPlanResolver.resolve(race, today)
+    val macroIntent = macroPlan.weeks.singleOrNull { it.weekStart == weekStart }
     val meso = MesoCycle.resolve(
         targetWeekStart = weekStart,
-        race = race,
+        race = race.takeUnless { macroPlan.isGeneral },
         recoveryActive = recoveryActive,
         isRaceWeek = isRaceWeek,
         isTaperWeek = isTaperWeek,
         references = volume,
         fallbackWeekNumberInBlock = weekNumberInBlock,
+        phaseOverride = macroIntent?.phase,
+        overrideWeekInPhase = macroIntent?.weekInPhase ?: 0,
+        overridePhaseWeeks = macroIntent?.phaseWeeks,
     )
     val hash = PlanningFingerprints.mesoHash(meso.phase.name, meso.strongStreak, meso.totalStrong)
     return "${meso.phase.name},${meso.strongStreak},${meso.totalStrong},$hash"

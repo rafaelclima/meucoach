@@ -47,24 +47,25 @@ data class MacroPlan(
 /**
  * Macro-planejador puro da periodização por nível (ADR 0043, fatia 1).
  *
- * Distribui blocos até a prova pela tabela aprovada (5k/10k 8 semanas, meia 12,
- * maratona 16), com o taper reutilizado de [RacePlan.taperWindowDays] e `PEAK`
- * estável antes dele. O posicionamento é pela distância até a prova, então um
- * início tardio recebe fases coerentes com o que resta — as primeiras semanas
- * pendem para `BASE` por conservadorismo. Determinístico: mesmos inputs,
- * mesma preparação.
+ * Distribui blocos até a prova pela tabela aprovada (5K 12 semanas quando a
+ * prova está a 9+ semanas, 10K 8, meia 12, maratona 16), com o taper
+ * reutilizado de [RacePlan.taperWindowDays] e `PEAK` estável antes dele. O
+ * posicionamento é pela distância até a prova, então uma entrada tardia (5K a
+ * 8 semanas ou menos) mantém a tabela curta e ainda entrega uma `BASE` curta
+ * antes de `BUILD`/`PEAK`, sem prometer milagre. Determinístico: mesmos
+ * inputs, mesma preparação.
  */
 object MacroPlanResolver {
-    const val ENGINE_VERSION = "macro-plan-v1"
+    const val ENGINE_VERSION = "macro-plan-v2"
 
     fun resolve(race: RacePlan?, today: LocalDate): MacroPlan {
         val weekStart = weekStart(today)
-        val horizon = race?.let(::horizonWeeks)
         val raceWeek = race?.let { weekStart(it.targetDate) }
-        if (race == null || horizon == null || raceWeek == null || raceWeek.isBefore(weekStart)) {
+        if (race == null || raceWeek == null || raceWeek.isBefore(weekStart)) {
             return general(today)
         }
         val weeksToRaceWeek = ChronoUnit.WEEKS.between(weekStart, raceWeek).toInt()
+        val horizon = horizonWeeks(race, weeksToRaceWeek)
         if (weeksToRaceWeek >= horizon) {
             return general(today)
         }
@@ -106,9 +107,21 @@ object MacroPlanResolver {
         inputsHash = inputsHash(race = null, today = today),
     )
 
-    private fun horizonWeeks(race: RacePlan): Int = when (race.distance) {
-        RaceDistance.FIVE_K, RaceDistance.TEN_K -> SHORT_HORIZON_WEEKS
+    private fun horizonWeeks(race: RacePlan, weeksToRaceWeek: Int): Int = when (race.distance) {
+        // FR-411: a 5K far enough out gets a longer base block. A short entry
+        // (8 weeks or less) keeps the original 8-week table so the athlete
+        // still gets a short BASE before BUILD/PEAK instead of starting at
+        // BUILD with no base at all.
+        RaceDistance.FIVE_K -> if (weeksToRaceWeek >= FIVE_K_EXTENDED_MIN_WEEKS) {
+            FIVE_K_HORIZON_WEEKS
+        } else {
+            SHORT_HORIZON_WEEKS
+        }
+
+        RaceDistance.TEN_K -> SHORT_HORIZON_WEEKS
+
         RaceDistance.HALF_MARATHON -> HALF_HORIZON_WEEKS
+
         RaceDistance.MARATHON -> MARATHON_HORIZON_WEEKS
     }
 
@@ -179,6 +192,10 @@ object MacroPlanResolver {
     private val EVIDENCE_IDS = listOf("EV-ISSURIN-2010", "EV-BOSQUET-2007", "EV-MUJIKA-2003")
     private const val DAYS_PER_WEEK = 7
     private const val SHORT_HORIZON_WEEKS = 8
+    private const val FIVE_K_HORIZON_WEEKS = 12
+
+    /** A 5K 9+ weeks out uses the longer table; 8 or less keeps the short entry. */
+    private const val FIVE_K_EXTENDED_MIN_WEEKS = 8
     private const val HALF_HORIZON_WEEKS = 12
     private const val MARATHON_HORIZON_WEEKS = 16
     private const val SHORT_PEAK_WEEKS = 1

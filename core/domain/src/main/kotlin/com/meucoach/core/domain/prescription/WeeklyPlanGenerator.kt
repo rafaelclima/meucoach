@@ -145,6 +145,12 @@ data class WeeklyPlanInput(
     val weekNumberInBlock: Int = 1,
     /** Active race for taper/cutoff; falls back to the legacy profile goal when absent. */
     val race: RacePlan? = null,
+    /**
+     * Declared goal time for the active race (FR-411). It is a reference used
+     * only to explain the gap against the current prediction; the prescribed
+     * pace always comes from the prediction, never from this value.
+     */
+    val raceTargetTimeSec: Int? = null,
     /** Every event date that must not receive an ordinary training session. */
     val eventDates: Set<LocalDate> = emptySet(),
     /** Post-race recovery window (ADR 0037); caps sessions and blocks quality/long run. */
@@ -173,6 +179,9 @@ data class WeeklyPlanInput(
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
+        require(raceTargetTimeSec == null || raceTargetTimeSec > 0) {
+            "Race target time must be positive"
+        }
     }
 }
 
@@ -224,6 +233,11 @@ class WeeklyPlanGenerator {
         // plans; only the event projection can define a race from now on.
         val race = input.race ?: RacePlan.from(input.profile.goal)
             .takeIf { input.eventDates.isEmpty() }
+        // FR-411: the PEAK pace is always the current prediction. The goal time
+        // is a reference only and may explain the gap in the copy.
+        val racePacePlan = race?.let { activeRace ->
+            RacePaceResolver.resolve(input.profile, activeRace, input.raceTargetTimeSec, input.today)
+        }
         val eventDates = input.eventDates + listOfNotNull(race?.targetDate)
         // BUG-08: a race goal without a date cannot schedule the volume reduction.
         // The plan says it out loud instead of silently skipping the taper.
@@ -291,9 +305,14 @@ class WeeklyPlanGenerator {
         // ou passada, o mesociclo segue como antes. A recuperação continua suprema.
         val macroPlan = MacroPlanResolver.resolve(race, input.today)
         val macroIntent = macroPlan.weeks.singleOrNull { it.weekStart == weekStart }
+        // FR-411: a race beyond the macro horizon must not freeze the general
+        // phase in BASE (MesoCycle.raceState). Passing `null` lets the ADR 0041
+        // BASE/BUILD rotation keep the structural quality opportunity alive
+        // until the longer 5K table starts; recovery/taper/race still win above.
+        val mesoRace = race.takeUnless { macroPlan.isGeneral }
         val meso = MesoCycle.resolve(
             targetWeekStart = weekStart,
-            race = race,
+            race = mesoRace,
             recoveryActive = mesoRecoveryActive,
             isRaceWeek = isRaceWeek,
             isTaperWeek = isTaperWeek,
@@ -372,7 +391,7 @@ class WeeklyPlanGenerator {
                 weekInPhase = meso.weekInPhase,
                 maxQualities = if (secondQualityAllowed) 2 else 1,
                 phaseWeeks = meso.phaseWeeks,
-            )
+            ).map { template -> template.withRacePace(racePacePlan) }
         } else {
             emptyList()
         }
@@ -499,7 +518,15 @@ class WeeklyPlanGenerator {
                         "Semana de prova: micro-dose para manter o estímulo, sem fadiga. " +
                             describeStructure(structure)
                     } else {
-                        qualityRationale(input.profile, duration, structure, reduction = null)
+                        qualityRationale(
+                            profile = input.profile,
+                            durationMin = duration,
+                            structure = structure,
+                            reduction = null,
+                            extraNote = racePacePlan?.note.takeIf {
+                                template.qualityKind == QualityKind.RACE_PACE
+                            },
+                        )
                     }
                     PlannedSession(
                         date = date,
@@ -520,6 +547,9 @@ class WeeklyPlanGenerator {
                             type = WorkoutType.QUALITY,
                             profile = input.profile,
                             durationMin = duration,
+                            racePace = racePacePlan.takeIf {
+                                template.qualityKind == QualityKind.RACE_PACE
+                            },
                         ),
                         qualityKind = requireNotNull(template.qualityKind) {
                             "Quality session ${template.title} must carry a kind"
@@ -689,9 +719,9 @@ class WeeklyPlanGenerator {
             reducedByPeriodization = reducedByPeriodization,
         ).map { session ->
             session
-                .withQualityCopy(input.profile, race, deload, originalDurations[session.date])
+                .withQualityCopy(input.profile, race, deload, originalDurations[session.date], racePacePlan)
                 .withFittedEasyStructure()
-                .withTargetsForDuration(input.profile)
+                .withTargetsForDuration(input.profile, racePacePlan)
         }
         val weeklyMinutes = adjusted.sumOf { it.durationMin ?: 0 }
         val longMinutes = adjusted.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
@@ -885,6 +915,25 @@ class WeeklyPlanGenerator {
     }
 
     /**
+     * Resolves the catalog's `GOAL_*` marker into the current prediction
+     * (FR-411). The template stays static and testable; only a `RACE_PACE`
+     * template is rewritten, and only its `RACE_PACE` block changes.
+     */
+    private fun SessionTemplate.withRacePace(plan: RacePacePlan?): SessionTemplate {
+        if (plan == null || qualityKind != QualityKind.RACE_PACE) return this
+        val source = structure ?: return this
+        return copy(
+            structure = source.copy(
+                blocks = source.blocks.map { block ->
+                    if (block.kind == BlockKind.RACE_PACE) block.copy(target = plan.blockTarget) else block
+                },
+            ),
+            ruleIds = (ruleIds + plan.ruleIds).distinct(),
+            evidenceIds = (evidenceIds + plan.evidenceIds).distinct(),
+        )
+    }
+
+    /**
      * Auditable reason the opportunity exists (ADR 0044 §2.2). The first slot
      * is structural; the second names the progression proof. The micro-dose is
      * structural as well and stays in the taper/race week.
@@ -1000,6 +1049,7 @@ class WeeklyPlanGenerator {
         durationMin: Int,
         structure: WorkoutStructure,
         reduction: QualityReduction?,
+        extraNote: String? = null,
     ): String {
         require(durationMin >= MIN_QUALITY_MIN) {
             "Quality duration must be at least $MIN_QUALITY_MIN minutes"
@@ -1010,7 +1060,8 @@ class WeeklyPlanGenerator {
             QualityReduction.DELOAD -> "Semana de descarga: ${qualityReductionNote(advanced)}"
             null -> null
         }
-        return listOfNotNull(note, describeStructure(structure), treadmillQualityHint(profile)).joinToString(" ")
+        return listOfNotNull(note, describeStructure(structure), extraNote, treadmillQualityHint(profile))
+            .joinToString(" ")
     }
 
     private fun qualityReductionNote(advanced: Boolean): String =
@@ -1046,6 +1097,7 @@ class WeeklyPlanGenerator {
         race: RacePlan?,
         deload: Boolean,
         originalDurationMin: Int?,
+        racePacePlan: RacePacePlan?,
     ): PlannedSession {
         if (type != WorkoutType.QUALITY || durationMin == null) return this
         val inTaper = race?.isInTaperWindow(date) == true
@@ -1069,7 +1121,15 @@ class WeeklyPlanGenerator {
             else -> null
         }
         return copy(
-            rationale = fitted?.let { qualityRationale(profile, durationMin, it, reduction) } ?: rationale,
+            rationale = fitted?.let {
+                qualityRationale(
+                    profile = profile,
+                    durationMin = durationMin,
+                    structure = it,
+                    reduction = reduction,
+                    extraNote = racePacePlan?.note.takeIf { qualityKind == QualityKind.RACE_PACE },
+                )
+            } ?: rationale,
             ruleIds = (ruleIds + weekRules).distinct(),
             structure = fitted,
         )
@@ -1274,8 +1334,17 @@ class WeeklyPlanGenerator {
      * Distance targets are derived from duration; after volume/taper/deload
      * scaling they must be rebuilt so the session never shows a stale distance.
      */
-    private fun PlannedSession.withTargetsForDuration(profile: AthleteProfile): PlannedSession =
-        copy(targets = PrescriptionPolicy.targets(type, profile, durationMin))
+    private fun PlannedSession.withTargetsForDuration(
+        profile: AthleteProfile,
+        racePacePlan: RacePacePlan?,
+    ): PlannedSession = copy(
+        targets = PrescriptionPolicy.targets(
+            type = type,
+            profile = profile,
+            durationMin = durationMin,
+            racePace = racePacePlan.takeIf { qualityKind == QualityKind.RACE_PACE },
+        ),
+    )
 
     /** Volume-only reduction; intensity is preserved by keeping the session type. */
     private fun scaledMinutes(session: PlannedSession, factor: Double): Int {

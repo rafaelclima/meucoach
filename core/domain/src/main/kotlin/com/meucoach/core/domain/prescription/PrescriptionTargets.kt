@@ -92,14 +92,34 @@ internal object PrescriptionPolicy {
         profile: com.meucoach.core.model.AthleteProfile,
         durationMin: Int?,
         heat: HeatLevel = HeatLevel.NONE,
+        /** Current race pace for a `RACE_PACE` quality session (FR-411). */
+        racePace: RacePacePlan? = null,
     ): PrescriptionTargets {
         if (type == WorkoutType.REST) return PrescriptionTargets(primary = TargetKind.RPE)
-        val base = when (type) {
-            WorkoutType.QUALITY -> qualityTargets(profile)
-            WorkoutType.LONG, WorkoutType.EASY -> easyTargets(type, profile)
-            WorkoutType.REST -> PrescriptionTargets(primary = TargetKind.RPE)
+        val base = if (type == WorkoutType.QUALITY && racePace != null) {
+            racePaceTargets(racePace)
+        } else {
+            when (type) {
+                WorkoutType.QUALITY -> qualityTargets(profile)
+                WorkoutType.LONG, WorkoutType.EASY -> easyTargets(type, profile)
+                WorkoutType.REST -> PrescriptionTargets(primary = TargetKind.RPE)
+            }
         }
         return base.forDuration(durationMin).withHeat(heat)
+    }
+
+    /**
+     * Race pace is led by the predicted pace with no invented heart-rate
+     * ceiling; without a prediction the session falls back to RPE 8. The goal
+     * is never used here (FR-411).
+     */
+    private fun racePaceTargets(plan: RacePacePlan): PrescriptionTargets = if (plan.paceTarget != null) {
+        PrescriptionTargets(pace = plan.paceTarget, primary = TargetKind.PACE)
+    } else {
+        PrescriptionTargets(
+            rpe = requireNotNull(plan.rpe) { "A race-pace fallback must carry an RPE" },
+            primary = TargetKind.RPE,
+        )
     }
 
     /**

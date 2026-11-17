@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.10 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.11 · **Data:** 17/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -11,6 +11,7 @@
 > Revisão 1.8 (17/11/2026, Ciclo 4/S14, C4-32/C4-33, ADR 0049): golden `G-READY-05` congela a matriz do check-in (sem check-in: 76 verde parcial, qualidade bloqueada; 3/3/3/3: 67 âmbar, bloqueada; 4/2/2/2: 76 e 5/1/1/1: 84, verde, qualidade mantida); o "Por quê?" da prontidão cita `R-READY-06` e pede o check-in; renumeração `G-READY-03` → `G-READY-05` registrada no ADR 0049 e no PRD (o `G-READY-03` histórico de doença fica intacto).
 > Revisão 1.9 (17/11/2026, Ciclo 4/S14, C4-37, ADR 0049): golden `G-DATA-02` congela o sono plausível (36 min → suspeita/`null`, qualidade mantida; 6 h + cochilo → 360 min válidos; 5h30 → 330 min `SHORT_SLEEP`; fragmentada → maior bloco 240 min `SHORT_SLEEP`); `R-DATA-02` no `SPORTS_SCIENCE` (§9.3/§14); ADR 0049 implementado por completo.
 > Revisão 1.10 (17/11/2026, Ciclo 4/S15, C4-57, ADR 0047 §2.8/FR-410): precedência FC×pace explícita (`TargetKind` em `PrescriptionTargets`, `R-ZONE-01 v2` no §14) — fácil/longo liderado por FC/RPE com pace de referência (sem LTHR, RPE 4 + pace de referência), qualidade liderada pelo pace do bloco com FC como guarda-corpo; briefing e briefing sheet com destaque vs referência.
+> Revisão 1.11 (17/11/2026, Ciclo 4/S15, C4-58, FR-411): horizonte de 5K em 12 semanas (`macro-plan-v2`) a partir de 9 semanas; entrada tardia mantém a tabela curta; prova distante fica no modo geral com qualidade. O `PEAK` usa o pace da previsão atual (VDOT), nunca a meta; gap explícito, meta >5% mais rápida é ambiciosa e não vira pace; sem previsão recente, RPE 8. Golden `G-PER-06`; `R-PER-01`/`R-PER-04` atualizadas no §14.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -324,9 +325,17 @@ o volume vem da disponibilidade, com aviso explícito.
 **20–30%** (o motor usa −25%) mantendo o tipo/intensidade das sessões
 (`R-PLAN-04 v2`, `EV-ISSURIN-2010`, ADR 0041). Taper (`R-PLAN-05/10`) e
 recuperação (`R-RACE-04`) prevalecem sobre o deload; semana de prova nunca é
-descarga. Sem prova, o motor alterna `BASE`/`BUILD` em blocos de 4 sem `PEAK`;
-com prova 12–16 semanas à frente, `BASE` até −8 semanas, `BUILD` até −3 semanas,
-`PEAK` 2–3 semanas com volume estável (nunca > base×1,06).
+descarga.
+
+Com prova, a tabela macro distribui `BASE`/`BUILD`/`PEAK`/`TAPER` por distância
+(`macro-plan-v2`): 5K 12 semanas quando a prova está a 9+ semanas (BASE 5, BUILD
+4, PEAK 1, TAPER 2), 10K 8 semanas, meia 12 e maratona 16. Uma entrada tardia de
+5K (8 semanas ou menos) mantém a tabela curta de 8 semanas e ainda entrega uma
+`BASE` curta antes de `BUILD`/`PEAK`, sem prometer milagre. Prova além do
+horizonte continua no modo geral (`BASE`/`BUILD`, com a oportunidade estrutural
+de qualidade) até a tabela específica começar; o golden `G-PER-06` congela o 5K
+a 26 semanas. Sem prova, o motor alterna `BASE`/`BUILD` em blocos de 4, sem
+`PEAK`/taper.
 
 ### 8.4 Sessões de qualidade
 
@@ -340,7 +349,7 @@ com prova 12–16 semanas à frente, `BASE` até −8 semanas, `BUILD` até −3
 | **Pace de prova** (`RACE_PACE`) | Blocos no pace atual da distância | Especificidade | `PEAK` por distância (5K/10K/meia/maratona) |
 | **Intro fartlek** (sem kind, `EASY`) | 6–8×30 s “confortavelmente forte”/1–2 min fácil, RPE 7 | Transição segura | Iniciante após 4 semanas consistentes |
 
-O pace de prova usa a previsão atual (VDOT), nunca a meta; a meta é referência com gap explícito. A seleção rotaciona por `weekInPhase` e não repete o kind em semanas seguidas; `PEAK` nunca é cópia do `BUILD` (`R-PER-04`). O iniciante nunca recebe `QUALITY` estruturada (`R-PRESC-04`): strides desde a semana 1 e intro fartlek `EASY` após 4 semanas ≥80% — a dose é convenção de produto (`LIMITED`), sustentada por base majoritariamente fácil (`EV-TID-2021`, `EV-SEILER-2010`), maior incidência de lesão em novatos (17,8 vs 7,7/1000 h; `EV-INJURY-2015`) e literatura de HIIT majoritariamente recreacional, sem base para intervalado estruturado em novatos (`EV-HIIT-2016`, `EV-HIIT-2024`). Com acesso à esteira, a qualidade ganha dica de inclinação/velocidade sem virar um tipo separado (`R-PLAN-08`).
+O pace de prova usa a previsão atual (VDOT), nunca a meta; a meta é referência com gap explícito. Se a meta for >5% mais rápida que a previsão, o app diz que ela é ambiciosa e mantém o pace previsto; se estiver dentro de 5%, ela é referência alinhada; se for mais lenta, não desacelera a prescrição. Sem previsão recente (sem VDOT, calibração vencida ou origem não confiável), o `PEAK` usa RPE 8 e diz que não prescreve um pace não demonstrado. O golden `G-PER-06` congela o caso: 5K a 26 semanas no modo geral BUILD com "Intervalos"; bloco específico de 12 semanas; e `PEAK` a 2 semanas com "Pace de prova 5K" a 6:12/km (previsão 30:59) diante de uma meta de 29:00 (6% mais rápida, ambiciosa). A seleção rotaciona por `weekInPhase` e não repete o kind em semanas seguidas; `PEAK` nunca é cópia do `BUILD` (`R-PER-04`). O iniciante nunca recebe `QUALITY` estruturada (`R-PRESC-04`): strides desde a semana 1 e intro fartlek `EASY` após 4 semanas ≥80% — a dose é convenção de produto (`LIMITED`), sustentada por base majoritariamente fácil (`EV-TID-2021`, `EV-SEILER-2010`), maior incidência de lesão em novatos (17,8 vs 7,7/1000 h; `EV-INJURY-2015`) e literatura de HIIT majoritariamente recreacional, sem base para intervalado estruturado em novatos (`EV-HIIT-2016`, `EV-HIIT-2024`). Com acesso à esteira, a qualidade ganha dica de inclinação/velocidade sem virar um tipo separado (`R-PLAN-08`).
 
 Aquecimento de 10 min + mobilidade nas sessões de qualidade. A tabela mostra o estímulo canônico; no plano, a duração total da qualidade é 25–45 min e o texto deriva o bloco dessa duração: 10 min de aquecimento; no contínuo, o bloco principal é o restante menos 5 min de desaquecimento (mínimo 10 min); nos intervalos, 3 min fortes com 2 min leves, de 3 a 5 repetições; no fartlek, 1 min forte/1 min fácil por RPE; nas colinas, 45 s de subida; no bloco de prova, o pace atual da distância — e o restante sempre em ritmo leve. A estrutura é ajustada à duração real (`fittedTo`) e nenhum texto promete mais trabalho do que cabe. Sessões curtas usam a dose menor. Qualidade nunca em dia de sono < 6 h.
 
@@ -644,10 +653,10 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
 | `R-PLAN-10` | Corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) + semana civil sem `QUALITY` longa/`LONG`; dentro do corte vale 1 micro-dose ≤25 min, nunca zero estímulo; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
 | `R-PLAN-11` | Meta de prova sem data não agenda redução de volume: o plano mantém o volume normal e declara a ausência da data na UI, sem inventar uma data | BUG-08; `R-DATA-01` (dado ausente é ausente) | LIMITED — regra de transparência de produto, sem alegação fisiológica |
-| `R-PER-01` | Blocos de preparação por distância: com prova, blocos até o `PEAK`; sem prova ou prova distante, modo geral com oportunidade semanal de qualidade | ISSURIN | MODERATE |
+| `R-PER-01` | Blocos de preparação por distância: com prova, blocos até o `PEAK` (5K 12 semanas a partir de 9 semanas; 10K 8; meia 12; maratona 16); entrada tardia de 5K mantém a tabela curta com `BASE` curta; sem prova ou prova distante, modo geral com oportunidade semanal de qualidade | ISSURIN | MODERATE |
 | `R-PER-02` | Sessões por fase e nível, com trava de iniciante: intermediário/avançado recebem os estímulos do catálogo; iniciante recebe strides + intro fartlek `EASY`, sem `QUALITY` estruturada | DANIELS, SEILER, TID-2021, INJURY-2015, HIIT-2016, HIIT-2024 | MODERATE (trava e dose do iniciante: LIMITED — convenção de produto) |
 | `R-PER-03` | Oportunidade de qualidade é estrutural; o dia confirma com prontidão/carga; a primeira oportunidade não depende da prontidão da segunda | DANIELS, SEILER; ADR 0023/0044 | LIMITED — convenção de produto |
-| `R-PER-04` | Catálogo de qualidade por fase, nível e distância, com `PEAK` específico da prova (pace atual, nunca a meta) e rotação determinística que não repete o estímulo em semanas seguidas | DANIELS, SEILER, FOSTER, TID-2021 | MODERATE |
+| `R-PER-04` | Catálogo de qualidade por fase, nível e distância, com `PEAK` específico da prova (pace da previsão atual, nunca a meta; gap explícito; meta >5% mais rápida é ambiciosa e não vira pace; sem previsão recente, RPE 8) e rotação determinística que não repete o estímulo em semanas seguidas | DANIELS, SEILER, FOSTER, TID-2021 | MODERATE |
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |

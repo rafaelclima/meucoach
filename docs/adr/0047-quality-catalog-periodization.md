@@ -1,6 +1,6 @@
 # ADR 0047 — Catálogo de qualidade e periodização por fase, nível e distância
 
-**Status:** Aprovado em 2026-11-16 — C4-14 a C4-21 concluídas; restam C4-53 (versões) e C4-57 (precedência FC×pace).
+**Status:** Aprovado em 2026-11-16 — C4-14 a C4-21 concluídas; C4-57 e C4-58 concluídas; resta C4-53 (versões).
 **Data:** 2026-11-16
 **Escopo:** `SessionLibrary`, `QualityKind`, `WorkoutStructure`, `WeeklyPlanGenerator`,
 `DailyPrescriptionEngine`, `SessionBriefingEngine`, `SessionSwapper`, UI de Hoje/Plano.
@@ -410,3 +410,17 @@ Goldens: `G-PER-05` (5K BUILD/PEAK), matriz de qualidade, estrutura.
   muda de propósito: ele cobre IDs emitidos em rationales (C4-52) e nenhum
   rationale emite as 4 novas — mesma situação do `R-RACE-01`, documentado sem
   emissão. Sem código, sem migração, sem dados reais.
+- **C4-58 (S15, FR-411):** o `PEAK` deixa de carregar o marcador `GOAL_*` como
+  texto final: o gerador resolve o alvo do bloco a partir do
+  `RaceTimePredictor` do dia (`RacePaceResolver`). O pace e a faixa vêm da
+  previsão atual; a meta é referência com gap explícito (>5% mais rápida →
+  ambiciosa, nunca prescrita; dentro de 5% → alinhada; mais lenta → não
+  desacelera). Sem previsão recente, o bloco cai para RPE 8 e o rationale diz
+  que o app não prescreve um pace não demonstrado. O `PrescriptionTargets.primary`
+  do `PEAK` é `PACE` com a faixa prevista (sem teto de FC inventado) ou `RPE`.
+  O horizonte de 5K vira 12 semanas (`macro-plan-v2`) quando a prova está a 9+
+  semanas; uma entrada tardia mantém a tabela de 8 semanas com `BASE` curta. Um
+  `race` além do horizonte passa `race = null` ao `MesoCycle`, preservando a
+  rotação geral com qualidade em vez de congelar em `BASE`. Golden `G-PER-06`
+  em `fixtures/golden/per-horizon/`; 8 testes em `RacePaceTest`, 3 em
+  `RacePaceIntegrationTest`, 2 em `RaceHorizonTest` e o golden com 5 casos.

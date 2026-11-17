@@ -1,0 +1,105 @@
+{
+  "scenarioId": "G-PER-06",
+  "description": "5K a 25 semanas: modo geral com qualidade estrutural, bloco específico de 12 semanas no fim e PEAK com pace da previsão atual, não da meta. Sem dados reais de saúde.",
+  "weekStart": "2026-11-02",
+  "today": "2026-11-02",
+  "profile": {
+    "id": "athlete-1",
+    "birthDate": "1988-01-01",
+    "sex": "MALE",
+    "restingHeartRate": 58,
+    "maxHeartRateObserved": 187,
+    "lactateThresholdHeartRate": 180,
+    "thresholdPaceSecPerKm": 360,
+    "vdot": 29.65,
+    "vdotSource": "TRAINING_ESTIMATE",
+    "vdotCalibratedAt": "2026-10-30",
+    "experience": "INTERMEDIATE",
+    "timezone": "America/Sao_Paulo",
+    "availability": {
+      "MONDAY": 40,
+      "WEDNESDAY": 40,
+      "FRIDAY": 40,
+      "SUNDAY": 90
+    }
+  },
+  "readiness": {
+    "score": 80,
+    "level": "GREEN",
+    "confidence": "HIGH",
+    "components": { "SUBJECTIVE": 80 },
+    "missing": [],
+    "flags": []
+  },
+  "load": {
+    "acwr": 1.0,
+    "monotony": 1.2,
+    "strain": 400.0
+  },
+  "race": {
+    "eventId": "race-1",
+    "distance": "FIVE_K",
+    "targetDate": "2027-05-02"
+  },
+  "raceTargetTimeSec": 1740,
+  "volumeReferences": [
+    {
+      "weekStart": "2026-09-21",
+      "plannedMinutes": 200,
+      "executedMinutes": 150,
+      "strongMinutes": 150,
+      "strongSessions": 1,
+      "plannedSessions": 4,
+      "createdOn": "2026-09-21",
+      "specialWeek": false
+    },
+    {
+      "weekStart": "2026-09-28",
+      "plannedMinutes": 200,
+      "executedMinutes": 150,
+      "strongMinutes": 150,
+      "strongSessions": 1,
+      "plannedSessions": 4,
+      "createdOn": "2026-09-28",
+      "specialWeek": false
+    },
+    {
+      "weekStart": "2026-10-05",
+      "plannedMinutes": 200,
+      "executedMinutes": 150,
+      "strongMinutes": 150,
+      "strongSessions": 1,
+      "plannedSessions": 4,
+      "createdOn": "2026-10-05",
+      "specialWeek": false
+    },
+    {
+      "weekStart": "2026-10-19",
+      "plannedMinutes": 200,
+      "executedMinutes": 150,
+      "strongMinutes": 150,
+      "strongSessions": 1,
+      "plannedSessions": 4,
+      "createdOn": "2026-10-19",
+      "specialWeek": false
+    },
+    {
+      "weekStart": "2026-10-26",
+      "plannedMinutes": 200,
+      "executedMinutes": 150,
+      "strongMinutes": 150,
+      "strongSessions": 1,
+      "plannedSessions": 4,
+      "createdOn": "2026-10-26",
+      "specialWeek": false
+    }
+  ],
+  "specificBlock": {
+    "today": "2027-02-08"
+  },
+  "peak": {
+    "today": "2027-04-12",
+    "goalSec": 1740,
+    "vdotCalibratedAt": "2027-04-05"
+  }
+}
