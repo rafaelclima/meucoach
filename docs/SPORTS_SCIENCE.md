@@ -361,7 +361,8 @@ segunda→domingo:
 
 - Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
 - No máximo **2 qualidades** por semana; a segunda só com progressão e nunca consecutiva/adjacente ao longão.
-- Qualidade só em dia verde, não iniciante, com carga objetiva `KNOWN` + monotonia 7d < 2,0 + strain sem spike confiável + ACWR confiável ≤ 1,5 (`R-LOAD-03` v3, ADR 0046). ACWR desconhecido, em calibração ou fora de faixa sozinho não veta; apenas mantém.
+- Oportunidade de qualidade estrutural: a semana agenda 1 qualidade quando o nível (não iniciante), a fase (sem taper/recovery/race) e a agenda (3+ dias com um dia seguro) permitem, sem olhar a prontidão ou a carga da segunda; a micro-dose de taper/race week (≤25 min) também é estrutural (`R-PER-03`, ADR 0044).
+- O dia confirma a qualidade planejada via `QualityGate`: doença/lesão, prontidão vermelha, iniciante (`R-PRESC-04`), check-in ausente (`R-READY-06`), sono válido < 6 h, prontidão âmbar, recovery/taper/race, carga desatualizada ou insuficiente, monotonia 7d ≥ 2,0, strain em spike confiável ou ACWR confiável > 1,5 rebaixam para fácil, com motivo, valor que falhou e dica de desbloqueio (`R-PER-03`, `R-LOAD-03` v3, ADR 0044/0046). ACWR desconhecido, em calibração ou fora de faixa sozinho não veta; apenas mantém.
 - A qualidade exige `LoadDataState.KNOWN`: pelo menos 8 dias com carga nos
   últimos 28 e última importação de atividades em até 14 dias. Sem cobertura
   ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
@@ -597,6 +598,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-PLAN-09` | Mudança de inputs de plano (perfil/fuso/objetivo) gera revisão **sugerida** do futuro, nunca automática; proveniência e checkpoint separados | ADR 0031; ADR 0028 | STRONG como regra de produto/arquitetura |
 | `R-PLAN-10` | Corte conservador de 10 dias (5K/10K) ou 14 dias (meia/maratona) + semana civil sem `QUALITY` longa/`LONG`; dentro do corte vale 1 micro-dose ≤25 min, nunca zero estímulo; sem ativação | ADR 0030; BOSQUET/MUJIKA só como princípio geral de taper | LIMITED — convenção conservadora de produto, não consenso científico |
 | `R-PLAN-11` | Meta de prova sem data não agenda redução de volume: o plano mantém o volume normal e declara a ausência da data na UI, sem inventar uma data | BUG-08; `R-DATA-01` (dado ausente é ausente) | LIMITED — regra de transparência de produto, sem alegação fisiológica |
+| `R-PER-03` | Oportunidade de qualidade é estrutural; o dia confirma com prontidão/carga; a primeira oportunidade não depende da prontidão da segunda | DANIELS, SEILER; ADR 0023/0044 | LIMITED — convenção de produto |
 | `R-RACE-01` | Corrida importada na mesma data, `RUNNING`/`TREADMILL`, não vinculada, evento `PLANNED` e distância entre 90% e 110% conclui a prova; múltiplas candidatas exigem escolha e o undo é auditável | ADR 0032; convenção de produto | LIMITED — não é alegação fisiológica |
 | `R-RACE-02` | Pace médio, faixa ±3% e passagens por km derivados aritmeticamente de `targetTimeSec`; sem meta, nada é inventado | ADR 0032; aritmética declarada | LIMITED — referência, não prescrição |
 | `R-RACE-03` | Tempo de prova previsto pelo VDOT calibrado (inversão de Daniels), com faixa ±3% (prova/TT) ou ±5% (treinos) e Riegel apenas como checagem 5k–meia; sem VDOT/calibração recente, sem número | DANIELS, RIEGEL; ADR 0036 | LIMITED — referência, nunca promessa |
@@ -611,7 +613,7 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-EXPL-01` | Toda recomendação cita regra + evidência + confiança | Produto | STRONG |
 | `R-DATA-01` | Dado ausente não preenche valor neutro silencioso; cobertura/frescor de carga são declaradas | Produto | STRONG |
 | `R-PRESC-01` | A prescrição do dia parte da sessão planejada e a mantém quando os guardrails permitem | ADR 0023; R-PLAN/R-READY | MODERATE |
-| `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade); nunca aumenta | ADR 0023; R-READY/R-DATA | STRONG |
+| `R-PRESC-02` | Ajuste do dia só reduz (duração/tipo/intensidade) com os mesmos inputs; com inputs novos (check-in, sono, carga) antes do `DONE`, a qualidade planejada pode ser restaurada em nova versão, sem reescrever o histórico | ADR 0023/0044; R-READY/R-DATA | STRONG |
 | `R-PRESC-03` | Uma decisão por dia, versionada e a mesma em todas as telas | ADR 0023; Produto | STRONG |
 | `R-PRESC-04` | Iniciante com sessão de hoje `PLANNED` em `QUALITY` recebe `DOWNGRADE` para `EASY`; `DONE`/`CLOSED` preservam prescrição e histórico | D-6 v0.1; ADR 0023 | LIMITED — política conservadora de produto, sem alegação fisiológica específica |
 | `R-FUEL-01` | Dicas de hidratação são conteúdo educativo fixo aprovado por fonte; não derivam de prescrição nem alteram decisão do motor | ADR 0029; ACSM, NATA | STRONG como política de produto/copy |

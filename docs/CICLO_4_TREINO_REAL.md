@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S11.5 (C4-52)
-> **Último commit:** C4-52 — `feat(domain): catalog every emitted rule and evidence id (C4-52)`
-> **Fase:** 3 — UI/copy — **em andamento (S11; C4-06, C4-30, C4-31, C4-50, C4-51 e C4-52 DONE)**; próxima C4-08 (docs `R-PER-03`/ciência)
-> **Sessão atual:** **S11.5 — C4-52 DONE**
-> **Task atual:** C4-52 (DONE)
-> **Próxima task:** C4-08 (S11)
+> **Última atualização:** 17/11/2026 — S11.6 (C4-08)
+> **Último commit:** C4-08 — `docs(c4): record R-PER-03 and the amended R-PRESC-02 (C4-08)`
+> **Fase:** 3 — UI/copy — **S11 DONE (C4-06, C4-30, C4-31, C4-50, C4-51, C4-52, C4-08)**; próxima S12 (C4-18, estrutura no briefing/intro fartlek)
+> **Sessão atual:** **S11.6 — C4-08 DONE**
+> **Task atual:** C4-08 (DONE)
+> **Próxima task:** C4-18 (S12)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1025 (+1); `:app:testDebugUnitTest` 939; `:core:data:test` 203; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck` (com `spotlessApply`); `:app:koverVerify`; `:core:domain:koverVerify`; `:app:detekt`; `:core:domain:detekt`; `:core:data:detekt`; `:app:lintDebug` verdes
-> **Próxima ação:** abrir C4-08 (S11: docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS).
+> **Gates da última sessão:** docs apenas; `spotlessCheck` + `git diff --check` verdes (sem código alterado; gates de C4-52 seguem verdes: `:core:domain:test` 1025, `:app:testDebugUnitTest` 939, `:core:data:test` 203, `:core:model` 40)
+> **Próxima ação:** abrir C4-18 (S12: strides para todos + intro fartlek do iniciante como `EASY`), TDD.
 
 ### 0.1 O que já está pronto
 
@@ -160,7 +160,7 @@
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
 - A copy/UI de “em calibração” e o golden `G-LOAD-02` ficam para C4-26/C4-27; o domínio já expõe `acwrReliable`, `historyDays` e `baselineDays`.
-- Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
+- `R-PER-03` documentado no `SPORTS_SCIENCE` §8.8/§14 e `R-PRESC-02` emendada (C4-08); o catálogo de código já os cobre desde C4-52. Os trechos de `SPORTS_SCIENCE` ligados a `R-READY-06` ficam para C4-33.
 - O golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes. A copy/UI da reavaliação tardia está pronta (C4-31) e os campos de decisão estão no export (C4-50).
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
 - `qualityKind`/`structure`/`planDecision` têm coluna, round-trip no Room (C4-45) e export `PlanJson` (C4-50); `generatorVersion` tem coluna com default v6 e é preservada no re-save, e o domínio a carrega (C4-46).
@@ -542,7 +542,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-05 | Reavaliação com check-in/carga antes do DONE | C4-04 | M | S8 | ADR 0044/0049 | EASY→QUALITY antes do DONE; DONE intacto | `GetTodayPrescriptionTest` (+6); `DailyPrescriptionEngineTest` (+2); `inputsHash` cobre prontidão/carga; commit S8 |
 | [x] | C4-06 | Copy/rationale da oportunidade e rebaixamento | C4-03 | M | S11 | ADR 0044/FR-412 | Sem contradição; `R-PER-03` no plano; IDs catalogados | `QualityCopy` (4 em `WeeklyPlanGeneratorTest`); `ExplanationCatalogTest` estendido; commit S11 |
 | [x] | C4-07 | Golden `G-PER-03` + propriedades | C4-02/03 | M | S7 | ADR 0044 | Golden e invariantes | `fixtures/golden/per-opportunity`; `PlanGoldenTest` (1); `QualityPlanPropertiesTest` (4); commit S7 |
-| [ ] | C4-08 | Docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS | C4-02..07 | S | S11 | ADR 0044 | Docs atualizados | — |
+| [x] | C4-08 | Docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS | C4-02..07 | S | S11 | ADR 0044 | Docs atualizados | `SPORTS_SCIENCE` §8.8/§14 (`R-PER-03`, `R-PRESC-02` emendada); ADR 0044 status; DECISIONS r1.45; commit S11.6 |
 
 ### E2 — Longão
 
@@ -915,6 +915,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (listas estendidas falhavam antes; varredura por script confirmou os 4 ausentes). Varredura de todos os literais `"R-*"`/`"EV-*"` em `core/domain` + `core/data` + `app` (fora o catálogo): 40 regras e 19 evidências emitidas; faltavam `R-ACT-01`/`R-ACT-02` (`ActivityInsightsCalculator`), `R-CAL-01` (`CalibrationCalculator`) e `EV-ABBISS-2008` (pacing) — todos com título/fonte do `SPORTS_SCIENCE` §13/§14. `EV-FOSTER-2001` estava no catálogo mas fora da lista do teste; entrou na lista (cobertura, sem RED). Extras no catálogo sem emissão (`R-RACE-01`, `R-READY-01`, `EV-PLEWS-2013`, `EV-BUCHHEIT-2014`) mantidos: `R-READY-01`/`PLEWS`/`BUCHHEIT` são emitidos pela UI (`TodayExplanation.buildReadinessExplanation`); `R-RACE-01` documenta o ADR 0032. Novo teste comportamental amarra o catálogo aos emissores reais (insights com 2 laps + drift; calibração Tier A e Tier C) em vez de só repetir strings. `EV-TID-2021`/`EV-INJURY-2015`/`EV-HIIT-2016`/`EV-HIIT-2024` continuam fora do catálogo de propósito: propostas de ciência, sem emissão em código; entram em C4-21. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S11 / C4-08 (docs `R-PER-03`, SPORTS_SCIENCE, DECISIONS).
 
+### S11.6 — 2026-11-17 — Docs `R-PER-03` e `R-PRESC-02` emendada (C4-08)
+
+- **Status:** DONE
+- **Tasks:** C4-08 (docs apenas, sem código).
+- **Arquivos:** `docs/SPORTS_SCIENCE.md` (§8.8 oportunidade estrutural × dia + §14 `R-PER-03` e `R-PRESC-02` emendada), `docs/adr/0044-quality-opportunity-day-authority.md` (status implementado), `docs/DECISIONS.md` (r1.45 + linha do ADR 0044), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado (gates de C4-52 seguem verdes).
+- **Commit:** `docs(c4): record R-PER-03 and the amended R-PRESC-02 (C4-08)`.
+- **Decisões/notas:** §8.8 separava mal plano e dia ("Qualidade só em dia verde..." como se o plano decidisse); agora o plano agenda a oportunidade estrutural e o dia confirma via `QualityGate`, com a lista de gates e a nota de que ACWR não confiável não veta. `R-PER-03` entra no §14 com o texto canônico do PRD §8.1; a citação troca ADR 0043 por ADR 0044 (o ADR que define a regra; 0023 segue citado pela separação plano × prescrição). `R-PRESC-02` ganha a exceção da reavaliação com inputs novos antes do `DONE` (ADR 0044 §2.5). `R-PER-01/02` continuam ausentes do §14 (só existem no ADR 0043); ficam como observação para C4-21, sem escopo novo nesta task. S11 encerrada; S12 abre com C4-18.
+- **Próximo:** S12 / C4-18 (strides para todos + intro fartlek do iniciante como `EASY`), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1090,10 +1100,9 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-08, S11)
+## 14. Próxima ação (C4-18, S12)
 
-1. Abrir o ADR 0044 e a FR-412/C4-06; redigir os docs de `R-PER-03` (regra, evidências, força) e os trechos de `SPORTS_SCIENCE` ligados a ela — C4-52 garante que todo ID emitido existe; C4-08 registra o significado.
-2. Atualizar `docs/DECISIONS.md` se alguma decisão mudar; sem código.
-3. Atualizar §0/§6/§7/PROGRESS e commitar como `docs(c4)`.
+1. Abrir o ADR 0047 §2 e a FR-403; ler `SessionLibrary.easyTemplates` + testes de iniciante — C4-15 expõe a matriz; C4-18 adiciona strides para todos e o intro fartlek `EASY` do iniciante após 4 semanas consistentes, sem qualidade estruturada.
+2. Implementar C4-18 com TDD (domínio primeiro); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

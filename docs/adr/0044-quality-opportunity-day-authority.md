@@ -1,6 +1,6 @@
 # ADR 0044 — Oportunidade de qualidade e autoridade do dia
 
-**Status:** Aprovado em 2026-11-16 — implementação em andamento: C4-01, C4-02, C4-03, C4-04 e C4-07 concluídas; C4-05, C4-06 e C4-08 pendentes.
+**Status:** Aprovado em 2026-11-16 — implementado em 17/11/2026 (C4-01..C4-08, C4-29, C4-50..C4-52; golden `G-PER-03`); `R-PER-03` documentado no `SPORTS_SCIENCE` §8.8/§14.
 **Data:** 2026-11-16
 **Escopo:** `WeeklyPlanGenerator`, `DailyPrescriptionEngine`, `GetTodayPrescription`, `PlanReplanner`, `PlanUpgrade`, Hoje/Plano/Por quê.
 **Relacionados:** ADR 0010 (teto de disponibilidade), ADR 0023 (plano × prescrição),

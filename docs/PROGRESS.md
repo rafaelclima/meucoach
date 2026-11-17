@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S11.5 do Ciclo 4: catálogo de regras/evidências + teste, C4-52)
+**Atualizado:** 17/11/2026 (S11.6 do Ciclo 4: docs `R-PER-03` e `R-PRESC-02` emendada, C4-08)
+
+## Sessão 2026-11-17 — Ciclo 4/S11.6: docs `R-PER-03` e `R-PRESC-02` emendada (C4-08)
+
+**Objetivo:** fechar o ADR 0044 no papel — `R-PER-03` com texto canônico no `SPORTS_SCIENCE` e o §8.8 reconciliado com as duas camadas (plano agenda, dia confirma).
+
+### Concluído
+
+- **`SPORTS_SCIENCE`:** §8.8 ganha o bullet da oportunidade estrutural e reescreve o "Qualidade só em dia verde" como confirmação do dia via `QualityGate` (com a lista de gates e ACWR não confiável que não veta); §14 ganha `R-PER-03` (texto do PRD §8.1, DANIELS/SEILER, LIMITED) e a `R-PRESC-02` emendada (restauração com inputs novos antes do `DONE`).
+- **ADR 0044:** status passa a implementado (C4-01..C4-08, C4-29, C4-50..C4-52; `G-PER-03`).
+- **`DECISIONS.md`:** r1.45 + linha do ADR 0044 como implementado.
+
+### Testes
+
+- Docs apenas; `git diff --check` + `spotlessCheck` verdes; sem código alterado.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- A citação do §14 troca ADR 0043 por ADR 0044 (o ADR que define a regra; 0023 segue citado).
+- `R-PER-01/02` continuam ausentes do §14 (só no ADR 0043); observação para C4-21, sem escopo novo.
+- S11 encerrada (C4-06, C4-30, C4-31, C4-50, C4-51, C4-52, C4-08).
+
+### Próximo passo
+
+1. S12 / C4-18: strides para todos + intro fartlek do iniciante como `EASY`, TDD.
+2. Depois S12 / C4-19 (estrutura no briefing/UI) e C4-20 (`G-PER-05`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S11.5: catálogo de regras/evidências + teste (C4-52)
 
