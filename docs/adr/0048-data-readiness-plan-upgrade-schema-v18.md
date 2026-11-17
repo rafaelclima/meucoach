@@ -107,6 +107,7 @@ Migração aditiva, sem `fallbackToDestructiveMigration`:
 |---|---|---|---|---|
 | `weekly_plans` | `generatorVersion` | TEXT | `'weekly-plan-v6'` | versão do gerador |
 | `planned_sessions` | `structureJson` | TEXT | NULL | estrutura da sessão |
+| `planned_sessions` | `qualityKind` | TEXT | NULL | natureza do estímulo (C4-45; fora da tabela original: sem a coluna o kind seria descartado a cada leitura) |
 | `planned_sessions` | `planDecisionCode` | TEXT | NULL | motivo do plano |
 | `planned_sessions` | `planDecisionDetail` | TEXT | NULL | detalhe legível |
 | `daily_prescriptions` | `structureJson` | TEXT | NULL | estrutura prescrita |

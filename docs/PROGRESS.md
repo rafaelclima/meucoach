@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S8 do Ciclo 4: gate de check-in no recomendador sem plano, C4-29)
+**Atualizado:** 17/11/2026 (S9 do Ciclo 4: schema v18 e round-trip da decisão, C4-45)
+
+## Sessão 2026-11-17 — Ciclo 4/S9: schema v18 e round-trip da decisão (C4-45)
+
+**Objetivo:** dar ao banco as colunas da decisão de qualidade (ADR 0048 §2.3), migrar 17→18 sem perda e provar o round-trip entidade↔domínio antes do `PlanUpgrade` (C4-47).
+
+### Concluído
+
+- **Schema:** `VERSION = 18` + `MIGRATION_17_18` (9 `ALTER TABLE` aditivos, sem reescrita): `weekly_plans.generatorVersion` (NOT NULL DEFAULT `'weekly-plan-v6'`), `planned_sessions.(structureJson|qualityKind|planDecisionCode|planDecisionDetail)` e `daily_prescriptions.(structureJson|qualityBlockReason|decisionDetail|unlockHint)`, todos NULL. `qualityKind` não estava na tabela do ADR; a coluna foi adicionada e o ADR atualizado — sem ela o kind seria descartado a cada leitura.
+- **Round-trip:** `PlannedSession` ↔ entidade preserva estrutura (codec `WorkoutStructureJson`), kind e decisão; `DailyPrescription` ↔ entidade preserva motivo/detalhe/dica; `saveWeek` preserva `generatorVersion`. Leituras desconhecidas viram `null` (nunca parcial), honrando as invariantes do domínio. `updateSessions` virou read-modify-write com `@Update` (o `@Query` de 12 params estourava o `LongParameterList` do detekt); `updateSessionContent` removido.
+- **Testes:** migração 17→18 com seed v17 (plano + sessão `DONE` + prescrição `DOWNGRADE`), defaults e escrita/leitura das colunas; 2 round-trips no plano (incluindo `updateSessions` com estrutura) e 1 na prescrição; 14 testes legados de migração estendidos até 18 sem reduzir asserts. `18.json` gerado e commitado.
+
+### Testes
+
+- `:core:data:test` 190 verdes (+4); `:core:domain:test` 990; `:app:testDebugUnitTest` 907; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:data:koverVerify`, `:core:data:detekt`, `:core:domain:detekt`, `:app:detekt` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma UI; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- `DailyPrescription.structureJson` existe como coluna mas o domínio ainda não tem o campo: fica `null` até lá, em vez de inventar payload.
+- `PlanJson` (export/revisões) ainda não serializa os campos novos; isso é C4-50 (“serialização testada”).
+- `generatorVersion` no domínio (`WeeklyPlan.engineVersion`) é C4-46; o bump para v7 é C4-53.
+
+### Próximo passo
+
+1. S9 / C4-46: `generatorVersion` no plano (round-trip com default v6 + `PlanJson` metadata), TDD.
+2. Depois C4-44/C4-47 (gate de dados + `PlanUpgrade`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S8.2: gate de check-in no recomendador sem plano (C4-29)
 

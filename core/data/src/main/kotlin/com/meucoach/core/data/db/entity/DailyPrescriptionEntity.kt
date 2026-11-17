@@ -35,4 +35,15 @@ data class DailyPrescriptionEntity(
     val inputsHash: String,
     val supersedesId: String?,
     val createdAt: Long,
+    /**
+     * Executable structure prescribed for the day as versioned JSON
+     * (ADR 0048 §2.3). Null until the domain carries a day-level structure.
+     */
+    val structureJson: String? = null,
+    /** Why the day did not confirm a planned quality; null when kept or absent. */
+    val qualityBlockReason: String? = null,
+    /** The value that failed, e.g. "ACWR 1,62 > 1,50". */
+    val decisionDetail: String? = null,
+    /** What unlocks the strong session. */
+    val unlockHint: String? = null,
 )

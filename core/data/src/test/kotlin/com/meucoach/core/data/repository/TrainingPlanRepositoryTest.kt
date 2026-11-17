@@ -4,10 +4,16 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.domain.prescription.BlockKind
+import com.meucoach.core.domain.prescription.PlanDecision
+import com.meucoach.core.domain.prescription.PlanDecisionReason
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.QualityKind
 import com.meucoach.core.domain.prescription.SessionClosureReason
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutBlock
+import com.meucoach.core.domain.prescription.WorkoutStructure
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
 import com.meucoach.core.domain.replan.PlanningFingerprints
@@ -109,6 +115,80 @@ class TrainingPlanRepositoryTest {
         assertThat(skipped?.status).isEqualTo(SessionStatus.CLOSED)
         assertThat(skipped?.closureReason).isEqualTo(SessionClosureReason.USER_SKIPPED)
         assertThat(skipped?.skipReason).isEqualTo("dor no joelho")
+    }
+
+    @Test
+    fun `round-trips structure, quality kind and plan decision`(): Unit = runBlocking {
+        val structure = WorkoutStructure(
+            warmupMin = 5,
+            blocks = listOf(
+                WorkoutBlock(
+                    kind = BlockKind.WORK,
+                    repetitions = 4,
+                    workSec = 120,
+                    recoverySec = 60,
+                    target = "Forte",
+                ),
+            ),
+            cooldownMin = 5,
+            totalMin = 25,
+        )
+        val quality = PlannedSession(
+            date = monday,
+            type = WorkoutType.QUALITY,
+            title = "Intervalado",
+            durationMin = 25,
+            rationale = "Qualidade.",
+            ruleIds = listOf("R-PER-02"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            qualityKind = QualityKind.INTERVALS,
+            planDecision = PlanDecision(PlanDecisionReason.QUALITY_OPPORTUNITY, "terça"),
+            structure = structure,
+        )
+        repository.saveWeek(plan().copy(sessions = listOf(quality), qualityCount = 1))
+
+        val stored = repository.getWeek(monday)
+        assertThat(stored?.sessions).containsExactly(quality)
+        assertThat(stored?.qualityCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `updates session content carrying structure without touching status`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+        val structure = WorkoutStructure(
+            warmupMin = 5,
+            blocks = listOf(
+                WorkoutBlock(kind = BlockKind.WORK, repetitions = 4, workSec = 120, recoverySec = 60),
+            ),
+            cooldownMin = 5,
+            totalMin = 25,
+        )
+        val updated = repository.getWeek(monday)!!.sessions.map { session ->
+            if (session.date == monday) {
+                session.copy(
+                    type = WorkoutType.QUALITY,
+                    title = "Intervalado",
+                    durationMin = 25,
+                    rationale = "Qualidade.",
+                    ruleIds = listOf("R-PER-02"),
+                    qualityKind = QualityKind.INTERVALS,
+                    planDecision = PlanDecision(PlanDecisionReason.QUALITY_OPPORTUNITY, "terça"),
+                    structure = structure,
+                )
+            } else {
+                session
+            }
+        }
+
+        assertThat(repository.updateSessions(monday, updated)).isTrue()
+
+        val stored = repository.getWeek(monday)!!
+        val first = stored.sessions.first { it.date == monday }
+        assertThat(first.type).isEqualTo(WorkoutType.QUALITY)
+        assertThat(first.structure).isEqualTo(structure)
+        assertThat(first.qualityKind).isEqualTo(QualityKind.INTERVALS)
+        assertThat(first.planDecision).isEqualTo(PlanDecision(PlanDecisionReason.QUALITY_OPPORTUNITY, "terça"))
+        assertThat(first.status).isEqualTo(SessionStatus.PLANNED)
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.meucoach.core.domain.prescription.HeartRateTarget
 import com.meucoach.core.domain.prescription.PaceTarget
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.QualityBlockReason
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Pace
@@ -100,6 +101,24 @@ class DailyPrescriptionRepositoryTest {
         assertThat(loaded?.evidenceIds).containsExactly("EV-SEILER-2010")
         assertThat(loaded?.engineVersion).isEqualTo("daily-prescription-v1")
         assertThat(loaded?.inputsHash).isEqualTo("hash-1")
+    }
+
+    @Test
+    fun `round-trips the quality block reason, detail and hint`(): Unit = runBlocking {
+        val blocked = prescription().copy(
+            plannedType = WorkoutType.QUALITY,
+            prescribedType = WorkoutType.EASY,
+            qualityBlockReason = QualityBlockReason.SUBJECTIVE_MISSING,
+            decisionDetail = "check-in subjetivo de hoje ainda não foi respondido",
+            unlockHint = "Faça o check-in de hoje para liberar o treino forte.",
+        )
+        val stored = repository.append(blocked)
+
+        val loaded = repository.getLatest(today)
+        assertThat(loaded).isEqualTo(stored)
+        assertThat(loaded?.qualityBlockReason).isEqualTo(QualityBlockReason.SUBJECTIVE_MISSING)
+        assertThat(loaded?.decisionDetail).contains("check-in")
+        assertThat(loaded?.unlockHint).contains("check-in")
     }
 
     @Test

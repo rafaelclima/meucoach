@@ -46,6 +46,11 @@ data class WeeklyPlanEntity(
     val lastEvaluatedFingerprint: String? = null,
     /** Hash of the timezone that defined today/week start at the last evaluation. */
     val temporalContextHash: String? = null,
+    /**
+     * Engine version that generated this plan (ADR 0048 §2.3). Rows migrated
+     * from v17 predate the column and read the v6 default.
+     */
+    @ColumnInfo(defaultValue = "'weekly-plan-v6'") val generatorVersion: String = "weekly-plan-v6",
 )
 
 @Entity(
@@ -84,6 +89,18 @@ data class PlannedSessionEntity(
     val activityId: String? = null,
     val closureReason: SessionClosureReason? = null,
     val closedAt: Long? = null,
+    /**
+     * Executable structure as versioned JSON (ADR 0047 §2.1, ADR 0048 §2.3).
+     * Null for legacy rows and sessions without a prescription; malformed or
+     * unknown payloads decode as null, never as a partial structure.
+     */
+    val structureJson: String? = null,
+    /** Nature of the strong stimulus; null for legacy rows and non-quality sessions. */
+    val qualityKind: String? = null,
+    /** Why the plan created or withheld the opportunity; null for legacy rows. */
+    val planDecisionCode: String? = null,
+    /** Human-readable cause of the plan decision; null for legacy rows. */
+    val planDecisionDetail: String? = null,
 )
 
 fun plannedSessionId(weekStart: LocalDate, date: LocalDate): String = "$weekStart-$date"

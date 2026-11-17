@@ -10,8 +10,12 @@ import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.data.prescription.PlanJson
 import com.meucoach.core.data.prescription.PlanningSnapshotJson
 import com.meucoach.core.data.prescription.PrescriptionJson
+import com.meucoach.core.data.prescription.WorkoutStructureJson
 import com.meucoach.core.data.profile.toModel
+import com.meucoach.core.domain.prescription.PlanDecision
+import com.meucoach.core.domain.prescription.PlanDecisionReason
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.QualityKind
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
@@ -111,17 +115,24 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
     /** Updates only session content, preserving status, skip reason and completedAt. */
     suspend fun updateSessions(weekStart: LocalDate, sessions: List<PlannedSession>): Boolean =
         database.withTransaction {
+            val rows = dao.getSessions(weekStart.toString()).associateBy { it.id }
             sessions
                 .map { session ->
-                    dao.updateSessionContent(
-                        id = plannedSessionId(weekStart, session.date),
-                        type = session.type,
-                        title = session.title,
-                        durationMin = session.durationMin,
-                        rationale = session.rationale,
-                        ruleIdsJson = session.ruleIds.toJson(),
-                        evidenceIdsJson = session.evidenceIds.toJson(),
-                        targetsJson = PrescriptionJson.targetsToJson(session.targets),
+                    val row = rows[plannedSessionId(weekStart, session.date)] ?: return@withTransaction false
+                    dao.updateSession(
+                        row.copy(
+                            type = session.type,
+                            title = session.title,
+                            durationMin = session.durationMin,
+                            rationale = session.rationale,
+                            ruleIdsJson = session.ruleIds.toJson(),
+                            evidenceIdsJson = session.evidenceIds.toJson(),
+                            targetsJson = PrescriptionJson.targetsToJson(session.targets),
+                            structureJson = session.structure?.let(WorkoutStructureJson::toJson),
+                            qualityKind = session.qualityKind?.name,
+                            planDecisionCode = session.planDecision?.reason?.name,
+                            planDecisionDetail = session.planDecision?.detail,
+                        ),
                     )
                 }.all { it > 0 }
         }
@@ -168,6 +179,9 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                 lastEvaluatedFingerprintVersion = existing?.lastEvaluatedFingerprintVersion,
                 lastEvaluatedFingerprint = existing?.lastEvaluatedFingerprint,
                 temporalContextHash = existing?.temporalContextHash,
+                // The domain does not carry the engine version yet (C4-46);
+                // keep the stored one so a re-save never resets it to the default.
+                generatorVersion = existing?.generatorVersion ?: WeeklyPlanGenerator.ENGINE_VERSION,
             ),
         )
         dao.deleteSessions(weekStart)
@@ -428,6 +442,12 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         activityId = activityId,
         closureReason = closureReason,
         closedAt = closedAt?.let(Instant::ofEpochMilli),
+        qualityKind = qualityKind?.let { runCatching { QualityKind.valueOf(it) }.getOrNull() },
+        planDecision = planDecisionCode?.let { code ->
+            runCatching { PlanDecisionReason.valueOf(code) }.getOrNull()
+                ?.let { PlanDecision(it, planDecisionDetail?.takeIf(String::isNotBlank)) }
+        },
+        structure = WorkoutStructureJson.fromJson(structureJson),
     )
 
     private fun PlannedSession.toEntity(weekStart: LocalDate) = PlannedSessionEntity(
@@ -449,6 +469,10 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         activityId = activityId,
         closureReason = closureReason,
         closedAt = closedAt?.toEpochMilli(),
+        structureJson = structure?.let(WorkoutStructureJson::toJson),
+        qualityKind = qualityKind?.name,
+        planDecisionCode = planDecision?.reason?.name,
+        planDecisionDetail = planDecision?.detail,
     )
 
     private fun PlannedSession.sameProtectedContentAs(row: PlannedSessionEntity): Boolean =

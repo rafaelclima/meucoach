@@ -82,7 +82,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun raceEventDao(): RaceEventDao
 
     companion object {
-        const val VERSION = 17
+        const val VERSION = 18
         const val NAME = "meucoach.db"
 
         /**
@@ -545,6 +545,34 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 18 persists the quality decision trail (ADR 0048 §2.3).
+         *
+         * All columns are additive and nullable except `generatorVersion`,
+         * which defaults to the last v6 engine: legacy plans read as
+         * generator-made, never as unknown. No row is rewritten.
+         *
+         * `qualityKind` is not in the ADR table but the round-trip needs it:
+         * without the column the kind would be silently dropped on every
+         * read. It is nullable and additive like the other decision columns.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `weekly_plans` ADD COLUMN `generatorVersion` " +
+                        "TEXT NOT NULL DEFAULT 'weekly-plan-v6'",
+                )
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `structureJson` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `qualityKind` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `planDecisionCode` TEXT")
+                db.execSQL("ALTER TABLE `planned_sessions` ADD COLUMN `planDecisionDetail` TEXT")
+                db.execSQL("ALTER TABLE `daily_prescriptions` ADD COLUMN `structureJson` TEXT")
+                db.execSQL("ALTER TABLE `daily_prescriptions` ADD COLUMN `qualityBlockReason` TEXT")
+                db.execSQL("ALTER TABLE `daily_prescriptions` ADD COLUMN `decisionDetail` TEXT")
+                db.execSQL("ALTER TABLE `daily_prescriptions` ADD COLUMN `unlockHint` TEXT")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -564,6 +592,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_14_15,
                 MIGRATION_15_16,
                 MIGRATION_16_17,
+                MIGRATION_17_18,
             )
             .build()
     }

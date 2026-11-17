@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S8 (C4-29)
-> **Último commit:** C4-29 — `feat(domain): block plan-less easy day without check-in (C4-29)`
-> **Fase:** 2 — Fiação — **em andamento (S8; C4-04/C4-05/C4-29 DONE)**; próxima C4-45 (S9)
-> **Sessão atual:** **S8 — C4-29 DONE**
-> **Task atual:** C4-29 (DONE)
-> **Próxima task:** C4-45 (S9)
+> **Última atualização:** 17/11/2026 — S9 (C4-45)
+> **Último commit:** C4-45 — `feat(data): add schema v18 with quality decision columns (C4-45)`
+> **Fase:** 2 — Fiação — **em andamento (S9; C4-45 DONE)**; próxima C4-46 (S9)
+> **Sessão atual:** **S9 — C4-45 DONE**
+> **Task atual:** C4-45 (DONE)
+> **Próxima task:** C4-46 (S9)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 990 verdes; `:core:data:test` 186; `:app:testDebugUnitTest` 907; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
-> **Próxima ação:** abrir C4-45 (schema v18 + migração 17→18), TDD sobre `MeuCoachDatabase`/migração.
+> **Gates da última sessão:** `:core:domain:test` 990 verdes; `:core:data:test` 190; `:app:testDebugUnitTest` 907; `:core:model` 40; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
+> **Próxima ação:** abrir C4-46 (`generatorVersion` no plano: `WeeklyPlan.engineVersion`, round-trip com default v6, `PlanJson` metadata), TDD sobre `TrainingPlanRepository`/`PlanJson`.
 
 ### 0.1 O que já está pronto
 
@@ -155,7 +155,7 @@
 
 ### 0.2 O que **não** está pronto
 
-- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; a fiação vem com o schema v18/`PlanUpgrade` (C4-45..C4-47). Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` ainda não são persistidos (C4-45/C4-50), então o round-trip do banco os devolve `null`; a reavaliação é provada pelo tipo prescrito, rationale e versões.
+- `QualityGate` já está fiado no `DailyPrescriptionEngine` (C4-04), a reavaliação antes do `DONE` já restaura a qualidade planejada com inputs novos (C4-05) e o recomendador sem plano já exige check-in via `SUBJECTIVE`/`R-READY-06` (C4-29). `phase`/`raceWeek` existem no input do diário, porém a produção ainda não os passa porque o plano não persiste a fase; a fiação vem com o `PlanUpgrade` (C4-47). Os campos `qualityBlockReason`/`decisionDetail`/`unlockHint` já têm round-trip no Room (C4-45); a reavaliação agora pode ser provada também pelos campos persistidos. O export `PlanJson` desses campos fica para C4-50.
 - `VolumeProgression`/`MesoCycle`/`LevelGraduation` já usam a referência real e o longão real; o golden `G-VOL-02`, a copy do treino extra e os docs completos `R-PLAN-01 v2`/`R-LVL-03` ficam para C4-41/C4-42.
 - O reparo `LEGACY` está no prompt de import e no caso de uso; a tela Hoje ainda só oferece “Corrigir registro” para `MANUAL`. O review/copy do treino extra fica em C4-41/C4-43.
 - `qualityEligibleByReadiness` já existe; o diário o aplica via gate (verde + subjetivo + sem sono curto + sem doença) e o recomendador sem plano o aplica via `SUBJECTIVE` ausente → `R-READY-06` (C4-29).
@@ -163,8 +163,8 @@
 - Copy/catálogo de `R-PER-03`/`R-READY-06` e os trechos de `SPORTS_SCIENCE` ligados a essas regras ficam para C4-06/C4-08/C4-33/C4-52.
 - O check-in UI (C4-30), a copy/UI da reavaliação tardia (C4-31), o golden `G-READY-03`/copy (C4-32) e os docs de prontidão (C4-33) continuam pendentes.
 - O golden `G-DATA-02` e os docs de sono (C4-37) continuam pendentes. O diagnóstico de sono é exposto no sync (`suspectSleepNights`/`fragmentedSleepNights`) e na mensagem do Health Connect; não há `ReadinessFlag.SLEEP_DATA_SUSPECT` porque a noite suspeita é persistida como `null` e o ADR 0049 não prevê migração.
-- A persistência de `qualityKind`/`planDecision`/`structure` fica para C4-45/C4-46 (schema v18); por enquanto os campos são preenchidos no plano em memória, mas `null` no round-trip. O codec JSON de `structure` já existe (C4-14), mas ainda não está ligado ao `PlanJson`/banco.
-- O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano. A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); o que falta é a persistência da fase/raceWeek, dos motivos e do `qualityKind`/`structure` (C4-45..C4-50).
+- `qualityKind`/`structure`/`planDecision` já têm coluna e round-trip no Room (C4-45); `generatorVersion` tem coluna com default v6 e é preservada no re-save, mas o domínio ainda não a carrega — isso é C4-46. O export `PlanJson` desses campos fica para C4-50.
+- O catálogo, a rotação e a oportunidade estrutural já são consumidos pelo gerador (C4-17/C4-02); `qualityKind`/`structure`/`planDecision` saem preenchidos no plano e sobrevivem ao round-trip do Room (C4-45). A oportunidade passa pelo `QualityGate` diário (C4-04) e pode ser restaurada com inputs novos antes do `DONE` (C4-05); o que falta é o export `PlanJson` (C4-50), `generatorVersion` no domínio (C4-46) e a passagem de fase/raceWeek pela produção (C4-47).
 - Strides para todos os níveis e intro fartlek do iniciante (C4-18), estrutura no briefing/UI (C4-19), golden `G-PER-05` (C4-20) e docs `R-PER-04`/`SPORTS_SCIENCE` (C4-21) ficam para S12.
 - O bump `weekly-plan-v6` → `weekly-plan-v7` e `daily-v6` fica para C4-53; nenhuma migração v18 foi escrita/testada; nenhuma UI de check-in foi alterada.
 - `G-PER-05`, `G-LOAD-02`, `G-READY-03`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01` ainda não existem; `G-PER-03` está em `fixtures/golden/per-opportunity`.
@@ -614,7 +614,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | Status | ID | Task | Depende | Tam. | Sessão | Contexto | Aceite | Evidência |
 |---|---|---|---|---|---|---|---|---|
 | [ ] | C4-44 | `HealthSyncState` + gate | — | M | S10 | ADR 0048 | Sem plano antes do sync | — |
-| [ ] | C4-45 | Schema v18 + migração | C4-14/38 | L | S9 | ADR 0048 | 17→18 testada; sem perda | — |
+| [x] | C4-45 | Schema v18 + migração | C4-14/38 | L | S9 | ADR 0048 | 17→18 testada; sem perda | `MeuCoachDatabaseMigrationTest` (17→18 + round-trip das colunas); `TrainingPlanRepositoryTest` (+2); `DailyPrescriptionRepositoryTest` (+1); `18.json`; commit S9 |
 | [ ] | C4-46 | `generatorVersion` no plano | C4-45 | M | S9 | ADR 0048 | Round-trip; default v6 | — |
 | [ ] | C4-47 | `PlanUpgrade` idempotente | C4-44/46 | L | S10 | ADR 0048 | `G-UPGRADE-01`; histórico | — |
 | [ ] | C4-48 | Triggers `DATA_READY`/`ENGINE_UPGRADE` | C4-47 | M | S10 | ADR 0048 | Testes; sem trigger de readiness | — |
@@ -797,6 +797,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** o recomendador nunca inventa qualidade, então o gate aqui é o tom do fácil: verde objetivo sem `SUBJECTIVE` virava “Fácil e conversável” sem pedir check-in. Agora `SUBJECTIVE` ausente (mesma leitura do `QualityGate.subjectiveBlock`) mantém “Fácil, sem pressa” com `R-READY-06`/`EV-SAW-2016` e pede o check-in; a precedência do rationale segue o gate (check-in antes de sono curto). O `DailyPrescriptionEngine.noPlan` herda o comportamento via delegação; `DONE`/`CLOSED` com plano continuam história e nunca passam pelo recomendador (cobertura pré-existente de C4-04). Nenhum schema/migração/UI alterados; `phase`/`raceWeek` da produção ficam para C4-45..C4-47.
 - **Próximo:** S9 / C4-45 (schema v18 + migração 17→18), TDD.
 
+### S9 — 2026-11-17 — Schema v18 e round-trip da decisão (C4-45)
+
+- **Status:** DONE
+- **Tasks:** C4-45.
+- **Arquivos:** `core/data/.../db/MeuCoachDatabase.kt` (VERSION 18, `MIGRATION_17_18`), `db/entity/WeeklyPlanEntity.kt`, `PlannedSessionEntity.kt` (`structureJson`, `qualityKind`, `planDecisionCode/Detail`), `DailyPrescriptionEntity.kt` (`structureJson`, `qualityBlockReason`, `decisionDetail`, `unlockHint`), `db/dao/TrainingPlanDao.kt` (`updateSession` via `@Update`; `updateSessionContent` removido), `repository/TrainingPlanRepository.kt`, `repository/DailyPrescriptionRepository.kt`, `MeuCoachDatabaseMigrationTest.kt`, `TrainingPlanRepositoryTest.kt`, `DailyPrescriptionRepositoryTest.kt`, `schemas/.../18.json`, `docs/adr/0048-data-readiness-plan-upgrade-schema-v18.md`, `docs/CICLO_4_TREINO_REAL.md`, `docs/PROGRESS.md`.
+- **Testes/gates:** `:core:data:test` 190 verdes (+4: migração 17→18, 2 round-trip no plano, 1 na prescrição); `:core:domain:test` 990; `:app:testDebugUnitTest` 907; `:core:model` 40; `:app:assembleDebug`; `spotlessCheck`; `:core:data:koverVerify`; `:core:data:detekt`; `:core:domain:detekt`; `:app:detekt`; `:app:lintDebug`.
+- **Commit:** `feat(data): add schema v18 with quality decision columns (C4-45)`.
+- **Decisões/notas:** TDD RED→GREEN: os 3 testes novos de round-trip falharam antes (colunas inexistentes/valores descartados); os 14 testes legados de migração quebraram com o bump de versão (Room exige o caminho até 18) e foram estendidos com `MIGRATION_17_18` + assert 18, sem reduzir asserts — a justificativa é o bump, não mudança de comportamento. `qualityKind` não estava na tabela do ADR 0048 §2.3; a coluna foi adicionada (NULL, aditiva) e a tabela do ADR atualizada, senão o kind seria descartado a cada leitura. Leituras desconhecidas viram `null` (nunca parcial): `valueOf` com `runCatching`, `detail`/`hint` caem junto com motivo desconhecido (invariante do domínio), `WorkoutStructureJson.fromJson` já fazia isso. `updateSessions` virou read-modify-write com `@Update` porque estender o `@Query` estouraria o `LongParameterList` do detekt (12 params); `updateSessionContent` foi removido (sem uso). `DailyPrescription.structureJson` existe como coluna mas o domínio ainda não tem o campo — fica `null` até lá. `generatorVersion` default v6 + preservação no re-save; o domínio a carrega em C4-46; export `PlanJson` em C4-50. Nenhum dado real; nenhuma UI; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S9 / C4-46 (`generatorVersion` no domínio + round-trip + `PlanJson` metadata), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -883,7 +893,7 @@ Se a task toca `:app`/`:data`:
 |---|---:|---|
 | `:app` | 907 | Atualizar conforme novos testes |
 | `:core:domain` | 990 | Atualizar conforme novos testes |
-| `:core:data` | 186 | Atualizar |
+| `:core:data` | 190 | Atualizar |
 | `:core:model` | 40 | Atualizar |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
@@ -972,10 +982,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-45, S9)
+## 14. Próxima ação (C4-46, S9)
 
-1. Abrir `docs/adr/0048-*.md` (schema v18) e o FR correspondente do PRD; ler `MeuCoachDatabase`, `PlanJson`/`PrescriptionJson` e os testes de migração existentes.
-2. Escrever os testes que falham de C4-45: migração 17→18 preserva planos/prescrições (colunas `structureJson`, `planDecision*`, `qualityBlockReason`, `decisionDetail`, `unlockHint`), sem perda e sem `fallbackToDestructiveMigration`.
-3. Implementar C4-45 com TDD; rodar `:core:data:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
+1. Abrir o ADR 0048 §2.3/§3.1 e o FR-409/FR-413 do PRD; ler `WeeklyPlan` (domínio), `TrainingPlanRepository.toModel` e `PlanJson.planMetadataToJson`.
+2. Escrever os testes que falham de C4-46: `WeeklyPlan` com `engineVersion` (default v6 para semanas legadas), round-trip entidade↔domínio preservando a versão, e `PlanJson` com `generatorVersion` (ausente = v6).
+3. Implementar C4-46 com TDD, sem mudar a versão do gerador (bump é C4-53); rodar `:core:data:test` + `:app:testDebugUnitTest` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

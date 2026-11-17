@@ -6,6 +6,7 @@ import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
 import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.data.prescription.PrescriptionJson
 import com.meucoach.core.domain.prescription.DailyPrescription
+import com.meucoach.core.domain.prescription.QualityBlockReason
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
@@ -72,26 +73,40 @@ class DailyPrescriptionRepository(
             inputsHash = inputsHash,
             supersedesId = supersedesId,
             createdAt = createdAt,
+            // The domain does not carry a day-level structure yet; the column
+            // stays null until then instead of inventing a payload.
+            structureJson = null,
+            qualityBlockReason = qualityBlockReason?.name,
+            decisionDetail = decisionDetail,
+            unlockHint = unlockHint,
         )
 
-    private fun DailyPrescriptionEntity.toModel() = DailyPrescription(
-        date = LocalDate.parse(date),
-        plannedSessionId = plannedSessionId,
-        plannedType = plannedType,
-        plannedTitle = plannedTitle,
-        plannedDurationMin = plannedDurationMin,
-        prescribedType = prescribedType,
-        title = title,
-        prescribedDurationMin = prescribedDurationMin,
-        targets = PrescriptionJson.targetsFromJson(targetsJson),
-        adjustment = adjustment,
-        rationale = rationale,
-        ruleIds = PrescriptionJson.idsFromJson(ruleIdsJson),
-        evidenceIds = PrescriptionJson.idsFromJson(evidenceIdsJson),
-        confidence = confidence,
-        engineVersion = engineVersion,
-        inputsHash = inputsHash,
-        id = id,
-        supersedesId = supersedesId,
-    )
+    private fun DailyPrescriptionEntity.toModel(): DailyPrescription {
+        // An unknown reason (a newer writer) drops the whole block instead of
+        // violating the domain invariant that reason, detail and hint agree.
+        val reason = qualityBlockReason?.let { runCatching { QualityBlockReason.valueOf(it) }.getOrNull() }
+        return DailyPrescription(
+            date = LocalDate.parse(date),
+            plannedSessionId = plannedSessionId,
+            plannedType = plannedType,
+            plannedTitle = plannedTitle,
+            plannedDurationMin = plannedDurationMin,
+            prescribedType = prescribedType,
+            title = title,
+            prescribedDurationMin = prescribedDurationMin,
+            targets = PrescriptionJson.targetsFromJson(targetsJson),
+            adjustment = adjustment,
+            rationale = rationale,
+            ruleIds = PrescriptionJson.idsFromJson(ruleIdsJson),
+            evidenceIds = PrescriptionJson.idsFromJson(evidenceIdsJson),
+            confidence = confidence,
+            engineVersion = engineVersion,
+            inputsHash = inputsHash,
+            qualityBlockReason = reason,
+            decisionDetail = decisionDetail.takeIf { reason != null },
+            unlockHint = unlockHint.takeIf { reason != null },
+            id = id,
+            supersedesId = supersedesId,
+        )
+    }
 }
