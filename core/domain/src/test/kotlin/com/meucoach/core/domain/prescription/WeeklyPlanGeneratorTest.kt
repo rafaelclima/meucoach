@@ -696,6 +696,158 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `released progression names the single safe slot without a volume claim`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.TUESDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.THURSDAY to 40,
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = buildRace(),
+            ),
+        )
+
+        // C4-59/FR-412: the progression gate is open, but Monday→Thursday has no
+        // second day away from the Thursday long run. The copy must name the
+        // agenda limit instead of implying a second quality.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains(
+            "Progressão liberada",
+            "a agenda não tem outro dia seguro separado do longão",
+            "a semana tem 1 oportunidade",
+        )
+        assertThat(plan.rationale).doesNotContain("O volume segue limitado pela disponibilidade")
+    }
+
+    @Test
+    fun `released progression names a one-stimulus base catalog`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = RacePlan("race-1", RaceDistance.FIVE_K, monday.plusDays(56)),
+            ),
+        )
+
+        // C4-59/FR-412: the second half of BASE has only the light fartlek.
+        // The open progression gate must say that, not imply a second quality.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains(
+            "Progressão liberada",
+            "o catálogo desta fase tem 1 estímulo",
+            "a semana tem 1 oportunidade",
+        )
+    }
+
+    @Test
+    fun `deload progression copy does not blame availability for the volume`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val history = listOf(
+            volumeWeek(monday.minusWeeks(3), List(5) { 40 }),
+            volumeWeek(monday.minusWeeks(2), List(5) { 40 }),
+            volumeWeek(monday.minusWeeks(1), List(5) { 40 }),
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = history.last(),
+                recentWeeks = history,
+                race = buildRace(),
+            ),
+        )
+
+        // C4-59/FR-412: a deload week has two opportunities but the volume was
+        // limited by the deload, not by availability. The old generic sentence
+        // contradicted the line right above it.
+        assertThat(plan.qualityCount).isEqualTo(2)
+        assertThat(plan.rationale).contains(
+            "Semana de descarga",
+            "sem aumento nesta semana (descarga)",
+            "Progressão liberada",
+        )
+        assertThat(plan.rationale).doesNotContain("O volume segue limitado pela disponibilidade")
+    }
+
+    @Test
+    fun `does not claim a high monotony when it cannot be calculated`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val previous = previousWeek(completed = 4, total = 4)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0, monotony = null),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = buildRace(),
+            ),
+        )
+
+        // C4-59/FR-412: null monotony blocks conservatively, but it is not
+        // evidence that the week crossed the 2.0 threshold.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("monotonia não é calculável")
+        assertThat(plan.rationale).doesNotContain("monotonia ≥2,0")
+    }
+
+    @Test
+    fun `distinguishes strong completion from a completed week with manual evidence`() {
+        val availability = mapOf(
+            DayOfWeek.MONDAY to 40,
+            DayOfWeek.WEDNESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 90,
+        )
+        val previous = previousWeek(completed = 4, total = 4, evidence = CompletionEvidence.MANUAL)
+        val plan = generator.generate(
+            input(
+                profile = profile(Experience.INTERMEDIATE, availability),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(1.0),
+                previousWeek = previous,
+                recentWeeks = listOf(previous),
+                race = buildRace(),
+            ),
+        )
+
+        // C4-59/FR-412: the week was completed 4/4, but MANUAL is not strong
+        // evidence. The copy must not say the week itself had 0% completion.
+        assertThat(plan.qualityCount).isEqualTo(1)
+        assertThat(plan.rationale).contains("0% de conclusão com evidência")
+        assertThat(plan.rationale).doesNotContain("0% de conclusão (abaixo")
+    }
+
+    @Test
     fun `omits the progression line without a structural opportunity`() {
         val plan = generator.generate(
             input(
@@ -1461,7 +1613,11 @@ class WeeklyPlanGeneratorTest {
         )
     }
 
-    private fun previousWeek(completed: Int, total: Int): WeeklyPlan {
+    private fun previousWeek(
+        completed: Int,
+        total: Int,
+        evidence: CompletionEvidence = CompletionEvidence.ACTIVITY,
+    ): WeeklyPlan {
         val previousMonday = monday.minusWeeks(1)
         val sessions = (0 until total).map { index ->
             val done = index < completed
@@ -1474,8 +1630,8 @@ class WeeklyPlanGeneratorTest {
                 ruleIds = listOf("R-ZONE-01"),
                 evidenceIds = listOf("EV-SEILER-2010"),
                 status = if (done) SessionStatus.DONE else SessionStatus.PLANNED,
-                completionEvidence = if (done) CompletionEvidence.ACTIVITY else null,
-                activityId = if (done) "previous-$index" else null,
+                completionEvidence = if (done) evidence else null,
+                activityId = if (done && evidence == CompletionEvidence.ACTIVITY) "previous-$index" else null,
             )
         }
         return WeeklyPlan(

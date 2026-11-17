@@ -828,12 +828,9 @@ class WeeklyPlanGenerator {
                 )
                 append(" ")
             }
-            if (structuralQualityEligible) {
-                if (secondQualityAllowed) {
-                    append("Progressão liberada: você concluiu pelo menos 80% da semana anterior. ")
-                    append("O volume segue limitado pela disponibilidade.")
-                } else if (qualityCount > 0) {
-                    append(
+            if (structuralQualityEligible && qualityCount > 0) {
+                when {
+                    !secondQualityAllowed -> append(
                         progressionBlockedRationale(
                             days = days.size,
                             hasPreviousWeek = input.previousWeek != null,
@@ -841,6 +838,22 @@ class WeeklyPlanGenerator {
                             taperLimitsQuality = taperLimitsQuality,
                             load = input.load,
                         ),
+                    )
+
+                    qualityCount >= 2 ->
+                        append("Progressão liberada: você concluiu pelo menos 80% da semana anterior. ")
+
+                    // C4-59/FR-412: the gate is open, but the plan may still
+                    // hold one opportunity. Name the real limit instead of
+                    // implying a second quality that does not exist.
+                    qualitySelection.size < 2 -> append(
+                        "Progressão liberada, mas o catálogo desta fase tem 1 estímulo; " +
+                            "a semana tem 1 oportunidade. ",
+                    )
+
+                    else -> append(
+                        "Progressão liberada, mas a agenda não tem outro dia seguro separado do longão; " +
+                            "a semana tem 1 oportunidade. ",
                     )
                 }
             }
@@ -946,7 +959,8 @@ class WeeklyPlanGenerator {
 
         template.role == SessionRole.QUALITY_SECOND -> PlanDecision(
             reason = PlanDecisionReason.PROGRESSION_COMPLETED,
-            detail = "Segunda oportunidade: semana anterior com pelo menos 80% e carga confiável em 0,8–1,3.",
+            detail = "Segunda oportunidade: semana anterior com pelo menos 80% de conclusão com " +
+                "evidência e carga confiável em 0,8–1,3.",
         )
 
         else -> PlanDecision(
@@ -978,12 +992,16 @@ class WeeklyPlanGenerator {
         }
         if (completionRatio < PROGRESSION_COMPLETION) {
             val percent = (completionRatio * 100).roundToInt()
-            return "Sem progressão: a semana anterior ficou em $percent% de conclusão " +
-                "(abaixo de 80%); a semana tem 1 oportunidade. "
+            return "Sem progressão: a semana anterior ficou em $percent% de conclusão com " +
+                "evidência (abaixo de 80%); a semana tem 1 oportunidade. "
         }
         if (taperLimitsQuality) {
             return "Sem progressão: semana de prova/taper tem 1 estímulo; a semana tem 1 oportunidade. "
         }
+        return progressionBlockedByLoad(load)
+    }
+
+    private fun progressionBlockedByLoad(load: LoadSnapshot?): String {
         val loadState = load?.dataState ?: LoadDataState.INSUFFICIENT
         val loadTrusted = load?.objectiveDataState == LoadDataState.KNOWN
         val monotonyOk = load?.monotonyOk ?: false
@@ -1008,9 +1026,16 @@ class WeeklyPlanGenerator {
                 "Sem progressão: carga recente vem do esforço percebido; " +
                     "a qualidade continua planejada, o dia decide. "
 
-            !monotonyOk ->
-                "Sem progressão: a semana variou pouco (monotonia ≥2,0); " +
-                    "a qualidade continua planejada, o dia decide. "
+            !monotonyOk -> {
+                val monotony = load.monotony
+                if (monotony == null) {
+                    "Sem progressão: a monotonia não é calculável nesta semana; " +
+                        "a qualidade continua planejada, o dia decide. "
+                } else {
+                    "Sem progressão: a semana variou pouco (monotonia ≥2,0); " +
+                        "a qualidade continua planejada, o dia decide. "
+                }
+            }
 
             strainSpikeReliable ->
                 "Sem progressão: a carga concentrou demais nesta semana; " +
@@ -1549,7 +1574,7 @@ class WeeklyPlanGenerator {
 
         VolumeGrowthBlock.NO_PREVIOUS_WEEK -> " (sem semana anterior concluída)"
 
-        VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80 -> " (semana anterior abaixo de 80%)"
+        VolumeGrowthBlock.PREVIOUS_WEEK_BELOW_80 -> " (semana anterior abaixo de 80% de conclusão com evidência)"
 
         VolumeGrowthBlock.PREVIOUS_WEEK_SPECIAL -> " (semana anterior de descarga ou prova)"
 

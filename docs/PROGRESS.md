@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S15 do Ciclo 4: horizonte de 5K e pace dinâmico, C4-58 — S15 segue aberta)
+**Atualizado:** 17/11/2026 (S15 do Ciclo 4: copy do rationale sem contradição, C4-59 — S15 segue aberta)
+
+## Sessão 2026-11-17 — Ciclo 4/S15: copy do rationale sem contradição (C4-59)
+
+**Objetivo:** fechar a FR-412 no rationale do plano — cada frase de progressão/volume deve corresponder ao que o gerador realmente fez, sem prometer 2ª qualidade inexistente, culpar a disponibilidade numa descarga ou inventar monotonia.
+
+### Concluído
+
+- **Progressão liberada:** o texto original só aparece com 2 qualidades. Com o gate aberto e 1 oportunidade, o rationale nomeia o catálogo de 1 estímulo ou a agenda sem outro dia seguro separado do longão.
+- **Volume:** removida a frase genérica “O volume segue limitado pela disponibilidade”, que contradizia a descarga (−25%) e a linha de volume imediatamente anterior.
+- **Monotonia:** nula deixou de ser descrita como “≥2,0”; o plano diz “não é calculável” e mantém a qualidade para o dia decidir.
+- **Conclusão:** a copy passou a dizer “com evidência”; `strongCompletionRatio` não é conclusão bruta, e uma semana 4/4 `MANUAL` não é “0% de conclusão”.
+- **Consistência:** o hint de volume abaixo de 80% e o detalhe da 2ª oportunidade também citam evidência.
+- **Detekt:** `progressionBlockedRationale` foi dividido em `progressionBlockedByLoad` (complexidade 20).
+
+### Testes
+
+- `:core:domain:test` 1097 verdes (+5: slot único após progressão, catálogo de 1 estímulo, deload, monotonia nula, evidência manual); `:app:testDebugUnitTest` 958; `:core:data:test` 207; `:core:model` 40.
+- `:app:assembleDebug`, `spotlessCheck`, `:core:domain:koverVerify` e `:core:domain:detekt` verdes; FIT 93,01%.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- TDD RED→GREEN (5 testes novos falhavam antes).
+- A progressão continua sendo liberada pelo mesmo gate (`permitsProgression` + ≥80% com evidência + 4+ dias + sem taper); C4-59 só impede a copy de sugerir uma 2ª sessão que a agenda não comporta.
+- Nenhuma mudança de schema/UI; o app consome o rationale persistido como antes.
+
+### Próximo passo
+
+1. S15 / C4-60: `createdAt` estável no `saveWeek` (FR-413), TDD.
+2. Depois S16 (C4-53/C4-54).
 
 ## Sessão 2026-11-17 — Ciclo 4/S15: horizonte de 5K e pace dinâmico (C4-58)
 
