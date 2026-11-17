@@ -177,6 +177,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - `engineVersion` semântica (ex.: `1.0.0`) e `inputsHash` determinístico por decisão.
 - A `DailyPrescription` persiste `engineVersion`, `inputsHash`, `ruleIds`/`evidenceIds` e confiança; a versão anterior permanece com `supersedesId`.
 - Mudou regra? Nova versão do motor e nova linha. Não há `rulesVersion`/`evidenceVersion` como colunas separadas.
+- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v6`, `daily-prescription-v5`, `macro-plan-v1`, `planning-v1` (fingerprint). O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o bump para `weekly-plan-v7`/`daily-prescription-v6` é C4-53, e o mecanismo de upgrade já compara qualquer versão armazenada com o alvo.
 
 ### 6.3 Tempo, prescrição e evidência
 
@@ -192,6 +193,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - **Aceite:** `ApplyReplan` relê o estado, exige `expectedVersion`, recalcula o `inputsHash` e chama `TrainingPlanRepository.applyReplan` com validação dentro da transação. A mesma transação relê o perfil persistido, recalcula o fingerprint/contexto temporal e retorna `Stale` se algo divergiu; conflito protegido produz `Rejected`.
 - **UI:** `ReplanViewModel` avalia no resume, respeita recusa por proposta (`weekStart` + versão + hash) e supressão até o fim do dia em `ReplanSuggestionStore` (SharedPreferences), e oferece aceitar/recusar/suprimir. O card do plano mostra o selo `v{n}`, o botão explícito e “Ver o que mudou” a partir de `getLatestRevision` + `PlanJson`.
 - **Explicabilidade:** a revisão reutiliza as regras/evidências emitidas pelo gerador; `ReplanDiff` e a copy são apresentação, não regra fisiológica.
+- **Upgrade de motor e dados (ADR 0048, Ciclo 4):** o `PlanReplanner` detecta semana com `engineVersion` defasada (`ReplanTrigger.ENGINE_UPGRADE`) ou nascida com `R-DATA-01` e dados já completos (`ReplanTrigger.DATA_READY`); só esses dois abrem a exceção de um slot estrutural de qualidade (`allowStructuralQualitySlot`, ADR 0044 §2.6). Prontidão sozinha nunca dispara revisão. `UpgradeWeekOnOpening` avalia na abertura e auto-aplica **só** os dois triggers de sistema (`ENGINE_UPGRADE` via `applyUpgrade` com bump de `generatorVersion`, `DATA_READY` via `applyReplan`); o resto continua com o usuário no cartão de replanejamento. O `TodayViewModel` só chama com o gate assentado, preserva história e mostra o banner (“Plano atualizado…”) via `completionMessage`.
 
 ### 6.5 Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05, C3-06 e C3-G2 implementados
 
@@ -254,10 +256,24 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   sheet de briefing. O conteúdo não sai do motor, não altera prescrição/confiança e
   o ramo de prova continua sem dicas (FR-404).
 
+### 6.6 Ciclo 4 — gate de dados, upgrade e triggers (C4-44..C4-48, ADR 0048)
+
+- **Gate de dados (C4-44):** `HealthSyncCoordinator` expõe `HealthSyncGate`
+  (`Idle`/`Syncing`/`Ready`/`Failed`; o nome do ADR, `HealthSyncState`, já
+  descrevia o estado detalhado da UI). O `TodayViewModel` só gera o plano com
+  gate assentado ou timeout de 3 s; gate aberto mostra “Sincronizando seus
+  dados…”, gate falho gera com `dataIncomplete = true` (nota no rationale +
+  `R-DATA-01`/`EV-IMPELLIZZERI-2020`) e o `DATA_READY` reavalia quando os dados
+  chegam. O gate nunca espera o check-in: ausência de check-in é estado válido.
+- **Schema v18 (C4-45):** `MIGRATION_17_18` aditiva (9 `ALTER TABLE`): `weekly_plans.generatorVersion` (default `'weekly-plan-v6'`), `planned_sessions.(structureJson|qualityKind|planDecisionCode|planDecisionDetail)` e `daily_prescriptions.(structureJson|qualityBlockReason|decisionDetail|unlockHint)`, todos os demais NULL. Sem `fallbackToDestructiveMigration`; round-trip testado.
+- **Versão do plano (C4-46):** `WeeklyPlan.engineVersion` (default `ENGINE_VERSION`); `saveWeek` escreve a versão do domínio (autoridade do conteúdo) e `StoredWeeklyPlan.generatorVersion` expõe a armazenada para o upgrade comparar.
+- **`PlanUpgrade` idempotente (C4-47):** merge puro no domínio (preserva hoje/passado/`DONE`/`CLOSED`, troca só o futuro `PLANNED`, 1 slot estrutural, sem volume/long extra/2ª qualidade; golden `G-UPGRADE-01`) + `TrainingPlanRepository.applyUpgrade` transacional com revisão `ENGINE_UPGRADE`, `createdOn`/`inputsHash`/fingerprints preservados.
+- **Triggers + abertura (C4-48):** ver o último bullet do §6.4.
+
 ## 7. Persistência
 
-- **Room/SQLite** como fonte de verdade local; versão atual **16** (`MeuCoachDatabase.VERSION`).
-- `:core:data` implementa `MeuCoachDatabase` v16 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity` e `RaceEventEntity`.
+- **Room/SQLite** como fonte de verdade local; versão atual **18** (`MeuCoachDatabase.VERSION`).
+- `:core:data` implementa `MeuCoachDatabase` v18 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity` e `RaceEventEntity`.
 - DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository`, `RaceEventRepository` e `UserDataRepository`.
 - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda (não há série downsampled persistida).
 - UUID v7 gerado no cliente para IDs ordenáveis.
@@ -268,7 +284,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - “Apagar tudo” usa transação + `DataEpochStore` + `DataWriteMutex`: gira a época, cancela importação/saúde/lembretes/story/expurgo, limpa banco, staging, avatar, cache e preferências; Health Connect externo não é tocado (`ADR 0025`).
 - Arquivos originais em storage privado do app, referenciados por hash; o arquivo temporário de staging é limpo após o processamento.
 - `SharedPreferences`/DataStore apenas para preferências e marcas d'água (tema, unidades, onboarding, tutorial, `firstRun`, `HealthSyncStore`, `DataEpochStore`).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`) e `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior).
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`), `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior), `16→17` (proveniência de calibração em `athlete_profile`: `vdotSource`/`vdotCalibratedAt`/`vdotReferenceDistanceM`/`vdotReferenceDurationSec`, ADR 0036) e `17→18` (C4-45: `generatorVersion` com default `'weekly-plan-v6'` em `weekly_plans`; `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` em `planned_sessions`; `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` em `daily_prescriptions`; nada reescrito, desconhecido vira `null`).
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect
@@ -277,6 +293,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - Leitura read-only com paginação; a primeira sincronização cobre 30 dias e as seguintes partem do último sucesso menos 1 dia.
 - `HealthSyncService` compartilha a mesma lógica entre o resume do app, a aba Saúde e o `HealthSyncWorker`; o worker roda diariamente via WorkManager como fallback.
 - `HealthSyncCoordinator` dispara um sync no resume quando a última leitura bem-sucedida tem mais de 6 h; falta de permissão não abre diálogo e erro de leitura tem backoff de 15 min (`ADR-0021`).
+- **Gate de dados (ADR 0048 §2.1, C4-44):** todo ramo terminal do resume/manual estabiliza `HealthSyncGate` (`Ready` = dados assentados, `Failed` = indisponível/permissão/erro/timeout). O plano só nasce com gate assentado (ou timeout de 3 s com `dataIncomplete` explícito); o Hoje mostra “Sincronizando seus dados…” enquanto o gate está aberto.
 - O último sync bem-sucedido e a última tentativa ficam em `SharedPreferences` (não são dados de saúde); falhas de permissão/leitura não avançam a marca d'água.
 - `Mutex` no serviço impede leitura concorrente entre resume, botão manual e worker.
 - **Nunca** tratar ausência como recuperação ruim.

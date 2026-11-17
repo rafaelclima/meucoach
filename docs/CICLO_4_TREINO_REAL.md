@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S10.2 (C4-48)
-> **Último commit:** C4-48 — `feat(app): trigger automatic week upgrade on opening (C4-48)`
-> **Fase:** 2 — Fiação — **em andamento (S10.2; C4-48 DONE)**; próxima C4-49 (S10)
-> **Sessão atual:** **S10.2 — C4-48 DONE**
-> **Task atual:** C4-48 (DONE)
-> **Próxima task:** C4-49 (S10)
+> **Última atualização:** 17/11/2026 — S10.3 (C4-49)
+> **Último commit:** C4-49 — `docs(c4): record data readiness and upgrade rollout (C4-49)`
+> **Fase:** 2 — Fiação — **concluída (S10.3; C4-49 DONE)**; próxima S11 (copy/check-in/UI)
+> **Sessão atual:** **S10.3 — C4-49 DONE**
+> **Task atual:** C4-49 (DONE)
+> **Próxima task:** C4-06 (S11)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1006 verdes; `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40; `spotlessCheck`; `:core:domain:koverVerify`; `:core:data:koverVerify`; `:app:koverVerify`; `:core:domain:detekt`; `:core:data:detekt`; `:app:detekt`; `:app:lintDebug`; `:app:assembleDebug`
-> **Próxima ação:** abrir C4-49 (docs ADR 0048, ARCHITECTURE, DATA_MODEL), sem código.
+> **Gates da última sessão:** docs apenas; `spotlessCheck` verde; sem código alterado (gates de C4-48 seguem verdes: `:core:domain:test` 1006; `:core:data:test` 197; `:app:testDebugUnitTest` 927; `:core:model` 40)
+> **Próxima ação:** abrir C4-06 (S11: copy/rationale da oportunidade e rebaixamento), TDD sobre rationale do gerador/diário.
 
 ### 0.1 O que já está pronto
 
@@ -618,7 +618,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-46 | `generatorVersion` no plano | C4-45 | M | S9 | ADR 0048 | Round-trip; default v6 | `WeeklyPlanGeneratorTest` (+1); `TrainingPlanRepositoryTest` (+2 round-trip/metadata); commit S9 |
 | [x] | C4-47 | `PlanUpgrade` idempotente | C4-44/46 | L | S10.1 | ADR 0048 | `G-UPGRADE-01`; histórico | `PlanUpgradeTest` (6); `PlanUpgradeGoldenTest` (1); `TrainingPlanRepositoryUpgradeTest` (5); `fixtures/golden/plan-upgrade`; commit S10.1 |
 | [x] | C4-48 | Triggers `DATA_READY`/`ENGINE_UPGRADE` | C4-47 | M | S10.2 | ADR 0048 | Testes; sem trigger de readiness | `PlanReplannerTest` (+7); `UpgradeWeekOnOpeningTest` (6); `ApplyReplanTest` (+1); `TodayViewModelPersistTest` (+2); commit S10.2 |
-| [ ] | C4-49 | Docs ADR 0048, ARCHITECTURE, DATA_MODEL | C4-44..48 | S | S10 | ADR 0048 | Docs | — |
+| [x] | C4-49 | Docs ADR 0048, ARCHITECTURE, DATA_MODEL | C4-44..48 | S | S10.3 | ADR 0048 | Docs atualizados | ADR 0048 (status + rollout); ARCHITECTURE §6.2/§6.4/§6.6/§7/§8; DATA_MODEL §3.8/§3.8.1/§3.8.3/§7; DECISIONS r1.44; commit S10.3 |
 
 ### E9 — Explicabilidade/copy/rollout
 
@@ -845,6 +845,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** TDD RED→GREEN (triggers/flags inexistentes não compilavam). `ENGINE_UPGRADE` domina `DATA_READY`; o slot (`allowStructuralQualitySlot`) só abre acoplado ao trigger detectado, nunca no fluxo manual. `DATA_READY` = semana com `R-DATA-01` + gate `Ready` (o marcador também cobre o fallback sem disponibilidade, mas aí a regeneração é idêntica e dá `NoChange` — auto-corretivo). Prontidão sozinha nunca dispara (teste dedicado: GREEN vs âmbar sem check-in dão o mesmo `NoChange`). Abertura: `UpgradeWeekOnOpening` avalia e auto-aplica só os 2 triggers de sistema (`ENGINE_UPGRADE` via `applyUpgrade` com bump de versão, `DATA_READY` via `applyReplan`); o resto continua com o usuário. `TodayViewModel` só chama com gate assentado e filtro barato (versão ou `R-DATA-01`+`Ready`); banner “Plano atualizado…” via `completionMessage`. Detekt `ComplexCondition`/`LongParameterList` resolvidos com booleanos intermediários + `buildList` inline, sem baseline novo; a assinatura do `TodayViewModel` entrou no baseline vigente (dívida pré-existente de ViewModel com muitos deps). `ReplanUi` ganhou copy para os 2 triggers (o cartão manual os mostra se a abertura ainda não aplicou).
 - **Próximo:** S10 / C4-49 (docs ADR 0048, ARCHITECTURE, DATA_MODEL), sem código.
 
+### S10.3 — 2026-11-17 — Docs do rollout de dados/upgrade (C4-49)
+
+- **Status:** DONE
+- **Tasks:** C4-49 (docs apenas, sem código).
+- **Arquivos:** `docs/adr/0048-data-readiness-plan-upgrade-schema-v18.md` (status + rollout), `docs/ARCHITECTURE.md` (§6.2 esquema real de versões, §6.4 triggers/abertura, §6.6 Ciclo 4, §7 v18 + migrações, §8 gate), `docs/DATA_MODEL.md` (§3.8 `generatorVersion`/colunas de decisão, §3.8.1 triggers, §3.8.3 colunas da prescrição, §7 v18 + migrações), `docs/DECISIONS.md` (r1.44 + status do ADR 0048), `docs/PROGRESS.md`, este checklist.
+- **Testes/gates:** docs apenas; `spotlessCheck` verde; sem código alterado (gates de C4-48 seguem verdes).
+- **Commit:** `docs(c4): record data readiness and upgrade rollout (C4-49)`.
+- **Decisões/notas:** `RACE_COMPLETED` entrou na tabela de triggers do DATA_MODEL junto (estava ausente desde C3-07; mesma linha, mesma precisão). Versões do motor documentadas no esquema real (`weekly-plan-v6` etc.; §6.2 dizia “semântica 1.0.0”). `16→17` documentada (proveniência de calibração, ADR 0036) — estava ausente nos dois docs. Fase 2 (Fiação) concluída com S10.3; S11 abre com C4-06.
+- **Próximo:** S11 / C4-06 (copy/rationale da oportunidade e rebaixamento, sem contradição), TDD.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1020,9 +1030,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-49, S10)
+## 14. Próxima ação (C4-06, S11)
 
-1. Revisar o ADR 0048 (marcar C4-44..C4-48 como implementados; o nome `HealthSyncGate` vs `HealthSyncState` já está anotado) e atualizar `docs/ARCHITECTURE.md` (gate de dados, `UpgradeWeekOnOpening`, triggers de sistema vs manuais) e `docs/DATA_MODEL.md` (colunas v18 em uso: `generatorVersion`, decisão/estrutura; revisões `ENGINE_UPGRADE`/`DATA_READY`).
-2. Sem código e sem testes novos; atualizar §0/§6/§7/PROGRESS e commitar como `docs(c4): ...`.
+1. Abrir o ADR 0044 §4 (copy/rationale) e a FR-412; ler o rationale atual da primeira oportunidade (`WeeklyPlanGenerator`), do rebaixamento (`DailyPrescriptionEngine`) e o `ExplanationCatalog` (`R-PER-03`, `R-PRESC-02`, `R-READY-06`).
+2. Escrever os testes que falham de C4-06: oportunidade sem contradição (“planejada, o dia confirma” + motivo do dia quando rebaixada), “sem progressão” distinguindo falta de histórico de carga fora da faixa, IDs catalogados.
+3. Implementar C4-06 com TDD (copy no domínio + catálogo); rodar `:core:domain:test` + `spotlessCheck`, atualizar §0/§6/§7/PROGRESS e commitar.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -189,11 +189,11 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 
 ### 3.8 `WeeklyPlan` / `PlannedSession`
 
-`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`, `version` (começa em 1), `revisionReason`, `revisedAt`, `inputsHash`, `availabilityHash`, `generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`, `lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint` e `temporalContextHash`. Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil. `inputsHash`/`availabilityHash`/campos de fingerprint nulos significam histórico desconhecido (planos migrados de v12/v13), nunca hash inventado. `generatedFrom*` é proveniência; `lastEvaluated*` é o checkpoint de avaliação e pode avançar em `NoChange` sem incrementar versão (ADR 0031). O snapshot JSON usa apenas a allowlist (experiência, pace de limiar, LTHR, esteira e objetivo suportado).
+`WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`, `version` (começa em 1), `revisionReason`, `revisedAt`, `inputsHash`, `availabilityHash`, `generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`, `lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint`, `temporalContextHash` e `generatorVersion` (schema v18, default `'weekly-plan-v6'`; C4-46). Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil. `inputsHash`/`availabilityHash`/campos de fingerprint nulos significam histórico desconhecido (planos migrados de v12/v13), nunca hash inventado. `generatedFrom*` é proveniência; `lastEvaluated*` é o checkpoint de avaliação e pode avançar em `NoChange` sem incrementar versão (ADR 0031). O snapshot JSON usa apenas a allowlist (experiência, pace de limiar, LTHR, esteira e objetivo suportado).
 
-`PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale` e IDs de regra/evidência. No domínio, `structure?` carrega o `WorkoutStructure` executável (aquecimento, blocos, recuperações e volta à calma; C4-14); a coluna `structureJson` chega no schema v18 (C4-45) e linhas antigas/export antigo decodificam como `null`.
+`PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale`, IDs de regra/evidência, `structureJson?` (codec versionado `WorkoutStructureJson`, C4-14), `qualityKind?` (`FARTLEK`, `INTERVALS`, `TEMPO`, `HILLS`, `STRIDES_ONLY`, `RACE_PACE`; só em `QUALITY`), `planDecisionCode?`/`planDecisionDetail?` (`PlanDecisionReason` + detalhe; C4-45). No domínio, `structure?` carrega o `WorkoutStructure` executável (aquecimento, blocos, recuperações e volta à calma; C4-14); as quatro colunas chegam no schema v18 (C4-45) e linhas antigas/export antigo decodificam como `null`.
 
-O catálogo de sessões é `SessionLibrary` (domínio puro): `qualityTemplates(phase, level, distance)` e `easyTemplates(phase, level, includeIntroFartlek)` devolvem `SessionTemplate` com `qualityKind`, IDs de regra/evidência e `structure` canônica. Em qualidade, `structure` é obrigatória; `INTRO_FARTLEK` e os strides de dia fácil são `EASY`, com `qualityKind=null` e estrutura própria (C4-15). O gerador consome `qualityRotation` e preenche `qualityKind`/`structure` no plano em memória (C4-17); a projeção legada `templates(...)` foi removida. A coluna `structureJson` e o round-trip de `qualityKind`/`structure` chegam com o schema v18 (C4-45).
+O catálogo de sessões é `SessionLibrary` (domínio puro): `qualityTemplates(phase, level, distance)` e `easyTemplates(phase, level, includeIntroFartlek)` devolvem `SessionTemplate` com `qualityKind`, IDs de regra/evidência e `structure` canônica. Em qualidade, `structure` é obrigatória; `INTRO_FARTLEK` e os strides de dia fácil são `EASY`, com `qualityKind=null` e estrutura própria (C4-15). O gerador consome `qualityRotation` e preenche `qualityKind`/`structure` no plano em memória (C4-17); a projeção legada `templates(...)` foi removida. As colunas `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` e o round-trip chegam com o schema v18 (C4-45); o export `PlanJson` desses campos fica para C4-50.
 
 Regras do `ADR 0024`:
 
@@ -220,7 +220,7 @@ Tabela **append-only** (`weekly_plan_revisions`) que audita cada revisão aceita
 | `generatorVersion` | String | versão das regras do `WeeklyPlanGenerator` |
 | `previousPlanJson` | JSON | metadados da versão substituída (sem sessões) |
 | `replacedSessionsJson` | JSON | snapshot das sessões futuras `PLANNED` removidas |
-| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST`, `PROFILE_CHANGED` |
+| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST`, `PROFILE_CHANGED`, `RACE_COMPLETED`, `DATA_READY`, `ENGINE_UPGRADE` (os dois últimos auto-aplicados na abertura, C4-48) |
 | `reason` | String | rationale da revisão |
 | `ruleIdsJson` / `evidenceIdsJson` | JSON | regras/evidências emitidas pelo gerador |
 | `confidence` | enum | confiança da revisão |
@@ -261,6 +261,8 @@ nenhuma execução nova é produzida até a sessão guiada persistente do ciclo 
 | `ruleIdsJson` / `evidenceIdsJson` | JSON | auditoria |
 | `confidence` | enum | `HIGH`, `MEDIUM`, `LOW` |
 | `engineVersion` / `inputsHash` | String | determinismo |
+| `structureJson?` | JSON | estrutura prescrita (v18, C4-45; domínio ainda não carrega — fica `null`) |
+| `qualityBlockReason?` / `decisionDetail?` / `unlockHint?` | String | motivo do dia, detalhe legível e dica de desbloqueio (v18, C4-45) |
 | `supersedesId` | UUID? | versão anterior; nada é sobrescrito |
 | `createdAt` | Long | epoch ms |
 
@@ -353,7 +355,7 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v16**; migrações 1→2 até 15→16 testadas em Robolectric.
+- Estado atual: banco **v18**; migrações 1→2 até 17→18 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
@@ -361,6 +363,8 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 - `13→14` adiciona proveniência (`generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`), checkpoint (`lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint`) e `temporalContextHash` a `weekly_plans`, além dos pares anterior/novo de fingerprint/snapshot/contexto em `weekly_plan_revisions`. Planos, sessões e revisões existentes são preservados; todos os campos novos ficam `NULL` no legado, sem revisão falsa.
 - `14→15` cria `race_events` vazia, com `activeKey` único, FK `SET NULL` e nenhum backfill de `TrainingGoal`.
 - `15→16` adiciona `completionSource` nullable a `race_events`; nenhum evento é reescrito e `NULL` é lido como conclusão explícita anterior.
+- `16→17` adiciona proveniência de calibração a `athlete_profile` (`vdotSource`, `vdotCalibratedAt`, `vdotReferenceDistanceM`, `vdotReferenceDurationSec`; ADR 0036): VDOT legado tem fonte/data desconhecidas e não gera previsão até recalibrar.
+- `17→18` (C4-45, ADR 0048 §2.3) adiciona `generatorVersion` (`NOT NULL DEFAULT 'weekly-plan-v6'`) a `weekly_plans`, `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` a `planned_sessions` e `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` a `daily_prescriptions`. Nenhuma linha é reescrita; desconhecido decodifica como `null`, nunca parcial.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.

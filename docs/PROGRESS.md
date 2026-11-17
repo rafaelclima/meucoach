@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S10.2 do Ciclo 4: triggers de upgrade + fiação na abertura, C4-48)
+**Atualizado:** 17/11/2026 (S10.3 do Ciclo 4: docs do rollout de dados/upgrade, C4-49 — Fase 2 concluída)
+
+## Sessão 2026-11-17 — Ciclo 4/S10.3: docs do rollout de dados/upgrade (C4-49)
+
+**Objetivo:** fechar a Fase 2 no papel — ADR 0048 com status real, arquitetura e modelo de dados reconciliados com o código das C4-44..C4-48.
+
+### Concluído
+
+- **ADR 0048:** status com C4-44..C4-48 implementados + rollout anotado (o que fechou, o que fica para C4-50/C4-53/C4-55).
+- **ARCHITECTURE.md:** §6.2 com o esquema real de versões, §6.4 com triggers/abertura, §6.6 nova (Ciclo 4: gate, schema v18, versão do plano, `PlanUpgrade`, triggers), §7 banco v18 + migrações 16→17/17→18, §8 gate de dados.
+- **DATA_MODEL.md:** `generatorVersion` no `WeeklyPlan`; `qualityKind`/`planDecisionCode`/`planDecisionDetail` na sessão; 4 colunas na prescrição; triggers completos na revisão (inclui `RACE_COMPLETED`, ausente desde C3-07); §7 banco v18 + migrações.
+- **DECISIONS.md:** r1.44 + status do ADR 0048.
+- Fase 2 (Fiação) concluída; próxima S11 (UI/copy).
+
+### Testes
+
+- Docs apenas; `spotlessCheck` verde; sem código alterado (gates de C4-48 seguem verdes: 1006/197/927/40).
+
+### Decisões e observações
+
+- `16→17` (proveniência de calibração, ADR 0036) estava ausente nos dois docs — documentada junto.
+- `DailyPrescription.structureJson` existe no schema mas o domínio ainda não a carrega (fica `null`); export `PlanJson` é C4-50.
+
+### Próximo passo
+
+1. S11 / C4-06: copy/rationale da oportunidade e rebaixamento (sem contradição, IDs catalogados), TDD.
+2. Depois S11 / C4-30 (check-in UI).
 
 ## Sessão 2026-11-17 — Ciclo 4/S10.2: upgrade automático na abertura (C4-48)
 

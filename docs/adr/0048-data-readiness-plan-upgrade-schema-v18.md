@@ -1,6 +1,11 @@
 # ADR 0048 — Prontidão de dados, upgrade do plano e schema v18
 
-**Status:** Aprovado em 2026-11-16 — implementação pendente (C4-44..C4-49).
+**Status:** Aprovado em 2026-11-16 — C4-44..C4-48 implementados em 17/11/2026
+(`HealthSyncGate` + gate no Hoje, schema v18 + migração 17→18, `generatorVersion`
+no plano, `PlanUpgrade` idempotente, triggers `DATA_READY`/`ENGINE_UPGRADE` +
+fiação na abertura). Restam C4-50 (export `PlanJson` dos campos de decisão),
+C4-53 (bump `weekly-plan-v7`/`daily-prescription-v6`) e o smoke no aparelho
+(C4-55); a documentação de rollout fecha em C4-49.
 **Data:** 2026-11-16
 **Escopo:** `HealthSyncCoordinator`/`HealthSyncState`, `TodayViewModel`, `PlanUpgrade`,
 `PlanReplanner`, `WeeklyPlan`/`WeeklyPlanEntity`, `DailyPrescription`/entidade,
@@ -239,12 +244,12 @@ versão. O `PlanReplanner` inclui a versão no `inputsHash` e na revisão.
 
 ## 7. Rollout
 
-1. Schema v18 + migração.
-2. `PlanUpgrade` + gate.
-3. `weekly-plan-v7`/`daily-prescription-v6`.
-4. `PlanUpgrade` na primeira abertura; banner “Plano atualizado”.
-5. Smoke no aparelho com dados sintéticos e leitura real.
-6. `PROGRESS`/`ROADMAP`/`DATA_MODEL`/`ARCHITECTURE`/`TESTING`.
+1. Schema v18 + migração. ✅ C4-45 (`MIGRATION_17_18`, 17→18 testada).
+2. `PlanUpgrade` + gate. ✅ C4-44 (gate no Hoje), C4-47 (`PlanUpgrade` + `G-UPGRADE-01`).
+3. `weekly-plan-v7`/`daily-prescription-v6`. ⏳ C4-53 (o motor segue em v6; o mecanismo de upgrade já compara qualquer versão com o alvo).
+4. `PlanUpgrade` na primeira abertura; banner “Plano atualizado”. ✅ C4-48 (`UpgradeWeekOnOpening`, triggers `DATA_READY`/`ENGINE_UPGRADE` auto-aplicados, banner via `completionMessage`).
+5. Smoke no aparelho com dados sintéticos e leitura real. ⏳ C4-55.
+6. `PROGRESS`/`ROADMAP`/`DATA_MODEL`/`ARCHITECTURE`/`TESTING`. ✅ C4-49 (este ciclo; `G-UPGRADE-01` em `TESTING.md`).
 
 ---
 

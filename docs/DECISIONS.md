@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.43 · **Data:** 16/11/2026
+**Versão:** 1.44 · **Data:** 17/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -43,6 +43,7 @@
 > Revisão 1.41 (15/11/2026): ADR 0043 encerrado — implementado (fatias 1–6, FR-012 atendido); `ROADMAP` P1-05/N-03 reconciliados; APK debug gerado e instalado no aparelho do usuário 0 via `adb`.
 > Revisão 1.42 (16/11/2026): Ciclo 4 aprovado — PRD `docs/PRD_TREINO_REAL.md` v1.1 e ADRs 0044–0050 (`QualityOpportunity`/autoridade do dia, longão com piso, load gate v3/ACWR confiável, catálogo/periodização, prontidão de dados/upgrade/schema v18, prontidão/check-in/sono, volume real/treino extra). Implementação pendente; nenhum código alterado nesta revisão.
 > Revisão 1.43 (16/11/2026): ADR 0045 implementado (C4-09..C4-13) — comparator do long day, piso 45/60 (30 em deload/taper), título honesto com `LONG_DAY_TOO_SHORT`, `fitToVolume` ancorado no piso e golden `G-PER-04`; `R-PLAN-03 v2` no `SPORTS_SCIENCE`. O replanner aceita a correção estrutural do longão (piso legado ou nova disponibilidade via T4), nunca outro aumento de volume futuro em T1/T2/T3.
+> Revisão 1.44 (17/11/2026): ADR 0048 implementado (C4-44..C4-48) — gate de dados no Hoje (`HealthSyncGate`, timeout de 3 s, `dataIncomplete` + `R-DATA-01`), schema v18 + migração 17→18, `generatorVersion` no plano, `PlanUpgrade` idempotente (`G-UPGRADE-01`) e triggers `DATA_READY`/`ENGINE_UPGRADE` auto-aplicados na abertura com banner; prontidão sozinha nunca dispara revisão. Restam o export `PlanJson` (C4-50), o bump `weekly-plan-v7` (C4-53) e o smoke no aparelho (C4-55).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -93,7 +94,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0045](adr/0045-long-run-sizing.md) | Longão: seleção do dia, piso 45/60, 25–30% como alvo, título honesto e `fitToVolume` | Implementado em 16/11/2026 (C4-09..C4-13: comparator, piso/título honesto, `fitToVolume` ancorado no piso, `G-PER-04`; bump para `weekly-plan-v7` fica em C4-53) | 16/11/2026 |
 | [0046](adr/0046-load-gate-v3-acwr-reliability.md) | Load gate v3: ACWR 1,5, confiabilidade de 28 dias, pré-história como ausência, progressão separada | Aprovado — implementação pendente (C4-22..C4-27) | 16/11/2026 |
 | [0047](adr/0047-quality-catalog-periodization.md) | Catálogo/periodização por fase, nível e distância; estrutura executável; iniciante com strides + intro fartlek `EASY`; intermediário com intervalado/fartlek/colinas | Aprovado — em implementação (C4-14 concluída: `WorkoutStructure`/`WorkoutBlock` + codec JSON; C4-15..C4-21 pendentes) | 16/11/2026 |
-| [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Aprovado — implementação pendente (C4-44..C4-49) | 16/11/2026 |
+| [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Implementado (C4-44..C4-48); restam export `PlanJson` (C4-50), bump v7 (C4-53) e smoke (C4-55) | 16/11/2026 |
 | [0049](adr/0049-readiness-checkin-sleep.md) | Prontidão/check-in sem inversão, reavaliação tardia, sono plausível e `QualityGate` | Aprovado — implementação pendente (C4-28..C4-37) | 16/11/2026 |
 | [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Aprovado — C4-38..C4-40 implementados (base real, meso, longão e reparo do mesmo dia); golden/copy/docs em C4-41..C4-43 | 16/11/2026 |
 
