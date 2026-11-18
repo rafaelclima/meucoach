@@ -7,13 +7,18 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +45,7 @@ import com.meucoach.app.ui.activities.ActivitiesScreen
 import com.meucoach.app.ui.activitydetail.ActivityDetailScreen
 import com.meucoach.app.ui.calibration.CalibrationScreen
 import com.meucoach.app.ui.checkin.CheckInScreen
+import com.meucoach.app.ui.coach.CoachRoute
 import com.meucoach.app.ui.data.DataManagementScreen
 import com.meucoach.app.ui.importer.ImportedRunPromptHost
 import com.meucoach.app.ui.metrics.HealthScreen
@@ -63,15 +69,16 @@ private sealed class AppDestination(val route: String, val label: String, val ic
     )
     data object Trends : AppDestination("trends", "Tendências", Icons.AutoMirrored.Outlined.ShowChart)
     data object Health : AppDestination("health", "Saúde", Icons.Outlined.MonitorHeart)
+    data object Coach : AppDestination("coach", "Coach", Icons.Outlined.AutoAwesome)
     data object Profile : AppDestination("profile", "Perfil", Icons.Outlined.Person)
 }
 
 private val destinations = listOf(
     AppDestination.Today,
     AppDestination.Activities,
+    AppDestination.Coach,
     AppDestination.Trends,
     AppDestination.Health,
-    AppDestination.Profile,
 )
 
 private const val ACTIVITY_DETAIL_ROUTE = "activity/{activityId}"
@@ -143,7 +150,9 @@ private fun MainContent() {
         currentRoute != CALIBRATION_ROUTE &&
         currentRoute != DATA_MANAGEMENT_ROUTE &&
         currentRoute != CHECK_IN_ROUTE &&
-        currentRoute != TUTORIAL_ROUTE
+        currentRoute != TUTORIAL_ROUTE &&
+        currentRoute != AppDestination.Profile.route
+    val showGear = showBottomBar && currentRoute != AppDestination.Today.route
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -230,6 +239,9 @@ private fun MainContent() {
                 composable(AppDestination.Trends.route) {
                     TrendsScreen(onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) })
                 }
+                composable(AppDestination.Coach.route) {
+                    CoachRoute()
+                }
                 composable(AppDestination.Profile.route) {
                     ProfileScreen(
                         onEdit = { navController.navigate(PROFILE_EDIT_ROUTE) },
@@ -284,6 +296,19 @@ private fun MainContent() {
                 onHealth = { navController.navigateToTab(AppDestination.Health.route) },
                 viewModel = tutorialViewModel,
             )
+        }
+        if (showGear) {
+            IconButton(
+                onClick = { navController.navigate(AppDestination.Profile.route) },
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(end = 8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "Abrir perfil",
+                    modifier = Modifier.size(24.dp),
+                    tint = McTheme.colors.textSecondary,
+                )
+            }
         }
         ImportedRunPromptHost()
     }

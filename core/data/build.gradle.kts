@@ -75,6 +75,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.assertj)
+    testImplementation(libs.json)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.junit)

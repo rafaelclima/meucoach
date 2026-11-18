@@ -19,6 +19,20 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        // Proxy do Coach (F1). Valores via -PcoachProxyUrl/-PcoachProxyToken ou
+        // gradle.properties; vazio = Coach desativado com fallback determinístico.
+        // Nunca commitar valores reais.
+        buildConfigField(
+            "String",
+            "COACH_PROXY_URL",
+            (project.findProperty("coachProxyUrl") as String?)?.let { "\"$it\"" } ?: "\"\"",
+        )
+        buildConfigField(
+            "String",
+            "COACH_PROXY_TOKEN",
+            (project.findProperty("coachProxyToken") as String?)?.let { "\"$it\"" } ?: "\"\"",
+        )
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -46,6 +60,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {

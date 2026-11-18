@@ -1,6 +1,7 @@
 package com.meucoach.app.di
 
 import android.content.Context
+import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.app.importer.ImportedRunPromptStore
@@ -162,6 +163,10 @@ object DataModule {
     @Singleton
     fun provideReplanSuggestionStore(@ApplicationContext context: Context): ReplanSuggestionStore =
         ReplanSuggestionStore(context)
+
+    @Provides
+    @Singleton
+    fun provideCoachConsentStore(@ApplicationContext context: Context): CoachConsentStore = CoachConsentStore(context)
 
     @Provides
     @Singleton

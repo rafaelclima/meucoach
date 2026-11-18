@@ -93,6 +93,9 @@ class DataResetCoordinator @Inject constructor(
             cleanup("oferta de corrida importada") { importedRunPrompts.reset() }?.let(failures::add)
             cleanup("recusa de auto-conclusão de prova") { raceAutoCompletions.reset() }?.let(failures::add)
             cleanup("sugestão de replanejamento") { replanSuggestions.reset() }?.let(failures::add)
+            cleanup("consentimento do Coach") {
+                context.getSharedPreferences("meucoach_coach", Context.MODE_PRIVATE).edit().clear().apply()
+            }?.let(failures::add)
             cleanup("avaliação de perfil") { profilePlanEvaluations.clear() }?.let(failures::add)
             cleanup("sugestão de graduação de nível") { levelGraduations.reset() }?.let(failures::add)
             cleanup("cache de story") {

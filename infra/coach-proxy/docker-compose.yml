@@ -1,0 +1,14 @@
+services:
+  coach-proxy:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?required}
+      COACH_PROXY_TOKEN: ${COACH_PROXY_TOKEN:?required}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-nvidia/nemotron-3-ultra-550b-a55b:free}
+      OPENROUTER_TIMEOUT_MS: "15000"
+    # Dokploy: aponte o domínio (ex.: coach.sua-vps) para este serviço;
+    # o TLS é terminado pelo Traefik do Dokploy, sem config extra aqui.
