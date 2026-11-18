@@ -5,8 +5,12 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.CoachMessageEntity
 import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.id.UuidV7
+import com.meucoach.core.domain.coach.CoachMemoryMessage
 import com.meucoach.core.domain.coach.CoachMemoryPolicy
+import com.meucoach.core.domain.coach.CoachMemorySummary
 import com.meucoach.core.domain.coach.CoachMessageKind
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import java.time.Clock
 import java.time.Instant
@@ -97,6 +101,54 @@ class CoachMemoryRepository(
         database.withTransaction {
             database.coachMessageDao().deleteAll()
             database.coachSummaryDao().deleteAll()
+        }
+    }
+
+    /**
+     * Read-only history for the Coach tab (newest first).
+     *
+     * Rows written by older/corrupted versions are ignored instead of breaking
+     * the list: the memory is copy, so a bad row must never take the tab down.
+     */
+    fun observeMessages(): Flow<List<CoachMemoryMessage>> = database
+        .coachMessageDao()
+        .observeAll()
+        .map { rows -> rows.mapNotNull { it.toDomain() } }
+
+    fun observeSummaries(): Flow<List<CoachMemorySummary>> = database
+        .coachSummaryDao()
+        .observeAll()
+        .map { rows -> rows.mapNotNull { it.toDomain() } }
+
+    private fun CoachMessageEntity.toDomain(): CoachMemoryMessage? {
+        val messageKind = CoachMessageKind.entries.firstOrNull { it.name == kind } ?: return null
+        return CoachMemoryMessage(
+            id = id,
+            kind = messageKind,
+            title = title,
+            body = body,
+            bullets = bulletsFromJson(bulletsJson),
+            createdAt = Instant.ofEpochMilli(createdAt),
+        )
+    }
+
+    private fun CoachSummaryEntity.toDomain(): CoachMemorySummary? {
+        val week = runCatching { LocalDate.parse(weekStart) }.getOrNull() ?: return null
+        return CoachMemorySummary(
+            weekStart = week,
+            title = title,
+            body = body,
+            bullets = bulletsFromJson(bulletsJson),
+            createdAt = Instant.ofEpochMilli(createdAt),
+        )
+    }
+
+    private fun bulletsFromJson(json: String): List<String> {
+        val array = runCatching { JSONArray(json) }.getOrNull() ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                array.optString(index).takeIf { it.isNotBlank() }?.let(::add)
+            }
         }
     }
 

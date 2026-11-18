@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.meucoach.core.data.db.entity.CoachMessageEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CoachMessageDao {
@@ -14,6 +15,10 @@ interface CoachMessageDao {
 
     @Query("SELECT * FROM coach_messages ORDER BY createdAt, id")
     suspend fun getAll(): List<CoachMessageEntity>
+
+    /** Read-only history: newest turn first. */
+    @Query("SELECT * FROM coach_messages ORDER BY createdAt DESC, id DESC")
+    fun observeAll(): Flow<List<CoachMessageEntity>>
 
     @Query("SELECT * FROM coach_messages WHERE kind = :kind AND inputsHash = :inputsHash LIMIT 1")
     suspend fun find(kind: String, inputsHash: String): CoachMessageEntity?

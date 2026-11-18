@@ -7,6 +7,7 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.CoachMessageEntity
 import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.domain.coach.CoachMessageKind
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
@@ -140,6 +141,62 @@ class CoachMemoryRepositoryTest {
 
         assertThat(database.coachMessageDao().getAll()).isEmpty()
         assertThat(database.coachSummaryDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `observes the memory as newest-first read-only rows`(): Unit = runBlocking {
+        memory.recordMessage(
+            CoachMessageKind.EXPLAIN,
+            "hash-1",
+            "Foco",
+            "40 min",
+            listOf("Base", "Leve"),
+        )
+        clock.instant = now.plusSeconds(60)
+        memory.recordMessage(CoachMessageKind.REVIEW, "hash-2", "Semana", "3 de 4", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 9), "review-2", "Semana 2", "4 de 4", listOf("Adesão"))
+
+        val messages = memory.observeMessages().first()
+
+        assertThat(messages.map { it.kind })
+            .containsExactly(CoachMessageKind.REVIEW, CoachMessageKind.EXPLAIN)
+        assertThat(messages.first().createdAt).isEqualTo(now.plusSeconds(60))
+        assertThat(messages.last().bullets).containsExactly("Base", "Leve")
+
+        val summaries = memory.observeSummaries().first()
+
+        assertThat(summaries.map { it.weekStart })
+            .containsExactly(LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 2))
+        assertThat(summaries.first().bullets).containsExactly("Adesão")
+    }
+
+    @Test
+    fun `unreadable memory rows are ignored instead of breaking the history`(): Unit = runBlocking {
+        database.coachMessageDao().insert(
+            CoachMessageEntity(
+                id = "bad-kind",
+                kind = "UNKNOWN",
+                inputsHash = "hash",
+                title = "T",
+                body = "B",
+                bulletsJson = "[]",
+                createdAt = now.toEpochMilli(),
+            ),
+        )
+        database.coachSummaryDao().upsert(
+            CoachSummaryEntity(
+                weekStart = "not-a-date",
+                inputsHash = "hash",
+                title = "T",
+                body = "B",
+                bulletsJson = "[]",
+                createdAt = now.toEpochMilli(),
+            ),
+        )
+
+        assertThat(memory.observeMessages().first()).isEmpty()
+        assertThat(memory.observeSummaries().first()).isEmpty()
     }
 
     private fun message(id: String, hash: String, createdAt: Instant) = CoachMessageEntity(

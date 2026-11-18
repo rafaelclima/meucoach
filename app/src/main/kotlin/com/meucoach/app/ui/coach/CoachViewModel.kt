@@ -11,6 +11,8 @@ import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.coach.CoachApi
 import com.meucoach.core.data.coach.CoachKind
 import com.meucoach.core.data.coach.CoachMemoryRepository
+import com.meucoach.core.domain.coach.CoachMemoryMessage
+import com.meucoach.core.domain.coach.CoachMemorySummary
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachPromptBuilder
 import com.meucoach.core.domain.coach.CoachResponseValidator
@@ -21,7 +23,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.time.LocalDate
@@ -50,6 +55,26 @@ sealed interface CoachReviewState {
     data class Ready(val title: String, val body: String, val bullets: List<String>) : CoachReviewState
 
     data class Fallback(val reason: String) : CoachReviewState
+}
+
+/**
+ * Read-only list of what the Coach already persisted (PRD decisions 17/25).
+ *
+ * `Hidden` is the no-consent state: without opt-in the tab never shows nor
+ * reads the memory. `Ready` carries validated copy only; it is never a source
+ * of load, pace or planning.
+ */
+sealed interface CoachHistoryState {
+    data object Hidden : CoachHistoryState
+
+    data object Loading : CoachHistoryState
+
+    data object Empty : CoachHistoryState
+
+    data class Ready(val summaries: List<CoachMemorySummary>, val messages: List<CoachMemoryMessage>) :
+        CoachHistoryState
+
+    data class Error(val reason: String) : CoachHistoryState
 }
 
 @HiltViewModel
@@ -83,7 +108,11 @@ class CoachViewModel @Inject constructor(
     private val _reviewState = MutableStateFlow<CoachReviewState>(CoachReviewState.Unavailable)
     val reviewState: StateFlow<CoachReviewState> = _reviewState
 
+    private val _history = MutableStateFlow<CoachHistoryState>(CoachHistoryState.Hidden)
+    val history: StateFlow<CoachHistoryState> = _history
+
     private val retryTick = MutableStateFlow(0)
+    private val historyRetryTick = MutableStateFlow(0)
     private var lastHash: String? = null
     private var lastReviewHash: String? = null
 
@@ -91,6 +120,28 @@ class CoachViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { memory.pruneExpired() }
                 .onFailure { android.util.Log.d("Coach", "memory prune failed: ${it.message}") }
+        }
+        viewModelScope.launch {
+            combine(_consented, historyRetryTick) { isConsented, tick -> isConsented to tick }
+                .collectLatest { (isConsented, _) ->
+                    if (!isConsented) {
+                        _history.value = CoachHistoryState.Hidden
+                        return@collectLatest
+                    }
+                    combine(memory.observeMessages(), memory.observeSummaries()) { messages, summaries ->
+                        if (messages.isEmpty() && summaries.isEmpty()) {
+                            CoachHistoryState.Empty
+                        } else {
+                            CoachHistoryState.Ready(summaries = summaries, messages = messages)
+                        }
+                    }
+                        .onStart { emit(CoachHistoryState.Loading) }
+                        .catch { error ->
+                            android.util.Log.d("Coach", "history failed: ${error.message}")
+                            emit(CoachHistoryState.Error("Não foi possível carregar o histórico."))
+                        }
+                        .collect { _history.value = it }
+                }
         }
         viewModelScope.launch {
             combine(_consented, plans.observeCurrent(), retryTick) { isConsented, context, tick ->
@@ -248,6 +299,22 @@ class CoachViewModel @Inject constructor(
 
     fun dismiss() {
         _dismissed.value = true
+    }
+
+    /** Erases messages and summaries only; training data and consent are untouched. */
+    fun clearHistory() {
+        if (!_consented.value) return
+        appScope.launch {
+            runCatching { memory.clearAll() }
+                .onFailure {
+                    android.util.Log.d("Coach", "history clear failed: ${it.message}")
+                    _history.value = CoachHistoryState.Error("Não foi possível apagar o histórico.")
+                }
+        }
+    }
+
+    fun retryHistory() {
+        historyRetryTick.value += 1
     }
 
     fun retry() {

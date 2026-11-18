@@ -40,6 +40,7 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
     val explanation by viewModel.explanation.collectAsStateWithLifecycle()
     val review by viewModel.review.collectAsStateWithLifecycle()
     val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
+    val history by viewModel.history.collectAsStateWithLifecycle()
     val replan by viewModel.replan.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
@@ -47,11 +48,14 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
         explanation = explanation,
         review = review,
         reviewState = reviewState,
+        history = history,
         replan = replan,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
         onRetry = { viewModel.retry() },
+        onClearHistory = { viewModel.clearHistory() },
+        onRetryHistory = { viewModel.retryHistory() },
         onReplanRequest = { viewModel.requestReplan() },
         onReplanRequestMissed = { viewModel.requestMissedSession() },
         onReplanRequestLessTime = { viewModel.requestLessTime() },
@@ -78,6 +82,7 @@ fun CoachScreen(
     onRetry: () -> Unit,
     review: WeeklyReview? = null,
     reviewState: CoachReviewState = CoachReviewState.Unavailable,
+    history: CoachHistoryState = CoachHistoryState.Hidden,
     replan: ReplanUiState = ReplanUiState(),
     onReplanRequest: () -> Unit = {},
     onReplanRequestMissed: () -> Unit = {},
@@ -91,6 +96,8 @@ fun CoachScreen(
     onReplanUndo: () -> Unit = {},
     onReplanConsumeMessage: () -> Unit = {},
     onReplanDismiss: () -> Unit = {},
+    onClearHistory: () -> Unit = {},
+    onRetryHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var replanSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -259,6 +266,13 @@ fun CoachScreen(
                 }
             }
             review?.let { CoachReviewCard(review = it, state = reviewState) }
+            if (history != CoachHistoryState.Hidden) {
+                CoachHistoryCard(
+                    state = history,
+                    onClear = onClearHistory,
+                    onRetry = onRetryHistory,
+                )
+            }
         } else {
             Text(
                 text = "Na primeira vez, pedimos sua permissão para usar um resumo dos treinos. " +

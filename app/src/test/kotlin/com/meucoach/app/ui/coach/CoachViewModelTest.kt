@@ -34,6 +34,7 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -377,6 +378,61 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `historico fica oculto sem consentimento`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        assertThat(vm.history.value).isEqualTo(CoachHistoryState.Hidden)
+        assertThat(database.coachMessageDao().getAll()).hasSize(1)
+    }
+
+    @Test
+    fun `historico vazio explica quando nao ha memoria`() {
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        assertThat(awaitHistory(vm)).isEqualTo(CoachHistoryState.Empty)
+    }
+
+    @Test
+    fun `historico lista resumos e conversa com consentimento`(): Unit = runBlocking {
+        consent.grant()
+        memory.recordMessage(
+            CoachMessageKind.EXPLAIN,
+            "hash-1",
+            "Foco",
+            "30 min",
+            listOf("Base"),
+        )
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        val ready = awaitHistory(vm) as CoachHistoryState.Ready
+
+        assertThat(ready.messages.single().title).isEqualTo("Foco")
+        assertThat(ready.messages.single().bullets).containsExactly("Base")
+        assertThat(ready.summaries.single().weekStart).isEqualTo(LocalDate.of(2026, 11, 2))
+    }
+
+    @Test
+    fun `apagar historico limpa apenas a memoria do coach`(): Unit = runBlocking {
+        planRepository.saveWeek(plan())
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        assertThat(awaitHistory(vm)).isInstanceOf(CoachHistoryState.Ready::class.java)
+
+        vm.clearHistory()
+
+        awaitHistory(vm) { it is CoachHistoryState.Empty }
+        assertThat(database.coachMessageDao().getAll()).isEmpty()
+        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.trainingPlanDao().getPlan("2026-11-16")).isNotNull()
+        assertThat(consent.isConsented()).isTrue()
+    }
+
+    @Test
     fun `revisao valida vira Ready com o resumo deterministico exposto`() {
         consent.grant()
         reviews.value = weeklyReview()
@@ -550,6 +606,24 @@ class CoachViewModelTest {
             ) {
                 kotlinx.coroutines.delay(1)
                 state = vm.reviewState.value
+            }
+            state
+        }
+    }
+
+    private fun awaitHistory(
+        vm: CoachViewModel,
+        predicate: (CoachHistoryState) -> Boolean = {
+            it is CoachHistoryState.Empty ||
+                it is CoachHistoryState.Ready ||
+                it is CoachHistoryState.Error
+        },
+    ): CoachHistoryState = runBlocking {
+        withTimeout(2_000) {
+            var state = vm.history.value
+            while (!predicate(state)) {
+                kotlinx.coroutines.delay(1)
+                state = vm.history.value
             }
             state
         }
