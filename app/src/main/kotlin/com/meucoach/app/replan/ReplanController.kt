@@ -7,6 +7,7 @@ import com.meucoach.app.application.UndoReplanResult
 import com.meucoach.app.application.diffFuturePlannedSessions
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
+import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.LessTimeDayUi
 import com.meucoach.app.ui.replan.MissedSessionUi
 import com.meucoach.app.ui.replan.ReplanUiState
@@ -149,7 +150,6 @@ class ReplanController(
                     .filter { it.isAfter(today) }
                     .mapNotNull { date ->
                         profile.weeklyAvailability.minutesByDay[date.dayOfWeek]
-                            ?.takeIf { it > 1 }
                             ?.let { LessTimeDayUi(date = date, currentMinutes = it) }
                     }
                 mutableState.update {
@@ -174,25 +174,34 @@ class ReplanController(
     }
 
     /**
-     * Evaluates with a temporary reduction of one future day. The override never
-     * touches the profile: it only constrains this evaluation and its acceptance.
+     * Evaluates with temporary changes for one or more future days (`0` removes
+     * the day). The override never touches the profile: it only constrains this
+     * evaluation and its acceptance.
      */
-    fun replanLessTime(date: LocalDate, minutes: Int) {
+    fun replanLessTime(changes: List<LessTimeChange>) {
         scope.launch {
             val today = timeProvider.currentDate()
             val weekStart = today.weekStart()
             val profile = profiles.getProfile()
-            val currentMinutes = profile?.weeklyAvailability?.minutesByDay?.get(date.dayOfWeek)
             val reason = when {
                 profile == null -> "Ainda não há um perfil para ajustar a semana."
 
-                !date.isAfter(today) || date.isAfter(weekStart.plusDays(6)) ->
-                    "Escolha um dia futuro desta semana."
+                changes.isEmpty() -> "Escolha pelo menos um dia para ajustar."
 
-                currentMinutes == null -> "Esse dia não faz parte da sua disponibilidade."
+                changes.map { it.date }.distinct().size != changes.size ->
+                    "Escolha cada dia apenas uma vez."
 
-                minutes !in 1 until currentMinutes ->
-                    "Informe um tempo entre 1 e ${currentMinutes - 1} min para este dia."
+                changes.any { !it.date.isAfter(today) || it.date.isAfter(weekStart.plusDays(6)) } ->
+                    "Escolha dias futuros desta semana."
+
+                changes.any { profile.weeklyAvailability.minutesByDay[it.date.dayOfWeek] == null } ->
+                    "Um dos dias não faz parte da sua disponibilidade."
+
+                changes.any { change ->
+                    val current = profile.weeklyAvailability.minutesByDay
+                        .getValue(change.date.dayOfWeek)
+                    change.minutes !in 0 until current
+                } -> "A disponibilidade temporária só pode diminuir o tempo do dia; use 0 para remover o dia."
 
                 else -> null
             }
@@ -204,7 +213,9 @@ class ReplanController(
             runEvaluation(
                 explicit = true,
                 intent = ReplanIntent(
-                    temporaryAvailability = TemporaryAvailability(date = date, minutes = minutes),
+                    temporaryAvailability = changes
+                        .sortedBy { it.date }
+                        .map { TemporaryAvailability(date = it.date, minutes = it.minutes) },
                 ),
             )
         }

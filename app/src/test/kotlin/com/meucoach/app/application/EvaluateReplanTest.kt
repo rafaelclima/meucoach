@@ -355,7 +355,7 @@ class EvaluateReplanTest {
         val baseline = PlanReplanner.availabilityHash(profile.weeklyAvailability)
         plans.captureAvailabilityBaseline(REPLAN_WEEK_START, baseline)
         val friday = REPLAN_WEEK_START.plusDays(4)
-        val intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20))
+        val intent = ReplanIntent(temporaryAvailability = listOf(TemporaryAvailability(friday, 20)))
 
         val context = contexts.build(explicit = true, intent = intent)
         val result = evaluate(explicit = true, intent = intent)

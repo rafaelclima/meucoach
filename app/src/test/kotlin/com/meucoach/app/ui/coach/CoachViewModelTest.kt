@@ -24,6 +24,7 @@ import com.meucoach.app.replan.ReplanControllerFactory
 import com.meucoach.app.replan.ReplanOperations
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.core.data.coach.CoachMemoryRepository
 import com.meucoach.core.data.coach.FakeCoachApi
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -49,6 +50,7 @@ import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -580,7 +582,7 @@ class CoachViewModelTest {
         assertThat(picker.lessTimeDays!!.map { it.date }).containsExactly(friday)
         assertThat(picker.lessTimeDays.single().currentMinutes).isEqualTo(30)
 
-        vm.replanLessTime(friday, 20)
+        vm.replanLessTime(listOf(LessTimeChange(friday, 20)))
         val suggested = withTimeout(5_000) {
             vm.replan.first { !it.isLoading && it.suggestion != null }
         }
@@ -607,12 +609,66 @@ class CoachViewModelTest {
 
         vm.requestLessTime()
         withTimeout(5_000) { vm.replan.first { !it.isLoading && it.lessTimeDays != null } }
-        vm.replanLessTime(friday, 30)
+        vm.replanLessTime(listOf(LessTimeChange(friday, 30)))
 
         val state = withTimeout(5_000) { vm.replan.first { it.message != null } }
-        assertThat(state.message).contains("entre 1 e 29")
+        assertThat(state.message).contains("diminuir")
         assertThat(state.suggestion).isNull()
         assertThat(planRepository.getWeekRecord(REPLAN_WEEK_START)!!.version).isEqualTo(1)
+    }
+
+    @Test
+    fun `menos tempo remove um dia e reduz outro sem persistir o override`(): Unit = runBlocking {
+        val thursday = REPLAN_WEEK_START.plusDays(3)
+        val friday = REPLAN_WEEK_START.plusDays(4)
+        val profile = replanProfile().copy(
+            weeklyAvailability = WeeklyAvailability(
+                mapOf(
+                    DayOfWeek.MONDAY to 40,
+                    DayOfWeek.TUESDAY to 35,
+                    DayOfWeek.WEDNESDAY to 40,
+                    DayOfWeek.THURSDAY to 25,
+                    DayOfWeek.FRIDAY to 30,
+                ),
+            ),
+        )
+        profiles.saveProfile(profile)
+        checkIns.save(replanCheckIn())
+        planRepository.saveWeek(replanPlan())
+        planRepository.captureAvailabilityBaseline(
+            REPLAN_WEEK_START,
+            PlanReplanner.availabilityHash(profile.weeklyAvailability),
+        )
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        vm.requestLessTime()
+        val picker = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.lessTimeDays != null }
+        }
+        assertThat(picker.lessTimeDays!!.map { it.date }).containsExactly(thursday, friday)
+
+        vm.replanLessTime(
+            listOf(
+                LessTimeChange(thursday, 0),
+                LessTimeChange(friday, 20),
+            ),
+        )
+        val suggested = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.suggestion != null }
+        }
+        assertThat(suggested.suggestion?.requestNote)
+            .contains("sem treino")
+            .contains("20 min")
+
+        vm.acceptReplan()
+        withTimeout(5_000) { vm.replan.first { !it.isApplying && it.planVersion == 2 } }
+
+        val persisted = profiles.getProfile()!!.weeklyAvailability.minutesByDay
+        assertThat(persisted[DayOfWeek.THURSDAY]).isEqualTo(25)
+        assertThat(persisted[DayOfWeek.FRIDAY]).isEqualTo(30)
+        assertThat(planRepository.getWeekRecord(REPLAN_WEEK_START)!!.availabilityHash)
+            .isEqualTo(PlanReplanner.availabilityHash(profile.weeklyAvailability))
     }
 
     private fun seedReplan(): Unit = runBlocking {

@@ -167,7 +167,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
             // A specific intent is more useful than the generic "pedido seu" cause:
             // the UI explains the exact day/time the user indicated.
             if (userRequested && intent.isEmpty) add(ReplanCause.USER_REQUEST)
-            if (temporaryAvailability != null) add(ReplanCause.TEMPORARY_AVAILABILITY)
+            if (temporaryAvailability.isNotEmpty()) add(ReplanCause.TEMPORARY_AVAILABILITY)
             if (profileChanged) add(ReplanCause.PROFILE_CHANGED)
             if (temporalChanged) add(ReplanCause.TIMEZONE_CONTEXT_CHANGED)
             if (recoveryTriggered) add(ReplanCause.RACE_COMPLETED)
@@ -264,16 +264,16 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         }
 
     /**
-     * A temporary availability may only reduce one future day that already
-     * exists in the persisted availability; a missed-session pick must be one of
-     * the eligible ones. Anything else is a `NoChange` with a clear reason —
-     * never a silent fallback to the persisted baseline.
+     * A temporary availability may only reduce future days that already exist in
+     * the persisted availability (`0` removes the day); a missed-session pick must
+     * be one of the eligible ones. Anything else is a `NoChange` with a clear
+     * reason — never a silent fallback to the persisted baseline.
      */
-    private fun intentFailure(input: ReplanInput, temporary: TemporaryAvailability?): String? {
+    private fun intentFailure(input: ReplanInput, temporary: List<TemporaryAvailability>): String? {
         val weekEnd = input.currentPlan.weekStart.plusDays(6)
         val availability = input.profile.weeklyAvailability.minutesByDay
-        val temporaryFailure = temporary?.let { temp ->
-            when {
+        temporary.forEach { temp ->
+            val failure = when {
                 !temp.date.isAfter(input.today) || temp.date.isAfter(weekEnd) ->
                     "A disponibilidade temporária precisa ser em um dia futuro desta semana."
 
@@ -285,8 +285,8 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
 
                 else -> null
             }
+            if (failure != null) return failure
         }
-        if (temporaryFailure != null) return temporaryFailure
         val requestedMissed = input.intent.requestedMissedDate ?: return null
         return if (eligibleMissedSessions(input).none { it.date == requestedMissed }) {
             "Esse treino não está como perdido nesta semana. Escolha um treino que ficou para trás."
@@ -441,54 +441,73 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         missedCount: Int,
         intent: ReplanIntent,
     ): String {
-        val temporary = intent.temporaryAvailability
-        if (causes.size == 1 && temporary != null) {
-            return "Você indicou ${temporary.minutes} min em ${temporary.date}. " +
-                "O restante da semana foi reorganizado para caber nesse tempo, sem repor carga."
-        }
+        val temporary = intent.temporaryAvailability.sortedBy { it.date }
         val requestedMissed = intent.requestedMissedDate
-        if (causes.size == 1 && requestedMissed != null) {
-            return "Você indicou o treino de $requestedMissed como perdido. " +
-                "O restante da semana foi reorganizado sem repor carga."
-        }
-        if (causes.size > 1) {
-            val labels = causes.joinToString(" e ") { it.label() }
-            return "Mais de um motivo motivou a revisão: $labels. " +
-                "O restante da semana foi reorganizado sem repor carga."
-        }
-        return when (trigger) {
-            ReplanTrigger.ENGINE_UPGRADE ->
-                "Nova versão do motor do plano disponível. " +
-                    "O restante da semana foi regenerado sem repor treinos perdidos."
+        return when {
+            causes.size == 1 && temporary.isNotEmpty() -> temporaryRationale(temporary)
 
-            ReplanTrigger.DATA_READY ->
-                "Os dados da sincronização chegaram. " +
-                    "A semana foi reavaliada com os dados disponíveis, sem repor treinos perdidos."
-
-            ReplanTrigger.USER_REQUEST ->
-                "Revisão pedida por você. O restante da semana foi reorganizado sem repor treinos perdidos."
-
-            ReplanTrigger.PROFILE_CHANGED -> when {
-                ReplanCause.TIMEZONE_CONTEXT_CHANGED in causes &&
-                    ReplanCause.PROFILE_CHANGED !in causes ->
-                    "Seu fuso mudou. O restante da semana foi reorganizado sem aumentar a carga."
-
-                else ->
-                    "Seu perfil de planejamento mudou. " +
-                        "O restante da semana foi reorganizado sem aumentar a carga."
-            }
-
-            ReplanTrigger.MISSED_SESSIONS ->
-                "Treinos elegíveis sem conclusão: $missedCount. " +
+            causes.size == 1 && requestedMissed != null ->
+                "Você indicou o treino de $requestedMissed como perdido. " +
                     "O restante da semana foi reorganizado sem repor carga."
 
-            ReplanTrigger.RACE_COMPLETED ->
-                "A prova foi concluída. O restante da semana foi encurtado para a recuperação, " +
-                    "sem treino forte, sem repor carga e sem mexer no que já passou."
+            causes.size > 1 -> {
+                val labels = causes.joinToString(" e ") { it.label() }
+                "Mais de um motivo motivou a revisão: $labels. " +
+                    "O restante da semana foi reorganizado sem repor carga."
+            }
 
-            ReplanTrigger.AVAILABILITY_CHANGED ->
-                "Sua disponibilidade mudou. O restante da semana foi reorganizado sem aumentar a carga."
+            else -> when (trigger) {
+                ReplanTrigger.ENGINE_UPGRADE ->
+                    "Nova versão do motor do plano disponível. " +
+                        "O restante da semana foi regenerado sem repor treinos perdidos."
+
+                ReplanTrigger.DATA_READY ->
+                    "Os dados da sincronização chegaram. " +
+                        "A semana foi reavaliada com os dados disponíveis, sem repor treinos perdidos."
+
+                ReplanTrigger.USER_REQUEST ->
+                    "Revisão pedida por você. O restante da semana foi reorganizado sem repor treinos perdidos."
+
+                ReplanTrigger.PROFILE_CHANGED -> when {
+                    ReplanCause.TIMEZONE_CONTEXT_CHANGED in causes &&
+                        ReplanCause.PROFILE_CHANGED !in causes ->
+                        "Seu fuso mudou. O restante da semana foi reorganizado sem aumentar a carga."
+
+                    else ->
+                        "Seu perfil de planejamento mudou. " +
+                            "O restante da semana foi reorganizado sem aumentar a carga."
+                }
+
+                ReplanTrigger.MISSED_SESSIONS ->
+                    "Treinos elegíveis sem conclusão: $missedCount. " +
+                        "O restante da semana foi reorganizado sem repor carga."
+
+                ReplanTrigger.RACE_COMPLETED ->
+                    "A prova foi concluída. O restante da semana foi encurtado para a recuperação, " +
+                        "sem treino forte, sem repor carga e sem mexer no que já passou."
+
+                ReplanTrigger.AVAILABILITY_CHANGED ->
+                    "Sua disponibilidade mudou. O restante da semana foi reorganizado sem aumentar a carga."
+            }
         }
+    }
+
+    private fun temporaryRationale(entries: List<TemporaryAvailability>): String {
+        if (entries.size == 1) {
+            val entry = entries.single()
+            return if (entry.isRemoved) {
+                "Você indicou que não pode treinar em ${entry.date}. " +
+                    "O restante da semana foi reorganizado sem repor carga."
+            } else {
+                "Você indicou ${entry.minutes} min em ${entry.date}. " +
+                    "O restante da semana foi reorganizado para caber nesse tempo, sem repor carga."
+            }
+        }
+        val detail = entries.joinToString(", ") { entry ->
+            if (entry.isRemoved) "${entry.date}: sem treino" else "${entry.date}: ${entry.minutes} min"
+        }
+        return "Você indicou uma disponibilidade temporária ($detail). " +
+            "O restante da semana foi reorganizado para caber nesse tempo, sem repor carga."
     }
 
     companion object {
@@ -542,9 +561,16 @@ private fun ReplanCause.label(): String = when (this) {
 }
 
 /** Effective profile for generation only; the persisted profile keeps the baseline. */
-private fun AthleteProfile.withTemporaryAvailability(temporary: TemporaryAvailability?): AthleteProfile {
-    if (temporary == null) return this
-    val days = weeklyAvailability.minutesByDay + (temporary.date.dayOfWeek to temporary.minutes)
+private fun AthleteProfile.withTemporaryAvailability(temporary: List<TemporaryAvailability>): AthleteProfile {
+    if (temporary.isEmpty()) return this
+    val days = weeklyAvailability.minutesByDay.toMutableMap()
+    temporary.forEach { entry ->
+        if (entry.isRemoved) {
+            days.remove(entry.date.dayOfWeek)
+        } else {
+            days[entry.date.dayOfWeek] = entry.minutes
+        }
+    }
     return copy(weeklyAvailability = weeklyAvailability.copy(minutesByDay = days))
 }
 

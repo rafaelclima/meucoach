@@ -33,8 +33,13 @@ data class ReplanUiState(
 /** One selectable lost session; the date is the identity the domain validates. */
 data class MissedSessionUi(val date: LocalDate, val title: String, val durationMin: Int?)
 
-/** A future day with its persisted availability; only a smaller value is offered. */
+/** A future day with its persisted availability; any smaller value (including 0) is offered. */
 data class LessTimeDayUi(val date: LocalDate, val currentMinutes: Int)
+
+/** One temporary change requested in the picker; `minutes = 0` removes the day. */
+data class LessTimeChange(val date: LocalDate, val minutes: Int) {
+    val isRemoved: Boolean get() = minutes == 0
+}
 
 data class ReplanSuggestionUi(
     val versionFrom: Int,
@@ -77,9 +82,23 @@ internal fun ReplanSuggestion.toUi(changes: List<ReplanChange>): ReplanSuggestio
 )
 
 private fun ReplanSuggestion.requestNote(): String? {
-    intent.temporaryAvailability?.let { temporary ->
-        return "Você indicou ${temporary.minutes} min para ${formatWeekday(temporary.date)} " +
-            "(${formatDate(temporary.date)})."
+    if (intent.temporaryAvailability.isNotEmpty()) {
+        val entries = intent.temporaryAvailability.sortedBy { it.date }
+        if (entries.size == 1) {
+            val entry = entries.single()
+            return if (entry.isRemoved) {
+                "Você indicou que não pode treinar em " +
+                    "${formatWeekday(entry.date)} (${formatDate(entry.date)})."
+            } else {
+                "Você indicou ${entry.minutes} min para " +
+                    "${formatWeekday(entry.date)} (${formatDate(entry.date)})."
+            }
+        }
+        val detail = entries.joinToString(" · ") { entry ->
+            val amount = if (entry.isRemoved) "sem treino" else "${entry.minutes} min"
+            "${formatWeekday(entry.date)} (${formatDate(entry.date)}): $amount"
+        }
+        return "Você indicou: $detail."
     }
     intent.requestedMissedDate?.let { date ->
         return "Você indicou o treino de ${formatWeekday(date)} (${formatDate(date)}) como perdido."
@@ -88,7 +107,7 @@ private fun ReplanSuggestion.requestNote(): String? {
 }
 
 private fun ReplanSuggestion.headline(): String = when {
-    intent.temporaryAvailability != null -> "Cabe no tempo que você tem?"
+    intent.temporaryAvailability.isNotEmpty() -> "Cabe no tempo que você tem?"
     intent.requestedMissedDate != null -> "Ajustar o resto da semana?"
     causes.size > 1 -> "Vale ajustar o resto da semana?"
     causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) -> "Seu fuso mudou"
@@ -102,8 +121,9 @@ private fun ReplanSuggestion.headline(): String = when {
 }
 
 private fun ReplanSuggestion.body(): String = when {
-    intent.temporaryAvailability != null ->
-        "Só os próximos dias mudam para caber nesse tempo, sem repor carga e sem mexer no que já passou."
+    intent.temporaryAvailability.isNotEmpty() ->
+        "Só os próximos dias mudam para caber na sua disponibilidade temporária, " +
+            "sem repor carga e sem mexer no que já passou."
 
     intent.requestedMissedDate != null ->
         "Posso reorganizar só os próximos dias, sem repor o treino perdido e sem mexer no que já passou."

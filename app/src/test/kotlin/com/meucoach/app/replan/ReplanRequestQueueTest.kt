@@ -12,7 +12,7 @@ import java.time.LocalDate
  */
 class ReplanRequestQueueTest {
     private val friday = LocalDate.of(2026, 11, 6)
-    private val lessTime = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20))
+    private val lessTime = ReplanIntent(temporaryAvailability = listOf(TemporaryAvailability(friday, 20)))
     private val missed = ReplanIntent(requestedMissedDate = friday.minusDays(2))
 
     @Test

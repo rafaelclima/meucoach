@@ -77,15 +77,20 @@ enum class ReplanCause {
 /**
  * Availability the user has on one day for this revision only (IA Coach 3.3-B).
  *
- * It lives in the evaluation input and is never written to [com.meucoach.core.model.AthleteProfile]
- * nor to `weekly_plans.availabilityHash`; the persisted baseline is the authority.
+ * `minutes = 0` removes the day from the effective availability. The override
+ * lives in the evaluation input and is never written to
+ * [com.meucoach.core.model.AthleteProfile] nor to `weekly_plans.availabilityHash`;
+ * the persisted baseline is the authority.
  */
 data class TemporaryAvailability(val date: LocalDate, val minutes: Int) {
     init {
-        require(minutes in 1..MAX_MINUTES_PER_DAY) {
-            "Temporary availability must be between 1 and $MAX_MINUTES_PER_DAY minutes"
+        require(minutes in 0..MAX_MINUTES_PER_DAY) {
+            "Temporary availability must be between 0 and $MAX_MINUTES_PER_DAY minutes"
         }
     }
+
+    /** `0` means "no training this day"; it is removed from the effective profile. */
+    val isRemoved: Boolean get() = minutes == 0
 
     private companion object {
         const val MAX_MINUTES_PER_DAY = 1_440
@@ -96,17 +101,30 @@ data class TemporaryAvailability(val date: LocalDate, val minutes: Int) {
  * Explicit user intent for one evaluation (IA Coach 3.3-B). It is part of the
  * `inputsHash`, so a suggestion built from a different intent is stale at accept
  * time. An empty intent is the plain "replan my week" request.
+ *
+ * Temporary entries are unique per date; `0` removes the day entirely.
  */
 data class ReplanIntent(
-    val temporaryAvailability: TemporaryAvailability? = null,
+    val temporaryAvailability: List<TemporaryAvailability> = emptyList(),
     val requestedMissedDate: LocalDate? = null,
 ) {
-    val isEmpty: Boolean get() = temporaryAvailability == null && requestedMissedDate == null
+    init {
+        require(temporaryAvailability.distinctBy { it.date }.size == temporaryAvailability.size) {
+            "Temporary availability must not repeat a day"
+        }
+    }
+
+    val isEmpty: Boolean get() = temporaryAvailability.isEmpty() && requestedMissedDate == null
 
     /** Stable canonical form used by `ReplanInputsHash`; order never depends on map iteration. */
     val canonical: String
-        get() = "temporary=" + (temporaryAvailability?.let { "${it.date}:${it.minutes}" } ?: "null") +
-            ";missed=" + (requestedMissedDate?.toString() ?: "null")
+        get() {
+            val temporary = temporaryAvailability
+                .sortedBy { it.date }
+                .joinToString(",") { "${it.date}:${it.minutes}" }
+                .ifEmpty { "null" }
+            return "temporary=$temporary;missed=" + (requestedMissedDate?.toString() ?: "null")
+        }
 }
 
 /**

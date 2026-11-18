@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.app.application.ReplanChangeKind
+import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.LessTimeDayUi
 import com.meucoach.app.ui.replan.MissedSessionUi
 import com.meucoach.app.ui.replan.ReplanChangeUi
@@ -153,16 +154,12 @@ class CoachScreenTest {
     @Test
     fun `menos tempo valida os minutos localmente antes de avaliar`() {
         val friday = LocalDate.of(2026, 11, 6)
-        var reviewedDate: LocalDate? = null
-        var reviewedMinutes = 0
+        var reviewed: List<LessTimeChange>? = null
         setContent(
             replan = ReplanUiState(
                 lessTimeDays = listOf(LessTimeDayUi(date = friday, currentMinutes = 40)),
             ),
-            onReplanLessTimeSelected = { date, minutes ->
-                reviewedDate = date
-                reviewedMinutes = minutes
-            },
+            onReplanLessTimeSelected = { reviewed = it },
         )
 
         compose.onNodeWithTag("coach-less-time-sheet").assertIsDisplayed()
@@ -170,14 +167,38 @@ class CoachScreenTest {
         compose.onNodeWithTag("coach-less-time-review").performClick()
 
         compose.onNodeWithTag("coach-less-time-error").assertIsDisplayed()
-        assertThat(reviewedDate).isNull()
+        assertThat(reviewed).isNull()
 
         compose.onNodeWithTag("coach-less-time-minutes").performTextClearance()
         compose.onNodeWithTag("coach-less-time-minutes").performTextInput("25")
         compose.onNodeWithTag("coach-less-time-review").performClick()
 
-        assertThat(reviewedDate).isEqualTo(friday)
-        assertThat(reviewedMinutes).isEqualTo(25)
+        assertThat(reviewed).containsExactly(LessTimeChange(friday, 25))
+    }
+
+    @Test
+    fun `menos tempo permite remover mais de um dia`() {
+        val thursday = LocalDate.of(2026, 11, 5)
+        val friday = LocalDate.of(2026, 11, 6)
+        var reviewed: List<LessTimeChange>? = null
+        setContent(
+            replan = ReplanUiState(
+                lessTimeDays = listOf(
+                    LessTimeDayUi(date = thursday, currentMinutes = 25),
+                    LessTimeDayUi(date = friday, currentMinutes = 30),
+                ),
+            ),
+            onReplanLessTimeSelected = { reviewed = it },
+        )
+
+        compose.onNodeWithTag("coach-less-time-day-$friday").performClick()
+        compose.onNodeWithTag("coach-less-time-minutes").performTextInput("0")
+        compose.onNodeWithTag("coach-less-time-review").performClick()
+
+        assertThat(reviewed).containsExactly(
+            LessTimeChange(thursday, 0),
+            LessTimeChange(friday, 0),
+        )
     }
 
     @Test
@@ -281,7 +302,7 @@ class CoachScreenTest {
         onReplanRequestMissed: () -> Unit = {},
         onReplanRequestLessTime: () -> Unit = {},
         onReplanMissedSelected: (LocalDate) -> Unit = {},
-        onReplanLessTimeSelected: (LocalDate, Int) -> Unit = { _, _ -> },
+        onReplanLessTimeSelected: (List<LessTimeChange>) -> Unit = {},
         onReplanAccept: () -> Unit = {},
         onReplanUndo: () -> Unit = {},
     ) {

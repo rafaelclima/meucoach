@@ -331,7 +331,7 @@ class ApplyReplanTest {
         val friday = REPLAN_WEEK_START.plusDays(4)
         val evaluated = evaluate(
             explicit = true,
-            intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20)),
+            intent = ReplanIntent(temporaryAvailability = listOf(TemporaryAvailability(friday, 20))),
         ) as EvaluateReplanResult.Suggestion
 
         val outcome = apply(
@@ -374,7 +374,9 @@ class ApplyReplanTest {
         val evaluated = evaluate(
             explicit = true,
             intent = ReplanIntent(
-                temporaryAvailability = TemporaryAvailability(REPLAN_WEEK_START.plusDays(4), 20),
+                temporaryAvailability = listOf(
+                    TemporaryAvailability(REPLAN_WEEK_START.plusDays(4), 20),
+                ),
             ),
         ) as EvaluateReplanResult.Suggestion
         profiles.saveProfile(replanProfile(fridayMinutes = 15))

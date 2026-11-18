@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.LessTimeDayUi
 import com.meucoach.app.ui.replan.MissedSessionUi
 import com.meucoach.app.ui.replan.formatDay
@@ -108,19 +109,29 @@ internal fun MissedSessionPickerSheet(
 }
 
 /**
- * Temporary availability picker (IA Coach 3.3-B). It only offers future days of
- * the current week and only accepts fewer minutes than the persisted value; the
- * override is never saved in the profile.
+ * Temporary availability picker (IA Coach 3.3-B). It offers future days of the
+ * current week, accepts one or more days and only allows fewer minutes than the
+ * persisted value; `0` removes the day. The override is never saved in the profile.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun LessTimeSheet(days: List<LessTimeDayUi>, onReview: (LocalDate, Int) -> Unit, onDismiss: () -> Unit) {
+internal fun LessTimeSheet(
+    days: List<LessTimeDayUi>,
+    onReview: (List<LessTimeChange>) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val colors = McTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var selectedEpochDay by rememberSaveable { mutableStateOf(days.firstOrNull()?.date?.toEpochDay()) }
+    var selectedEpochDays by rememberSaveable {
+        mutableStateOf(days.firstOrNull()?.date?.toEpochDay()?.toString().orEmpty())
+    }
     var minutesText by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
-    val selected = days.firstOrNull { it.date.toEpochDay() == selectedEpochDay } ?: days.firstOrNull()
+    val selectedEpochSet = selectedEpochDays
+        .split(',')
+        .mapNotNull(String::toLongOrNull)
+        .toSet()
+    val selected = days.filter { it.date.toEpochDay() in selectedEpochSet }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -141,8 +152,9 @@ internal fun LessTimeSheet(days: List<LessTimeDayUi>, onReview: (LocalDate, Int)
                 color = colors.textTertiary,
             )
             Text(
-                text = "Escolha o dia e quanto tempo você tem. A mudança vale só nesta revisão — " +
-                    "sua disponibilidade continua a mesma.",
+                text = "Selecione um ou mais dias e quanto tempo você tem. Use 0 para não " +
+                    "treinar no dia. A mudança vale só nesta revisão — sua disponibilidade " +
+                    "continua a mesma.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
@@ -155,10 +167,17 @@ internal fun LessTimeSheet(days: List<LessTimeDayUi>, onReview: (LocalDate, Int)
                 )
             } else {
                 days.forEach { day ->
+                    val isSelected = day.date.toEpochDay() in selectedEpochSet
                     FilterChip(
-                        selected = selected?.date == day.date,
+                        selected = isSelected,
                         onClick = {
-                            selectedEpochDay = day.date.toEpochDay()
+                            val epochDay = day.date.toEpochDay()
+                            val next = if (isSelected) {
+                                selectedEpochSet - epochDay
+                            } else {
+                                selectedEpochSet + epochDay
+                            }
+                            selectedEpochDays = next.sorted().joinToString(",")
                             error = null
                         },
                         label = { Text(text = "${formatDay(day.date)} · ${day.currentMinutes} min") },
@@ -173,57 +192,72 @@ internal fun LessTimeSheet(days: List<LessTimeDayUi>, onReview: (LocalDate, Int)
                         ),
                         border = FilterChipDefaults.filterChipBorder(
                             enabled = true,
-                            selected = selected?.date == day.date,
+                            selected = isSelected,
                             borderColor = colors.borderSubtle,
                             selectedBorderColor = colors.accent,
                         ),
                     )
                 }
-                selected?.let { day ->
-                    OutlinedTextField(
-                        value = minutesText,
-                        onValueChange = { input ->
-                            minutesText = input.filter(Char::isDigit).take(3)
-                            error = null
-                        },
-                        label = { Text(text = "Minutos disponíveis") },
-                        supportingText = {
-                            Text(text = "Hoje você tem ${day.currentMinutes} min em ${formatDay(day.date)}.")
-                        },
-                        isError = error != null,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("coach-less-time-minutes"),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary,
-                        ),
-                    )
-                    error?.let { message ->
-                        Text(
-                            text = message,
-                            style = McTextStyles.caption,
-                            color = colors.danger,
-                            modifier = Modifier.testTag("coach-less-time-error"),
-                        )
-                    }
-                    McPrimaryButton(
-                        text = "Revisar semana",
-                        onClick = {
-                            val minutes = minutesText.toIntOrNull()
-                            if (minutes == null || minutes !in 1 until day.currentMinutes) {
-                                error = "Informe um tempo entre 1 e ${day.currentMinutes - 1} min."
-                            } else {
-                                onReview(day.date, minutes)
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("coach-less-time-review"),
+                OutlinedTextField(
+                    value = minutesText,
+                    onValueChange = { input ->
+                        minutesText = input.filter(Char::isDigit).take(3)
+                        error = null
+                    },
+                    label = { Text(text = "Minutos disponíveis em cada dia") },
+                    supportingText = {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = if (selected.isEmpty()) {
+                                    "Nenhum dia selecionado."
+                                } else {
+                                    "Selecionados: " + selected.joinToString(" · ") {
+                                        "${formatDay(it.date)} (${it.currentMinutes} min)"
+                                    }
+                                },
+                            )
+                            Text(text = "Use 0 para não treinar no dia selecionado.")
+                        }
+                    },
+                    isError = error != null,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("coach-less-time-minutes"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary,
+                    ),
+                )
+                error?.let { message ->
+                    Text(
+                        text = message,
+                        style = McTextStyles.caption,
+                        color = colors.danger,
+                        modifier = Modifier.testTag("coach-less-time-error"),
                     )
                 }
+                McPrimaryButton(
+                    text = "Revisar semana",
+                    onClick = {
+                        val maxMinutes = selected.minOfOrNull { it.currentMinutes }?.minus(1)
+                        val minutes = minutesText.toIntOrNull()
+                        when {
+                            selected.isEmpty() -> error = "Escolha pelo menos um dia."
+
+                            maxMinutes == null || minutes == null || minutes !in 0..maxMinutes ->
+                                error = "Informe um tempo entre 0 e ${maxMinutes ?: 0} min."
+
+                            else -> onReview(
+                                selected.map { LessTimeChange(date = it.date, minutes = minutes) },
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("coach-less-time-review"),
+                )
             }
             McTextButton(
                 text = "Fechar",

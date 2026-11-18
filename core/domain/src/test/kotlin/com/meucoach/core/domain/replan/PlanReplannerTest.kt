@@ -1508,7 +1508,7 @@ class PlanReplannerTest {
         )
         val baseline = PlanReplanner.availabilityHash(WeeklyAvailability(availability))
         val intent = ReplanIntent(
-            temporaryAvailability = TemporaryAvailability(friday, 20),
+            temporaryAvailability = listOf(TemporaryAvailability(friday, 20)),
         )
 
         val result = planner.evaluate(
@@ -1536,6 +1536,83 @@ class PlanReplannerTest {
     }
 
     @Test
+    fun `temporary availability removes one day and reduces another in the same request`() {
+        val availability = fridayAvailability()
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(friday, WorkoutType.QUALITY, 40),
+            session(saturday, WorkoutType.LONG, 45),
+        )
+        val baseline = PlanReplanner.availabilityHash(WeeklyAvailability(availability))
+        val intent = ReplanIntent(
+            temporaryAvailability = listOf(
+                TemporaryAvailability(friday, 0),
+                TemporaryAvailability(saturday, 30),
+            ),
+        )
+
+        val suggested = planner.evaluate(
+            input(
+                current = current,
+                today = wednesday,
+                profile = profile(availability),
+                currentAvailabilityHash = baseline,
+                intent = intent,
+            ),
+        ) as ReplanResult.Suggest
+
+        assertThat(suggested.suggestion.intent).isEqualTo(intent)
+        assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.TEMPORARY_AVAILABILITY)
+        assertThat(suggested.candidate.sessions.none { it.date == friday }).isTrue()
+        assertThat(
+            suggested.candidate.sessions
+                .filter { it.date.isAfter(wednesday) }
+                .all { (it.durationMin ?: 0) <= 30 },
+        ).isTrue()
+        assertThat(suggested.suggestion.rationale)
+            .contains("sem treino")
+            .contains("30 min")
+        // The effective profile is generation-only: the persisted hash stays.
+        assertThat(suggested.suggestion.availabilityHash).isEqualTo(baseline)
+    }
+
+    @Test
+    fun `temporary intent canonical ignores entry order`() {
+        val first = ReplanIntent(
+            temporaryAvailability = listOf(
+                TemporaryAvailability(saturday, 30),
+                TemporaryAvailability(friday, 0),
+            ),
+        )
+        val second = ReplanIntent(
+            temporaryAvailability = listOf(
+                TemporaryAvailability(friday, 0),
+                TemporaryAvailability(saturday, 30),
+            ),
+        )
+
+        assertThat(first.canonical).isEqualTo(second.canonical)
+    }
+
+    @Test
+    fun `empty temporary intent keeps the legacy canonical form`() {
+        assertThat(ReplanIntent().canonical).isEqualTo("temporary=null;missed=null")
+    }
+
+    @Test
+    fun `repeated temporary days are refused`() {
+        assertThatThrownBy {
+            ReplanIntent(
+                temporaryAvailability = listOf(
+                    TemporaryAvailability(friday, 0),
+                    TemporaryAvailability(friday, 20),
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `a temporary reduction never increases future volume or quality`() {
         val availability = fridayAvailability()
         val current = planOf(
@@ -1551,7 +1628,7 @@ class PlanReplannerTest {
                 today = wednesday,
                 profile = profile(availability),
                 currentAvailabilityHash = baseline,
-                intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20)),
+                intent = ReplanIntent(temporaryAvailability = listOf(TemporaryAvailability(friday, 20))),
             ),
         )
 
@@ -1581,10 +1658,10 @@ class PlanReplannerTest {
         )
 
         val withTwenty = base.copy(
-            intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20)),
+            intent = ReplanIntent(temporaryAvailability = listOf(TemporaryAvailability(friday, 20))),
         )
         val withTwentyFive = base.copy(
-            intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 25)),
+            intent = ReplanIntent(temporaryAvailability = listOf(TemporaryAvailability(friday, 25))),
         )
 
         assertThat(PlanReplanner.inputsHash(base)).isNotEqualTo(PlanReplanner.inputsHash(withTwenty))
@@ -1608,7 +1685,7 @@ class PlanReplannerTest {
                 today = wednesday,
                 profile = profile(availability),
                 currentAvailabilityHash = baseline,
-                intent = ReplanIntent(temporaryAvailability = temporary),
+                intent = ReplanIntent(temporaryAvailability = listOf(temporary)),
             ),
         )
 
@@ -1620,7 +1697,8 @@ class PlanReplannerTest {
         assertThat(missingDay.reason).contains("não faz parte")
         val increase = evaluateTemporary(TemporaryAvailability(friday, 40)) as ReplanResult.NoChange
         assertThat(increase.reason).contains("diminuir")
-        assertThatThrownBy { TemporaryAvailability(friday, 0) }
+        // Zero now means "remove the day"; only the upper bound is invalid.
+        assertThat(TemporaryAvailability(friday, 0).isRemoved).isTrue()
         assertThatThrownBy { TemporaryAvailability(friday, 1_441) }
     }
 

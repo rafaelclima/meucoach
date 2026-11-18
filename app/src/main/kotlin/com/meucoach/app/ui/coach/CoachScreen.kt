@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.ReplanChangesSheet
 import com.meucoach.app.ui.replan.ReplanMessageCard
 import com.meucoach.app.ui.replan.ReplanSuggestionSheet
@@ -62,7 +63,7 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
         onReplanRequestMissed = { viewModel.requestMissedSession() },
         onReplanRequestLessTime = { viewModel.requestLessTime() },
         onReplanMissedSelected = { viewModel.replanMissed(it) },
-        onReplanLessTimeSelected = { date, minutes -> viewModel.replanLessTime(date, minutes) },
+        onReplanLessTimeSelected = { changes -> viewModel.replanLessTime(changes) },
         onReplanDismissIntent = { viewModel.dismissReplanIntent() },
         onReplanAccept = { viewModel.acceptReplan() },
         onReplanDecline = { viewModel.declineReplan() },
@@ -90,7 +91,7 @@ fun CoachScreen(
     onReplanRequestMissed: () -> Unit = {},
     onReplanRequestLessTime: () -> Unit = {},
     onReplanMissedSelected: (LocalDate) -> Unit = {},
-    onReplanLessTimeSelected: (LocalDate, Int) -> Unit = { _, _ -> },
+    onReplanLessTimeSelected: (List<LessTimeChange>) -> Unit = {},
     onReplanDismissIntent: () -> Unit = {},
     onReplanAccept: () -> Unit = {},
     onReplanDecline: () -> Unit = {},

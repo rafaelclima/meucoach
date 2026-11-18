@@ -7,6 +7,7 @@ import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.replan.ReplanControllerFactory
+import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.coach.CoachApi
 import com.meucoach.core.data.coach.CoachKind
@@ -353,7 +354,7 @@ class CoachViewModel @Inject constructor(
 
     fun requestLessTime() = replanController.requestLessTime()
 
-    fun replanLessTime(date: LocalDate, minutes: Int) = replanController.replanLessTime(date, minutes)
+    fun replanLessTime(changes: List<LessTimeChange>) = replanController.replanLessTime(changes)
 
     fun dismissReplanIntent() = replanController.dismissIntent()
 
