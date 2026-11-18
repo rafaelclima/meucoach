@@ -1,6 +1,6 @@
 # PRD — IA Coach de Corrida (MVP)
 
-**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 + 3.3-A/B + Room v19 + histórico prontos)
+**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 + 3.3-A/B + Room v19 + histórico com apagar individual prontos)
 **Visão base:** `docs/VISAO_PRODUTO_IA_COACH_CORRIDA.md` · **Fonte verdade:** código + `SPORTS_SCIENCE.md`
 **MVP decidido:** 3.1 explicar semana + 3.2 revisão semana anterior + 3.3 replanejar imprevisto
 
@@ -67,7 +67,7 @@ Fora do MVP (pós-MVP):
 ## 4. UX aba Coach (MVP)
 
 - Bottom bar: Hoje · Corridas · **Coach** (centro) · Tendências · Saúde; Perfil sai da bar → destino via avatar/config no topo (a definir com melhores práticas, sem quebrar deep links `meucoach://profile`).
-- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + ações rápidas ("Explicar semana", "Perdi um treino", "Só tenho 30 min"). A lista de histórico é somente leitura, aparece só com opt-in e permite apagar todo o histórico; o input livre continua fora do MVP.
+- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + ações rápidas ("Explicar semana", "Perdi um treino", "Só tenho 30 min"). A lista de histórico é somente leitura, aparece só com opt-in e permite apagar o histórico em bloco ou item a item; o input livre continua fora do MVP.
 - Replanejo: bottom-sheet diff (antes/depois) + Confirmar/Desfazer; reusa copy e selo `v{n}` do replanejamento.
 
 ## 5. Guardrails / segurança
@@ -104,7 +104,7 @@ Gates mantidos: `assembleDebug`, `spotlessCheck`, `koverVerify` (domain/data/app
 
 ## 8. Próximo passo
 
-O fatiamento proposto foi concluído até F3: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo, F6 opt-in/docs/ADR e a lista visual de histórico (decisões 17/25). Restam o apagar individual de mensagem, as pendências funcionais da 3.3 e os goldens da bar.
+O fatiamento proposto foi concluído até F3: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo, F6 opt-in/docs/ADR e a lista visual de histórico (decisões 17/25, com apagar individual). Restam as pendências funcionais da 3.3 e os goldens da bar.
 
 ## 9. Adendos implementados (18/11/2026)
 
@@ -120,7 +120,8 @@ O fatiamento proposto foi concluído até F3: F1 proxy/contrato, F2 prompt/valid
 - 3.3-A replanejamento na aba Coach: card “AJUSTAR A SEMANA” com “Ajustar a semana”, “Perdi um treino” e “Tenho menos tempo” (T3 explícito), bottom sheet com diff e selo `v{n} → v{n+1}`, confirmação via `ApplyReplan` (stale reavalia e nunca aplica a sugestão velha), undo append-only (`trigger = UNDO`) que restaura só o futuro `PLANNED` e preserva hoje/passado/`DONE`/`CLOSED`, e `ReplanController` compartilhado por Hoje/Perfil/Coach (o `ReplanViewModel` virou fachada). A seleção de dia/slot e a disponibilidade temporária ficam para 3.3-B. Testes: repository undo (5), controller/VM (2), Coach VM (2), tela (3).
 - 3.3-B disponibilidade temporária e treino perdido específico: `ReplanIntent`/`TemporaryAvailability` puros entram no `ReplanInput`, no `inputsHash` e na `ReplanSuggestion`. “Só tenho 30 min no dia Y” reduz só um dia futuro e apenas no perfil efetivo usado pelo gerador/validação; nunca grava em `AthleteProfile` nem em `weeklyPlans.availabilityHash`. “Perdi o treino X” lista `PlanReplanner.eligibleMissedSessions` e força o T1 mesmo com 1 sessão, sem repor carga. `ApplyReplan` reconstrói o input com `suggestion.intent`; intent inválido/alterado vira `Stale`/`NoChange` com a sugestão nova. Pickers no Coach (treino perdido e dias futuros + minutos com validação local), `requestNote` no sheet e `ReplanRequestQueue` preservando o intent de um pedido enfileirado. Sem migração; schema v18. Testes: domínio (6), `EvaluateReplan` (2), `ApplyReplan` (2), Coach VM (3), fila (3), tela (5).
 - F3/Room v19 memória local: `coach_messages` (turnos validados, único por `kind + inputsHash`) e `coach_summaries` (uma narrativa validada por semana fechada), `MIGRATION_18_19` aditiva e schema v19. TTL 90/180 dias com expiração preguiçosa; revogar o opt-in bloqueia chamadas e apaga as duas tabelas em escopo de aplicação; export/delete incluem `coach_*`. Nenhuma chamada de IA nova; a memória não entra em prompt nesta fatia e nunca decide carga, pace ou plano. Testes: política de TTL (3), repositório (6), migração 18→19 (1), export/delete (2), ViewModel (4) e exclusão na tela Dados (1).
-- Histórico do Coach (decisões 17/25): `CoachMessageDao.observeAll`/`CoachSummaryDao.observeAll` + `CoachMemoryRepository.observeMessages/observeSummaries` expõem a memória como Flow somente leitura, mais recente primeiro, para `CoachMemoryMessage`/`CoachMemorySummary` puros. `CoachHistoryState` cobre Hidden (sem opt-in), Loading, Empty, Ready e Error; a aba mostra resumos por semana e conversa, aviso de que o motor decide, retry no erro e “Apagar histórico” com confirmação (`clearAll`, sem tocar em treinos/perfil). TalkBack, dark/light e fonte 200% cobertos. Sem chamada de IA nova, sem schema novo e sem entrada em prompt. Testes: repositório (2), ViewModel (4) e tela (8).
+- Histórico do Coach (decisões 17/25): `CoachMessageDao.observeAll`/`CoachSummaryDao.observeAll` + `CoachMemoryRepository.observeMessages/observeSummaries` expõem a memória como Flow somente leitura, mais recente primeiro, para `CoachMemoryMessage`/`CoachMemorySummary` puros. `CoachHistoryState` cobre Hidden (sem opt-in), Loading, Empty, Ready e Error; a aba mostra resumos por semana e conversa, aviso de que o motor decide, retry no erro e “Apagar histórico” em bloco. `deleteMessage`/`deleteSummary` removem um item por vez com confirmação própria, mantendo o restante e sem tocar em treinos/perfil. TalkBack, dark/light e fonte 200% cobertos. Sem chamada de IA nova, sem schema novo e sem entrada em prompt. Testes: repositório (4), ViewModel (6) e tela (10).
+- Apagar item individual do histórico: `CoachMessageDao.deleteById`/`CoachSummaryDao.deleteByWeek` e `CoachMemoryRepository.deleteMessage`/`deleteSummary` (retorno booleano, item inexistente é no-op) com confirmação por linha no `CoachHistoryCard`; o “Apagar histórico” em bloco permanece. Escopo de aplicação para a exclusão terminar mesmo se a aba fechar; treinos/perfil intactos. Testes: repositório (2), ViewModel (2) e tela (2).
 
 ## 10. Memória local e retenção (Room v19)
 
@@ -145,7 +146,7 @@ Regras:
 - “Apagar tudo” e o export incluem as duas tabelas; a tela Dados informa quantas
   mensagens/resumos do Coach foram removidos.
 - A aba Coach lista o histórico somente leitura apenas com opt-in; “Apagar
-  histórico” usa o mesmo `clearAll` e não toca em treinos, perfil, check-ins ou
-  métricas. Apagar uma mensagem individual fica para uma próxima fatia.
+  histórico” usa o mesmo `clearAll` e `deleteMessage`/`deleteSummary` removem um
+  item por vez, sem tocar em treinos, perfil, check-ins ou métricas.
 - Quando a memória for usada em prompt (pós-MVP), ela será apenas contexto de
   copy: todo texto volta ao validador e nenhum número nasce dela.

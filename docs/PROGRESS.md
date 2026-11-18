@@ -1,6 +1,45 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach: histórico somente leitura na aba com apagar tudo — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach: apagar item individual do histórico — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach: apagar mensagem/resumo individual no histórico
+
+**Objetivo:** fechar a pendência da fatia anterior permitindo apagar uma mensagem ou um resumo específico da memória do Coach, com confirmação por item, sem tocar em treinos/perfil e sem editar texto. Nenhuma chamada de IA nova; a memória continua copy e o motor segue autoridade.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (apagar individual concluído; restam pendências da 3.3 e goldens da bar).
+
+### Concluído
+
+- **Dados:** `CoachMessageDao.deleteById` e `CoachSummaryDao.deleteByWeek`; `CoachMemoryRepository.deleteMessage(id)`/`deleteSummary(weekStart)` removem só a linha pedida e retornam `false` quando ela já não existe. O restante da memória e as demais tabelas ficam intactos.
+- **App:** `CoachViewModel.deleteHistoryMessage`/`deleteHistorySummary` executam em escopo de aplicação (a exclusão termina mesmo se a aba fechar), exigem opt-in e caem em `Error` com retry se a escrita falhar.
+- **UI:** cada linha do histórico ganhou “Apagar” com alvo mínimo de 48 dp, `contentDescription` específico (“Apagar mensagem: …”/“Apagar resumo da semana de …”) e confirmação própria (“Apagar esta mensagem do histórico?”/“Apagar este resumo da semana?”). O “Apagar histórico” em bloco continua disponível. Sem edição.
+- **Flake corrigido:** `TodayViewModelPersistTest` (“upgrades a stale stored week on opening”) esperava o plano e assertava `completionMessage`; passou a esperar também a mensagem. Nenhum assert foi reduzido, é correção de corrida do próprio teste.
+- **Escopo preservado:** sem IA nova, schema v19, sem migração e sem `fallbackToDestructiveMigration`; apagar item não mexe em treino, perfil, check-in ou métrica.
+- **Docs:** PRD (§3/§4/§8/§9/§10), ADR 0052, `DECISIONS` r1.59, `ROADMAP` (P1-18), `TESTING` e handoff.
+
+### Testes
+
+- `:core:data:testDebugUnitTest` 229 (+2: apagar mensagem preservando o resto e apagar resumo por semana); `:app:testDebugUnitTest` 1022 (+2 `CoachViewModelTest`, +2 `CoachHistoryTest`); `:core:domain:test` 1121; `:core:model:test` 40 = **2.412 testes, 0 falhas/erros**.
+- Novos: repositório (2), ViewModel (2) e tela (2: confirmação/cancelamento de mensagem e de resumo).
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `:app:lintDebug` verdes; sem nova entrada de baseline.
+- Nenhum dado real; nenhuma regra de treino/ciência alterada.
+
+### Decisões e observações
+
+- Apagar item é independente: remover uma mensagem mantém resumos e vice-versa; remover o último item de uma seção leva a lista ao estado `Empty` quando as duas ficam vazias.
+- A confirmação é por item e nomeia o tipo (“mensagem”/“resumo”), para não confundir com o “Apagar histórico” em bloco; o cancelamento não chama o repositório.
+- A exclusão usa o mesmo repositório da memória e escopo de aplicação, então o dado termina de sair mesmo se a aba fechar; treinos/perfil não são tocados.
+- O flake do `TodayViewModelPersistTest` era uma corrida entre o plano atualizado e a mensagem de conclusão; a espera agora cobre os dois estados, sem afrouxar a verificação.
+
+### Pendente
+
+- Pendências funcionais da 3.3 (remover dia inteiro/múltiplos dias na disponibilidade temporária).
+- Goldens Roborazzi da bar; input livre de conversa continua fora do MVP.
+
+### Próximo passo
+
+1. Escolher **uma** pendência da §5 do handoff: remover dia inteiro/múltiplos dias **ou** goldens da bar.
+2. Depois seguir para a outra, uma por sessão.
 
 ## Sessão 2026-11-18 — IA Coach: histórico do Coach na aba (decisões 17/25)
 

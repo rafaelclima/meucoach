@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.59 · **Data:** 18/11/2026 · **Mudança:** IA Coach histórico — lista somente leitura com apagar em bloco na aba Coach, DAO/Flow newest-first e estados de UI; apagar individual pendente; sem schema ou regra de treino nova.
+**Versão:** 1.60 · **Data:** 18/11/2026 · **Mudança:** IA Coach histórico — apagar mensagem/resumo individual com confirmação por linha no `CoachHistoryCard`; o apagar em bloco continua. Sem schema ou regra de treino nova.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -363,16 +363,17 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P1-18 · IA Coach (fora dos ciclos 1–4)
 
-**Status:** 3.1 + 3.2 + 3.3-A/B + Room v19 + histórico somente leitura concluídos em 18/11/2026; apagar mensagem individual e goldens da bar pendentes.
+**Status:** 3.1 + 3.2 + 3.3-A/B + Room v19 + histórico com apagar em bloco/individual concluídos em 18/11/2026; pendências funcionais da 3.3 e goldens da bar pendentes.
 
 - [x] Proxy stateless no Dokploy, `X-Coach-Token`, cadeia com fallback e sem log de payload ([ADR 0051](adr/0051-ia-coach-proxy.md)).
 - [x] Aba central Coach, opt-in/revogação, explicação da semana com validação e fallback determinístico.
 - [x] Revisão da semana fechada reutilizando `WeeklyReviewAssembler` (mesma semana de Tendências).
 - [x] Replanejamento com confirmação/diff/undo e intents explícitos (“perdi o treino X”, “só tenho 30 min no dia Y”) via `ReplanController`.
 - [x] Room v19: `coach_messages`/`coach_summaries`, TTL 90/180 dias, revogação apaga, export/delete incluem ([ADR 0052](adr/0052-ia-coach-memory-schema-v19.md)).
-- [x] Histórico do Coach somente leitura na aba (só com opt-in), com resumos + conversa, loading/vazio/erro, TalkBack, dark/light, fonte 200% e “Apagar histórico” em bloco.
-- [ ] Apagar mensagem/resumo individual e usar o resumo como contexto de copy.
-- [ ] Goldens Roborazzi da bar e pendências funcionais da 3.3 (remover dia inteiro/múltiplos dias).
+- [x] Histórico do Coach somente leitura na aba (só com opt-in), com resumos + conversa, loading/vazio/erro, TalkBack, dark/light, fonte 200%, “Apagar histórico” em bloco e apagar item a item com confirmação.
+- [ ] Usar o resumo como contexto de copy (pós-MVP).
+- [ ] Pendências funcionais da 3.3 (remover dia inteiro/múltiplos dias).
+- [ ] Goldens Roborazzi da bar.
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 

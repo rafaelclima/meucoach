@@ -110,9 +110,9 @@ acúmulo de texto sensível sem perder o ciclo de treino corrente.
 - “Apagar tudo” apaga as duas tabelas na mesma transação das demais e a UI
   informa quantas mensagens/resumos do Coach foram removidos.
 - A aba Coach lista a memória em modo somente leitura apenas com opt-in e oferece
-  “Apagar histórico”, que reusa `CoachMemoryRepository.clearAll()`; treinos,
-  perfil, check-ins e métricas não são tocados. O apagar individual fica para uma
-  próxima fatia.
+  “Apagar histórico”, que reusa `CoachMemoryRepository.clearAll()`, além de
+  apagar uma mensagem ou um resumo por vez (`deleteMessage`/`deleteSummary`);
+  treinos, perfil, check-ins e métricas não são tocados.
 - O proxy continua sem qualquer cópia; revogar no aparelho encerra a memória
   local, não um histórico remoto.
 
@@ -144,9 +144,9 @@ acúmulo de texto sensível sem perder o ciclo de treino corrente.
   próxima abertura/escrita.
 - O resumo depende de uma revisão validada; sem IA não há resumo novo (o
   determinístico continua na tela, mas não vira memória).
-- Ainda não existe apagar mensagem individual; a lista visual já existe e a
-  decisão 25 é atendida por “apagar histórico” (tudo) e revogação/apagar tudo.
-  Apagar item a item fica para a próxima fatia.
+- A lista visual permite apagar o histórico em bloco ou uma mensagem/resumo por
+  vez, sem edição; o apagar item a item usa o mesmo repositório e não toca em
+  treinos/perfil.
 
 ### 3.3 Não objetivos
 
@@ -187,6 +187,14 @@ acúmulo de texto sensível sem perder o ciclo de treino corrente.
   confirmação de “Apagar histórico” (`clearAll`, treinos/perfil intactos).
   TalkBack, dark/light e fonte 200% cobertos. **Testes:** repositório (2),
   ViewModel (4) e tela (8). Sem chamada de IA nova e sem mudança de schema.
+- **18/11/2026 (apagar item individual):** `CoachMessageDao.deleteById`/
+  `CoachSummaryDao.deleteByWeek` e `CoachMemoryRepository.deleteMessage`/
+  `deleteSummary` removem só a linha pedida (item inexistente retorna `false`);
+  cada linha do histórico tem “Apagar” com confirmação própria, alvo de 48 dp e
+  `contentDescription`. O apagar em bloco continua e treinos/perfil/check-ins não
+  são tocados. **Testes:** repositório (2), ViewModel (2) e tela (2). O flake de
+  corrida do `TodayViewModelPersistTest` foi corrigido esperando também a
+  `completionMessage`, sem reduzir assert.
 
 ---
 
