@@ -4,18 +4,15 @@ import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.WeeklyPlan
-import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-data class CoachPlanContext(
-    val plan: WeeklyPlan,
-    val inputsHash: String,
-)
+data class CoachPlanContext(val plan: WeeklyPlan, val inputsHash: String)
 
 interface CoachPlanSource {
     fun observeCurrent(): Flow<CoachPlanContext?>
