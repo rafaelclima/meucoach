@@ -1,6 +1,45 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach: apagar item individual do histórico — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach 3.3-C: remover dia inteiro e ajustar múltiplos dias — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach 3.3-C: dia inteiro e múltiplos dias na disponibilidade temporária
+
+**Objetivo:** fechar a pendência funcional da 3.3: “só tenho menos tempo” passa a aceitar mais de um dia por pedido e `0` remove o dia inteiro, sempre no perfil efêmero da avaliação, sem gravar em `AthleteProfile`/`weeklyPlans.availabilityHash`. Nenhuma chamada de IA nova; o motor decide.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (3.3-C concluída; resta goldens da bar na §5).
+
+### Concluído
+
+- **Domínio:** `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` virou lista, com datas duplicadas recusadas no `init`; o `canonical` ordena as entradas, então a ordem não muda o `inputsHash` (o hash de um único dia permanece igual). `PlanReplanner` valida cada dia (futuro da semana, existente na disponibilidade, apenas redução), aplica todas as entradas no perfil efêmero (0 remove a chave) e explica remoção/múltiplos dias no rationale.
+- **App:** `LessTimeChange` é o contrato da UI; `ReplanController.replanLessTime` recebe uma lista, valida duplicatas, dias da semana, existência e faixa `0..current-1`, ordena e monta o intent. `LessTimeSheet` virou multi-seleção de chips + um valor de minutos aplicado aos dias escolhidos (0 remove); `requestNote` e `body` distinguem um dia, vários dias e “sem treino”.
+- **Aceite:** o perfil persistido e o `availabilityHash` continuam os do perfil real; remover dia/reduzir vários dias só muda a geração e a sugestão. O undo da 3.3-A continua valendo.
+- **Escopo preservado:** sem IA nova, sem schema/migração e sem regra fisiológica; “quero mais tempo” continua fora.
+- **Docs:** PRD, `DECISIONS` r1.60, `ROADMAP` (P1-18), `TESTING` e handoff.
+
+### Testes
+
+- `:core:domain:test` 1125 (+4: remover+reduzir no mesmo pedido, canonical independente de ordem, datas duplicadas recusadas e canonical vazio legado); `:app:testDebugUnitTest` 1024 (+1 ViewModel multi-dia, +1 tela multi-seleção); `:core:data:testDebugUnitTest` 229; `:core:model:test` 40 = **2.418 testes, 0 falhas/erros**.
+- Novos: domínio (4), ViewModel (1) e tela (1). O teste de validação local agora usa a faixa `0..atual-1`.
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `:app:lintDebug` verdes; sem nova entrada de baseline.
+- Nenhum dado real; nenhuma migração; nenhuma regra de treino/ciência alterada.
+
+### Decisões e observações
+
+- Um pedido usa **um valor de minutos para todos os dias selecionados**; `0` remove o dia. Tempos diferentes por dia ficam para outra fatia se virarem necessidade real.
+- `0` não é gravado em `WeeklyAvailability` (a invariante exige 1..1440): o perfil efêmero simplesmente perde a chave do dia, e o gerador/prescrição tratam como indisponível.
+- O `inputsHash` ordena as entradas por data; dois intents equivalentes em ordem diferente produzem a mesma sugestão/aceite.
+- O motor continua conservador: a revisão só reduz, nunca repõe carga, e o aceite revalida o intent inteiro (lista) contra o estado persistido.
+- O rationale de remoção/múltiplos dias é copy de auditoria; não cria `ruleId`/`evidenceId` novo.
+
+### Pendente
+
+- Goldens Roborazzi da bar (única pendência da §5 do handoff).
+- Input livre de conversa do Coach continua fora do MVP.
+
+### Próximo passo
+
+1. Goldens Roborazzi da bar: regravar/revisar dark/light ao tocar a navegação.
+2. Depois encerrar a feature IA Coach no roadmap e voltar ao fluxo normal do Ciclo 4/P1-12.
 
 ## Sessão 2026-11-18 — IA Coach: apagar mensagem/resumo individual no histórico
 

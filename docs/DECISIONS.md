@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.59 · **Data:** 18/11/2026
+**Versão:** 1.60 · **Data:** 18/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -57,6 +57,7 @@
 > Revisão 1.57 (18/11/2026): ADR 0052 — memória local do IA Coach no schema v19 (`coach_messages`/`coach_summaries`), só com texto aprovado pelo validador, TTL de 90/180 dias com expiração preguiçosa, revogação do opt-in apagando as duas tabelas e export/delete incluindo `coach_*`. A memória é contexto de copy e não entra em prompt; o motor segue autoridade.
 > Revisão 1.58 (18/11/2026): histórico do Coach na aba (decisões 17/25) — DAOs expõem Flow newest-first, `CoachMemoryRepository` mapeia para `CoachMemoryMessage`/`CoachMemorySummary` puros e `CoachHistoryState` cobre Hidden/Loading/Empty/Ready/Error. A lista é somente leitura e só aparece com opt-in; “Apagar histórico” reusa `clearAll` e não toca em treinos/perfil. Apagar mensagem individual fica pendente; sem IA nova e sem schema novo.
 > Revisão 1.59 (18/11/2026): apagar item individual do histórico — `deleteMessage`/`deleteSummary` no repositório (item inexistente é no-op) e confirmação por linha no `CoachHistoryCard`, com alvo de 48 dp e `contentDescription`; o apagar em bloco continua e treinos/perfil não são tocados. Sem IA nova e sem schema novo.
+> Revisão 1.60 (18/11/2026): IA Coach 3.3-C — `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` é uma lista ordenada no `canonical`, com datas duplicadas recusadas. `PlanReplanner` aplica todos os dias no perfil efêmero e valida redução/existência; `LessTimeSheet` permite multi-seleção com um valor de minutos (`0` remove) e `LessTimeChange` circula no controller/ViewModel. `AthleteProfile` e `availabilityHash` continuam intactos; sem IA nova e sem schema novo.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

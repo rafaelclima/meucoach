@@ -1,8 +1,8 @@
 # HANDOFF — IA Coach
 
 **Atualizado:** 18/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual
-**Próxima fatia:** pendências funcionais da 3.3 ou goldens Roborazzi da bar (uma por sessão, §5)
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual
+**Próxima fatia:** goldens Roborazzi da bar (§5.2)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach apagar individual), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A próxima fatia é **uma** das pendências da §5: remover um dia inteiro/múltiplos dias na disponibilidade temporária **ou** os goldens Roborazzi da bar. Antes de codar, confirme `git status` e rode os testes do Coach. Implemente com TDD, rode os gates do AGENTS.md e atualize `PROGRESS`/`PRD`/este handoff.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach 3.3-C), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A próxima fatia são os **goldens Roborazzi da bar** (§5.2): regravar/revisar dark/light ao tocar a navegação. Antes de codar, confirme `git status` e rode os testes do Coach. Implemente com TDD quando houver código, rode os gates do AGENTS.md e atualize `PROGRESS`/`PRD`/este handoff.
 
 Ordem de leitura:
 
@@ -35,12 +35,13 @@ Regra de trabalho: **uma fatia pequena e verificável por sessão**; não abrir 
 | 3.2 | Revisão da semana fechada: payload minimizado, validação de duração/porcentagem, cartão determinístico + narrativa, cache por hash | `CoachReviewPromptBuilder`, `CoachApi.review`, `WeeklyReviewAssembler`, `CoachReviewSource`, `CoachReviewCard` |
 | 3.3-A | Ações rápidas T3 na aba Coach, bottom sheet com diff/selo, aceite via `ApplyReplan` (stale reavalia), undo append-only e `ReplanController` compartilhado com Hoje/Perfil | `app/replan/ReplanController*`, `app/application/UndoReplan`, `TrainingPlanRepository.undoReplan`, `CoachReplanCard`, `ReplanSuggestionSheet` |
 | 3.3-B | “Perdi o treino X” e “só tenho 30 min no dia Y”: `ReplanIntent` no input/hash/sugestão, perfil efêmero só no gerador, pickers no Coach, `requestNote`, stale por intent e fila preservando o intent | `core/domain/replan/ReplanModels.kt`, `PlanReplanner.eligibleMissedSessions`, `EvaluateReplan.missedCandidates`, `ReplanController`, `CoachIntentSheets` |
+| 3.3-C | “Tenho menos tempo” com vários dias por pedido e `0` removendo o dia: lista de `TemporaryAvailability`, validação por dia, perfil efêmero com a chave removida, canonical ordenado, picker multi-seleção | `ReplanModels.kt` (`TemporaryAvailability`/`ReplanIntent`), `PlanReplanner`, `ReplanController.replanLessTime`, `LessTimeSheet`/`LessTimeChange` |
 | Room v19 | Memória local: `coach_messages`/`coach_summaries`, TTL 90/180, revogação apaga, export/delete incluem, texto sempre validado | `core/data/db/entity/Coach*`, `CoachMemoryRepository`, `CoachMemoryPolicy`, `MIGRATION_18_19`, `CoachViewModel`, `UserDataRepository` |
 | Histórico UI | Lista somente leitura (resumos + conversa) só com opt-in, loading/vazio/erro, retry, “Apagar histórico” em bloco e apagar item a item com confirmação, TalkBack, dark/light e fonte 200% | `CoachHistoryState`/`CoachViewModel`, `CoachHistoryCard`, `CoachMemoryRepository.observe*/delete*`, DAOs `observeAll`/`delete*` |
 | ADR 0051 | Contrato, segurança mínima, trade-offs e risco LGPD aceito | `docs/adr/0051-ia-coach-proxy.md` |
 | ADR 0052 | Schema v19, TTL, revogação e limites da memória | `docs/adr/0052-ia-coach-memory-schema-v19.md` |
 
-Verificação no fechamento: **2.412 testes** (domain 1121, data 229, app 1022, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `lintDebug` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
+Verificação no fechamento: **2.418 testes** (domain 1125, data 229, app 1024, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `lintDebug` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
 
 Pontos de arquitetura que não devem regredir:
 
@@ -117,8 +118,24 @@ Completar as intenções do PRD sem criar regra de treino:
 - A disponibilidade temporária é **memória de avaliação**, não dado: nenhum caminho grava em `AthleteProfile`/`weeklyPlans`.
 - O intent entra no `inputsHash` (e não em `availabilityHash`), o que faz o aceite detectar troca de dia/minutos sem fingir mudança de perfil.
 - Um intent não vazio não gera a cause genérica `USER_REQUEST`; a copy específica (“tempo reduzido”/treino não concluído) é mais útil e auditável.
-- Remover um dia inteiro, múltiplos dias por pedido e “quero aumentar meu tempo” continuam fora do escopo.
+- Na 3.3-B, remover um dia inteiro, múltiplos dias por pedido e “quero aumentar meu tempo” ficaram fora do escopo; a 3.3-C fechou os dois primeiros e “quero mais tempo” segue fora.
 - Nenhuma migração; schema v18. O undo da 3.3-A continua valendo para a revisão criada pela 3.3-B.
+
+### 3.8 Objetivo entregue (3.3-C)
+
+Fechar a pendência funcional da disponibilidade temporária sem criar regra nova:
+
+- **Dia inteiro:** `TemporaryAvailability.minutes = 0` remove o dia; o perfil efêmero perde a chave e o gerador trata como indisponível. `AthleteProfile` e `availabilityHash` não mudam.
+- **Vários dias:** `ReplanIntent.temporaryAvailability` virou lista; datas duplicadas são recusadas no `init` e o `canonical` ordena por data, então a ordem não muda o `inputsHash`.
+- **Validação:** `PlanReplanner` valida cada dia (futuro da semana, existente na disponibilidade, apenas redução) e explica remoção/múltiplos dias no rationale. O `inputsHash` de um único dia permanece igual.
+- **UI:** `LessTimeChange` substitui o par data/minutos; o controller valida lista, duplicatas e faixa `0..current-1`; o `LessTimeSheet` tem chips multi-seleção e um valor único aplicado aos dias escolhidos (`0` remove). `requestNote` descreve um dia, vários dias ou “sem treino”.
+- **Aceite:** `ApplyReplan` reconstrói o intent inteiro (lista); o perfil persistido e o baseline continuam iguais.
+
+### 3.9 Testes da fatia 3.3-C
+
+- Domínio: remover um dia + reduzir outro no mesmo pedido, `canonical` independente da ordem, datas duplicadas recusadas e canonical vazio legado preservado.
+- App: ViewModel remove quinta e reduz sexta sem persistir o override; tela seleciona dois dias, informa `0` e envia os dois `LessTimeChange`.
+- Total da feature no fechamento: **2.418 testes** (domain 1125, data 229, app 1024, model 40).
 
 ---
 
@@ -206,12 +223,13 @@ Memória local do Coach **sem** transformar memória em decisão:
 
 ---
 
-## 5. Depois do Room v19
+## 5. Pendências restantes
 
-### 5.1 Pendências funcionais da 3.3
+### 5.1 3.3 — estado
 
-- Remover um dia inteiro de disponibilidade e mais de um dia por pedido (hoje a 3.3-B só reduz um dia futuro).
+- Remover um dia inteiro e mais de um dia por pedido: **concluído na 3.3-C** (`0` remove o dia; um valor de minutos para todos os dias selecionados).
 - Aumentar a disponibilidade temporária (“quero mais tempo”) permanece fora do escopo por ora.
+- Tempos diferentes por dia no mesmo pedido não são suportados; se virarem necessidade real, viram outra fatia.
 
 ### 5.2 Goldens Roborazzi da bar
 
