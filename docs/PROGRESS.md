@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S16 do Ciclo 4: versões de motor, C4-53)
+**Atualizado:** 17/11/2026 (S16 do Ciclo 4: suíte completa e gates de fechamento, C4-54)
+
+## Sessão 2026-11-17 — Ciclo 4/S16: suíte completa e gates da fase (C4-54)
+
+**Objetivo:** fechar a S16 com evidência de execução limpa da suíte inteira e dos gates da fase, sem depender de cache.
+
+### Concluído
+
+- **Suítes completas forçadas** (`--rerun-tasks`): `:core:model:test` 40, `:core:domain:test` 1099, `:core:data:testDebugUnitTest` 208 e `:app:testDebugUnitTest` 959 — **2.306 testes, 0 falhas, 0 erros e 0 skip**.
+- **Gates da fase:** `./gradlew check :app:assembleDebug koverVerify spotlessCheck` verde; `koverVerify` reexecutado sobre os dados novos; `check` cobre detekt, lint, Kover e o gate FIT (93,01% de branches).
+- **Goldens da fase verdes** na execução nova: `G-PER-03`, `G-PER-04` (inline no `LongRunSizingTest`), `G-PER-05`, `G-PER-06`, `G-LOAD-03`, `G-READY-05`, `G-DATA-02`, `G-VOL-02` e `G-UPGRADE-01`.
+
+### Testes
+
+- Nenhum flake nesta execução; diferente de S15.1, `TutorialSystemBackTest` e `MetricsImportViewModelTest` passaram na suíte cheia forçada.
+- Nenhum `@Ignore`/`@Disabled` no código de teste.
+- Nenhum código, migração ou fixture alterado.
+
+### Decisões e observações
+
+- A primeira passagem do `check` reutilizou cache de domain/model/app; para o aceite da C4-54, as quatro suítes foram reexecutadas com `--rerun-tasks`.
+- O gate visual do Roborazzi (`verifyRoborazziDebug`) é uma invocação explícita separada e não faz parte do aceite da C4-54; o drift pré-existente em `activity-comparison-*`, `checkin-*` e `health-*` registrado em S15.1 permanece fora do escopo.
+- S16 encerrada; próxima é S17/C4-55 (smoke no aparelho).
+
+### Próximo passo
+
+1. S17 / C4-55: smoke no aparelho com dados sintéticos + leitura real somente leitura.
+2. Depois S17 / C4-56: docs de fechamento (`PROGRESS`, `ROADMAP`, `DECISIONS`, `TESTING`).
 
 ## Sessão 2026-11-17 — Ciclo 4/S16: versões de motor `weekly-plan-v7`/`daily-prescription-v6` (C4-53)
 

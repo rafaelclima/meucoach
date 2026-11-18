@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S15 concluídas; **C4-53 (S16) concluída; C4-54 é a próxima task**.
+**Status:** S0 a S16 concluídas; **C4-54 (S16) concluída; C4-55 é a próxima task**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S16 (C4-53)
-> **Último commit:** C4-53 — `feat(domain): bump the plan and daily engine versions (C4-53)`
-> **Fase:** 4 — Fechamento — **S16 aberta**; próxima C4-54
-> **Sessão atual:** **S16 — C4-53 DONE**
-> **Task atual:** C4-53 (DONE)
-> **Próxima task:** C4-54 (S16)
+> **Última atualização:** 17/11/2026 — S16 (C4-54)
+> **Último commit:** C4-54 — `chore(c4): run the full suite and phase gates (C4-54)`
+> **Fase:** 4 — Fechamento — **S16 concluída**; próxima S17/C4-55
+> **Sessão atual:** **S16 — C4-54 DONE (S16 encerrada)**
+> **Task atual:** C4-54 (DONE)
+> **Próxima task:** C4-55 (S17)
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1099, `:app:testDebugUnitTest` 959, `:core:data:test` 208, `:core:model` 40; `:app:assembleDebug`, `spotlessCheck`, kover e detekt (domain/data/app) verdes
-> **Próxima ação:** abrir S16/C4-54 (suíte completa/goldens/Kover/detekt/spotless).
+> **Gates da última sessão:** suítes forçadas (`--rerun-tasks`) `:core:domain:test` 1099, `:app:testDebugUnitTest` 959, `:core:data:test` 208, `:core:model` 40 = 2.306 testes, 0 falhas/erros/skip; `check`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes; goldens da fase verdes
+> **Próxima ação:** abrir S17/C4-55 (smoke no aparelho, sintético + leitura real).
 
 ### 0.1 O que já está pronto
 
@@ -637,7 +637,7 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-51 | Copy por gate + "Por quê?" + dica | C4-50 | M | S11 | FR-412 | UI; catálogo | `QualityGateCopyTest` (2); títulos do rebaixamento (5); bloco no "Por quê?" (2 + 1 tela); commit S11.4 |
 | [x] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | `ExplanationCatalogTest` (+IDs + comportamento); `R-ACT-01/02`, `R-CAL-01`, `EV-ABBISS-2008`; commit S11.5 |
 | [x] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | `weekly-plan-v7`/`daily-prescription-v6`; `WeeklyPlanGeneratorTest`/`DailyPrescriptionEngineTest` (strings exatas) + `GetTodayPrescriptionTest` (v5→v6); stale fixtures v5→v6; upgrade v6→v7 real; commit S16 |
-| [ ] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | — |
+| [x] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | Suítes forçadas 2.306 testes (1099 domain/959 app/208 data/40 model), 0 falhas/erros/skip; `check`, `assembleDebug`, `koverVerify`, `spotlessCheck` e goldens da fase verdes; commit S16.1 |
 | [ ] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | — |
 | [ ] | C4-56 | Docs `PROGRESS`, `ROADMAP`, `DECISIONS`, `TESTING` | C4-54/55 | S | S17 | AGENTS | Docs | — |
 
@@ -1103,6 +1103,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Commit:** `feat(domain): bump the plan and daily engine versions (C4-53)`.
 - **Decisões/notas:** TDD RED→GREEN (as duas strings exatas e a prescrição v5 falhavam). O `weekly-plan-v7` faz todo plano v6 da semana vigente ser reavaliado pelo `PlanUpgrade` na abertura; o `G-UPGRADE-01` (v6→v7) agora é o caminho real, não um alvo simulado. O `daily-prescription-v6` faz a prescrição v5 ser superseded por uma nova linha com o mesmo `inputsHash`, sem reescrever a anterior. O default da coluna `weekly_plans.generatorVersion` continua `'weekly-plan-v6'` (legado da migração v18); o motor grava v7 em toda linha nova. `session-library-v2` permanece implícito no catálogo (não é coluna nem engine persistida); o contrato persistido é `weekly-plan-v7`. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S16 / C4-54 (suíte completa, goldens, Kover, detekt, spotless).
+
+### S16.1 — 2026-11-17 — Suíte completa e gates da fase (C4-54)
+
+- **Status:** DONE
+- **Tasks:** C4-54 (fechamento da fase; sem código alterado).
+- **Arquivos:** `docs/CICLO_4_TREINO_REAL.md`, `docs/PROGRESS.md`.
+- **Testes/gates:** `./gradlew check :app:assembleDebug koverVerify spotlessCheck` verde; suítes completas forçadas (`--rerun-tasks`) `:core:model:test` 40, `:core:domain:test` 1099, `:core:data:testDebugUnitTest` 208 e `:app:testDebugUnitTest` 959 = **2.306 testes, 0 falhas, 0 erros, 0 skip**; `koverVerify` reexecutado sobre os dados novos, verde; `check` cobre detekt (domain/data/app), lint, Kover e o gate de 90% de branches do FIT (93,01%); goldens da fase verdes na execução nova (`G-PER-03`/`PlanGoldenTest`, `G-PER-04`/`LongRunSizingTest` 9, `G-PER-05`/`PlanQualityGoldenTest` 3, `G-PER-06`/`PlanHorizonGoldenTest` 5, `G-LOAD-03`/`LoadCalibrationGoldenTest`, `G-READY-05`/`ReadinessCheckinGoldenTest`, `G-DATA-02`/`SleepNightsGoldenTest`, `G-VOL-02`/`PlanVolumeGoldenTest` 2, `G-UPGRADE-01`/`PlanUpgradeGoldenTest`).
+- **Commit:** `chore(c4): run the full suite and phase gates (C4-54)`.
+- **Decisões/notas:** nenhum código, migração ou fixture alterado — a task é o gate de fechamento da S16. As suítes foram forçadas com `--rerun-tasks` porque a primeira passagem do `check` reutilizou cache em domain/model/app; a reexecução limpa não teve flakes (diferente de S15.1, que registrou `TutorialSystemBackTest`/`MetricsImportViewModelTest` sob carga). O gate visual do Roborazzi (`verifyRoborazziDebug`) é uma invocação explícita separada e não faz parte do aceite da C4-54; o drift pré-existente em `activity-comparison-*`, `checkin-*` e `health-*` registrado em S15.1 permanece fora do escopo desta task. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** S17 / C4-55 (smoke no aparelho, sintético + leitura real somente leitura).
 
 ---
 
