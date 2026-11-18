@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.61 · **Data:** 18/11/2026 · **Mudança:** IA Coach 3.3-C — “tenho menos tempo” aceita vários dias e `0` remove o dia inteiro no perfil efêmero, com canonical ordenado e picker multi-seleção; sem schema ou regra de treino nova.
+**Versão:** 1.62 · **Data:** 18/11/2026 · **Mudança:** IA Coach encerrada no MVP — goldens dark/light da barra (`bottom-bar-*`), seleção/acessibilidade dos tabs e higiene do `CoachViewModelTest`; sem regra de treino ou schema novo.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -363,7 +363,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P1-18 · IA Coach (fora dos ciclos 1–4)
 
-**Status:** 3.1 + 3.2 + 3.3-A/B/C + Room v19 + histórico com apagar em bloco/individual concluídos em 18/11/2026; goldens da bar pendentes.
+**Status:** concluído no MVP em 18/11/2026 (3.1 + 3.2 + 3.3-A/B/C + Room v19 + histórico + goldens da bar); evoluções pós-MVP listadas abaixo.
 
 - [x] Proxy stateless no Dokploy, `X-Coach-Token`, cadeia com fallback e sem log de payload ([ADR 0051](adr/0051-ia-coach-proxy.md)).
 - [x] Aba central Coach, opt-in/revogação, explicação da semana com validação e fallback determinístico.
@@ -372,8 +372,8 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] 3.3-C: “tenho menos tempo” com vários dias por pedido e `0` removendo o dia inteiro, sempre no perfil efêmero (sem tocar em `AthleteProfile`/`availabilityHash`).
 - [x] Room v19: `coach_messages`/`coach_summaries`, TTL 90/180 dias, revogação apaga, export/delete incluem ([ADR 0052](adr/0052-ia-coach-memory-schema-v19.md)).
 - [x] Histórico do Coach somente leitura na aba (só com opt-in), com resumos + conversa, loading/vazio/erro, TalkBack, dark/light, fonte 200%, “Apagar histórico” em bloco e apagar item a item com confirmação.
-- [ ] Usar o resumo como contexto de copy (pós-MVP).
-- [ ] Goldens Roborazzi da bar.
+- [x] Goldens Roborazzi da barra (`bottom-bar-dark/light`) com o Coach selecionado, seleção e clique dos cinco tabs.
+- [ ] Usar o resumo como contexto de copy (pós-MVP); input livre de conversa e “quero mais tempo” seguem pós-MVP.
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 

@@ -1,8 +1,8 @@
 # HANDOFF — IA Coach
 
 **Atualizado:** 18/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual
-**Próxima fatia:** goldens Roborazzi da bar (§5.2)
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar
+**Próxima fatia:** nenhuma pendente da IA Coach no MVP; prioridade volta ao P1-12/Ciclo 4 (§5.4)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach 3.3-C), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A próxima fatia são os **goldens Roborazzi da bar** (§5.2): regravar/revisar dark/light ao tocar a navegação. Antes de codar, confirme `git status` e rode os testes do Coach. Implemente com TDD quando houver código, rode os gates do AGENTS.md e atualize `PROGRESS`/`PRD`/este handoff.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach goldens da bar), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A feature está encerrada no MVP: não há pendência funcional. O próximo passo é retomar P1-12/Ciclo 4; se houver UI da barra, rode `:app:verifyRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'` e revise dark/light. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 
@@ -36,12 +36,13 @@ Regra de trabalho: **uma fatia pequena e verificável por sessão**; não abrir 
 | 3.3-A | Ações rápidas T3 na aba Coach, bottom sheet com diff/selo, aceite via `ApplyReplan` (stale reavalia), undo append-only e `ReplanController` compartilhado com Hoje/Perfil | `app/replan/ReplanController*`, `app/application/UndoReplan`, `TrainingPlanRepository.undoReplan`, `CoachReplanCard`, `ReplanSuggestionSheet` |
 | 3.3-B | “Perdi o treino X” e “só tenho 30 min no dia Y”: `ReplanIntent` no input/hash/sugestão, perfil efêmero só no gerador, pickers no Coach, `requestNote`, stale por intent e fila preservando o intent | `core/domain/replan/ReplanModels.kt`, `PlanReplanner.eligibleMissedSessions`, `EvaluateReplan.missedCandidates`, `ReplanController`, `CoachIntentSheets` |
 | 3.3-C | “Tenho menos tempo” com vários dias por pedido e `0` removendo o dia: lista de `TemporaryAvailability`, validação por dia, perfil efêmero com a chave removida, canonical ordenado, picker multi-seleção | `ReplanModels.kt` (`TemporaryAvailability`/`ReplanIntent`), `PlanReplanner`, `ReplanController.replanLessTime`, `LessTimeSheet`/`LessTimeChange` |
+| Goldens da bar | `bottom-bar-dark/light.png` com os cinco tabs e o Coach selecionado; tags de teste na `McBottomBar`; revisão visual dark/light e clique/seleção cobertos | `McBottomBar`, `destinations`, `app/ui/navigation/BottomBarScreenshotTest` |
 | Room v19 | Memória local: `coach_messages`/`coach_summaries`, TTL 90/180, revogação apaga, export/delete incluem, texto sempre validado | `core/data/db/entity/Coach*`, `CoachMemoryRepository`, `CoachMemoryPolicy`, `MIGRATION_18_19`, `CoachViewModel`, `UserDataRepository` |
 | Histórico UI | Lista somente leitura (resumos + conversa) só com opt-in, loading/vazio/erro, retry, “Apagar histórico” em bloco e apagar item a item com confirmação, TalkBack, dark/light e fonte 200% | `CoachHistoryState`/`CoachViewModel`, `CoachHistoryCard`, `CoachMemoryRepository.observe*/delete*`, DAOs `observeAll`/`delete*` |
 | ADR 0051 | Contrato, segurança mínima, trade-offs e risco LGPD aceito | `docs/adr/0051-ia-coach-proxy.md` |
 | ADR 0052 | Schema v19, TTL, revogação e limites da memória | `docs/adr/0052-ia-coach-memory-schema-v19.md` |
 
-Verificação no fechamento: **2.418 testes** (domain 1125, data 229, app 1024, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `lintDebug` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
+Verificação no fechamento: **2.421 testes** (domain 1125, data 229, app 1027, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify`, `lintDebug` e `verifyRoborazziDebug --tests BottomBarScreenshotTest` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
 
 Pontos de arquitetura que não devem regredir:
 
@@ -135,7 +136,7 @@ Fechar a pendência funcional da disponibilidade temporária sem criar regra nov
 
 - Domínio: remover um dia + reduzir outro no mesmo pedido, `canonical` independente da ordem, datas duplicadas recusadas e canonical vazio legado preservado.
 - App: ViewModel remove quinta e reduz sexta sem persistir o override; tela seleciona dois dias, informa `0` e envia os dois `LessTimeChange`.
-- Total da feature no fechamento: **2.418 testes** (domain 1125, data 229, app 1024, model 40).
+- Total da feature no fechamento: **2.421 testes** (domain 1125, data 229, app 1027, model 40).
 
 ---
 
@@ -231,17 +232,24 @@ Memória local do Coach **sem** transformar memória em decisão:
 - Aumentar a disponibilidade temporária (“quero mais tempo”) permanece fora do escopo por ora.
 - Tempos diferentes por dia no mesmo pedido não são suportados; se virarem necessidade real, viram outra fatia.
 
-### 5.2 Goldens Roborazzi da bar
+### 5.2 Goldens Roborazzi da bar — concluída
 
-- `./gradlew :app:verifyRoborazziDebug` é invocação separada.
-- Drift pré-existente em `activity-comparison-*`, `checkin-*` e `health-*` registrado em `TESTING.md`; só mexer ao tocar essas telas.
-- Ao alterar a barra, regravar os goldens da navegação e revisar visualmente dark/light.
+- `BottomBarScreenshotTest` grava `bottom-bar-dark.png`/`bottom-bar-light.png` a 393 dp com o Coach selecionado e verifica existência dos cinco tabs, seleção e clique.
+- `McBottomBar` tem `testTag("bottom-bar-{route}")`; `destinations`/`AppDestination` ficaram `internal` para o teste usar a lista real.
+- O gate continua explícito: `./gradlew :app:verifyRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'`. O drift pré-existente de `activity-comparison-*`, `checkin-*` e `health-*` não foi tocado.
+- Ao alterar a barra, regravar os dois goldens e revisar dark/light.
 
 ### 5.3 UI de histórico do Coach — concluída
 
 - Decisões 17 (histórico + conversa) e 25 (vê/apaga, sem edição): lista somente leitura, só com opt-in, resumos + conversa, estados loading/vazio/erro, retry, “Apagar histórico” em bloco e apagar item a item com confirmação.
 - `deleteMessage`/`deleteSummary` removem só a linha pedida; treinos/perfil/check-ins ficam intactos. O input livre de conversa continua fora do MVP.
 - A memória continua local, expira por TTL e é apagada na revogação/“apagar tudo”; nenhum caminho a usa para decidir treino.
+
+### 5.4 Encerramento
+
+- A IA Coach está concluída no MVP; não há pendência funcional.
+- Pós-MVP: input livre de conversa, memória como contexto de copy em prompt e “quero mais tempo” na disponibilidade temporária.
+- Próxima prioridade: P1-12 (4 semanas de uso real) / Ciclo 4.
 
 ---
 
@@ -258,6 +266,8 @@ Comandos:
 ./gradlew :app:assembleDebug
 ./gradlew check -x :app:testDebugUnitTest
 ./gradlew spotlessApply
+./gradlew :app:recordRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'
+./gradlew :app:verifyRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'
 ```
 
 Proxy (não commitado):
@@ -276,6 +286,7 @@ Flakes conhecidos (ver `TESTING.md`): `TutorialSystemBackTest` (transação Room
 - [x] Compila (`assembleDebug`).
 - [x] Testes novos e existentes verdes; `spotlessCheck` e `koverVerify` verdes.
 - [x] Detekt/lint sem erros; sem adicionar achado ao baseline sem justificativa.
+- [x] Goldens da barra gravados e verificados em dark/light.
 - [x] Nenhum dado real no diff; migração 18→19 aditiva, sem `fallbackToDestructiveMigration`.
 - [x] Docs da regra/UX + `PROGRESS.md` + este handoff atualizados.
 - [x] Commit em Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`).

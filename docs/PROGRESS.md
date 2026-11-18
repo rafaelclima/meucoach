@@ -1,6 +1,45 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach 3.3-C: remover dia inteiro e ajustar múltiplos dias — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach: goldens da barra e encerramento da feature — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach: goldens da barra de navegação e encerramento
+
+**Objetivo:** fechar a última pendência da feature IA Coach — a barra Hoje/Corridas/Coach/Tendências/Saúde não tinha golden próprio. Capturar dark/light com o Coach selecionado, garantir seleção/acessibilidade dos tabs e deixar o gate visual explícito.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (feature encerrada; próxima prioridade volta ao P1-12/Ciclo 4).
+
+### Concluído
+
+- **Componente:** `McBottomBar` ganhou `testTag("bottom-bar-{route}")` por tab, permitindo testar seleção sem depender do texto; nada visual mudou. `AppDestination`/`destinations` viraram `internal` para o teste usar exatamente os destinos do app (sem duplicar labels/ícones).
+- **Goldens:** `BottomBarScreenshotTest` grava `bottom-bar-dark.png`/`bottom-bar-light.png` a 393 dp com os cinco tabs e o Coach selecionado (pílula lima central), além de verificar que todos os tabs existem, o Coach está selecionado e o clique em Hoje devolve a rota.
+- **Revisão visual:** dark/light conferidos; labels e ícones cabem em 393 dp, o destaque central não corta e o contraste segue os tokens.
+- **Higiene de teste:** `CoachViewModelTest` passou a cancelar os `viewModelScope` e a drenar o looper antes de fechar o banco/resetar o `Dispatchers.Main`, eliminando a corrida que apareceu na suíte completa com o novo coletor do histórico (mesmo padrão do `TodayViewModelPersistTest`).
+- **Escopo:** nenhuma regra de treino/ciência, schema ou chamada de IA; o drift pré-existente de `activity-comparison-*`, `checkin-*` e `health-*` não foi tocado.
+- **Docs:** PRD, `DECISIONS` r1.61, `ROADMAP` (P1-18), `TESTING` e handoff.
+
+### Testes
+
+- `:app:testDebugUnitTest` 1027 (+3 `BottomBarScreenshotTest`); `:core:domain:test` 1125; `:core:data:testDebugUnitTest` 229; `:core:model:test` 40 = **2.421 testes, 0 falhas/erros**.
+- Goldens: `./gradlew :app:recordRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'` e `./gradlew :app:verifyRoborazziDebug --tests '...BottomBarScreenshotTest'` verdes.
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `:app:lintDebug` verdes; sem nova entrada de baseline.
+- Nenhum dado real; nenhuma migração.
+
+### Decisões e observações
+
+- O golden é da **barra**, isolado da tela; as telas continuam com seus goldens próprios. O teste usa os destinos reais do app para não divergir labels/ícones.
+- O gate visual é explícito (`verifyRoborazziDebug`), separado do `check`; só o teste novo foi verificado para não misturar o drift conhecido de outras telas.
+- O `testTag` na barra é apenas semântica de teste; TalkBack continua lendo o label de cada tab (`Role.Tab`, seleção nativa).
+- A feature IA Coach está funcionalmente encerrada no MVP; o input livre e memória em prompt continuam pós-MVP.
+
+### Pendente
+
+- Nada da IA Coach no MVP. Pós-MVP: input livre de conversa, memória como contexto de copy em prompt e “quero mais tempo” na disponibilidade temporária.
+- Prioridade do produto volta ao P1-12 (4 semanas de uso real) / Ciclo 4.
+
+### Próximo passo
+
+1. Retomar P1-12 / Fase 2 do produto.
+2. Se a barra mudar de novo, regravar os dois goldens e revisar dark/light.
 
 ## Sessão 2026-11-18 — IA Coach 3.3-C: dia inteiro e múltiplos dias na disponibilidade temporária
 

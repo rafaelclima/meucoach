@@ -1,6 +1,6 @@
 # PRD — IA Coach de Corrida (MVP)
 
-**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 + 3.3-A/B/C + Room v19 + histórico com apagar individual prontos)
+**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** MVP implementado (F1/F4 + 3.2 + 3.3-A/B/C + Room v19 + histórico com apagar individual + goldens da bar)
 **Visão base:** `docs/VISAO_PRODUTO_IA_COACH_CORRIDA.md` · **Fonte verdade:** código + `SPORTS_SCIENCE.md`
 **MVP decidido:** 3.1 explicar semana + 3.2 revisão semana anterior + 3.3 replanejar imprevisto
 
@@ -104,7 +104,7 @@ Gates mantidos: `assembleDebug`, `spotlessCheck`, `koverVerify` (domain/data/app
 
 ## 8. Próximo passo
 
-O fatiamento proposto foi concluído até F3: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo, F6 opt-in/docs/ADR, a lista visual de histórico (decisões 17/25, com apagar individual) e a 3.3-C (dia inteiro/múltiplos dias). Restam os goldens da bar.
+O MVP está implementado: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo, F6 opt-in/docs/ADR, a lista visual de histórico (decisões 17/25, com apagar individual), a 3.3-C (dia inteiro/múltiplos dias) e os goldens da bar. Evoluções pós-MVP: input livre, memória como contexto de copy em prompt e “quero mais tempo”.
 
 ## 9. Adendos implementados (18/11/2026)
 
@@ -122,7 +122,8 @@ O fatiamento proposto foi concluído até F3: F1 proxy/contrato, F2 prompt/valid
 - F3/Room v19 memória local: `coach_messages` (turnos validados, único por `kind + inputsHash`) e `coach_summaries` (uma narrativa validada por semana fechada), `MIGRATION_18_19` aditiva e schema v19. TTL 90/180 dias com expiração preguiçosa; revogar o opt-in bloqueia chamadas e apaga as duas tabelas em escopo de aplicação; export/delete incluem `coach_*`. Nenhuma chamada de IA nova; a memória não entra em prompt nesta fatia e nunca decide carga, pace ou plano. Testes: política de TTL (3), repositório (6), migração 18→19 (1), export/delete (2), ViewModel (4) e exclusão na tela Dados (1).
 - Histórico do Coach (decisões 17/25): `CoachMessageDao.observeAll`/`CoachSummaryDao.observeAll` + `CoachMemoryRepository.observeMessages/observeSummaries` expõem a memória como Flow somente leitura, mais recente primeiro, para `CoachMemoryMessage`/`CoachMemorySummary` puros. `CoachHistoryState` cobre Hidden (sem opt-in), Loading, Empty, Ready e Error; a aba mostra resumos por semana e conversa, aviso de que o motor decide, retry no erro e “Apagar histórico” em bloco. `deleteMessage`/`deleteSummary` removem um item por vez com confirmação própria, mantendo o restante e sem tocar em treinos/perfil. TalkBack, dark/light e fonte 200% cobertos. Sem chamada de IA nova, sem schema novo e sem entrada em prompt. Testes: repositório (4), ViewModel (6) e tela (10).
 - Apagar item individual do histórico: `CoachMessageDao.deleteById`/`CoachSummaryDao.deleteByWeek` e `CoachMemoryRepository.deleteMessage`/`deleteSummary` (retorno booleano, item inexistente é no-op) com confirmação por linha no `CoachHistoryCard`; o “Apagar histórico” em bloco permanece. Escopo de aplicação para a exclusão terminar mesmo se a aba fechar; treinos/perfil intactos. Testes: repositório (2), ViewModel (2) e tela (2).
-- 3.3-C disponibilidade temporária com dia inteiro/múltiplos dias: `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` é uma lista ordenada no `canonical` (datas duplicadas recusadas). `PlanReplanner` valida cada dia (futuro da semana, existente, só redução), aplica todas as entradas no perfil efêmero e explica remoção/vários dias; `AthleteProfile` e `availabilityHash` não mudam. `ReplanController.replanLessTime` recebe `LessTimeChange` (lista), e o `LessTimeSheet` permite selecionar vários dias com um valor único (`0` remove). Testes: domínio (3), ViewModel (1) e tela (1).
+- 3.3-C disponibilidade temporária com dia inteiro/múltiplos dias: `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` é uma lista ordenada no `canonical` (datas duplicadas recusadas). `PlanReplanner` valida cada dia (futuro da semana, existente, só redução), aplica todas as entradas no perfil efêmero e explica remoção/vários dias; `AthleteProfile` e `availabilityHash` não mudam. `ReplanController.replanLessTime` recebe `LessTimeChange` (lista), e o `LessTimeSheet` permite selecionar vários dias com um valor único (`0` remove). Testes: domínio (4), ViewModel (1) e tela (1).
+- Goldens da bar: `BottomBarScreenshotTest` grava `bottom-bar-dark`/`bottom-bar-light` a 393 dp com os cinco tabs e o Coach selecionado; verifica existência dos tabs, seleção e clique. `McBottomBar` ganhou tags de teste e os destinos do app foram expostos como `internal` para o teste usar a mesma lista. O gate é separado (`verifyRoborazziDebug --tests ...`); o drift de outras telas não foi tocado. Testes: 3.
 
 ## 10. Memória local e retenção (Room v19)
 

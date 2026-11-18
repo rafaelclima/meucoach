@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.17 · **Data:** 18/11/2026 · IA Coach 3.3-C: 2.418 testes (1125 domain / 1024 app / 229 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
+**Versão:** 1.18 · **Data:** 18/11/2026 · IA Coach encerrada: 2.421 testes (1125 domain / 1027 app / 229 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -92,9 +92,9 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (18/11/2026, IA Coach 3.3-C):
+Evidência atual (18/11/2026, IA Coach encerrada):
 
-- 2.418 testes no repositório (1125 em `core:domain`, 1024 em `:app`, 229 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- 2.421 testes no repositório (1125 em `core:domain`, 1027 em `:app`, 229 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
 - Comandos de referência: `./gradlew :core:domain:test :core:model:test :core:data:testDebugUnitTest --rerun-tasks` + `./gradlew :app:testDebugUnitTest --rerun-tasks --no-parallel` (a suíte do app cai nos flakes do §10.1 sob paralelismo; sem paralelismo fica verde).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
@@ -236,6 +236,7 @@ Evidência atual (18/11/2026, IA Coach 3.3-C):
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino, CTA do briefing e plano (inclui o card do plano com versão).
 - `SessionBriefingScreenshotTest`: golden dark/light do conteúdo do briefing (foco, alvo, rationale, como correr e se estiver difícil).
 - `ReplanScreenshotTest`: golden dark/light do card de sugestão de replanejamento.
+- `BottomBarScreenshotTest`: goldens dark/light da barra (`bottom-bar-*`) com os cinco tabs e o Coach selecionado; também cobre seleção (`Role.Tab`) e clique.
 - `TrainingPlanRepositoryTest`: round-trip da semana, substituição de sessões, status/motivo, exclusão e semana vazia.
 - `MeuCoachDatabaseMigrationTest`: 7→8 adiciona status da sessão sem perder o plano.
 - `ReadinessHistoryCalculatorTest`: replay por data, doença, confiança e lacunas.
@@ -382,7 +383,7 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (66 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (80 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -467,6 +468,11 @@ Dois testes caem de forma intermitente sob paralelismo/carga e passam isolados; 
   uma corrida do próprio teste: esperava `plan != null` e assertava
   `completionMessage`, que é emitido depois. Passou a esperar também a mensagem;
   nenhum assert foi reduzido e não era flake de infraestrutura.
+- **18/11/2026 (goldens da bar):** `CoachViewModelTest` falhou uma vez com
+  “Dispatchers.Main is used concurrently with setting it” no `tearDown`: o novo
+  coletor do histórico ainda usava o Main ao resetar o dispatcher. O teste agora
+  cancela os `viewModelScope` e drena o looper antes de fechar o banco/resetar o
+  `Main` (mesmo padrão do `TodayViewModelPersistTest`), sem reduzir assert.
 
 Política: flake não se ignora (`@Ignore` proibido) nem se "conserta" reduzindo assert; registra-se aqui com sintoma, contexto e o comando que fica verde.
 
