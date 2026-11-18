@@ -26,7 +26,7 @@ fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
     val openRouterKey = System.getenv("OPENROUTER_API_KEY").orEmpty()
     val proxyToken = System.getenv("COACH_PROXY_TOKEN").orEmpty()
-    val model = System.getenv("OPENROUTER_MODEL")
+    val model = System.getenv("OPENROUTER_MODEL")?.takeIf { it.isNotBlank() }
         ?: "nvidia/nemotron-3-ultra-550b-a55b:free"
     require(openRouterKey.isNotBlank()) { "OPENROUTER_API_KEY required" }
     require(proxyToken.isNotBlank()) { "COACH_PROXY_TOKEN required" }
