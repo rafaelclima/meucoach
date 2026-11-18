@@ -107,7 +107,7 @@ private const val SYSTEM_REPLAN =
 
 private val DEFAULT_MODELS = listOf(
     "nvidia/nemotron-3.5-super-vl:free",
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "openrouter/free",
     "thinkingmachines/inkling-2-small:free",
 )
 
