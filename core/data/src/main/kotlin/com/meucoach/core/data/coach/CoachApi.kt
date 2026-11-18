@@ -30,14 +30,14 @@ class FakeCoachApi(private val response: CoachRawResponse? = null, private val e
     }
 }
 
-class HttpCoachApi(private val baseUrl: String, private val token: String, private val timeoutMs: Int = 10_000) :
+class HttpCoachApi(private val baseUrl: String, private val token: String, private val timeoutMs: Int = 45_000) :
     CoachApi {
     override suspend fun explain(prompt: CoachPrompt, kind: CoachKind): CoachRawResponse = withContext(Dispatchers.IO) {
         require(baseUrl.isNotBlank()) { "Coach base URL must not be blank" }
         val url = java.net.URL(baseUrl.trimEnd('/') + "/api/v1/coach/" + kind.path)
         val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = timeoutMs
+            connectTimeout = minOf(timeoutMs, 10_000)
             readTimeout = timeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "application/json")

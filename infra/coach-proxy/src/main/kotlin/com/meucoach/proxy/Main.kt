@@ -26,8 +26,12 @@ fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
     val openRouterKey = System.getenv("OPENROUTER_API_KEY").orEmpty()
     val proxyToken = System.getenv("COACH_PROXY_TOKEN").orEmpty()
-    val model = System.getenv("OPENROUTER_MODEL")?.takeIf { it.isNotBlank() }
-        ?: "nvidia/nemotron-3-ultra-550b-a55b:free"
+    val models = System.getenv("OPENROUTER_MODELS")?.split(",")
+        ?.map { it.trim() }
+        ?.filter { it.isNotBlank() }
+        ?.takeIf { it.isNotEmpty() }
+        ?: System.getenv("OPENROUTER_MODEL")?.takeIf { it.isNotBlank() }?.let(::listOf)
+        ?: DEFAULT_MODELS
     require(openRouterKey.isNotBlank()) { "OPENROUTER_API_KEY required" }
     require(proxyToken.isNotBlank()) { "COACH_PROXY_TOKEN required" }
 
@@ -52,25 +56,20 @@ fun main() {
                 // Sem log de payload (só status/latência no Dokploy).
                 val started = System.currentTimeMillis()
                 try {
-                    val body = buildOpenRouterBody(model, kind, payload)
-                    val res = upstream.post("https://openrouter.ai/api/v1/chat/completions") {
-                        header(HttpHeaders.Authorization, "Bearer $openRouterKey")
-                        header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                        header("HTTP-Referer", "https://meucoach.app")
-                        header("X-Title", "MeuCoach Coach")
-                        setBody(body)
+                    val upstream = tryModels(upstream, models, openRouterKey, kind, payload)
+                    if (upstream == null) {
+                        call.respondText(
+                            """{"error":"all_models_unavailable"}""",
+                            ContentType.Application.Json,
+                            HttpStatusCode.BadGateway,
+                        )
+                    } else {
+                        call.respondText(
+                            upstream.first,
+                            ContentType.Application.Json,
+                            upstream.second,
+                        )
                     }
-                    call.respondText(
-                        res.bodyAsText(),
-                        ContentType.Application.Json,
-                        res.status,
-                    )
-                } catch (e: Exception) {
-                    call.respondText(
-                        """{"error":"upstream_unavailable"}""",
-                        ContentType.Application.Json,
-                        HttpStatusCode.BadGateway,
-                    )
                 } finally {
                     // Intencional: sem log de payload.
                     println("coach kind=$kind latencyMs=${System.currentTimeMillis() - started}")
@@ -103,3 +102,42 @@ private const val SYSTEM_REVIEW =
 private const val SYSTEM_REPLAN =
     "Voce sugere slots de replanejo a partir do plano vigente. Nunca crie treino forte novo; so reorganize o futuro. " +
         "Responda em JSON {title, body, bullets[], slots{}} para confirmacao humana."
+
+private val DEFAULT_MODELS = listOf(
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "nvidia/nemotron-3.5-super-vl:free",
+    "thinkingmachines/inkling-2-small:free",
+)
+
+/**
+ * Tenta os modelos em ordem e devolve o primeiro 2xx.
+ * 429/5xx/timeout passam para o próximo; outro 4xx retorna na hora
+ * (erro do pedido, não do modelo). Sem log de payload.
+ */
+private suspend fun tryModels(
+    client: HttpClient,
+    models: List<String>,
+    openRouterKey: String,
+    kind: String,
+    payload: String,
+): Pair<String, HttpStatusCode>? {
+    var last: Pair<String, HttpStatusCode>? = null
+    for (model in models) {
+        try {
+            val res = client.post("https://openrouter.ai/api/v1/chat/completions") {
+                header(HttpHeaders.Authorization, "Bearer $openRouterKey")
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header("HTTP-Referer", "https://meucoach.app")
+                header("X-Title", "MeuCoach Coach")
+                setBody(buildOpenRouterBody(model, kind, payload))
+            }
+            if (res.status.value in 200..299) return res.bodyAsText() to res.status
+            last = res.bodyAsText() to res.status
+            println("coach model=$model status=${res.status.value} (trying next)")
+            if (res.status != HttpStatusCode.TooManyRequests && res.status.value < 500) return last
+        } catch (e: Exception) {
+            println("coach model=$model error=${e.message} (trying next)")
+        }
+    }
+    return last?.takeIf { it.second != HttpStatusCode.TooManyRequests && it.second.value < 500 }
+}
