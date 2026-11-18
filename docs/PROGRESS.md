@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (S17.1 do Ciclo 4: smoke PEAK no aparelho + docs de fechamento, C4-55/C4-56 — Ciclo 4 encerrado)
+**Atualizado:** 18/11/2026 (S17.1 do Ciclo 4: smoke PEAK no aparelho + docs de fechamento, C4-55/C4-56 — Ciclo 4 encerrado — IA Coach F1/F4 em 18/11/2026: ver sessão IA Coach logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach (fora do Ciclo 4): F1 proxy + opt-in + aba Coach + F4 explicação real
+
+**Objetivo:** tirar do papel o MVP 3.1 da `docs/VISAO_PRODUTO_IA_COACH_CORRIDA.md`: proxy OpenRouter na VPS, contrato validado, opt-in LGPD, aba Coach e explicação real com fallback determinístico, validados no S928B do usuário 0.
+
+### Concluído
+
+- **Questionário (33 decisões):** MVP = 3.1 + 3.2 + 3.3; IA só reescreve texto; opt-in explícito; estimativa só textual, nunca número; CI com mock, real só manual. Risco LGPD aceito e registrado.
+- **PRD:** `docs/PRD_IA_COACH.md` v0.1 + adendos (fonte de verdade da feature).
+- **Domínio (`core:domain/.../coach/`):** `CoachPromptBuilder` (minimizado, sem GPS/nome) + `CoachResponseValidator` (barra pace/FC/métrica inventada e duração fora do plano; total semanal + executado permitidos).
+- **Dados (`core:data/.../coach/`):** `CoachApi`/`Http`/`Fake`/`Disabled`; URL/token via `-PcoachProxyUrl/-PcoachProxyToken` (vazio = desativado).
+- **Proxy (`infra/coach-proxy/`, Dokploy):** stateless, `X-Coach-Token`, `/health`, sem log de payload; cadeia com fallback (só 400/401/402/422 param). Cadeia atual: `super-vl` → `openrouter/free` → `inkling-2-small` (ultra removido: 403 no free). URL: `https://meucoach-api.hojeafestaenossa.site`.
+- **App:** aba central `Coach`, Perfil via avatar + engrenagem; opt-in simples com revogação; `CoachViewModel` (Loading → Ready/Fallback, cache por `inputsHash`, retry funcional); `Log.d("Coach")` para diagnóstico.
+- **Aparelho:** backup em `fixtures/private/backup-2026-11-18-s928b/` (integrity ok), restore verificado, 401 sem token, cadeia via curl, explicação real na tela; 2 bugs do logcat corrigidos (retry morto, 403 abortando cadeia).
+
+### Testes
+
+- Novos: builder, validator, api (4), consent store (2), viewmodel (6). `assembleDebug`, testes coach e `spotlessCheck` verdes. Sem dados reais no repo.
+
+### Pendente
+
+- ADR 0051, Room v19, 3.2 revisão, 3.3 replanejo, goldens Roborazzi da bar.
+
+### Próximo passo
+
+1. 3.2 revisão da semana anterior na aba Coach (`WeeklyReviewCalculator` + validador).
+2. Depois 3.3 replanejo com confirmação + diff + undo via `ApplyReplan`.
 
 ## Sessão 2026-11-18 — Ciclo 4/S17.1: smoke PEAK no aparelho + docs de fechamento (C4-55, C4-56)
 
