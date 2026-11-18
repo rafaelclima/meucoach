@@ -1136,10 +1136,10 @@ private fun PlanWeekCard(
                 }
             }
         }
-        if (plan.confidence == DataConfidence.LOW) {
+        planLowConfidenceNote(plan)?.let { note ->
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Dados de recuperação parciais: a semana segue conservadora.",
+                text = note,
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
                 modifier = Modifier.testTag("plan-low-confidence-note"),

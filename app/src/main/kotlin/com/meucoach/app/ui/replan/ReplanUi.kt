@@ -85,7 +85,7 @@ private fun ReplanSuggestion.body(): String = when {
 
     trigger == ReplanTrigger.DATA_READY ->
         "Os dados da sincronização chegaram. Posso reavaliar só os próximos dias " +
-            "com os dados completos, sem aumentar a carga e sem mexer no que já passou."
+            "com os dados disponíveis, sem aumentar a carga e sem mexer no que já passou."
 
     trigger == ReplanTrigger.PROFILE_CHANGED ->
         "Seu perfil de planejamento mudou. Posso reorganizar só os próximos dias, " +

@@ -121,7 +121,7 @@ Evidência atual (12/11/2026):
 - `ImportJobGuardTest` (BUG-11): erro inesperado fecha o job como `FAILED`; cancelamento preserva o job para o WorkManager; sucesso não altera o status.
 - `ImportJobDao`/`ActivityRepositoryTest` (BUG-11): jobs `QUEUED`/`PARSING` com mais de 1 h são fechados ao observar a lista; job recente permanece intacto.
 - `WeeklyPlanGeneratorTest` (BUG-08): meta de prova sem data emite `R-PLAN-11`, explica a ausência e não finge taper; meta com data ou “saúde geral” não emitem a regra.
-- `TodayExplanationPlanTest` e `TodayPlanTest` (BUG-08): a explicação lista “Data da prova” como ausente e o plano mostra a linha própria só quando `R-PLAN-11` está presente.
+- `TodayExplanationPlanTest` e `TodayPlanTest` (BUG-08): a explicação lista “Data da prova” como ausente e o plano mostra a linha própria só quando `R-PLAN-11` está presente. A baixa confiança distingue falta de histórico de volume, carga incompleta e recuperação parcial, e a nota do card usa o mesmo motivo.
 - `ProfileScreenTest` (BUG-08): aviso “sem data” só com meta de prova sem data e sem prova planejada; nota do plano aparece quando há prova planejada.
 - `RealFixturesDetailTest`: importa e abre os 4 FIT + 3 TCX reais sanitizados; valida resumo, laps, samples e ausência de `sampleWarning` (TCX confere distância, duração e cadência).
 - `ActivityInsightsCalculatorTest`: `R-ACT-01` (negative split, ritmo constante, queda), `R-ACT-02` (drift e limites) e ausência de dados.
@@ -180,7 +180,7 @@ Evidência atual (12/11/2026):
 - `TodayViewModelTest`: recomendação no card, prontidão e sinais objetivos.
 - `RecoveryWindowTest`: janela 2/3/5/10, borda inclusiva, dia da prova fora, tetos por distância, `blocks`, `dayOfWindow`, `intersects`, escolha da prova mais recente e invariantes.
 - `DailyPrescriptionEngineTest`: dentro da janela, `QUALITY`/`LONG` viram fácil com teto, fácil acima do teto é reduzido, dia `DONE` não é reescrito e fora da janela nada muda.
-- `PlanReplannerTest`: `RACE_COMPLETED` sugere revisão quando a semana persistida viola a janela, `NoChange` quando já está compatível e depois da janela; hash muda com o histórico de volume e a candidata respeita a base concluída.
+- `PlanReplannerTest`: `RACE_COMPLETED` sugere revisão quando a semana persistida viola a janela, `NoChange` quando já está compatível e depois da janela; hash muda com o histórico de volume e a candidata respeita a base concluída; a nota do `DATA_READY` usa “dados disponíveis”, nunca “dados completos”.
 - `TodayPlanTest`: card do plano semanal na tela Hoje.
 - `TodayReplanTest`: selo de versão, botão explícito, diff “o que mudou” e aceitar/recusar/suprimir na tela Hoje.
 - `SessionBriefingEngineTest`: fidelidade de cada campo à prescrição, determinismo, RPE sem calibração, ausência de blocos/intervalos/alternativas, `DONE`/`CLOSED` sem briefing, downgrade `QUALITY → EASY` e IDs preservados.

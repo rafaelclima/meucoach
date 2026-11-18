@@ -271,7 +271,7 @@ class TodayPlanTest {
             .assertIsDisplayed()
         compose.onNodeWithText("O QUE FALTOU").performScrollTo().assertIsDisplayed()
         compose
-            .onNodeWithText("Dados objetivos de recuperação", substring = true)
+            .onNodeWithText("Sem histórico de semanas concluídas", substring = true)
             .assertIsDisplayed()
         compose
             .onNodeWithText("Zonas pelo limite de esforço", substring = true)
@@ -295,9 +295,9 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Dados de recuperação parciais: a semana segue conservadora."))
+        list.performScrollToNode(hasText("Sem histórico de semanas concluídas: a semana segue conservadora."))
         compose
-            .onNodeWithText("Dados de recuperação parciais: a semana segue conservadora.")
+            .onNodeWithText("Sem histórico de semanas concluídas: a semana segue conservadora.")
             .assertIsDisplayed()
         compose.onNodeWithTag("plan-low-confidence-note").assertIsDisplayed()
     }

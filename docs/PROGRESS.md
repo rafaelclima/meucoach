@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S16 do Ciclo 4: suíte completa e gates de fechamento, C4-54)
+**Atualizado:** 17/11/2026 (S17 do Ciclo 4: smoke sintético no aparelho + copy da confiança, C4-55 parcial/C4-61)
+
+## Sessão 2026-11-17 — Ciclo 4/S17: smoke sintético no aparelho + copy da confiança (C4-55 parcial, C4-61)
+
+**Objetivo:** validar o app no aparelho com um cenário sintético completo, sem expor dados reais, e corrigir a copy enganosa encontrada no primeiro plano.
+
+### Concluído
+
+- **Smoke sintético E2E:** perfil novo, plano BASE (4 sessões, longão 45, sem qualidade na primeira metade), gate do dia (strides 25 → fácil 20 por prontidão moderada), check-in sem default (5/1/1/1, “Salvar” bloqueado até responder), briefing com passos que somam 20 min, importação FIT (4,05 km/27:55/6:54/km), prova 5K com meta 30:00 e referência 6:00/km, e reavaliação automática `DATA_READY` v1→v2 com diff.
+- **C4-61:** a explicação do plano de baixa confiança agora distingue falta de histórico de volume, carga incompleta e recuperação parcial; a nota do card usa o mesmo motivo e a confiança não afirma mais que não muda na semana. A nota do `DATA_READY` passou de “dados completos” para “dados disponíveis”.
+- **Privacidade:** os dados reais ficaram no aparelho; as pastas foram renomeadas para o teste e restauradas com 16 hashes, contagem/tamanho de `files` e permissões do Health Connect conferidos. Nada de dado real no repo; as 60 capturas do cenário sintético (com leituras reais de Health Connect somente leitura) ficam em `/tmp/opencode/meucoach-smoke-20261117` e podem ser apagadas.
+
+### Testes
+
+- `:core:domain:test` 1099; `:app:testDebugUnitTest` 963 (+4); `:core:data:test` 208; `:core:model` 40 = **2.310 testes**.
+- App completo verde com `--rerun-tasks --no-parallel`; `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes.
+- Flakes conhecidos em execuções paralelas: `MetricsImportViewModelTest` (timeout de 30 s) e `TutorialSystemBackTest` (cascata `UncaughtExceptionsBeforeTest` com vazamento de transação Room); ambos passam isolados e a suíte completa passou sem paralelismo. Nenhum é da C4-61.
+- APK debug reconstruído e instalado no S24 (`adb install -r`, dados preservados).
+
+### Decisões e observações
+
+- O achado do smoke era de copy, não de cálculo: o primeiro plano fica `LOW` porque ainda não há histórico de volume, não porque faltam dados de recuperação. A UI agora usa os marcadores `R-PLAN-01`/`R-DATA-01` para escolher o motivo real.
+- C4-55 segue aberto apenas para os cenários que o plano sintético não alcançou: qualidade em BUILD/PEAK, review com treino extra e noite de 36 min.
+- Nenhum dado real no diff; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Próximo passo
+
+1. Fechar C4-55 nos cenários restantes.
+2. Fechar C4-56 com `PROGRESS`, `ROADMAP`, `DECISIONS` e `TESTING`.
 
 ## Sessão 2026-11-17 — Ciclo 4/S16: suíte completa e gates da fase (C4-54)
 

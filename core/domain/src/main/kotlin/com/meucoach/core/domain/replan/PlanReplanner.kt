@@ -389,7 +389,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
 
             ReplanTrigger.DATA_READY ->
                 "Os dados da sincronização chegaram. " +
-                    "A semana foi reavaliada com os dados completos, sem repor treinos perdidos."
+                    "A semana foi reavaliada com os dados disponíveis, sem repor treinos perdidos."
 
             ReplanTrigger.USER_REQUEST ->
                 "Revisão pedida por você. O restante da semana foi reorganizado sem repor treinos perdidos."

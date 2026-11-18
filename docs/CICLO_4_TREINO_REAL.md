@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S16 concluídas; **C4-54 (S16) concluída; C4-55 é a próxima task**.
+**Status:** S0 a S16 concluídas; **C4-54 (S16) e C4-61 (S17) concluídas; C4-55 em andamento**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S16 (C4-54)
-> **Último commit:** C4-54 — `chore(c4): run the full suite and phase gates (C4-54)`
-> **Fase:** 4 — Fechamento — **S16 concluída**; próxima S17/C4-55
-> **Sessão atual:** **S16 — C4-54 DONE (S16 encerrada)**
-> **Task atual:** C4-54 (DONE)
-> **Próxima task:** C4-55 (S17)
+> **Última atualização:** 17/11/2026 — S17 (C4-61 + smoke C4-55)
+> **Último commit:** C4-61 — `fix(c4): correct low-confidence and data-ready copy (C4-61)`
+> **Fase:** 4 — Fechamento — **S17 aberta**; C4-55 em andamento
+> **Sessão atual:** **S17 — C4-61 DONE; C4-55 parcial**
+> **Task atual:** C4-61 (DONE)
+> **Próxima task:** C4-55 (concluir) e C4-56
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** suítes forçadas (`--rerun-tasks`) `:core:domain:test` 1099, `:app:testDebugUnitTest` 959, `:core:data:test` 208, `:core:model` 40 = 2.306 testes, 0 falhas/erros/skip; `check`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes; goldens da fase verdes
-> **Próxima ação:** abrir S17/C4-55 (smoke no aparelho, sintético + leitura real).
+> **Gates da última sessão:** `:core:domain:test` 1099, `:app:testDebugUnitTest` 963, `:core:data:test` 208, `:core:model` 40 = 2.310 testes; app completo verde com `--rerun-tasks --no-parallel` (dois flakes conhecidos em execuções paralelas, ambos verdes isolados); `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes
+> **Próxima ação:** concluir C4-55 (qualidade em BUILD/PEAK, review com extra) e C4-56.
 
 ### 0.1 O que já está pronto
 
@@ -638,7 +638,8 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-52 | Catálogo de regras/evidências + teste | C4-50/51 | S | S11 | ADR 0044 | Todos os IDs | `ExplanationCatalogTest` (+IDs + comportamento); `R-ACT-01/02`, `R-CAL-01`, `EV-ABBISS-2008`; commit S11.5 |
 | [x] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | `weekly-plan-v7`/`daily-prescription-v6`; `WeeklyPlanGeneratorTest`/`DailyPrescriptionEngineTest` (strings exatas) + `GetTodayPrescriptionTest` (v5→v6); stale fixtures v5→v6; upgrade v6→v7 real; commit S16 |
 | [x] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | Suítes forçadas 2.306 testes (1099 domain/959 app/208 data/40 model), 0 falhas/erros/skip; `check`, `assembleDebug`, `koverVerify`, `spotlessCheck` e goldens da fase verdes; commit S16.1 |
-| [ ] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | — |
+| [x] | C4-61 | Copy da confiança baixa e do `DATA_READY` | C4-48/C4-54 | S | S17 | FR-412 | Testes; sem contradição | `TodayExplanationPlanTest` (+4: histórico × recuperação × carga; nota); `TodayPlanTest` (motivo real); `PlanReplannerTest` (DATA_READY sem "dados completos"); commit S17 |
+| [~] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | Smoke sintético E2E no aparelho (onboarding, plano BASE, gate do dia, check-in, briefing, FIT, prova, DATA_READY) + restauração hash-verificada; falta validar qualidade em BUILD/PEAK e review com extra |
 | [ ] | C4-56 | Docs `PROGRESS`, `ROADMAP`, `DECISIONS`, `TESTING` | C4-54/55 | S | S17 | AGENTS | Docs | — |
 
 ### E10 — Alvos/horizonte/higiene
@@ -1114,6 +1115,16 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** nenhum código, migração ou fixture alterado — a task é o gate de fechamento da S16. As suítes foram forçadas com `--rerun-tasks` porque a primeira passagem do `check` reutilizou cache em domain/model/app; a reexecução limpa não teve flakes (diferente de S15.1, que registrou `TutorialSystemBackTest`/`MetricsImportViewModelTest` sob carga). O gate visual do Roborazzi (`verifyRoborazziDebug`) é uma invocação explícita separada e não faz parte do aceite da C4-54; o drift pré-existente em `activity-comparison-*`, `checkin-*` e `health-*` registrado em S15.1 permanece fora do escopo desta task. Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** S17 / C4-55 (smoke no aparelho, sintético + leitura real somente leitura).
 
+### S17.0 — 2026-11-17 — Smoke sintético no aparelho e copy da confiança (C4-55 parcial, C4-61)
+
+- **Status:** C4-61 DONE; C4-55 IN_PROGRESS.
+- **Tasks:** C4-61; C4-55 (parcial).
+- **Arquivos:** `app/.../ui/today/TodayExplanation.kt` (`planLowConfidenceNote`; motivo real da baixa confiança; nota de confiança reavaliável), `TodayScreen.kt` (nota pelo motivo), `TodayExplanationPlanTest.kt` (+4), `TodayPlanTest.kt` (asserts atualizados), `core/domain/.../replan/PlanReplanner.kt` (DATA_READY com “dados disponíveis”), `app/.../ui/replan/ReplanUi.kt` (cartão de replanejamento com “dados disponíveis”), `PlanReplannerTest.kt` (+assert), `docs/TESTING.md`, `docs/PROGRESS.md`, este checklist. O smoke não alterou código de produção além da C4-61.
+- **Testes/gates:** `:core:domain:test` 1099, `:app:testDebugUnitTest` 963, `:core:data:test` 208, `:core:model` 40 = 2.310 testes; app completo verde com `--rerun-tasks --no-parallel` (963); `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes. Flakes conhecidos em duas execuções paralelas: `MetricsImportViewModelTest` (timeout de 30 s) e `TutorialSystemBackTest` (cascata `UncaughtExceptionsBeforeTest` com vazamento de transação Room); ambos passam isolados e a suíte completa passou sem paralelismo.
+- **Commit:** `fix(c4): correct low-confidence and data-ready copy (C4-61)`.
+- **Decisões/notas:** o smoke foi feito com dados sintéticos e dados reais somente leitura. As pastas de dados reais foram renomeadas no próprio aparelho (`databases`, `shared_prefs`, `no_backup`, `files`), o app foi reaberto do zero, o onboarding sintético foi preenchido, uma fixture FIT sanitizada foi importada, o check-in 5/1/1/1 foi salvo, uma prova 5K foi criada e o plano foi reavaliado; no fim as pastas reais foram restauradas, com 16 hashes, contagem/tamanho de `files` e permissões do Health Connect conferidos. Nada de dado real no repo; as 60 capturas do cenário sintético (com leituras reais de Health Connect somente leitura) ficam em `/tmp/opencode/meucoach-smoke-20261117` e podem ser apagadas. O smoke validou onboarding, plano BASE (longão 45, sem qualidade na primeira metade), gate do dia (strides 25 → fácil 20), check-in sem default com “Salvar” bloqueado, briefing (8 min + 2×20 s + recuperações + 9 min = 20), importação FIT (4,05 km/27:55/6:54/km), prova 5K com meta 30:00 (6:00/km; “sem previsão”) e o `DATA_READY` v1→v2. Achado (C4-61): o plano inicial é `LOW` por falta de histórico de volume, mas a UI culpava “dados de recuperação parciais” e o `DATA_READY` dizia “dados completos”; agora a explicação distingue histórico (`R-PLAN-01` ausente), carga (`R-DATA-01`) e recuperação, a nota do card usa o mesmo motivo e a confiança não afirma mais que não muda na semana. C4-55 segue aberto apenas para os cenários que o plano sintético não alcançou: qualidade em BUILD/PEAK, review com treino extra e noite de 36 min. Nenhum dado real no diff; nenhuma migração; sem `fallbackToDestructiveMigration`.
+- **Próximo:** concluir C4-55 nos cenários restantes e fechar C4-56.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1290,9 +1301,10 @@ Os números são referência; o gate é “todos verdes”, não o número exato
 
 ---
 
-## 14. Próxima ação (C4-54, S16)
+## 14. Próxima ação (C4-55/C4-56, S17)
 
-1. Abrir `docs/TESTING.md` e o gate da fase: `./gradlew check`, `:app:assembleDebug`, `koverVerify`, `spotlessCheck`; goldens `G-PER-03/04/05/06`, `G-LOAD-03`, `G-READY-05`, `G-DATA-02`, `G-VOL-02`, `G-UPGRADE-01`; registrar flakes sem ignorar.
-2. Rodar a suíte completa; se houver flake, isolar/repetir e registrar; atualizar §0/§6/§7/PROGRESS e commitar.
+1. Concluir o checklist do C4-55: validar a qualidade em uma semana BUILD/PEAK (gate do dia e restauração com check-in), o review “planejada/mantida/rebaixada” com treino extra e, se possível, a noite de 36 min no Health Connect sem alterar dados reais.
+2. Rodar os gates finais (`check`, `assembleDebug`, `koverVerify`, `spotlessCheck`), registrar flakes sem ignorar e atualizar §0/§6/§7/PROGRESS.
+3. Fechar C4-56 com `PROGRESS`, `ROADMAP`, `DECISIONS` e `TESTING`; nenhum dado real no diff.
 
 > **Regra final:** se você (agente) está em dúvida entre “seguir o plano” e “inventar”, siga o plano e registre a dúvida no §7. O trabalho final depende de continuidade, não de velocidade.

@@ -1404,6 +1404,9 @@ class PlanReplannerTest {
         val suggested = result as ReplanResult.Suggest
         assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.DATA_READY)
         assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.DATA_READY)
+        assertThat(suggested.suggestion.rationale)
+            .contains("dados da sincronização")
+            .doesNotContain("dados completos")
         assertThat(suggested.candidate.sessions.count { it.type == WorkoutType.QUALITY }).isEqualTo(1)
     }
 

@@ -167,11 +167,22 @@ internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
         }
         if ("R-PLAN-08" in plan.ruleIds) add("Acesso a esteira")
     }.distinct()
+    val hasVolumeHistory = "R-PLAN-01" in plan.ruleIds
+    val loadIncomplete = "R-DATA-01" in plan.ruleIds
     val missing = buildList {
         if (plan.confidence == DataConfidence.LOW) {
-            add("Dados objetivos de recuperação (sono, FC de repouso ou variabilidade cardíaca)")
+            when {
+                // The first week is LOW because there is no volume base, not
+                // because readiness data is missing.
+                !hasVolumeHistory -> add("Histórico de semanas concluídas (para calibrar o volume)")
+
+                // With a volume history and trusted load, LOW can only come from
+                // the readiness confidence (capped at medium by the generator).
+                !loadIncomplete ->
+                    add("Dados objetivos de recuperação (sono, FC de repouso ou variabilidade cardíaca)")
+            }
         }
-        if ("R-DATA-01" in plan.ruleIds && plan.sessions.isNotEmpty()) {
+        if (loadIncomplete && plan.sessions.isNotEmpty()) {
             add("Carga recente para liberar treino forte")
         }
         if ("R-PLAN-11" in plan.ruleIds) {
@@ -196,20 +207,34 @@ internal fun buildPlanExplanation(plan: WeeklyPlan): TodayExplanationUi {
     )
 }
 
+internal fun planLowConfidenceNote(plan: WeeklyPlan): String? {
+    if (plan.confidence != DataConfidence.LOW) return null
+    return when {
+        "R-PLAN-01" !in plan.ruleIds ->
+            "Sem histórico de semanas concluídas: a semana segue conservadora."
+
+        "R-DATA-01" in plan.ruleIds ->
+            "Dados de carga incompletos: a semana segue conservadora."
+
+        else ->
+            "Dados de recuperação parciais: a semana segue conservadora."
+    }
+}
+
 private fun planConfidenceNote(confidence: DataConfidence): String = when (confidence) {
     DataConfidence.LOW ->
         "A confiança é calculada quando a semana é montada. Com dados parciais, o plano segue " +
-            "conservador e não libera progressão. Ela não muda durante esta semana; novos dados " +
-            "entram no plano da próxima."
+            "conservador e não libera progressão. Ela só é reavaliada quando chegam dados novos; " +
+            "o restante entra no plano da próxima."
 
     DataConfidence.MEDIUM ->
         "A confiança é calculada quando a semana é montada e fica no máximo média: a semana é uma " +
-            "estimativa conservadora. Ela não muda durante esta semana; novos dados entram no plano " +
-            "da próxima."
+            "estimativa conservadora. Ela só é reavaliada quando chegam dados novos; o restante " +
+            "entra no plano da próxima."
 
     DataConfidence.HIGH ->
-        "A confiança é calculada quando a semana é montada. Ela não muda durante esta semana; " +
-            "novos dados entram no plano da próxima."
+        "A confiança é calculada quando a semana é montada. Ela só é reavaliada quando chegam " +
+            "dados novos; o restante entra no plano da próxima."
 }
 
 private fun ReadinessComponent.label(): String = when (this) {

@@ -8,6 +8,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import java.time.LocalDate
 
+private const val RECOVERY_MISSING =
+    "Dados objetivos de recuperação (sono, FC de repouso ou variabilidade cardíaca)"
+
 class TodayExplanationPlanTest {
     @Test
     fun `a race goal without a date is listed as missing data`() {
@@ -27,7 +30,64 @@ class TodayExplanationPlanTest {
             .doesNotContain("Data da prova (a meta é de prova, mas está sem data)")
     }
 
-    private fun plan(ruleIds: List<String>) = WeeklyPlan(
+    @Test
+    fun `a low-confidence plan without volume history names the history`() {
+        val explanation = buildPlanExplanation(
+            plan(ruleIds = listOf("R-PLAN-02"), confidence = DataConfidence.LOW),
+        )
+
+        assertThat(explanation.missingData)
+            .contains("Histórico de semanas concluídas (para calibrar o volume)")
+            .doesNotContain(RECOVERY_MISSING)
+    }
+
+    @Test
+    fun `a low-confidence plan with volume history names the recovery data`() {
+        val explanation = buildPlanExplanation(
+            plan(ruleIds = listOf("R-PLAN-01"), confidence = DataConfidence.LOW),
+        )
+
+        assertThat(explanation.missingData)
+            .contains(RECOVERY_MISSING)
+            .doesNotContain("Histórico de semanas concluídas (para calibrar o volume)")
+    }
+
+    @Test
+    fun `a low-confidence plan with incomplete load names the load`() {
+        val explanation = buildPlanExplanation(
+            plan(ruleIds = listOf("R-PLAN-01", "R-DATA-01"), confidence = DataConfidence.LOW),
+        )
+
+        assertThat(explanation.missingData)
+            .contains("Carga recente para liberar treino forte")
+            .doesNotContain(RECOVERY_MISSING)
+    }
+
+    @Test
+    fun `the low-confidence note distinguishes history, load and recovery`() {
+        val noHistory = planLowConfidenceNote(
+            plan(ruleIds = listOf("R-PLAN-02"), confidence = DataConfidence.LOW),
+        )
+        val loadIncomplete = planLowConfidenceNote(
+            plan(ruleIds = listOf("R-PLAN-01", "R-DATA-01"), confidence = DataConfidence.LOW),
+        )
+        val recoveryPartial = planLowConfidenceNote(
+            plan(ruleIds = listOf("R-PLAN-01"), confidence = DataConfidence.LOW),
+        )
+        val medium = planLowConfidenceNote(
+            plan(ruleIds = listOf("R-PLAN-02"), confidence = DataConfidence.MEDIUM),
+        )
+
+        assertThat(noHistory)
+            .isEqualTo("Sem histórico de semanas concluídas: a semana segue conservadora.")
+        assertThat(loadIncomplete)
+            .isEqualTo("Dados de carga incompletos: a semana segue conservadora.")
+        assertThat(recoveryPartial)
+            .isEqualTo("Dados de recuperação parciais: a semana segue conservadora.")
+        assertThat(medium).isNull()
+    }
+
+    private fun plan(ruleIds: List<String>, confidence: DataConfidence = DataConfidence.MEDIUM) = WeeklyPlan(
         weekStart = LocalDate.of(2026, 11, 2),
         sessions = listOf(
             PlannedSession(
@@ -44,7 +104,7 @@ class TodayExplanationPlanTest {
         longRunMinutes = null,
         qualityCount = 0,
         rationale = "Sua meta é uma prova, mas está sem data: o plano não reduz o volume.",
-        confidence = DataConfidence.MEDIUM,
+        confidence = confidence,
         ruleIds = ruleIds,
         evidenceIds = listOf("EV-SEILER-2010"),
     )
