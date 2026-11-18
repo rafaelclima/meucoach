@@ -1,6 +1,8 @@
 package com.meucoach.app.ui.coach
 
 import android.content.Context
+import android.os.Looper
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.ApplyReplan
@@ -54,6 +56,7 @@ import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -67,6 +70,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.IOException
 import java.time.Clock
@@ -87,6 +91,7 @@ class CoachViewModelTest {
     private lateinit var checkIns: CheckInRepository
     private lateinit var planRepository: TrainingPlanRepository
     private lateinit var replanFactory: ReplanControllerFactory
+    private val viewModels = mutableListOf<CoachViewModel>()
     private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
     private val timeProvider = FakeTimeProvider(clock.instant(), ZoneOffset.UTC)
 
@@ -162,23 +167,30 @@ class CoachViewModelTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @After
     fun tearDown() {
+        viewModels.forEach { it.viewModelScope.cancel() }
+        viewModels.clear()
+        shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(api: FakeCoachApi) = CoachViewModel(
-        consent = consent,
-        plans = object : CoachPlanSource {
-            override fun observeCurrent() = plans
-        },
-        reviews = object : CoachReviewSource {
-            override fun observeLastClosedWeek() = reviews
-        },
-        api = api,
-        memory = memory,
-        appScope = CoroutineScope(Dispatchers.Unconfined),
-        replanFactory = replanFactory,
-    )
+    private fun viewModel(api: FakeCoachApi): CoachViewModel {
+        val vm = CoachViewModel(
+            consent = consent,
+            plans = object : CoachPlanSource {
+                override fun observeCurrent() = plans
+            },
+            reviews = object : CoachReviewSource {
+                override fun observeLastClosedWeek() = reviews
+            },
+            api = api,
+            memory = memory,
+            appScope = CoroutineScope(Dispatchers.Unconfined),
+            replanFactory = replanFactory,
+        )
+        viewModels += vm
+        return vm
+    }
 
     private fun weeklyReview() = WeeklyReview(
         weekStart = LocalDate.of(2026, 11, 9),
