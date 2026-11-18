@@ -313,8 +313,25 @@ class CoachViewModel @Inject constructor(
         }
     }
 
+    /** Removes one validated turn; the rest of the history and training data stay. */
+    fun deleteHistoryMessage(id: String) = deleteHistoryEntry { memory.deleteMessage(id) }
+
+    /** Removes one weekly summary; the conversation and training data stay. */
+    fun deleteHistorySummary(weekStart: LocalDate) = deleteHistoryEntry { memory.deleteSummary(weekStart) }
+
     fun retryHistory() {
         historyRetryTick.value += 1
+    }
+
+    private fun deleteHistoryEntry(delete: suspend () -> Unit) {
+        if (!_consented.value) return
+        appScope.launch {
+            runCatching { delete() }
+                .onFailure {
+                    android.util.Log.d("Coach", "history delete failed: ${it.message}")
+                    _history.value = CoachHistoryState.Error("Não foi possível apagar este item.")
+                }
+        }
     }
 
     fun retry() {

@@ -172,6 +172,32 @@ class CoachMemoryRepositoryTest {
     }
 
     @Test
+    fun `deletes one message without touching the rest`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
+        clock.instant = now.plusSeconds(60)
+        memory.recordMessage(CoachMessageKind.REVIEW, "hash-2", "Semana", "3 de 4", emptyList())
+        val explain = memory.observeMessages().first().single { it.kind == CoachMessageKind.EXPLAIN }
+
+        assertThat(memory.deleteMessage(explain.id)).isTrue()
+
+        assertThat(memory.observeMessages().first().map { it.kind })
+            .containsExactly(CoachMessageKind.REVIEW)
+        assertThat(memory.deleteMessage(explain.id)).isFalse()
+    }
+
+    @Test
+    fun `deletes one summary by week without touching the rest`(): Unit = runBlocking {
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 9), "review-2", "Semana 2", "4 de 4", emptyList())
+
+        assertThat(memory.deleteSummary(LocalDate.of(2026, 11, 2))).isTrue()
+
+        assertThat(memory.observeSummaries().first().map { it.weekStart })
+            .containsExactly(LocalDate.of(2026, 11, 9))
+        assertThat(memory.deleteSummary(LocalDate.of(2026, 11, 2))).isFalse()
+    }
+
+    @Test
     fun `unreadable memory rows are ignored instead of breaking the history`(): Unit = runBlocking {
         database.coachMessageDao().insert(
             CoachMessageEntity(

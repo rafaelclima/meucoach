@@ -433,6 +433,42 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `apagar mensagem individual mantem o restante e os treinos`(): Unit = runBlocking {
+        planRepository.saveWeek(plan())
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        val ready = awaitHistory(vm) as CoachHistoryState.Ready
+
+        vm.deleteHistoryMessage(ready.messages.single().id)
+
+        val after = awaitHistory(vm) {
+            it is CoachHistoryState.Ready && it.messages.isEmpty()
+        } as CoachHistoryState.Ready
+        assertThat(after.messages).isEmpty()
+        assertThat(after.summaries).hasSize(1)
+        assertThat(database.trainingPlanDao().getPlan("2026-11-16")).isNotNull()
+    }
+
+    @Test
+    fun `apagar resumo individual mantem as mensagens`(): Unit = runBlocking {
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        val ready = awaitHistory(vm) as CoachHistoryState.Ready
+
+        vm.deleteHistorySummary(ready.summaries.single().weekStart)
+
+        val after = awaitHistory(vm) {
+            it is CoachHistoryState.Ready && it.summaries.isEmpty()
+        } as CoachHistoryState.Ready
+        assertThat(after.summaries).isEmpty()
+        assertThat(after.messages).hasSize(1)
+    }
+
+    @Test
     fun `revisao valida vira Ready com o resumo deterministico exposto`() {
         consent.grant()
         reviews.value = weeklyReview()

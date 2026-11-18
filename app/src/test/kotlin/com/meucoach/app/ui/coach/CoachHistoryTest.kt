@@ -111,6 +111,42 @@ class CoachHistoryTest {
     }
 
     @Test
+    fun `apagar mensagem individual pede confirmacao`() {
+        var deletedId: String? = null
+        setContent(history = readyHistory(), onDeleteMessage = { deletedId = it })
+
+        compose.onNodeWithTag("coach-history-delete-message-message-1")
+            .performScrollTo()
+            .assertHasClickAction()
+            .performClick()
+        compose.onNodeWithTag("coach-history-delete-dialog").assertIsDisplayed()
+        compose.onNodeWithText("Apagar esta mensagem do histórico?", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Cancelar").performClick()
+        assertThat(deletedId).isNull()
+
+        compose.onNodeWithTag("coach-history-delete-message-message-1")
+            .performScrollTo()
+            .performClick()
+        compose.onNodeWithTag("coach-history-delete-confirm").performClick()
+
+        assertThat(deletedId).isEqualTo("message-1")
+    }
+
+    @Test
+    fun `apagar resumo individual pede confirmacao`() {
+        var deletedWeek: LocalDate? = null
+        setContent(history = readyHistory(), onDeleteSummary = { deletedWeek = it })
+
+        compose.onNodeWithTag("coach-history-delete-summary-2026-11-02")
+            .performScrollTo()
+            .performClick()
+        compose.onNodeWithText("Apagar este resumo da semana?", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("coach-history-delete-confirm").performClick()
+
+        assertThat(deletedWeek).isEqualTo(LocalDate.of(2026, 11, 2))
+    }
+
+    @Test
     fun `historico aparece no tema claro`() {
         setContent(history = readyHistory(), dark = false)
 
@@ -158,6 +194,8 @@ class CoachHistoryTest {
         fontScale: Float = 1f,
         onClear: () -> Unit = {},
         onRetry: () -> Unit = {},
+        onDeleteMessage: (String) -> Unit = {},
+        onDeleteSummary: (LocalDate) -> Unit = {},
     ) {
         compose.setContent {
             val density = LocalDensity.current
@@ -180,6 +218,8 @@ class CoachHistoryTest {
                         history = history,
                         onClearHistory = onClear,
                         onRetryHistory = onRetry,
+                        onDeleteHistoryMessage = onDeleteMessage,
+                        onDeleteHistorySummary = onDeleteSummary,
                     )
                 }
             }

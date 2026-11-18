@@ -26,6 +26,9 @@ interface CoachMessageDao {
     @Query("DELETE FROM coach_messages WHERE createdAt < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long): Int
 
+    @Query("DELETE FROM coach_messages WHERE id = :id")
+    suspend fun deleteById(id: String): Int
+
     @Query("DELETE FROM coach_messages")
     suspend fun deleteAll(): Int
 }

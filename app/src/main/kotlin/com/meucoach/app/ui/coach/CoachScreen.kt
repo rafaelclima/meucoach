@@ -56,6 +56,8 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
         onRetry = { viewModel.retry() },
         onClearHistory = { viewModel.clearHistory() },
         onRetryHistory = { viewModel.retryHistory() },
+        onDeleteHistoryMessage = { viewModel.deleteHistoryMessage(it) },
+        onDeleteHistorySummary = { viewModel.deleteHistorySummary(it) },
         onReplanRequest = { viewModel.requestReplan() },
         onReplanRequestMissed = { viewModel.requestMissedSession() },
         onReplanRequestLessTime = { viewModel.requestLessTime() },
@@ -98,6 +100,8 @@ fun CoachScreen(
     onReplanDismiss: () -> Unit = {},
     onClearHistory: () -> Unit = {},
     onRetryHistory: () -> Unit = {},
+    onDeleteHistoryMessage: (String) -> Unit = {},
+    onDeleteHistorySummary: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var replanSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -271,6 +275,8 @@ fun CoachScreen(
                     state = history,
                     onClear = onClearHistory,
                     onRetry = onRetryHistory,
+                    onDeleteMessage = onDeleteHistoryMessage,
+                    onDeleteSummary = onDeleteHistorySummary,
                 )
             }
         } else {

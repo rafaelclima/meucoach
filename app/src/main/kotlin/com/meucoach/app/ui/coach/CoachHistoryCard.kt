@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
@@ -54,10 +55,14 @@ internal fun CoachHistoryCard(
     state: CoachHistoryState,
     onClear: () -> Unit,
     onRetry: () -> Unit,
+    onDeleteMessage: (String) -> Unit,
+    onDeleteSummary: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    var pendingDeleteKind by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingDeleteKey by rememberSaveable { mutableStateOf<String?>(null) }
 
     McCard(modifier = modifier.testTag("coach-history-card")) {
         Text(
@@ -134,7 +139,13 @@ internal fun CoachHistoryCard(
                     HistorySectionTitle(text = "Resumos por semana")
                     state.summaries.forEachIndexed { index, summary ->
                         if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        SummaryRow(summary)
+                        SummaryRow(
+                            summary = summary,
+                            onDelete = {
+                                pendingDeleteKind = "summary"
+                                pendingDeleteKey = summary.weekStart.toString()
+                            },
+                        )
                     }
                 }
                 if (state.messages.isNotEmpty()) {
@@ -144,7 +155,13 @@ internal fun CoachHistoryCard(
                     HistorySectionTitle(text = "Conversa")
                     state.messages.forEachIndexed { index, message ->
                         if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        MessageRow(message)
+                        MessageRow(
+                            message = message,
+                            onDelete = {
+                                pendingDeleteKind = "message"
+                                pendingDeleteKey = message.id
+                            },
+                        )
                     }
                 }
                 TextButton(
@@ -193,6 +210,64 @@ internal fun CoachHistoryCard(
             textContentColor = colors.textSecondary,
         )
     }
+
+    val deleteKind = pendingDeleteKind
+    val deleteKey = pendingDeleteKey
+    if (deleteKind != null && deleteKey != null) {
+        AlertDialog(
+            onDismissRequest = {
+                pendingDeleteKind = null
+                pendingDeleteKey = null
+            },
+            modifier = Modifier.testTag("coach-history-delete-dialog"),
+            title = {
+                Text(
+                    text = if (deleteKind == "message") {
+                        "Apagar esta mensagem do histórico?"
+                    } else {
+                        "Apagar este resumo da semana?"
+                    },
+                )
+            },
+            text = {
+                Text(
+                    text = "O item será removido deste aparelho. " +
+                        "Treinos, perfil e check-ins não serão alterados.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteKind = null
+                        pendingDeleteKey = null
+                        if (deleteKind == "message") {
+                            onDeleteMessage(deleteKey)
+                        } else {
+                            runCatching { LocalDate.parse(deleteKey) }
+                                .getOrNull()
+                                ?.let(onDeleteSummary)
+                        }
+                    },
+                    modifier = Modifier.testTag("coach-history-delete-confirm"),
+                ) {
+                    Text(text = "Apagar", color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteKind = null
+                        pendingDeleteKey = null
+                    },
+                ) {
+                    Text(text = "Cancelar", color = colors.textPrimary)
+                }
+            },
+            containerColor = colors.surface,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textSecondary,
+        )
+    }
 }
 
 @Composable
@@ -208,59 +283,89 @@ private fun HistorySectionTitle(text: String) {
 }
 
 @Composable
-private fun SummaryRow(summary: CoachMemorySummary) {
+private fun SummaryRow(summary: CoachMemorySummary, onDelete: () -> Unit) {
     HistoryRow(
         tag = "coach-history-summary-${summary.weekStart}",
         meta = "Resumo da semana de ${SUMMARY_DATE.format(summary.weekStart)}",
         title = summary.title,
         body = summary.body,
         bullets = summary.bullets,
+        deleteTag = "coach-history-delete-summary-${summary.weekStart}",
+        deleteDescription = "Apagar resumo da semana de ${SUMMARY_DATE.format(summary.weekStart)}",
+        onDelete = onDelete,
     )
 }
 
 @Composable
-private fun MessageRow(message: CoachMemoryMessage) {
+private fun MessageRow(message: CoachMemoryMessage, onDelete: () -> Unit) {
     HistoryRow(
         tag = "coach-history-message-${message.id}",
         meta = "${kindLabel(message.kind)} · ${HISTORY_DATE.format(message.createdAt.dateInSystemZone())}",
         title = message.title,
         body = message.body,
         bullets = message.bullets,
+        deleteTag = "coach-history-delete-message-${message.id}",
+        deleteDescription = "Apagar mensagem: ${message.title}",
+        onDelete = onDelete,
     )
 }
 
 @Composable
-private fun HistoryRow(tag: String, meta: String, title: String, body: String, bullets: List<String>) {
+private fun HistoryRow(
+    tag: String,
+    meta: String,
+    title: String,
+    body: String,
+    bullets: List<String>,
+    deleteTag: String,
+    deleteDescription: String,
+    onDelete: () -> Unit,
+) {
     val colors = McTheme.colors
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) {}
-            .padding(vertical = 2.dp)
             .testTag(tag),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Text(
-            text = meta,
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = colors.textPrimary,
-        )
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-        bullets.forEach { bullet ->
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) {}
+                .padding(vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
-                text = "• $bullet",
-                style = MaterialTheme.typography.bodySmall,
+                text = meta,
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
             )
+            bullets.forEach { bullet ->
+                Text(
+                    text = "• $bullet",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        TextButton(
+            onClick = onDelete,
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .semantics { contentDescription = deleteDescription }
+                .testTag(deleteTag),
+        ) {
+            Text(text = "Apagar", color = colors.danger)
         }
     }
 }

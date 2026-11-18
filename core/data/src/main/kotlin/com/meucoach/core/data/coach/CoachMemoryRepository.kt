@@ -104,6 +104,13 @@ class CoachMemoryRepository(
         }
     }
 
+    /** Removes one turn; returns false when the row was already gone. */
+    suspend fun deleteMessage(id: String): Boolean = database.coachMessageDao().deleteById(id) > 0
+
+    /** Removes one weekly summary; returns false when the row was already gone. */
+    suspend fun deleteSummary(weekStart: LocalDate): Boolean =
+        database.coachSummaryDao().deleteByWeek(weekStart.toString()) > 0
+
     /**
      * Read-only history for the Coach tab (newest first).
      *

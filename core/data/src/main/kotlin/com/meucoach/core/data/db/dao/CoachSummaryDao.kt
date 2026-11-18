@@ -26,6 +26,9 @@ interface CoachSummaryDao {
     @Query("DELETE FROM coach_summaries WHERE createdAt < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long): Int
 
+    @Query("DELETE FROM coach_summaries WHERE weekStart = :weekStart")
+    suspend fun deleteByWeek(weekStart: String): Int
+
     @Query("DELETE FROM coach_summaries")
     suspend fun deleteAll(): Int
 }
