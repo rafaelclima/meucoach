@@ -1495,6 +1495,216 @@ class PlanReplannerTest {
             .isEqualTo((green as ReplanResult.NoChange).reason)
     }
 
+    // --- Explicit intent: temporary availability and specific missed slot ---
+
+    @Test
+    fun `temporary availability forces a revision and keeps the persisted baseline`() {
+        val availability = fridayAvailability()
+        val current = planOf(
+            session(monday, WorkoutType.QUALITY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(friday, WorkoutType.QUALITY, 40),
+            session(saturday, WorkoutType.LONG, 45),
+        )
+        val baseline = PlanReplanner.availabilityHash(WeeklyAvailability(availability))
+        val intent = ReplanIntent(
+            temporaryAvailability = TemporaryAvailability(friday, 20),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = wednesday,
+                profile = profile(availability),
+                currentAvailabilityHash = baseline,
+                intent = intent,
+            ),
+        )
+
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.intent).isEqualTo(intent)
+        assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.TEMPORARY_AVAILABILITY)
+        assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.USER_REQUEST)
+        // The baseline is the persisted profile, never the effective one.
+        assertThat(suggested.suggestion.expectedAvailabilityHash).isEqualTo(baseline)
+        assertThat(suggested.suggestion.availabilityHash).isEqualTo(baseline)
+        assertThat(suggested.candidate.sessions.first { it.date == friday }.durationMin)
+            .isLessThanOrEqualTo(20)
+        assertThat(suggested.suggestion.rationale)
+            .contains("20 min")
+            .contains("sem repor")
+    }
+
+    @Test
+    fun `a temporary reduction never increases future volume or quality`() {
+        val availability = fridayAvailability()
+        val current = planOf(
+            session(monday, WorkoutType.QUALITY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(friday, WorkoutType.QUALITY, 40),
+            session(saturday, WorkoutType.LONG, 45),
+        )
+        val baseline = PlanReplanner.availabilityHash(WeeklyAvailability(availability))
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = wednesday,
+                profile = profile(availability),
+                currentAvailabilityHash = baseline,
+                intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20)),
+            ),
+        )
+
+        val suggested = result as ReplanResult.Suggest
+        val currentFuture = current.sessions.filter { it.date.isAfter(wednesday) }
+        val candidateFuture = suggested.candidate.sessions.filter { it.date.isAfter(wednesday) }
+        assertThat(candidateFuture.sumOf { it.durationMin ?: 0 })
+            .isLessThanOrEqualTo(currentFuture.sumOf { it.durationMin ?: 0 })
+        assertThat(candidateFuture.count { it.type == WorkoutType.QUALITY })
+            .isLessThanOrEqualTo(currentFuture.count { it.type == WorkoutType.QUALITY })
+    }
+
+    @Test
+    fun `inputs hash changes when the temporary availability changes`() {
+        val availability = fridayAvailability()
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(friday, WorkoutType.EASY, 40),
+        )
+        val baseline = PlanReplanner.availabilityHash(WeeklyAvailability(availability))
+        val base = input(
+            current = current,
+            today = wednesday,
+            profile = profile(availability),
+            currentAvailabilityHash = baseline,
+        )
+
+        val withTwenty = base.copy(
+            intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20)),
+        )
+        val withTwentyFive = base.copy(
+            intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 25)),
+        )
+
+        assertThat(PlanReplanner.inputsHash(base)).isNotEqualTo(PlanReplanner.inputsHash(withTwenty))
+        assertThat(PlanReplanner.inputsHash(withTwenty))
+            .isNotEqualTo(PlanReplanner.inputsHash(withTwentyFive))
+    }
+
+    @Test
+    fun `an invalid temporary availability is refused with a clear reason`() {
+        val availability = fridayAvailability()
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(friday, WorkoutType.EASY, 40),
+        )
+        val baseline = PlanReplanner.availabilityHash(WeeklyAvailability(availability))
+
+        fun evaluateTemporary(temporary: TemporaryAvailability) = planner.evaluate(
+            input(
+                current = current,
+                today = wednesday,
+                profile = profile(availability),
+                currentAvailabilityHash = baseline,
+                intent = ReplanIntent(temporaryAvailability = temporary),
+            ),
+        )
+
+        val today = evaluateTemporary(TemporaryAvailability(wednesday, 20)) as ReplanResult.NoChange
+        assertThat(today.reason).contains("dia futuro")
+        val nextWeek = evaluateTemporary(TemporaryAvailability(monday.plusDays(8), 20)) as ReplanResult.NoChange
+        assertThat(nextWeek.reason).contains("dia futuro")
+        val missingDay = evaluateTemporary(TemporaryAvailability(thursday, 20)) as ReplanResult.NoChange
+        assertThat(missingDay.reason).contains("não faz parte")
+        val increase = evaluateTemporary(TemporaryAvailability(friday, 40)) as ReplanResult.NoChange
+        assertThat(increase.reason).contains("diminuir")
+        assertThatThrownBy { TemporaryAvailability(friday, 0) }
+        assertThatThrownBy { TemporaryAvailability(friday, 1_441) }
+    }
+
+    @Test
+    fun `a specific missed session forces T1 below the threshold without compensation`() {
+        val current = planOf(
+            session(monday, WorkoutType.QUALITY, 40),
+            session(
+                wednesday,
+                WorkoutType.EASY,
+                40,
+                status = SessionStatus.DONE,
+                completionEvidence = CompletionEvidence.ACTIVITY,
+                activityId = "activity-wed",
+            ),
+            session(saturday, WorkoutType.LONG, 34),
+        )
+        val baseline = PlanReplanner.availabilityHash(
+            WeeklyAvailability(defaultAvailability()),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = thursday,
+                currentAvailabilityHash = baseline,
+                intent = ReplanIntent(requestedMissedDate = monday),
+            ),
+        )
+
+        val suggested = result as ReplanResult.Suggest
+        assertThat(suggested.suggestion.missedTrainableCount).isEqualTo(1)
+        assertThat(suggested.suggestion.causes).containsExactly(ReplanCause.MISSED_SESSIONS)
+        assertThat(suggested.suggestion.trigger).isEqualTo(ReplanTrigger.MISSED_SESSIONS)
+        assertThat(suggested.candidate.sessions.first { it.date == monday })
+            .isEqualTo(current.sessions.first { it.date == monday })
+        assertThat(suggested.candidate.sessions.filter { it.date.isAfter(thursday) })
+            .noneMatch { it.type == WorkoutType.QUALITY }
+        assertThat(suggested.suggestion.rationale)
+            .contains("perdido")
+            .contains("sem repor")
+    }
+
+    @Test
+    fun `an ineligible missed date is refused instead of forcing T1`() {
+        val current = planOf(
+            session(monday, WorkoutType.EASY, 40),
+            session(wednesday, WorkoutType.EASY, 40),
+            session(friday, WorkoutType.EASY, 40),
+            session(saturday, WorkoutType.LONG, 34),
+        )
+        val baseline = PlanReplanner.availabilityHash(
+            WeeklyAvailability(defaultAvailability()),
+        )
+
+        val futurePick = planner.evaluate(
+            input(
+                current = current,
+                today = thursday,
+                currentAvailabilityHash = baseline,
+                intent = ReplanIntent(requestedMissedDate = saturday),
+            ),
+        ) as ReplanResult.NoChange
+        assertThat(futurePick.reason).contains("não está como perdido")
+
+        val illnessPick = planner.evaluate(
+            input(
+                current = current,
+                today = thursday,
+                currentAvailabilityHash = baseline,
+                nonTrainablePastDates = setOf(wednesday),
+                intent = ReplanIntent(requestedMissedDate = wednesday),
+            ),
+        ) as ReplanResult.NoChange
+        assertThat(illnessPick.reason).contains("não está como perdido")
+    }
+
+    private fun fridayAvailability(): Map<DayOfWeek, Int> = mapOf(
+        DayOfWeek.MONDAY to 40,
+        DayOfWeek.WEDNESDAY to 40,
+        DayOfWeek.FRIDAY to 40,
+        DayOfWeek.SATURDAY to 90,
+    )
+
     private fun threeDayAvailability(): Map<DayOfWeek, Int> = mapOf(
         DayOfWeek.TUESDAY to 40,
         DayOfWeek.FRIDAY to 40,
@@ -1571,6 +1781,7 @@ class PlanReplannerTest {
         recovery: RecoveryWindow? = null,
         allowStructuralQualitySlot: Boolean = false,
         dataNowComplete: Boolean = false,
+        intent: ReplanIntent = ReplanIntent(),
     ) = ReplanInput(
         currentPlan = current,
         currentVersion = currentVersion,
@@ -1595,6 +1806,7 @@ class PlanReplannerTest {
         today = today,
         allowStructuralQualitySlot = allowStructuralQualitySlot,
         dataNowComplete = dataNowComplete,
+        intent = intent,
     )
 
     private fun generatedPlan(

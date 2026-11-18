@@ -7,13 +7,18 @@ import com.meucoach.app.application.UndoReplanResult
 import com.meucoach.app.application.diffFuturePlannedSessions
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
+import com.meucoach.app.ui.replan.LessTimeDayUi
+import com.meucoach.app.ui.replan.MissedSessionUi
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.app.ui.replan.ReplanVersionChangeUi
 import com.meucoach.app.ui.replan.toUi
+import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.replan.PlanUpgrade
+import com.meucoach.core.domain.replan.ReplanIntent
 import com.meucoach.core.domain.replan.ReplanTrigger
+import com.meucoach.core.domain.replan.TemporaryAvailability
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +38,7 @@ import java.time.LocalDate
 class ReplanController(
     private val operations: ReplanOperations,
     private val plans: TrainingPlanRepository,
+    private val profiles: ProfileRepository,
     private val store: ReplanSuggestionStore,
     private val profileResults: ProfilePlanEvaluationStore,
     private val timeProvider: TimeProvider,
@@ -42,8 +48,7 @@ class ReplanController(
     val uiState: StateFlow<ReplanUiState> = mutableState.asStateFlow()
 
     private var pending: EvaluateReplanResult.Suggestion? = null
-    private var evaluating = false
-    private var queuedExplicit = false
+    private val queue = ReplanRequestQueue()
 
     /** Called when a screen becomes visible; never surfaces an explicit-only message. */
     fun refresh() = runEvaluation(explicit = false)
@@ -75,7 +80,140 @@ class ReplanController(
     }
 
     /** Explicit T3 request: ignores suppression and reports `NoChange` reasons. */
-    fun replanNow() = runEvaluation(explicit = true)
+    fun replanNow() {
+        dismissIntent()
+        runEvaluation(explicit = true)
+    }
+
+    /**
+     * Opens the lost-session picker. The eligible list is the replanner's own T1
+     * rule, so the picker can never offer an ineligible day.
+     */
+    fun requestMissedSession() {
+        scope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            try {
+                val candidates = operations.evaluate.missedCandidates()
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        missedSessions = candidates.map { session ->
+                            MissedSessionUi(
+                                date = session.date,
+                                title = session.title,
+                                durationMin = session.durationMin,
+                            )
+                        },
+                        lessTimeDays = null,
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                android.util.Log.d("Replan", "missed candidates failed: ${error.message}")
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Não foi possível listar os treinos agora. Tente de novo em instantes.",
+                    )
+                }
+            }
+        }
+    }
+
+    /** Evaluates with the specific lost session; a pick below T1 still forces T1. */
+    fun replanMissed(date: LocalDate) {
+        dismissIntent()
+        runEvaluation(explicit = true, intent = ReplanIntent(requestedMissedDate = date))
+    }
+
+    /** Opens the temporary availability picker with the persisted future days. */
+    fun requestLessTime() {
+        scope.launch {
+            mutableState.update { it.copy(isLoading = true) }
+            try {
+                val today = timeProvider.currentDate()
+                val profile = profiles.getProfile()
+                if (profile == null) {
+                    mutableState.update {
+                        it.copy(
+                            isLoading = false,
+                            message = "Ainda não há um perfil para ajustar a semana.",
+                        )
+                    }
+                    return@launch
+                }
+                val weekStart = today.weekStart()
+                val days = (1L..6L)
+                    .map { weekStart.plusDays(it) }
+                    .filter { it.isAfter(today) }
+                    .mapNotNull { date ->
+                        profile.weeklyAvailability.minutesByDay[date.dayOfWeek]
+                            ?.takeIf { it > 1 }
+                            ?.let { LessTimeDayUi(date = date, currentMinutes = it) }
+                    }
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        lessTimeDays = days,
+                        missedSessions = null,
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                android.util.Log.d("Replan", "less-time days failed: ${error.message}")
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        message = "Não foi possível abrir os dias agora. Tente de novo em instantes.",
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Evaluates with a temporary reduction of one future day. The override never
+     * touches the profile: it only constrains this evaluation and its acceptance.
+     */
+    fun replanLessTime(date: LocalDate, minutes: Int) {
+        scope.launch {
+            val today = timeProvider.currentDate()
+            val weekStart = today.weekStart()
+            val profile = profiles.getProfile()
+            val currentMinutes = profile?.weeklyAvailability?.minutesByDay?.get(date.dayOfWeek)
+            val reason = when {
+                profile == null -> "Ainda não há um perfil para ajustar a semana."
+
+                !date.isAfter(today) || date.isAfter(weekStart.plusDays(6)) ->
+                    "Escolha um dia futuro desta semana."
+
+                currentMinutes == null -> "Esse dia não faz parte da sua disponibilidade."
+
+                minutes !in 1 until currentMinutes ->
+                    "Informe um tempo entre 1 e ${currentMinutes - 1} min para este dia."
+
+                else -> null
+            }
+            if (reason != null) {
+                mutableState.update { it.copy(message = reason) }
+                return@launch
+            }
+            dismissIntent()
+            runEvaluation(
+                explicit = true,
+                intent = ReplanIntent(
+                    temporaryAvailability = TemporaryAvailability(date = date, minutes = minutes),
+                ),
+            )
+        }
+    }
+
+    /** Closes the intent pickers without evaluating or remembering a decline. */
+    fun dismissIntent() {
+        mutableState.update { it.copy(missedSessions = null, lessTimeDays = null) }
+    }
 
     fun accept() {
         val suggestion = pending ?: return
@@ -243,9 +381,9 @@ class ReplanController(
         }
     }
 
-    private suspend fun evaluate(explicit: Boolean, surfaceNoChange: Boolean) {
+    private suspend fun evaluate(explicit: Boolean, intent: ReplanIntent, surfaceNoChange: Boolean) {
         val today = timeProvider.currentDate()
-        val result = operations.evaluate(explicit)
+        val result = operations.evaluate(explicit, intent)
         present(result, today, explicit, surfaceNoChange)
     }
 
@@ -313,19 +451,22 @@ class ReplanController(
         }
     }
 
-    private fun runEvaluation(explicit: Boolean, surfaceNoChange: Boolean = explicit) {
+    private fun runEvaluation(
+        explicit: Boolean,
+        intent: ReplanIntent = ReplanIntent(),
+        surfaceNoChange: Boolean = explicit,
+    ) {
         if (mutableState.value.isApplying || mutableState.value.isUndoing) return
-        if (evaluating) {
+        if (!queue.begin()) {
             // An explicit request must never be dropped by an automatic evaluation
-            // that is just finishing; queue it instead.
-            if (explicit) queuedExplicit = true
+            // that is just finishing; queue it with its exact intent.
+            if (explicit) queue.enqueue(intent)
             return
         }
-        evaluating = true
         mutableState.update { it.copy(isLoading = true) }
         scope.launch {
             try {
-                evaluate(explicit, surfaceNoChange)
+                evaluate(explicit, intent, surfaceNoChange)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -334,10 +475,9 @@ class ReplanController(
                     it.copy(message = "Não foi possível avaliar a semana agora. Tente de novo em instantes.")
                 }
             } finally {
-                evaluating = false
-                if (queuedExplicit) {
-                    queuedExplicit = false
-                    runEvaluation(explicit = true)
+                val queuedIntent = queue.finish()
+                if (queuedIntent != null) {
+                    runEvaluation(explicit = true, intent = queuedIntent)
                 } else {
                     mutableState.update { if (it.isLoading) it.copy(isLoading = false) else it }
                 }

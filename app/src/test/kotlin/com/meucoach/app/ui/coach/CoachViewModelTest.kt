@@ -65,6 +65,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -144,6 +145,7 @@ class CoachViewModelTest {
                 undo = UndoReplan(planRepository),
             ),
             plans = planRepository,
+            profiles = profiles,
             store = ReplanSuggestionStore(context, "coach-replan-${System.nanoTime()}"),
             profileResults = ProfilePlanEvaluationStore(),
             timeProvider = timeProvider,
@@ -361,6 +363,76 @@ class CoachViewModelTest {
         }
         assertThat(state.message).contains("semana planejada")
         assertThat(state.suggestion).isNull()
+    }
+
+    @Test
+    fun `perdi um treino lista o treino elegivel e avalia a selecao`(): Unit = runBlocking {
+        seedReplan()
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        vm.requestMissedSession()
+        val picker = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.missedSessions != null }
+        }
+        assertThat(picker.missedSessions!!.map { it.date })
+            .containsExactly(REPLAN_WEEK_START, REPLAN_WEEK_START.plusDays(1))
+
+        vm.replanMissed(REPLAN_WEEK_START)
+        val suggested = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.suggestion != null }
+        }
+        assertThat(suggested.suggestion?.requestNote).contains("perdido")
+        assertThat(suggested.missedSessions).isNull()
+    }
+
+    @Test
+    fun `menos tempo lista os dias futuros e nao persiste o override`(): Unit = runBlocking {
+        seedReplan()
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        val friday = REPLAN_WEEK_START.plusDays(4)
+
+        vm.requestLessTime()
+        val picker = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.lessTimeDays != null }
+        }
+        assertThat(picker.lessTimeDays!!.map { it.date }).containsExactly(friday)
+        assertThat(picker.lessTimeDays.single().currentMinutes).isEqualTo(30)
+
+        vm.replanLessTime(friday, 20)
+        val suggested = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.suggestion != null }
+        }
+        assertThat(suggested.suggestion?.requestNote).contains("20 min")
+        assertThat(suggested.lessTimeDays).isNull()
+
+        vm.acceptReplan()
+        val applied = withTimeout(5_000) {
+            vm.replan.first { !it.isApplying && it.planVersion == 2 && it.canUndo }
+        }
+        assertThat(applied.suggestion).isNull()
+        assertThat(planRepository.getWeekRecord(REPLAN_WEEK_START)!!.availabilityHash)
+            .isEqualTo(PlanReplanner.availabilityHash(replanProfile().weeklyAvailability))
+        assertThat(profiles.getProfile()!!.weeklyAvailability.minutesOn(DayOfWeek.FRIDAY))
+            .isEqualTo(30)
+    }
+
+    @Test
+    fun `menos tempo recusa um valor que nao reduz sem chamar o motor`(): Unit = runBlocking {
+        seedReplan()
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        val friday = REPLAN_WEEK_START.plusDays(4)
+
+        vm.requestLessTime()
+        withTimeout(5_000) { vm.replan.first { !it.isLoading && it.lessTimeDays != null } }
+        vm.replanLessTime(friday, 30)
+
+        val state = withTimeout(5_000) { vm.replan.first { it.message != null } }
+        assertThat(state.message).contains("entre 1 e 29")
+        assertThat(state.suggestion).isNull()
+        assertThat(planRepository.getWeekRecord(REPLAN_WEEK_START)!!.version).isEqualTo(1)
     }
 
     private fun seedReplan(): Unit = runBlocking {

@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.12 · **Data:** 18/11/2026 · Fechamento do Ciclo 4: 2.310 testes (1099 domain / 963 app / 208 data / 40 model), gates verdes e flakes conhecidos documentados (§10.1). Sem mudança de código.
+**Versão:** 1.13 · **Data:** 18/11/2026 · IA Coach 3.3-B: 2.377 testes (1118 domain / 1001 app / 218 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -92,9 +92,9 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (18/11/2026, fechamento do Ciclo 4):
+Evidência atual (18/11/2026, IA Coach 3.3-B):
 
-- 2.310 testes no repositório (1099 em `core:domain`, 963 em `:app`, 208 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- 2.377 testes no repositório (1118 em `core:domain`, 1001 em `:app`, 218 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
 - Comandos de referência: `./gradlew :core:domain:test :core:model:test :core:data:testDebugUnitTest --rerun-tasks` + `./gradlew :app:testDebugUnitTest --rerun-tasks --no-parallel` (a suíte do app cai nos flakes do §10.1 sob paralelismo; sem paralelismo fica verde).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
@@ -449,7 +449,7 @@ Dois testes caem de forma intermitente sob paralelismo/carga e passam isolados; 
 | Teste | Sintoma | Contexto |
 |---|---|---|
 | `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução |
-| `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado e na suíte sem paralelismo |
+| `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado. Em 3.3-B a origem foi corrigida: `TodayViewModelPersistTest` cancela os `viewModelScope` antes de fechar o banco; 2 execuções completas verdes depois disso (com e sem `--no-parallel`). |
 
 Política: flake não se ignora (`@Ignore` proibido) nem se "conserta" reduzindo assert; registra-se aqui com sintoma, contexto e o comando que fica verde.
 

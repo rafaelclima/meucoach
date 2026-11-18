@@ -66,6 +66,47 @@ enum class ReplanCause {
     RACE_COMPLETED,
     DATA_READY,
     ENGINE_UPGRADE,
+
+    /**
+     * The user reduced the time available on one future day for this revision
+     * only. It is copy/audit context, never a persisted availability change.
+     */
+    TEMPORARY_AVAILABILITY,
+}
+
+/**
+ * Availability the user has on one day for this revision only (IA Coach 3.3-B).
+ *
+ * It lives in the evaluation input and is never written to [com.meucoach.core.model.AthleteProfile]
+ * nor to `weekly_plans.availabilityHash`; the persisted baseline is the authority.
+ */
+data class TemporaryAvailability(val date: LocalDate, val minutes: Int) {
+    init {
+        require(minutes in 1..MAX_MINUTES_PER_DAY) {
+            "Temporary availability must be between 1 and $MAX_MINUTES_PER_DAY minutes"
+        }
+    }
+
+    private companion object {
+        const val MAX_MINUTES_PER_DAY = 1_440
+    }
+}
+
+/**
+ * Explicit user intent for one evaluation (IA Coach 3.3-B). It is part of the
+ * `inputsHash`, so a suggestion built from a different intent is stale at accept
+ * time. An empty intent is the plain "replan my week" request.
+ */
+data class ReplanIntent(
+    val temporaryAvailability: TemporaryAvailability? = null,
+    val requestedMissedDate: LocalDate? = null,
+) {
+    val isEmpty: Boolean get() = temporaryAvailability == null && requestedMissedDate == null
+
+    /** Stable canonical form used by `ReplanInputsHash`; order never depends on map iteration. */
+    val canonical: String
+        get() = "temporary=" + (temporaryAvailability?.let { "${it.date}:${it.minutes}" } ?: "null") +
+            ";missed=" + (requestedMissedDate?.toString() ?: "null")
 }
 
 /**
@@ -99,6 +140,8 @@ data class ReplanSuggestion(
     val confidence: DataConfidence,
     /** Completed race that caused a recovery revision; used only to remember a decline. */
     val recoveryEventId: String? = null,
+    /** Explicit user intent this proposal answers; part of the accept revalidation. */
+    val intent: ReplanIntent = ReplanIntent(),
 ) {
     init {
         require(causes.isNotEmpty()) { "Suggestion must record at least one cause" }
@@ -193,6 +236,12 @@ data class ReplanInput(
      * trigger `DATA_READY`; readiness values alone never trigger anything.
      */
     val dataNowComplete: Boolean = false,
+    /**
+     * Explicit user intent for this evaluation only (IA Coach 3.3-B). It never
+     * changes the persisted profile/availability baseline; it only constrains
+     * the generated future and is part of [PlanReplanner.inputsHash].
+     */
+    val intent: ReplanIntent = ReplanIntent(),
     val today: LocalDate,
 ) {
     init {

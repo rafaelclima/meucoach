@@ -23,8 +23,10 @@ import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanUpgrade
 import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanCause
+import com.meucoach.core.domain.replan.ReplanIntent
 import com.meucoach.core.domain.replan.ReplanSuggestion
 import com.meucoach.core.domain.replan.ReplanTrigger
+import com.meucoach.core.domain.replan.TemporaryAvailability
 import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import kotlinx.coroutines.runBlocking
@@ -36,6 +38,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -306,6 +309,91 @@ class ApplyReplanTest {
             .isEqualTo(WorkoutType.QUALITY)
         assertThat(plans.getLatestRevision(REPLAN_WEEK_START)!!.trigger)
             .isEqualTo(PlanUpgrade.ENGINE_UPGRADE_TRIGGER)
+    }
+
+    @Test
+    fun `accepting a temporary availability revision does not persist the override`(): Unit = runBlocking {
+        val profile = replanProfile(fridayMinutes = 40)
+        profiles.saveProfile(profile)
+        checkIns.save(replanCheckIn())
+        plans.saveWeek(
+            replanPlan(
+                sessions = listOf(
+                    easySession(REPLAN_WEEK_START, durationMin = 40),
+                    easySession(REPLAN_WEEK_START.plusDays(1), durationMin = 35),
+                    easySession(REPLAN_TODAY, durationMin = 40),
+                    qualitySession(REPLAN_WEEK_START.plusDays(4), durationMin = 40),
+                ),
+            ),
+        )
+        val baseline = PlanReplanner.availabilityHash(profile.weeklyAvailability)
+        plans.captureAvailabilityBaseline(REPLAN_WEEK_START, baseline)
+        val friday = REPLAN_WEEK_START.plusDays(4)
+        val evaluated = evaluate(
+            explicit = true,
+            intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20)),
+        ) as EvaluateReplanResult.Suggestion
+
+        val outcome = apply(
+            ApplyReplanRequest(
+                suggestion = evaluated.suggestion,
+                candidate = evaluated.candidate,
+                today = REPLAN_TODAY,
+                explicit = true,
+            ),
+        )
+
+        assertThat(outcome).isInstanceOf(ApplyReplanResult.Applied::class.java)
+        val record = plans.getWeekRecord(REPLAN_WEEK_START)!!
+        assertThat(record.availabilityHash).isEqualTo(baseline)
+        assertThat(plans.getWeek(REPLAN_WEEK_START)!!.sessions.first { it.date == friday }.durationMin)
+            .isLessThanOrEqualTo(20)
+        assertThat(profiles.getProfile()!!.weeklyAvailability.minutesOn(DayOfWeek.FRIDAY))
+            .isEqualTo(40)
+    }
+
+    @Test
+    fun `a temporary availability that is no longer valid re-evaluates instead of applying`(): Unit = runBlocking {
+        val profile = replanProfile(fridayMinutes = 40)
+        profiles.saveProfile(profile)
+        checkIns.save(replanCheckIn())
+        plans.saveWeek(
+            replanPlan(
+                sessions = listOf(
+                    easySession(REPLAN_WEEK_START, durationMin = 40),
+                    easySession(REPLAN_WEEK_START.plusDays(1), durationMin = 35),
+                    easySession(REPLAN_TODAY, durationMin = 40),
+                    qualitySession(REPLAN_WEEK_START.plusDays(4), durationMin = 40),
+                ),
+            ),
+        )
+        plans.captureAvailabilityBaseline(
+            REPLAN_WEEK_START,
+            PlanReplanner.availabilityHash(profile.weeklyAvailability),
+        )
+        val evaluated = evaluate(
+            explicit = true,
+            intent = ReplanIntent(
+                temporaryAvailability = TemporaryAvailability(REPLAN_WEEK_START.plusDays(4), 20),
+            ),
+        ) as EvaluateReplanResult.Suggestion
+        profiles.saveProfile(replanProfile(fridayMinutes = 15))
+
+        val outcome = apply(
+            ApplyReplanRequest(
+                suggestion = evaluated.suggestion,
+                candidate = evaluated.candidate,
+                today = REPLAN_TODAY,
+                explicit = true,
+            ),
+        )
+
+        assertThat(outcome).isInstanceOf(ApplyReplanResult.Stale::class.java)
+        val fresh = (outcome as ApplyReplanResult.Stale).reevaluated
+        assertThat(fresh).isInstanceOf(EvaluateReplanResult.NoChange::class.java)
+        assertThat((fresh as EvaluateReplanResult.NoChange).reason).contains("diminuir")
+        assertThat(plans.getWeekRecord(REPLAN_WEEK_START)!!.version).isEqualTo(1)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
     }
 
     private suspend fun prescriptionFor(plan: WeeklyPlan) = getPrescription(

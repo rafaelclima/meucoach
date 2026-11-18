@@ -8,6 +8,8 @@ import com.meucoach.core.domain.replan.ReplanSuggestion
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.DataConfidence
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
 /** Everything the Today screen needs to offer and explain a replanning revision. */
 data class ReplanUiState(
@@ -22,7 +24,17 @@ data class ReplanUiState(
     /** The latest revision can be reverted as a new version (ADR 0028). */
     val canUndo: Boolean = false,
     val message: String? = null,
+    /** Eligible lost sessions for the Coach picker; `null` keeps the picker closed. */
+    val missedSessions: List<MissedSessionUi>? = null,
+    /** Future days that still accept a temporary reduction; `null` keeps it closed. */
+    val lessTimeDays: List<LessTimeDayUi>? = null,
 )
+
+/** One selectable lost session; the date is the identity the domain validates. */
+data class MissedSessionUi(val date: LocalDate, val title: String, val durationMin: Int?)
+
+/** A future day with its persisted availability; only a smaller value is offered. */
+data class LessTimeDayUi(val date: LocalDate, val currentMinutes: Int)
 
 data class ReplanSuggestionUi(
     val versionFrom: Int,
@@ -33,6 +45,8 @@ data class ReplanSuggestionUi(
     val body: String,
     val changes: List<ReplanChangeUi>,
     val confidence: DataConfidence,
+    /** What the user asked for, when this proposal answers a specific intent. */
+    val requestNote: String? = null,
 )
 
 data class ReplanVersionChangeUi(
@@ -59,9 +73,23 @@ internal fun ReplanSuggestion.toUi(changes: List<ReplanChange>): ReplanSuggestio
     body = body(),
     changes = changes.map { it.toUi() },
     confidence = confidence,
+    requestNote = requestNote(),
 )
 
+private fun ReplanSuggestion.requestNote(): String? {
+    intent.temporaryAvailability?.let { temporary ->
+        return "Você indicou ${temporary.minutes} min para ${formatWeekday(temporary.date)} " +
+            "(${formatDate(temporary.date)})."
+    }
+    intent.requestedMissedDate?.let { date ->
+        return "Você indicou o treino de ${formatWeekday(date)} (${formatDate(date)}) como perdido."
+    }
+    return null
+}
+
 private fun ReplanSuggestion.headline(): String = when {
+    intent.temporaryAvailability != null -> "Cabe no tempo que você tem?"
+    intent.requestedMissedDate != null -> "Ajustar o resto da semana?"
     causes.size > 1 -> "Vale ajustar o resto da semana?"
     causes == listOf(ReplanCause.TIMEZONE_CONTEXT_CHANGED) -> "Seu fuso mudou"
     trigger == ReplanTrigger.ENGINE_UPGRADE -> "Nova versão do treino disponível"
@@ -74,6 +102,12 @@ private fun ReplanSuggestion.headline(): String = when {
 }
 
 private fun ReplanSuggestion.body(): String = when {
+    intent.temporaryAvailability != null ->
+        "Só os próximos dias mudam para caber nesse tempo, sem repor carga e sem mexer no que já passou."
+
+    intent.requestedMissedDate != null ->
+        "Posso reorganizar só os próximos dias, sem repor o treino perdido e sem mexer no que já passou."
+
     causes.size > 1 -> {
         "Mais de um motivo motivou a revisão: ${causes.joinToString(" e ") { it.label() }}. " +
             "Posso reorganizar só os próximos dias, sem repor carga e sem mexer no que já passou."
@@ -120,6 +154,7 @@ private fun ReplanCause.label(): String = when (this) {
     ReplanCause.RACE_COMPLETED -> "recuperação após a prova"
     ReplanCause.DATA_READY -> "dados da sincronização"
     ReplanCause.ENGINE_UPGRADE -> "nova versão do motor"
+    ReplanCause.TEMPORARY_AVAILABILITY -> "tempo reduzido"
 }
 
 internal fun ReplanChange.toUi(): ReplanChangeUi = ReplanChangeUi(
@@ -147,3 +182,21 @@ internal fun confidenceLabel(confidence: DataConfidence): String = when (confide
     DataConfidence.MEDIUM -> "Confiança média na sugestão"
     DataConfidence.LOW -> "Confiança baixa na sugestão"
 }
+
+/** Short weekday used by change rows and pickers: "Seg", "Qua". */
+internal fun formatDay(date: LocalDate): String {
+    val locale = Locale.forLanguageTag("pt-BR")
+    val label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
+    return label.replaceFirstChar { it.uppercaseChar() }.trimEnd('.')
+}
+
+/** Full weekday for sentences: "segunda-feira", "sábado". */
+internal fun formatWeekday(date: LocalDate): String =
+    date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("pt-BR"))
+
+/** Day and month without the year: "02/11". */
+internal fun formatDate(date: LocalDate): String =
+    String.format(Locale.ROOT, "%02d/%02d", date.dayOfMonth, date.monthValue)
+
+/** Picker row label: "Sex 06/11". */
+internal fun formatDayDate(date: LocalDate): String = "${formatDay(date)} ${formatDate(date)}"

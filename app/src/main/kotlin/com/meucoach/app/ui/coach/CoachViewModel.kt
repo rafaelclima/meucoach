@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.time.LocalDate
 import javax.inject.Inject
 
 sealed interface CoachExplanationState {
@@ -208,11 +209,21 @@ class CoachViewModel @Inject constructor(
     }
 
     /**
-     * Quick actions on the Coach tab evaluate T3 explicitly. "Perdi um treino"
-     * and "Tenho menos tempo" use the same evaluation in 3.3-A; choosing the
-     * specific slot/availability arrives in 3.3-B.
+     * Quick actions on the Coach tab evaluate T3 explicitly. "Ajustar a semana"
+     * is the plain request; the other two open a picker and evaluate with an
+     * explicit intent (3.3-B).
      */
     fun requestReplan() = replanController.replanNow()
+
+    fun requestMissedSession() = replanController.requestMissedSession()
+
+    fun replanMissed(date: LocalDate) = replanController.replanMissed(date)
+
+    fun requestLessTime() = replanController.requestLessTime()
+
+    fun replanLessTime(date: LocalDate, minutes: Int) = replanController.replanLessTime(date, minutes)
+
+    fun dismissReplanIntent() = replanController.dismissIntent()
 
     fun acceptReplan() = replanController.accept()
 

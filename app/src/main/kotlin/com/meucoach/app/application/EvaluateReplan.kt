@@ -1,8 +1,10 @@
 package com.meucoach.app.application
 
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.replan.PlanReplanner
+import com.meucoach.core.domain.replan.ReplanIntent
 import com.meucoach.core.domain.replan.ReplanResult
 import com.meucoach.core.domain.replan.ReplanSuggestion
 import javax.inject.Inject
@@ -30,8 +32,8 @@ class EvaluateReplan @Inject constructor(
 ) {
     private val replanner = PlanReplanner()
 
-    suspend operator fun invoke(explicit: Boolean): EvaluateReplanResult {
-        val context = contexts.build(explicit)
+    suspend operator fun invoke(explicit: Boolean, intent: ReplanIntent = ReplanIntent()): EvaluateReplanResult {
+        val context = contexts.build(explicit, intent)
             ?: return EvaluateReplanResult.Unavailable(
                 "Ainda não há uma semana planejada para ajustar.",
             )
@@ -53,5 +55,14 @@ class EvaluateReplan @Inject constructor(
                 EvaluateReplanResult.NoChange(result.reason)
             }
         }
+    }
+
+    /**
+     * Eligible lost sessions offered by the Coach picker. The eligibility rule is
+     * the replanner's own T1 rule; the UI never reimplements it.
+     */
+    suspend fun missedCandidates(): List<PlannedSession> {
+        val context = contexts.build(explicit = false) ?: return emptyList()
+        return replanner.eligibleMissedSessions(context.input)
     }
 }

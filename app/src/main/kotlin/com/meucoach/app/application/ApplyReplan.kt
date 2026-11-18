@@ -40,7 +40,9 @@ class ApplyReplan @Inject constructor(
     private val evaluateReplan: EvaluateReplan,
 ) {
     suspend operator fun invoke(request: ApplyReplanRequest): ApplyReplanResult {
-        val context = contexts.build(request.explicit)
+        // Rebuild the exact input the proposal came from, including its explicit
+        // intent. The persisted profile/availability baseline is untouched.
+        val context = contexts.build(request.explicit, request.suggestion.intent)
             ?: return stale(request)
 
         if (context.today != request.today ||
@@ -99,5 +101,5 @@ class ApplyReplan @Inject constructor(
     }
 
     private suspend fun stale(request: ApplyReplanRequest): ApplyReplanResult.Stale =
-        ApplyReplanResult.Stale(evaluateReplan(request.explicit))
+        ApplyReplanResult.Stale(evaluateReplan(request.explicit, request.suggestion.intent))
 }

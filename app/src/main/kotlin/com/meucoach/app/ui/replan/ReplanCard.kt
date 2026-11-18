@@ -32,8 +32,6 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
 
 /** Invitation card shown after the weekly plan when a revision is available. */
 @Composable
@@ -70,6 +68,15 @@ fun ReplanSuggestionCard(state: ReplanUiState, onAccept: () -> Unit, onDecline: 
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
+        suggestion.requestNote?.let { note ->
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = note,
+                style = McTextStyles.caption,
+                color = colors.textPrimary,
+                modifier = Modifier.testTag("replan-request-note"),
+            )
+        }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = "O treino de hoje não muda. Sessões já feitas também ficam intactas.",
@@ -355,12 +362,6 @@ private fun ReplanChangeRow(change: ReplanChangeUi) {
             )
         }
     }
-}
-
-private fun formatDay(date: LocalDate): String {
-    val locale = Locale.forLanguageTag("pt-BR")
-    val label = date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
-    return label.replaceFirstChar { it.uppercaseChar() }.trimEnd('.')
 }
 
 private const val MAX_PREVIEW_CHANGES = 3

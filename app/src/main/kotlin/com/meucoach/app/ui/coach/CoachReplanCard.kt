@@ -24,7 +24,13 @@ import com.meucoach.core.designsystem.theme.McTheme
  * (PRD 3.3-A). The engine decides; this card only asks for an explicit review.
  */
 @Composable
-internal fun CoachReplanCard(state: ReplanUiState, onRequest: () -> Unit, modifier: Modifier = Modifier) {
+internal fun CoachReplanCard(
+    state: ReplanUiState,
+    onRequest: () -> Unit,
+    onMissed: () -> Unit,
+    onLessTime: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = McTheme.colors
     val busy = state.isLoading || state.isApplying || state.isUndoing
     McCard(modifier = modifier.testTag("coach-replan-card")) {
@@ -55,7 +61,7 @@ internal fun CoachReplanCard(state: ReplanUiState, onRequest: () -> Unit, modifi
         ) {
             McSecondaryButton(
                 text = "Perdi um treino",
-                onClick = onRequest,
+                onClick = onMissed,
                 enabled = !busy,
                 modifier = Modifier
                     .weight(1f)
@@ -63,7 +69,7 @@ internal fun CoachReplanCard(state: ReplanUiState, onRequest: () -> Unit, modifi
             )
             McSecondaryButton(
                 text = "Tenho menos tempo",
-                onClick = onRequest,
+                onClick = onLessTime,
                 enabled = !busy,
                 modifier = Modifier
                     .weight(1f)

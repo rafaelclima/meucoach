@@ -4,6 +4,7 @@ import com.meucoach.app.application.ApplyReplan
 import com.meucoach.app.application.EvaluateReplan
 import com.meucoach.app.application.UndoReplan
 import com.meucoach.app.time.TimeProvider
+import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Inject
@@ -19,6 +20,7 @@ class ReplanOperations @Inject constructor(val evaluate: EvaluateReplan, val app
 class ReplanControllerFactory @Inject constructor(
     private val operations: ReplanOperations,
     private val plans: TrainingPlanRepository,
+    private val profiles: ProfileRepository,
     private val store: ReplanSuggestionStore,
     private val profileResults: ProfilePlanEvaluationStore,
     private val timeProvider: TimeProvider,
@@ -26,6 +28,7 @@ class ReplanControllerFactory @Inject constructor(
     fun create(scope: CoroutineScope): ReplanController = ReplanController(
         operations = operations,
         plans = plans,
+        profiles = profiles,
         store = store,
         profileResults = profileResults,
         timeProvider = timeProvider,

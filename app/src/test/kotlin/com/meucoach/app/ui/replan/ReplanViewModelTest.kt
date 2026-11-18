@@ -103,6 +103,7 @@ class ReplanViewModelTest {
                     undo = UndoReplan(plans),
                 ),
                 plans = plans,
+                profiles = profiles,
                 store = store,
                 profileResults = profileResults,
                 timeProvider = timeProvider,

@@ -6,7 +6,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import com.meucoach.app.application.ReplanChangeKind
+import com.meucoach.app.ui.replan.LessTimeDayUi
+import com.meucoach.app.ui.replan.MissedSessionUi
 import com.meucoach.app.ui.replan.ReplanChangeUi
 import com.meucoach.app.ui.replan.ReplanSuggestionUi
 import com.meucoach.app.ui.replan.ReplanUiState
@@ -98,16 +102,104 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `acoes rapidas pedem a revisao da semana`() {
-        var requested = 0
-        setContent(onReplanRequest = { requested++ })
+    fun `acoes rapidas separam pedido simples, treino perdido e menos tempo`() {
+        var plain = 0
+        var missed = 0
+        var lessTime = 0
+        setContent(
+            onReplanRequest = { plain++ },
+            onReplanRequestMissed = { missed++ },
+            onReplanRequestLessTime = { lessTime++ },
+        )
 
         compose.onNodeWithTag("coach-replan-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-replan-request").performScrollTo().performClick()
         compose.onNodeWithTag("coach-replan-missed").performScrollTo().performClick()
         compose.onNodeWithTag("coach-replan-less-time").performScrollTo().performClick()
 
-        assertThat(requested).isEqualTo(3)
+        assertThat(plain).isEqualTo(1)
+        assertThat(missed).isEqualTo(1)
+        assertThat(lessTime).isEqualTo(1)
+    }
+
+    @Test
+    fun `perdi um treino abre o picker e a selecao chama o callback`() {
+        val monday = LocalDate.of(2026, 11, 2)
+        var selected: LocalDate? = null
+        setContent(
+            replan = ReplanUiState(
+                missedSessions = listOf(
+                    MissedSessionUi(date = monday, title = "Fácil e conversável", durationMin = 30),
+                ),
+            ),
+            onReplanMissedSelected = { selected = it },
+        )
+
+        compose.onNodeWithTag("coach-missed-sheet").assertIsDisplayed()
+        compose.onNodeWithText("Seg 02/11 · Fácil e conversável · 30 min").assertIsDisplayed()
+        compose.onNodeWithTag("coach-missed-2026-11-02").performClick()
+
+        assertThat(selected).isEqualTo(monday)
+    }
+
+    @Test
+    fun `picker de treino perdido vazio explica a ausencia`() {
+        setContent(replan = ReplanUiState(missedSessions = emptyList()))
+
+        compose.onNodeWithTag("coach-missed-empty").assertIsDisplayed()
+        compose.onNodeWithText("Não encontrei treinos perdidos nesta semana.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `menos tempo valida os minutos localmente antes de avaliar`() {
+        val friday = LocalDate.of(2026, 11, 6)
+        var reviewedDate: LocalDate? = null
+        var reviewedMinutes = 0
+        setContent(
+            replan = ReplanUiState(
+                lessTimeDays = listOf(LessTimeDayUi(date = friday, currentMinutes = 40)),
+            ),
+            onReplanLessTimeSelected = { date, minutes ->
+                reviewedDate = date
+                reviewedMinutes = minutes
+            },
+        )
+
+        compose.onNodeWithTag("coach-less-time-sheet").assertIsDisplayed()
+        compose.onNodeWithTag("coach-less-time-minutes").performTextInput("40")
+        compose.onNodeWithTag("coach-less-time-review").performClick()
+
+        compose.onNodeWithTag("coach-less-time-error").assertIsDisplayed()
+        assertThat(reviewedDate).isNull()
+
+        compose.onNodeWithTag("coach-less-time-minutes").performTextClearance()
+        compose.onNodeWithTag("coach-less-time-minutes").performTextInput("25")
+        compose.onNodeWithTag("coach-less-time-review").performClick()
+
+        assertThat(reviewedDate).isEqualTo(friday)
+        assertThat(reviewedMinutes).isEqualTo(25)
+    }
+
+    @Test
+    fun `sugestao mostra o pedido explicito do usuario`() {
+        setContent(
+            replan = ReplanUiState(
+                planVersion = 1,
+                suggestion = ReplanSuggestionUi(
+                    versionFrom = 1,
+                    versionTo = 2,
+                    trigger = ReplanTrigger.USER_REQUEST,
+                    causes = listOf(ReplanCause.TEMPORARY_AVAILABILITY),
+                    headline = "Cabe no tempo que você tem?",
+                    body = "Só os próximos dias mudam para caber nesse tempo.",
+                    changes = emptyList(),
+                    confidence = DataConfidence.MEDIUM,
+                    requestNote = "Você indicou 20 min para sexta-feira (06/11).",
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("Você indicou 20 min para sexta-feira (06/11).").assertIsDisplayed()
     }
 
     @Test
@@ -186,6 +278,10 @@ class CoachScreenTest {
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
         onReplanRequest: () -> Unit = {},
+        onReplanRequestMissed: () -> Unit = {},
+        onReplanRequestLessTime: () -> Unit = {},
+        onReplanMissedSelected: (LocalDate) -> Unit = {},
+        onReplanLessTimeSelected: (LocalDate, Int) -> Unit = { _, _ -> },
         onReplanAccept: () -> Unit = {},
         onReplanUndo: () -> Unit = {},
     ) {
@@ -207,6 +303,10 @@ class CoachScreenTest {
                     reviewState = reviewState,
                     replan = replan,
                     onReplanRequest = onReplanRequest,
+                    onReplanRequestMissed = onReplanRequestMissed,
+                    onReplanRequestLessTime = onReplanRequestLessTime,
+                    onReplanMissedSelected = onReplanMissedSelected,
+                    onReplanLessTimeSelected = onReplanLessTimeSelected,
                     onReplanAccept = onReplanAccept,
                     onReplanUndo = onReplanUndo,
                 )

@@ -17,7 +17,9 @@ import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanCause
+import com.meucoach.core.domain.replan.ReplanIntent
 import com.meucoach.core.domain.replan.ReplanTrigger
+import com.meucoach.core.domain.replan.TemporaryAvailability
 import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.Experience
 import kotlinx.coroutines.runBlocking
@@ -29,6 +31,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -307,6 +310,66 @@ class EvaluateReplanTest {
         assertThat(result).isInstanceOf(EvaluateReplanResult.Unavailable::class.java)
         assertThat((result as EvaluateReplanResult.Unavailable).reason)
             .contains("semana planejada")
+    }
+
+    @Test
+    fun `missed candidates lists only eligible past planned sessions`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        checkIns.save(replanCheckIn())
+        plans.saveWeek(
+            replanPlan(
+                sessions = listOf(
+                    easySession(REPLAN_WEEK_START, durationMin = 40),
+                    easySession(
+                        REPLAN_WEEK_START.plusDays(1),
+                        durationMin = 35,
+                        status = SessionStatus.DONE,
+                        evidence = CompletionEvidence.MANUAL,
+                    ),
+                    easySession(REPLAN_TODAY, durationMin = 40),
+                    qualitySession(REPLAN_WEEK_START.plusDays(4)),
+                ),
+            ),
+        )
+
+        val candidates = evaluate.missedCandidates()
+
+        assertThat(candidates.map { it.date }).containsExactly(REPLAN_WEEK_START)
+    }
+
+    @Test
+    fun `temporary availability constrains the candidate without changing the profile`(): Unit = runBlocking {
+        val profile = replanProfile(fridayMinutes = 40)
+        profiles.saveProfile(profile)
+        checkIns.save(replanCheckIn())
+        plans.saveWeek(
+            replanPlan(
+                sessions = listOf(
+                    easySession(REPLAN_WEEK_START, durationMin = 40),
+                    easySession(REPLAN_WEEK_START.plusDays(1), durationMin = 35),
+                    easySession(REPLAN_TODAY, durationMin = 40),
+                    qualitySession(REPLAN_WEEK_START.plusDays(4), durationMin = 40),
+                ),
+            ),
+        )
+        val baseline = PlanReplanner.availabilityHash(profile.weeklyAvailability)
+        plans.captureAvailabilityBaseline(REPLAN_WEEK_START, baseline)
+        val friday = REPLAN_WEEK_START.plusDays(4)
+        val intent = ReplanIntent(temporaryAvailability = TemporaryAvailability(friday, 20))
+
+        val context = contexts.build(explicit = true, intent = intent)
+        val result = evaluate(explicit = true, intent = intent)
+
+        assertThat(context?.input?.intent).isEqualTo(intent)
+        assertThat(context?.input?.profile?.weeklyAvailability?.minutesOn(DayOfWeek.FRIDAY))
+            .isEqualTo(40)
+        val suggestion = result as EvaluateReplanResult.Suggestion
+        assertThat(suggestion.suggestion.intent).isEqualTo(intent)
+        assertThat(suggestion.suggestion.expectedAvailabilityHash).isEqualTo(baseline)
+        assertThat(suggestion.candidate.sessions.first { it.date == friday }.durationMin)
+            .isLessThanOrEqualTo(20)
+        assertThat(profiles.getProfile()!!.weeklyAvailability.minutesOn(DayOfWeek.FRIDAY))
+            .isEqualTo(40)
     }
 
     @Test

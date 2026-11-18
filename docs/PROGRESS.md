@@ -1,6 +1,45 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach 3.3-A: confirmação + diff + undo na aba Coach — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach 3.3-B: disponibilidade temporária e treino perdido específico — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach 3.3-B: disponibilidade temporária e treino perdido específico
+
+**Objetivo:** completar as intenções do PRD que a 3.3-A deixou fora — “só tenho 30 min no dia Y” como disponibilidade temporária efêmera e “perdi o treino X” com seleção da sessão específica — reusando `ReplanInput`/`ApplyReplan` e o `ReplanController` compartilhado, sem criar regra de treino.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (próxima fatia Room v19).
+
+### Concluído
+
+- **Domínio:** `TemporaryAvailability` e `ReplanIntent` puros em `ReplanModels`; `ReplanInput`/`ReplanSuggestion` carregam o intent e `ReplanCause.TEMPORARY_AVAILABILITY` é só copy. `PlanReplanner` valida o intent (dia futuro da semana, existente na disponibilidade, só reduz; data elegível do T1), força a avaliação com intent não vazio, usa um perfil efêmero **somente** no gerador/validação de dias e inclui o intent no `inputsHash`. `eligibleMissedSessions` virou API pública; o treino perdido específico força T1 mesmo com 1 sessão, sem repor volume/qualidade.
+- **Aceite:** `ApplyReplan` reconstrói o contexto com `suggestion.intent`; intent que deixou de valer vira `Stale`/`NoChange` com sugestão nova. `availabilityHash`, `expectedAvailabilityHash` e o baseline persistido continuam sendo os do perfil; `AthleteProfile` e `weeklyPlans.availabilityHash` não mudam ao aceitar. `ReplanRequestQueue` substituiu `queuedExplicit` e preserva o intent de um pedido explícito enfileirado.
+- **App/UI:** “Perdi um treino” abre picker com data/título/duração (vazio explica); “Tenho menos tempo” abre chips dos dias futuros + minutos com validação local `1..current-1`; o sheet mostra `requestNote`, headline específica e o label do novo cause. Hoje/Perfil não mudaram.
+- **Docs:** `ARCHITECTURE` §6.4, `DATA_MODEL` (intent não persistido), `DECISIONS` r1.56, `TESTING` (contagens + vazamento do `TodayViewModelPersistTest`), PRD (adendo 3.3-B) e handoff.
+
+### Testes
+
+- `:core:domain:test` 1118 (+6); `:core:data:testDebugUnitTest` 218; `:app:testDebugUnitTest` 1001 (+14); `:core:model:test` 40 = **2.377 testes, 0 falhas/erros** (`--rerun-tasks`; duas execuções completas verdes depois de corrigir a higiene do `TodayViewModelPersistTest`).
+- Novos: domínio (6), `EvaluateReplan` (2), `ApplyReplan` (2), Coach VM (3), fila de avaliação (3), tela (5).
+- Flake conhecido (`TutorialSystemBackTest`) apareceu 2× na suíte completa; a stack apontou vazamento de transação do `TodayViewModelPersistTest`, cujos `viewModelScope` não eram cancelados antes de fechar o banco. O teardown passou a cancelar os escopos e a suíte completa ficou verde com e sem `--no-parallel`.
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `:app:lintDebug` verdes; sem nova entrada de baseline.
+- Nenhum dado real; nenhuma migração (schema v18); sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- O intent entra no `inputsHash`, **não** no `availabilityHash`: o aceite detecta troca de dia/minutos sem fingir mudança de perfil.
+- O perfil efêmero existe só dentro de `PlanReplanner.evaluate`; nenhum caminho grava a disponibilidade temporária no perfil ou na semana.
+- Intent não vazio não gera a cause genérica `USER_REQUEST`; a copy específica (“tempo reduzido”/treino não concluído) é mais útil e auditável.
+- Remover um dia inteiro, múltiplos dias por pedido e “quero mais tempo” continuam fora do escopo.
+- O undo da 3.3-A continua valendo para a revisão criada pela 3.3-B; não existe “undo de intent”.
+- Nenhuma regra fisiológica, de volume ou de qualidade foi alterada.
+
+### Pendente
+
+- Room v19 (memória/conversa), goldens Roborazzi da bar e as pendências funcionais da 3.3 (remover dia/múltiplos dias).
+
+### Próximo passo
+
+1. Room v19: `coach_messages`/`coach_summaries`, `MIGRATION_18_19` explícita, TTL, export/delete e revogação apagando `coach_*`.
+2. Depois goldens da bar e as pendências funcionais da 3.3.
 
 ## Sessão 2026-11-18 — IA Coach 3.3-A: confirmação + diff + undo na aba Coach
 

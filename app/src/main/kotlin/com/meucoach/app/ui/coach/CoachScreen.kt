@@ -31,6 +31,7 @@ import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.review.WeeklyReview
+import java.time.LocalDate
 
 @Composable
 fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
@@ -52,6 +53,11 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
         onRevoke = { viewModel.revoke() },
         onRetry = { viewModel.retry() },
         onReplanRequest = { viewModel.requestReplan() },
+        onReplanRequestMissed = { viewModel.requestMissedSession() },
+        onReplanRequestLessTime = { viewModel.requestLessTime() },
+        onReplanMissedSelected = { viewModel.replanMissed(it) },
+        onReplanLessTimeSelected = { date, minutes -> viewModel.replanLessTime(date, minutes) },
+        onReplanDismissIntent = { viewModel.dismissReplanIntent() },
         onReplanAccept = { viewModel.acceptReplan() },
         onReplanDecline = { viewModel.declineReplan() },
         onReplanSuppress = { viewModel.suppressReplan() },
@@ -74,6 +80,11 @@ fun CoachScreen(
     reviewState: CoachReviewState = CoachReviewState.Unavailable,
     replan: ReplanUiState = ReplanUiState(),
     onReplanRequest: () -> Unit = {},
+    onReplanRequestMissed: () -> Unit = {},
+    onReplanRequestLessTime: () -> Unit = {},
+    onReplanMissedSelected: (LocalDate) -> Unit = {},
+    onReplanLessTimeSelected: (LocalDate, Int) -> Unit = { _, _ -> },
+    onReplanDismissIntent: () -> Unit = {},
     onReplanAccept: () -> Unit = {},
     onReplanDecline: () -> Unit = {},
     onReplanSuppress: () -> Unit = {},
@@ -229,7 +240,12 @@ fun CoachScreen(
                     }
                 }
             }
-            CoachReplanCard(state = replan, onRequest = onReplanRequest)
+            CoachReplanCard(
+                state = replan,
+                onRequest = onReplanRequest,
+                onMissed = onReplanRequestMissed,
+                onLessTime = onReplanRequestLessTime,
+            )
             if (replan.suggestion == null) {
                 replan.message?.let { message ->
                     ReplanMessageCard(
@@ -281,5 +297,19 @@ fun CoachScreen(
                 onUndo = onReplanUndo,
             )
         }
+    }
+    replan.missedSessions?.let { sessions ->
+        MissedSessionPickerSheet(
+            sessions = sessions,
+            onSelect = onReplanMissedSelected,
+            onDismiss = onReplanDismissIntent,
+        )
+    }
+    replan.lessTimeDays?.let { days ->
+        LessTimeSheet(
+            days = days,
+            onReview = onReplanLessTimeSelected,
+            onDismiss = onReplanDismissIntent,
+        )
     }
 }

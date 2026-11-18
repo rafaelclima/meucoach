@@ -14,6 +14,7 @@ import com.meucoach.core.domain.prescription.WeeklyPlanInput
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.prescription.longRunFloorMinutes
 import com.meucoach.core.domain.readiness.ReadinessResult
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.WeeklyAvailability
 import java.security.MessageDigest
@@ -39,6 +40,9 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
     fun evaluate(input: ReplanInput): ReplanResult {
         val availabilityHash = availabilityHash(input.profile.weeklyAvailability)
         val fingerprint = input.planningFingerprint
+        val intent = input.intent
+        val temporaryAvailability = intent.temporaryAvailability
+        val effectiveProfile = input.profile.withTemporaryAvailability(temporaryAvailability)
         val profileChanged = input.currentEvaluatedFingerprintVersion != null &&
             input.currentEvaluatedFingerprint != null &&
             (
@@ -52,12 +56,20 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         if (input.currentPlan.weekStart != currentWeekStart(input.today)) {
             return noChange("Só é possível replanejar a semana vigente.", input, availabilityHash)
         }
+        intentFailure(input, temporaryAvailability)?.let { reason ->
+            return noChange(reason, input, availabilityHash)
+        }
 
-        val missed = missedSessions(input)
-        val missedTriggered = missed.size >= input.missedSessionThreshold
+        val missed = eligibleMissedSessions(input)
+        // A specific eligible pick forces T1 even below the product threshold;
+        // intentFailure already guaranteed the date belongs to `missed`.
+        val missedTriggered = missed.size >= input.missedSessionThreshold ||
+            intent.requestedMissedDate != null
         val availabilityTriggered = input.currentAvailabilityHash != null &&
             input.currentAvailabilityHash != availabilityHash
-        val userRequested = input.trigger == ReplanTrigger.USER_REQUEST
+        // Any non-empty intent is an explicit request; it must never fall back to
+        // the automatic/deviation path and be silently suppressed.
+        val userRequested = input.trigger == ReplanTrigger.USER_REQUEST || !intent.isEmpty
         // T5 (ADR 0037): the persisted week still has a strong/long or over-cap
         // session inside an active post-race recovery window.
         val recoveryViolations = recoveryViolations(input)
@@ -98,7 +110,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
 
         val generated = generator.generate(
             WeeklyPlanInput(
-                profile = input.profile,
+                profile = effectiveProfile,
                 readiness = input.readiness,
                 load = input.load,
                 weekStart = input.currentPlan.weekStart,
@@ -152,7 +164,10 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         val causes = buildList {
             if (engineUpgradeTriggered) add(ReplanCause.ENGINE_UPGRADE)
             if (dataReadyTriggered) add(ReplanCause.DATA_READY)
-            if (userRequested) add(ReplanCause.USER_REQUEST)
+            // A specific intent is more useful than the generic "pedido seu" cause:
+            // the UI explains the exact day/time the user indicated.
+            if (userRequested && intent.isEmpty) add(ReplanCause.USER_REQUEST)
+            if (temporaryAvailability != null) add(ReplanCause.TEMPORARY_AVAILABILITY)
             if (profileChanged) add(ReplanCause.PROFILE_CHANGED)
             if (temporalChanged) add(ReplanCause.TIMEZONE_CONTEXT_CHANGED)
             if (recoveryTriggered) add(ReplanCause.RACE_COMPLETED)
@@ -160,7 +175,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
             if (availabilityTriggered) add(ReplanCause.AVAILABILITY_CHANGED)
         }.distinct()
         val trigger = activeTrigger(causes)
-        val rationale = rationale(trigger, causes, missed.size)
+        val rationale = rationale(trigger, causes, missed.size, intent)
         val suggestionRules = if (profileChanged || temporalChanged) {
             (generated.ruleIds + "R-PLAN-09").distinct()
         } else {
@@ -197,6 +212,7 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 evidenceIds = generated.evidenceIds,
                 confidence = generated.confidence,
                 recoveryEventId = input.recovery?.race?.eventId,
+                intent = intent,
             ),
             candidate = candidate,
         )
@@ -232,8 +248,11 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
      * T1 counts `PLANNED` sessions of the week that are already in the past and
      * were trainable, without changing their status (A5). Days before the plan
      * was created and days known as rest/illness never count.
+     *
+     * Public because the Coach picker offers exactly this list; the eligibility
+     * rule stays here and is never duplicated by the UI.
      */
-    private fun missedSessions(input: ReplanInput): List<PlannedSession> =
+    fun eligibleMissedSessions(input: ReplanInput): List<PlannedSession> =
         input.currentPlan.sessions.filter { session ->
             session.status == SessionStatus.PLANNED &&
                 session.type != WorkoutType.REST &&
@@ -243,6 +262,38 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 session.date !in input.eventDates &&
                 session.date != input.race?.targetDate
         }
+
+    /**
+     * A temporary availability may only reduce one future day that already
+     * exists in the persisted availability; a missed-session pick must be one of
+     * the eligible ones. Anything else is a `NoChange` with a clear reason —
+     * never a silent fallback to the persisted baseline.
+     */
+    private fun intentFailure(input: ReplanInput, temporary: TemporaryAvailability?): String? {
+        val weekEnd = input.currentPlan.weekStart.plusDays(6)
+        val availability = input.profile.weeklyAvailability.minutesByDay
+        val temporaryFailure = temporary?.let { temp ->
+            when {
+                !temp.date.isAfter(input.today) || temp.date.isAfter(weekEnd) ->
+                    "A disponibilidade temporária precisa ser em um dia futuro desta semana."
+
+                temp.date.dayOfWeek !in availability ->
+                    "Esse dia não faz parte da sua disponibilidade."
+
+                temp.minutes >= availability.getValue(temp.date.dayOfWeek) ->
+                    "A disponibilidade temporária só pode diminuir o tempo do dia."
+
+                else -> null
+            }
+        }
+        if (temporaryFailure != null) return temporaryFailure
+        val requestedMissed = input.intent.requestedMissedDate ?: return null
+        return if (eligibleMissedSessions(input).none { it.date == requestedMissed }) {
+            "Esse treino não está como perdido nesta semana. Escolha um treino que ficou para trás."
+        } else {
+            null
+        }
+    }
 
     /** Validates the whole merged week: only executed sessions and the new future constrain it. */
     private fun validationFailure(
@@ -288,7 +339,11 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 }
             }
         }
-        val availableDays = input.profile.weeklyAvailability.minutesByDay.keys
+        // A temporary availability must still be a day the athlete has; deriving
+        // it here keeps the validation signature (and detekt baseline) stable.
+        val availableDays = input.profile
+            .withTemporaryAvailability(input.intent.temporaryAvailability)
+            .weeklyAvailability.minutesByDay.keys
         future.forEach { session ->
             if (session.date.dayOfWeek !in availableDays) {
                 return "Dia sem disponibilidade no futuro; revise sua semana."
@@ -366,6 +421,10 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
 
         ReplanCause.USER_REQUEST in causes -> ReplanTrigger.USER_REQUEST
 
+        // A temporary availability is an explicit request; it has no trigger of
+        // its own because the persisted availability did not change.
+        ReplanCause.TEMPORARY_AVAILABILITY in causes -> ReplanTrigger.USER_REQUEST
+
         ReplanCause.PROFILE_CHANGED in causes ||
             ReplanCause.TIMEZONE_CONTEXT_CHANGED in causes -> ReplanTrigger.PROFILE_CHANGED
 
@@ -376,7 +435,22 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
         else -> ReplanTrigger.AVAILABILITY_CHANGED
     }
 
-    private fun rationale(trigger: ReplanTrigger, causes: List<ReplanCause>, missedCount: Int): String {
+    private fun rationale(
+        trigger: ReplanTrigger,
+        causes: List<ReplanCause>,
+        missedCount: Int,
+        intent: ReplanIntent,
+    ): String {
+        val temporary = intent.temporaryAvailability
+        if (causes.size == 1 && temporary != null) {
+            return "Você indicou ${temporary.minutes} min em ${temporary.date}. " +
+                "O restante da semana foi reorganizado para caber nesse tempo, sem repor carga."
+        }
+        val requestedMissed = intent.requestedMissedDate
+        if (causes.size == 1 && requestedMissed != null) {
+            return "Você indicou o treino de $requestedMissed como perdido. " +
+                "O restante da semana foi reorganizado sem repor carga."
+        }
         if (causes.size > 1) {
             val labels = causes.joinToString(" e ") { it.label() }
             return "Mais de um motivo motivou a revisão: $labels. " +
@@ -464,6 +538,14 @@ private fun ReplanCause.label(): String = when (this) {
     ReplanCause.RACE_COMPLETED -> "recuperação após a prova"
     ReplanCause.DATA_READY -> "dados da sincronização"
     ReplanCause.ENGINE_UPGRADE -> "nova versão do motor"
+    ReplanCause.TEMPORARY_AVAILABILITY -> "tempo reduzido"
+}
+
+/** Effective profile for generation only; the persisted profile keeps the baseline. */
+private fun AthleteProfile.withTemporaryAvailability(temporary: TemporaryAvailability?): AthleteProfile {
+    if (temporary == null) return this
+    val days = weeklyAvailability.minutesByDay + (temporary.date.dayOfWeek to temporary.minutes)
+    return copy(weeklyAvailability = weeklyAvailability.copy(minutesByDay = days))
 }
 
 private fun PlannedSession.projection(): SessionProjection = SessionProjection(
@@ -513,6 +595,7 @@ private fun ReplanInput.canonical(): String = buildString {
     append(";threshold=").append(missedSessionThreshold)
     append(";slot=").append(allowStructuralQualitySlot)
     append(";dataComplete=").append(dataNowComplete)
+    append(";intent=").append(intent.canonical)
     append(";sessions=").append(currentPlan.sessions.joinToString("|") { it.canonical() })
 }
 

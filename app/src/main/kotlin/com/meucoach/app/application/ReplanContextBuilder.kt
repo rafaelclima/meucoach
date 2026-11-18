@@ -14,6 +14,7 @@ import com.meucoach.core.domain.replan.PlanEvaluationCheckpoint
 import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.replan.PlanningFingerprints
 import com.meucoach.core.domain.replan.ReplanInput
+import com.meucoach.core.domain.replan.ReplanIntent
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.model.RaceStatus
 import java.time.LocalDate
@@ -37,7 +38,7 @@ class ReplanContextBuilder @Inject constructor(
     private val raceEvents: RaceEventRepository,
     private val timeProvider: TimeProvider,
 ) {
-    suspend fun build(explicit: Boolean): ReplanContext? {
+    suspend fun build(explicit: Boolean, intent: ReplanIntent = ReplanIntent()): ReplanContext? {
         // Coherent snapshot: one instant plus the persisted profile zone define
         // today/week start. Do not depend on ProfileTimeProvider's async update.
         val now = timeProvider.now()
@@ -130,6 +131,7 @@ class ReplanContextBuilder @Inject constructor(
             raceTargetTimeSec = raceTargetTimeSec,
             eventDates = eventDates,
             recovery = recovery,
+            intent = intent,
             today = today,
         )
         return ReplanContext(today = today, record = record, input = input)
