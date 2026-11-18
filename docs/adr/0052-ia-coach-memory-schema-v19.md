@@ -109,6 +109,10 @@ acúmulo de texto sensível sem perder o ciclo de treino corrente.
 - `UserDataRepository.exportJson()` inclui `coachMessages` e `coachSummaries`.
 - “Apagar tudo” apaga as duas tabelas na mesma transação das demais e a UI
   informa quantas mensagens/resumos do Coach foram removidos.
+- A aba Coach lista a memória em modo somente leitura apenas com opt-in e oferece
+  “Apagar histórico”, que reusa `CoachMemoryRepository.clearAll()`; treinos,
+  perfil, check-ins e métricas não são tocados. O apagar individual fica para uma
+  próxima fatia.
 - O proxy continua sem qualquer cópia; revogar no aparelho encerra a memória
   local, não um histórico remoto.
 
@@ -140,9 +144,9 @@ acúmulo de texto sensível sem perder o ciclo de treino corrente.
   próxima abertura/escrita.
 - O resumo depende de uma revisão validada; sem IA não há resumo novo (o
   determinístico continua na tela, mas não vira memória).
-- Ainda não existe UI para listar/apagar mensagem individual; a decisão 25 é
-  atendida por revogação/apagar tudo nesta fatia, e a lista visual fica para a
-  próxima.
+- Ainda não existe apagar mensagem individual; a lista visual já existe e a
+  decisão 25 é atendida por “apagar histórico” (tudo) e revogação/apagar tudo.
+  Apagar item a item fica para a próxima fatia.
 
 ### 3.3 Não objetivos
 
@@ -175,6 +179,14 @@ acúmulo de texto sensível sem perder o ciclo de treino corrente.
 - **Testes:** política de TTL (3), repositório (6), migração 18→19 (1),
   export/delete (2 asserts novos), ViewModel (4 novos) e mensagem de exclusão
   (1 novo). Sem dados reais.
+- **18/11/2026 (UI de histórico):** `CoachMessageDao.observeAll()`/
+  `CoachSummaryDao.observeAll()` e `CoachMemoryRepository.observeMessages()`/
+  `observeSummaries()` entregam a memória como Flow somente leitura e mapeada
+  para `CoachMemoryMessage`/`CoachMemorySummary`; `CoachHistoryCard` lista
+  resumos e conversa apenas com opt-in, com loading/vazio/erro, retry e
+  confirmação de “Apagar histórico” (`clearAll`, treinos/perfil intactos).
+  TalkBack, dark/light e fonte 200% cobertos. **Testes:** repositório (2),
+  ViewModel (4) e tela (8). Sem chamada de IA nova e sem mudança de schema.
 
 ---
 

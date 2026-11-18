@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.14 · **Data:** 18/11/2026 · IA Coach Room v19: 2.392 testes (1121 domain / 1006 app / 225 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
+**Versão:** 1.15 · **Data:** 18/11/2026 · IA Coach histórico: 2.406 testes (1121 domain / 1018 app / 227 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -92,9 +92,9 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (18/11/2026, IA Coach Room v19):
+Evidência atual (18/11/2026, IA Coach histórico):
 
-- 2.392 testes no repositório (1121 em `core:domain`, 1006 em `:app`, 225 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- 2.406 testes no repositório (1121 em `core:domain`, 1018 em `:app`, 227 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
 - Comandos de referência: `./gradlew :core:domain:test :core:model:test :core:data:testDebugUnitTest --rerun-tasks` + `./gradlew :app:testDebugUnitTest --rerun-tasks --no-parallel` (a suíte do app cai nos flakes do §10.1 sob paralelismo; sem paralelismo fica verde).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
@@ -224,9 +224,12 @@ Evidência atual (18/11/2026, IA Coach Room v19):
 - `CoachViewModelTest`/`CoachScreenTest` (3.3-A): ação rápida avalia T3, aceite/undo na aba Coach, ausência de semana, sheet de diff com selo de versão e “Desfazer” após aplicar.
 - `CoachMemoryPolicyTest` (Room v19): mensagens 90 dias e resumos 180, com corte inclusivo.
 - `CoachMemoryRepositoryTest` (Room v19): round-trip e ordem cronológica, dedupe por `(kind, inputsHash)`, um resumo por semana com o último texto validado, prune com boundary, prune na escrita e clear.
+- `CoachMemoryRepositoryTest` (histórico): Flow newest-first mapeado para `CoachMemoryMessage`/`CoachMemorySummary` e linha ilegível ignorada sem derrubar a lista.
 - `MeuCoachDatabaseMigrationTest` (18→19): preserva plano/sessão, cria as duas tabelas vazias e o round-trip/dedupe passam no schema 19.
 - `UserDataRepositoryTest` (Room v19): export inclui `coachMessages`/`coachSummaries`; delete conta e remove as duas sem tocar no resto.
 - `CoachViewModelTest` (Room v19): explicação válida grava, fallback não grava, revisão grava mensagem + resumo e revogar apaga a memória preservando o plano.
+- `CoachViewModelTest` (histórico): oculto sem opt-in, vazio, lista resumos/conversa e apagar histórico limpa só a memória (plano intacto).
+- `CoachHistoryTest` (histórico): leitura sem edição, loading/vazio/erro com retry, gate de opt-in, confirmação/cancelamento do apagar, tema claro e fonte 200%.
 - `DataManagementViewModelTest` (Room v19): a mensagem de exclusão cita mensagens/resumos do Coach.
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino, CTA do briefing e plano (inclui o card do plano com versão).
 - `SessionBriefingScreenshotTest`: golden dark/light do conteúdo do briefing (foco, alvo, rationale, como correr e se estiver difícil).

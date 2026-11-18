@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.57 · **Data:** 18/11/2026
+**Versão:** 1.58 · **Data:** 18/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -55,6 +55,7 @@
 > Revisão 1.55 (18/11/2026): IA Coach 3.3-A — replanejamento com confirmação/diff/undo na aba Coach, `ReplanController` compartilhado por Hoje/Perfil/Coach e `undoReplan` append-only (trigger `UNDO`, restaura só o futuro `PLANNED`, preserva hoje/passado/`DONE`/`CLOSED`, recalcula agregados). Nenhuma regra de treino nova; 3.3-B (disponibilidade temporária/slot específico), Room v19 e goldens da bar seguem pendentes.
 > Revisão 1.56 (18/11/2026): IA Coach 3.3-B — `ReplanIntent` explícito no `ReplanInput`/`inputsHash`/`ReplanSuggestion`: “só tenho 30 min no dia Y” reduz um dia futuro apenas no perfil efetivo do gerador (nunca em `AthleteProfile`/`availabilityHash`) e “perdi o treino X” seleciona uma sessão elegível do T1, forçando a avaliação mesmo abaixo do limiar de 2 e sem repor carga. `ApplyReplan` revalida o intent (mudou → `Stale`); pickers no Coach, fila de avaliação preserva o intent. Sem migração e sem regra fisiológica nova.
 > Revisão 1.57 (18/11/2026): ADR 0052 — memória local do IA Coach no schema v19 (`coach_messages`/`coach_summaries`), só com texto aprovado pelo validador, TTL de 90/180 dias com expiração preguiçosa, revogação do opt-in apagando as duas tabelas e export/delete incluindo `coach_*`. A memória é contexto de copy e não entra em prompt; o motor segue autoridade.
+> Revisão 1.58 (18/11/2026): histórico do Coach na aba (decisões 17/25) — DAOs expõem Flow newest-first, `CoachMemoryRepository` mapeia para `CoachMemoryMessage`/`CoachMemorySummary` puros e `CoachHistoryState` cobre Hidden/Loading/Empty/Ready/Error. A lista é somente leitura e só aparece com opt-in; “Apagar histórico” reusa `clearAll` e não toca em treinos/perfil. Apagar mensagem individual fica pendente; sem IA nova e sem schema novo.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -109,7 +110,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0049](adr/0049-readiness-checkin-sleep.md) | Prontidão/check-in sem inversão, reavaliação tardia, sono plausível e `QualityGate` | Implementado (C4-28..C4-37) | 17/11/2026 |
 | [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Implementado (C4-38..C4-43 + C4-55: base real, meso, longão, reparo do mesmo dia, `G-VOL-02`, review "planejada/mantida/rebaixada"; review com extra no aparelho fora de alcance sem relógio, coberto por testes) | 16/11/2026 |
 | [0051](adr/0051-ia-coach-proxy.md) | Proxy stateless do IA Coach (OpenRouter atrás de `X-Coach-Token`, cadeia com fallback, sem payload em log) | Aceito e implementado (F1/F4 + 3.2 + 3.3-A/B; memória local no ADR 0052; goldens da bar pendentes) | 18/11/2026 |
-| [0052](adr/0052-ia-coach-memory-schema-v19.md) | Memória local do IA Coach: `coach_messages`/`coach_summaries`, schema v19, TTL 90/180 dias, revogação apaga e export/delete incluem | Aceito e implementado (F3/Room v19: TTL preguiçoso, índice único por contexto, texto sempre validado, memória fora do motor) | 18/11/2026 |
+| [0052](adr/0052-ia-coach-memory-schema-v19.md) | Memória local do IA Coach: `coach_messages`/`coach_summaries`, schema v19, TTL 90/180 dias, revogação apaga e export/delete incluem | Aceito e implementado (F3/Room v19: TTL preguiçoso, índice único por contexto, texto sempre validado, memória fora do motor; histórico UI somente leitura com apagar em bloco; apagar individual pendente) | 18/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

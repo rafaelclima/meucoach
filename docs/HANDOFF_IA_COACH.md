@@ -1,8 +1,8 @@
 # HANDOFF — IA Coach
 
 **Atualizado:** 18/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · ADR 0051 · Room v19 (memória/conversa)
-**Próxima fatia:** pendências funcionais da 3.3 ou goldens Roborazzi da bar (uma por sessão, §5)
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura na aba
+**Próxima fatia:** apagar mensagem individual, pendências funcionais da 3.3 ou goldens Roborazzi da bar (uma por sessão, §5)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach Room v19), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A próxima fatia é **uma** das pendências da §5: remover um dia inteiro/múltiplos dias na disponibilidade temporária **ou** os goldens Roborazzi da bar. Antes de codar, confirme `git status` e rode os testes do Coach. Implemente com TDD, rode os gates do AGENTS.md e atualize `PROGRESS`/`PRD`/este handoff.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach histórico), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A próxima fatia é **uma** das pendências da §5: apagar mensagem individual do histórico **ou** remover um dia inteiro/múltiplos dias na disponibilidade temporária **ou** os goldens Roborazzi da bar. Antes de codar, confirme `git status` e rode os testes do Coach. Implemente com TDD, rode os gates do AGENTS.md e atualize `PROGRESS`/`PRD`/este handoff.
 
 Ordem de leitura:
 
@@ -36,10 +36,11 @@ Regra de trabalho: **uma fatia pequena e verificável por sessão**; não abrir 
 | 3.3-A | Ações rápidas T3 na aba Coach, bottom sheet com diff/selo, aceite via `ApplyReplan` (stale reavalia), undo append-only e `ReplanController` compartilhado com Hoje/Perfil | `app/replan/ReplanController*`, `app/application/UndoReplan`, `TrainingPlanRepository.undoReplan`, `CoachReplanCard`, `ReplanSuggestionSheet` |
 | 3.3-B | “Perdi o treino X” e “só tenho 30 min no dia Y”: `ReplanIntent` no input/hash/sugestão, perfil efêmero só no gerador, pickers no Coach, `requestNote`, stale por intent e fila preservando o intent | `core/domain/replan/ReplanModels.kt`, `PlanReplanner.eligibleMissedSessions`, `EvaluateReplan.missedCandidates`, `ReplanController`, `CoachIntentSheets` |
 | Room v19 | Memória local: `coach_messages`/`coach_summaries`, TTL 90/180, revogação apaga, export/delete incluem, texto sempre validado | `core/data/db/entity/Coach*`, `CoachMemoryRepository`, `CoachMemoryPolicy`, `MIGRATION_18_19`, `CoachViewModel`, `UserDataRepository` |
+| Histórico UI | Lista somente leitura (resumos + conversa) só com opt-in, loading/vazio/erro, retry, “Apagar histórico” com confirmação, TalkBack, dark/light e fonte 200%; apagar individual pendente | `CoachHistoryState`/`CoachViewModel`, `CoachHistoryCard`, `CoachMemoryRepository.observe*`, DAOs `observeAll` |
 | ADR 0051 | Contrato, segurança mínima, trade-offs e risco LGPD aceito | `docs/adr/0051-ia-coach-proxy.md` |
 | ADR 0052 | Schema v19, TTL, revogação e limites da memória | `docs/adr/0052-ia-coach-memory-schema-v19.md` |
 
-Verificação no fechamento: **2.392 testes** (domain 1121, data 225, app 1006, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `lintDebug` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
+Verificação no fechamento: **2.406 testes** (domain 1121, data 227, app 1018, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `lintDebug` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
 
 Pontos de arquitetura que não devem regredir:
 
@@ -121,7 +122,7 @@ Completar as intenções do PRD sem criar regra de treino:
 
 ---
 
-## 4. Room v19 — concluído (18/11/2026)
+## 4. Room v19 + histórico do Coach — concluído (18/11/2026)
 
 ### 4.1 Objetivo entregue
 
@@ -155,7 +156,9 @@ Memória local do Coach **sem** transformar memória em decisão:
 
 - O resumo persistido é a narrativa **LLM validada** da semana fechada (PRD decisão 24), ligada ao `inputsHash` da revisão; não é regra nem número novo.
 - A memória não entra em prompt ainda. Quando entrar, continuará contexto de copy e todo texto voltará ao validador.
-- Não há UI para listar/apagar mensagem individual nesta fatia; revogação e “apagar tudo” cobrem a decisão 25, e a lista visual fica para a próxima.
+- Não há UI para listar mensagem individual nesta fatia; a lista visual e o
+  “apagar histórico” em bloco foram entregues na fatia de histórico, e o apagar
+  individual fica para a próxima.
 - `CoachSummaryDao` faz upsert por `weekStart`; `CoachMessageDao` ignora conflito de `(kind, inputsHash)` (o primeiro texto validado é estável).
 - Nenhuma regra fisiológica, de volume ou de qualidade foi alterada.
 
@@ -163,7 +166,7 @@ Memória local do Coach **sem** transformar memória em decisão:
 
 - Memória no servidor (o proxy continua stateless).
 - Busca semântica, embeddings, resumo por LLM com decisão de treino.
-- UI de histórico individual e migração destrutiva/`fallbackToDestructiveMigration`.
+- Apagar mensagem individual, edição de texto e migração destrutiva/`fallbackToDestructiveMigration`.
 
 ### 4.6 Critérios de aceite
 
@@ -171,6 +174,21 @@ Memória local do Coach **sem** transformar memória em decisão:
 - [x] Revogar o opt-in apaga a memória local; export/delete a incluem.
 - [x] Nenhuma regra de treino, ciência ou schema existente muda.
 - [x] Gates do AGENTS.md verdes; `PROGRESS`/`PRD`/este handoff atualizados.
+
+### 4.7 UI de histórico (decisões 17/25) — concluída
+
+- `CoachMessageDao.observeAll`/`CoachSummaryDao.observeAll` entregam Flow (mais
+  recente primeiro) e o repositório mapeia para `CoachMemoryMessage`/
+  `CoachMemorySummary` puros; linha ilegível é ignorada, bullets inválidos viram
+  lista vazia.
+- `CoachHistoryState` cobre `Hidden` (sem opt-in), `Loading`, `Empty`, `Ready` e
+  `Error`; `clearHistory()` usa `CoachMemoryRepository.clearAll()` em escopo de
+  aplicação e `retryHistory()` reativa a coleta.
+- `CoachHistoryCard` mostra resumos por semana e conversa em leitura, avisa que o
+  motor decide, tem retry no erro e “Apagar histórico” com confirmação explícita
+  (treinos/perfil/check-ins intactos). TalkBack, dark/light e fonte 200% cobertos.
+- Testes: repositório (2), ViewModel (4) e tela (8). Sem IA nova, sem schema novo
+  e sem memória em prompt. O apagar individual segue pendente.
 
 ---
 
@@ -189,8 +207,9 @@ Memória local do Coach **sem** transformar memória em decisão:
 
 ### 5.3 UI de histórico do Coach
 
-- Decisões 17 (histórico + conversa) e 25 (vê/apaga, sem edição) ainda não têm lista visual.
-- A memória já é persistida, expira por TTL e é apagada na revogação/“apagar tudo”; a próxima fatia pode expor a lista e o apagar individual.
+- Decisões 17 (histórico + conversa) e 25 (vê/apaga, sem edição) têm lista visual: somente leitura, só com opt-in, resumos + conversa, estados loading/vazio/erro e “Apagar histórico” em bloco.
+- Pendente: **apagar mensagem/resumo individual** (DAO `deleteById` + confirmação por linha). O input livre de conversa continua fora do MVP.
+- A memória continua local, expira por TTL e é apagada na revogação/“apagar tudo”; nenhum caminho a usa para decidir treino.
 
 ---
 

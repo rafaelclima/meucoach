@@ -1,6 +1,45 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach Room v19: memória local com TTL, revogação e export/delete — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach: histórico somente leitura na aba com apagar tudo — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach: histórico do Coach na aba (decisões 17/25)
+
+**Objetivo:** expor na aba Coach a memória já persistida (`coach_messages`/`coach_summaries`) em lista somente leitura, apenas com opt-in, e permitir apagar o histórico pelo `CoachMemoryRepository` sem tocar em treinos ou perfil. Nenhuma chamada de IA nova; a memória continua sendo copy e não decide carga, pace ou plano.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (histórico concluído; apagar individual e pendências da 3.3 na §5).
+
+### Concluído
+
+- **Dados:** `CoachMessageDao.observeAll()`/`CoachSummaryDao.observeAll()` entregam Flow (mais recente primeiro) e `CoachMemoryRepository.observeMessages()`/`observeSummaries()` mapeiam para `CoachMemoryMessage`/`CoachMemorySummary` puros no domínio. Linha ilegível (kind/data desconhecidos) é ignorada em vez de derrubar a lista; bullets JSON inválido vira lista vazia.
+- **App:** `CoachHistoryState` (`Hidden`/`Loading`/`Empty`/`Ready`/`Error`) coleta os dois Flows só com opt-in e volta a `Hidden` ao revogar; `clearHistory()` usa o `clearAll` existente em escopo de aplicação e `retryHistory()` reativa a coleta.
+- **UI:** `CoachHistoryCard` somente leitura com resumos por semana e conversa, aviso explícito de que o motor decide, estados loading/vazio/erro com “Tentar de novo”, e “Apagar histórico” com confirmação que cita que treinos/perfil/check-ins não mudam. TalkBack com títulos de seção, linhas agrupadas e `contentDescription` na ação de apagar; dark/light e fonte 200% cobertos por teste.
+- **Escopo preservado:** sem chamada de IA nova, schema continua v19, sem migração e sem `fallbackToDestructiveMigration`; revogar continua apagando a memória e a lista desaparece junto.
+- **Docs:** PRD (§4/§8/§9/§10), ADR 0052, `DECISIONS` r1.58, `ROADMAP` (P1-18), `TESTING` e handoff.
+
+### Testes
+
+- `:core:data:testDebugUnitTest` 227 (+2: Flow/mapeamento newest-first e linha ilegível ignorada); `:app:testDebugUnitTest` 1018 (+4 `CoachViewModelTest`, +8 `CoachHistoryTest`); `:core:domain:test` 1121; `:core:model:test` 40 = **2.406 testes, 0 falhas/erros**.
+- Novos: lista vazia/oculta sem opt-in, lista com resumos e conversa, apagar histórico preservando o plano, loading/empty/error com retry, confirmação/cancelamento do apagar, tema claro e fonte 200%, ausência de edição.
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `:app:lintDebug` verdes; sem nova entrada de baseline.
+- Nenhum dado real; nenhuma migração; nenhuma regra de treino/ciência alterada.
+
+### Decisões e observações
+
+- O histórico só é lido/observado com opt-in; `Hidden` é o estado sem consentimento e a lista some na revogação. O apagar usa exatamente o `clearAll` da memória, então treinos, perfil, check-ins e métricas ficam intactos.
+- O apagar individual de mensagem/resumo ficou para a próxima fatia; esta entrega cobre a decisão 25 com “ver e apagar o histórico” em uma confirmação.
+- A lista é reativa (DAO/Flow): uma explicação ou revisão validada que chega depois aparece sem reabrir a aba; o TTL preguiçoso continua na abertura e antes de cada escrita.
+- Memória segue **fora do prompt** e sem autoridade: a UI chama o texto de “histórico”, não de plano, e não há edição nem número novo.
+- A data das mensagens usa o fuso do aparelho; resumos usam `weekStart` (segunda-feira) e o rótulo “semana de dd/MM”.
+
+### Pendente
+
+- Apagar mensagem/resumo individual (DAO `deleteById` + confirmação por linha).
+- Input livre de conversa (fora do MVP), pendências funcionais da 3.3 e goldens Roborazzi da bar.
+
+### Próximo passo
+
+1. Escolher **uma** pendência da §5 do handoff: apagar individual **ou** remover dia inteiro/múltiplos dias na disponibilidade temporária **ou** goldens da bar.
+2. Depois seguir para as demais, uma por sessão.
 
 ## Sessão 2026-11-18 — IA Coach: Room v19 (memória/conversa com TTL e revogação)
 
