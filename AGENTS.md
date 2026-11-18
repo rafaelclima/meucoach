@@ -13,7 +13,7 @@ Leia primeiro:
 3. `docs/ARCHITECTURE.md`
 4. `docs/SPORTS_SCIENCE.md`
 5. `docs/TESTING.md`
-6. `docs/PROGRESS.md` (estado atual)
+6. `docs/PROGRESS.md` (estado atual) e, para a feature IA Coach, `docs/HANDOFF_IA_COACH.md` (próxima fatia).
 
 ## 2. Stack e comandos
 
