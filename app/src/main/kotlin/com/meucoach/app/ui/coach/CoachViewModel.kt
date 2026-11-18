@@ -13,7 +13,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.io.IOException
 import javax.inject.Inject
@@ -49,9 +48,9 @@ class CoachViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(_consented, plans.observeCurrent(), retryTick) { consented, context, _ ->
-                consented to context
-            }.distinctUntilChanged().collect { (isConsented, context) ->
+            combine(_consented, plans.observeCurrent(), retryTick) { isConsented, context, tick ->
+                Triple(isConsented, context, tick)
+            }.collect { (isConsented, context, _) ->
                 val plan = context?.plan
                 if (!isConsented || plan == null) {
                     lastHash = null
@@ -71,6 +70,7 @@ class CoachViewModel @Inject constructor(
                     when (val validated = CoachResponseValidator.validate(raw, allowed)) {
                         is CoachValidationResult.Valid -> {
                             lastHash = context.inputsHash
+                            android.util.Log.d("Coach", "explain ok hash=${context.inputsHash}")
                             _explanation.value = CoachExplanationState.Ready(
                                 title = validated.response.title,
                                 body = validated.response.body,
@@ -79,6 +79,7 @@ class CoachViewModel @Inject constructor(
                         }
 
                         is CoachValidationResult.Invalid -> {
+                            android.util.Log.d("Coach", "explain rejected: ${validated.reason}")
                             _explanation.value = CoachExplanationState.Fallback(
                                 reason = validated.reason,
                                 planRationale = plan.rationale,
@@ -86,11 +87,13 @@ class CoachViewModel @Inject constructor(
                         }
                     }
                 } catch (e: IOException) {
+                    android.util.Log.d("Coach", "explain io: ${e.message}")
                     _explanation.value = CoachExplanationState.Fallback(
                         reason = "Sem conexão com o Coach. Mostrando o resumo do motor.",
                         planRationale = plan.rationale,
                     )
                 } catch (e: Exception) {
+                    android.util.Log.d("Coach", "explain failed: ${e.message}")
                     _explanation.value = CoachExplanationState.Fallback(
                         reason = "O Coach não respondeu. Mostrando o resumo do motor.",
                         planRationale = plan.rationale,

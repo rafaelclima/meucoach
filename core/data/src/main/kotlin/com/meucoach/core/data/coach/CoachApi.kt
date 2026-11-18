@@ -23,8 +23,12 @@ class DisabledCoachApi : CoachApi {
         throw IOException("coach disabled")
 }
 
-class FakeCoachApi(private val response: CoachRawResponse? = null, private val error: IOException? = null) : CoachApi {
+class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOException? = null) : CoachApi {
+    var calls = 0
+        private set
+
     override suspend fun explain(prompt: CoachPrompt, kind: CoachKind): CoachRawResponse {
+        calls += 1
         error?.let { throw it }
         return response ?: CoachRawResponse(title = "Coach", body = "Resposta de teste.")
     }

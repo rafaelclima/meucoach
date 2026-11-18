@@ -98,7 +98,25 @@ fun CoachScreen(
                 }
 
                 CoachExplanationState.Loading -> {
-                    CircularProgressIndicator(color = McTheme.colors.accent)
+                    McCard {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            CircularProgressIndicator(color = McTheme.colors.accent)
+                            Text(
+                                text = "Consultando o Coach…",
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                color = McTheme.colors.textPrimary,
+                            )
+                            Text(
+                                text = "Analisando sua semana e seus treinos.",
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                color = McTheme.colors.textTertiary,
+                            )
+                        }
+                    }
                 }
 
                 is CoachExplanationState.Ready -> {

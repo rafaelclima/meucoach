@@ -132,8 +132,31 @@ class CoachViewModelTest {
     @Test
     fun `sem consentimento nao chama a api`() {
         plans.value = CoachPlanContext(plan(), "hash1")
-        val vm = viewModel(FakeCoachApi(error = IOException("nao deveria chamar")))
+        val api = FakeCoachApi(error = IOException("nao deveria chamar"))
+        val vm = viewModel(api)
 
         assertThat(vm.explanation.value).isInstanceOf(CoachExplanationState.Unavailable::class.java)
+        assertThat(api.calls).isEqualTo(0)
+    }
+
+    @Test
+    fun `retry dispara nova chamada`() {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val api = FakeCoachApi(CoachRawResponse(title = "Foco", body = "Vamos manter os 30 min."))
+        val vm = viewModel(api)
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+        assertThat(api.calls).isEqualTo(1)
+
+        vm.retry()
+
+        runBlocking {
+            withTimeout(2000) {
+                while (api.calls < 2) {
+                    kotlinx.coroutines.delay(1)
+                }
+            }
+        }
+        assertThat(api.calls).isEqualTo(2)
     }
 }
