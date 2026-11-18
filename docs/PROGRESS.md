@@ -1,6 +1,42 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (S17.1 do Ciclo 4: smoke PEAK no aparelho + docs de fechamento, C4-55/C4-56 — Ciclo 4 encerrado — IA Coach F1/F4 em 18/11/2026: ver sessão IA Coach logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach 3.2: revisão da semana anterior na aba Coach — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach 3.2: revisão da semana anterior na aba Coach
+
+**Objetivo:** tirar do papel o MVP 3.2 do `docs/PRD_IA_COACH.md`: mostrar a semana fechada na aba Coach a partir de `WeeklyReviewCalculator` + `PlanCompletionCalculator`, com a IA apenas reescrevendo o texto e fallback determinístico.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (estado da feature + próxima fatia 3.3-A).
+
+### Concluído
+
+- **Domínio:** `CoachReviewPromptBuilder` monta um payload minimizado (adesão, volume, qualidade, prontidão, sono, intensidade e códigos de observação) com `inputsHash` versionado (`coach-review-v1`), sem nome, GPS, timestamps exatos ou texto livre; `allowedMinutes`/`allowedPercents` delimitam o que a resposta pode citar. `CoachResponseValidator` ganhou a checagem opt-in de porcentagens (`allowedPercents`); o caminho do explain ficou inalterado.
+- **Dados:** `CoachApi.review` + payload JSON aninhado para `/api/v1/coach/review`; `Http`/`Fake`/`Disabled` implementados, sem dependência nova. O proxy já tinha o system prompt `review`.
+- **App:** `WeeklyReviewAssembler` extraído do `TrendsViewModel` para que Tendências e Coach reconstruam exatamente a mesma semana (sem duas verdades); `CoachReviewSource` resolve a última segunda–domingo fechada com completion de 2 semanas e intensidade de 28 dias; `CoachViewModel` ganhou `CoachReviewState` (Loading/Ready/Fallback) com cache por `inputsHash` e retry compartilhado; a tela mostra a narrativa da IA + os fatos do motor e, no fallback, mantém as observações determinísticas; a aba passou a rolar.
+- **Privacidade/guardrails:** só agregados e códigos de observação viajam; revogar o opt-in bloqueia a chamada; sem perfil a revisão não aparece; número/porcentagem fora do calculado cai para o resumo do motor, nunca quebra a aba.
+- **Docs:** ADR 0051 registra o proxy stateless (contrato, cadeia de fallback, sem payload em log, hardening mínimo e risco LGPD aceito); `DECISIONS` r1.54 + linha na tabela; PRD com o adendo do 3.2.
+
+### Testes
+
+- `:core:domain:test` 1112; `:core:data:testDebugUnitTest` 213; `:app:testDebugUnitTest` 980; `:core:model:test` 40 = **2.345 testes, 0 falhas/erros/skips** (`--rerun-tasks`).
+- Novos: builder da revisão (4), validador com porcentagem (2), endpoint `review` (1), ViewModel (3), source da semana fechada (3), tela (3).
+- `:app:assembleDebug`, `spotlessCheck`, `koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- A revisão do Coach é a mesma de Tendências por construção (`WeeklyReviewAssembler`); o Coach não redecide treino nem recalcula alvo.
+- A IA continua só reescrevendo: o cartão determinístico fica sempre visível e o fallback não é tratado como erro para o atleta.
+- A checagem de porcentagem é opt-in para não mudar o contrato do explain existente; a adesão é arredondada no payload (`3/4` → `75`).
+- `NO_ALERTS` continua sendo uma observação explícita quando não há alerta na semana.
+
+### Pendente
+
+- 3.3 replanejo com confirmação + diff + undo, Room v19 (memória) e goldens Roborazzi da bar. ADR 0051 fechado nesta sessão.
+
+### Próximo passo
+
+1. 3.3: `PlanReplanner` + `ApplyReplan` com bottom-sheet de diff, Confirmar/Desfazer e undo real.
 
 ## Sessão 2026-11-18 — IA Coach (fora do Ciclo 4): F1 proxy + opt-in + aba Coach + F4 explicação real
 

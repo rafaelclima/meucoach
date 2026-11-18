@@ -1,9 +1,12 @@
 package com.meucoach.app.di
 
 import android.content.Context
+import com.meucoach.app.application.WeeklyReviewAssembler
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachPlanSource
+import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.app.coach.RoomCoachPlanSource
+import com.meucoach.app.coach.RoomCoachReviewSource
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.app.importer.ImportedRunPromptStore
@@ -174,6 +177,24 @@ object DataModule {
     @Singleton
     fun provideCoachPlanSource(plans: TrainingPlanRepository, time: TimeProvider): CoachPlanSource =
         RoomCoachPlanSource(plans, time)
+
+    @Provides
+    @Singleton
+    fun provideCoachReviewSource(
+        profiles: ProfileRepository,
+        activities: ActivityRepository,
+        plans: TrainingPlanRepository,
+        raceEvents: RaceEventRepository,
+        assembler: WeeklyReviewAssembler,
+        time: TimeProvider,
+    ): CoachReviewSource = RoomCoachReviewSource(
+        profiles = profiles,
+        activities = activities,
+        plans = plans,
+        raceEvents = raceEvents,
+        assembler = assembler,
+        time = time,
+    )
 
     @Provides
     @Singleton

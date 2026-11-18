@@ -1,6 +1,9 @@
 package com.meucoach.core.data.coach
 
 import com.meucoach.core.domain.coach.CoachPrompt
+import com.meucoach.core.domain.coach.CoachReviewAdherence
+import com.meucoach.core.domain.coach.CoachReviewPrompt
+import com.meucoach.core.domain.coach.CoachReviewVolume
 import com.meucoach.core.domain.coach.CoachSessionSummary
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -88,4 +91,56 @@ class CoachApiTest {
             server.stop(0)
         }
     }
+
+    @Test
+    fun `review usa o endpoint review com payload da semana`() {
+        val inner = """{"title":"Semana passada","body":"3 de 4 sessões, 75% do volume."}"""
+        val escaped = inner.replace("\\", "\\\\").replace("\"", "\\\"")
+        var received = ""
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress(0), 0)
+        server.createContext("/api/v1/coach/review") { exchange ->
+            received = exchange.requestBody.bufferedReader().readText()
+            val res = """{"choices":[{"message":{"content":"$escaped"}}]}""".toByteArray()
+            exchange.sendResponseHeaders(200, res.size.toLong())
+            exchange.responseBody.use { it.write(res) }
+        }
+        server.start()
+        try {
+            val api = HttpCoachApi(baseUrl = "http://localhost:${server.address.port}", token = "t")
+            val out = runBlocking { api.review(reviewPrompt()) }
+
+            assertThat(out.title).isEqualTo("Semana passada")
+            assertThat(received).contains("\"weekStart\":\"2026-11-09\"")
+            assertThat(received).contains("\"planned\":4")
+            assertThat(received).contains("\"percentOfPlan\":75")
+            assertThat(received).doesNotContain("Rafael")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    private fun reviewPrompt() = CoachReviewPrompt(
+        inputsHash = "coach-review-v1|hash",
+        locale = "pt-BR",
+        weekStart = "2026-11-09",
+        weekEnd = "2026-11-15",
+        status = "AVAILABLE",
+        adherence = CoachReviewAdherence(
+            planned = 4,
+            done = 3,
+            verified = 2,
+            manual = 1,
+            legacy = 0,
+            skipped = 1,
+            percent = 75,
+        ),
+        volume = CoachReviewVolume(plannedMin = 120, executedMin = 90, extraMin = 10, percentOfPlan = 75),
+        quality = null,
+        readiness = null,
+        sleep = null,
+        intensity = null,
+        observations = listOf("ADHERENCE_PARTIAL"),
+        ruleIds = listOf("R-REVIEW-01"),
+        confidence = "MEDIUM",
+    )
 }

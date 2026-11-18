@@ -43,4 +43,30 @@ class CoachResponseValidatorTest {
         )
         assertTrue(result is CoachValidationResult.Valid)
     }
+
+    @Test
+    fun `barra porcentagem fora do calculado quando a checagem esta ativa`() {
+        val result = CoachResponseValidator.validate(
+            CoachRawResponse(title = "Semana", body = "O volume ficou em 140% do plano"),
+            allowedMinutes = setOf(120),
+            allowedPercents = setOf(75),
+        )
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
+    fun `aceita porcentagens calculadas e ignora a checagem sem conjunto`() {
+        val valid = CoachResponseValidator.validate(
+            CoachRawResponse(title = "Semana", body = "Você fez 75% do volume e 78% fácil"),
+            allowedMinutes = setOf(120),
+            allowedPercents = setOf(75, 78),
+        )
+        val unchecked = CoachResponseValidator.validate(
+            CoachRawResponse(title = "Semana", body = "Você fez 75% do volume"),
+            allowedMinutes = setOf(120),
+        )
+
+        assertTrue(valid is CoachValidationResult.Valid)
+        assertTrue(unchecked is CoachValidationResult.Valid)
+    }
 }

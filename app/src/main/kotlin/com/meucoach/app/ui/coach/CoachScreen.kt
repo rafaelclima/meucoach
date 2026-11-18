@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,16 +22,21 @@ import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.review.WeeklyReview
 
 @Composable
 fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
     val consented by viewModel.consented.collectAsStateWithLifecycle()
     val dismissed by viewModel.dismissed.collectAsStateWithLifecycle()
     val explanation by viewModel.explanation.collectAsStateWithLifecycle()
+    val review by viewModel.review.collectAsStateWithLifecycle()
+    val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
         showConsent = !consented && !dismissed,
         explanation = explanation,
+        review = review,
+        reviewState = reviewState,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
@@ -46,10 +53,16 @@ fun CoachScreen(
     onDismiss: () -> Unit,
     onRevoke: () -> Unit,
     onRetry: () -> Unit,
+    review: WeeklyReview? = null,
+    reviewState: CoachReviewState = CoachReviewState.Unavailable,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -186,6 +199,7 @@ fun CoachScreen(
                     }
                 }
             }
+            review?.let { CoachReviewCard(review = it, state = reviewState) }
         } else {
             Text(
                 text = "Na primeira vez, pedimos sua permissão para usar um resumo dos treinos. " +

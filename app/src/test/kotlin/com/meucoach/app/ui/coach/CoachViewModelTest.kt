@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachPlanContext
 import com.meucoach.app.coach.CoachPlanSource
+import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.core.data.coach.FakeCoachApi
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.prescription.PlannedSession
@@ -12,6 +13,12 @@ import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.review.WeeklyAdherence
+import com.meucoach.core.domain.review.WeeklyReview
+import com.meucoach.core.domain.review.WeeklyReviewObservation
+import com.meucoach.core.domain.review.WeeklyReviewObservationKind
+import com.meucoach.core.domain.review.WeeklyReviewStatus
+import com.meucoach.core.domain.review.WeeklyVolume
 import com.meucoach.core.model.DataConfidence
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,6 +43,7 @@ import java.time.LocalDate
 class CoachViewModelTest {
     private lateinit var consent: CoachConsentStore
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
+    private lateinit var reviews: MutableStateFlow<WeeklyReview?>
 
     private fun plan(): WeeklyPlan = WeeklyPlan(
         weekStart = LocalDate.of(2026, 11, 16),
@@ -69,6 +77,7 @@ class CoachViewModelTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         consent = CoachConsentStore(context, "coach-vm-${System.nanoTime()}")
         plans = MutableStateFlow(null)
+        reviews = MutableStateFlow(null)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -82,7 +91,41 @@ class CoachViewModelTest {
         plans = object : CoachPlanSource {
             override fun observeCurrent() = plans
         },
+        reviews = object : CoachReviewSource {
+            override fun observeLastClosedWeek() = reviews
+        },
         api = api,
+    )
+
+    private fun weeklyReview() = WeeklyReview(
+        weekStart = LocalDate.of(2026, 11, 9),
+        weekEnd = LocalDate.of(2026, 11, 15),
+        status = WeeklyReviewStatus.AVAILABLE,
+        adherence = WeeklyAdherence(
+            planned = 4,
+            done = 3,
+            verified = 2,
+            manual = 1,
+            legacy = 0,
+            skipped = 1,
+        ),
+        volume = WeeklyVolume(plannedMin = 120, executedMin = 90, percentOfPlan = 75, extraMin = 10),
+        quality = null,
+        intensity = null,
+        intensitySessions = 0,
+        readiness = null,
+        sleep = null,
+        observations = listOf(
+            WeeklyReviewObservation(
+                kind = WeeklyReviewObservationKind.ADHERENCE_PARTIAL,
+                ruleId = "R-REVIEW-01",
+                evidenceIds = emptyList(),
+                confidence = DataConfidence.HIGH,
+            ),
+        ),
+        ruleIds = listOf("R-REVIEW-01"),
+        evidenceIds = emptyList(),
+        confidence = DataConfidence.HIGH,
     )
 
     private fun awaitSettled(vm: CoachViewModel): CoachExplanationState = runBlocking {
@@ -169,5 +212,53 @@ class CoachViewModelTest {
             }
         }
         assertThat(api.calls).isEqualTo(2)
+    }
+
+    @Test
+    fun `revisao valida vira Ready com o resumo deterministico exposto`() {
+        consent.grant()
+        reviews.value = weeklyReview()
+        val vm = viewModel(
+            FakeCoachApi(CoachRawResponse(title = "Semana passada", body = "3 de 4 sessões, 75% do volume.")),
+        )
+
+        val state = awaitReviewSettled(vm)
+        assertThat(state).isInstanceOf(CoachReviewState.Ready::class.java)
+        assertThat((state as CoachReviewState.Ready).title).isEqualTo("Semana passada")
+        assertThat(vm.review.value?.adherence?.done).isEqualTo(3)
+    }
+
+    @Test
+    fun `revisao com porcentagem inventada cai para o resumo do motor`() {
+        consent.grant()
+        reviews.value = weeklyReview()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "O volume ficou em 140% do plano")))
+
+        assertThat(awaitReviewSettled(vm)).isInstanceOf(CoachReviewState.Fallback::class.java)
+        assertThat(vm.review.value).isNotNull
+    }
+
+    @Test
+    fun `sem consentimento a revisao local aparece mas nao chama a api`() {
+        reviews.value = weeklyReview()
+        val api = FakeCoachApi(error = IOException("nao deveria chamar"))
+        val vm = viewModel(api)
+
+        assertThat(vm.review.value).isNotNull
+        assertThat(vm.reviewState.value).isInstanceOf(CoachReviewState.Unavailable::class.java)
+        assertThat(api.reviewCalls).isEqualTo(0)
+    }
+
+    private fun awaitReviewSettled(vm: CoachViewModel): CoachReviewState = runBlocking {
+        withTimeout(2000) {
+            var state = vm.reviewState.value
+            while (state is CoachReviewState.Loading ||
+                (state is CoachReviewState.Unavailable && consent.isConsented() && reviews.value != null)
+            ) {
+                kotlinx.coroutines.delay(1)
+                state = vm.reviewState.value
+            }
+            state
+        }
     }
 }

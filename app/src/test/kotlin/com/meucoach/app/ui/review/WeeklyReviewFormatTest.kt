@@ -1,4 +1,4 @@
-package com.meucoach.app.ui.trends
+package com.meucoach.app.ui.review
 
 import com.meucoach.core.domain.review.WeeklyAdherence
 import com.meucoach.core.domain.review.WeeklyQuality

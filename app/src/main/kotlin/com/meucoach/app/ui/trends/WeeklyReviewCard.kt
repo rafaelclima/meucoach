@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.meucoach.app.ui.review.WeeklyReviewFormat
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McConfidenceBadge
 import com.meucoach.core.designsystem.component.McDivider

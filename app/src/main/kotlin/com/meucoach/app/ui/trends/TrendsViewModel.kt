@@ -3,6 +3,7 @@ package com.meucoach.app.ui.trends
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.TrainingSignalSource
+import com.meucoach.app.application.WeeklyReviewAssembler
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
@@ -12,11 +13,7 @@ import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionCalculator
-import com.meucoach.core.domain.prescription.WeeklyPlan
-import com.meucoach.core.domain.prescription.WorkoutType
-import com.meucoach.core.domain.review.QualityWeekSummary
 import com.meucoach.core.domain.review.WeeklyReview
-import com.meucoach.core.domain.review.WeeklyReviewCalculator
 import com.meucoach.core.domain.trends.ActivityTrends
 import com.meucoach.core.domain.trends.ActivityTrendsCalculator
 import com.meucoach.core.domain.trends.IntensityDistribution
@@ -68,7 +65,11 @@ class TrendsViewModel @Inject constructor(
     private val trendsCalculator = ActivityTrendsCalculator()
     private val intensityCalculator = IntensityDistributionCalculator()
     private val planCompletionCalculator = PlanCompletionCalculator()
-    private val weeklyReviewCalculator = WeeklyReviewCalculator()
+    private val weeklyReviewAssembler = WeeklyReviewAssembler(
+        planRepository = planRepository,
+        prescriptionRepository = prescriptionRepository,
+        signalSource = signalSource,
+    )
     private val _uiState = MutableStateFlow(TrendsUiState())
     val uiState: StateFlow<TrendsUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
@@ -113,12 +114,12 @@ class TrendsViewModel @Inject constructor(
             val reviewWeekStart = today.with(
                 TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY),
             ).minusWeeks(1)
-            val weeklyReview = weeklyReview(
+            val weeklyReview = weeklyReviewAssembler.assemble(
                 weekStart = reviewWeekStart,
                 today = today,
                 summaries = summaries,
                 zone = zone,
-                completion = completion,
+                completionWeek = completion.weeks.firstOrNull { it.weekStart == reviewWeekStart },
                 intensity = intensity,
                 intensitySessions = intensitySessions,
             )
@@ -179,96 +180,8 @@ class TrendsViewModel @Inject constructor(
      * calculator only receives values that Trends already computed; it never
      * re-reads a target or invents a section for missing input (FR-011).
      */
-    private suspend fun weeklyReview(
-        weekStart: LocalDate,
-        today: LocalDate,
-        summaries: List<ActivitySummary>,
-        zone: ZoneId,
-        completion: PlanCompletion,
-        intensity: IntensityDistribution?,
-        intensitySessions: List<IntensitySession>,
-    ): WeeklyReview {
-        val weekEnd = weekStart.plusDays(6)
-        val plan = planRepository.getWeek(weekStart)
-        val completionWeek = completion.weeks.firstOrNull { it.weekStart == weekStart }
-        val checkIns = signalSource.allCheckIns()
-        val metrics = signalSource.allMetrics()
-        val readiness = signalSource.readinessHistory(today, REVIEW_HEALTH_WINDOW_DAYS)
-        val weekSummaries = summaries
-            .filter { it.sport == Sport.RUNNING || it.sport == Sport.TREADMILL }
-            .filter { summary ->
-                val date = summary.startTime.atZone(zone).toLocalDate()
-                !date.isBefore(weekStart) && !date.isAfter(weekEnd)
-            }
-        val executedMin = weekSummaries
-            .sumOf { it.durationSec }
-            .let { seconds -> if (seconds <= 0) null else (seconds / 60.0).roundToInt().takeIf { it > 0 } }
-        // Extra training (ADR 0050 §2.1): runs without a planned session behind
-        // them count for volume, never for adherence. Same linkage the volume
-        // projection uses: a summary counts as planned only when the plan links it.
-        val linkedIds = plan?.sessions.orEmpty().mapNotNull { it.activityId }.toSet()
-        val extraMin = weekSummaries
-            .filter { it.id !in linkedIds }
-            .sumOf { it.durationSec }
-            .let { seconds -> if (seconds <= 0) null else (seconds / 60.0).roundToInt().takeIf { it > 0 } }
-        val plannedMin = plan
-            ?.let { week ->
-                week.sessions
-                    .filter { it.type != WorkoutType.REST && !it.date.isBefore(week.createdOn) }
-                    .mapNotNull { it.durationMin }
-                    .sum()
-                    .takeIf { it > 0 }
-            }
-        val hasPlan = plan?.sessions.orEmpty().any { it.type != WorkoutType.REST }
-        val intensityWeek = intensity?.weeks?.firstOrNull { it.weekStart == weekStart }
-        val weekIntensitySessions = if (intensityWeek == null) {
-            0
-        } else {
-            intensitySessions.count { it.date in weekStart..weekEnd }.coerceAtLeast(1)
-        }
-
-        return weeklyReviewCalculator.calculate(
-            weekStart = weekStart,
-            today = today,
-            hasPlan = hasPlan,
-            completion = completionWeek,
-            plannedDurationMin = if (hasPlan) plannedMin else null,
-            executedDurationMin = executedMin,
-            extraDurationMin = extraMin,
-            quality = qualitySummary(plan),
-            intensity = intensityWeek,
-            intensitySessions = weekIntensitySessions,
-            readinessDays = readiness,
-            metrics = metrics,
-            checkIns = checkIns,
-        )
-    }
-
-    /**
-     * Day decisions for the planned quality opportunities (FR-401/FR-408).
-     * The latest stored prescription of each quality date decides; without a
-     * stored decision the week reports none instead of inventing one.
-     */
-    private suspend fun qualitySummary(plan: WeeklyPlan?) = plan
-        ?.sessions.orEmpty()
-        .filter { it.type == WorkoutType.QUALITY }
-        .map { it.date }
-        .sorted()
-        .takeIf { it.isNotEmpty() }
-        ?.let { qualityDates ->
-            val latestByDate = qualityDates
-                .mapNotNull { date ->
-                    prescriptionRepository.getLatest(date)?.let { date to it }
-                }
-                .toMap()
-            QualityWeekSummary.summarize(qualityDates, latestByDate).takeIf { it.hasDecision }
-        }
-
     private companion object {
         const val INTENSITY_WINDOW_DAYS = 28
         const val PLAN_COMPLETION_WEEKS = 8
-
-        /** Covers the last closed week (7–13 days back) with readiness/sleep. */
-        const val REVIEW_HEALTH_WINDOW_DAYS = 14
     }
 }
