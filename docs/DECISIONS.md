@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.53 · **Data:** 18/11/2026
+**Versão:** 1.55 · **Data:** 18/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -52,6 +52,7 @@
 > Revisão 1.52 (17/11/2026): bump de motor concluído (C4-53) — `weekly-plan-v7`/`daily-prescription-v6`; o `PlanUpgrade` passa a atualizar planos v6 reais na abertura (v6→v7) e a prescrição v5 é superseded por v6 com o mesmo `inputsHash`, sem reescrever o histórico. `macro-plan-v2` permanece; `session-library-v2` segue implícito no catálogo (não é engine persistida). Nenhuma regra científica mudou; schema v18 e default de coluna `'weekly-plan-v6'` intactos.
 > Revisão 1.53 (18/11/2026): Ciclo 4 encerrado — smoke PEAK no aparelho (C4-55: qualidade `RACE_PACE` na terça com gate `SUBJECTIVE_MISSING`/`LOW_READINESS`; restore, review com extra e noite de 36 min amarrados a testes/goldens por inviabilidade sem violar privacidade/relógio) e docs de fechamento (C4-56: `PROGRESS`/`ROADMAP`/`CICLO_4`/`TESTING` com os flakes conhecidos). Nenhum código de produção alterado.
 > Revisão 1.54 (18/11/2026): ADR 0051 registrado — proxy stateless do IA Coach no Dokploy (OpenRouter atrás de `X-Coach-Token`, cadeia com fallback, sem log de payload), `CoachApi.review` e a revisão 3.2 na aba Coach reutilizando o mesmo `WeeklyReviewAssembler` de Tendências; chave fora do APK e fallback determinístico em qualquer falha. MVP 3.1/3.2 concluído; restam 3.3, Room v19 e goldens da bar.
+> Revisão 1.55 (18/11/2026): IA Coach 3.3-A — replanejamento com confirmação/diff/undo na aba Coach, `ReplanController` compartilhado por Hoje/Perfil/Coach e `undoReplan` append-only (trigger `UNDO`, restaura só o futuro `PLANNED`, preserva hoje/passado/`DONE`/`CLOSED`, recalcula agregados). Nenhuma regra de treino nova; 3.3-B (disponibilidade temporária/slot específico), Room v19 e goldens da bar seguem pendentes.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

@@ -1,18 +1,45 @@
 package com.meucoach.app.ui.coach
 
 import android.content.Context
+import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.ApplyReplan
+import com.meucoach.app.application.EvaluateReplan
+import com.meucoach.app.application.REPLAN_TODAY
+import com.meucoach.app.application.REPLAN_WEEK_START
+import com.meucoach.app.application.ReplanContextBuilder
+import com.meucoach.app.application.TrainingSignalSource
+import com.meucoach.app.application.UndoReplan
+import com.meucoach.app.application.easySession
+import com.meucoach.app.application.qualitySession
+import com.meucoach.app.application.replanCheckIn
+import com.meucoach.app.application.replanPlan
+import com.meucoach.app.application.replanProfile
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachPlanContext
 import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachReviewSource
+import com.meucoach.app.replan.ProfilePlanEvaluationStore
+import com.meucoach.app.replan.ReplanControllerFactory
+import com.meucoach.app.replan.ReplanOperations
+import com.meucoach.app.replan.ReplanSuggestionStore
+import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.coach.FakeCoachApi
+import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.repository.ActivityRepository
+import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
+import com.meucoach.core.data.repository.ProfileRepository
+import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.replan.PlanReplanner
 import com.meucoach.core.domain.review.WeeklyAdherence
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewObservation
@@ -23,6 +50,7 @@ import com.meucoach.core.model.DataConfidence
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -36,7 +64,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -44,6 +75,13 @@ class CoachViewModelTest {
     private lateinit var consent: CoachConsentStore
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
+    private lateinit var database: MeuCoachDatabase
+    private lateinit var profiles: ProfileRepository
+    private lateinit var checkIns: CheckInRepository
+    private lateinit var planRepository: TrainingPlanRepository
+    private lateinit var replanFactory: ReplanControllerFactory
+    private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
+    private val timeProvider = FakeTimeProvider(clock.instant(), ZoneOffset.UTC)
 
     private fun plan(): WeeklyPlan = WeeklyPlan(
         weekStart = LocalDate.of(2026, 11, 16),
@@ -78,11 +116,44 @@ class CoachViewModelTest {
         consent = CoachConsentStore(context, "coach-vm-${System.nanoTime()}")
         plans = MutableStateFlow(null)
         reviews = MutableStateFlow(null)
+        database = Room
+            .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        profiles = ProfileRepository(database, clock)
+        checkIns = CheckInRepository(database, clock)
+        planRepository = TrainingPlanRepository(database, clock)
+        val contexts = ReplanContextBuilder(
+            plans = planRepository,
+            profiles = profiles,
+            checkIns = checkIns,
+            signals = TrainingSignalSource(
+                checkIns = checkIns,
+                metrics = DailyMetricsRepository(database, clock),
+                activities = ActivityRepository(database = database, clock = clock, zoneId = ZoneOffset.UTC),
+                executions = SessionExecutionRepository(database, clock),
+            ),
+            raceEvents = RaceEventRepository(database, clock),
+            timeProvider = timeProvider,
+        )
+        val evaluate = EvaluateReplan(contexts, planRepository)
+        replanFactory = ReplanControllerFactory(
+            operations = ReplanOperations(
+                evaluate = evaluate,
+                apply = ApplyReplan(planRepository, contexts, evaluate),
+                undo = UndoReplan(planRepository),
+            ),
+            plans = planRepository,
+            store = ReplanSuggestionStore(context, "coach-replan-${System.nanoTime()}"),
+            profileResults = ProfilePlanEvaluationStore(),
+            timeProvider = timeProvider,
+        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @After
     fun tearDown() {
+        database.close()
         Dispatchers.resetMain()
     }
 
@@ -95,6 +166,7 @@ class CoachViewModelTest {
             override fun observeLastClosedWeek() = reviews
         },
         api = api,
+        replanFactory = replanFactory,
     )
 
     private fun weeklyReview() = WeeklyReview(
@@ -247,6 +319,67 @@ class CoachViewModelTest {
         assertThat(vm.review.value).isNotNull
         assertThat(vm.reviewState.value).isInstanceOf(CoachReviewState.Unavailable::class.java)
         assertThat(api.reviewCalls).isEqualTo(0)
+    }
+
+    @Test
+    fun `acao rapida no Coach mostra a sugestao e o aceite pode ser desfeito`(): Unit = runBlocking {
+        seedReplan()
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        vm.requestReplan()
+
+        val suggested = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.suggestion != null }
+        }
+        assertThat(suggested.suggestion?.versionFrom).isEqualTo(1)
+        assertThat(suggested.suggestion?.changes).isNotEmpty()
+
+        vm.acceptReplan()
+        val applied = withTimeout(5_000) {
+            vm.replan.first { !it.isApplying && it.canUndo && it.message?.contains("ajustada") == true }
+        }
+        assertThat(applied.planVersion).isEqualTo(2)
+
+        vm.undoReplan()
+        val undone = withTimeout(5_000) {
+            vm.replan.first { !it.isUndoing && it.message?.contains("desfeito") == true }
+        }
+        assertThat(undone.planVersion).isEqualTo(3)
+        assertThat(undone.canUndo).isFalse()
+        assertThat(planRepository.getWeekRecord(REPLAN_WEEK_START)?.version).isEqualTo(3)
+    }
+
+    @Test
+    fun `acao rapida sem semana planejada explica o motivo`(): Unit = runBlocking {
+        consent.grant()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        vm.requestReplan()
+
+        val state = withTimeout(5_000) {
+            vm.replan.first { !it.isLoading && it.message != null }
+        }
+        assertThat(state.message).contains("semana planejada")
+        assertThat(state.suggestion).isNull()
+    }
+
+    private fun seedReplan(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        checkIns.save(replanCheckIn())
+        planRepository.saveWeek(
+            replanPlan(
+                sessions = listOf(
+                    easySession(REPLAN_WEEK_START, durationMin = 40),
+                    easySession(REPLAN_WEEK_START.plusDays(1), durationMin = 35),
+                    easySession(REPLAN_TODAY, durationMin = 40),
+                    qualitySession(REPLAN_WEEK_START.plusDays(4)),
+                ),
+            ),
+        )
+        planRepository.captureAvailabilityBaseline(
+            REPLAN_WEEK_START,
+            PlanReplanner.availabilityHash(replanProfile().weeklyAvailability),
+        )
     }
 
     private fun awaitReviewSettled(vm: CoachViewModel): CoachReviewState = runBlocking {

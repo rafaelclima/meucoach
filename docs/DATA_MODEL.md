@@ -220,13 +220,13 @@ Tabela **append-only** (`weekly_plan_revisions`) que audita cada revisão aceita
 | `generatorVersion` | String | versão das regras do `WeeklyPlanGenerator` |
 | `previousPlanJson` | JSON | metadados da versão substituída (sem sessões) |
 | `replacedSessionsJson` | JSON | snapshot das sessões futuras `PLANNED` removidas |
-| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST`, `PROFILE_CHANGED`, `RACE_COMPLETED`, `DATA_READY`, `ENGINE_UPGRADE` (os dois últimos auto-aplicados na abertura, C4-48) |
+| `trigger` | enum | `MISSED_SESSIONS`, `AVAILABILITY_CHANGED`, `USER_REQUEST`, `PROFILE_CHANGED`, `RACE_COMPLETED`, `DATA_READY`, `ENGINE_UPGRADE` (os dois últimos auto-aplicados na abertura, C4-48) e `UNDO` (revisão nova que restaura o snapshot da revisão anterior, IA Coach 3.3-A) |
 | `reason` | String | rationale da revisão |
 | `ruleIdsJson` / `evidenceIdsJson` | JSON | regras/evidências emitidas pelo gerador |
 | `confidence` | enum | confiança da revisão |
 | `createdAt` | Long | epoch ms |
 
-O aceite é transacional: valida `expectedVersion`/baseline, insere o snapshot, apaga somente sessões futuras `PLANNED`, insere as candidatas sem `REPLACE` e incrementa a versão. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` nunca são tocadas; qualquer conflito aborta a transação inteira.
+O aceite é transacional: valida `expectedVersion`/baseline, insere o snapshot, apaga somente sessões futuras `PLANNED`, insere as candidatas sem `REPLACE` e incrementa a versão. Sessões de hoje/passadas e futuras `DONE`/`CLOSED` nunca são tocadas; qualquer conflito aborta a transação inteira. O **undo** (IA Coach 3.3-A) segue o mesmo desenho: exige a versão atual, confere que a última revisão é a que será desfeita, restaura do `replacedSessionsJson` apenas o futuro `PLANNED` e grava uma revisão nova com `trigger = UNDO` (o histórico nunca é reescrito).
 
 ### 3.8.2 `SessionExecution`
 

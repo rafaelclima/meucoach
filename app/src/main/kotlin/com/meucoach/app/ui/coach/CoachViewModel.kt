@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachReviewSource
+import com.meucoach.app.replan.ReplanControllerFactory
+import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.coach.CoachApi
 import com.meucoach.core.data.coach.CoachKind
 import com.meucoach.core.domain.coach.CoachPromptBuilder
@@ -51,12 +53,18 @@ class CoachViewModel @Inject constructor(
     private val plans: CoachPlanSource,
     private val reviews: CoachReviewSource,
     private val api: CoachApi,
+    replanFactory: ReplanControllerFactory,
 ) : ViewModel() {
     private val _consented = MutableStateFlow(consent.isConsented())
     val consented: StateFlow<Boolean> = _consented
 
     private val _dismissed = MutableStateFlow(false)
     val dismissed: StateFlow<Boolean> = _dismissed
+
+    private val replanController = replanFactory.create(viewModelScope)
+
+    /** Same acceptance machine as Today/Perfil; the Coach tab never duplicates it. */
+    val replan: StateFlow<ReplanUiState> = replanController.uiState
 
     private val _explanation =
         MutableStateFlow<CoachExplanationState>(CoachExplanationState.Unavailable)
@@ -198,4 +206,23 @@ class CoachViewModel @Inject constructor(
         lastReviewHash = null
         retryTick.value += 1
     }
+
+    /**
+     * Quick actions on the Coach tab evaluate T3 explicitly. "Perdi um treino"
+     * and "Tenho menos tempo" use the same evaluation in 3.3-A; choosing the
+     * specific slot/availability arrives in 3.3-B.
+     */
+    fun requestReplan() = replanController.replanNow()
+
+    fun acceptReplan() = replanController.accept()
+
+    fun declineReplan() = replanController.decline()
+
+    fun suppressReplan() = replanController.suppress()
+
+    fun dismissReplanSuggestion() = replanController.dismissSuggestion()
+
+    fun undoReplan() = replanController.undo()
+
+    fun consumeReplanMessage() = replanController.consumeMessage()
 }

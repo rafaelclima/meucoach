@@ -1,6 +1,44 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach 3.2: revisão da semana anterior na aba Coach — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach 3.3-A: confirmação + diff + undo na aba Coach — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach 3.3-A: confirmação + diff + undo na aba Coach
+
+**Objetivo:** levar o replanejamento para a aba Coach com confirmação explícita, diff antes/depois e undo, reusando `EvaluateReplan`/`ApplyReplan` e extraindo a máquina de aceite do `ReplanViewModel`, sem duplicar regra de treino.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (próxima fatia 3.3-B).
+
+### Concluído
+
+- **Máquina compartilhada:** `ReplanController` extraído para `app/replan/`, com `ReplanControllerFactory`/`ReplanOperations`; `ReplanViewModel` virou fachada de Hoje/Perfil e o Coach usa a mesma máquina (`refresh`/`replanNow`/`accept`/`decline`/`suppress`/`undo`/`dismiss`). O tratamento de stale, recusa e mensagens não foi duplicado.
+- **Coach:** card “AJUSTAR A SEMANA” com “Ajustar a semana”, “Perdi um treino” e “Tenho menos tempo” (T3 explícito); `ReplanSuggestionSheet` reusa o card de Hoje com diff e selo `v{n} → v{n+1}`; confirmar aplica via `ApplyReplan`; stale reavalia e nunca aplica a sugestão velha; sucesso mostra “Semana ajustada…” com “Desfazer” e “Ver o que mudou”.
+- **Undo:** `TrainingPlanRepository.undoReplan(weekStart, today, expectedVersion)` transacional e append-only: exige a versão, confere que a última revisão é a atual, restaura só o futuro `PLANNED` do snapshot, preserva hoje/passado/`DONE`/`CLOSED`, grava v+1 com trigger `UNDO` e recalcula `weeklyMinutes`/`longRunMinutes`/`qualityCount`; conflito protegido aborta sem escrever. `UndoReplan` mapeia `Applied/Stale/Rejected`; `ReplanChangesSheet` ganhou “Desfazer ajuste”.
+- **Guardrail:** undo não é oferecido para revisões de sistema (`ENGINE_UPGRADE`/`DATA_READY`), que manteriam sessões velhas sob a versão nova de motor/dados sem reavaliação na abertura.
+- **Docs:** `DATA_MODEL` (trigger `UNDO`), `ARCHITECTURE` §6.4 (controller/undo), `DECISIONS` r1.55, `TESTING`, PRD (adendo 3.3-A) e handoff.
+
+### Testes
+
+- `:core:domain:test` 1112; `:core:data:testDebugUnitTest` 218 (+5); `:app:testDebugUnitTest` 987 (+7); `:core:model:test` 40 = **2.357 testes, 0 falhas próprias** (`--rerun-tasks`). A suíte do app teve 1 falha conhecida (`TutorialSystemBackTest`, `UncaughtExceptionsBeforeTest`), verde isolada — registrada em `TESTING.md`.
+- Novos: undo no repositório (5), undo no `ReplanViewModelTest` (2), Coach VM (2), tela do Coach (3).
+- `:app:assembleDebug`, `spotlessCheck`, `koverVerify`, detekt (domain/data/app) e `:app:lintDebug` verdes; sem nova entrada de baseline.
+- Nenhum dado real; nenhuma migração (schema v18); sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- Undo é **uma revisão nova** (ADR 0028), nunca rewrite nem volta do número da versão; o plano mantém `createdAt`/`createdOn` e move só `revisedAt`/`version`.
+- O undo restaura `inputsHash`/`availabilityHash`/proveniência da revisão desfeita; `lastEvaluated*` e `temporalContextHash` ficam no estado atual (não houve nova avaliação).
+- As três ações da 3.3-A avaliam o mesmo T3; escolher o dia/slot e a disponibilidade temporária fica para 3.3-B.
+- `canUndo` deriva da última revisão + versão atual; cada tela tem sua instância de controller, mas o `ReplanSuggestionStore` (recusa/supressão) é compartilhado.
+- Nenhuma regra fisiológica, de volume ou de qualidade foi alterada.
+
+### Pendente
+
+- 3.3-B (disponibilidade temporária/slot específico), Room v19 (memória) e goldens Roborazzi da bar.
+
+### Próximo passo
+
+1. 3.3-B: override efêmero de disponibilidade no `ReplanInput` + seleção de sessão específica, reusando `ReplanController`/`ApplyReplan` e validando stale no aceite.
+2. Depois Room v19 e goldens da bar.
 
 ## Sessão 2026-11-18 — IA Coach 3.2: revisão da semana anterior na aba Coach
 

@@ -92,6 +92,7 @@ class ApplyReplan @Inject constructor(
 
                 ReplanApplyFailure.INVALID_CANDIDATE,
                 ReplanApplyFailure.PROTECTED_CONFLICT,
+                ReplanApplyFailure.NOTHING_TO_UNDO,
                 -> ApplyReplanResult.Rejected(outcome.message)
             }
         }

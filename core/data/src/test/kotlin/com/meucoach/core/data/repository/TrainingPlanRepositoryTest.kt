@@ -603,6 +603,133 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `undo restores the replaced future as a new append-only revision`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+
+        val outcome = repository.undoReplan(monday, today, expectedVersion = 2)
+
+        assertThat(outcome).isInstanceOf(ReplanUndoOutcome.Applied::class.java)
+        assertThat((outcome as ReplanUndoOutcome.Applied).version).isEqualTo(3)
+        val stored = repository.getWeek(monday)!!
+        assertThat(stored.sessions).isEqualTo(revisionWeek().sessions)
+        assertThat(stored.weeklyMinutes).isEqualTo(150)
+        assertThat(stored.longRunMinutes).isEqualTo(50)
+        assertThat(stored.qualityCount).isEqualTo(1)
+        val record = repository.getWeekRecord(monday)!!
+        assertThat(record.version).isEqualTo(3)
+        assertThat(record.revisionReason).isEqualTo(TrainingPlanRepository.UNDO_REASON)
+        assertThat(record.inputsHash).isNull()
+        val revisions = database.weeklyPlanRevisionDao().getAll()
+        assertThat(revisions).hasSize(2)
+        val undo = revisions.last()
+        assertThat(undo.trigger).isEqualTo(TrainingPlanRepository.UNDO_TRIGGER)
+        assertThat(undo.fromVersion).isEqualTo(2)
+        assertThat(undo.toVersion).isEqualTo(3)
+        assertThat(undo.reason).isEqualTo(TrainingPlanRepository.UNDO_REASON)
+        assertThat(JSONArray(undo.replacedSessionsJson).length()).isEqualTo(2)
+        assertThat(JSONObject(undo.previousPlanJson).getInt("version")).isEqualTo(2)
+    }
+
+    @Test
+    fun `undo refuses to overwrite a future done session`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+        executions.recordManualExecution(
+            com.meucoach.core.data.db.entity.plannedSessionId(monday, monday.plusDays(4)),
+            durationMin = 45,
+            rpe = 5,
+        )
+        val before = repository.getWeek(monday)
+
+        val outcome = repository.undoReplan(monday, today, expectedVersion = 2)
+
+        assertThat(outcome).isEqualTo(
+            ReplanUndoOutcome.Failed(
+                ReplanApplyFailure.PROTECTED_CONFLICT,
+                "Uma sessão já concluída ou encerrada seria alterada; nada foi desfeito.",
+            ),
+        )
+        assertThat(repository.getWeek(monday)).isEqualTo(before)
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(2)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).hasSize(1)
+    }
+
+    @Test
+    fun `undo is stale when the week version moved`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+        val before = repository.getWeek(monday)
+
+        val outcome = repository.undoReplan(monday, today, expectedVersion = 1)
+
+        assertThat(outcome).isEqualTo(
+            ReplanUndoOutcome.Failed(
+                ReplanApplyFailure.STALE_VERSION,
+                "O plano mudou desde este ajuste. Nada foi desfeito.",
+            ),
+        )
+        assertThat(repository.getWeek(monday)).isEqualTo(before)
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(2)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).hasSize(1)
+    }
+
+    @Test
+    fun `undo without an accepted revision does nothing`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+
+        val outcome = repository.undoReplan(monday, today, expectedVersion = 1)
+
+        assertThat(outcome).isEqualTo(
+            ReplanUndoOutcome.Failed(
+                ReplanApplyFailure.NOTHING_TO_UNDO,
+                "Não há ajuste para desfazer nesta semana.",
+            ),
+        )
+        assertThat(repository.getWeek(monday)).isEqualTo(revisionWeek())
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(1)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `a second undo has nothing left to undo`(): Unit = runBlocking {
+        repository.saveWeek(revisionWeek())
+        repository.applyReplan(
+            suggestion = suggestion(),
+            candidate = candidateWeek(),
+            today = today,
+            currentInputsHash = "inputs-2",
+        )
+        repository.undoReplan(monday, today, expectedVersion = 2)
+
+        val outcome = repository.undoReplan(monday, today, expectedVersion = 3)
+
+        assertThat(outcome).isEqualTo(
+            ReplanUndoOutcome.Failed(
+                ReplanApplyFailure.NOTHING_TO_UNDO,
+                "Não há ajuste para desfazer nesta semana.",
+            ),
+        )
+        assertThat(repository.getWeekRecord(monday)?.version).isEqualTo(3)
+        assertThat(database.weeklyPlanRevisionDao().getAll()).hasSize(2)
+    }
+
+    @Test
     fun `checkpoint advances without changing provenance or version`(): Unit = runBlocking {
         repository.saveWeek(revisionWeek())
         val fingerprint = PlanningFingerprints.of(profile())

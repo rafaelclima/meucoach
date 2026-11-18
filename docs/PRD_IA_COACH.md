@@ -1,6 +1,6 @@
 # PRD — IA Coach de Corrida (MVP)
 
-**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 prontos)
+**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 + 3.3-A prontos)
 **Visão base:** `docs/VISAO_PRODUTO_IA_COACH_CORRIDA.md` · **Fonte verdade:** código + `SPORTS_SCIENCE.md`
 **MVP decidido:** 3.1 explicar semana + 3.2 revisão semana anterior + 3.3 replanejar imprevisto
 
@@ -116,3 +116,4 @@ Plano técnico fatiado (proposta): F1 proxy+VPS+contrato, F2 prompt/validator pu
 - CoachApi implementado: `CoachApi`/`HttpCoachApi`/`Fake`/`Disabled` em `core:data` (HttpURLConnection, sem dep nova; `org.json` só em teste); `BuildConfig.COACH_PROXY_URL/_TOKEN` via `-PcoachProxyUrl/-PcoachProxyToken` (vazio = desativado + fallback); `AppModule` provisiona HTTP quando configurado, VM decide chamar (consentimento dinâmico). 4 testes verdes.
 - Correções validadas no aparelho: retry morto (distinct descartava o tick; removido + teste); 403 do free abortava a cadeia (agora só 400/401/402/422 param); validador aceita total semanal + executado; system prompt proíbe siglas de métricas; layout (statusBars, sem padding duplo, fallback amigável, botões alinhados); loading centralizado em card. Cadeia atual: `super-vl` → `openrouter/free` → `inkling-2-small` (`OPENROUTER_MODELS` sobrescreve). App timeout 45s/10s.
 - 3.2 revisão da semana anterior: `CoachReviewPromptBuilder` + `allowedMinutes`/`allowedPercents` (domínio puro, payload sem texto livre), checagem opt-in de porcentagem no validador, `CoachApi.review` em `/api/v1/coach/review`, `WeeklyReviewAssembler` compartilhado com Tendências, `CoachReviewSource` da última semana fechada, `CoachReviewState` no `CoachViewModel` (cache/fallback) e cartão na aba Coach com narrativa + fatos do motor. Testes: builder (4), validador (2), endpoint (1), VM (3), source (3), tela (3).
+- 3.3-A replanejamento na aba Coach: card “AJUSTAR A SEMANA” com “Ajustar a semana”, “Perdi um treino” e “Tenho menos tempo” (T3 explícito), bottom sheet com diff e selo `v{n} → v{n+1}`, confirmação via `ApplyReplan` (stale reavalia e nunca aplica a sugestão velha), undo append-only (`trigger = UNDO`) que restaura só o futuro `PLANNED` e preserva hoje/passado/`DONE`/`CLOSED`, e `ReplanController` compartilhado por Hoje/Perfil/Coach (o `ReplanViewModel` virou fachada). A seleção de dia/slot e a disponibilidade temporária ficam para 3.3-B. Testes: repository undo (5), controller/VM (2), Coach VM (2), tela (3).

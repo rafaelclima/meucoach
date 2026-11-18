@@ -13,11 +13,19 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meucoach.app.ui.replan.ReplanChangesSheet
+import com.meucoach.app.ui.replan.ReplanMessageCard
+import com.meucoach.app.ui.replan.ReplanSuggestionSheet
+import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
@@ -31,16 +39,25 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
     val explanation by viewModel.explanation.collectAsStateWithLifecycle()
     val review by viewModel.review.collectAsStateWithLifecycle()
     val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
+    val replan by viewModel.replan.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
         showConsent = !consented && !dismissed,
         explanation = explanation,
         review = review,
         reviewState = reviewState,
+        replan = replan,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
         onRetry = { viewModel.retry() },
+        onReplanRequest = { viewModel.requestReplan() },
+        onReplanAccept = { viewModel.acceptReplan() },
+        onReplanDecline = { viewModel.declineReplan() },
+        onReplanSuppress = { viewModel.suppressReplan() },
+        onReplanUndo = { viewModel.undoReplan() },
+        onReplanConsumeMessage = { viewModel.consumeReplanMessage() },
+        onReplanDismiss = { viewModel.dismissReplanSuggestion() },
     )
 }
 
@@ -55,8 +72,21 @@ fun CoachScreen(
     onRetry: () -> Unit,
     review: WeeklyReview? = null,
     reviewState: CoachReviewState = CoachReviewState.Unavailable,
+    replan: ReplanUiState = ReplanUiState(),
+    onReplanRequest: () -> Unit = {},
+    onReplanAccept: () -> Unit = {},
+    onReplanDecline: () -> Unit = {},
+    onReplanSuppress: () -> Unit = {},
+    onReplanUndo: () -> Unit = {},
+    onReplanConsumeMessage: () -> Unit = {},
+    onReplanDismiss: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    var replanSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var replanChangesOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(replan.suggestion != null) {
+        if (replan.suggestion != null) replanSheetOpen = true
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -199,6 +229,19 @@ fun CoachScreen(
                     }
                 }
             }
+            CoachReplanCard(state = replan, onRequest = onReplanRequest)
+            if (replan.suggestion == null) {
+                replan.message?.let { message ->
+                    ReplanMessageCard(
+                        message = message,
+                        onDismiss = onReplanConsumeMessage,
+                        canUndo = replan.canUndo,
+                        isUndoing = replan.isUndoing,
+                        onUndo = onReplanUndo,
+                        onShowChanges = replan.lastChange?.let { { replanChangesOpen = true } },
+                    )
+                }
+            }
             review?.let { CoachReviewCard(review = it, state = reviewState) }
         } else {
             Text(
@@ -206,6 +249,36 @@ fun CoachScreen(
                     "Nada sai do aparelho sem você permitir.",
                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                 color = McTheme.colors.textTertiary,
+            )
+        }
+    }
+
+    if (replanSheetOpen && replan.suggestion != null) {
+        ReplanSuggestionSheet(
+            state = replan,
+            onAccept = onReplanAccept,
+            onDecline = {
+                onReplanDecline()
+                replanSheetOpen = false
+            },
+            onSuppress = {
+                onReplanSuppress()
+                replanSheetOpen = false
+            },
+            onDismiss = {
+                onReplanDismiss()
+                replanSheetOpen = false
+            },
+        )
+    }
+    if (replanChangesOpen) {
+        replan.lastChange?.let { change ->
+            ReplanChangesSheet(
+                change = change,
+                onDismiss = { replanChangesOpen = false },
+                canUndo = replan.canUndo,
+                isUndoing = replan.isUndoing,
+                onUndo = onReplanUndo,
             )
         }
     }

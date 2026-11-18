@@ -11,12 +11,15 @@ import com.meucoach.app.application.REPLAN_TODAY
 import com.meucoach.app.application.REPLAN_WEEK_START
 import com.meucoach.app.application.ReplanContextBuilder
 import com.meucoach.app.application.TrainingSignalSource
+import com.meucoach.app.application.UndoReplan
 import com.meucoach.app.application.easySession
 import com.meucoach.app.application.qualitySession
 import com.meucoach.app.application.replanCheckIn
 import com.meucoach.app.application.replanPlan
 import com.meucoach.app.application.replanProfile
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
+import com.meucoach.app.replan.ReplanControllerFactory
+import com.meucoach.app.replan.ReplanOperations
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
@@ -93,12 +96,17 @@ class ReplanViewModelTest {
         val evaluate = EvaluateReplan(contexts, plans)
         store = ReplanSuggestionStore(context, "replan-view-${System.nanoTime()}")
         viewModel = ReplanViewModel(
-            plans = plans,
-            evaluateReplan = evaluate,
-            applyReplan = ApplyReplan(plans, contexts, evaluate),
-            store = store,
-            profileResults = profileResults,
-            timeProvider = timeProvider,
+            ReplanControllerFactory(
+                operations = ReplanOperations(
+                    evaluate = evaluate,
+                    apply = ApplyReplan(plans, contexts, evaluate),
+                    undo = UndoReplan(plans),
+                ),
+                plans = plans,
+                store = store,
+                profileResults = profileResults,
+                timeProvider = timeProvider,
+            ),
         )
     }
 
@@ -214,6 +222,43 @@ class ReplanViewModelTest {
 
         assertThat(state.message).contains("semana planejada")
         assertThat(state.suggestion).isNull()
+    }
+
+    @Test
+    fun `undo restores the previous future and clears the undo offer`(): Unit = runBlocking {
+        seed()
+        viewModel.refresh()
+        awaitSuggestion()
+
+        viewModel.accept()
+        val applied = withTimeout(5_000) {
+            viewModel.uiState.first { !it.isApplying && it.canUndo && it.message?.contains("ajustada") == true }
+        }
+        assertThat(applied.lastChange?.toVersion).isEqualTo(2)
+
+        viewModel.undo()
+        val undone = withTimeout(5_000) {
+            viewModel.uiState.first { !it.isUndoing && it.message?.contains("desfeito") == true }
+        }
+
+        assertThat(undone.planVersion).isEqualTo(3)
+        assertThat(undone.canUndo).isFalse()
+        assertThat(undone.lastChange?.toVersion).isEqualTo(3)
+        assertThat(undone.lastChange?.reason).isEqualTo(TrainingPlanRepository.UNDO_REASON)
+        assertThat(plans.getWeekRecord(REPLAN_WEEK_START)?.version).isEqualTo(3)
+    }
+
+    @Test
+    fun `undo without a revision explains that there is nothing to revert`(): Unit = runBlocking {
+        seed()
+
+        viewModel.undo()
+
+        val state = withTimeout(5_000) {
+            viewModel.uiState.first { !it.isUndoing && it.message != null }
+        }
+        assertThat(state.message).contains("Não há ajuste para desfazer")
+        assertThat(plans.getWeekRecord(REPLAN_WEEK_START)?.version).isEqualTo(1)
     }
 
     private suspend fun awaitSuggestion(): ReplanUiState = withTimeout(5_000) {

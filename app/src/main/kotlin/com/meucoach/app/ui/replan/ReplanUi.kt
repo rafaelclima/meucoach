@@ -13,10 +13,14 @@ import java.time.LocalDate
 data class ReplanUiState(
     val isLoading: Boolean = false,
     val isApplying: Boolean = false,
+    /** True while an undo request is in flight. */
+    val isUndoing: Boolean = false,
     val planVersion: Int = 1,
     val suggestion: ReplanSuggestionUi? = null,
     /** Diff of the latest accepted revision, shown by "Ver o que mudou". */
     val lastChange: ReplanVersionChangeUi? = null,
+    /** The latest revision can be reverted as a new version (ADR 0028). */
+    val canUndo: Boolean = false,
     val message: String? = null,
 )
 

@@ -218,8 +218,10 @@ Evidência atual (18/11/2026, fechamento do Ciclo 4):
 - `WeeklyReviewScreenshotTest`: goldens dark/light/estreito do card de revisão.
 - `TodayBriefingTest`: CTA só em sessão não concluída, abertura do sheet, ordem de leitura, estados loading/vazio/erro, sessão concluída sem briefing, RPE sem calibração e fonte 200% em tela estreita.
 - `EvaluateReplanTest` e `ApplyReplanTest`: gatilhos T1/T2/T3, baseline, doença, inputs alterados, versão obsoleta, semana removida, proteção de hoje/passado/`DONE` e prescrição do dia intacta.
-- `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale e ausência de semana.
+- `TrainingPlanRepositoryTest` (undo 3.3-A): restaura o futuro substituído como nova revisão `UNDO`, recalcula agregados, recusa versão obsoleta, não reescreve sem revisão anterior e aborta diante de sessão futura `DONE`.
+- `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale, undo (restaura o futuro e limpa a oferta) e ausência de semana.
 - `ReplanSuggestionStoreTest`: recusa por semana/versão/hash, supressão por dia, clear e reset.
+- `CoachViewModelTest`/`CoachScreenTest` (3.3-A): ação rápida avalia T3, aceite/undo na aba Coach, ausência de semana, sheet de diff com selo de versão e “Desfazer” após aplicar.
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino, CTA do briefing e plano (inclui o card do plano com versão).
 - `SessionBriefingScreenshotTest`: golden dark/light do conteúdo do briefing (foco, alvo, rationale, como correr e se estiver difícil).
 - `ReplanScreenshotTest`: golden dark/light do card de sugestão de replanejamento.

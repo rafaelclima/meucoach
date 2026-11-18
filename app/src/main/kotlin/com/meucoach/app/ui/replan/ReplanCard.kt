@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -25,6 +27,7 @@ import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McPill
 import com.meucoach.core.designsystem.component.McPrimaryButton
+import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
@@ -141,7 +144,14 @@ fun ReplanSuggestionCard(state: ReplanUiState, onAccept: () -> Unit, onDecline: 
 
 /** Passive result of an explicit request (no change, stale, applied). */
 @Composable
-fun ReplanMessageCard(message: String, onDismiss: () -> Unit) {
+fun ReplanMessageCard(
+    message: String,
+    onDismiss: () -> Unit,
+    canUndo: Boolean = false,
+    isUndoing: Boolean = false,
+    onUndo: (() -> Unit)? = null,
+    onShowChanges: (() -> Unit)? = null,
+) {
     val colors = McTheme.colors
     McCard(
         variant = McCardVariant.INSET,
@@ -166,13 +176,91 @@ fun ReplanMessageCard(message: String, onDismiss: () -> Unit) {
                 modifier = Modifier.testTag("replan-dismiss-message"),
             )
         }
+        if ((canUndo && onUndo != null) || onShowChanges != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (canUndo && onUndo != null) {
+                    McTextButton(
+                        text = if (isUndoing) "Desfazendo…" else "Desfazer",
+                        onClick = onUndo,
+                        trailingArrow = false,
+                        enabled = !isUndoing,
+                        modifier = Modifier.testTag("replan-undo"),
+                    )
+                }
+                if (onShowChanges != null) {
+                    McTextButton(
+                        text = "Ver o que mudou",
+                        onClick = onShowChanges,
+                        trailingArrow = false,
+                        modifier = Modifier.testTag("replan-show-changes"),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Bottom-sheet form of the suggestion card used by the Coach tab. It reuses the
+ * exact same confirmation/decline/suppress actions as Today.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReplanSuggestionSheet(
+    state: ReplanUiState,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    onSuppress: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (state.suggestion == null) return
+    val colors = McTheme.colors
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = colors.surface,
+        modifier = Modifier.testTag("replan-suggestion-sheet"),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ReplanSuggestionCard(
+                state = state,
+                onAccept = onAccept,
+                onDecline = onDecline,
+                onSuppress = onSuppress,
+            )
+            McTextButton(
+                text = "Fechar",
+                onClick = onDismiss,
+                trailingArrow = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("replan-suggestion-close"),
+            )
+        }
     }
 }
 
 /** Persistent explanation of the latest accepted revision. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReplanChangesSheet(change: ReplanVersionChangeUi, onDismiss: () -> Unit) {
+fun ReplanChangesSheet(
+    change: ReplanVersionChangeUi,
+    onDismiss: () -> Unit,
+    canUndo: Boolean = false,
+    isUndoing: Boolean = false,
+    onUndo: (() -> Unit)? = null,
+) {
     val colors = McTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -210,6 +298,17 @@ fun ReplanChangesSheet(change: ReplanVersionChangeUi, onDismiss: () -> Unit) {
                 ReplanChangeRow(change = item)
             }
             Spacer(modifier = Modifier.height(16.dp))
+            if (canUndo && onUndo != null) {
+                McSecondaryButton(
+                    text = if (isUndoing) "Desfazendo…" else "Desfazer ajuste",
+                    onClick = onUndo,
+                    enabled = !isUndoing,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("replan-sheet-undo"),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             McPrimaryButton(
                 text = "Fechar",
                 onClick = onDismiss,

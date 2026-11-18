@@ -73,12 +73,19 @@ enum class ReplanApplyFailure {
     STALE_PROFILE,
     INVALID_CANDIDATE,
     PROTECTED_CONFLICT,
+    NOTHING_TO_UNDO,
 }
 
 sealed interface ReplanApplyOutcome {
     data class Applied(val version: Int, val revisionId: String) : ReplanApplyOutcome
 
     data class Failed(val failure: ReplanApplyFailure, val message: String) : ReplanApplyOutcome
+}
+
+sealed interface ReplanUndoOutcome {
+    data class Applied(val version: Int, val revisionId: String) : ReplanUndoOutcome
+
+    data class Failed(val failure: ReplanApplyFailure, val message: String) : ReplanUndoOutcome
 }
 
 sealed interface PlanUpgradeOutcome {
@@ -410,6 +417,133 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         }
     }
 
+    /**
+     * Reverts the last accepted revision as a new append-only revision (ADR 0028).
+     *
+     * Only strictly future `PLANNED` sessions are restored from the revision
+     * snapshot; today, the past and every future `DONE`/`CLOSED` session stay
+     * untouched. A protected conflict aborts without writing. [expectedVersion]
+     * must match the stored version, so a stale screen never undoes a newer
+     * adjustment.
+     */
+    suspend fun undoReplan(weekStart: LocalDate, today: LocalDate, expectedVersion: Int): ReplanUndoOutcome =
+        runCatching {
+            database.withTransaction {
+                val stored = dao.getPlan(weekStart.toString())
+                    ?: return@withTransaction ReplanUndoOutcome.Failed(
+                        ReplanApplyFailure.NO_PLAN,
+                        "O plano desta semana não existe mais.",
+                    )
+                if (stored.version != expectedVersion) {
+                    return@withTransaction ReplanUndoOutcome.Failed(
+                        ReplanApplyFailure.STALE_VERSION,
+                        "O plano mudou desde este ajuste. Nada foi desfeito.",
+                    )
+                }
+                val revision = revisions.getForWeek(weekStart.toString()).lastOrNull()
+                    ?: return@withTransaction ReplanUndoOutcome.Failed(
+                        ReplanApplyFailure.NOTHING_TO_UNDO,
+                        "Não há ajuste para desfazer nesta semana.",
+                    )
+                if (revision.toVersion != stored.version) {
+                    return@withTransaction ReplanUndoOutcome.Failed(
+                        ReplanApplyFailure.STALE_VERSION,
+                        "O plano mudou desde este ajuste. Nada foi desfeito.",
+                    )
+                }
+                if (revision.trigger == UNDO_TRIGGER) {
+                    return@withTransaction ReplanUndoOutcome.Failed(
+                        ReplanApplyFailure.NOTHING_TO_UNDO,
+                        "Não há ajuste para desfazer nesta semana.",
+                    )
+                }
+
+                val storedSessions = dao.getSessions(weekStart.toString())
+                val protectedDates = storedSessions
+                    .filter { !LocalDate.parse(it.date).isAfter(today) || it.status != SessionStatus.PLANNED }
+                    .map { it.date }
+                    .toSet()
+                val restored = PlanJson
+                    .sessionsFromJson(revision.replacedSessionsJson, weekStart.toString())
+                    .map { it.toModel() }
+                    .filter { it.date.isAfter(today) && it.status == SessionStatus.PLANNED }
+                if (restored.any { it.date.toString() in protectedDates }) {
+                    return@withTransaction ReplanUndoOutcome.Failed(
+                        ReplanApplyFailure.PROTECTED_CONFLICT,
+                        "Uma sessão já concluída ou encerrada seria alterada; nada foi desfeito.",
+                    )
+                }
+
+                val currentFuture = storedSessions.filter {
+                    LocalDate.parse(it.date).isAfter(today) && it.status == SessionStatus.PLANNED
+                }
+                val restoredEntities = restored.map { it.toEntity(weekStart) }
+                val toVersion = stored.version + 1
+                val undoRevision = WeeklyPlanRevisionEntity(
+                    id = "$weekStart-v$toVersion",
+                    weekStart = weekStart.toString(),
+                    fromVersion = stored.version,
+                    toVersion = toVersion,
+                    fromInputsHash = stored.inputsHash,
+                    toInputsHash = revision.fromInputsHash ?: revision.generatorVersion,
+                    fromAvailabilityHash = stored.availabilityHash,
+                    toAvailabilityHash = revision.fromAvailabilityHash ?: revision.generatorVersion,
+                    fromFingerprintVersion = stored.generatedFromFingerprintVersion,
+                    fromFingerprint = stored.generatedFromFingerprint,
+                    fromProfileSnapshotJson = stored.generatedFromProfileSnapshotJson,
+                    fromTemporalContextHash = stored.temporalContextHash,
+                    // The plan returns to the provenance captured by the reverted revision.
+                    toFingerprintVersion = revision.fromFingerprintVersion,
+                    toFingerprint = revision.fromFingerprint,
+                    toProfileSnapshotJson = revision.fromProfileSnapshotJson,
+                    toTemporalContextHash = revision.fromTemporalContextHash,
+                    generatorVersion = stored.generatorVersion,
+                    previousPlanJson = PlanJson.planMetadataToJson(stored).toString(),
+                    replacedSessionsJson = PlanJson.sessionsToJson(currentFuture),
+                    trigger = UNDO_TRIGGER,
+                    reason = UNDO_REASON,
+                    ruleIdsJson = stored.ruleIdsJson,
+                    evidenceIdsJson = stored.evidenceIdsJson,
+                    confidence = stored.confidence,
+                    createdAt = clock.millis(),
+                )
+                revisions.insert(undoRevision)
+                dao.deletePlannedSessionsAfter(weekStart.toString(), today.toString())
+                if (restoredEntities.isNotEmpty()) dao.insertRevisionSessions(restoredEntities)
+
+                val merged = storedSessions.filter {
+                    !LocalDate.parse(it.date).isAfter(today) || it.status != SessionStatus.PLANNED
+                } + restoredEntities
+                val updated = stored.copy(
+                    version = toVersion,
+                    revisionReason = UNDO_REASON,
+                    revisedAt = clock.millis(),
+                    inputsHash = revision.fromInputsHash,
+                    availabilityHash = revision.fromAvailabilityHash,
+                    generatedFromFingerprintVersion = revision.fromFingerprintVersion,
+                    generatedFromFingerprint = revision.fromFingerprint,
+                    generatedFromProfileSnapshotJson = revision.fromProfileSnapshotJson,
+                    weeklyMinutes = merged.sumOf { it.durationMin ?: 0 },
+                    longRunMinutes = merged.firstOrNull { it.type == WorkoutType.LONG }?.durationMin,
+                    qualityCount = merged.count { it.type == WorkoutType.QUALITY },
+                    // The plan-level rationale describes the action that produced
+                    // this version; session rationales come from the restored snapshot.
+                    rationale = UNDO_REASON,
+                )
+                check(dao.updatePlan(updated) == 1) { "Plan row disappeared during undo" }
+                ReplanUndoOutcome.Applied(version = toVersion, revisionId = undoRevision.id)
+            }
+        }.getOrElse { error ->
+            when (error) {
+                is SQLiteConstraintException, is IllegalArgumentException -> ReplanUndoOutcome.Failed(
+                    ReplanApplyFailure.INVALID_CANDIDATE,
+                    "O ajuste conflitou com o estado atual; nada foi alterado.",
+                )
+
+                else -> throw error
+            }
+        }
+
     suspend fun deleteWeek(weekStart: LocalDate): Int = database.withTransaction {
         database.sessionExecutionDao().deleteForWeek(weekStart.toString())
         dao.deleteSessions(weekStart.toString())
@@ -637,5 +771,12 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
     private fun String.toList(): List<String> {
         val array = JSONArray(this)
         return List(array.length()) { index -> array.getString(index) }
+    }
+
+    companion object {
+        /** Revision trigger of an undo; a new revision, never a rewrite (ADR 0028). */
+        const val UNDO_TRIGGER = "UNDO"
+
+        const val UNDO_REASON = "Você desfez o ajuste"
     }
 }
