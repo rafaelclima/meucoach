@@ -123,7 +123,6 @@ private suspend fun tryModels(
     kind: String,
     payload: String,
 ): Pair<String, HttpStatusCode>? {
-    var last: Pair<String, HttpStatusCode>? = null
     for (model in models) {
         try {
             val res = client.post("https://openrouter.ai/api/v1/chat/completions") {
@@ -134,12 +133,15 @@ private suspend fun tryModels(
                 setBody(buildOpenRouterBody(model, kind, payload))
             }
             if (res.status.value in 200..299) return res.bodyAsText() to res.status
-            last = res.bodyAsText() to res.status
             println("coach model=$model status=${res.status.value} (trying next)")
-            if (res.status != HttpStatusCode.TooManyRequests && res.status.value < 500) return last
+            // 400/401/402/422 são problema do pedido ou da conta: não adianta trocar de modelo.
+            if (res.status.value in listOf(400, 401, 402, 422)) {
+                return res.bodyAsText() to res.status
+            }
         } catch (e: Exception) {
             println("coach model=$model error=${e.message} (trying next)")
         }
     }
-    return last?.takeIf { it.second != HttpStatusCode.TooManyRequests && it.second.value < 500 }
+    // 400/401/402/422 retornam na hora; aqui só restam 403/404/429/5xx/timeout.
+    return null
 }

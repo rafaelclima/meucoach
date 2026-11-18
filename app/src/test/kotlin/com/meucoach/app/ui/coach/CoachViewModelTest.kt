@@ -130,6 +130,17 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `total semanal e valido mesmo fora das sessoes`() {
+        consent.grant()
+        plans.value = CoachPlanContext(plan().copy(weeklyMinutes = 114), "hash1")
+        val vm = viewModel(
+            FakeCoachApi(CoachRawResponse(title = "Foco", body = "114 min no total, mantidos.")),
+        )
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+    }
+
+    @Test
     fun `sem consentimento nao chama a api`() {
         plans.value = CoachPlanContext(plan(), "hash1")
         val api = FakeCoachApi(error = IOException("nao deveria chamar"))

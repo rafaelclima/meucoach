@@ -66,7 +66,9 @@ class CoachViewModel @Inject constructor(
                 try {
                     val prompt = CoachPromptBuilder.build(plan, context.inputsHash)
                     val raw = api.explain(prompt, CoachKind.EXPLAIN)
-                    val allowed = prompt.sessions.mapNotNull { it.durationMin }.toSet()
+                    val allowed = prompt.sessions.mapNotNull { it.durationMin }.toSet() +
+                        prompt.weeklyMinutes +
+                        listOfNotNull(prompt.executedMinutes)
                     when (val validated = CoachResponseValidator.validate(raw, allowed)) {
                         is CoachValidationResult.Valid -> {
                             lastHash = context.inputsHash

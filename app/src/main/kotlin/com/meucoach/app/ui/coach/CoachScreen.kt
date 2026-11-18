@@ -81,7 +81,10 @@ fun CoachScreen(
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                         color = McTheme.colors.textSecondary,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
                         McPrimaryButton(text = "Ativar", onClick = onGrant, modifier = Modifier.weight(1f))
                         McSecondaryButton(text = "Depois", onClick = onDismiss, modifier = Modifier.weight(1f))
                     }
@@ -172,7 +175,10 @@ fun CoachScreen(
                             )
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
                         McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
                         TextButton(onClick = onRevoke) {
                             Text(text = "Desativar")
