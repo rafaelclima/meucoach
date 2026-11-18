@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,7 +49,7 @@ fun CoachScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
+        modifier = modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -57,7 +58,7 @@ fun CoachScreen(
             color = McTheme.colors.textPrimary,
         )
         Text(
-            text = "Aqui você conversa sobre sua semana: o que foi planejado, " +
+            text = "Aqui você conversa sobre a sua semana — o que foi planejado, " +
                 "o que foi feito e como reorganizar quando algo mudar.",
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = McTheme.colors.textSecondary,
@@ -65,7 +66,7 @@ fun CoachScreen(
         if (showConsent) {
             McCard {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
@@ -103,7 +104,7 @@ fun CoachScreen(
                 is CoachExplanationState.Ready -> {
                     McCard {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
@@ -133,16 +134,21 @@ fun CoachScreen(
                 is CoachExplanationState.Fallback -> {
                     McCard {
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
+                            Text(
+                                text = "Resumo da semana",
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                color = McTheme.colors.textPrimary,
+                            )
                             Text(
                                 text = explanation.planRationale,
                                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                                 color = McTheme.colors.textSecondary,
                             )
                             Text(
-                                text = explanation.reason,
+                                text = "O Coach não conseguiu explicar desta vez. Tente de novo em instantes.",
                                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                                 color = McTheme.colors.textTertiary,
                             )
