@@ -263,7 +263,9 @@ class TodayViewModelPersistTest {
 
         val viewModel = createViewModel(timeProvider, coordinator)
         val state = withTimeout(5_000) {
-            viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
+            viewModel.uiState.first {
+                it.plan != null && it.plan.sessions.isNotEmpty() && it.completionMessage != null
+            }
         }
 
         assertThat(state.plan!!.sessions.first { it.date == friday }.durationMin).isEqualTo(40)
