@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.11 · **Data:** 12/11/2026 · Atualiza a evidência de testes e cobre a recuperação pós-prova (C3-07): janela por distância, tetos, bloqueio de qualidade/longão e sugestão `RACE_COMPLETED`.
+**Versão:** 1.12 · **Data:** 18/11/2026 · Fechamento do Ciclo 4: 2.310 testes (1099 domain / 963 app / 208 data / 40 model), gates verdes e flakes conhecidos documentados (§10.1). Sem mudança de código.
 
 ## 1. Princípios
 
@@ -92,9 +92,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (12/11/2026):
+Evidência atual (18/11/2026, fechamento do Ciclo 4):
 
-- 1.497 testes no repositório, 0 falhas e 0 `@Ignore` (39 em `core:model`, 592 em `core:domain`, 162 em `core:data`, 704 em `:app`).
+- 2.310 testes no repositório (1099 em `core:domain`, 963 em `:app`, 208 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- Comandos de referência: `./gradlew :core:domain:test :core:model:test :core:data:testDebugUnitTest --rerun-tasks` + `./gradlew :app:testDebugUnitTest --rerun-tasks --no-parallel` (a suíte do app cai nos flakes do §10.1 sob paralelismo; sem paralelismo fica verde).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,56% de linhas, 81,13% de branches, 96,23% de instruções.
@@ -438,6 +439,17 @@ inteira pode disputar frames com o Compose/Roborazzi.
 - Relatórios de teste, Kover e lint como artifacts em toda execução (`if: always()`); o diff do Roborazzi também é publicado.
 - **Não há** nightly de emulador nem `connectedDebugAndroidTest`; instrumentados dependem de decisão de distribuição (TEST-01).
 - Branch protection: CI verde obrigatório.
+
+### 10.1 Flakes conhecidos (C4-56, 18/11/2026)
+
+Dois testes caem de forma intermitente sob paralelismo/carga e passam isolados; nenhum é da área alterada quando aparece. A suíte completa do app é validada com `--rerun-tasks --no-parallel`.
+
+| Teste | Sintoma | Contexto |
+|---|---|---|
+| `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução |
+| `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado e na suíte sem paralelismo |
+
+Política: flake não se ignora (`@Ignore` proibido) nem se "conserta" reduzindo assert; registra-se aqui com sintoma, contexto e o comando que fica verde.
 
 ## 11. Cobertura
 

@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.52 · **Data:** 17/11/2026
+**Versão:** 1.53 · **Data:** 18/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -50,6 +50,7 @@
 > Revisão 1.48 (17/11/2026): ADR 0046 implementado (C4-22..C4-27, S3/S14) — `acwrReliable` com janela completa, ACWR 1,5 único limite, `permitsQuality`/`permitsProgression` separados, golden `G-LOAD-03` do cold-start (8 dias + 13 de pré-história; sem veto, volume mantido, copy "em calibração") e `R-LOAD-03 v3` no `SPORTS_SCIENCE` (§6.3/§7.2/§8.3/§14); renumeração `G-LOAD-02` → `G-LOAD-03` no ADR/PRD (o `G-LOAD-02` histórico do `load-engine` fica intocado). Resta o bump `weekly-plan-v7`/`daily-v6` (C4-53).
 > Revisão 1.50 (17/11/2026): ADR 0049 implementado por completo no Ciclo 4/S14 (C4-34..C4-37) — golden `G-DATA-02` congela o sono plausível (36 min → suspeita/`null` com qualidade mantida; 6 h + cochilo → 360 min; 5h30 → `SHORT_SLEEP`; fragmentada → maior bloco 240 `SHORT_SLEEP`) e `R-DATA-02` no `SPORTS_SCIENCE` (§9.3/§14). Fase 3 de UI/copy segue aberta (C4-26/C4-27/C4-32/C4-33 prontos).
 > Revisão 1.52 (17/11/2026): bump de motor concluído (C4-53) — `weekly-plan-v7`/`daily-prescription-v6`; o `PlanUpgrade` passa a atualizar planos v6 reais na abertura (v6→v7) e a prescrição v5 é superseded por v6 com o mesmo `inputsHash`, sem reescrever o histórico. `macro-plan-v2` permanece; `session-library-v2` segue implícito no catálogo (não é engine persistida). Nenhuma regra científica mudou; schema v18 e default de coluna `'weekly-plan-v6'` intactos.
+> Revisão 1.53 (18/11/2026): Ciclo 4 encerrado — smoke PEAK no aparelho (C4-55: qualidade `RACE_PACE` na terça com gate `SUBJECTIVE_MISSING`/`LOW_READINESS`; restore, review com extra e noite de 36 min amarrados a testes/goldens por inviabilidade sem violar privacidade/relógio) e docs de fechamento (C4-56: `PROGRESS`/`ROADMAP`/`CICLO_4`/`TESTING` com os flakes conhecidos). Nenhum código de produção alterado.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -100,9 +101,9 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0045](adr/0045-long-run-sizing.md) | Longão: seleção do dia, piso 45/60, 25–30% como alvo, título honesto e `fitToVolume` | Implementado em 16/11/2026 (C4-09..C4-13: comparator, piso/título honesto, `fitToVolume` ancorado no piso, `G-PER-04`; bump para `weekly-plan-v7` fica em C4-53) | 16/11/2026 |
 | [0046](adr/0046-load-gate-v3-acwr-reliability.md) | Load gate v3: ACWR 1,5, confiabilidade de 28 dias, pré-história como ausência, progressão separada | Implementado (C4-22..C4-27) | 17/11/2026 |
 | [0047](adr/0047-quality-catalog-periodization.md) | Catálogo/periodização por fase, nível e distância; estrutura executável; iniciante com strides + intro fartlek `EASY`; intermediário com intervalado/fartlek/colinas | Documentado e fiado em S12 (C4-14..C4-21: estrutura + matriz + rotação + fiação + strides/intro + briefing + `G-PER-05` + docs `R-PER-01/02/04` e 4 evidências); C4-57/C4-58 concluídas (precedência FC×pace e PEAK no pace previsto com gap); C4-53 concluída (`weekly-plan-v7`/`daily-prescription-v6`) | 16/11/2026 |
-| [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Implementado (C4-44..C4-48 + C4-53); export `PlanJson` em C4-50 e bump v7 concluído; resta o smoke no aparelho (C4-55) | 16/11/2026 |
+| [0048](adr/0048-data-readiness-plan-upgrade-schema-v18.md) | Prontidão de dados, `PlanUpgrade` idempotente, schema v18, versionamento de motor e rollback | Implementado (C4-44..C4-48 + C4-53 + C4-55); export `PlanJson` em C4-50, bump v7 concluído e smoke PEAK no aparelho com gate validado | 16/11/2026 |
 | [0049](adr/0049-readiness-checkin-sleep.md) | Prontidão/check-in sem inversão, reavaliação tardia, sono plausível e `QualityGate` | Implementado (C4-28..C4-37) | 17/11/2026 |
-| [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Aprovado — C4-38..C4-42 implementados (base real, meso, longão, reparo do mesmo dia, golden `G-VOL-02` + copy, docs `R-PLAN-01 v2`/`R-LVL-03`); resta o review em C4-43 | 16/11/2026 |
+| [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Implementado (C4-38..C4-43 + C4-55: base real, meso, longão, reparo do mesmo dia, `G-VOL-02`, review "planejada/mantida/rebaixada"; review com extra no aparelho fora de alcance sem relógio, coberto por testes) | 16/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

@@ -1,7 +1,7 @@
 # Ciclo 4 — Treino real: checklist de execução
 
 **Versão:** 1.0 · **Data:** 16/11/2026
-**Status:** S0 a S16 concluídas; **C4-54 (S16) e C4-61 (S17) concluídas; C4-55 em andamento**.
+**Status:** S0 a S17 concluídas; **C4-54, C4-55, C4-56 e C4-61 concluídas — Ciclo 4 encerrado em 18/11/2026**.
 **Fonte de verdade:** `docs/PRD_TREINO_REAL.md` v1.1 + ADRs 0044–0050.
 **Uso:** **este é o primeiro arquivo a abrir em cada sessão.** O bloco “Estado atual” manda; se ele divergir do git, o git vence e o bloco deve ser corrigido antes de qualquer código.
 
@@ -9,15 +9,15 @@
 
 ## 0. Estado atual
 
-> **Última atualização:** 17/11/2026 — S17 (C4-61 + smoke C4-55)
-> **Último commit:** C4-61 — `fix(c4): correct low-confidence and data-ready copy (C4-61)`
-> **Fase:** 4 — Fechamento — **S17 aberta**; C4-55 em andamento
-> **Sessão atual:** **S17 — C4-61 DONE; C4-55 parcial**
-> **Task atual:** C4-61 (DONE)
-> **Próxima task:** C4-55 (concluir) e C4-56
+> **Última atualização:** 18/11/2026 — S17.1 (C4-55 no aparelho + C4-56)
+> **Último commit:** C4-56 — `docs(c4): close the cycle with device smoke and closing docs (C4-55, C4-56)`
+> **Fase:** 4 — Fechamento — **S17 encerrada; Ciclo 4 DONE**
+> **Sessão atual:** **S17.1 — C4-55 DONE; C4-56 DONE**
+> **Task atual:** — (ciclo encerrado)
+> **Próxima task:** P1-12 (4 semanas de uso real) / Fase 2 — fora do Ciclo 4
 > **Bloqueios:** nenhum
-> **Gates da última sessão:** `:core:domain:test` 1099, `:app:testDebugUnitTest` 963, `:core:data:test` 208, `:core:model` 40 = 2.310 testes; app completo verde com `--rerun-tasks --no-parallel` (dois flakes conhecidos em execuções paralelas, ambos verdes isolados); `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes
-> **Próxima ação:** concluir C4-55 (qualidade em BUILD/PEAK, review com extra) e C4-56.
+> **Gates da última sessão:** `:core:domain:test` 1099, `:app:testDebugUnitTest` 963, `:core:data:test` 208, `:core:model` 40 = 2.310 testes; app completo verde com `--rerun-tasks --no-parallel` (flake conhecido `TutorialSystemBackTest` na 1ª passagem, verde isolado e na 2ª passagem); `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes
+> **Próxima ação:** nenhuma neste ciclo; o §7 registra o encerramento.
 
 ### 0.1 O que já está pronto
 
@@ -639,8 +639,8 @@ C4-53 → C4-54 → C4-55 → C4-56
 | [x] | C4-53 | Versões de motor (`weekly-v7`, `daily-v6`) | C4-47 | S | S16 | ADR 0048 | Testes | `weekly-plan-v7`/`daily-prescription-v6`; `WeeklyPlanGeneratorTest`/`DailyPrescriptionEngineTest` (strings exatas) + `GetTodayPrescriptionTest` (v5→v6); stale fixtures v5→v6; upgrade v6→v7 real; commit S16 |
 | [x] | C4-54 | Suíte completa/goldens/Kover/detekt/spotless | C4-01..53 | XL | S16 | TESTING | Gates verdes | Suítes forçadas 2.306 testes (1099 domain/959 app/208 data/40 model), 0 falhas/erros/skip; `check`, `assembleDebug`, `koverVerify`, `spotlessCheck` e goldens da fase verdes; commit S16.1 |
 | [x] | C4-61 | Copy da confiança baixa e do `DATA_READY` | C4-48/C4-54 | S | S17 | FR-412 | Testes; sem contradição | `TodayExplanationPlanTest` (+4: histórico × recuperação × carga; nota); `TodayPlanTest` (motivo real); `PlanReplannerTest` (DATA_READY sem "dados completos"); commit S17 |
-| [~] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | Smoke sintético E2E no aparelho (onboarding, plano BASE, gate do dia, check-in, briefing, FIT, prova, DATA_READY) + restauração hash-verificada; falta validar qualidade em BUILD/PEAK e review com extra |
-| [ ] | C4-56 | Docs `PROGRESS`, `ROADMAP`, `DECISIONS`, `TESTING` | C4-54/55 | S | S17 | AGENTS | Docs | — |
+| [x] | C4-55 | Smoke no aparelho (sintético + real read-only) | C4-54 | M | S17 | TESTING | Checklist | PEAK 5K com qualidade `RACE_PACE` na terça + gate do dia (`SUBJECTIVE_MISSING` → `LOW_READINESS` âmbar com o sono objetivo curto da noite passada; restore coberto por testes); review com extra e noite de 36 min fora de alcance sem relógio/escrita em dado real (cobertos por `G-VOL-02`/`G-DATA-02` + testes); restauração hash-verificada |
+| [x] | C4-56 | Docs `PROGRESS`, `ROADMAP`, `DECISIONS`, `TESTING` | C4-54/55 | S | S17 | AGENTS | Docs | `PROGRESS`/`ROADMAP`/`DECISIONS` r1.53/`TESTING` com flakes conhecidos; Ciclo 4 encerrado |
 
 ### E10 — Alvos/horizonte/higiene
 
@@ -1125,6 +1125,20 @@ C4-53 → C4-54 → C4-55 → C4-56
 - **Decisões/notas:** o smoke foi feito com dados sintéticos e dados reais somente leitura. As pastas de dados reais foram renomeadas no próprio aparelho (`databases`, `shared_prefs`, `no_backup`, `files`), o app foi reaberto do zero, o onboarding sintético foi preenchido, uma fixture FIT sanitizada foi importada, o check-in 5/1/1/1 foi salvo, uma prova 5K foi criada e o plano foi reavaliado; no fim as pastas reais foram restauradas, com 16 hashes, contagem/tamanho de `files` e permissões do Health Connect conferidos. Nada de dado real no repo; as 60 capturas do cenário sintético (com leituras reais de Health Connect somente leitura) ficam em `/tmp/opencode/meucoach-smoke-20261117` e podem ser apagadas. O smoke validou onboarding, plano BASE (longão 45, sem qualidade na primeira metade), gate do dia (strides 25 → fácil 20), check-in sem default com “Salvar” bloqueado, briefing (8 min + 2×20 s + recuperações + 9 min = 20), importação FIT (4,05 km/27:55/6:54/km), prova 5K com meta 30:00 (6:00/km; “sem previsão”) e o `DATA_READY` v1→v2. Achado (C4-61): o plano inicial é `LOW` por falta de histórico de volume, mas a UI culpava “dados de recuperação parciais” e o `DATA_READY` dizia “dados completos”; agora a explicação distingue histórico (`R-PLAN-01` ausente), carga (`R-DATA-01`) e recuperação, a nota do card usa o mesmo motivo e a confiança não afirma mais que não muda na semana. C4-55 segue aberto apenas para os cenários que o plano sintético não alcançou: qualidade em BUILD/PEAK, review com treino extra e noite de 36 min. Nenhum dado real no diff; nenhuma migração; sem `fallbackToDestructiveMigration`.
 - **Próximo:** concluir C4-55 nos cenários restantes e fechar C4-56.
 
+### S17.1 — 2026-11-18 — Smoke PEAK no aparelho + docs de fechamento (C4-55, C4-56)
+
+- **Status:** C4-55 DONE; C4-56 DONE; **Ciclo 4 encerrado**.
+- **Tasks:** C4-55 (smoke) e C4-56 (docs). Nenhum código de produção alterado.
+- **Cenário sintético (dados reais isolados por renomeação, HC só leitura):** perfil intermediário, meta 5K em 01/12/2026, disponibilidade ter/qui/sáb/dom 40 min. Plano PEAK "4 treinos · 97 min": TER `Pace de prova 5K` 25 (`RACE_PACE`), QUI `Strides curtos` 20, SÁB fácil 22, DOM longão; "PRÓXIMO TREINO: Qualidade a confirmar".
+- **Gate do dia no aparelho:** sem check-in, o card rebaixa para "Qualidade a confirmar" com o rationale exato do `SUBJECTIVE_MISSING` ("check-in subjetivo de hoje ainda não foi respondido…"). Check-in 4/2/2/2 → prontidão 59 Moderada (o sono objetivo curto pesa) e o gate segura no `LOW_READINESS` ("prontidão moderada (score 59)…"); 5/1/1/1 → 68 Moderada, gate mantido pelo sono objetivo curto. Comportamento correto: a restauração EASY→QUALITY não é alcançável esta noite sem fabricar dado de saúde — coberta por `QualityRestorationTest` (7), `GetTodayPrescriptionTest` (+6 reavaliação) e o E2E da C4-31 (10 FITs + check-in → KEEP + nota "Atualizado", 2 versões).
+- **Fora de alcance sem violar as regras:** review "planejada/mantida/rebaixada" com extra exige semana fechada (relógio do aparelho; mexer nele contaminaria o Health Connect real) — coberto por `QualityWeekSummaryTest` (7), calculadora/formato/VM/tela da C4-43 e `G-VOL-02`; noite de 36 min no Health Connect exigiria ESCREVER no store real de saúde — coberto por `G-DATA-02` (36 min → suspeita/`null`, qualidade mantida), `SleepNightValidatorTest` (12) e `HealthMetricsAggregatorTest` (+5). Nenhum dado real no repo; capturas sintéticas em `/tmp` (a pasta do smoke anterior foi apagada; a desta sessão fica fora do repo).
+- **Restauração:** force-stop + renomeação dos 4 dirs, restore com 16/16 hashes iguais, `files` idêntico (3 arquivos, mesmo tamanho), permissões do Health Connect conferidas; app reaberto no perfil real sem crash.
+- **Achéus de ferramenta:** `adb` fora do `PATH` (usar `~/Android/Sdk/platform-tools/adb`); `wm size` 1080x2340 (não 1440x3120); taps em toggles deslocam as linhas (medir com scan de pixels antes de tocar em lote); campo nome só foca tocando baixo na caixa (~y1000); `uiautomator dump` falha neste aparelho (fallback: decoder PNG em stdlib).
+- **Testes/gates:** `:core:model:test` 40, `:core:domain:test` 1099, `:core:data:testDebugUnitTest` 208 e `:app:testDebugUnitTest` 963 = **2.310, 0 falhas/erros/skips**; `:app` verde na 2ª passagem `--rerun-tasks --no-parallel` (a 1ª caiu no flake conhecido `TutorialSystemBackTest`, verde isolado); `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes.
+- **Docs (C4-56):** `PROGRESS.md` (esta sessão), `ROADMAP.md` (Ciclo 4 encerrado, v1.57), `DECISIONS.md` (r1.53), `TESTING.md` (contagens 2.310 + flakes conhecidos), este checklist (§0/§6/§7/§10.3).
+- **Commits:** `docs(c4): close the cycle with device smoke and closing docs (C4-55, C4-56)`.
+- **Próximo:** P1-12 (4 semanas de uso real) / Fase 2 — fora do Ciclo 4.
+
 ---
 
 ## 8. Decisões e ADRs
@@ -1206,14 +1220,14 @@ Se a task toca `:app`/`:data`:
 - `detekt`/lint sem erros novos; baseline só com dívida real.
 - Nenhum `@Ignore` novo.
 
-### 10.3 Contagens de referência (16/11/2026)
+### 10.3 Contagens de referência (18/11/2026, fechamento)
 
 | Módulo | Testes | Observação |
 |---|---:|---|
-| `:app` | 958 | Atualizar conforme novos testes |
-| `:core:domain` | 1092 | Atualizar conforme novos testes |
-| `:core:data` | 207 | Atualizar |
-| `:core:model` | 40 | Atualizar |
+| `:app` | 963 | `--rerun-tasks --no-parallel` verde (flake `TutorialSystemBackTest` na 1ª passagem) |
+| `:core:domain` | 1099 | `--rerun-tasks` verde |
+| `:core:data` | 208 | `--rerun-tasks` verde |
+| `:core:model` | 40 | `--rerun-tasks` verde |
 
 Os números são referência; o gate é “todos verdes”, não o número exato.
 

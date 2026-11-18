@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.56 · **Data:** 15/11/2026 · **Mudança:** Ciclo 2 do motor do coach encerrado — SPORTS_SCIENCE v1.1 (gate de carga v2, taper com micro-dose, recovery por severidade), ADR 0041 (mesociclos por histórico real, weekly-plan-v6) e ADR 0042 (graduação de nível com aceite, fatias 4a/4b); sem mudança de código.
+**Versão:** 1.57 · **Data:** 18/11/2026 · **Mudança:** Ciclo 4 (treino real) encerrado — smoke PEAK no aparelho com gate do dia (C4-55) e docs de fechamento (C4-56); `DECISIONS` r1.53, `TESTING` com flakes conhecidos; sem mudança de código.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -9,7 +9,7 @@
 | Fase | Objetivo | Status |
 |---|---|---|
 | **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Concluída em 30/10/2026** |
-| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclo 1 concluído** |
+| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclos 1–4 concluídos no motor; P1-12 (4 semanas de uso real) pendente** |
 | **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada |
 | **3 — Experimental** | Social, conector Zepp, explicações com LLM | Planejada |
 
@@ -425,6 +425,26 @@ acima (replanejamento R-01..R-03 e sessão guiada G, outro trabalho).
 
 - Validar o card 4b com os dados do usuário 0 (6 semanas reais → sugestão só com base completa); sem `fixtures/private/`, valeu só a validação sintética (`G-LVL-01`).
 - Relação taper × deload continua no backlog; periodização por nível (FR-012) concluída pelo ADR 0043 em 15/11/2026.
+
+### Ciclo 4 — Treino real (PRD v1.1 + ADRs 0044–0050) — concluído em 18/11/2026
+
+**Status:** concluído — S0 a S17.1, C4-01 a C4-61 (65 tasks, incluindo C4-61 de copy). **Docs:** [`docs/PRD_TREINO_REAL.md`](PRD_TREINO_REAL.md) v1.1, ADRs 0044–0050 implementados, checklist em [`docs/CICLO_4_TREINO_REAL.md`](CICLO_4_TREINO_REAL.md).
+**Gates de fechamento:** 2.310 testes (1099 domain / 963 app / 208 data / 40 model), 0 falhas; `check -x :app:testDebugUnitTest`, `assembleDebug`, `koverVerify` e `spotlessCheck` verdes; app verde com `--rerun-tasks --no-parallel` (flakes conhecidos abaixo).
+
+| Entrega | Estado |
+|---|---|
+| Oportunidade estrutural + `QualityGate` no dia + reavaliação antes do `DONE` (C4-01..C4-08, C4-29, C4-50..C4-52; `G-PER-03`, `R-PER-03`, `R-PRESC-02`) | Concluída em S7/S8/S11 |
+| Longão com piso/título honesto + `fitToVolume` (`G-PER-04`, `R-PLAN-03 v2`) | Concluída em S2 |
+| Catálogo/periodização, estrutura executável, rotação, PEAK dinâmico, precedência FC×pace (`G-PER-05`, `G-PER-06`, `R-PER-01/02/04`) | Concluída em S6/S12/S15 |
+| ACWR 1,5 confiável em 28 dias + copy "em calibração" (`G-LOAD-03`, `R-LOAD-03 v3`) | Concluída em S3/S14 |
+| Prontidão sem inversão + sono plausível (`G-READY-05`, `G-DATA-02`, `R-READY-06`, `R-DATA-02`) | Concluída em S4/S14 |
+| Volume real/treino extra + review "planejada/mantida/rebaixada" (`G-VOL-02`, `R-PLAN-01 v2`, `R-LVL-03`) | Concluída em S5/S13 |
+| Schema v18, `PlanUpgrade`, triggers `DATA_READY`/`ENGINE_UPGRADE`, versões `weekly-plan-v7`/`daily-v6` (`G-UPGRADE-01`) | Concluída em S9/S10/S16 |
+| Suíte completa + smoke PEAK no aparelho (C4-54/C4-55) + fechamento docs (C4-56) | Concluída em S16/S17 |
+
+**Smoke no aparelho (C4-55, 18/11/2026):** perfil sintético intermediário, 5K a 14 dias, ter/qui/sáb/dom → plano PEAK com `Pace de prova 5K` na terça + gate `SUBJECTIVE_MISSING` sem check-in e trava âmbar (`LOW_READINESS`, sono objetivo curto da noite passada) com 4/2/2/2 e 5/1/1/1; restore EASY→QUALITY coberto por testes (inviável sem fabricar dado de saúde); review com extra e noite de 36 min cobertos por `G-VOL-02`/`G-DATA-02` + testes (semana fechada exige relógio; sono exige escrita no store real); restauração hash-verificada 16/16.
+
+**Pendências herdadas (não bloqueiam o fechamento):** link de disponibilidade no título "Corrida mais longa" (C4-51, observado); passagem de `phase`/`raceWeek` pela produção (o plano não persiste a fase); flakes conhecidos `TutorialSystemBackTest` e `MetricsImportViewModelTest` (ver `TESTING.md`).
 
 ### Ciclo 3 — C3-01A/B, C3-02, C3-03/04, C3-05, C3-06 e C3-G2 implementados; C3-G1 detalhado (11/11/2026)
 

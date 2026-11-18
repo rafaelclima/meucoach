@@ -1,6 +1,31 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 17/11/2026 (S17 do Ciclo 4: smoke sintético no aparelho + copy da confiança, C4-55 parcial/C4-61)
+**Atualizado:** 18/11/2026 (S17.1 do Ciclo 4: smoke PEAK no aparelho + docs de fechamento, C4-55/C4-56 — Ciclo 4 encerrado)
+
+## Sessão 2026-11-18 — Ciclo 4/S17.1: smoke PEAK no aparelho + docs de fechamento (C4-55, C4-56)
+
+**Objetivo:** validar a qualidade de PEAK com o gate do dia no aparelho e encerrar o Ciclo 4 nos docs.
+
+### Concluído
+
+- **C4-55 (smoke):** perfil sintético intermediário, 5K em 01/12/2026, ter/qui/sáb/dom 40 min → plano PEAK "4 treinos · 97 min" com TER `Pace de prova 5K` 25 (`RACE_PACE`), "PRÓXIMO TREINO: Qualidade a confirmar". Sem check-in, o dia rebaixa para "Qualidade a confirmar" com o rationale do `SUBJECTIVE_MISSING`; check-in 4/2/2/2 → prontidão 59 Moderada e o gate segura no `LOW_READINESS` (sono objetivo curto da noite passada); 5/1/1/1 → 68 Moderada, gate mantido. A restauração EASY→QUALITY não é alcançável esta noite sem fabricar dado de saúde (coberta por `QualityRestorationTest`, `GetTodayPrescriptionTest` e o E2E da C4-31). Review com extra e noite de 36 min fora de alcance sem relógio/escrita em dado real (cobertos por C4-43 + `G-VOL-02` e `G-DATA-02` + testes de sono). Dados reais isolados por renomeação e restaurados com 16/16 hashes, `files` idêntico e permissões do Health Connect conferidas; app reaberto no perfil real sem crash. Nada de dado real no repo.
+- **C4-56 (docs):** `CICLO_4_TREINO_REAL.md` (§0/§6/§7/§10.3), `ROADMAP.md` (Ciclo 4 encerrado, v1.57), `DECISIONS.md` (r1.53) e `TESTING.md` (contagens 2.310 + flakes conhecidos).
+
+### Testes
+
+- `:core:domain:test` 1099; `:app:testDebugUnitTest` 963; `:core:data:test` 208; `:core:model` 40 = **2.310 testes, 0 falhas/erros/skips**.
+- App verde na 2ª passagem `--rerun-tasks --no-parallel` (a 1ª caiu no flake conhecido `TutorialSystemBackTest`, verde isolado); `check -x :app:testDebugUnitTest`, `:app:assembleDebug`, `koverVerify` e `spotlessCheck` verdes.
+- Flakes conhecidos registrados em `TESTING.md`: `TutorialSystemBackTest` (cascata `UncaughtExceptionsBeforeTest` com transação Room vazada) e `MetricsImportViewModelTest` (timeout de 30 s); ambos passam isolados.
+
+### Decisões e observações
+
+- O gate segurou a qualidade com 5/1/1/1 por causa do sono objetivo curto da noite passada: precedência sono > subjetivo funcionando como projetado; sem verde objetivo não há KEEP.
+- C4-55 marcado DONE com escopo explícito: o que o aparelho não alcança sem violar privacidade/relógio fica amarrado a golden + teste, sem lacuna de cobertura.
+- Nenhum dado real no diff; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Próximo passo
+
+1. P1-12 (4 semanas de uso real) / Fase 2 — fora do Ciclo 4.
 
 ## Sessão 2026-11-17 — Ciclo 4/S17: smoke sintético no aparelho + copy da confiança (C4-55 parcial, C4-61)
 
