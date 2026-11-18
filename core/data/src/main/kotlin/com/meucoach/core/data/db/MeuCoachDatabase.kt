@@ -9,6 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.AthleteProfileDao
+import com.meucoach.core.data.db.dao.CoachMessageDao
+import com.meucoach.core.data.db.dao.CoachSummaryDao
 import com.meucoach.core.data.db.dao.DailyCheckInDao
 import com.meucoach.core.data.db.dao.DailyMetricsDao
 import com.meucoach.core.data.db.dao.DailyPrescriptionDao
@@ -22,6 +24,8 @@ import com.meucoach.core.data.db.dao.WeeklyPlanRevisionDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
+import com.meucoach.core.data.db.entity.CoachMessageEntity
+import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
@@ -50,6 +54,8 @@ import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
         SessionExecutionEntity::class,
         WeeklyPlanRevisionEntity::class,
         RaceEventEntity::class,
+        CoachMessageEntity::class,
+        CoachSummaryEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -81,8 +87,12 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun raceEventDao(): RaceEventDao
 
+    abstract fun coachMessageDao(): CoachMessageDao
+
+    abstract fun coachSummaryDao(): CoachSummaryDao
+
     companion object {
-        const val VERSION = 18
+        const val VERSION = 19
         const val NAME = "meucoach.db"
 
         /**
@@ -573,6 +583,53 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 19 adds the local IA Coach memory (ADR 0052).
+         *
+         * Both tables start empty: no historical conversation is invented by the
+         * migration, and no existing table is rewritten. Revoking the opt-in
+         * deletes only these rows; export/delete include them explicitly.
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `coach_messages` (
+                        `id` TEXT NOT NULL,
+                        `kind` TEXT NOT NULL,
+                        `inputsHash` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `bulletsJson` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_coach_messages_createdAt` " +
+                        "ON `coach_messages` (`createdAt`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_coach_messages_kind_inputsHash` " +
+                        "ON `coach_messages` (`kind`, `inputsHash`)",
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `coach_summaries` (
+                        `weekStart` TEXT NOT NULL,
+                        `inputsHash` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `bulletsJson` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`weekStart`)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -593,6 +650,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_15_16,
                 MIGRATION_16_17,
                 MIGRATION_17_18,
+                MIGRATION_18_19,
             )
             .build()
     }

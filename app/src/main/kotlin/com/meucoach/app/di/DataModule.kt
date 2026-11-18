@@ -15,6 +15,7 @@ import com.meucoach.app.level.LevelGraduationSuggestionStore
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.tutorial.TutorialStore
+import com.meucoach.core.data.coach.CoachMemoryRepository
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.epoch.DataEpochStore
 import com.meucoach.core.data.epoch.DataWriteMutex
@@ -172,6 +173,11 @@ object DataModule {
     @Provides
     @Singleton
     fun provideCoachConsentStore(@ApplicationContext context: Context): CoachConsentStore = CoachConsentStore(context)
+
+    @Provides
+    @Singleton
+    fun provideCoachMemoryRepository(database: MeuCoachDatabase, clock: Clock): CoachMemoryRepository =
+        CoachMemoryRepository(database, clock)
 
     @Provides
     @Singleton

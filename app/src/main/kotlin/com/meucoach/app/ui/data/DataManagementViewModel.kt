@@ -185,11 +185,23 @@ class DataManagementViewModel @Inject constructor(
         return "$base Alguns arquivos não puderam ser removidos: ${failedCleanups.joinToString("; ")}."
     }
 
-    private fun UserDataDeletion.message(): String = if (removedAnything) {
-        "Dados apagados deste aparelho: " +
-            "$activities corrida(s), $checkIns check-in(s), $metrics dia(s) de métricas e $plans plano(s). " +
-            "O app volta para a configuração inicial."
-    } else {
-        "Não havia dados para apagar."
+    private fun UserDataDeletion.message(): String {
+        if (!removedAnything) return "Não havia dados para apagar."
+        val base = "Dados apagados deste aparelho: " +
+            "$activities corrida(s), $checkIns check-in(s), $metrics dia(s) de métricas e $plans plano(s)."
+        return "$base${coachMemoryNote()} O app volta para a configuração inicial."
+    }
+
+    private fun UserDataDeletion.coachMemoryNote(): String {
+        val parts = buildList {
+            if (coachMessages > 0) {
+                add("$coachMessages ${if (coachMessages == 1) "mensagem" else "mensagens"}")
+            }
+            if (coachSummaries > 0) {
+                add("$coachSummaries ${if (coachSummaries == 1) "resumo" else "resumos"}")
+            }
+        }
+        if (parts.isEmpty()) return ""
+        return " O histórico do Coach também foi apagado (${parts.joinToString(" e ")})."
     }
 }

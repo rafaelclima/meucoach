@@ -144,8 +144,9 @@ internal fun DataManagementContent(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Um arquivo JSON com perfil, corridas, check-ins, métricas diárias e planos. " +
-                                "As amostras aparecem só como contagem; o blob comprimido não sai do app.",
+                            text = "Um arquivo JSON com perfil, corridas, check-ins, métricas diárias, planos " +
+                                "e o histórico do Coach. As amostras aparecem só como contagem; " +
+                                "o blob comprimido não sai do app.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -213,9 +214,10 @@ internal fun DataManagementContent(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Remove deste aparelho o perfil, as corridas, os check-ins, as métricas diárias " +
-                                "e os planos, além de caches e arquivos internos do app. O Health Connect " +
-                                "não é alterado. O app volta para a configuração inicial e não dá para desfazer.",
+                            text = "Remove deste aparelho o perfil, as corridas, os check-ins, as métricas diárias, " +
+                                "os planos e o histórico do Coach, além de caches e arquivos internos do app. " +
+                                "O Health Connect não é alterado. O app volta para a configuração inicial " +
+                                "e não dá para desfazer.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -271,8 +273,8 @@ internal fun DataManagementContent(
             title = { Text(text = "Apagar todos os dados?") },
             text = {
                 Text(
-                    text = "Perfil, corridas, check-ins, métricas, planos, caches e arquivos internos serão " +
-                        "removidos deste aparelho. O Health Connect não é alterado. " +
+                    text = "Perfil, corridas, check-ins, métricas, planos, histórico do Coach, caches e arquivos " +
+                        "internos serão removidos deste aparelho. O Health Connect não é alterado. " +
                         "Exporte um backup antes se quiser guardar o histórico.",
                 )
             },

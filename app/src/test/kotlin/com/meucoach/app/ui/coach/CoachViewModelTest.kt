@@ -24,6 +24,7 @@ import com.meucoach.app.replan.ReplanControllerFactory
 import com.meucoach.app.replan.ReplanOperations
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.core.data.coach.CoachMemoryRepository
 import com.meucoach.core.data.coach.FakeCoachApi
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.repository.ActivityRepository
@@ -47,6 +48,7 @@ import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
 import com.meucoach.core.model.DataConfidence
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,6 +79,7 @@ class CoachViewModelTest {
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
     private lateinit var database: MeuCoachDatabase
+    private lateinit var memory: CoachMemoryRepository
     private lateinit var profiles: ProfileRepository
     private lateinit var checkIns: CheckInRepository
     private lateinit var planRepository: TrainingPlanRepository
@@ -121,6 +124,7 @@ class CoachViewModelTest {
             .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
             .allowMainThreadQueries()
             .build()
+        memory = CoachMemoryRepository(database, clock)
         profiles = ProfileRepository(database, clock)
         checkIns = CheckInRepository(database, clock)
         planRepository = TrainingPlanRepository(database, clock)
@@ -168,6 +172,8 @@ class CoachViewModelTest {
             override fun observeLastClosedWeek() = reviews
         },
         api = api,
+        memory = memory,
+        appScope = CoroutineScope(Dispatchers.Unconfined),
         replanFactory = replanFactory,
     )
 
@@ -258,13 +264,14 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `sem consentimento nao chama a api`() {
+    fun `sem consentimento nao chama a api`(): Unit = runBlocking {
         plans.value = CoachPlanContext(plan(), "hash1")
         val api = FakeCoachApi(error = IOException("nao deveria chamar"))
         val vm = viewModel(api)
 
         assertThat(vm.explanation.value).isInstanceOf(CoachExplanationState.Unavailable::class.java)
         assertThat(api.calls).isEqualTo(0)
+        assertThat(database.coachMessageDao().getAll()).isEmpty()
     }
 
     @Test
@@ -286,6 +293,87 @@ class CoachViewModelTest {
             }
         }
         assertThat(api.calls).isEqualTo(2)
+    }
+
+    @Test
+    fun `resposta valida grava a mensagem do coach`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(
+            FakeCoachApi(
+                CoachRawResponse(title = "Foco", body = "Vamos manter os 30 min.", bullets = listOf("Base")),
+            ),
+        )
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+
+        val message = database.coachMessageDao().getAll().single()
+
+        assertThat(message.kind).isEqualTo("EXPLAIN")
+        assertThat(message.inputsHash).isEqualTo("hash1")
+        assertThat(message.title).isEqualTo("Foco")
+        assertThat(message.bulletsJson).isEqualTo("[\"Base\"]")
+    }
+
+    @Test
+    fun `fallback nao grava memoria`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "Corra a 6:10/km")))
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Fallback::class.java)
+        assertThat(database.coachMessageDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `revisao valida grava mensagem e resumo da semana`(): Unit = runBlocking {
+        consent.grant()
+        reviews.value = weeklyReview()
+        val vm = viewModel(
+            FakeCoachApi(CoachRawResponse(title = "Semana passada", body = "3 de 4 sessões, 75% do volume.")),
+        )
+
+        assertThat(awaitReviewSettled(vm)).isInstanceOf(CoachReviewState.Ready::class.java)
+
+        val message = database.coachMessageDao().getAll().single()
+        assertThat(message.kind).isEqualTo("REVIEW")
+        assertThat(message.inputsHash)
+            .isEqualTo(com.meucoach.core.domain.coach.CoachReviewPromptBuilder.build(weeklyReview()).inputsHash)
+
+        val summary = database.coachSummaryDao().getAll().single()
+        assertThat(summary.weekStart).isEqualTo("2026-11-09")
+        assertThat(summary.title).isEqualTo("Semana passada")
+        assertThat(summary.inputsHash).isEqualTo(message.inputsHash)
+    }
+
+    @Test
+    fun `revogar apaga a memoria do coach e preserva os treinos`(): Unit = runBlocking {
+        planRepository.saveWeek(plan())
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Foco", body = "Vamos manter os 30 min.")))
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+        assertThat(database.coachMessageDao().getAll()).hasSize(1)
+        memory.recordSummary(
+            weekStart = LocalDate.of(2026, 11, 9),
+            inputsHash = "review-1",
+            title = "Semana",
+            body = "3 de 4",
+            bullets = emptyList(),
+        )
+        assertThat(database.coachSummaryDao().getAll()).hasSize(1)
+
+        vm.revoke()
+
+        withTimeout(2_000) {
+            while (database.coachMessageDao().getAll().isNotEmpty()) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(consent.isConsented()).isFalse()
+        assertThat(vm.consented.value).isFalse()
+        assertThat(vm.explanation.value).isInstanceOf(CoachExplanationState.Unavailable::class.java)
+        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.trainingPlanDao().getPlan("2026-11-16")).isNotNull()
     }
 
     @Test

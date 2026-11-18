@@ -5,6 +5,8 @@ import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
+import com.meucoach.core.data.db.entity.CoachMessageEntity
+import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
@@ -31,10 +33,13 @@ data class UserDataDeletion(
     val executions: Int = 0,
     val planRevisions: Int = 0,
     val raceEvents: Int = 0,
+    val coachMessages: Int = 0,
+    val coachSummaries: Int = 0,
 ) {
     val removedAnything: Boolean
         get() = activities > 0 || checkIns > 0 || metrics > 0 || plans > 0 ||
-            prescriptions > 0 || executions > 0 || planRevisions > 0 || raceEvents > 0 || profileDeleted
+            prescriptions > 0 || executions > 0 || planRevisions > 0 || raceEvents > 0 ||
+            coachMessages > 0 || coachSummaries > 0 || profileDeleted
 }
 
 /**
@@ -62,6 +67,8 @@ class UserDataRepository(
                 .put("dailyPrescriptions", exportPrescriptions())
                 .put("sessionExecutions", exportExecutions(trashedIds))
                 .put("raceEvents", exportRaceEvents())
+                .put("coachMessages", exportCoachMessages())
+                .put("coachSummaries", exportCoachSummaries())
                 .put("activities", exportActivities(includeTrash))
                 .put(
                     "importJobs",
@@ -88,6 +95,8 @@ class UserDataRepository(
             database.trainingPlanDao().deleteAllSessions()
             val plans = database.trainingPlanDao().deleteAllPlans()
             val prescriptions = database.dailyPrescriptionDao().deleteAll()
+            val coachMessages = database.coachMessageDao().deleteAll()
+            val coachSummaries = database.coachSummaryDao().deleteAll()
             val profileDeleted = database.profileDao().deleteAll() > 0
             UserDataDeletion(
                 activities = activities,
@@ -99,6 +108,8 @@ class UserDataRepository(
                 executions = executions,
                 planRevisions = planRevisions,
                 raceEvents = raceEvents,
+                coachMessages = coachMessages,
+                coachSummaries = coachSummaries,
             )
         }
         // A fresh profile must read the full initial Health Connect window again.
@@ -157,6 +168,16 @@ class UserDataRepository(
         .raceEventDao()
         .getAll()
         .toJsonArray { it.toJson() }
+
+    private suspend fun exportCoachMessages(): JSONArray = database
+        .coachMessageDao()
+        .getAll()
+        .toJsonArray { it.toJson() }
+
+    private suspend fun exportCoachSummaries(): JSONArray = database
+        .coachSummaryDao()
+        .getAll()
+        .toJsonArray { it.toJson() }
 }
 
 private inline fun <T> List<T>.toJsonArray(crossinline toJson: (T) -> JSONObject): JSONArray {
@@ -176,6 +197,25 @@ private fun RaceEventEntity.toJson(): JSONObject = JSONObject().apply {
     put("createdAt", Instant.ofEpochMilli(createdAt).toString())
     put("updatedAt", Instant.ofEpochMilli(updatedAt).toString())
     put("resolvedAt", resolvedAt?.let { Instant.ofEpochMilli(it).toString() } ?: JSONObject.NULL)
+}
+
+private fun CoachMessageEntity.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    put("kind", kind)
+    put("inputsHash", inputsHash)
+    put("title", title)
+    put("body", body)
+    put("bullets", runCatching { JSONArray(bulletsJson) }.getOrElse { JSONArray() })
+    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
+}
+
+private fun CoachSummaryEntity.toJson(): JSONObject = JSONObject().apply {
+    put("weekStart", weekStart)
+    put("inputsHash", inputsHash)
+    put("title", title)
+    put("body", body)
+    put("bullets", runCatching { JSONArray(bulletsJson) }.getOrElse { JSONArray() })
+    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
 }
 
 private fun AthleteProfileEntity.toJson(): JSONObject = JSONObject().apply {
