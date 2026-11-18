@@ -2,6 +2,7 @@ package com.meucoach.app.ui.today
 
 import android.content.Context
 import android.os.Looper
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.app.application.CompleteSession
@@ -45,6 +46,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -80,6 +82,7 @@ class TodayViewModelPersistTest {
     private lateinit var prescriptions: DailyPrescriptionRepository
     private lateinit var raceEvents: RaceEventRepository
     private var nextActivityId = 0
+    private val viewModels = mutableListOf<TodayViewModel>()
 
     @Before
     fun setUp() {
@@ -109,6 +112,11 @@ class TodayViewModelPersistTest {
 
     @After
     fun tearDown() {
+        // Cancel the ViewModel scopes before closing the in-memory database: a
+        // collection still subscribed to the plan can leave a Room transaction
+        // in flight and leak "no current transaction" into the next test.
+        viewModels.forEach { it.viewModelScope.cancel() }
+        viewModels.clear()
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
@@ -979,7 +987,7 @@ class TodayViewModelPersistTest {
             coordinator,
             UpgradeWeekOnOpening(contexts, plans),
             prescriptions,
-        )
+        ).also { viewModels += it }
     }
 
     private fun syncCoordinator(status: HealthConnectStatus = HealthConnectStatus.AVAILABLE): HealthSyncCoordinator {
