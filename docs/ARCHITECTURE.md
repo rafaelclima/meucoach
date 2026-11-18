@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.10 · **Data:** 10/11/2026 · **Reconciliação:** C3-01A/B e C3-02 implementados (guarda de iniciante, fingerprint/T4/schema 14 e avaliação ao salvar Perfil/Calibração); demais gates do Ciclo 3 pendentes.
+**Versão:** 1.11 · **Data:** 18/11/2026 · **Reconciliação:** IA Coach F1/F4 + 3.2 + 3.3-A/B e Room v19 (memória local, ADR 0052).
 
 ## 1. Restrições e forças
 
@@ -22,7 +22,7 @@ flowchart LR
         DOM[core:domain\nzonas · carga · prontidão · prescrição · evidência]
         TIME[TimeProvider\nfuso do perfil]
         REPO[Repositórios]
-        ROOM[(Room v14 / SQLite)]
+        ROOM[(Room v19 / SQLite)]
         HC[Health Connect]
         IMP[Import\nFIT · TCX · GPX · CSV]
         FS[Arquivos originais]
@@ -274,9 +274,10 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 ## 7. Persistência
 
-- **Room/SQLite** como fonte de verdade local; versão atual **18** (`MeuCoachDatabase.VERSION`).
-- `:core:data` implementa `MeuCoachDatabase` v18 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity` e `RaceEventEntity`.
-- DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository`, `RaceEventRepository` e `UserDataRepository`.
+- **Room/SQLite** como fonte de verdade local; versão atual **19** (`MeuCoachDatabase.VERSION`).
+- `:core:data` implementa `MeuCoachDatabase` v19 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity`, `RaceEventEntity`, `CoachMessageEntity` e `CoachSummaryEntity`.
+- DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository`, `RaceEventRepository`, `CoachMemoryRepository` e `UserDataRepository`.
+- **Memória do Coach (v19, ADR 0052):** `CoachViewModel` grava somente texto validado e apenas com opt-in; `CoachMemoryRepository` aplica TTL preguiçoso (90 dias para mensagens, 180 para resumos), deduplica `(kind, inputsHash)` e apaga tudo na revogação (em escopo de aplicação). A memória não entra em prompt nesta fatia e nunca decide carga, pace ou plano; export/delete a incluem.
 - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda (não há série downsampled persistida).
 - UUID v7 gerado no cliente para IDs ordenáveis.
 - Importação por `ImportCoordinator`/`ImportService` + fila `WorkManager` (`ImportWorker`, `@HiltWorker`); arquivos passam por `ImportStaging` e são copiados para storage privado antes do processamento.
@@ -286,7 +287,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - “Apagar tudo” usa transação + `DataEpochStore` + `DataWriteMutex`: gira a época, cancela importação/saúde/lembretes/story/expurgo, limpa banco, staging, avatar, cache e preferências; Health Connect externo não é tocado (`ADR 0025`).
 - Arquivos originais em storage privado do app, referenciados por hash; o arquivo temporário de staging é limpo após o processamento.
 - `SharedPreferences`/DataStore apenas para preferências e marcas d'água (tema, unidades, onboarding, tutorial, `firstRun`, `HealthSyncStore`, `DataEpochStore`).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`), `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior), `16→17` (proveniência de calibração em `athlete_profile`: `vdotSource`/`vdotCalibratedAt`/`vdotReferenceDistanceM`/`vdotReferenceDurationSec`, ADR 0036) e `17→18` (C4-45: `generatorVersion` com default `'weekly-plan-v6'` em `weekly_plans`; `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` em `planned_sessions`; `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` em `daily_prescriptions`; nada reescrito, desconhecido vira `null`).
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`), `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior), `16→17` (proveniência de calibração em `athlete_profile`: `vdotSource`/`vdotCalibratedAt`/`vdotReferenceDistanceM`/`vdotReferenceDurationSec`, ADR 0036), `17→18` (C4-45: `generatorVersion` com default `'weekly-plan-v6'` em `weekly_plans`; `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` em `planned_sessions`; `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` em `daily_prescriptions`; nada reescrito, desconhecido vira `null`) e `18→19` (ADR 0052: `coach_messages`/`coach_summaries` vazias, sem reescrever treino).
 - Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
 
 ## 8. Health Connect
@@ -396,6 +397,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0036](adr/0036-race-time-prediction-vdot-riegel.md) — previsão de prova por VDOT/Riegel
 - [ADR-0037](adr/0037-post-race-recovery.md) — recuperação pós-prova e janela por distância
 - [ADR-0038](adr/0038-volume-progression-from-completed.md) — progressão de volume a partir do concluído
+- [ADR 0051](adr/0051-ia-coach-proxy.md) — proxy stateless do IA Coach
+- [ADR 0052](adr/0052-ia-coach-memory-schema-v19.md) — memória local do IA Coach, schema v19 e TTL
 
 > Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
 

@@ -1,6 +1,46 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach 3.3-B: disponibilidade temporária e treino perdido específico — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (IA Coach Room v19: memória local com TTL, revogação e export/delete — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — IA Coach: Room v19 (memória/conversa com TTL e revogação)
+
+**Objetivo:** dar memória local ao Coach sem transformar memória em decisão: `coach_messages`/`coach_summaries`, migração 18→19 explícita, TTL no PRD, revogação apagando `coach_*` e export/delete incluindo as tabelas.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (Room v19 concluído; próximo passo na §5).
+
+### Concluído
+
+- **Schema v19:** `CoachMessageEntity` (`kind`, `inputsHash`, texto validado, índice único `kind + inputsHash`) e `CoachSummaryEntity` (`weekStart` como PK) com DAOs; `MeuCoachDatabase.VERSION = 19` e `MIGRATION_18_19` aditiva criando as duas tabelas vazias, sem `fallbackToDestructiveMigration`.
+- **Domínio:** `CoachMemoryPolicy` puro (mensagens 90 dias, resumos 180, corte inclusivo) e `CoachMessageKind` (`EXPLAIN`/`REVIEW`).
+- **Dados:** `CoachMemoryRepository` com `recordMessage`/`recordSummary`, dedupe por contexto, TTL preguiçoso na abertura e antes de cada escrita, e `clearAll`; sem worker novo.
+- **App:** `CoachViewModel` grava explicação/revisão/resumo somente com opt-in, não grava fallback e revoga apagando as tabelas em `@ApplicationScope` (a exclusão termina mesmo se a aba fechar); treinos/perfil intactos.
+- **Dados do usuário:** export JSON ganhou `coachMessages`/`coachSummaries`; “apagar tudo” apaga as duas e a tela Dados informa mensagens/resumos removidos. Copy de export/delete passou a citar o histórico do Coach.
+- **Docs:** ADR 0052, `DECISIONS` r1.57, `DATA_MODEL` (§3.12/§7/§9), `ARCHITECTURE` (§7), PRD (§10 + adendo), `TESTING` e handoff.
+
+### Testes
+
+- `:core:domain:test` 1121 (+3 `CoachMemoryPolicyTest`); `:core:data:testDebugUnitTest` 225 (+6 `CoachMemoryRepositoryTest`, +1 migração 18→19); `:app:testDebugUnitTest` 1006 (+4 Coach VM, +1 Dados); `:core:model:test` 40 = **2.392 testes, 0 falhas/erros**.
+- Migração 18→19 preserva plano/sessão e cria as tabelas vazias; round-trip, dedupe, um resumo por semana, TTL com boundary e export/delete verdes.
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify` e `:app:lintDebug` verdes.
+- Nenhum dado real; nenhuma regra de treino/ciência alterada.
+
+### Decisões e observações
+
+- TTL é política de produto, não regra fisiológica: 90 dias para mensagens (ciclo corrente) e 180 para resumos (dois macrociclos), com expiração preguiçosa e sem worker.
+- Só texto aprovado pelo `CoachResponseValidator` vira memória; resumo é a narrativa LLM validada da semana fechada ligada ao `inputsHash` da revisão.
+- A memória ainda **não** entra em prompt; quando entrar, será contexto de copy e todo texto voltará ao validador. O motor segue autoridade.
+- Revogar bloqueia chamadas imediatamente e apaga a memória em escopo de aplicação; a UI de histórico individual fica para a próxima fatia.
+- `UserDataDeletion` ganhou as contagens `coachMessages`/`coachSummaries`; `removedAnything` as considera.
+
+### Pendente
+
+- UI para listar/apagar mensagem individual (decisão 25 já coberta por revogação/apagar tudo).
+- Pendências funcionais da 3.3 (remover dia inteiro/múltiplos dias) e goldens Roborazzi da bar.
+
+### Próximo passo
+
+1. Escolher **uma** pendência da §5 do handoff: remover dia inteiro/múltiplos dias na disponibilidade temporária **ou** goldens da bar.
+2. Depois, a UI de histórico do Coach (se a prioridade for a decisão 17 do PRD).
 
 ## Sessão 2026-11-18 — IA Coach 3.3-B: disponibilidade temporária e treino perdido específico
 

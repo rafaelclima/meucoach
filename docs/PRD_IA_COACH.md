@@ -1,6 +1,6 @@
 # PRD — IA Coach de Corrida (MVP)
 
-**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 + 3.3-A/B prontos)
+**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** em implementação (F1/F4 + 3.2 + 3.3-A/B + Room v19 prontos)
 **Visão base:** `docs/VISAO_PRODUTO_IA_COACH_CORRIDA.md` · **Fonte verdade:** código + `SPORTS_SCIENCE.md`
 **MVP decidido:** 3.1 explicar semana + 3.2 revisão semana anterior + 3.3 replanejar imprevisto
 
@@ -23,7 +23,7 @@
 | 13 | Módulo | Sugestão técnica: manter `domain` puro; rede/persistência em `data`, UI em `app` |
 | 14 | Contrato | IA só reescreve texto do motor; replanejo via motor existente + confirmação |
 | 15 | Validação | Schema + fallback: barra número fora do plano/prescrição, cai p/ copy determinística |
-| 16 | Persistência | Room v19 (conversa/resumo/memória), com migração, TTL, export/delete |
+| 16 | Persistência | Room v19 (conversa/resumo/memória), com migração, TTL de 90/180 dias (§10), export/delete |
 | 17 | UX | Nova aba central `Coach`; `Perfil` realocado; histórico + conversa desde MVP |
 | 18 | Tom | pt-BR treinador sem culpa |
 | 19 | Estados | Padrão MeuCoach (loading/empty/error/offline, TalkBack, fonte 200%, dark/light) |
@@ -57,7 +57,7 @@ Fora do MVP (pós-MVP):
 
 ## 3. Arquitetura proposta (a validar no plano técnico)
 
-- `domain` continua puro: `CoachPromptBuilder` (puro, monta JSON minimizado) + `CoachResponseValidator` (puro, barra número alucinado) + `CoachMemorySummarizer` (puro, define campos do resumo).
+- `domain` continua puro: `CoachPromptBuilder` (puro, monta JSON minimizado) + `CoachResponseValidator` (puro, barra número alucinado) + `CoachMemorySummarizer` (puro, define campos do resumo; pós-MVP — o MVP persiste a narrativa validada da revisão).
 - `data`: `CoachRepository` + `CoachApi` (Ktor/OkHttp p/ proxy VPS) + Room v19 (`coach_messages`, `coach_summaries`) + `MIGRATION_18_19` sem `fallbackToDestructiveMigration`.
 - `app`: `CoachViewModel` (gate `HealthSyncGate`-like p/ IA, cache por `inputsHash`), navegação com aba central `Coach`, `Perfil` realocado (decisão UX pendente: top-bar vs submenu).
 - Motor autoridade: explicação usa `rationale`/`ruleIds` existentes; replanejo chama `EvaluateReplan`/`ApplyReplan` existentes; IA nunca emite `ruleId` novo.
@@ -67,7 +67,7 @@ Fora do MVP (pós-MVP):
 ## 4. UX aba Coach (MVP)
 
 - Bottom bar: Hoje · Corridas · **Coach** (centro) · Tendências · Saúde; Perfil sai da bar → destino via avatar/config no topo (a definir com melhores práticas, sem quebrar deep links `meucoach://profile`).
-- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + input + ações rápidas ("Explicar semana", "Perdi um treino", "Só tenho 30 min").
+- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + input + ações rápidas ("Explicar semana", "Perdi um treino", "Só tenho 30 min"). A lista visual e o input ainda não existem; a conversa já é persistida no Room v19 e a lista chega numa próxima fatia.
 - Replanejo: bottom-sheet diff (antes/depois) + Confirmar/Desfazer; reusa copy e selo `v{n}` do replanejamento.
 
 ## 5. Guardrails / segurança
@@ -76,6 +76,7 @@ Fora do MVP (pós-MVP):
 - Números: qualquer pace/FC/carga/volume/VDOT na resposta que não exista no input → resposta descartada, fallback determinístico.
 - Estimativa permitida: só texto qualitativo ("parece que a rotina apertou") com marcador `estimativa`; números nunca estimados.
 - Privacidade: opt-in explícito; payload minimizado (sem GPS/nome); revogar apaga `coach_*`; export inclui `coach_*`; risco retenção/região registrado como aceito.
+- Retenção local: mensagens do Coach expiram em 90 dias e resumos em 180 dias; a limpeza é preguiçosa (abertura/escrita), sem worker novo e sem alterar treino.
 
 ## 6. Estratégia lean de testes (acordo 18/11/2026)
 
@@ -103,7 +104,7 @@ Gates mantidos: `assembleDebug`, `spotlessCheck`, `koverVerify` (domain/data/app
 
 ## 8. Próximo passo
 
-Plano técnico fatiado (proposta): F1 proxy+VPS+contrato, F2 prompt/validator puros, F3 Room v19, F4 aba Coach + ViewModel, F5 replanejo com diff/undo, F6 flag/consentimento/docs/ADR. Cada fatia com gate mínimo acima + teste manual roteirizado.
+O fatiamento proposto foi concluído até F3: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo e F6 opt-in/docs/ADR. Restam a UI visual de histórico (decisões 17/25), as pendências funcionais da 3.3 e os goldens da bar.
 
 ## 9. Adendos implementados (18/11/2026)
 
@@ -118,3 +119,29 @@ Plano técnico fatiado (proposta): F1 proxy+VPS+contrato, F2 prompt/validator pu
 - 3.2 revisão da semana anterior: `CoachReviewPromptBuilder` + `allowedMinutes`/`allowedPercents` (domínio puro, payload sem texto livre), checagem opt-in de porcentagem no validador, `CoachApi.review` em `/api/v1/coach/review`, `WeeklyReviewAssembler` compartilhado com Tendências, `CoachReviewSource` da última semana fechada, `CoachReviewState` no `CoachViewModel` (cache/fallback) e cartão na aba Coach com narrativa + fatos do motor. Testes: builder (4), validador (2), endpoint (1), VM (3), source (3), tela (3).
 - 3.3-A replanejamento na aba Coach: card “AJUSTAR A SEMANA” com “Ajustar a semana”, “Perdi um treino” e “Tenho menos tempo” (T3 explícito), bottom sheet com diff e selo `v{n} → v{n+1}`, confirmação via `ApplyReplan` (stale reavalia e nunca aplica a sugestão velha), undo append-only (`trigger = UNDO`) que restaura só o futuro `PLANNED` e preserva hoje/passado/`DONE`/`CLOSED`, e `ReplanController` compartilhado por Hoje/Perfil/Coach (o `ReplanViewModel` virou fachada). A seleção de dia/slot e a disponibilidade temporária ficam para 3.3-B. Testes: repository undo (5), controller/VM (2), Coach VM (2), tela (3).
 - 3.3-B disponibilidade temporária e treino perdido específico: `ReplanIntent`/`TemporaryAvailability` puros entram no `ReplanInput`, no `inputsHash` e na `ReplanSuggestion`. “Só tenho 30 min no dia Y” reduz só um dia futuro e apenas no perfil efetivo usado pelo gerador/validação; nunca grava em `AthleteProfile` nem em `weeklyPlans.availabilityHash`. “Perdi o treino X” lista `PlanReplanner.eligibleMissedSessions` e força o T1 mesmo com 1 sessão, sem repor carga. `ApplyReplan` reconstrói o input com `suggestion.intent`; intent inválido/alterado vira `Stale`/`NoChange` com a sugestão nova. Pickers no Coach (treino perdido e dias futuros + minutos com validação local), `requestNote` no sheet e `ReplanRequestQueue` preservando o intent de um pedido enfileirado. Sem migração; schema v18. Testes: domínio (6), `EvaluateReplan` (2), `ApplyReplan` (2), Coach VM (3), fila (3), tela (5).
+- F3/Room v19 memória local: `coach_messages` (turnos validados, único por `kind + inputsHash`) e `coach_summaries` (uma narrativa validada por semana fechada), `MIGRATION_18_19` aditiva e schema v19. TTL 90/180 dias com expiração preguiçosa; revogar o opt-in bloqueia chamadas e apaga as duas tabelas em escopo de aplicação; export/delete incluem `coach_*`. Nenhuma chamada de IA nova; a memória não entra em prompt nesta fatia e nunca decide carga, pace ou plano. Testes: política de TTL (3), repositório (6), migração 18→19 (1), export/delete (2), ViewModel (4) e exclusão na tela Dados (1).
+
+## 10. Memória local e retenção (Room v19)
+
+A memória do Coach é **local e opcional**. Ela existe para dar continuidade à
+conversa e ao resumo semanal, não para decidir treino.
+
+| Tabela | Conteúdo | Chave | TTL |
+|---|---|---|---|
+| `coach_messages` | turno validado da explicação (`EXPLAIN`) ou da revisão (`REVIEW`) | `id`; único em `(kind, inputsHash)` | 90 dias |
+| `coach_summaries` | narrativa validada da semana fechada | `weekStart` | 180 dias |
+
+Regras:
+
+- Só entra texto que o `CoachResponseValidator` aceitou; resposta crua, prompt,
+  timeout e fallback determinístico não viram memória.
+- A memória não guarda nome, GPS, timestamps exatos de atividade nem texto livre
+  do atleta.
+- A expiração é preguiçosa (`CoachMemoryPolicy` + `CoachMemoryRepository`): roda
+  na abertura da aba e antes de cada escrita; não há worker novo.
+- Revogar o opt-in bloqueia chamadas na hora e apaga `coach_messages` e
+  `coach_summaries`; treinos, perfil, check-ins e métricas não são tocados.
+- “Apagar tudo” e o export incluem as duas tabelas; a tela Dados informa quantas
+  mensagens/resumos do Coach foram removidos.
+- Quando a memória for usada em prompt (pós-MVP), ela será apenas contexto de
+  copy: todo texto volta ao validador e nenhum número nasce dela.

@@ -1,6 +1,6 @@
 # ADR 0051 — Proxy do IA Coach (OpenRouter atrás de proxy stateless)
 
-**Status:** Aceito e implementado em 2026-11-18 (IA Coach F1/F4 + 3.2).
+**Status:** Aceito e implementado em 2026-11-18 (IA Coach F1/F4 + 3.2; memória local no ADR 0052).
 **Data:** 2026-11-18
 **Escopo:** `infra/coach-proxy/`, `core/data/coach/CoachApi`, `AppModule`,
 `CoachConsentStore`, `CoachViewModel`, `docs/PRD_IA_COACH.md`.

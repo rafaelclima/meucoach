@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.57 · **Data:** 18/11/2026 · **Mudança:** Ciclo 4 (treino real) encerrado — smoke PEAK no aparelho com gate do dia (C4-55) e docs de fechamento (C4-56); `DECISIONS` r1.53, `TESTING` com flakes conhecidos; sem mudança de código.
+**Versão:** 1.58 · **Data:** 18/11/2026 · **Mudança:** IA Coach F3/Room v19 — memória local com TTL, revogação e export/delete; ADR 0052 (`DECISIONS` r1.57); schema v19; sem regra de treino nova.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -360,6 +360,20 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] `R-RACE-03`/`EV-RIEGEL-1981` no catálogo, testes de domínio/dados/app e goldens de prova regravados.
 
 **Aceite:** a previsão não inventa número sem VDOT/calibração recente, nunca entra em plano/prescrição e é rotulada como referência, não promessa.
+
+### P1-18 · IA Coach (fora dos ciclos 1–4)
+
+**Status:** 3.1 + 3.2 + 3.3-A/B + Room v19 concluídos em 18/11/2026; UI de histórico individual e goldens da bar pendentes.
+
+- [x] Proxy stateless no Dokploy, `X-Coach-Token`, cadeia com fallback e sem log de payload ([ADR 0051](adr/0051-ia-coach-proxy.md)).
+- [x] Aba central Coach, opt-in/revogação, explicação da semana com validação e fallback determinístico.
+- [x] Revisão da semana fechada reutilizando `WeeklyReviewAssembler` (mesma semana de Tendências).
+- [x] Replanejamento com confirmação/diff/undo e intents explícitos (“perdi o treino X”, “só tenho 30 min no dia Y”) via `ReplanController`.
+- [x] Room v19: `coach_messages`/`coach_summaries`, TTL 90/180 dias, revogação apaga, export/delete incluem ([ADR 0052](adr/0052-ia-coach-memory-schema-v19.md)).
+- [ ] UI para listar/apagar mensagem individual e usar o resumo como contexto de copy.
+- [ ] Goldens Roborazzi da bar e pendências funcionais da 3.3 (remover dia inteiro/múltiplos dias).
+
+**Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 
 ---
 

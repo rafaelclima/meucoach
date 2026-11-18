@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.7 · **Data:** 11/11/2026 · Reconcilia schema v16 (evento de prova, `completionSource` e auto-conclusão do [ADR 0032](adr/0032-race-autocompletion-and-target-projection.md)), mantendo a distinção entre persistido e derivado.
+**Versão:** 1.8 · **Data:** 18/11/2026 · Reconcilia o schema v19 (memória local do IA Coach, ADR 0052) e mantém a distinção entre persistido e derivado.
 
 ## 1. Convenções
 
@@ -11,7 +11,7 @@
 - **Nulos:** ausência de dado é `null`, nunca `0`. `0` é um valor medido.
 - **Proveniência:** toda entidade importada tem `source`, `sourceId`, `importedAt`, `parserVersion`.
 - **Soft delete:** `deletedAt` apenas em atividades; a lixeira dura 7 dias (`ADR 0025`). Métricas, check-ins e planos não têm soft delete.
-- **Persistido × derivado:** o Room guarda perfil, atividades/laps/samples, jobs, check-in, métricas diárias, planos/sessões, prescrições e execuções. Prontidão, carga, recomendações e histórico são **calculados em memória** a partir desses dados e não têm tabela própria.
+- **Persistido × derivado:** o Room guarda perfil, atividades/laps/samples, jobs, check-in, métricas diárias, planos/sessões, prescrições, execuções, eventos de prova e a memória opcional do Coach. Prontidão, carga, recomendações e histórico são **calculados em memória** a partir desses dados e não têm tabela própria.
 - **Versionamento:** `schemaVersion` em `Room`; `engineVersion` em prescrições; `evidenceVersion`/IDs no registro de evidências textuais (não persistido em tabela).
 
 ## 2. Diagrama
@@ -31,7 +31,20 @@ erDiagram
     DAILY_PRESCRIPTION }o--o| PLANNED_SESSION : adjusts
     DAILY_PRESCRIPTION }o--o| DAILY_PRESCRIPTION : supersedes
     IMPORT_JOB ||--o{ ACTIVITY : imports
+    COACH_MESSAGE {
+        string id PK
+        string kind
+        string inputsHash
+        long createdAt
+    }
+    COACH_SUMMARY {
+        string weekStart PK
+        string inputsHash
+        long createdAt
+    }
 ```
+
+> `COACH_MESSAGE`/`COACH_SUMMARY` não têm FK com treino: a memória é opcional e vive fora do agregado de planejamento (ADR 0052).
 
 > `READINESS`, `RECOMMENDATION`, `EVIDENCE` e `SESSION_FEEDBACK` aparecem em versões antigas do diagrama, mas **não são tabelas**: prontidão/carga são calculadas por data e as evidências vivem em `docs/SPORTS_SCIENCE.md` + `ExplanationCatalog.kt`.
 
@@ -323,6 +336,23 @@ suficiente, pode não existir nunca.
 
 O job nasce em `PARSING` (uma única escrita) e só o pipeline o move para um estado terminal; `ImportJobGuard` fecha como `FAILED` qualquer erro inesperado depois da criação e a leitura da lista fecha `QUEUED`/`PARSING` com mais de 1 h (processo morto). `QUEUED` permanece no enum para linhas antigas.
 
+### 3.12 Memória do Coach (v19, ADR 0052)
+
+Duas tabelas opcionais, sem FK com treino e sem relação com o motor:
+
+`coach_messages`: `id` (UUID v7, PK), `kind` (`EXPLAIN`/`REVIEW`), `inputsHash`,
+`title`, `body`, `bulletsJson`, `createdAt`. Índice `createdAt` e índice único
+`(kind, inputsHash)` — a mesma avaliação não duplica a conversa.
+
+`coach_summaries`: `weekStart` (PK), `inputsHash`, `title`, `body`,
+`bulletsJson`, `createdAt`. No máximo um resumo por semana fechada.
+
+Regras: só texto aprovado pelo `CoachResponseValidator` é gravado; revogar o
+opt-in apaga as duas tabelas; export/delete as incluem; TTL de 90 dias
+(mensagens) e 180 dias (resumos), com expiração preguiçosa na abertura/escrita.
+A memória é contexto de copy, **nunca** fonte de carga, pace, FC, volume ou
+plano. O proxy continua stateless.
+
 ## 4. Deduplicação e merge
 
 1. Hash do arquivo igual ⇒ duplicata exata; ignorar.
@@ -355,7 +385,7 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v18**; migrações 1→2 até 17→18 testadas em Robolectric.
+- Estado atual: banco **v19**; migrações 1→2 até 18→19 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
@@ -365,6 +395,7 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 - `15→16` adiciona `completionSource` nullable a `race_events`; nenhum evento é reescrito e `NULL` é lido como conclusão explícita anterior.
 - `16→17` adiciona proveniência de calibração a `athlete_profile` (`vdotSource`, `vdotCalibratedAt`, `vdotReferenceDistanceM`, `vdotReferenceDurationSec`; ADR 0036): VDOT legado tem fonte/data desconhecidas e não gera previsão até recalibrar.
 - `17→18` (C4-45, ADR 0048 §2.3) adiciona `generatorVersion` (`NOT NULL DEFAULT 'weekly-plan-v6'`, valor de legado; o motor atual grava `weekly-plan-v7`) a `weekly_plans`, `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` a `planned_sessions` e `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` a `daily_prescriptions`. Nenhuma linha é reescrita; desconhecido decodifica como `null`, nunca parcial.
+- `18→19` (ADR 0052) cria `coach_messages` (índice `createdAt` + único `kind`/`inputsHash`) e `coach_summaries` (PK `weekStart`), ambas vazias. Nenhuma tabela existente é reescrita; o histórico de treino é preservado campo a campo.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.
@@ -387,6 +418,6 @@ O usuário pode exportar hoje:
 
 Planejado (não implementado): arquivos originais FIT/TCX/GPX, CSV de métricas diárias e ZIP com `manifest.json` (versão do schema, data, contagens, hashes).
 
-Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões (com evidência, encerramento e versão), revisões append-only do plano, prescrições diárias, execuções, atividades, laps, contagem de samples, jobs de importação e o objeto local `firstRun`. A lixeira fica fora por padrão e só entra com `includeTrash = true`; execuções ligadas a atividades na lixeira também ficam fora. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
+Estado atual: `UserDataRepository.exportJson()` exporta perfil, check-ins, métricas diárias, planos/sessões (com evidência, encerramento e versão), revisões append-only do plano, prescrições diárias, execuções, atividades, laps, contagem de samples, jobs de importação, eventos de prova, mensagens/resumos do Coach e o objeto local `firstRun`. A lixeira fica fora por padrão e só entra com `includeTrash = true`; execuções ligadas a atividades na lixeira também ficam fora. Export ZIP, arquivos originais e séries completas ficam para a Fase 1.
 
-Excluir tudo remove banco, arquivos, blobs, staging, cache, avatar e preferências de dados; a época de dados é o único metadado preservado, sem recibo de exclusão (`ADR 0025`).
+Excluir tudo remove banco (incluindo `coach_*`), arquivos, blobs, staging, cache, avatar e preferências de dados; a época de dados é o único metadado preservado, sem recibo de exclusão (`ADR 0025`).
