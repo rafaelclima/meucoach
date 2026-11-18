@@ -1,6 +1,60 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (IA Coach: goldens da barra e encerramento da feature — ver sessão logo abaixo)
+**Atualizado:** 18/11/2026 (Coach: auditoria no aparelho e correções de utilidade/duplicação — ver sessão logo abaixo)
+
+## Sessão 2026-11-18 — Coach: auditoria no aparelho e correções de utilidade
+
+**Objetivo:** revisar a aba Coach no S24 do usuário 0 com dados reais, identificar problemas de formato/duplicação e reduzir o ruído da tela para torná-la mais útil no uso frequente. Nenhuma regra de treino ou chamada de IA nova.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (correções da auditoria; falta validar o estado Ready com o build que tem token).
+
+### Achados no aparelho
+
+- **Bug de contrato/provider:** uma revisão antiga foi persistida com `title = "Coach"` e `body` igual a `{"":": "Semana ..."}`. O parser aceitava `body` como objeto e o transformava em JSON cru; o validador aprovava e a memória guardava. A tela mostrava o JSON na revisão e no resumo.
+- **Duplicação:** a mesma semana aparecia na revisão, no resumo e na mensagem `REVIEW` do histórico; a explicação corrente também se repetia no histórico.
+- **Densidade:** a explicação da IA ocupava quase uma tela inteira; ações úteis ficavam abaixo dela.
+- **Ações destrutivas:** cada linha do histórico tinha um “Apagar” vermelho, competindo com o conteúdo.
+- **“Desativar Coach”** aparecia como link lima entre os cards, com mais destaque que ações de treino.
+- **Botões:** “Tenho menos tempo” quebrava em duas linhas ao lado de “Perdi um treino”.
+- **Gear global** ficava sobre o texto ao rolar (sem fundo/scrim).
+- **Overlay externo:** um app de fotos (não o MeuCoach) cobria parte da tela nas capturas; não é bug do app e não foi tratado como tal.
+
+### Concluído
+
+- **Parser estrito:** `title` e `body` precisam ser strings não vazias; `body` objeto, JSON inválido ou payload sem campos viram `IOException` e caem no determinístico, sem gravar memória. Testes cobrem body objeto, campos ausentes/vazios e JSON inválido.
+- **Proxy:** os system prompts de explain/review/replan agora exigem `title`/`body` como strings e proíbem body objeto; o proxy precisa ser reimplantado no Dokploy para valer em produção.
+- **Legado:** linhas antigas cujo `body` começa com `{` (payload serializado) são ignoradas na leitura do histórico; não há migração destrutiva e o TTL continua removendo.
+- **Sem duplicação:** o histórico agora exclui a explicação corrente (mesmo `inputsHash`, inclusive no fallback) e o resumo da semana já mostrada na revisão; a mensagem `REVIEW` é substituída pelo resumo do mesmo payload. A lista vira arquivo do que não está na tela.
+- **Utilidade/densidade:** card de explicação com overline, 5 linhas recolhidas e “Ler explicação completa” (bullets só ao expandir), aviso de que a IA só reescreve o motor; header mais curto.
+- **Hierarquia:** “Desativar Coach” foi para o fim, neutro; no fallback o “Desativar” também ficou neutro; labels “Perdi treino”/“Menos tempo” não quebram; cada item do histórico usa ícone de lixeira com `contentDescription`, mantendo o “Apagar histórico” em vermelho.
+- **Gear:** ganhou fundo circular com a cor do background para não misturar com o texto ao rolar.
+- **Docs:** PRD, `DECISIONS` r1.62, `ROADMAP` (P1-18), `TESTING` e handoff.
+
+### Testes
+
+- `:core:domain:test` 1130 (+5 `CoachHistoryTest`); `:core:data:testDebugUnitTest` 232 (+3 `CoachApiTest` estritos); `:app:testDebugUnitTest` 1033 (+6, incluindo ViewModel e card de explicação); `:core:model:test` 40 = **2.435 testes, 0 falhas/erros**.
+- `:app:assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify`, `:app:lintDebug` e o golden da bar seguem verdes.
+- Nenhum dado real no repo; capturas e banco de inspeção ficaram em `/tmp/opencode` e não foram commitados.
+
+### Decisões e observações
+
+- O parser não “conserta” payload fora do contrato: schema inválido cai no motor, como o PRD já exigia. O fallback determinístico é melhor que exibir JSON cru.
+- O histórico é **arquivo**, não espelho da tela: o que está no card atual (explicação/revisão) não se repete embaixo. Isso reduz a sensação de conteúdo duplicado sem apagar memória.
+- Linhas legadas inválidas ficam ocultas até o TTL; não apagamos dado silenciosamente.
+- A tela ainda precisa do build com token para validar o card Ready compacto e o histórico gerado por uma resposta real; sem token, o aparelho mostra o fallback e o histórico vazio.
+- O overlay de fotos observado era de outro app; não influenciou o diagnóstico do MeuCoach.
+
+### Pendente
+
+- Validar no aparelho o estado `CoachExplanationState.Ready` (card recolhido/expandido) e o histórico real com o build `-PcoachProxyToken=...`.
+- Reimplantar o proxy no Dokploy para os novos system prompts (title/body strings) valerem em produção.
+- Se o gear ainda incomodar ao rolar, evoluir para uma top bar fixa (fora desta fatia).
+- Pós-MVP: input livre, memória como contexto de copy em prompt e “quero mais tempo”.
+
+### Próximo passo
+
+1. Você gera o APK com o token, abre o Coach e confere o card Ready + histórico real.
+2. Depois retomamos P1-12/Ciclo 4.
 
 ## Sessão 2026-11-18 — IA Coach: goldens da barra de navegação e encerramento
 

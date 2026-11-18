@@ -1,8 +1,8 @@
 # HANDOFF — IA Coach
 
 **Atualizado:** 18/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar
-**Próxima fatia:** nenhuma pendente da IA Coach no MVP; prioridade volta ao P1-12/Ciclo 4 (§5.4)
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho
+**Próxima fatia:** validar o estado Ready com build que tem token e retomar P1-12/Ciclo 4 (§5.4)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão IA Coach goldens da bar), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A feature está encerrada no MVP: não há pendência funcional. O próximo passo é retomar P1-12/Ciclo 4; se houver UI da barra, rode `:app:verifyRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'` e revise dark/light. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão auditoria da aba Coach), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A feature está encerrada no MVP e passou por uma auditoria de utilidade no aparelho; falta validar o card Ready/histórico real com o build que tem `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 
@@ -37,12 +37,13 @@ Regra de trabalho: **uma fatia pequena e verificável por sessão**; não abrir 
 | 3.3-B | “Perdi o treino X” e “só tenho 30 min no dia Y”: `ReplanIntent` no input/hash/sugestão, perfil efêmero só no gerador, pickers no Coach, `requestNote`, stale por intent e fila preservando o intent | `core/domain/replan/ReplanModels.kt`, `PlanReplanner.eligibleMissedSessions`, `EvaluateReplan.missedCandidates`, `ReplanController`, `CoachIntentSheets` |
 | 3.3-C | “Tenho menos tempo” com vários dias por pedido e `0` removendo o dia: lista de `TemporaryAvailability`, validação por dia, perfil efêmero com a chave removida, canonical ordenado, picker multi-seleção | `ReplanModels.kt` (`TemporaryAvailability`/`ReplanIntent`), `PlanReplanner`, `ReplanController.replanLessTime`, `LessTimeSheet`/`LessTimeChange` |
 | Goldens da bar | `bottom-bar-dark/light.png` com os cinco tabs e o Coach selecionado; tags de teste na `McBottomBar`; revisão visual dark/light e clique/seleção cobertos | `McBottomBar`, `destinations`, `app/ui/navigation/BottomBarScreenshotTest` |
+| Auditoria de utilidade | Parser estrito (`title`/`body` strings), legado JSON oculto, histórico sem duplicar card atual, explicação compacta/expansível, “Desativar” neutro, lixeira discreta e gear com fundo | `HttpCoachApi.parse`, `CoachMemoryRepository`, `CoachHistory`, `CoachExplanationCard`, `CoachScreen`, `CoachHistoryCard`, `MeuCoachApp` |
 | Room v19 | Memória local: `coach_messages`/`coach_summaries`, TTL 90/180, revogação apaga, export/delete incluem, texto sempre validado | `core/data/db/entity/Coach*`, `CoachMemoryRepository`, `CoachMemoryPolicy`, `MIGRATION_18_19`, `CoachViewModel`, `UserDataRepository` |
 | Histórico UI | Lista somente leitura (resumos + conversa) só com opt-in, loading/vazio/erro, retry, “Apagar histórico” em bloco e apagar item a item com confirmação, TalkBack, dark/light e fonte 200% | `CoachHistoryState`/`CoachViewModel`, `CoachHistoryCard`, `CoachMemoryRepository.observe*/delete*`, DAOs `observeAll`/`delete*` |
 | ADR 0051 | Contrato, segurança mínima, trade-offs e risco LGPD aceito | `docs/adr/0051-ia-coach-proxy.md` |
 | ADR 0052 | Schema v19, TTL, revogação e limites da memória | `docs/adr/0052-ia-coach-memory-schema-v19.md` |
 
-Verificação no fechamento: **2.421 testes** (domain 1125, data 229, app 1027, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify`, `lintDebug` e `verifyRoborazziDebug --tests BottomBarScreenshotTest` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
+Verificação no fechamento: **2.435 testes** (domain 1130, data 232, app 1033, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify`, `lintDebug` e `verifyRoborazziDebug --tests BottomBarScreenshotTest` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
 
 Pontos de arquitetura que não devem regredir:
 
@@ -222,6 +223,28 @@ Memória local do Coach **sem** transformar memória em decisão:
   `TodayViewModelPersistTest` foi corrigido esperando também a
   `completionMessage`, sem reduzir assert.
 
+### 4.9 Auditoria da aba Coach no aparelho — concluída
+
+- **Parser estrito:** `HttpCoachApi.parse` exige `title`/`body` como strings
+  não vazias; body objeto, campos ausentes, JSON inválido e título vazio viram
+  `IOException` e caem no determinístico, sem gravar memória.
+- **Proxy:** os system prompts de explain/review/replan passam a pedir strings e
+  proibir body objeto; o redeploy no Dokploy é manual e fica pendente.
+- **Legado:** linhas cujo body começa com `{` são ignoradas na leitura; nada é
+  apagado à força e o TTL continua.
+- **Histórico sem espelho:** a explicação corrente e o resumo da semana da
+  revisão não aparecem no arquivo; a mensagem `REVIEW` é substituída pelo resumo
+  do mesmo `inputsHash`. O arquivo mostra só o que não está na tela.
+- **Utilidade:** card de explicação com 5 linhas + expandir, header curto,
+  “Desativar” no fim/neutro, labels “Perdi treino”/“Menos tempo” e lixeira
+  discreta por item.
+- **Gear:** fundo circular com a cor do background para não misturar com o texto
+  ao rolar (uma top bar fixa fica como evolução).
+- **Limite da validação:** o build do aparelho não tinha token, então o card
+  Ready e o histórico real precisam ser conferidos no build com
+  `-PcoachProxyToken=...`. O overlay de fotos visto nas capturas era de outro
+  app e não foi tratado como bug.
+
 ---
 
 ## 5. Pendências restantes
@@ -247,7 +270,9 @@ Memória local do Coach **sem** transformar memória em decisão:
 
 ### 5.4 Encerramento
 
-- A IA Coach está concluída no MVP; não há pendência funcional.
+- A IA Coach está concluída no MVP e passou por auditoria de utilidade no aparelho; não há pendência funcional sem token.
+- Validação restante: gerar o APK com `-PcoachProxyToken=...`, abrir o Coach e conferir o card Ready recolhido/expandido e o histórico real (explicação/revisão não duplicadas).
+- Reimplantar o proxy no Dokploy para os prompts com `title`/`body` strings (a correção do app já bloqueia body objeto mesmo sem redeploy).
 - Pós-MVP: input livre de conversa, memória como contexto de copy em prompt e “quero mais tempo” na disponibilidade temporária.
 - Próxima prioridade: P1-12 (4 semanas de uso real) / Ciclo 4.
 

@@ -1,6 +1,6 @@
 # PRD — IA Coach de Corrida (MVP)
 
-**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** MVP implementado (F1/F4 + 3.2 + 3.3-A/B/C + Room v19 + histórico com apagar individual + goldens da bar)
+**Versão:** 0.1 (rascunho pós-questionário) · **Data:** 18/11/2026 · **Status:** MVP implementado + auditoria de utilidade no aparelho (F1/F4 + 3.2 + 3.3-A/B/C + Room v19 + histórico com apagar individual + goldens da bar)
 **Visão base:** `docs/VISAO_PRODUTO_IA_COACH_CORRIDA.md` · **Fonte verdade:** código + `SPORTS_SCIENCE.md`
 **MVP decidido:** 3.1 explicar semana + 3.2 revisão semana anterior + 3.3 replanejar imprevisto
 
@@ -67,7 +67,7 @@ Fora do MVP (pós-MVP):
 ## 4. UX aba Coach (MVP)
 
 - Bottom bar: Hoje · Corridas · **Coach** (centro) · Tendências · Saúde; Perfil sai da bar → destino via avatar/config no topo (a definir com melhores práticas, sem quebrar deep links `meucoach://profile`).
-- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + ações rápidas ("Explicar semana", "Perdi um treino", "Só tenho 30 min"). A lista de histórico é somente leitura, aparece só com opt-in e permite apagar o histórico em bloco ou item a item; o input livre continua fora do MVP.
+- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + ações rápidas ("Explicar semana", "Perdi treino", "Menos tempo"). A explicação começa recolhida (5 linhas) e expande sob demanda; a lista de histórico é somente leitura, aparece só com opt-in e funciona como arquivo do que não está no card atual (sem repetir explicação/revisão correntes), com apagar em bloco ou item a item. O input livre continua fora do MVP.
 - Replanejo: bottom-sheet diff (antes/depois) + Confirmar/Desfazer; reusa copy e selo `v{n}` do replanejamento.
 
 ## 5. Guardrails / segurança
@@ -124,6 +124,7 @@ O MVP está implementado: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (m
 - Apagar item individual do histórico: `CoachMessageDao.deleteById`/`CoachSummaryDao.deleteByWeek` e `CoachMemoryRepository.deleteMessage`/`deleteSummary` (retorno booleano, item inexistente é no-op) com confirmação por linha no `CoachHistoryCard`; o “Apagar histórico” em bloco permanece. Escopo de aplicação para a exclusão terminar mesmo se a aba fechar; treinos/perfil intactos. Testes: repositório (2), ViewModel (2) e tela (2).
 - 3.3-C disponibilidade temporária com dia inteiro/múltiplos dias: `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` é uma lista ordenada no `canonical` (datas duplicadas recusadas). `PlanReplanner` valida cada dia (futuro da semana, existente, só redução), aplica todas as entradas no perfil efêmero e explica remoção/vários dias; `AthleteProfile` e `availabilityHash` não mudam. `ReplanController.replanLessTime` recebe `LessTimeChange` (lista), e o `LessTimeSheet` permite selecionar vários dias com um valor único (`0` remove). Testes: domínio (4), ViewModel (1) e tela (1).
 - Goldens da bar: `BottomBarScreenshotTest` grava `bottom-bar-dark`/`bottom-bar-light` a 393 dp com os cinco tabs e o Coach selecionado; verifica existência dos tabs, seleção e clique. `McBottomBar` ganhou tags de teste e os destinos do app foram expostos como `internal` para o teste usar a mesma lista. O gate é separado (`verifyRoborazziDebug --tests ...`); o drift de outras telas não foi tocado. Testes: 3.
+- Auditoria de utilidade no aparelho (18/11/2026): parser estrito (`title`/`body` strings não vazias; body objeto/JSON inválido cai no determinístico e não vira memória); linhas legadas com body JSON são ignoradas; histórico não repete a explicação corrente nem o resumo da semana da revisão e a mensagem `REVIEW` é substituída pelo resumo do mesmo `inputsHash`; explicação compacta (5 linhas + expandir), “Desativar” no fim/neutro, labels curtos e lixeira discreta por item. O system prompt do proxy também passa a exigir strings (redeploy manual). Testes: domínio (5), API (3), ViewModel (3) e card (2). A validação visual do estado Ready depende do build com token.
 
 ## 10. Memória local e retenção (Room v19)
 

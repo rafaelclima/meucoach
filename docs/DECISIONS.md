@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.61 · **Data:** 18/11/2026
+**Versão:** 1.62 · **Data:** 18/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -59,6 +59,7 @@
 > Revisão 1.59 (18/11/2026): apagar item individual do histórico — `deleteMessage`/`deleteSummary` no repositório (item inexistente é no-op) e confirmação por linha no `CoachHistoryCard`, com alvo de 48 dp e `contentDescription`; o apagar em bloco continua e treinos/perfil não são tocados. Sem IA nova e sem schema novo.
 > Revisão 1.60 (18/11/2026): IA Coach 3.3-C — `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` é uma lista ordenada no `canonical`, com datas duplicadas recusadas. `PlanReplanner` aplica todos os dias no perfil efêmero e valida redução/existência; `LessTimeSheet` permite multi-seleção com um valor de minutos (`0` remove) e `LessTimeChange` circula no controller/ViewModel. `AthleteProfile` e `availabilityHash` continuam intactos; sem IA nova e sem schema novo.
 > Revisão 1.61 (18/11/2026): IA Coach encerrada no MVP — goldens `bottom-bar-dark/light` da barra com o Coach selecionado, tags de teste na `McBottomBar` e teste de seleção/clique dos cinco tabs. `CoachViewModelTest` passou a cancelar os `viewModelScope` e drenar o looper antes de fechar o banco/resetar o `Main`, corrigindo a corrida de teardown. Sem regra de treino, schema ou IA nova.
+> Revisão 1.62 (18/11/2026): auditoria de utilidade da aba Coach no aparelho — parser estrito (title/body strings; body objeto/JSON inválido cai no determinístico e não vira memória), linhas legadas com body JSON ocultas, histórico como arquivo sem repetir explicação/revisão correntes (REVIEW substituído pelo resumo do mesmo payload), explicação compacta/expansível, “Desativar” no fim/neutro, labels curtos e lixeira discreta. A validação do card Ready depende do build com token; sem schema/regra nova.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
