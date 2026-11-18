@@ -159,9 +159,12 @@ class HttpCoachApi(private val baseUrl: String, private val token: String, priva
         .put("sessions", sessions)
 
     companion object {
-        /** JSON inválido cai para o texto bruto de propósito: o Coach nunca derruba a tela. */
-        @Suppress("SwallowedException")
-        fun parse(body: String): CoachRawResponse {
+        /**
+         * Contract of the proxy: `{title, body, bullets[]}` with `title`/`body`
+         * as non-blank strings. Anything else is a schema violation and falls
+         * back to the deterministic engine copy instead of being persisted.
+         */
+        fun parse(body: String): CoachRawResponse = try {
             val outer = JSONObject(body)
             val innerText = if (outer.has("choices")) {
                 outer.getJSONArray("choices")
@@ -171,19 +174,28 @@ class HttpCoachApi(private val baseUrl: String, private val token: String, priva
             } else {
                 body
             }
-            return try {
-                val inner = JSONObject(innerText)
-                CoachRawResponse(
-                    title = inner.optString("title", "Coach"),
-                    body = inner.optString("body", innerText),
-                    bullets = inner.optJSONArray("bullets")?.let { arr ->
-                        List(arr.length()) { i -> arr.optString(i) }
-                    } ?: emptyList(),
-                    suggestedAction = inner.optString("suggestedAction", null)?.takeIf { it.isNotBlank() },
-                )
-            } catch (e: Exception) {
-                CoachRawResponse(title = "Coach", body = innerText.take(1000))
+            val inner = JSONObject(innerText)
+            val title = inner.opt("title") as? String
+            val text = inner.opt("body") as? String
+            if (title.isNullOrBlank() || text.isNullOrBlank()) {
+                throw IOException("coach response missing title/body")
             }
+            val bullets = inner.optJSONArray("bullets")?.let { array ->
+                List(array.length()) { index -> array.opt(index) as? String }
+                    .filterNotNull()
+                    .filter { it.isNotBlank() }
+            } ?: emptyList()
+            val action = inner.opt("suggestedAction") as? String
+            CoachRawResponse(
+                title = title,
+                body = text,
+                bullets = bullets,
+                suggestedAction = action?.takeIf { it.isNotBlank() },
+            )
+        } catch (e: IOException) {
+            throw e
+        } catch (e: Exception) {
+            throw IOException("coach invalid response", e)
         }
     }
 }

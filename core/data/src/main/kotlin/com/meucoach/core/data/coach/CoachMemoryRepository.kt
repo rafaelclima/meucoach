@@ -128,10 +128,12 @@ class CoachMemoryRepository(
         .map { rows -> rows.mapNotNull { it.toDomain() } }
 
     private fun CoachMessageEntity.toDomain(): CoachMemoryMessage? {
+        if (title.isBlank() || body.isBlank() || body.isLegacyJsonObject()) return null
         val messageKind = CoachMessageKind.entries.firstOrNull { it.name == kind } ?: return null
         return CoachMemoryMessage(
             id = id,
             kind = messageKind,
+            inputsHash = inputsHash,
             title = title,
             body = body,
             bullets = bulletsFromJson(bulletsJson),
@@ -140,15 +142,24 @@ class CoachMemoryRepository(
     }
 
     private fun CoachSummaryEntity.toDomain(): CoachMemorySummary? {
+        if (title.isBlank() || body.isBlank() || body.isLegacyJsonObject()) return null
         val week = runCatching { LocalDate.parse(weekStart) }.getOrNull() ?: return null
         return CoachMemorySummary(
             weekStart = week,
+            inputsHash = inputsHash,
             title = title,
             body = body,
             bullets = bulletsFromJson(bulletsJson),
             createdAt = Instant.ofEpochMilli(createdAt),
         )
     }
+
+    /**
+     * Older builds could persist a provider payload with `body` as an object.
+     * Validated Coach prose never starts with `{`; hiding those rows keeps the
+     * history readable until the TTL removes them (no destructive migration).
+     */
+    private fun String.isLegacyJsonObject(): Boolean = trim().startsWith("{")
 
     private fun bulletsFromJson(json: String): List<String> {
         val array = runCatching { JSONArray(json) }.getOrNull() ?: return emptyList()

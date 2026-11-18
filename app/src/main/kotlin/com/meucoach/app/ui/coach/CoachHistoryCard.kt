@@ -4,11 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -110,8 +113,7 @@ internal fun CoachHistoryCard(
 
             CoachHistoryState.Empty -> {
                 Text(
-                    text = "Nada guardado ainda. Quando o Coach explicar ou revisar uma semana, " +
-                        "o texto fica aqui.",
+                    text = "Nada guardado ainda. As explicações e revisões antigas aparecem aqui.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                     modifier = Modifier.testTag("coach-history-empty"),
@@ -358,14 +360,18 @@ private fun HistoryRow(
                 )
             }
         }
-        TextButton(
+        IconButton(
             onClick = onDelete,
             modifier = Modifier
-                .heightIn(min = 48.dp)
                 .semantics { contentDescription = deleteDescription }
                 .testTag(deleteTag),
         ) {
-            Text(text = "Apagar", color = colors.danger)
+            Icon(
+                imageVector = Icons.Outlined.DeleteOutline,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.textTertiary,
+            )
         }
     }
 }

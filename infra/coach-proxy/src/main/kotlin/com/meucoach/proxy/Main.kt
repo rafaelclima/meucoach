@@ -98,12 +98,16 @@ private const val SYSTEM_EXPLAIN =
         "Nunca cite nomes ou siglas de metricas (ACWR, VDOT, TSB, CTL, ATL, TRIMP, rTSS, LTHR); " +
         "fale de carga e recuperacao em linguagem simples. " +
         "Dado ausente e null: diga que faltam dados. Estimativa permitida so textual e marcada como estimativa. " +
-        "Sem diagnostico, sem musculacao, sem nutricao (exceto hidratacao estatica). Responda em JSON {title, body, bullets[]}."
+        "Sem diagnostico, sem musculacao, sem nutricao (exceto hidratacao estatica). " +
+        "Responda em JSON {\"title\":\"string curta\",\"body\":\"string em pt-BR\",\"bullets\":[\"string\"]}. " +
+        "title e body devem ser strings; body nunca pode ser objeto ou JSON serializado."
 private const val SYSTEM_REVIEW =
-    "Voce resume a semana anterior a partir do planejado x executado. Mesmas regras do explain, sem numeros novos."
+    "Voce resume a semana anterior a partir do planejado x executado. Mesmas regras do explain, sem numeros novos. " +
+        "Use o mesmo schema: title e body como strings; body nunca como objeto."
 private const val SYSTEM_REPLAN =
     "Voce sugere slots de replanejo a partir do plano vigente. Nunca crie treino forte novo; so reorganize o futuro. " +
-        "Responda em JSON {title, body, bullets[], slots{}} para confirmacao humana."
+        "Responda em JSON {\"title\":\"string\",\"body\":\"string\",\"bullets\":[\"string\"],\"slots\":{}} " +
+        "para confirmacao humana; title e body sao strings, nunca objetos."
 
 private val DEFAULT_MODELS = listOf(
     "nvidia/nemotron-3.5-super-vl:free",

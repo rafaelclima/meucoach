@@ -60,7 +60,7 @@ internal fun CoachReplanCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             McSecondaryButton(
-                text = "Perdi um treino",
+                text = "Perdi treino",
                 onClick = onMissed,
                 enabled = !busy,
                 modifier = Modifier
@@ -68,7 +68,7 @@ internal fun CoachReplanCard(
                     .testTag("coach-replan-missed"),
             )
             McSecondaryButton(
-                text = "Tenho menos tempo",
+                text = "Menos tempo",
                 onClick = onLessTime,
                 enabled = !busy,
                 modifier = Modifier

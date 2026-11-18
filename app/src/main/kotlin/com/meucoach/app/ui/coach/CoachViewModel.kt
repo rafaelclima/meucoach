@@ -12,6 +12,7 @@ import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.coach.CoachApi
 import com.meucoach.core.data.coach.CoachKind
 import com.meucoach.core.data.coach.CoachMemoryRepository
+import com.meucoach.core.domain.coach.CoachHistory
 import com.meucoach.core.domain.coach.CoachMemoryMessage
 import com.meucoach.core.domain.coach.CoachMemorySummary
 import com.meucoach.core.domain.coach.CoachMessageKind
@@ -112,6 +113,9 @@ class CoachViewModel @Inject constructor(
     private val _history = MutableStateFlow<CoachHistoryState>(CoachHistoryState.Hidden)
     val history: StateFlow<CoachHistoryState> = _history
 
+    /** Hash of the explanation currently rendered; excluded from the archive. */
+    private val currentExplainHash = MutableStateFlow<String?>(null)
+
     private val retryTick = MutableStateFlow(0)
     private val historyRetryTick = MutableStateFlow(0)
     private var lastHash: String? = null
@@ -129,11 +133,25 @@ class CoachViewModel @Inject constructor(
                         _history.value = CoachHistoryState.Hidden
                         return@collectLatest
                     }
-                    combine(memory.observeMessages(), memory.observeSummaries()) { messages, summaries ->
-                        if (messages.isEmpty() && summaries.isEmpty()) {
+                    combine(
+                        memory.observeMessages(),
+                        memory.observeSummaries(),
+                        currentExplainHash,
+                        _review,
+                    ) { messages, summaries, explainHash, review ->
+                        val visible = CoachHistory.view(
+                            messages = messages,
+                            summaries = summaries,
+                            currentExplainHash = explainHash,
+                            currentReviewWeek = review?.weekStart,
+                        )
+                        if (visible.isEmpty) {
                             CoachHistoryState.Empty
                         } else {
-                            CoachHistoryState.Ready(summaries = summaries, messages = messages)
+                            CoachHistoryState.Ready(
+                                summaries = visible.summaries,
+                                messages = visible.messages,
+                            )
                         }
                     }
                         .onStart { emit(CoachHistoryState.Loading) }
@@ -151,6 +169,7 @@ class CoachViewModel @Inject constructor(
                 val plan = context?.plan
                 if (!isConsented || plan == null) {
                     lastHash = null
+                    currentExplainHash.value = null
                     _explanation.value = CoachExplanationState.Unavailable
                     return@collect
                 }
@@ -159,6 +178,7 @@ class CoachViewModel @Inject constructor(
                 ) {
                     return@collect
                 }
+                currentExplainHash.value = context.inputsHash
                 _explanation.value = CoachExplanationState.Loading
                 try {
                     val prompt = CoachPromptBuilder.build(plan, context.inputsHash)
@@ -180,6 +200,7 @@ class CoachViewModel @Inject constructor(
                                 )
                             }
                             lastHash = context.inputsHash
+                            currentExplainHash.value = context.inputsHash
                             android.util.Log.d("Coach", "explain ok hash=${context.inputsHash}")
                             _explanation.value = CoachExplanationState.Ready(
                                 title = response.title,

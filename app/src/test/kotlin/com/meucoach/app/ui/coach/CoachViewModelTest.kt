@@ -447,6 +447,57 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `historico oculta a revisao quando o resumo do mesmo payload existe`(): Unit = runBlocking {
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.REVIEW, "review-1", "Revisão", "3 de 4", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+
+        val ready = awaitHistory(vm) as CoachHistoryState.Ready
+        assertThat(ready.messages).isEmpty()
+        assertThat(ready.summaries).hasSize(1)
+    }
+
+    @Test
+    fun `historico nao repete a explicacao atual`(): Unit = runBlocking {
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash1", "Foco", "30 min", emptyList())
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Foco", body = "Vamos manter os 30 min.")))
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+        awaitHistory(vm) { it is CoachHistoryState.Empty }
+        assertThat(vm.history.value).isEqualTo(CoachHistoryState.Empty)
+    }
+
+    @Test
+    fun `historico nao repete a explicacao atual quando a ia cai`(): Unit = runBlocking {
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash1", "Foco", "30 min", emptyList())
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(FakeCoachApi(error = IOException("down")))
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Fallback::class.java)
+        awaitHistory(vm) { it is CoachHistoryState.Empty }
+        assertThat(vm.history.value).isEqualTo(CoachHistoryState.Empty)
+    }
+
+    @Test
+    fun `historico nao repete o resumo da semana revisada`(): Unit = runBlocking {
+        consent.grant()
+        val older = LocalDate.of(2026, 11, 2)
+        memory.recordSummary(LocalDate.of(2026, 11, 9), "review-current", "Semana atual", "3 de 4", emptyList())
+        memory.recordSummary(older, "review-old", "Semana anterior", "4 de 4", emptyList())
+        reviews.value = weeklyReview()
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Semana passada", body = "3 de 4 sessões.")))
+
+        val ready = awaitHistory(vm) {
+            it is CoachHistoryState.Ready && it.summaries.map { summary -> summary.weekStart } == listOf(older)
+        } as CoachHistoryState.Ready
+        assertThat(ready.summaries.map { it.weekStart }).containsExactly(older)
+    }
+
+    @Test
     fun `apagar mensagem individual mantem o restante e os treinos`(): Unit = runBlocking {
         planRepository.saveWeek(plan())
         consent.grant()

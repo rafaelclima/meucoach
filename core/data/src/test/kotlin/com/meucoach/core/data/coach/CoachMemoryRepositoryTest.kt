@@ -220,6 +220,28 @@ class CoachMemoryRepositoryTest {
                 createdAt = now.toEpochMilli(),
             ),
         )
+        // Older builds could persist a provider payload whose body was an object.
+        database.coachMessageDao().insert(
+            CoachMessageEntity(
+                id = "legacy-json",
+                kind = CoachMessageKind.EXPLAIN.name,
+                inputsHash = "legacy",
+                title = "Coach",
+                body = """{"":": "Semana de 09/11 a 15/11."}""",
+                bulletsJson = "[]",
+                createdAt = now.toEpochMilli(),
+            ),
+        )
+        database.coachSummaryDao().upsert(
+            CoachSummaryEntity(
+                weekStart = "2026-11-09",
+                inputsHash = "legacy",
+                title = "Coach",
+                body = """{"":": "Semana de 09/11 a 15/11."}""",
+                bulletsJson = "[]",
+                createdAt = now.toEpochMilli(),
+            ),
+        )
 
         assertThat(memory.observeMessages().first()).isEmpty()
         assertThat(memory.observeSummaries().first()).isEmpty()

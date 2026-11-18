@@ -2,12 +2,14 @@ package com.meucoach.app
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
@@ -300,7 +302,14 @@ private fun MainContent() {
         if (showGear) {
             IconButton(
                 onClick = { navController.navigate(AppDestination.Profile.route) },
-                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(end = 8.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(end = 8.dp)
+                    .background(
+                        color = McTheme.colors.background.copy(alpha = 0.94f),
+                        shape = CircleShape,
+                    ),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Settings,

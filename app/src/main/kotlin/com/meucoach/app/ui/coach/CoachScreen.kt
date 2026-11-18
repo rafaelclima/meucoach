@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -124,8 +125,7 @@ fun CoachScreen(
             color = McTheme.colors.textPrimary,
         )
         Text(
-            text = "Aqui você conversa sobre a sua semana — o que foi planejado, " +
-                "o que foi feito e como reorganizar quando algo mudar.",
+            text = "Sua semana, a revisão anterior e os ajustes — com o motor no comando.",
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = McTheme.colors.textSecondary,
         )
@@ -189,33 +189,7 @@ fun CoachScreen(
                 }
 
                 is CoachExplanationState.Ready -> {
-                    McCard {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = explanation.title,
-                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                color = McTheme.colors.textPrimary,
-                            )
-                            Text(
-                                text = explanation.body,
-                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                                color = McTheme.colors.textSecondary,
-                            )
-                            explanation.bullets.forEach { bullet ->
-                                Text(
-                                    text = "• $bullet",
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                    color = McTheme.colors.textSecondary,
-                                )
-                            }
-                        }
-                    }
-                    TextButton(onClick = onRevoke) {
-                        Text(text = "Desativar Coach")
-                    }
+                    CoachExplanationCard(explanation)
                 }
 
                 is CoachExplanationState.Fallback -> {
@@ -247,7 +221,11 @@ fun CoachScreen(
                     ) {
                         McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
                         TextButton(onClick = onRevoke) {
-                            Text(text = "Desativar")
+                            Text(
+                                text = "Desativar",
+                                color = McTheme.colors.textTertiary,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            )
                         }
                     }
                 }
@@ -278,6 +256,19 @@ fun CoachScreen(
                     onRetry = onRetryHistory,
                     onDeleteMessage = onDeleteHistoryMessage,
                     onDeleteSummary = onDeleteHistorySummary,
+                )
+            }
+            TextButton(
+                onClick = onRevoke,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+                    .testTag("coach-disable"),
+            ) {
+                Text(
+                    text = "Desativar Coach",
+                    color = McTheme.colors.textTertiary,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                 )
             }
         } else {

@@ -119,6 +119,30 @@ class CoachApiTest {
         }
     }
 
+    @Test
+    fun `parse rejeita body que nao e texto`() {
+        assertThatThrownBy {
+            HttpCoachApi.parse("""{"title":"Coach","body":{"":": "Semana de 09/11 a 15/11."}}""")
+        }.isInstanceOf(IOException::class.java)
+    }
+
+    @Test
+    fun `parse rejeita payload sem title ou body`() {
+        assertThatThrownBy {
+            HttpCoachApi.parse("""{"body":"Semana de 09/11 a 15/11."}""")
+        }.isInstanceOf(IOException::class.java)
+        assertThatThrownBy {
+            HttpCoachApi.parse("""{"title":"Coach","body":"   "}""")
+        }.isInstanceOf(IOException::class.java)
+    }
+
+    @Test
+    fun `parse rejeita json invalido em vez de exibir texto cru`() {
+        assertThatThrownBy {
+            HttpCoachApi.parse("isso não é json")
+        }.isInstanceOf(IOException::class.java)
+    }
+
     private fun reviewPrompt() = CoachReviewPrompt(
         inputsHash = "coach-review-v1|hash",
         locale = "pt-BR",

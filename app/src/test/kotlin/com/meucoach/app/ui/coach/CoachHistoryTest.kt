@@ -169,6 +169,7 @@ class CoachHistoryTest {
         summaries = listOf(
             CoachMemorySummary(
                 weekStart = LocalDate.of(2026, 11, 2),
+                inputsHash = "review-hash",
                 title = "Semana 1",
                 body = "3 de 4 sessões.",
                 bullets = listOf("Adesão"),
@@ -179,6 +180,7 @@ class CoachHistoryTest {
             CoachMemoryMessage(
                 id = "message-1",
                 kind = CoachMessageKind.EXPLAIN,
+                inputsHash = "explain-hash",
                 title = "Foco",
                 body = "Mantivemos 30 min.",
                 bullets = listOf("Base"),
