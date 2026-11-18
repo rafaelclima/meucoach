@@ -1,7 +1,6 @@
 package com.meucoach.app.di
 
 import com.meucoach.app.BuildConfig
-import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.data.DataResetCoordinator
 import com.meucoach.app.data.DataResetter
 import com.meucoach.app.time.ProfileTimeProvider
@@ -52,10 +51,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCoachApi(consent: CoachConsentStore): CoachApi {
+    fun provideCoachApi(): CoachApi {
         val url = BuildConfig.COACH_PROXY_URL
         val token = BuildConfig.COACH_PROXY_TOKEN
-        if (url.isBlank() || token.isBlank() || !consent.isConsented()) {
+        if (url.isBlank() || token.isBlank()) {
             return DisabledCoachApi()
         }
         return HttpCoachApi(baseUrl = url, token = token)

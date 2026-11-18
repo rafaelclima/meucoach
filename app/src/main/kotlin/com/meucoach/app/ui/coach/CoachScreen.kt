@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,12 +24,15 @@ import com.meucoach.core.designsystem.theme.McTheme
 fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
     val consented by viewModel.consented.collectAsStateWithLifecycle()
     val dismissed by viewModel.dismissed.collectAsStateWithLifecycle()
+    val explanation by viewModel.explanation.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
         showConsent = !consented && !dismissed,
+        explanation = explanation,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
+        onRetry = { viewModel.retry() },
     )
 }
 
@@ -36,9 +40,11 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
 fun CoachScreen(
     consented: Boolean,
     showConsent: Boolean,
+    explanation: CoachExplanationState,
     onGrant: () -> Unit,
     onDismiss: () -> Unit,
     onRevoke: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -81,13 +87,74 @@ fun CoachScreen(
                 }
             }
         } else if (consented) {
-            Text(
-                text = "Coach ativado. Em breve: explicação da semana e ajuda para reorganizar treinos.",
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = McTheme.colors.textTertiary,
-            )
-            TextButton(onClick = onRevoke) {
-                Text(text = "Desativar Coach")
+            when (explanation) {
+                CoachExplanationState.Unavailable -> {
+                    Text(
+                        text = "Coach ativado. Em breve: explicação da semana e ajuda para reorganizar treinos.",
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        color = McTheme.colors.textTertiary,
+                    )
+                }
+
+                CoachExplanationState.Loading -> {
+                    CircularProgressIndicator(color = McTheme.colors.accent)
+                }
+
+                is CoachExplanationState.Ready -> {
+                    McCard {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = explanation.title,
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                color = McTheme.colors.textPrimary,
+                            )
+                            Text(
+                                text = explanation.body,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                                color = McTheme.colors.textSecondary,
+                            )
+                            explanation.bullets.forEach { bullet ->
+                                Text(
+                                    text = "• $bullet",
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                    color = McTheme.colors.textSecondary,
+                                )
+                            }
+                        }
+                    }
+                    TextButton(onClick = onRevoke) {
+                        Text(text = "Desativar Coach")
+                    }
+                }
+
+                is CoachExplanationState.Fallback -> {
+                    McCard {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = explanation.planRationale,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                                color = McTheme.colors.textSecondary,
+                            )
+                            Text(
+                                text = explanation.reason,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                color = McTheme.colors.textTertiary,
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
+                        TextButton(onClick = onRevoke) {
+                            Text(text = "Desativar")
+                        }
+                    }
+                }
             }
         } else {
             Text(
