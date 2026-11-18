@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
@@ -53,6 +54,7 @@ fun McBottomBar(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
+                        .testTag("bottom-bar-${item.route}")
                         .selectable(
                             selected = selected,
                             onClick = { onSelect(item.route) },

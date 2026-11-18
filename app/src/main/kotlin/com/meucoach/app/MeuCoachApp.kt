@@ -60,7 +60,7 @@ import com.meucoach.core.designsystem.component.McBottomBar
 import com.meucoach.core.designsystem.component.McBottomBarItem
 import com.meucoach.core.designsystem.theme.McTheme
 
-private sealed class AppDestination(val route: String, val label: String, val icon: ImageVector) {
+internal sealed class AppDestination(val route: String, val label: String, val icon: ImageVector) {
     data object Today : AppDestination("today", "Hoje", Icons.Outlined.WbSunny)
     data object Activities : AppDestination(
         "activities",
@@ -73,7 +73,7 @@ private sealed class AppDestination(val route: String, val label: String, val ic
     data object Profile : AppDestination("profile", "Perfil", Icons.Outlined.Person)
 }
 
-private val destinations = listOf(
+internal val destinations = listOf(
     AppDestination.Today,
     AppDestination.Activities,
     AppDestination.Coach,
