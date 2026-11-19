@@ -18,6 +18,8 @@ import com.meucoach.app.application.replanCheckIn
 import com.meucoach.app.application.replanPlan
 import com.meucoach.app.application.replanProfile
 import com.meucoach.app.coach.CoachConsentStore
+import com.meucoach.app.coach.CoachNextContext
+import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanContext
 import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachReviewSource
@@ -85,6 +87,7 @@ class CoachViewModelTest {
     private lateinit var consent: CoachConsentStore
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
+    private lateinit var next: MutableStateFlow<CoachNextContext?>
     private lateinit var database: MeuCoachDatabase
     private lateinit var memory: CoachMemoryRepository
     private lateinit var profiles: ProfileRepository
@@ -128,6 +131,7 @@ class CoachViewModelTest {
         consent = CoachConsentStore(context, "coach-vm-${System.nanoTime()}")
         plans = MutableStateFlow(null)
         reviews = MutableStateFlow(null)
+        next = MutableStateFlow(null)
         database = Room
             .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
             .allowMainThreadQueries()
@@ -182,6 +186,9 @@ class CoachViewModelTest {
             },
             reviews = object : CoachReviewSource {
                 override fun observeLastClosedWeek() = reviews
+            },
+            nextSource = object : CoachNextSource {
+                override fun observeNext() = next
             },
             api = api,
             memory = memory,
@@ -277,6 +284,60 @@ class CoachViewModelTest {
 
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
     }
+
+    @Test
+    fun `next fica oculto sem consentimento`(): Unit = runBlocking {
+        next.value = nextContext()
+        val vm = viewModel(FakeCoachApi())
+
+        assertThat(vm.next.value).isInstanceOf(CoachNextUiState.Hidden::class.java)
+    }
+
+    @Test
+    fun `next vazio sem sessao futura`(): Unit = runBlocking {
+        consent.grant()
+        val vm = viewModel(FakeCoachApi())
+
+        withTimeout(2000) {
+            while (vm.next.value !is CoachNextUiState.Empty) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(vm.next.value).isInstanceOf(CoachNextUiState.Empty::class.java)
+    }
+
+    @Test
+    fun `next pronto com a sessao vigente`(): Unit = runBlocking {
+        consent.grant()
+        next.value = nextContext()
+        val vm = viewModel(FakeCoachApi())
+
+        withTimeout(2000) {
+            while (vm.next.value !is CoachNextUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        val ready = vm.next.value as CoachNextUiState.Ready
+        assertThat(ready.context.session.date).isEqualTo(LocalDate.of(2026, 11, 17))
+        assertThat(ready.context.isToday).isFalse()
+    }
+
+    private fun nextContext() = CoachNextContext(
+        session = PlannedSession(
+            date = LocalDate.of(2026, 11, 17),
+            type = WorkoutType.EASY,
+            title = "Fácil",
+            durationMin = 30,
+            rationale = "Base",
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            status = SessionStatus.PLANNED,
+        ),
+        isToday = false,
+        today = LocalDate.of(2026, 11, 16),
+        prescription = null,
+        raceEvent = null,
+    )
 
     @Test
     fun `sem consentimento nao chama a api`(): Unit = runBlocking {

@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F1-2 CoachNextSource só-leitura)
+**Atualizado:** 19/11/2026 (F1-3a estado next no ViewModel)
+
+## Sessão 2026-11-19 — F1-3a (estado next no ViewModel)
+
+**Objetivo:** expor a próxima sessão na aba sem escrever prescrição futura: `CoachNextUiState` (Hidden/Loading/Empty/Ready/Error) alimentado por `CoachNextSource`, com retry reaproveitado.
+
+### Concluído
+
+- **TDD:** 3 testes (`oculto sem consentimento`, `vazio sem sessão futura`, `pronto com a sessão vigente`); suíte do VM com 32 testes, 0 falhas.
+- **App:** `CoachNextUiState` + coleta com `flatMapLatest` (revogar volta a `Hidden`; `retry()` reinicia e recupera `Error`); `CoachNextContext` ganhou `today` para o rótulo relativo. Construtor do `CoachViewModel` com `nextSource` (helper de teste centralizado; Hilt resolve via binding da F1-2).
+- **Gates:** `coach.*`, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Próxima: F1-3b `CoachNextLabels` (copy amigável por motivo) + `CoachNextCard` + fiação no topo do `CoachScreen` + testes de tela.
 
 ## Sessão 2026-11-19 — F1-2 (CoachNextSource só-leitura)
 

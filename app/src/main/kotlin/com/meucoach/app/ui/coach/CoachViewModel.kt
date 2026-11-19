@@ -3,6 +3,8 @@ package com.meucoach.app.ui.coach
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.coach.CoachConsentStore
+import com.meucoach.app.coach.CoachNextContext
+import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.app.di.ApplicationScope
@@ -23,11 +25,15 @@ import com.meucoach.core.domain.coach.CoachValidationResult
 import com.meucoach.core.domain.review.WeeklyReview
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -60,6 +66,26 @@ sealed interface CoachReviewState {
 }
 
 /**
+ * Next relevant session for the Coach tab (PRD evolução, F1).
+ *
+ * `Hidden` is the no-consent state. `Ready` carries the read-only pick of
+ * [CoachNextSource]: the session plus the latest persisted prescription of
+ * its date (null while the day has no decision yet) and a race event on the
+ * date. It never triggers a new prescription.
+ */
+sealed interface CoachNextUiState {
+    data object Hidden : CoachNextUiState
+
+    data object Loading : CoachNextUiState
+
+    data object Empty : CoachNextUiState
+
+    data class Ready(val context: CoachNextContext) : CoachNextUiState
+
+    data class Error(val reason: String) : CoachNextUiState
+}
+
+/**
  * Read-only list of what the Coach already persisted (PRD decisions 17/25).
  *
  * `Hidden` is the no-consent state: without opt-in the tab never shows nor
@@ -84,6 +110,7 @@ class CoachViewModel @Inject constructor(
     private val consent: CoachConsentStore,
     private val plans: CoachPlanSource,
     private val reviews: CoachReviewSource,
+    private val nextSource: CoachNextSource,
     private val api: CoachApi,
     private val memory: CoachMemoryRepository,
     @ApplicationScope private val appScope: CoroutineScope,
@@ -113,6 +140,9 @@ class CoachViewModel @Inject constructor(
     private val _history = MutableStateFlow<CoachHistoryState>(CoachHistoryState.Hidden)
     val history: StateFlow<CoachHistoryState> = _history
 
+    private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Hidden)
+    val next: StateFlow<CoachNextUiState> = _next
+
     /** Hash of the explanation currently rendered; excluded from the archive. */
     private val currentExplainHash = MutableStateFlow<String?>(null)
 
@@ -126,6 +156,7 @@ class CoachViewModel @Inject constructor(
             runCatching { memory.pruneExpired() }
                 .onFailure { android.util.Log.d("Coach", "memory prune failed: ${it.message}") }
         }
+        observeNext()
         viewModelScope.launch {
             combine(_consented, historyRetryTick) { isConsented, tick -> isConsented to tick }
                 .collectLatest { (isConsented, _) ->
@@ -300,6 +331,39 @@ class CoachViewModel @Inject constructor(
                     _reviewState.value = CoachReviewState.Fallback("O Coach não respondeu.")
                 }
             }
+        }
+    }
+
+    /**
+     * Next relevant session, read-only. A future day without a persisted
+     * prescription surfaces with `prescription == null`; this never computes
+     * or appends a prescription for a day that has not arrived (ADR 0023).
+     * [retry] restarts the collection, so the error state can recover.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeNext() {
+        viewModelScope.launch {
+            combine(_consented, retryTick) { isConsented, _ -> isConsented }
+                .flatMapLatest { isConsented ->
+                    if (!isConsented) {
+                        flowOf(CoachNextUiState.Hidden)
+                    } else {
+                        nextSource.observeNext()
+                            .map { context ->
+                                if (context == null) {
+                                    CoachNextUiState.Empty
+                                } else {
+                                    CoachNextUiState.Ready(context)
+                                }
+                            }
+                            .onStart { emit(CoachNextUiState.Loading) }
+                            .catch { error ->
+                                android.util.Log.d("Coach", "next failed: ${error.message}")
+                                emit(CoachNextUiState.Error("Não foi possível carregar o próximo treino."))
+                            }
+                    }
+                }
+                .collect { _next.value = it }
         }
     }
 

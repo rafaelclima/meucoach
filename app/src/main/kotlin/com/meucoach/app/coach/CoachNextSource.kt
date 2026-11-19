@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -30,6 +31,7 @@ import javax.inject.Inject
 data class CoachNextContext(
     val session: PlannedSession,
     val isToday: Boolean,
+    val today: LocalDate,
     val prescription: DailyPrescription?,
     val raceEvent: RaceEvent?,
 )
@@ -61,6 +63,7 @@ class RoomCoachNextSource @Inject constructor(
                         CoachNextContext(
                             session = next.session,
                             isToday = next.isToday,
+                            today = today,
                             prescription = prescription,
                             raceEvent = event,
                         )
