@@ -7,10 +7,12 @@ import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanSource
+import com.meucoach.app.coach.CoachProgressSource
 import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.app.coach.RoomCoachGuardsSource
 import com.meucoach.app.coach.RoomCoachNextSource
 import com.meucoach.app.coach.RoomCoachPlanSource
+import com.meucoach.app.coach.RoomCoachProgressSource
 import com.meucoach.app.coach.RoomCoachReviewSource
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
@@ -235,6 +237,24 @@ object DataModule {
         signals = signals,
         time = time,
         clock = clock,
+    )
+
+    @Provides
+    @Singleton
+    fun provideCoachProgressSource(
+        profiles: ProfileRepository,
+        plans: TrainingPlanRepository,
+        activities: ActivityRepository,
+        raceEvents: RaceEventRepository,
+        assembler: WeeklyReviewAssembler,
+        time: TimeProvider,
+    ): CoachProgressSource = RoomCoachProgressSource(
+        profiles = profiles,
+        plans = plans,
+        activities = activities,
+        raceEvents = raceEvents,
+        assembler = assembler,
+        time = time,
     )
 
     @Provides

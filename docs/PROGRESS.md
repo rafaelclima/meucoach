@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (leak de códigos internos na revisão)
+**Atualizado:** 19/11/2026 (F4-1 source das 4 semanas)
+
+## Sessão 2026-11-19 — F4-1 (source das 4 semanas)
+
+**Objetivo:** base da síntese de evolução sem UI: últimas 4 segundas fechadas montadas pelo `WeeklyReviewAssembler` compartilhado + 28d de intensidade calculado uma vez + perfil.
+
+### Concluído
+
+- **TDD:** `CoachProgressSourceTest` (2 casos Room: sem perfil → vazio; plano + corrida em 09/11 → 4 revisões, última com adesão 2/1, anteriores `EMPTY_NO_DATA`).
+- **App:** `RoomCoachProgressSource` (semanas fechadas nunca julgam a parcial; `PlanCompletionCalculator` com 5 semanas para contexto; intensidade 28d única; perfil junto para a linha de VDOT). Binding em `DataModule`.
+- **Gates:** source tests, `assembleDebug` verdes.
+
+### Pendente
+
+- Próxima: F4-2 agregador puro (`CoachProgressSummary`) + testes; depois F4-3 estado/card/fiação.
 
 ## Sessão 2026-11-19 — Leak de códigos internos na revisão
 
