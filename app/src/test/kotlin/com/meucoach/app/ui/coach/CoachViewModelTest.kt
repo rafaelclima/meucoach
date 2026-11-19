@@ -18,6 +18,8 @@ import com.meucoach.app.application.replanCheckIn
 import com.meucoach.app.application.replanPlan
 import com.meucoach.app.application.replanProfile
 import com.meucoach.app.coach.CoachConsentStore
+import com.meucoach.app.coach.CoachGuardsContext
+import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanContext
@@ -88,6 +90,7 @@ class CoachViewModelTest {
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
     private lateinit var next: MutableStateFlow<CoachNextContext?>
+    private lateinit var guards: MutableStateFlow<CoachGuardsContext>
     private lateinit var database: MeuCoachDatabase
     private lateinit var memory: CoachMemoryRepository
     private lateinit var profiles: ProfileRepository
@@ -132,6 +135,7 @@ class CoachViewModelTest {
         plans = MutableStateFlow(null)
         reviews = MutableStateFlow(null)
         next = MutableStateFlow(null)
+        guards = MutableStateFlow(CoachGuardsContext(emptyList()))
         database = Room
             .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
             .allowMainThreadQueries()
@@ -189,6 +193,9 @@ class CoachViewModelTest {
             },
             nextSource = object : CoachNextSource {
                 override fun observeNext() = next
+            },
+            guardsSource = object : CoachGuardsSource {
+                override fun observeGuards() = guards
             },
             api = api,
             memory = memory,
@@ -284,6 +291,35 @@ class CoachViewModelTest {
 
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
     }
+
+    @Test
+    fun `guardas ocultas sem consentimento`(): Unit = runBlocking {
+        guards.value = CoachGuardsContext(listOf(recoveryGuard()))
+        val vm = viewModel(FakeCoachApi())
+
+        assertThat(vm.guards.value).isInstanceOf(CoachGuardsUiState.Hidden::class.java)
+    }
+
+    @Test
+    fun `guardas prontas com consentimento`(): Unit = runBlocking {
+        consent.grant()
+        guards.value = CoachGuardsContext(listOf(recoveryGuard()))
+        val vm = viewModel(FakeCoachApi())
+
+        withTimeout(2000) {
+            while (vm.guards.value !is CoachGuardsUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        val ready = vm.guards.value as CoachGuardsUiState.Ready
+        assertThat(ready.context.guards).hasSize(1)
+    }
+
+    private fun recoveryGuard() = com.meucoach.core.domain.coach.CoachGuard(
+        kind = com.meucoach.core.domain.coach.CoachGuardKind.RECOVERY,
+        title = "Recuperação até 18/11.",
+        detail = "Teto de 30 min, sem qualidade nem longão.",
+    )
 
     @Test
     fun `next fica oculto sem consentimento`(): Unit = runBlocking {

@@ -1,11 +1,14 @@
 package com.meucoach.app.di
 
 import android.content.Context
+import com.meucoach.app.application.TrainingSignalSource
 import com.meucoach.app.application.WeeklyReviewAssembler
 import com.meucoach.app.coach.CoachConsentStore
+import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachReviewSource
+import com.meucoach.app.coach.RoomCoachGuardsSource
 import com.meucoach.app.coach.RoomCoachNextSource
 import com.meucoach.app.coach.RoomCoachPlanSource
 import com.meucoach.app.coach.RoomCoachReviewSource
@@ -216,6 +219,22 @@ object DataModule {
         prescriptions = prescriptions,
         raceEvents = raceEvents,
         time = time,
+    )
+
+    @Provides
+    @Singleton
+    fun provideCoachGuardsSource(
+        profiles: ProfileRepository,
+        raceEvents: RaceEventRepository,
+        signals: TrainingSignalSource,
+        time: TimeProvider,
+        clock: Clock,
+    ): CoachGuardsSource = RoomCoachGuardsSource(
+        profiles = profiles,
+        raceEvents = raceEvents,
+        signals = signals,
+        time = time,
+        clock = clock,
     )
 
     @Provides

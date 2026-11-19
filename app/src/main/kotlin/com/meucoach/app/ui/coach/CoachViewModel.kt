@@ -3,6 +3,8 @@ package com.meucoach.app.ui.coach
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.coach.CoachConsentStore
+import com.meucoach.app.coach.CoachGuardsContext
+import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanSource
@@ -86,6 +88,23 @@ sealed interface CoachNextUiState {
 }
 
 /**
+ * Structural guards for the Coach tab (PRD evolução, F2).
+ *
+ * `Hidden` is the no-consent state. `Ready` carries the read-only guards
+ * resolved from the shared signals; an empty list means a green week and the
+ * UI shows a single quiet line instead of an empty card.
+ */
+sealed interface CoachGuardsUiState {
+    data object Hidden : CoachGuardsUiState
+
+    data object Loading : CoachGuardsUiState
+
+    data class Ready(val context: CoachGuardsContext) : CoachGuardsUiState
+
+    data class Error(val reason: String) : CoachGuardsUiState
+}
+
+/**
  * Read-only list of what the Coach already persisted (PRD decisions 17/25).
  *
  * `Hidden` is the no-consent state: without opt-in the tab never shows nor
@@ -111,6 +130,7 @@ class CoachViewModel @Inject constructor(
     private val plans: CoachPlanSource,
     private val reviews: CoachReviewSource,
     private val nextSource: CoachNextSource,
+    private val guardsSource: CoachGuardsSource,
     private val api: CoachApi,
     private val memory: CoachMemoryRepository,
     @ApplicationScope private val appScope: CoroutineScope,
@@ -143,6 +163,9 @@ class CoachViewModel @Inject constructor(
     private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Hidden)
     val next: StateFlow<CoachNextUiState> = _next
 
+    private val _guards = MutableStateFlow<CoachGuardsUiState>(CoachGuardsUiState.Hidden)
+    val guards: StateFlow<CoachGuardsUiState> = _guards
+
     /** Hash of the explanation currently rendered; excluded from the archive. */
     private val currentExplainHash = MutableStateFlow<String?>(null)
 
@@ -157,6 +180,7 @@ class CoachViewModel @Inject constructor(
                 .onFailure { android.util.Log.d("Coach", "memory prune failed: ${it.message}") }
         }
         observeNext()
+        observeGuards()
         viewModelScope.launch {
             combine(_consented, historyRetryTick) { isConsented, tick -> isConsented to tick }
                 .collectLatest { (isConsented, _) ->
@@ -366,6 +390,33 @@ class CoachViewModel @Inject constructor(
                 .collect { _next.value = it }
         }
     }
+
+    /**
+     * Structural guards, read-only. [retry] restarts the collection, so the
+     * error state can recover.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeGuards() {
+        viewModelScope.launch {
+            combine(_consented, retryTick) { isConsented, _ -> isConsented }
+                .flatMapLatest { isConsented ->
+                    if (!isConsented) {
+                        flowOf(CoachGuardsUiState.Hidden)
+                    } else {
+                        guardsSource.observeGuards()
+                            .map { context -> toGuardsReady(context) }
+                            .onStart { emit(CoachGuardsUiState.Loading) }
+                            .catch { error ->
+                                android.util.Log.d("Coach", "guards failed: ${error.message}")
+                                emit(CoachGuardsUiState.Error("Não foi possível carregar as travas da semana."))
+                            }
+                    }
+                }
+                .collect { _guards.value = it }
+        }
+    }
+
+    private fun toGuardsReady(context: CoachGuardsContext): CoachGuardsUiState = CoachGuardsUiState.Ready(context)
 
     fun grant() {
         consent.grant()

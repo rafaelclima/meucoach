@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F2-1 CoachGuards puro)
+**Atualizado:** 19/11/2026 (F2-2 source das guardas + estado no VM)
+
+## Sessão 2026-11-19 — F2-2 (source das guardas + estado no VM)
+
+**Objetivo:** compor as travas com os sinais compartilhados (`TrainingSignalSource.snapshot`), perfil e provas, sem UI ainda.
+
+### Concluído
+
+- **TDD:** `CoachGuardsSourceTest` (3 casos Room: sem perfil → vazio, sem dados → calibração + sem disponibilidade, prova concluída → recuperação) + 2 testes no VM (oculta sem consentimento, pronta com consentimento); 3 + 34 testes, 0 falhas.
+- **App:** `RoomCoachGuardsSource` (`today` + `observeProfile` + `observeAll` de provas → `snapshot` → `CoachGuards.resolve`; disponibilidade = `minutesByDay` não vazio), `CoachGuardsUiState` (Hidden/Loading/Ready/Error) com `retry()` reiniciando via `flatMapLatest`, binding em `DataModule`.
+- **Gates:** coach suites, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Próxima: F2-3 `CoachGuardsCard` (máx. 4 + expandir, linha quieta sem travas) + fiação no `CoachScreen`.
 
 ## Sessão 2026-11-19 — F2-1 (CoachGuards puro)
 
