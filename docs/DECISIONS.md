@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.62 · **Data:** 18/11/2026
+**Versão:** 1.63 · **Data:** 19/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -60,6 +60,7 @@
 > Revisão 1.60 (18/11/2026): IA Coach 3.3-C — `TemporaryAvailability` aceita `0` (dia removido) e `ReplanIntent.temporaryAvailability` é uma lista ordenada no `canonical`, com datas duplicadas recusadas. `PlanReplanner` aplica todos os dias no perfil efêmero e valida redução/existência; `LessTimeSheet` permite multi-seleção com um valor de minutos (`0` remove) e `LessTimeChange` circula no controller/ViewModel. `AthleteProfile` e `availabilityHash` continuam intactos; sem IA nova e sem schema novo.
 > Revisão 1.61 (18/11/2026): IA Coach encerrada no MVP — goldens `bottom-bar-dark/light` da barra com o Coach selecionado, tags de teste na `McBottomBar` e teste de seleção/clique dos cinco tabs. `CoachViewModelTest` passou a cancelar os `viewModelScope` e drenar o looper antes de fechar o banco/resetar o `Main`, corrigindo a corrida de teardown. Sem regra de treino, schema ou IA nova.
 > Revisão 1.62 (18/11/2026): auditoria de utilidade da aba Coach no aparelho — parser estrito (title/body strings; body objeto/JSON inválido cai no determinístico e não vira memória), linhas legadas com body JSON ocultas, histórico como arquivo sem repetir explicação/revisão correntes (REVIEW substituído pelo resumo do mesmo payload), explicação compacta/expansível, “Desativar” no fim/neutro, labels curtos e lixeira discreta. A validação do card Ready depende do build com token; sem schema/regra nova.
+> Revisão 1.63 (19/11/2026): ADR 0053 rampa de entrada do cold-start — intermediário/avançado com VDOT recente com proveniência (≤56d) mantém 1 qualidade ≤30min sem 8 dias de carga (`R-COLD-01`); exige verde + check-in + sono ≥6h, sem recovery/taper/race; iniciante bloqueado, sem progressão, confiança LOW; `ColdStartAllowance`/`InitialExperienceSuggester` puros, `QualityGate`/`DailyPrescriptionEngine` com `inputsHash`, wiring no Hoje e sugestão de nível na calibração; sem migração.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -115,6 +116,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0050](adr/0050-volume-credit-unplanned-activities.md) | Volume real, treino extra, `VolumeReference`/`StrongRun` e reparo excepcional de `LEGACY` | Implementado (C4-38..C4-43 + C4-55: base real, meso, longão, reparo do mesmo dia, `G-VOL-02`, review "planejada/mantida/rebaixada"; review com extra no aparelho fora de alcance sem relógio, coberto por testes) | 16/11/2026 |
 | [0051](adr/0051-ia-coach-proxy.md) | Proxy stateless do IA Coach (OpenRouter atrás de `X-Coach-Token`, cadeia com fallback, sem payload em log) | Aceito e implementado (F1/F4 + 3.2 + 3.3-A/B/C; memória local no ADR 0052; histórico e goldens da bar concluídos) | 18/11/2026 |
 | [0052](adr/0052-ia-coach-memory-schema-v19.md) | Memória local do IA Coach: `coach_messages`/`coach_summaries`, schema v19, TTL 90/180 dias, revogação apaga e export/delete incluem | Aceito e implementado (F3/Room v19: TTL preguiçoso, índice único por contexto, texto sempre validado, memória fora do motor; histórico UI somente leitura com apagar em bloco e individual) | 18/11/2026 |
+| [0053](adr/0053-cold-start-ramp.md) | Rampa de entrada do cold-start: intermediário com VDOT recente mantém 1 qualidade ≤30min sem 8 dias (`R-COLD-01`); sugestão de nível na calibração | Implementado em 19/11/2026 (domínio puro + wiring Hoje + hint calibração; sem migração) | 19/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

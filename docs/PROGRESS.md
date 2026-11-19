@@ -1,6 +1,68 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (script de instalação com token, JDK 17.0.21 e auditoria da aba Coach — ver sessões abaixo)
+**Atualizado:** 19/11/2026 (Coach sem LLM no aparelho: proxy com JSON inválido no explain — ver sessão abaixo)
+
+## Sessão 2026-11-19 — Coach no aparelho não recebe LLM (explain 400, review ok)
+
+**Objetivo:** descobrir por que a aba Coach no S928B só mostra o fallback determinístico.
+
+**Handoff:** `docs/adr/0051-ia-coach-proxy.md` (addendum com a correção; redeploy pendente).
+
+### Achado no aparelho
+
+- `adb logcat -s Coach`: `explain io: coach upstream 400` uma vez após instalar; `review ok` 12 s depois. Token válido (sem 401), proxy no ar (`/health` ok), opt-in concedido.
+- Causa raiz no proxy: `buildOpenRouterBody` montava o corpo por interpolação de string sem escapar o system prompt. `SYSTEM_EXPLAIN` e `SYSTEM_REPLAN` contêm `{"title":...}` literal, que quebrava o JSON → OpenRouter 400 em todo `explain`/`replan-suggest`. `SYSTEM_REVIEW` não tem aspas internas, por isso a revisão funcionava. Confirmado com parse local (explain inválido, review válido).
+
+### Concluído
+
+- **Proxy:** corpo OpenRouter via `buildJsonObject` (`kotlinx-serialization-json` 1.9.0), sem interpolação manual; função visível para teste (`internal`).
+- **App:** `IOException` agora carrega os primeiros 200 chars do erro do provedor (`coach upstream $code: ...`), sem logar payload de saúde — próximo 4xx dirá o motivo no `logcat -s Coach`.
+- **Teste de regressão:** `infra/coach-proxy/src/test/.../OpenRouterBodyTest.kt` (explain/replan/review válidos, round-trip de aspas). `:core:data:testDebugUnitTest`, `spotlessApply` e proxy `:test` verdes.
+
+### Pendente
+
+- **Redeploy do proxy no Dokploy** (rebuild da imagem; envs `OPENROUTER_API_KEY`/`COACH_PROXY_TOKEN` inalteradas). Sem isso o aparelho continua recebendo 400.
+- Depois do redeploy: abrir a aba Coach, tocar "Tentar de novo" e conferir `explain ok hash=...` no `logcat -s Coach`.
+
+### Próximo passo
+
+1. Redeploy no Dokploy a partir desta revisão.
+2. No aparelho: aba Coach → "Tentar de novo" → confirmar o card Ready (não o "Resumo da semana").
+
+## Sessão 2026-11-19 — ADR 0053: rampa de entrada do cold-start
+
+**Objetivo:** destravar a evolução de quem já corre sem afrouxar a segurança — intermediário com VDOT recente mantém 1 qualidade curta sem 8 dias de carga, com sugestão de nível na calibração.
+
+**Handoff:** `docs/adr/0053-cold-start-ramp.md` (decisão, limites e rollout).
+
+### Concluído
+
+- **Domínio puro:** `ColdStartAllowance` (VDOT + proveniência ≤56d, teto 30min, `fromProfile`), `InitialExperienceSuggester` (BEGINNER + rampa válida → sugere INTERMEDIATE, sem auto-aplicar), `QualityGate` com `coldStart` opcional e `R-COLD-01`, `DailyPrescriptionInput/Hash` com rampa, rationale com nota de entrada e `ExplanationCatalog` com `R-COLD-01`.
+- **Regras preservadas:** BEGINNER bloqueado, dose >30min bloqueada, calibração sem proveniência/>56d bloqueada, verde + check-in + sono ≥6h + sem recovery/taper/race continuam vencendo antes da carga; volume segue mantido, nunca +6%; confiança LOW.
+- **App:** `GetTodayPrescription` + `TodayViewModel.buildPreviewPrescription` constroem via `fromProfile`; `CalibrationScreen` mostra "Nível sugerido: Intermediário" quando Tier A/B com VDOT e perfil BEGINNER.
+- **Docs:** ADR 0053, `SPORTS_SCIENCE` §8.8/§14 (`R-COLD-01`), `ARCHITECTURE` §6.1, `DECISIONS` r1.63.
+
+### Testes
+
+- `:core:domain:test` 1150 (+20: allowance 7, suggester 4, rampa 9 sendo 2 de prescrição/hash); `:app:testDebugUnitTest` 1035 (+2 sugestão na calibração); `:core:data:testDebugUnitTest` 232; `:core:model:test` 40 = **2.457 testes, 0 falhas** (2ª passagem `--rerun-tasks --no-parallel`; 1ª caiu no flake conhecido `TodayViewModelPersistTest`, verde isolado e na reexecução).
+- `:core:domain:koverVerify`, `spotlessCheck`, `:app:lintDebug` verdes; FIT 93,01%.
+- Nenhum dado real no repo; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- A rampa substitui só o `loadBlock`; monotonia/strain/ACWR são pulados por ausência de baseline, como já previa "em calibração não veta".
+- `inputsHash` inclui `coldStartValid/source/calibratedAt`: calibrar invalida a prescrição em nova versão, sem reescrever histórico.
+- A sugestão de nível é hint, não migração de perfil; a troca participa de T4.
+
+### Pendente
+
+- Validar no aparelho com perfil intermediário + prova recente: qualidade curta mantida no dia verde, downgrade sem check-in/sono curto, e hint de nível na calibração.
+- Pós-MVP: seed de volume auto-declarado, 2ª qualidade em cold-start, onboarding com pergunta de volume recente.
+
+### Próximo passo
+
+1. Você gera o APK (`./install.sh`), importa a prova recente e confere o Hoje verde com qualidade curta + calibração sugerindo Intermediário.
+2. Depois retomamos P1-12 (4 semanas de uso real).
 
 ## Sessão 2026-11-19 — Script de instalação com token do Coach
 

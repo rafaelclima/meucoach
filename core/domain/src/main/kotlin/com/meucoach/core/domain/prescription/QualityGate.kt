@@ -12,7 +12,7 @@ import java.time.LocalDate
 import java.util.Locale
 
 /**
- * Pure day-level quality gate (ADR 0044 §2.4, ADR 0049 §2.5).
+ * Pure day-level quality gate (ADR 0044 §2.4, ADR 0049 §2.5, ADR 0053 §2.1).
  *
  * It answers one question — should today's planned opportunity be kept? — and
  * never looks at the readiness of the week's first day. The first failing gate
@@ -24,7 +24,8 @@ import java.util.Locale
  * 4. short sleep;
  * 5. non-green readiness (amber: partial recovery);
  * 6. post-race recovery, race week, recovery week or taper;
- * 7. stale or insufficient objective load;
+ * 7. stale or insufficient objective load (ADR 0053 cold-start ramp may keep
+ *    one short quality for a calibrated intermediate);
  * 8. high monotony;
  * 9. reliable strain spike;
  * 10. reliable ACWR above 1.5;
@@ -44,6 +45,7 @@ object QualityGate {
         date: LocalDate,
         phase: MesoPhase? = null,
         raceWeek: Boolean = false,
+        coldStart: ColdStartAllowance? = null,
     ): QualityEligibility {
         require(plannedSession.type == WorkoutType.QUALITY) {
             "QualityGate only evaluates a QUALITY session"
@@ -59,6 +61,7 @@ object QualityGate {
             profile = profile,
             date = date,
             plan = PlanDayContext(phase = phase, raceWeek = raceWeek),
+            coldStart = coldStart,
         )
         val firstBlock = readinessBlock(context)
             ?: beginnerBlock(context)
@@ -72,8 +75,14 @@ object QualityGate {
             ?: loadBlock(context)
         if (firstBlock != null) return firstBlock
 
-        val load = requireNotNull(context.load) { "loadBlock guarantees load when known" }
-        return monotonyBlock(load) ?: strainBlock(load) ?: acwrBlock(load) ?: eligible()
+        val snapshot = context.load
+        if (snapshot == null || snapshot.objectiveDataState != LoadDataState.KNOWN) {
+            // ADR 0053: without a KNOWN baseline there is no monotony/strain/ACWR
+            // to judge. Either the cold-start ramp kept this short quality, or
+            // loadBlock would have blocked above.
+            return coldStartEligible()
+        }
+        return monotonyBlock(snapshot) ?: strainBlock(snapshot) ?: acwrBlock(snapshot) ?: eligible()
     }
 
     private fun readinessBlock(context: GateContext): QualityEligibility? {
@@ -191,32 +200,57 @@ object QualityGate {
     }
 
     private fun loadBlock(context: GateContext): QualityEligibility? {
-        val load = context.load ?: return blocked(
-            reason = QualityBlockReason.LOAD_INSUFFICIENT,
-            detail = "sem dados de carga",
-            ruleId = "R-DATA-01",
-            evidenceIds = listOf("EV-IMPELLIZZERI-2020"),
-            unlockHint = UNLOCK_LOAD,
-        )
-        return when (load.objectiveDataState) {
-            LoadDataState.STALE -> blocked(
-                reason = QualityBlockReason.LOAD_STALE,
-                detail = "fonte de carga desatualizada",
-                ruleId = "R-DATA-01",
-                evidenceIds = listOf("EV-IMPELLIZZERI-2020"),
-                unlockHint = "Importe ou registre atividades recentes.",
-            )
-
-            LoadDataState.INSUFFICIENT -> blocked(
+        val load = context.load ?: return if (coldStartApplies(context, reasonIfMissing = true)) {
+            null
+        } else {
+            blocked(
                 reason = QualityBlockReason.LOAD_INSUFFICIENT,
-                detail = "carga objetiva insuficiente: ${load.objectiveDaysWithLoad} de 28 dias",
+                detail = "sem dados de carga",
                 ruleId = "R-DATA-01",
                 evidenceIds = listOf("EV-IMPELLIZZERI-2020"),
                 unlockHint = UNLOCK_LOAD,
             )
+        }
+        return when (load.objectiveDataState) {
+            LoadDataState.STALE -> if (coldStartApplies(context, reasonIfMissing = false)) {
+                null
+            } else {
+                blocked(
+                    reason = QualityBlockReason.LOAD_STALE,
+                    detail = "fonte de carga desatualizada",
+                    ruleId = "R-DATA-01",
+                    evidenceIds = listOf("EV-IMPELLIZZERI-2020"),
+                    unlockHint = "Importe ou registre atividades recentes.",
+                )
+            }
+
+            LoadDataState.INSUFFICIENT -> if (coldStartApplies(context, reasonIfMissing = false)) {
+                null
+            } else {
+                blocked(
+                    reason = QualityBlockReason.LOAD_INSUFFICIENT,
+                    detail = "carga objetiva insuficiente: ${load.objectiveDaysWithLoad} de 28 dias",
+                    ruleId = "R-DATA-01",
+                    evidenceIds = listOf("EV-IMPELLIZZERI-2020"),
+                    unlockHint = UNLOCK_LOAD,
+                )
+            }
 
             LoadDataState.KNOWN -> null
         }
+    }
+
+    /**
+     * ADR 0053 §2.1: a calibrated intermediate may keep one short quality
+     * without 8 objective days. Safety/readiness/recovery gates already passed
+     * above; this only replaces the load gate. BEGINNER never qualifies.
+     */
+    private fun coldStartApplies(context: GateContext, reasonIfMissing: Boolean): Boolean {
+        if (context.profile.experience == Experience.BEGINNER) return false
+        if ((context.coldStart?.isValid() ?: false).not()) return false
+        val duration = context.plannedSession.durationMin ?: return reasonIfMissing
+        if (duration !in 1..ColdStartAllowance.MAX_DURATION_MIN) return false
+        return true
     }
 
     private fun monotonyBlock(load: LoadSnapshot): QualityEligibility? {
@@ -263,6 +297,15 @@ object QualityGate {
         unlockHint = null,
     )
 
+    private fun coldStartEligible() = QualityEligibility(
+        eligible = true,
+        reason = null,
+        detail = "rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão",
+        ruleId = RULE_COLD_START,
+        evidenceIds = ELIGIBLE_EVIDENCE,
+        unlockHint = null,
+    )
+
     private fun blocked(
         reason: QualityBlockReason,
         detail: String,
@@ -288,6 +331,7 @@ object QualityGate {
         val profile: AthleteProfile,
         val date: LocalDate,
         val plan: PlanDayContext,
+        val coldStart: ColdStartAllowance? = null,
     ) {
         val microDose: Boolean = plannedSession.qualityKind == QualityKind.STRIDES_ONLY
     }
@@ -295,6 +339,7 @@ object QualityGate {
     private data class PlanDayContext(val phase: MesoPhase?, val raceWeek: Boolean)
 
     private const val RULE_ELIGIBLE = "R-PER-03"
+    private const val RULE_COLD_START = "R-COLD-01"
     private const val UNLOCK_LOAD = "Registre pelo menos 8 dias de carga objetiva nas últimas 4 semanas."
     private val ELIGIBLE_EVIDENCE = listOf("EV-SEILER-2010", "EV-DANIELS-2014")
 }

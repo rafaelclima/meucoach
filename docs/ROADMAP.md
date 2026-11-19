@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.63 · **Data:** 18/11/2026 · **Mudança:** auditoria de utilidade da aba Coach no aparelho — parser estrito, legado JSON oculto, histórico sem duplicar o card atual, explicação compacta e hierarquia de ações; sem schema/regra de treino nova.
+**Versão:** 1.64 · **Data:** 19/11/2026 · **Mudança:** ADR 0053 rampa de entrada do cold-start (`R-COLD-01`) — intermediário com VDOT recente mantém 1 qualidade ≤30min sem 8 dias, com sugestão de nível na calibração; sem migração.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -215,6 +215,7 @@
 - [x] Progressão de volume a partir do realizado (FR-004/N-07, ADR 0038): base é o maior volume concluído com evidência nas últimas 4 semanas, +6% somente com semana anterior ≥ 80%, prontidão verde e ACWR conhecido; disponibilidade continua teto; sem histórico, volume pela agenda com aviso; `R-PLAN-01` passa a ser emitida.
 - [x] Calor e esteira (autorreporte +3% subordinado a FC/RPE; qualidade na esteira por velocidade/inclinação).
 - [x] Prescrição única do dia persistida e versionada; plano como intenção (C1-03, ADR 0023).
+- [x] Rampa de entrada do cold-start (ADR 0053, 19/11/2026): intermediário/avançado com VDOT recente com proveniência (≤56d) mantém 1 qualidade ≤30min sem 8 dias de carga (`R-COLD-01`); verde + check-in + sono ≥6h, sem recovery/taper/race; iniciante bloqueado, sem progressão, confiança LOW; sugestão de nível na calibração.
 - [x] Exibir no plano o limite de 2 treinos fortes por semana (13/11/2026): o card do plano no Hoje mostra “Dois treinos fortes é o máximo desta semana.” quando a semana atinge o teto; abaixo do teto, nada aparece (o rationale já explica o motivo).
 
 **Aceite parcial:** cenário vermelho/doente nunca gera qualidade; dia verde calibrado gera fácil com alvos; sem calibração não inventa pace.

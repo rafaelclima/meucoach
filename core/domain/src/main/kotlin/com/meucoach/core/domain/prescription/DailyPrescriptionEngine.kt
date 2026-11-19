@@ -40,6 +40,11 @@ data class DailyPrescriptionInput(
     val phase: MesoPhase? = null,
     /** Race week context; a main quality is not confirmed (micro-dose still is). */
     val raceWeek: Boolean = false,
+    /**
+     * Cold-start ramp (ADR 0053): recent VDOT with provenance. Lets a green
+     * intermediate keep one short quality (≤30 min) without 8 load days.
+     */
+    val coldStart: ColdStartAllowance? = null,
 )
 
 /**
@@ -78,6 +83,7 @@ class DailyPrescriptionEngine {
                 date = input.date,
                 phase = input.phase,
                 raceWeek = input.raceWeek,
+                coldStart = input.coldStart,
             )
         } else {
             null
@@ -353,6 +359,11 @@ class DailyPrescriptionEngine {
             if (!history && gate != null) listOf(gate.ruleId) else emptyList()
         val evidence = baseEvidence(planned) +
             if (!history && gate != null) gate.evidenceIds else emptyList()
+        val coldStartNote = if (!history && gate?.ruleId == "R-COLD-01") {
+            " Rampa de entrada: prova recente com VDOT libera esta qualidade curta; o volume segue mantido, sem progressão."
+        } else {
+            ""
+        }
         return build(
             input = input,
             planned = planned,
@@ -366,7 +377,7 @@ class DailyPrescriptionEngine {
                     "Histórico: o dia já foi encerrado e não é reavaliado."
             } else {
                 "Plano mantido: ${planned.title}, ${planned.durationMin ?: "—"} min. " +
-                    "Prontidão e carga permitem o treino forte de hoje."
+                    "Prontidão e carga permitem o treino forte de hoje.$coldStartNote"
             },
             rules = rules,
             evidence = evidence,
@@ -673,6 +684,9 @@ class DailyPrescriptionEngine {
             append("status=").append(input.sessionStatus).append('|')
             append("phase=").append(input.phase).append('|')
             append("raceWeek=").append(input.raceWeek).append('|')
+            append("coldStart=").append(input.coldStart?.isValid()).append(',')
+            append(input.coldStart?.vdotSource).append(',')
+            append(input.coldStart?.calibratedAt).append('|')
             if (planned != null) {
                 append("planned=").append(planned.date).append(',')
                 append(planned.type).append(',')

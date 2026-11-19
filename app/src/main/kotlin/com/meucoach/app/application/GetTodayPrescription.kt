@@ -3,6 +3,7 @@ package com.meucoach.app.application
 import com.meucoach.core.data.db.entity.plannedSessionId
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.ColdStartAllowance
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.DailyPrescriptionEngine
 import com.meucoach.core.domain.prescription.DailyPrescriptionInput
@@ -73,6 +74,7 @@ class GetTodayPrescription @Inject constructor(private val repository: DailyPres
             sessionStatus = todaySession?.status,
             planConfidence = plan?.confidence,
             recovery = request.recovery,
+            coldStart = ColdStartAllowance.fromProfile(request.profile, request.date),
         )
         val fresh = engine.prescribe(input)
         // Never write a retrospective decision for a day that already ended.

@@ -977,6 +977,7 @@ private fun buildPreviewPrescription(
             },
             planConfidence = plan?.confidence,
             recovery = recovery,
+            coldStart = com.meucoach.core.domain.prescription.ColdStartAllowance.fromProfile(profile, today),
         ),
     )
 }

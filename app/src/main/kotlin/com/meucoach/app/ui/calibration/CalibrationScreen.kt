@@ -53,7 +53,9 @@ import com.meucoach.core.domain.calibration.CalibrationCalculator
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
 import com.meucoach.core.domain.calibration.CalibrationWarning
+import com.meucoach.core.domain.prescription.InitialExperienceSuggester
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Experience
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -269,6 +271,27 @@ internal fun CalibrationContent(
                 }
                 state.result?.let { result ->
                     item { CalibrationResultCard(result) }
+                    levelSuggestion(state)?.let { suggestion ->
+                        item {
+                            McCard(
+                                variant = McCardVariant.INSET,
+                                modifier = Modifier.testTag("calibration-level-suggestion"),
+                            ) {
+                                Text(
+                                    text = "Nível sugerido: Intermediário",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colors.textPrimary,
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = suggestion.reason +
+                                        " Troque em Perfil quando quiser; a mudança participa da revisão da semana.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                        }
+                    }
                     item {
                         val canSave = result.vdot != null || result.lthr != null || result.thresholdPace != null
                         if (canSave) {
@@ -459,3 +482,13 @@ private fun warningLabel(warning: CalibrationWarning): String = when (warning) {
 }
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")
+
+internal fun levelSuggestion(state: CalibrationUiState): InitialExperienceSuggester.Suggestion? {
+    val result = state.result ?: return null
+    val profile = state.profile ?: return null
+    if (profile.experience != Experience.BEGINNER) return null
+    val hasVdot = result.vdot != null
+    if (!hasVdot) return null
+    if (result.tier != CalibrationTier.A && result.tier != CalibrationTier.B) return null
+    return InitialExperienceSuggester.suggest(profile.experience, coldStartValid = true)
+}

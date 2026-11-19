@@ -162,7 +162,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 | `VolumeProgression` | semanas anteriores, teto de disponibilidade, prontidão/carga/ACWR | alvo de minutos, base e motivo de manutenção (ADR 0038) |
 | `RecoveryWindow` | prova concluída (`distância`/`data`) e data consultada | janela ativa, teto de duração, bloqueio de qualidade/longão |
 | `PlanReplanner` | plano versionado, perfil, prontidão, carga, `today`, datas não treináveis, recuperação | `Suggest` (futuro mesclado) ou `NoChange`, sem tocar hoje/passado/protegidas |
-| `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil, recuperação | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
+| `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil, recuperação, rampa cold-start | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
+| `QualityGate` | sessão, prontidão, carga, perfil, rampa cold-start (`R-COLD-01`) | mantém 1 qualidade ≤30min p/ intermediário com VDOT recente, sem 8 dias; iniciante bloqueado |
 | `PlanCompletionCalculator` | plano, sessões, execuções | adesão, execução comprovada, pendências |
 | `SessionMatcher` | sessão planejada, atividades | sugestões de vínculo (nunca automático) |
 | `SessionCompletionRules` | sessão, data, prescrição | bloqueios de conclusão e encerramento |

@@ -23,8 +23,11 @@ import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.calibration.CalibrationPerformance
 import com.meucoach.core.domain.calibration.CalibrationResult
 import com.meucoach.core.domain.calibration.CalibrationTier
+import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
+import com.meucoach.core.model.Sex
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -150,6 +153,29 @@ class CalibrationScreenTest {
         ).assertIsDisplayed()
         compose.onNodeWithText("R-CAL-02", substring = true).assertDoesNotExist()
         compose.onNodeWithText("EV-", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `suggests intermediate for a beginner with a recent VDOT`() {
+        setContent(
+            state = loadedState().copy(
+                profile = beginnerProfile(),
+                result = result(),
+            ),
+        )
+
+        compose.onNodeWithTag("calibration-list")
+            .performScrollToNode(hasTestTag("calibration-level-suggestion"))
+        compose.onNodeWithTag("calibration-level-suggestion").assertIsDisplayed()
+        compose.onNodeWithText("Nível sugerido: Intermediário", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the level suggestion without a result`() {
+        setContent(state = loadedState().copy(profile = beginnerProfile()))
+
+        compose.onNodeWithTag("calibration-list").performScrollToNode(hasText("Calcular"))
+        compose.onNodeWithTag("calibration-level-suggestion").assertDoesNotExist()
     }
 
     @Test
@@ -296,5 +322,13 @@ class CalibrationScreenTest {
         ruleId = "R-CAL-02",
         recommendation = "Estimativa pelo seu melhor esforço sustentado de 20–35 min. " +
             "Confirme com um teste de 30 min quando possível; até lá, ajuste pelo esforço percebido.",
+    )
+
+    private fun beginnerProfile() = AthleteProfile(
+        id = "athlete-1",
+        birthDate = java.time.LocalDate.of(1988, 1, 1),
+        sex = Sex.MALE,
+        experience = Experience.BEGINNER,
+        timezone = "America/Sao_Paulo",
     )
 }

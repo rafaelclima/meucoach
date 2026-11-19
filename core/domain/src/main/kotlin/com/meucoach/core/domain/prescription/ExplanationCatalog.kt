@@ -106,6 +106,10 @@ object ExplanationCatalog {
             "R-PER-04",
             "Catálogo de qualidade por fase, nível e distância, com PEAK específico",
         ),
+        "R-COLD-01" to RuleExplanation(
+            "R-COLD-01",
+            "Rampa de entrada: prova recente libera 1 qualidade curta, sem progressão",
+        ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",
             "Planejado × executado descreve a diferença, sem julgar",
