@@ -43,6 +43,7 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
     val review by viewModel.review.collectAsStateWithLifecycle()
     val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
+    val next by viewModel.next.collectAsStateWithLifecycle()
     val replan by viewModel.replan.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
@@ -51,11 +52,13 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
         review = review,
         reviewState = reviewState,
         history = history,
+        next = next,
         replan = replan,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
         onRetry = { viewModel.retry() },
+        onNextRetry = { viewModel.retry() },
         onClearHistory = { viewModel.clearHistory() },
         onRetryHistory = { viewModel.retryHistory() },
         onDeleteHistoryMessage = { viewModel.deleteHistoryMessage(it) },
@@ -87,6 +90,7 @@ fun CoachScreen(
     review: WeeklyReview? = null,
     reviewState: CoachReviewState = CoachReviewState.Unavailable,
     history: CoachHistoryState = CoachHistoryState.Hidden,
+    next: CoachNextUiState = CoachNextUiState.Hidden,
     replan: ReplanUiState = ReplanUiState(),
     onReplanRequest: () -> Unit = {},
     onReplanRequestMissed: () -> Unit = {},
@@ -102,6 +106,7 @@ fun CoachScreen(
     onReplanDismiss: () -> Unit = {},
     onClearHistory: () -> Unit = {},
     onRetryHistory: () -> Unit = {},
+    onNextRetry: () -> Unit = {},
     onDeleteHistoryMessage: (String) -> Unit = {},
     onDeleteHistorySummary: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -157,6 +162,7 @@ fun CoachScreen(
                 }
             }
         } else if (consented) {
+            CoachNextCard(state = next, onRetry = onNextRetry)
             CoachReplanCard(
                 state = replan,
                 onRequest = onReplanRequest,

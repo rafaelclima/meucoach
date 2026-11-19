@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.app.application.ReplanChangeKind
+import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.LessTimeDayUi
 import com.meucoach.app.ui.replan.MissedSessionUi
@@ -17,6 +18,9 @@ import com.meucoach.app.ui.replan.ReplanSuggestionUi
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.app.ui.replan.ReplanVersionChangeUi
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.domain.review.WeeklyAdherence
@@ -333,12 +337,101 @@ class CoachScreenTest {
         assertThat(replanY).isLessThan(explanationY)
     }
 
+    @Test
+    fun `proximo treino aparece no topo com o planejado`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                CoachNextContext(
+                    session = PlannedSession(
+                        date = LocalDate.of(2026, 11, 17),
+                        type = WorkoutType.EASY,
+                        title = "Fácil",
+                        durationMin = 30,
+                        rationale = "Base.",
+                        ruleIds = listOf("R-ZONE-01"),
+                        evidenceIds = listOf("EV-SEILER-2010"),
+                        status = SessionStatus.PLANNED,
+                    ),
+                    isToday = false,
+                    today = LocalDate.of(2026, 11, 16),
+                    prescription = null,
+                    raceEvent = null,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("PRÓXIMO TREINO").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Amanhã · Fácil · 30 min").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `dia de prova nao mostra treino no proximo`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                CoachNextContext(
+                    session = PlannedSession(
+                        date = LocalDate.of(2026, 11, 17),
+                        type = WorkoutType.EASY,
+                        title = "Fácil",
+                        durationMin = 30,
+                        rationale = "Base.",
+                        ruleIds = listOf("R-ZONE-01"),
+                        evidenceIds = listOf("EV-SEILER-2010"),
+                        status = SessionStatus.PLANNED,
+                    ),
+                    isToday = false,
+                    today = LocalDate.of(2026, 11, 16),
+                    prescription = null,
+                    raceEvent = com.meucoach.core.model.RaceEvent(
+                        id = "race-1",
+                        distance = com.meucoach.core.model.RaceDistance.FIVE_K,
+                        targetDate = LocalDate.of(2026, 11, 17),
+                        createdAt = java.time.Instant.parse("2026-11-16T12:00:00Z"),
+                        updatedAt = java.time.Instant.parse("2026-11-16T12:00:00Z"),
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dia de prova").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `erro do proximo treino tem tentar de novo`() {
+        var retried = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Ready(
+                        title = "Semana atual",
+                        body = "Plano da semana.",
+                        bullets = emptyList(),
+                    ),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Error("Sem conexão."),
+                    onNextRetry = { retried++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-next-retry").performScrollTo().performClick()
+        assertThat(retried).isEqualTo(1)
+    }
+
     private fun setContent(
         explanation: CoachExplanationState = CoachExplanationState.Ready(
             title = "Semana atual",
             body = "Plano da semana.",
             bullets = emptyList(),
         ),
+        next: CoachNextUiState = CoachNextUiState.Hidden,
         review: WeeklyReview? = null,
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
@@ -360,6 +453,7 @@ class CoachScreenTest {
                     onDismiss = {},
                     onRevoke = {},
                     onRetry = {},
+                    next = next,
                     review = review,
                     reviewState = reviewState,
                     replan = replan,

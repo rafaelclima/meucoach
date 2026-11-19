@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F1-3a estado next no ViewModel)
+**Atualizado:** 19/11/2026 (F1-3b card do próximo treino no topo)
+
+## Sessão 2026-11-19 — F1-3b (card do próximo treino no topo)
+
+**Objetivo:** tornar visível o estado da F1-3a: `CoachNextCard` como primeiro card da aba (antes do replan), display-only, com copy amigável por motivo de bloqueio.
+
+### Concluído
+
+- **TDD:** `CoachNextLabelsTest` (6 casos: rótulo Hoje/Amanhã/dia, planejado sem decidir, prova, linhas por ajuste, bloqueio + desbloqueio, cobertura exaustiva dos 13 `QualityBlockReason` sem sigla) + 3 testes de tela (card no topo, prova, erro com retry).
+- **App:** `CoachNextLabels` (dayLabel/headline/statusLine/blockCopy, `when` exaustivo: novo motivo quebra o build até ganhar copy), `CoachNextCard` (Hidden→nada; Loading/Empty/Error/Ready com tags), fiação no topo do `CoachScreen` + `CoachRoute` (`onNextRetry = retry()`).
+- **Gates:** `ui.coach.*` (17+6+32 testes, 0 falhas), `coach.*`, `assembleDebug`, `spotlessCheck` verdes. Sem regra de treino, sem escrita de prescrição, sem migração.
+
+### Pendente
+
+- Próxima: F2 guardas de carga/janela (só leitura de `LoadDataState`/janela/prova) ou ações no card (navegar para Hoje/check-in) — sua escolha.
 
 ## Sessão 2026-11-19 — F1-3a (estado next no ViewModel)
 
