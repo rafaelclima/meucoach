@@ -283,6 +283,7 @@ Memória local do Coach **sem** transformar memória em decisão:
 Comandos:
 
 ```bash
+./install.sh
 ./gradlew :app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*' --tests 'com.meucoach.app.ui.replan.*' --tests 'com.meucoach.app.application.*' --tests 'com.meucoach.app.replan.*'
 ./gradlew :core:data:testDebugUnitTest --tests 'com.meucoach.core.data.repository.TrainingPlanRepositoryTest'
 ./gradlew :core:data:testDebugUnitTest --tests 'com.meucoach.core.data.db.MeuCoachDatabaseMigrationTest'
@@ -294,6 +295,8 @@ Comandos:
 ./gradlew :app:recordRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'
 ./gradlew :app:verifyRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'
 ```
+
+`./install.sh` (raiz) compila, pergunta o token do Coach **a cada execução** e instala com `adb install -r`; Enter vazio instala sem IA. O token não é salvo no repo.
 
 Proxy (não commitado):
 

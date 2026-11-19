@@ -27,7 +27,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 
 ## Stack verificada (out/2026)
 
-- AGP 9.4.1 · Gradle 9.8.2 · Kotlin 2.4.21 · KSP 2.3.12 · JDK 17
+- AGP 9.4.1 · Gradle 9.8.2 · Kotlin 2.4.21 · KSP 2.3.12 · JDK 17 (`mise.toml` fixa 17.0.21)
 - compileSdk 37 · targetSdk 36 · minSdk 26
 - Compose BOM 2026.09.00 · Material 3 · Activity 1.13.0 · Lifecycle 2.11.0
 - Room 2.8.5 · Hilt 2.60.1 · DataStore 1.3.0 · WorkManager 2.12.0
@@ -47,10 +47,19 @@ cd meucoach
 cp local.properties.example local.properties   # ajuste sdk.dir
 ./gradlew :app:assembleDebug
 ./gradlew check
-./gradlew :app:installDebug
+./install.sh   # instala no aparelho e pede o token do Coach
 ```
 
 No Android Studio: abra a raiz do repositório e rode a configuração `app`.
+
+### Instalação no aparelho
+
+`./install.sh` compila o APK debug e instala via `adb install -r` (preserva os dados). Ele **pede o token do Coach a cada execução**:
+
+- cole o token e pressione Enter para instalar com IA;
+- pressione Enter vazio para instalar sem IA (fallback determinístico).
+
+O token é lido sem eco e não é gravado no repositório. O script usa o `mise.toml` (JDK 17.0.21), encontra o `adb` por `ADB`, `ANDROID_HOME`, `ANDROID_SDK_ROOT` ou `local.properties`, e respeita `ANDROID_SERIAL` quando há mais de um aparelho. Requer depuração USB autorizada.
 
 ## Estrutura
 

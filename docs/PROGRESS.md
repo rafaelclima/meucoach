@@ -1,6 +1,35 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 18/11/2026 (Coach: auditoria no aparelho e correções de utilidade/duplicação — ver sessão logo abaixo)
+**Atualizado:** 19/11/2026 (script de instalação com token, JDK 17.0.21 e auditoria da aba Coach — ver sessões abaixo)
+
+## Sessão 2026-11-19 — Script de instalação com token do Coach
+
+**Objetivo:** ter um único comando na raiz para compilar e reinstalar o app no aparelho, perguntando o token do proxy a cada execução sem salvá-lo no repositório, e documentá-lo oficialmente.
+
+**Handoff:** `docs/HANDOFF_IA_COACH.md` (§6 comandos).
+
+### Concluído
+
+- **`install.sh` na raiz:** valida aparelho via `adb`, pergunta o token com `read -rsp` (sem eco), compila `:app:assembleDebug` e instala com `adb install -r` (preserva dados).
+  - Token preenchido → `ORG_GRADLE_PROJECT_coachProxyUrl`/`ORG_GRADLE_PROJECT_coachProxyToken` para habilitar a IA sem o token aparecer nos argumentos do Gradle.
+  - Enter vazio → instala sem token, com fallback determinístico.
+  - Usa `mise exec` quando disponível (JDK 17.0.21), encontra o `adb` por `ADB`/`ANDROID_HOME`/`ANDROID_SDK_ROOT`/`local.properties` e respeita `ANDROID_SERIAL`.
+  - `--help`, mensagens em pt-BR e `</dev/null` nos comandos adb para o prompt não perder o stdin.
+- **JDK:** `mise.toml` atualizado para 17.0.21 (Temurin); `:app:installDebug` voltou a funcionar sem `-XX:-UseContainerSupport` no S24.
+- **Docs:** README (Quick start + Instalação no aparelho), RUNBOOK (§1.1, §3, §4.1 e §4.2), AGENTS (comandos) e handoff.
+
+### Validação
+
+- `bash -n install.sh` e `./install.sh --help` verdes.
+- Fluxo com Enter vazio: build + `Success` no SM-S928B; app instalado sem token.
+- Fluxo com token dummy: build com IA habilitada + `Success`; depois restaurado o build sem token.
+- Nenhum token real usado, impresso ou commitado; nenhum código de app/teste alterado.
+- `git diff --check` verde.
+
+### Próximo passo
+
+1. Rodar `./install.sh` com o token real e validar o card Ready/histórico no aparelho.
+2. Retomar P1-12/Ciclo 4.
 
 ## Sessão 2026-11-18 — Coach: auditoria no aparelho e correções de utilidade
 

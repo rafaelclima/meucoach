@@ -15,10 +15,17 @@
 
 ### 1.1 JDK
 
-O repositório não fixa o caminho do JDK. Use um JDK 17+ no `JAVA_HOME`:
+O repositório fixa o patch em `mise.toml` (Java 17.0.21). Com `mise`:
 
 ```bash
-export JAVA_HOME="$HOME/.local/share/mise/installs/java/17.0.2"
+mise install
+mise exec -- java -version   # 17.0.21
+```
+
+Sem `mise`, use qualquer JDK 17+ no `JAVA_HOME`:
+
+```bash
+export JAVA_HOME="/caminho/para/jdk-17"
 java -version
 ```
 
@@ -58,7 +65,8 @@ O primeiro build baixa Gradle 9.8.2 e dependências; pode levar alguns minutos.
 ## 3. Comandos do dia a dia
 
 ```bash
-./gradlew :app:installDebug          # instala no device/emulador conectado
+./install.sh                         # APK + instala no device; pede o token do Coach
+./gradlew :app:installDebug          # instala no device/emulador conectado (sem prompt)
 ./gradlew :app:assembleDebug         # APK debug
 ./gradlew test                       # testes unitários
 ./gradlew check                      # testes + lint + verificações
@@ -95,9 +103,24 @@ emulator -avd meucoach_api35
 1. Ative opções de desenvolvedor e depuração USB.
 2. Conecte e autorize o computador.
 3. `adb devices` deve listar o aparelho.
-4. `./gradlew :app:installDebug`.
+4. `./install.sh` (pede o token do Coach; Enter vazio instala sem IA).
 5. No app, conceda permissões do Health Connect.
 6. Sincronize o Zepp → Health Connect antes de abrir o MeuCoach.
+
+### 4.2 Instalação com IA Coach
+
+O script da raiz pergunta o token do proxy a cada reinstalação; ele não fica salvo no projeto nem no histórico do shell:
+
+```bash
+./install.sh
+# Cole o token do Coach (Enter vazio = instalar sem IA):
+```
+
+- Token válido: a aba Coach chama o proxy configurado (`COACH_PROXY_URL`, padrão de produção) e grava histórico local com opt-in.
+- Enter vazio: instala o APK sem token; a aba Coach usa o fallback determinístico.
+- O script usa `mise exec` quando disponível, encontra o `adb` em `ADB`/`ANDROID_HOME`/`ANDROID_SDK_ROOT`/`local.properties` e usa `adb install -r` para preservar os dados.
+- Para trocar a URL: `COACH_PROXY_URL=https://... ./install.sh`.
+- Com mais de um aparelho conectado: `ANDROID_SERIAL=<serial> ./install.sh`.
 
 ## 5. Dados privados e fixtures
 
