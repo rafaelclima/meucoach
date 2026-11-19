@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F2-2 source das guardas + estado no VM)
+**Atualizado:** 19/11/2026 (F2-3 card das travas)
+
+## Sessão 2026-11-19 — F2-3 (card das travas)
+
+**Objetivo:** tornar visíveis as guardas da F2-2: `CoachGuardsCard` entre o próximo treino e o replanejo.
+
+### Concluído
+
+- **TDD:** 4 testes de tela (títulos/detalhes, expandir além de 4, linha quieta sem travas, erro com retry); coach suites com 87 testes, 0 falhas.
+- **App:** `CoachGuardsCard` (Hidden→nada; Loading/quieta/`Ready` com máx. 4 + "Ver mais (N)"/`Error` com retry; tags próprias), fiação no topo do `CoachScreen` (next → guards → replan) + `CoachRoute` (`onGuardsRetry = retry()`).
+- **Gates:** coach suites, `assembleDebug`, `spotlessCheck` verdes. Sem regra de treino, sem escrita, sem migração.
+
+### Pendente
+
+- F2 encerrada. Próxima: F4 síntese de 4 semanas ou validação no aparelho (build com token) — sua escolha.
 
 ## Sessão 2026-11-19 — F2-2 (source das guardas + estado no VM)
 

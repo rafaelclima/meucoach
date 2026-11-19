@@ -48,6 +48,7 @@ fun CoachRoute(
     val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val next by viewModel.next.collectAsStateWithLifecycle()
+    val guards by viewModel.guards.collectAsStateWithLifecycle()
     val replan by viewModel.replan.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
@@ -57,6 +58,7 @@ fun CoachRoute(
         reviewState = reviewState,
         history = history,
         next = next,
+        guards = guards,
         replan = replan,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
@@ -65,6 +67,7 @@ fun CoachRoute(
         onNextRetry = { viewModel.retry() },
         onNextCheckIn = onCheckInClick,
         onNextToday = onTodayClick,
+        onGuardsRetry = { viewModel.retry() },
         onClearHistory = { viewModel.clearHistory() },
         onRetryHistory = { viewModel.retryHistory() },
         onDeleteHistoryMessage = { viewModel.deleteHistoryMessage(it) },
@@ -115,6 +118,8 @@ fun CoachScreen(
     onNextRetry: () -> Unit = {},
     onNextCheckIn: () -> Unit = {},
     onNextToday: () -> Unit = {},
+    guards: CoachGuardsUiState = CoachGuardsUiState.Hidden,
+    onGuardsRetry: () -> Unit = {},
     onDeleteHistoryMessage: (String) -> Unit = {},
     onDeleteHistorySummary: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -176,6 +181,7 @@ fun CoachScreen(
                 onCheckIn = onNextCheckIn,
                 onToday = onNextToday,
             )
+            CoachGuardsCard(state = guards, onRetry = onGuardsRetry)
             CoachReplanCard(
                 state = replan,
                 onRequest = onReplanRequest,

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.app.application.ReplanChangeKind
+import com.meucoach.app.coach.CoachGuardsContext
 import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.LessTimeDayUi
@@ -18,6 +19,8 @@ import com.meucoach.app.ui.replan.ReplanSuggestionUi
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.app.ui.replan.ReplanVersionChangeUi
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.coach.CoachGuard
+import com.meucoach.core.domain.coach.CoachGuardKind
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -535,6 +538,85 @@ class CoachScreenTest {
         raceEvent = null,
     )
 
+    @Test
+    fun `travas aparecem com titulo e detalhe`() {
+        setContent(
+            guards = CoachGuardsUiState.Ready(
+                CoachGuardsContext(
+                    listOf(
+                        CoachGuard(
+                            CoachGuardKind.RECOVERY,
+                            "Recuperação até 18/11.",
+                            "Teto de 30 min, sem qualidade nem longão.",
+                        ),
+                        CoachGuard(
+                            CoachGuardKind.CALIBRATION,
+                            "Base de carga em calibração.",
+                            "5 de 28 dias com carga objetiva.",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-guards-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Recuperação até 18/11.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Base de card em calibração.").assertDoesNotExist()
+        compose.onNodeWithText("Base de carga em calibração.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `mais de quatro travas expandem sob demanda`() {
+        val five = (1..5).map {
+            CoachGuard(
+                CoachGuardKind.NO_AVAILABILITY,
+                "Trava $it",
+                "Detalhe $it.",
+            )
+        }
+        setContent(guards = CoachGuardsUiState.Ready(CoachGuardsContext(five)))
+
+        compose.onNodeWithText("Trava 4").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Trava 5").assertDoesNotExist()
+        compose.onNodeWithTag("coach-guards-more").performScrollTo().performClick()
+        compose.onNodeWithText("Trava 5").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `sem travas mostra linha quieta`() {
+        setContent(guards = CoachGuardsUiState.Ready(CoachGuardsContext(emptyList())))
+
+        compose.onNodeWithTag("coach-guards-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Nenhum bloqueio ativo — siga o plano.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `erro das travas tem tentar de novo`() {
+        var retried = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Ready(
+                        title = "Semana atual",
+                        body = "Plano da semana.",
+                        bullets = emptyList(),
+                    ),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    guards = CoachGuardsUiState.Error("Sem conexão."),
+                    onGuardsRetry = { retried++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-guards-retry").performScrollTo().performClick()
+        assertThat(retried).isEqualTo(1)
+    }
+
     private fun setContent(
         explanation: CoachExplanationState = CoachExplanationState.Ready(
             title = "Semana atual",
@@ -542,6 +624,7 @@ class CoachScreenTest {
             bullets = emptyList(),
         ),
         next: CoachNextUiState = CoachNextUiState.Hidden,
+        guards: CoachGuardsUiState = CoachGuardsUiState.Hidden,
         review: WeeklyReview? = null,
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
@@ -564,6 +647,11 @@ class CoachScreenTest {
                     onRevoke = {},
                     onRetry = {},
                     next = next,
+                    onNextCheckIn = {},
+                    onNextRetry = {},
+                    onNextToday = {},
+                    guards = guards,
+                    onGuardsRetry = {},
                     review = review,
                     reviewState = reviewState,
                     replan = replan,
