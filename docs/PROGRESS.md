@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F3-2 fallback exibe motivo)
+**Atualizado:** 19/11/2026 (F3-3 replan antes da explicação)
+
+## Sessão 2026-11-19 — F3-3 (replan antes da explicação)
+
+**Objetivo:** UX-1 do PRD: ação (“Ajustar a semana”) acima do texto longo da explicação, com os cards atuais.
+
+### Concluído
+
+- **TDD:** `CoachScreenTest` ganhou `replan vem antes da explicacao` (posição em `positionInRoot`, red → green).
+- **UI:** bloco `CoachReplanCard` + mensagem movido para antes do `when (explanation)` no `CoachScreen`. Revisão, histórico e Desativar inalterados. Sem regra de treino, sem ADR.
+- **Gates:** `coach.*`, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Próxima: Fase 1 (F1 `CoachNextCard` + `CoachNextSource`) ou checklist determinístico no fallback (sua escolha).
 
 ## Sessão 2026-11-19 — F3-2 (fallback exibe motivo)
 

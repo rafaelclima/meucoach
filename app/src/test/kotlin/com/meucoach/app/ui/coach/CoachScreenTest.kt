@@ -322,6 +322,17 @@ class CoachScreenTest {
         ).performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun `replan vem antes da explicacao`() {
+        setContent()
+
+        val replanY = compose.onNodeWithTag("coach-replan-card").fetchSemanticsNode().positionInRoot.y
+        val explanationY =
+            compose.onNodeWithTag("coach-explanation-card").fetchSemanticsNode().positionInRoot.y
+
+        assertThat(replanY).isLessThan(explanationY)
+    }
+
     private fun setContent(
         explanation: CoachExplanationState = CoachExplanationState.Ready(
             title = "Semana atual",

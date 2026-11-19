@@ -157,6 +157,24 @@ fun CoachScreen(
                 }
             }
         } else if (consented) {
+            CoachReplanCard(
+                state = replan,
+                onRequest = onReplanRequest,
+                onMissed = onReplanRequestMissed,
+                onLessTime = onReplanRequestLessTime,
+            )
+            if (replan.suggestion == null) {
+                replan.message?.let { message ->
+                    ReplanMessageCard(
+                        message = message,
+                        onDismiss = onReplanConsumeMessage,
+                        canUndo = replan.canUndo,
+                        isUndoing = replan.isUndoing,
+                        onUndo = onReplanUndo,
+                        onShowChanges = replan.lastChange?.let { { replanChangesOpen = true } },
+                    )
+                }
+            }
             when (explanation) {
                 CoachExplanationState.Unavailable -> {
                     McCard(modifier = Modifier.testTag("coach-empty-path")) {
@@ -247,24 +265,6 @@ fun CoachScreen(
                             )
                         }
                     }
-                }
-            }
-            CoachReplanCard(
-                state = replan,
-                onRequest = onReplanRequest,
-                onMissed = onReplanRequestMissed,
-                onLessTime = onReplanRequestLessTime,
-            )
-            if (replan.suggestion == null) {
-                replan.message?.let { message ->
-                    ReplanMessageCard(
-                        message = message,
-                        onDismiss = onReplanConsumeMessage,
-                        canUndo = replan.canUndo,
-                        isUndoing = replan.isUndoing,
-                        onUndo = onReplanUndo,
-                        onShowChanges = replan.lastChange?.let { { replanChangesOpen = true } },
-                    )
                 }
             }
             review?.let { CoachReviewCard(review = it, state = reviewState) }
