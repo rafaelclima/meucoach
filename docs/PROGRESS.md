@@ -1,6 +1,31 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (auditoria pós-implementação do Coach)
+**Atualizado:** 19/11/2026 (Bloco A — F1 verdadeiro)
+
+## Sessão 2026-11-19 — Bloco A: F1 verdadeiro
+
+**Objetivo:** fazer o card de maior hierarquia dizer a verdade, separar o Coach local da IA e fechar o gate do detekt (P-01, P-02, P-03, P-04, P-09, P-10, P-12).
+
+### Concluído
+
+- **Domínio:** `CoachNextSubject` (`Training`/`Race`) e `CoachNextResolver` com precedência de prova (hoje/amanhã, antes da próxima sessão ou sem sessão restante); `CoachResponseValidator.forbiddenTokens` agora usa limite de palavra (`atl` não casa “atleta”, `ctl` não casa “controle”).
+- **App/source:** `CoachNextContext` carrega sujeito (sessão ou prova), `hasPlan`/`hasProfile`, prescrição vigente, prontidão, check-in e sono; `RoomCoachNextSource` combina plano, perfil, check-in, métricas e provas (F1 reage a dados novos). Prova nunca pede prescrição.
+- **Card F1:** headline usa a prescrição (título/duração prescritos; REST sem duração) e o planejado vira linha secundária; sem prescrição o treino é rotulado “Planejado:”; prova mostra “Dia de prova” sem sessão artificial; semáforo de hoje com rótulo+score+sono e sem semáforo para amanhã; check-in ausente oferece “Fazer check-in”; `unlockHint` cru e ACWR nunca são renderizados (copy por motivo).
+- **Consentimento:** F1/F2/F4 e replan aparecem sempre; o opt-in controla só explicação/revisão. “Depois” mantém CTA persistente “Ativar IA”; fallback exibe copy de corredor, não o `reason` técnico.
+- **Estados vazios:** `Onboarding` (sem perfil/plano) é um único card com CTAs para Perfil, Calibração e Importação; `Semana concluída` só com plano e nada pendente. Nada de “Monte seu plano” + “Nenhum bloqueio” juntos.
+- **Gate:** `CoachSources` agrupa as fontes e elimina o `LongParameterList`; condição de VDOT simplificada (`ComplexCondition`). `./gradlew check` verde.
+- **Testes:** 2.555 no repositório (1178 domain / 1105 app / 232 data / 40 model), 0 falhas. Novos: precedência de prova, prescrição divergente/REST, prontidão/sono, onboarding, consentimento local, fallback sem código e “atleta”.
+- **Docs:** `TESTING` (contagens e cobertura dos novos testes), `DECISIONS` r1.65, este diário e o handoff. Sem migração, sem dependência e sem regra de treino nova.
+
+### Pendente
+
+- Validar no aparelho: build com/sem token, prova hoje/amanhã, check-in → prontidão, offline, fonte 200% e TalkBack (roteiro do Bloco D).
+- Bloco B (reatividade de F2/F4/explicação/revisão), Bloco C (F4 correto) e Bloco D (qualidade) seguem conforme o handoff.
+
+### Próximo passo
+
+1. Rodar `./install.sh` e conferir o card F1 nos cenários de prova/check-in.
+2. Iniciar o Bloco B — F2/F4 e explicação reagindo a atividades, check-ins, planos e replanejamento.
 
 ## Sessão 2026-11-19 — Auditoria pós-implementação do Coach
 

@@ -215,11 +215,17 @@ object DataModule {
         plans: TrainingPlanRepository,
         prescriptions: DailyPrescriptionRepository,
         raceEvents: RaceEventRepository,
+        profiles: ProfileRepository,
+        checkIns: CheckInRepository,
+        metrics: DailyMetricsRepository,
         time: TimeProvider,
     ): CoachNextSource = RoomCoachNextSource(
         plans = plans,
         prescriptions = prescriptions,
         raceEvents = raceEvents,
+        profiles = profiles,
+        checkIns = checkIns,
+        metrics = metrics,
         time = time,
     )
 

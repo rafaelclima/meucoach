@@ -3,12 +3,18 @@ package com.meucoach.app.coach
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.meucoach.app.application.replanCheckIn
+import com.meucoach.app.application.replanProfile
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.repository.CheckInRepository
+import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.NewRaceEvent
+import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
@@ -18,9 +24,12 @@ import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.model.CompletionEvidence
+import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.ReadinessLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -49,6 +58,9 @@ class CoachNextSourceTest {
     private lateinit var plans: TrainingPlanRepository
     private lateinit var prescriptions: DailyPrescriptionRepository
     private lateinit var raceEvents: RaceEventRepository
+    private lateinit var profiles: ProfileRepository
+    private lateinit var checkIns: CheckInRepository
+    private lateinit var metrics: DailyMetricsRepository
     private lateinit var source: CoachNextSource
 
     @Before
@@ -63,13 +75,21 @@ class CoachNextSourceTest {
         plans = TrainingPlanRepository(database, clock)
         prescriptions = DailyPrescriptionRepository(database, clock)
         raceEvents = RaceEventRepository(database, clock)
-        source = RoomCoachNextSource(
-            plans = plans,
-            prescriptions = prescriptions,
-            raceEvents = raceEvents,
-            time = FakeTimeProvider(Instant.parse("2026-11-16T12:00:00Z"), ZoneOffset.UTC),
-        )
+        profiles = ProfileRepository(database, clock)
+        checkIns = CheckInRepository(database, clock)
+        metrics = DailyMetricsRepository(database, clock)
+        source = sourceAt(Instant.parse("2026-11-16T12:00:00Z"))
     }
+
+    private fun sourceAt(instant: Instant) = RoomCoachNextSource(
+        plans = plans,
+        prescriptions = prescriptions,
+        raceEvents = raceEvents,
+        profiles = profiles,
+        checkIns = checkIns,
+        metrics = metrics,
+        time = FakeTimeProvider(instant, ZoneOffset.UTC),
+    )
 
     @After
     fun tearDown() {
@@ -79,73 +99,126 @@ class CoachNextSourceTest {
 
     @Test
     fun `devolve hoje pendente com a prescricao vigente`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
         plans.saveWeek(plan(todayStatus = SessionStatus.PLANNED))
         prescriptions.append(prescription(monday))
 
-        val next = source.observeNext().first { it != null }!!
+        val next = source.observeNext().first { it.subject != null }
 
-        assertThat(next.session.date).isEqualTo(monday)
+        assertThat(next.subject).isEqualTo(CoachNextSubject.Training(planSession(monday)))
         assertThat(next.isToday).isTrue()
         assertThat(next.prescription?.date).isEqualTo(monday)
-        assertThat(next.raceEvent).isNull()
+        assertThat(next.hasPlan).isTrue()
+        assertThat(next.hasProfile).isTrue()
     }
 
     @Test
     fun `sem pendencia hoje devolve a proxima futura sem prescricao`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
         plans.saveWeek(plan(todayStatus = SessionStatus.DONE))
 
-        val next = source.observeNext().first { it != null }!!
+        val next = source.observeNext().first { it.subject != null }
 
-        assertThat(next.session.date).isEqualTo(monday.plusDays(2))
+        assertThat(next.subject).isEqualTo(CoachNextSubject.Training(planSession(monday.plusDays(2))))
         assertThat(next.isToday).isFalse()
         assertThat(next.prescription).isNull()
     }
 
     @Test
-    fun `sem plano nao ha proximo`(): Unit = runBlocking {
+    fun `sem plano nao ha proximo e o perfil sinaliza onboarding`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+
         val next = source.observeNext().first()
 
-        assertThat(next).isNull()
+        assertThat(next.subject).isNull()
+        assertThat(next.hasPlan).isFalse()
+        assertThat(next.hasProfile).isTrue()
     }
 
     @Test
-    fun `evento de prova na data aparece no contexto`(): Unit = runBlocking {
+    fun `prova amanha sem sessao na data vira o proximo sem prescricao`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
         plans.saveWeek(plan(todayStatus = SessionStatus.DONE))
-        raceEvents.create(NewRaceEvent(RaceDistance.FIVE_K, monday.plusDays(2)))
+        raceEvents.create(NewRaceEvent(RaceDistance.FIVE_K, monday.plusDays(1)))
+        prescriptions.append(prescription(monday.plusDays(1)))
 
-        val next = source.observeNext().first { it != null }!!
+        val next = source.observeNext().first { it.subject is CoachNextSubject.Race }
 
-        assertThat(next.raceEvent?.targetDate).isEqualTo(monday.plusDays(2))
+        val race = next.subject as CoachNextSubject.Race
+        assertThat(race.event.targetDate).isEqualTo(monday.plusDays(1))
+        assertThat(next.isToday).isFalse()
+        assertThat(next.prescription).isNull()
+    }
+
+    @Test
+    fun `prova no domingo sem sessao na data nao cai em semana concluida`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        plans.saveWeek(
+            plan(todayStatus = SessionStatus.DONE).let { plan ->
+                plan.copy(
+                    sessions = plan.sessions.map {
+                        it.copy(
+                            status = SessionStatus.DONE,
+                            completionEvidence = CompletionEvidence.MANUAL,
+                        )
+                    },
+                )
+            },
+        )
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, monday.plusDays(6)))
+
+        val saturday = sourceAt(Instant.parse("2026-11-21T12:00:00Z"))
+        val next = saturday.observeNext().first { it.subject != null }
+
+        val race = next.subject as CoachNextSubject.Race
+        assertThat(race.event.targetDate).isEqualTo(monday.plusDays(6))
+        assertThat(next.isToday).isFalse()
+        assertThat(next.hasPlan).isTrue()
+    }
+
+    @Test
+    fun `prova hoje sem sessao nao cai em semana concluida`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        plans.saveWeek(plan(todayStatus = SessionStatus.DONE))
+        raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, monday))
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.subject).isInstanceOf(CoachNextSubject.Race::class.java)
+        assertThat(next.isToday).isTrue()
+    }
+
+    @Test
+    fun `hoje carrega a prontidao e o sono do check-in`(): Unit = runBlocking {
+        plans.saveWeek(plan(todayStatus = SessionStatus.PLANNED))
+        checkIns.save(replanCheckIn(monday))
+        metrics.saveAll(listOf(DailyMetrics(date = monday, sleepDurationMin = 340)))
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.hasCheckIn).isTrue()
+        assertThat(next.sleepMinutes).isEqualTo(340)
+        assertThat(next.readiness?.level).isEqualTo(ReadinessLevel.AMBER)
+        assertThat(next.readiness?.flags).contains(ReadinessFlag.SHORT_SLEEP)
+        assertThat(next.readiness?.flags).doesNotContain(ReadinessFlag.INSUFFICIENT_DATA)
+    }
+
+    @Test
+    fun `sem check-in a prontidao fica ausente e nao vira moderada inventada`(): Unit = runBlocking {
+        plans.saveWeek(plan(todayStatus = SessionStatus.PLANNED))
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.hasCheckIn).isFalse()
+        assertThat(next.readiness?.flags).contains(ReadinessFlag.INSUFFICIENT_DATA)
+        assertThat(next.readiness?.flags).contains(ReadinessFlag.SUBJECTIVE_MISSING)
     }
 
     private fun plan(todayStatus: SessionStatus) = WeeklyPlan(
         weekStart = monday,
         sessions = listOf(
-            PlannedSession(
-                date = monday,
-                type = WorkoutType.EASY,
-                title = "Fácil",
-                durationMin = 30,
-                rationale = "Base.",
-                ruleIds = listOf("R-ZONE-01"),
-                evidenceIds = listOf("EV-SEILER-2010"),
-                status = todayStatus,
-                completionEvidence = if (todayStatus == SessionStatus.DONE) {
-                    CompletionEvidence.MANUAL
-                } else {
-                    null
-                },
-            ),
-            PlannedSession(
-                date = monday.plusDays(2),
-                type = WorkoutType.QUALITY,
-                title = "Ritmo forte",
-                durationMin = 35,
-                rationale = "Estímulo.",
-                ruleIds = listOf("R-PER-03"),
-                evidenceIds = listOf("EV-SEILER-2010"),
-                status = SessionStatus.PLANNED,
-            ),
+            planSession(monday, todayStatus),
+            planSession(monday.plusDays(2)),
         ),
         weeklyMinutes = 65,
         longRunMinutes = null,
@@ -156,6 +229,22 @@ class CoachNextSourceTest {
         evidenceIds = listOf("EV-SEILER-2010"),
         createdOn = monday,
         engineVersion = WeeklyPlanGenerator.ENGINE_VERSION,
+    )
+
+    private fun planSession(date: LocalDate, status: SessionStatus = SessionStatus.PLANNED) = PlannedSession(
+        date = date,
+        type = if (date == monday.plusDays(2)) WorkoutType.QUALITY else WorkoutType.EASY,
+        title = if (date == monday.plusDays(2)) "Ritmo forte" else "Fácil",
+        durationMin = if (date == monday.plusDays(2)) 35 else 30,
+        rationale = "Base.",
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        status = status,
+        completionEvidence = if (status == SessionStatus.DONE) {
+            CompletionEvidence.MANUAL
+        } else {
+            null
+        },
     )
 
     private fun prescription(date: LocalDate) = DailyPrescription(

@@ -99,6 +99,29 @@ class CoachResponseValidatorTest {
     }
 
     @Test
+    fun `aceita atleta e controle porque o token exige palavra inteira`() {
+        val result = CoachResponseValidator.validate(
+            CoachRawResponse(
+                title = "Semana consistente",
+                body = "O atleta manteve o controle do esforço em 30 min leves.",
+            ),
+            allowedMinutes = setOf(30),
+        )
+
+        assertTrue(result is CoachValidationResult.Valid)
+    }
+
+    @Test
+    fun `barra a sigla atl quando ela aparece isolada`() {
+        val result = CoachResponseValidator.validate(
+            CoachRawResponse(title = "Semana", body = "O atl subiu no fim de semana."),
+            allowedMinutes = setOf(30),
+        )
+
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
     fun `aceita porcentagens calculadas e ignora a checagem sem conjunto`() {
         val valid = CoachResponseValidator.validate(
             CoachRawResponse(title = "Semana", body = "Você fez 75% do volume e 78% fácil"),

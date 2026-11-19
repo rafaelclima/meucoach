@@ -66,17 +66,20 @@ object CoachProgressLabels {
         val vdot = profile?.vdot
         val calibratedAt = profile?.vdotCalibratedAt
         val source = profile?.vdotSource
-        if (vdot == null || calibratedAt == null || source == null ||
-            calibratedAt.isBefore(today.minusDays(VDOT_FRESH_DAYS))
-        ) {
+        val fresh = calibratedAt != null && !calibratedAt.isBefore(today.minusDays(VDOT_FRESH_DAYS))
+        if (vdot == null || source == null || !fresh) {
             return "Sem VDOT recente — correndo por RPE."
+        }
+        // `fresh` above already proves the date exists; `require` documents it.
+        val calibrationDate = requireNotNull(calibratedAt) {
+            "A fresh VDOT must carry a calibration date"
         }
         val origin = when (source) {
             VdotSource.PERFORMANCE -> "prova"
             VdotSource.TRAINING_ESTIMATE -> "estimativa de treino"
         }
         val value = vdot.roundToInt()
-        return "VDOT $value ($origin em ${calibratedAt.format(dayFormat)})."
+        return "VDOT $value ($origin em ${calibrationDate.format(dayFormat)})."
     }
 
     private const val VDOT_FRESH_DAYS = 56L

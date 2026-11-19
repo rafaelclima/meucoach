@@ -1,9 +1,9 @@
 # Auditoria pós-implementação — Tela Coach
 
-**Data:** 19/11/2026  
-**Commit auditado:** `56bff84` (`fix: progresso do Coach reage a perfil e provas (F4-4)`)  
-**PRD de referência:** `docs/PRD_EVOLUCAO_COACH.md` v0.1, com a base `docs/PRD_IA_COACH.md`  
-**Natureza:** auditoria independente, somente leitura. Nenhum código-fonte, teste, PRD ou documento existente foi alterado.  
+**Data:** 19/11/2026
+**Commit auditado:** `56bff84` (`fix: progresso do Coach reage a perfil e provas (F4-4)`)
+**PRD de referência:** `docs/PRD_EVOLUCAO_COACH.md` v0.1, com a base `docs/PRD_IA_COACH.md`
+**Natureza:** auditoria independente, somente leitura. Nenhum código-fonte, teste, PRD ou documento existente foi alterado.
 **Entregável:** este relatório. O único arquivo criado foi `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`.
 
 ---
@@ -572,51 +572,51 @@ O PRD declara “encerrado” antes dessa validação. Os critérios de aceitaç
 
 #### P-01 — F1 mostra o treino planejado, não o prescrito
 
-**Categoria:** bug de implementação + divergência de PRD + risco de segurança de treino.  
-**Evidência:** `CoachNextLabels.kt:23-28` usa `context.session.title`/`durationMin`; `CoachNextCard.kt:100-109` renderiza esse headline. A prescrição tem `title`, `prescribedType` e `prescribedDurationMin` (`DailyPrescriptionEngine.kt:199-235`), mas o card só usa `adjustment`, `qualityBlockReason` e `unlockHint` (`CoachNextLabels.kt:30-44`).  
-**Impacto:** se o motor rebaixou qualidade para fácil ou descanso, o topo do Coach ainda diz “Ritmo forte · 35 min”. O corredor pode seguir o título. Isso compromete a função essencial da aba e o contrato “o motor decide”.  
+**Categoria:** bug de implementação + divergência de PRD + risco de segurança de treino.
+**Evidência:** `CoachNextLabels.kt:23-28` usa `context.session.title`/`durationMin`; `CoachNextCard.kt:100-109` renderiza esse headline. A prescrição tem `title`, `prescribedType` e `prescribedDurationMin` (`DailyPrescriptionEngine.kt:199-235`), mas o card só usa `adjustment`, `qualityBlockReason` e `unlockHint` (`CoachNextLabels.kt:30-44`).
+**Impacto:** se o motor rebaixou qualidade para fácil ou descanso, o topo do Coach ainda diz “Ritmo forte · 35 min”. O corredor pode seguir o título. Isso compromete a função essencial da aba e o contrato “o motor decide”.
 **Direção:** quando houver `DailyPrescription`, o headline deve ser a prescrição (tipo, título e duração prescritos); o planejado pode aparecer como “Planejado: …” em linha secundária. Se não houver prescrição, não mostrar um treino como se fosse decisão.
 
 #### P-02 — Precedência de prova não funciona no fluxo real
 
-**Categoria:** bug de implementação + divergência de PRD.  
-**Evidência:** `CoachNextSource.kt:54-70` escolhe `next` via `CoachNextResolver` e só então consulta `raceEvents.getForDate(next.session.date)`. O gerador remove a data do evento das sessões (`WeeklyPlanGenerator.kt:247-262`). Testes `CoachNextSourceTest.kt:111-119` e `CoachScreenTest.kt:371-402` criam sessão na data da prova, cenário que o gerador não produz.  
-**Impacto:** em prova no domingo, o Coach pode mostrar “Semana concluída” ou o treino seguinte; na véspera, pode mostrar treino normal e não “Amanhã é prova”. O Hoje mostra a competição; o Coach contradiz.  
+**Categoria:** bug de implementação + divergência de PRD.
+**Evidência:** `CoachNextSource.kt:54-70` escolhe `next` via `CoachNextResolver` e só então consulta `raceEvents.getForDate(next.session.date)`. O gerador remove a data do evento das sessões (`WeeklyPlanGenerator.kt:247-262`). Testes `CoachNextSourceTest.kt:111-119` e `CoachScreenTest.kt:371-402` criam sessão na data da prova, cenário que o gerador não produz.
+**Impacto:** em prova no domingo, o Coach pode mostrar “Semana concluída” ou o treino seguinte; na véspera, pode mostrar treino normal e não “Amanhã é prova”. O Hoje mostra a competição; o Coach contradiz.
 **Direção:** resolver a prova antes da sessão: se houver `RaceEvent` na data relevante (hoje ou amanhã), renderizar o estado de prova sem sessão. Se a prova for hoje e não houver sessão, não cair em `Empty`; se for amanhã, o “next” deve ser o evento. Adicionar testes sem sessão na data.
 
 ### 8.3 Alto
 
 #### P-03 — O determinístico é escondido atrás do consentimento de IA
 
-**Categoria:** UX + arquitetura/produto + divergência de intenção do PRD.  
-**Evidência:** `CoachScreen.kt:55-57` (`showConsent = !consented && !dismissed`); `:185` só renderiza F1/F2/F4/replan dentro de `else if (consented)`. As fontes F1/F2/F4 são locais e não chamam IA. `grant()` só existe no card de consentimento (`CoachScreen.kt:66`); depois de “Depois” (`onDismiss`), a tela mostra apenas um texto (`:327-334`) e não há outro `grant()` no app.  
-**Impacto:** quem não quer enviar dados à IA perde o próximo treino, as travas e a evolução — justamente o valor determinístico. “Depois” vira um beco sem saída até a ViewModel/processo ser recriado. Um novo usuário sem perfil não vê o caminho de onboarding.  
+**Categoria:** UX + arquitetura/produto + divergência de intenção do PRD.
+**Evidência:** `CoachScreen.kt:55-57` (`showConsent = !consented && !dismissed`); `:185` só renderiza F1/F2/F4/replan dentro de `else if (consented)`. As fontes F1/F2/F4 são locais e não chamam IA. `grant()` só existe no card de consentimento (`CoachScreen.kt:66`); depois de “Depois” (`onDismiss`), a tela mostra apenas um texto (`:327-334`) e não há outro `grant()` no app.
+**Impacto:** quem não quer enviar dados à IA perde o próximo treino, as travas e a evolução — justamente o valor determinístico. “Depois” vira um beco sem saída até a ViewModel/processo ser recriado. Um novo usuário sem perfil não vê o caminho de onboarding.
 **Direção:** separar “IA” de “Coach local”; renderizar F1/F2/F4 sempre e pedir consentimento apenas para explicação/revisão. Se o produto insistir no gate, oferecer “Ativar Coach” persistente e explicar o que é local vs. IA. O texto atual (“Para explicar sua semana, o app envia…”) sugere que só a explicação depende da IA, o que não é verdade na tela.
 
 #### P-04 — F1 não responde “posso forçar?” por falta de prontidão/semáforo
 
-**Categoria:** divergência de PRD + UX.  
-**Evidência:** `CoachNextContext` (`CoachNextSource.kt:31-37`) não tem `ReadinessResult`, `ReadinessLevel`, sono ou check-in. `CoachNextCard` não importa `readinessLabel`; não há score nem cor. O único sinal é `prescription.qualityBlockReason`, quando existe.  
-**Impacto:** o card de maior hierarquia não entrega a pergunta central do PRD. O usuário vê “Planejado. A decisão do dia sai no Hoje.” e precisa sair da aba. Sem prescrição, não há ação de check-in.  
+**Categoria:** divergência de PRD + UX.
+**Evidência:** `CoachNextContext` (`CoachNextSource.kt:31-37`) não tem `ReadinessResult`, `ReadinessLevel`, sono ou check-in. `CoachNextCard` não importa `readinessLabel`; não há score nem cor. O único sinal é `prescription.qualityBlockReason`, quando existe.
+**Impacto:** o card de maior hierarquia não entrega a pergunta central do PRD. O usuário vê “Planejado. A decisão do dia sai no Hoje.” e precisa sair da aba. Sem prescrição, não há ação de check-in.
 **Direção:** enriquecer o contexto com `ReadinessResult`/`ReadinessFlag` e o check-in do dia; mostrar “Alta/Moderada/Baixa” com rótulo (nunca só cor), motivo com sono/score e ação de check-in quando `SUBJECTIVE_MISSING` ou check-in ausente. Para dias futuros, deixar explícito que a prontidão será confirmada no dia; não fingir uma decisão.
 
 #### P-05 — F2/F4 (e explicação/revisão) não reagem a dados novos
 
-**Categoria:** bug de implementação + arquitetura.  
-**Evidência:** `RoomCoachGuardsSource.kt:41-45` combina apenas `time.today`, `profiles.observeProfile` e `raceEvents.observeAll`; `signals.snapshot` lê atividades/check-ins uma vez. `RoomCoachProgressSource.kt:63-70` combina os mesmos três; `load` lê planos/atividades/check-ins. `RoomCoachPlanSource.kt:26-40` só muda com a semana. `RoomCoachReviewSource.kt:50-55` só muda com o dia/semana.  
-**Impacto:** importar uma corrida, fazer check-in, concluir uma sessão ou aplicar um replanejamento não atualiza F2/F4/explicação/revisão. O usuário vê dados velhos e pode concluir que o app “não registrou” o treino.  
+**Categoria:** bug de implementação + arquitetura.
+**Evidência:** `RoomCoachGuardsSource.kt:41-45` combina apenas `time.today`, `profiles.observeProfile` e `raceEvents.observeAll`; `signals.snapshot` lê atividades/check-ins uma vez. `RoomCoachProgressSource.kt:63-70` combina os mesmos três; `load` lê planos/atividades/check-ins. `RoomCoachPlanSource.kt:26-40` só muda com a semana. `RoomCoachReviewSource.kt:50-55` só muda com o dia/semana.
+**Impacto:** importar uma corrida, fazer check-in, concluir uma sessão ou aplicar um replanejamento não atualiza F2/F4/explicação/revisão. O usuário vê dados velhos e pode concluir que o app “não registrou” o treino.
 **Direção:** observar as tabelas relevantes; centralizar um `CoachSignalsSource` reativo; invalidar cache de explicação/revisão quando o plano mudar; testar segunda emissão após escrita. Ver 4.3.
 
 #### P-06 — F4 não implementa a evolução que promete
 
-**Categoria:** divergência de PRD + regra de negócio.  
-**Evidência:** `CoachProgressSummary` (`CoachProgress.kt:16-30`) não tem `strongMinutes`, `strongSessions`, base real ou alvo. `CoachProgress.summarize` (`:33-61`) soma `plannedMin`/`executedMin` de `WeeklyReview`. Não usa `VolumeReferenceProjection`/`VolumeReference` (`VolumeReference.kt:82-104`), nem `VolumeProgression`, nem o golden `G-VOL-02`.  
-**Impacto:** o card “EVOLUÇÃO · 4 SEMANAS” não responde se o atleta evoluiu; mostra execução do plano. Não há “base 142 → alvo 151”, “+6% liberado” ou “mantido + motivo”. É uma regressão de valor em relação ao PRD.  
+**Categoria:** divergência de PRD + regra de negócio.
+**Evidência:** `CoachProgressSummary` (`CoachProgress.kt:16-30`) não tem `strongMinutes`, `strongSessions`, base real ou alvo. `CoachProgress.summarize` (`:33-61`) soma `plannedMin`/`executedMin` de `WeeklyReview`. Não usa `VolumeReferenceProjection`/`VolumeReference` (`VolumeReference.kt:82-104`), nem `VolumeProgression`, nem o golden `G-VOL-02`.
+**Impacto:** o card “EVOLUÇÃO · 4 SEMANAS” não responde se o atleta evoluiu; mostra execução do plano. Não há “base 142 → alvo 151”, “+6% liberado” ou “mantido + motivo”. É uma regressão de valor em relação ao PRD.
 **Direção:** usar a projeção de volume real (`VolumeReferenceProjection`), calcular `strongMinutes`/`strongSessions`, comparar com o alvo do plano e aplicar `R-PLAN-01 v2`; mostrar “base real → alvo” e “mantido + motivo”; adicionar delta entre semanas (ver S2).
 
 #### P-07 — F4 tem erros de dados e de janela
 
-**Categoria:** bug de implementação + regra de negócio.  
+**Categoria:** bug de implementação + regra de negócio.
 **Evidência:**
 - `WeeklyReviewAssembler.kt:46` passa `readinessHistory(today, 14)`; o comentário em `:117-119` diz que a janela cobre “the last closed week”. Para 4 semanas, as duas mais antigas ficam sem prontidão.
 - `CoachProgress.kt:56-59` faz média de médias semanais sem ponderar por `measuredDays`; uma semana com 1 dia pesa igual a uma com 7.
@@ -625,111 +625,111 @@ O PRD declara “encerrado” antes dessa validação. Os critérios de aceitaç
 - `WeeklyReviewAssembler.kt:47-63` não exclui `ActivitySource.MANUAL`; `VolumeReferenceProjection` exclui.
 - `CoachProgressSource.kt:102-117` calcula 28 dias corridos, incluindo a semana corrente parcial; o título fala de 4 semanas fechadas.
 - Nenhum uso de `VolumeReference.specialWeek` para excluir deload/taper/recovery.
-**Impacto:** números que parecem confiáveis, mas misturam janelas, pesos e definições. O usuário pode ver “Prontidão média” de 2 semanas como se fossem 4; pode ver “Pouco histórico” com 3 semanas de corridas; pode ver legado como adesão.  
+**Impacto:** números que parecem confiáveis, mas misturam janelas, pesos e definições. O usuário pode ver “Prontidão média” de 2 semanas como se fossem 4; pode ver “Pouco histórico” com 3 semanas de corridas; pode ver legado como adesão.
 **Direção:** uma única projeção de 4 semanas fechadas com cobertura explícita por seção; `strongMinutes`; exclusão de `specialWeek`; `done` separado de `legacy`; `manual` fora do volume forte; média ponderada; janela de intensidade das 4 semanas fechadas; testes de `G-VOL-02`, legado, deload, semana sem plano e cobertura parcial.
 
 #### P-08 — F2 é uma lista passiva; faltam ações e guardas do dia
 
-**Categoria:** divergência de PRD + UX.  
-**Evidência:** `CoachGuards` só tem `kind/title/detail` (`CoachGuards.kt:14-25`); `CoachGuardsCard.GuardRow` só renderiza dois `Text` (`CoachGuardsCard.kt:110-128`); não há callback de ação. O PRD pedia ícone, ação e “por que isso protege você”. O comentário em `CoachGuardsSource.kt:22-26` delega sono/check-in a F1, que não os tem.  
-**Impacto:** o corredor entende a trava, mas não consegue desbloquear. Em “dados desatualizados”, não há botão de importar; em “sem check-in”, não há botão; em “monotonia”, não há sugestão. A aba não cumpre o papel de “o que está me travando e o que fazer”.  
+**Categoria:** divergência de PRD + UX.
+**Evidência:** `CoachGuards` só tem `kind/title/detail` (`CoachGuards.kt:14-25`); `CoachGuardsCard.GuardRow` só renderiza dois `Text` (`CoachGuardsCard.kt:110-128`); não há callback de ação. O PRD pedia ícone, ação e “por que isso protege você”. O comentário em `CoachGuardsSource.kt:22-26` delega sono/check-in a F1, que não os tem.
+**Impacto:** o corredor entende a trava, mas não consegue desbloquear. Em “dados desatualizados”, não há botão de importar; em “sem check-in”, não há botão; em “monotonia”, não há sugestão. A aba não cumpre o papel de “o que está me travando e o que fazer”.
 **Direção:** adicionar `action` (rota + label) por guarda, detalhe expansível com “por que protege”, e guardas de check-in/sono; para sono, mostrar ausência com confiança, nunca `SHORT_SLEEP` inventado.
 
 #### P-09 — `check` está vermelho
 
-**Categoria:** qualidade/gate.  
-**Evidência:** comando e saída na seção 7.2; `CoachProgressLabels.kt:69` e `CoachViewModel.kt:155`.  
-**Impacto:** o projeto não cumpre o Definition of Done; o PRD de evolução não pode ser considerado “encerrado” com o gate vermelho.  
+**Categoria:** qualidade/gate.
+**Evidência:** comando e saída na seção 7.2; `CoachProgressLabels.kt:69` e `CoachViewModel.kt:155`.
+**Impacto:** o projeto não cumpre o Definition of Done; o PRD de evolução não pode ser considerado “encerrado” com o gate vermelho.
 **Direção:** reduzir a condição de VDOT a uma função/`when` ou `runCatching` legível; agrupar as fontes do Coach em um objeto de dependências ou dividir a ViewModel. Rodar `./gradlew check` antes de fechar a fase.
 
 #### P-10 — Fallback vaza código interno e o validador rejeita “atleta”
 
-**Categoria:** bug de implementação + UX/privacidade de produto.  
-**Evidência:** `CoachScreen.kt:275-280` mostra `explanation.reason`; `CoachResponseValidator.kt:95` inclui o código no reason; `:26` tem `"atl"` na lista de tokens e `:75` faz match por substring. `"atleta".lowercase()` contém `"atl"`. `CoachNextLabels.kt:42` anexa `unlockHint` cru; `QualityGate.kt:287` contém “ACWR … 1,50”.  
-**Impacto:** o usuário vê “Resposta contém código interno: ADHERENCE_PARTIAL” ou “Resposta contém métrica proibida: atl”. Além de feio, reduz a taxa de respostas válidas: qualquer texto com “atleta” cai em fallback. O ACWR aparece no topo, contra a decisão de copy.  
+**Categoria:** bug de implementação + UX/privacidade de produto.
+**Evidência:** `CoachScreen.kt:275-280` mostra `explanation.reason`; `CoachResponseValidator.kt:95` inclui o código no reason; `:26` tem `"atl"` na lista de tokens e `:75` faz match por substring. `"atleta".lowercase()` contém `"atl"`. `CoachNextLabels.kt:42` anexa `unlockHint` cru; `QualityGate.kt:287` contém “ACWR … 1,50”.
+**Impacto:** o usuário vê “Resposta contém código interno: ADHERENCE_PARTIAL” ou “Resposta contém métrica proibida: atl”. Além de feio, reduz a taxa de respostas válidas: qualquer texto com “atleta” cai em fallback. O ACWR aparece no topo, contra a decisão de copy.
 **Direção:** mapear reasons para copy de corredor; nunca exibir reason técnico; trocar `forbiddenTokens` por tokens com limite de palavra (`\batl\b`) ou remover “atl”/“ctl” da lista de prosa; validar no contexto de métricas, não substring; mapear `unlockHint` em `CoachNextLabels` e testar o card inteiro.
 
 #### P-11 — Explicação fica velha após replanejamento
 
-**Categoria:** bug/arquitetura + UX.  
-**Evidência:** `RoomCoachPlanSource.kt:26-40` emite apenas na troca de semana; não observa revisões do plano. `CoachViewModel` cacheia por `lastHash` e não recebe novo contexto após o aceite.  
-**Impacto:** o usuário aceita “Ajustar a semana”, vê a mensagem “semana ajustada”, mas a explicação semanal abaixo continua descrevendo o plano anterior. O mesmo ocorre com o resumo da revisão após importação retroativa.  
+**Categoria:** bug/arquitetura + UX.
+**Evidência:** `RoomCoachPlanSource.kt:26-40` emite apenas na troca de semana; não observa revisões do plano. `CoachViewModel` cacheia por `lastHash` e não recebe novo contexto após o aceite.
+**Impacto:** o usuário aceita “Ajustar a semana”, vê a mensagem “semana ajustada”, mas a explicação semanal abaixo continua descrevendo o plano anterior. O mesmo ocorre com o resumo da revisão após importação retroativa.
 **Direção:** `observeWeek(weekStart)` no `CoachPlanSource`; invalidar `lastHash` quando o `inputsHash`/versão mudar; testar replan → explicação nova (ou `Loading` → `Fallback` determinístico coerente).
 
 #### P-12 — Estados vazios se contradizem
 
-**Categoria:** bug de UX + divergência de PRD.  
-**Evidência:** sem plano: `CoachNextUiState.Empty` → “Semana concluída.” (`CoachNextCard.kt:49-67`); `CoachGuardsUiState.Ready(empty)` → “Nenhum bloqueio ativo — siga o plano.” (`CoachGuardsCard.kt:80-85`); `CoachExplanationState.Unavailable` → “Monte seu plano para começar” (`CoachScreen.kt:211-231`); `CoachProgressUiState.Ready(0)` → “Pouco histórico” (`CoachProgressCard.kt:77-88`).  
-**Impacto:** o usuário novo vê cinco cards que dizem coisas incompatíveis. “Semana concluída” e “siga o plano” soam como se houvesse um plano; “Monte seu plano” é o único correto.  
+**Categoria:** bug de UX + divergência de PRD.
+**Evidência:** sem plano: `CoachNextUiState.Empty` → “Semana concluída.” (`CoachNextCard.kt:49-67`); `CoachGuardsUiState.Ready(empty)` → “Nenhum bloqueio ativo — siga o plano.” (`CoachGuardsCard.kt:80-85`); `CoachExplanationState.Unavailable` → “Monte seu plano para começar” (`CoachScreen.kt:211-231`); `CoachProgressUiState.Ready(0)` → “Pouco histórico” (`CoachProgressCard.kt:77-88`).
+**Impacto:** o usuário novo vê cinco cards que dizem coisas incompatíveis. “Semana concluída” e “siga o plano” soam como se houvesse um plano; “Monte seu plano” é o único correto.
 **Direção:** um único estado de onboarding quando não há perfil/plano: esconder F1/F2/F4 ou renderizar um card único com CTAs de perfil/calibração/importação. Só mostrar “Semana concluída” quando existir plano e todas as sessões futuras estiverem concluídas.
 
 #### P-13 — Revisão esconde observações determinísticas quando a IA responde
 
-**Categoria:** segurança/qualidade + UX.  
-**Evidência:** `CoachReviewCard.kt:168-183` condiciona `review.observations` a `state !is CoachReviewState.Ready`. Quando `Ready`, só a narrativa da IA é exibida (além dos números de adesão/volume).  
-**Impacto:** se a IA não mencionar doença/lesão, sono curto ou adesão parcial, o sinal determinístico desaparece. A IA “só reescreve”, mas nesse fluxo ela substitui a leitura de segurança.  
+**Categoria:** segurança/qualidade + UX.
+**Evidência:** `CoachReviewCard.kt:168-183` condiciona `review.observations` a `state !is CoachReviewState.Ready`. Quando `Ready`, só a narrativa da IA é exibida (além dos números de adesão/volume).
+**Impacto:** se a IA não mencionar doença/lesão, sono curto ou adesão parcial, o sinal determinístico desaparece. A IA “só reescreve”, mas nesse fluxo ela substitui a leitura de segurança.
 **Direção:** sempre renderizar as observações determinísticas, mesmo em `Ready` (talvez em seção “O que o motor registrou”); a IA pode reescrever acima, mas não apagar. Testar `Ready` com observação de doença e garantir que ela continue visível.
 
 ### 8.4 Médio
 
 #### P-14 — F3: `Unavailable` sem CTAs e fallback não acionável
 
-**Evidência:** `CoachScreen.kt:211-231` só textos; `CoachRoute` não tem callbacks de perfil/calibração/importação; `:259-301` tem apenas “Tentar de novo”/“Desativar”.  
-**Impacto:** o usuário recebe instruções que não pode executar. O fallback não ajuda a resolver a causa (check-in/importação).  
+**Evidência:** `CoachScreen.kt:211-231` só textos; `CoachRoute` não tem callbacks de perfil/calibração/importação; `:259-301` tem apenas “Tentar de novo”/“Desativar”.
+**Impacto:** o usuário recebe instruções que não pode executar. O fallback não ajuda a resolver a causa (check-in/importação).
 **Direção:** CTAs para Perfil, Calibração, Importação; no fallback, bullets determinísticos (“sem conexão”, “resposta fora do contrato”) e ação correspondente; nunca reason técnico.
 
 #### P-15 — Sem validação manual/aparelho
 
-**Evidência:** `PROGRESS.md:17,32`; não há teste instrumentado/relatório de aparelho.  
-**Impacto:** o PRD é declarado encerrado sem o critério de produto (explicar em voz alta, ≥80%) e sem confirmar visualmente os cards com token.  
+**Evidência:** `PROGRESS.md:17,32`; não há teste instrumentado/relatório de aparelho.
+**Impacto:** o PRD é declarado encerrado sem o critério de produto (explicar em voz alta, ≥80%) e sem confirmar visualmente os cards com token.
 **Direção:** rodar o roteiro manual do PRD (com/sem token, offline, prova, check-in, F2, F4, 200%, TalkBack) antes de chamar de consolidado.
 
 #### P-16 — F1 sem estado `Stale`; ações de futuro erradas
 
-**Evidência:** F1 não consulta `LoadDataState`; `statusLine` para futuro diz “A decisão do dia sai no Hoje” (`CoachNextLabels.kt:33`), mas Hoje só mostra hoje; “Ver no Hoje” é sempre exibido (`CoachNextCard.kt:133-140`).  
-**Impacto:** o usuário de amanhã é mandado para uma tela que não tem a decisão de amanhã; dados velhos não são sinalizados.  
+**Evidência:** F1 não consulta `LoadDataState`; `statusLine` para futuro diz “A decisão do dia sai no Hoje” (`CoachNextLabels.kt:33`), mas Hoje só mostra hoje; “Ver no Hoje” é sempre exibido (`CoachNextCard.kt:133-140`).
+**Impacto:** o usuário de amanhã é mandado para uma tela que não tem a decisão de amanhã; dados velhos não são sinalizados.
 **Direção:** estado `Stale` no F1; para futuro, “Planejado; a confirmação sai no dia” e ação “Ver plano de amanhã”/“Ver semana”, não “Ver no Hoje”.
 
 #### P-17 — F3/TalkBack: headings e testes de acessibilidade ausentes
 
-**Evidência:** `heading()` só em `CoachHistoryCard.kt:75,283`; os cards novos não têm; `CoachHistoryTest` é o único com `fontScale=2f`; não há teste light dos novos cards.  
-**Impacto:** TalkBack lê uma sequência longa sem seções; 200% e light podem quebrar sem detecção.  
+**Evidência:** `heading()` só em `CoachHistoryCard.kt:75,283`; os cards novos não têm; `CoachHistoryTest` é o único com `fontScale=2f`; não há teste light dos novos cards.
+**Impacto:** TalkBack lê uma sequência longa sem seções; 200% e light podem quebrar sem detecção.
 **Direção:** `Modifier.semantics { heading() }` nos títulos/overlines; testes de 200%, light/dark, ordem e conteúdo dos novos cards.
 
 #### P-18 — F2: copy de fonte desatualizada sem N dias e sem ação
 
-**Evidência:** `CoachGuards.kt:83-90` diz “mais de 14 dias”; não há data/N nem botão.  
-**Impacto:** o usuário sabe que está velho, mas não quanto nem o que fazer.  
+**Evidência:** `CoachGuards.kt:83-90` diz “mais de 14 dias”; não há data/N nem botão.
+**Impacto:** o usuário sabe que está velho, mas não quanto nem o que fazer.
 **Direção:** passar `lastImportedAt`/dias; ação “Importar corridas”/“Abrir Dados”.
 
 #### P-19 — F4: detalhes de apresentação e lacunas de dados
 
-**Evidência:** até 7 linhas (`CoachProgressCard.kt:99-110`); `CoachProgress.summarize` transforma `executedMin == null` em `0` (`CoachProgress.kt:37-38`), então uma semana planejada e sem corrida aparece como “feito 0 min (0%)”; `intensityLine` não mostra N sessões; `vdotLine` não mostra paces E/T.  
-**Impacto:** o card não cumpre a especificação visual e pode tratar ausência de execução como zero medido.  
+**Evidência:** até 7 linhas (`CoachProgressCard.kt:99-110`); `CoachProgress.summarize` transforma `executedMin == null` em `0` (`CoachProgress.kt:37-38`), então uma semana planejada e sem corrida aparece como “feito 0 min (0%)”; `intensityLine` não mostra N sessões; `vdotLine` não mostra paces E/T.
+**Impacto:** o card não cumpre a especificação visual e pode tratar ausência de execução como zero medido.
 **Direção:** limitar a 6 linhas + síntese; distinguir “nenhum treino registrado” de “0 min”; “X% fácil em N sessões”; paces E/T ou remover a promessa.
 
 #### P-20 — Desempenho não comprovado e risco de Main thread
 
-**Evidência:** `CoachProgressSource.kt:63-134`; `WeeklyReviewAssembler.kt:42-94`; `CoachViewModel.kt:208-397`; sem `flowOn`; `intensitySessions` antes de LTHR.  
-**Impacto:** abertura da aba pode passar de 500 ms, competir com IA e gastar bateria; não há benchmark.  
+**Evidência:** `CoachProgressSource.kt:63-134`; `WeeklyReviewAssembler.kt:42-94`; `CoachViewModel.kt:208-397`; sem `flowOn`; `intensitySessions` antes de LTHR.
+**Impacto:** abertura da aba pode passar de 500 ms, competir com IA e gastar bateria; não há benchmark.
 **Direção:** medir; `flowOn(Dispatchers.Default/IO)`; uma montagem de 4 semanas em vez de 4 `assemble`; pular samples sem LTHR; cachear por dia/hash; carregar seções sob demanda se necessário.
 
 #### P-21 — Acessibilidade e testes visuais dos novos cards
 
-**Evidência:** apenas histórico tem heading/200%/light; ver P-17.  
-**Impacto:** requisito NFR explícito não comprovado.  
+**Evidência:** apenas histórico tem heading/200%/light; ver P-17.
+**Impacto:** requisito NFR explícito não comprovado.
 **Direção:** headings, testes de 200% e light/dark para F1/F2/F4; teste de corte de botões em duas colunas.
 
 #### P-22 — Privacidade e timeout
 
-**Evidência:** `HttpCoachApi.kt:81` loga corpo de erro; `CoachViewModel.kt:314,322`; `HttpCoachApi.kt:57` timeout 45 s; PRD pede 10 s + 1 retry.  
-**Impacto:** possível dado de prompt em log; espera longa e sem retry no app.  
+**Evidência:** `HttpCoachApi.kt:81` loga corpo de erro; `CoachViewModel.kt:314,322`; `HttpCoachApi.kt:57` timeout 45 s; PRD pede 10 s + 1 retry.
+**Impacto:** possível dado de prompt em log; espera longa e sem retry no app.
 **Direção:** não incluir corpo no log (ou sanitizar); timeout 10 s; retry único com backoff; estado “IA indisponível” separado de “sem conexão”.
 
 #### P-23 — Flash de “Monte seu plano” e “Desativar” duplicado
 
-**Evidência:** `_explanation` inicia `Unavailable` (`CoachViewModel.kt:178-180`); `CoachScreen.kt:211-231`; “Desativar” no fallback (`:293-300`) e no fim (`:314-326`).  
-**Impacto:** quem tem plano pode ver o vazio por um frame; a falha de IA oferece desativar a aba inteira.  
+**Evidência:** `_explanation` inicia `Unavailable` (`CoachViewModel.kt:178-180`); `CoachScreen.kt:211-231`; “Desativar” no fallback (`:293-300`) e no fim (`:314-326`).
+**Impacto:** quem tem plano pode ver o vazio por um frame; a falha de IA oferece desativar a aba inteira.
 **Direção:** estado inicial `Loading` quando consentido; “Desativar” apenas no fim (ou renomear a ação do fallback para “Desligar IA”).
 
 ### 8.5 Baixo
@@ -744,20 +744,20 @@ O PRD declara “encerrado” antes dessa validação. Os critérios de aceitaç
 
 #### P-25 — F2 sem ícones e sem detalhe expansível
 
-**Evidência:** `GuardRow` só textos; sem `icon`, sem “por que protege”.  
-**Impacto:** lista mais difícil de escanear; não é bloqueante.  
+**Evidência:** `GuardRow` só textos; sem `icon`, sem “por que protege”.
+**Impacto:** lista mais difícil de escanear; não é bloqueante.
 **Direção:** ícone por `CoachGuardKind` (usando o design system) e expansão local.
 
 #### P-26 — F4 tem 6–7 linhas, não 4–6 + síntese
 
-**Evidência:** `CoachProgressCard.kt:99-110`.  
-**Impacto:** densidade maior que o previsto; falta a frase-síntese.  
+**Evidência:** `CoachProgressCard.kt:99-110`.
+**Impacto:** densidade maior que o previsto; falta a frase-síntese.
 **Direção:** consolidar volume/intensidade ou remover a linha de VDOT para o detalhe; adicionar síntese determinística (“Semana mantida: volume estável, adesão 3/3”).
 
 #### P-27 — Histórico esconde a explicação corrente quando a IA cai
 
-**Evidência:** `currentExplainHash` é setado antes da chamada (`CoachViewModel.kt:268`); `CoachHistory.view` filtra por hash (`CoachHistory.kt:50-56`); teste `CoachViewModelTest.kt:626-636` espera `Empty`.  
-**Impacto:** em fallback, o usuário perde o acesso à última explicação válida da mesma semana no histórico, embora ela não esteja visível no card.  
+**Evidência:** `currentExplainHash` é setado antes da chamada (`CoachViewModel.kt:268`); `CoachHistory.view` filtra por hash (`CoachHistory.kt:50-56`); teste `CoachViewModelTest.kt:626-636` espera `Empty`.
+**Impacto:** em fallback, o usuário perde o acesso à última explicação válida da mesma semana no histórico, embora ela não esteja visível no card.
 **Direção:** filtrar apenas quando `_explanation is Ready`; em fallback, manter a última explicação válida no arquivo.
 
 ### 8.6 Agrupamento por categoria

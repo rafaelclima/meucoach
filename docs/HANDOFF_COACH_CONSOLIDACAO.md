@@ -1,9 +1,9 @@
 # Handoff — Consolidação da tela Coach
 
-**Data:** 19/11/2026  
-**Commit de referência:** `56bff84`  
-**Auditoria detalhada:** `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`  
-**Status:** PRD de evolução **não encerrado**; próxima fase é **consolidação**, não nova feature.
+**Data:** 19/11/2026
+**Commit de referência:** `56bff84` (auditoria) + Bloco A em `PROGRESS.md`
+**Auditoria detalhada:** `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`
+**Status:** Bloco A concluído; PRD de evolução **não encerrado**. Próxima fatia é o **Bloco B — reatividade**, não uma feature nova.
 
 > Este documento é o bastão curto para a próxima sessão. Leia primeiro `AGENTS.md`, depois este handoff, depois a seção 1 e a matriz da auditoria. Não é necessário ler a auditoria inteira antes de começar a fatia.
 
@@ -33,6 +33,8 @@ Mas a auditoria encontrou problemas que mudam a **verdade da tela**:
 
 **O motor continua correto e nada é escrito por essas fontes.** O risco é de decisão errada na superfície Coach, dados velhos e perda de confiança.
 
+**Bloco A entregue em 19/11/2026.** F1 agora usa a `DailyPrescription` como headline, prova vence sem sessão artificial, prontidão/sono aparecem só para hoje, F1/F2/F4 não dependem do opt-in de IA, estados vazios convergiram em `Onboarding` e o gate do detekt está verde. P-01, P-02, P-03, P-04, P-09, P-10 e P-12 fechados no código e nos testes; validação manual segue pendente.
+
 ---
 
 ## 2. Baseline de validação
@@ -40,22 +42,16 @@ Mas a auditoria encontrou problemas que mudam a **verdade da tela**:
 | Item | Estado |
 |---|---|
 | `./gradlew :app:assembleDebug` | Verde |
-| `./gradlew :app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*' --tests 'com.meucoach.app.coach.*'` | Verde (102 UI/fonte; 87 UI + 15 fontes) |
-| `./gradlew :core:domain:test` | Verde (39 testes de domínio do Coach nos relatórios) |
+| `./gradlew check` | **Verde** (detekt corrigido; lint incluso) |
 | `./gradlew spotlessCheck` | Verde |
 | `./gradlew koverVerify` | Verde |
+| `:core:domain:test` / `:app:testDebugUnitTest` | Verde (1178 / 1105; 0 falhas) |
 | `./gradlew :app:lintDebug` | Verde |
-| `./gradlew check` | **Vermelho** em `:app:detekt` |
 | Validação manual no aparelho | **Pendente** (`PROGRESS.md`) |
 
-Falha exata do detekt:
+Suíte do repositório: **2.555 testes** (1178 domain / 1105 app / 232 data / 40 model), 0 falhas e 0 `@Ignore`.
 
-```text
-CoachProgressLabels.kt:69:13: This condition is too complex (4). [ComplexCondition]
-CoachViewModel.kt:155:41: The constructor(...) has too many parameters (10; limite 8). [LongParameterList]
-```
-
-Cobertura atual (Kover): `CoachScreenKt` 38,4% de branch; `CoachViewModel` 50%; `CoachNextCardKt` 61,5%; `CoachProgressCardKt` 57,7%; `RoomCoachProgressSource` 42,9%; `RoomCoachPlanSource` 0%. O gate é de linha (78% no app), então não protege os estados que faltam.
+Cobertura do app segue no gate de linha (78%); o Bloco B deve cobrir `RoomCoachPlanSource` (hoje 0% de branch) e os caminhos de segunda emissão.
 
 ---
 
@@ -63,9 +59,9 @@ Cobertura atual (Kover): `CoachScreenKt` 38,4% de branch; `CoachViewModel` 50%; 
 
 Estas decisões são **recomendações da auditoria**; confirme com o usuário 0 antes de codar. Se mudarem, registre em ADR ou no `DECISIONS.md`.
 
-1. **Consentimento separado da IA**
-   - Recomendação: F1/F2/F4 são locais e aparecem sem opt-in; o opt-in vale só para explicação/revisão.
-   - Se o produto insistir em esconder tudo, é obrigatório um “Ativar Coach” persistente e uma explicação clara do que é local vs. IA.
+1. **Consentimento separado da IA** — ✅ implementado no Bloco A
+   - F1/F2/F4 são locais e aparecem sem opt-in; o opt-in vale só para explicação/revisão.
+   - “Depois” mantém o CTA persistente “Ativar IA” com a distinção explícita entre motor local e IA.
 
 2. **F1 amanhã**
    - Não existe prontidão de amanhã.
@@ -84,12 +80,12 @@ Estas decisões são **recomendações da auditoria**; confirme com o usuário 0
 
 ---
 
-## 4. Próxima fatia — Bloco A: “F1 verdadeiro”
+## 4. Bloco A concluído — “F1 verdadeiro”
 
 **Objetivo:** fazer o card de maior hierarquia dizer a verdade e não depender da IA.
 
-**Problemas a fechar:** P-01, P-02, P-03, P-04, P-10, P-12 e P-09 (gate).  
-**Não entra:** F4 completa, S1–S6, refatoração ampla, IA em F4, mudança de motor.
+**Problemas fechados:** P-01, P-02, P-03, P-04, P-10, P-12 e P-09 (gate).
+**Fora do escopo (mantido):** F4 completa, S1–S6, refatoração ampla, IA em F4, mudança de motor.
 
 ### Escopo funcional
 
@@ -142,14 +138,29 @@ Estas decisões são **recomendações da auditoria**; confirme com o usuário 0
 
 ### Critérios de aceite do Bloco A
 
-- [ ] Com prescrição `DOWNGRADE`/`REST`, o headline do F1 é o prescrito; o planejado só aparece como secundário.
-- [ ] Prova hoje/amanhã sem sessão mostra “Dia de prova”; não cai em “Semana concluída”.
-- [ ] Hoje com check-in ausente oferece “Fazer check-in”; com prontidão verde/âmbar/vermelha mostra o rótulo correto.
-- [ ] Sem perfil/plano há um único caminho de onboarding com CTAs; não há mensagens contraditórias.
-- [ ] Fallback não exibe código interno, “atl” ou ACWR cru.
-- [ ] `./gradlew check`, `spotlessCheck`, `koverVerify`, `assembleDebug` verdes.
-- [ ] Testes novos cobrem: prescrição divergente, prova sem sessão, consentimento local, estados vazios, fallback sem código, “atleta”.
-- [ ] Nenhum dado real no diff; nenhuma migração.
+- [x] Com prescrição `DOWNGRADE`/`REST`, o headline do F1 é o prescrito; o planejado só aparece como secundário.
+- [x] Prova hoje/amanhã sem sessão mostra “Dia de prova”; não cai em “Semana concluída”.
+- [x] Hoje com check-in ausente oferece “Fazer check-in”; com prontidão verde/âmbar/vermelha mostra o rótulo correto.
+- [x] Sem perfil/plano há um único caminho de onboarding com CTAs; não há mensagens contraditórias.
+- [x] Fallback não exibe código interno, “atl” ou ACWR cru.
+- [x] `./gradlew check`, `spotlessCheck`, `koverVerify`, `assembleDebug` verdes.
+- [x] Testes novos cobrem: prescrição divergente, prova sem sessão, consentimento local, estados vazios, fallback sem código, “atleta”.
+- [x] Nenhum dado real no diff; nenhuma migração.
+
+### Como ficou
+
+- **Domínio:** `CoachNextSubject` separa treino de prova; `CoachNextResolver` aplica a precedência (hoje/amanhã, antes da próxima sessão ou sem sessão restante). `CoachResponseValidator` usa `\b` nos tokens de métrica.
+- **Source:** `RoomCoachNextSource` combina plano, perfil, check-in, métricas e provas; `CoachNextContext` carrega sujeito, prescrição, prontidão, check-in e sono. Prova não consulta prescrição.
+- **Card:** `CoachNextLabels` decide headline/linhas (prescrição manda; REST sem duração; “Planejado:” quando não há decisão; prova sem sessão) e `CoachNextCard` mostra o semáforo só para hoje + CTAs.
+- **Consentimento:** `CoachScreen` renderiza F1/F2/F4/replan sempre; `CoachAiInviteCard` mantém “Ativar IA” depois de “Depois”; o histórico continua oculto sem opt-in.
+- **Estados vazios:** `CoachNextUiState.Onboarding` substitui o “Semana concluída” sem plano e esconde os cards contraditórios.
+- **Gate:** `CoachSources` agrupa as fontes (fim do `LongParameterList`); `vdotLine` foi simplificada.
+
+### Dívidas conhecidas (não bloqueiam o Bloco A)
+
+- Validar no aparelho o card com prova, check-in e build sem token (roteiro do Bloco D).
+- F1 ainda olha só a semana vigente (domingo à noite não antecipa a semana seguinte).
+- `TodayExplanation` ainda usa `unlockHint` cru na aba Hoje (fora do card F1).
 
 ---
 
@@ -188,7 +199,7 @@ Estas decisões são **recomendações da auditoria**; confirme com o usuário 0
 
 ## 7. Prompt pronto para a nova sessão
 
-> Leia `AGENTS.md`, `docs/PROGRESS.md`, `docs/HANDOFF_COACH_CONSOLIDACAO.md` e a seção 1 + matriz da `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`. Implemente **apenas o Bloco A — F1 verdadeiro**: prescrição no card, prova antes da sessão, prontidão/semáforo, consentimento local vs IA, estados vazios e fallback/validator. Corrija também o gate do detekt. Não implemente F4, S1–S6, acessibilidade ampla ou refatoração da ViewModel. Rode `./gradlew check`, `spotlessCheck`, `koverVerify`, `assembleDebug` e os testes de aceitação. Atualize `PROGRESS.md` e este handoff ao final.
+> Leia `AGENTS.md`, `docs/PROGRESS.md`, `docs/HANDOFF_COACH_CONSOLIDACAO.md` e a seção 1 + matriz da `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`. O Bloco A já foi entregue; implemente **apenas o Bloco B — reatividade**: F2/F4, explicação e revisão devem reagir a atividades, check-ins, execuções e replanejamento, com teste de segunda emissão após escrita, incluindo `RoomCoachPlanSource`. Não implemente F4 correta (Bloco C), S1–S6, acessibilidade ampla ou mudança de motor. Rode `./gradlew check`, `spotlessCheck`, `koverVerify`, `assembleDebug`. Atualize `PROGRESS.md` e este handoff ao final.
 
 ---
 

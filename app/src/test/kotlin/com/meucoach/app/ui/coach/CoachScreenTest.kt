@@ -21,9 +21,18 @@ import com.meucoach.app.ui.replan.ReplanVersionChangeUi
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.coach.CoachGuard
 import com.meucoach.core.domain.coach.CoachGuardKind
+import com.meucoach.core.domain.coach.CoachNextSubject
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
+import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.QualityBlockReason
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.readiness.ReadinessComponent
+import com.meucoach.core.domain.readiness.ReadinessFlag
+import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.domain.replan.ReplanCause
 import com.meucoach.core.domain.replan.ReplanTrigger
 import com.meucoach.core.domain.review.WeeklyAdherence
@@ -33,6 +42,9 @@ import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.RaceDistance
+import com.meucoach.core.model.RaceEvent
+import com.meucoach.core.model.ReadinessLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -302,29 +314,50 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `sem plano mostra caminho acionavel em vez de em breve`() {
-        setContent(explanation = CoachExplanationState.Unavailable)
+    fun `sem plano mostra um unico caminho acionavel`() {
+        setContent(next = CoachNextUiState.Onboarding)
 
-        compose.onNodeWithTag("coach-empty-path").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-next-onboarding").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Monte seu plano para começar").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(
             "Complete perfil e disponibilidade, importe um treino ou faça a calibração.",
             substring = true,
         ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-onboarding-profile").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-onboarding-calibration").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-onboarding-import").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Semana concluída.").assertDoesNotExist()
+        compose.onNodeWithText("Nenhum bloqueio ativo — siga o plano.").assertDoesNotExist()
+        compose.onNodeWithTag("coach-guards-card").assertDoesNotExist()
+        compose.onNodeWithTag("coach-progress-card").assertDoesNotExist()
     }
 
     @Test
-    fun `fallback exibe o motivo com tag propria`() {
+    fun `fallback exibe copy de corredor e nao o motivo tecnico`() {
         setContent(
             explanation = CoachExplanationState.Fallback(
-                reason = "Resposta contém pace, que só o motor pode prescrever",
+                reason = "Resposta contém código interno: ADHERENCE_PARTIAL",
                 planRationale = "Plano da semana.",
             ),
         )
 
         compose.onNodeWithTag("coach-fallback-reason").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("termo interno", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("ADHERENCE_PARTIAL", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Resposta contém", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `fallback de rede mantem copy amigavel`() {
+        setContent(
+            explanation = CoachExplanationState.Fallback(
+                reason = "Sem conexão com o Coach. Mostrando o resumo do motor.",
+                planRationale = "Plano da semana.",
+            ),
+        )
+
         compose.onNodeWithText(
-            "Resposta contém pace, que só o motor pode prescrever",
+            "Sem conexão com o Coach. Mostrando o resumo do motor.",
             substring = true,
         ).performScrollTo().assertIsDisplayed()
     }
@@ -342,63 +375,249 @@ class CoachScreenTest {
 
     @Test
     fun `proximo treino aparece no topo com o planejado`() {
-        setContent(
-            next = CoachNextUiState.Ready(
-                CoachNextContext(
-                    session = PlannedSession(
-                        date = LocalDate.of(2026, 11, 17),
-                        type = WorkoutType.EASY,
-                        title = "Fácil",
-                        durationMin = 30,
-                        rationale = "Base.",
-                        ruleIds = listOf("R-ZONE-01"),
-                        evidenceIds = listOf("EV-SEILER-2010"),
-                        status = SessionStatus.PLANNED,
-                    ),
-                    isToday = false,
-                    today = LocalDate.of(2026, 11, 16),
-                    prescription = null,
-                    raceEvent = null,
-                ),
-            ),
-        )
+        setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("PRÓXIMO TREINO").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Amanhã · Fácil · 30 min").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Amanhã · Planejado: Fácil · 30 min").performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun `dia de prova nao mostra treino no proximo`() {
+    fun `dia de prova sem sessao na data mostra dia de prova`() {
+        setContent(next = CoachNextUiState.Ready(raceContext(monday.plusDays(1))))
+
+        compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("PRÓXIMA PROVA").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Amanhã · Dia de prova").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Fácil", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Semana concluída.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `prescricao rebaixada manda no titulo e o planejado fica secundario`() {
         setContent(
             next = CoachNextUiState.Ready(
-                CoachNextContext(
-                    session = PlannedSession(
-                        date = LocalDate.of(2026, 11, 17),
-                        type = WorkoutType.EASY,
-                        title = "Fácil",
-                        durationMin = 30,
-                        rationale = "Base.",
-                        ruleIds = listOf("R-ZONE-01"),
-                        evidenceIds = listOf("EV-SEILER-2010"),
-                        status = SessionStatus.PLANNED,
-                    ),
-                    isToday = false,
-                    today = LocalDate.of(2026, 11, 16),
-                    prescription = null,
-                    raceEvent = com.meucoach.core.model.RaceEvent(
-                        id = "race-1",
-                        distance = com.meucoach.core.model.RaceDistance.FIVE_K,
-                        targetDate = LocalDate.of(2026, 11, 17),
-                        createdAt = java.time.Instant.parse("2026-11-16T12:00:00Z"),
-                        updatedAt = java.time.Instant.parse("2026-11-16T12:00:00Z"),
+                trainingContext(
+                    date = monday,
+                    prescription = prescription(
+                        adjustment = PrescriptionAdjustment.DOWNGRADE,
+                        reason = QualityBlockReason.SUBJECTIVE_MISSING,
                     ),
                 ),
             ),
         )
 
+        compose.onNodeWithText("Hoje · Fácil · 25 min").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Planejado: Ritmo forte · 35 min.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-next-planned").assertExists()
+    }
+
+    @Test
+    fun `prescricao de descanso nao mostra duracao de treino`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                trainingContext(
+                    date = monday,
+                    prescription = prescription(
+                        adjustment = PrescriptionAdjustment.REST,
+                        reason = QualityBlockReason.ILLNESS_OR_RED_READINESS,
+                        prescribedType = WorkoutType.REST,
+                        prescribedTitle = "Descanso",
+                        prescribedDuration = null,
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("Hoje · Descanso").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Descanso prescrito", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `unlockHint cru com ACWR nao aparece no card`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                trainingContext(
+                    date = monday,
+                    prescription = prescription(
+                        adjustment = PrescriptionAdjustment.DOWNGRADE,
+                        reason = QualityBlockReason.ACWR_HIGH,
+                        unlockHint = "ACWR 1,50 > 1,50. Reduza a carga.",
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("ACWR", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("1,50", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("carga estiver na faixa", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `hoje sem check-in oferece Fazer check-in`() {
+        var checkedIn = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = readyExplanation(),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Ready(trainingContext(date = monday)),
+                    onNextCheckIn = { checkedIn++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-next-checkin").performScrollTo().performClick()
+        assertThat(checkedIn).isEqualTo(1)
+    }
+
+    @Test
+    fun `prontidao alta aparece com rotulo e score`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                trainingContext(
+                    date = monday,
+                    readiness = readiness(82, ReadinessLevel.GREEN, emptySet()),
+                    hasCheckIn = true,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-next-readiness").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Prontidão Alta · 82/100.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `prontidao sem dados nao mostra moderada inventada`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                trainingContext(
+                    date = monday,
+                    readiness = readiness(
+                        score = 50,
+                        level = ReadinessLevel.AMBER,
+                        flags = setOf(
+                            ReadinessFlag.INSUFFICIENT_DATA,
+                            ReadinessFlag.SUBJECTIVE_MISSING,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("ainda não medida", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText("Prontidão Moderada", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `amanha nao mostra semaforo`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                trainingContext(
+                    date = monday.plusDays(1),
+                    readiness = readiness(82, ReadinessLevel.GREEN, emptySet()),
+                    hasCheckIn = true,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-next-readiness").assertDoesNotExist()
+    }
+
+    @Test
+    fun `conteudo local aparece sem consentimento e a IA fica opcional`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = false,
+                    showConsent = true,
+                    explanation = CoachExplanationState.Unavailable,
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))),
+                    guards = CoachGuardsUiState.Ready(CoachGuardsContext(emptyList())),
+                    progress = CoachProgressUiState.Ready(
+                        summary = emptyProgressSummary(),
+                        totalWeeks = 4,
+                        profile = null,
+                        today = monday,
+                    ),
+                )
+            }
+        }
+
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Dia de prova").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-guards-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-ai-invite").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-ai-grant").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-ai-later").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `depois mantem ativar IA persistente`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = false,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Unavailable,
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))),
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-ai-grant").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-ai-later").assertDoesNotExist()
+    }
+
+    @Test
+    fun `onboarding leva a perfil calibracao e importacao`() {
+        var profile = 0
+        var calibration = 0
+        var import = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = false,
+                    showConsent = true,
+                    explanation = CoachExplanationState.Unavailable,
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Onboarding,
+                    onOnboardingProfile = { profile++ },
+                    onOnboardingCalibration = { calibration++ },
+                    onOnboardingImport = { import++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-onboarding-profile").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-onboarding-calibration").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-onboarding-import").performScrollTo().performClick()
+
+        assertThat(profile).isEqualTo(1)
+        assertThat(calibration).isEqualTo(1)
+        assertThat(import).isEqualTo(1)
     }
 
     @Test
@@ -429,33 +648,6 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `proximo com check-in pendente oferece acao`() {
-        var checkedIn = 0
-        compose.setContent {
-            McTheme(darkTheme = true) {
-                CoachScreen(
-                    consented = true,
-                    showConsent = false,
-                    explanation = CoachExplanationState.Ready(
-                        title = "Semana atual",
-                        body = "Plano da semana.",
-                        bullets = emptyList(),
-                    ),
-                    onGrant = {},
-                    onDismiss = {},
-                    onRevoke = {},
-                    onRetry = {},
-                    next = CoachNextUiState.Ready(blockedContext()),
-                    onNextCheckIn = { checkedIn++ },
-                )
-            }
-        }
-
-        compose.onNodeWithTag("coach-next-checkin").performScrollTo().performClick()
-        assertThat(checkedIn).isEqualTo(1)
-    }
-
-    @Test
     fun `proximo leva ao Hoje`() {
         var today = 0
         compose.setContent {
@@ -472,24 +664,7 @@ class CoachScreenTest {
                     onDismiss = {},
                     onRevoke = {},
                     onRetry = {},
-                    next = CoachNextUiState.Ready(
-                        CoachNextContext(
-                            session = PlannedSession(
-                                date = LocalDate.of(2026, 11, 17),
-                                type = WorkoutType.EASY,
-                                title = "Fácil",
-                                durationMin = 30,
-                                rationale = "Base.",
-                                ruleIds = listOf("R-ZONE-01"),
-                                evidenceIds = listOf("EV-SEILER-2010"),
-                                status = SessionStatus.PLANNED,
-                            ),
-                            isToday = false,
-                            today = LocalDate.of(2026, 11, 16),
-                            prescription = null,
-                            raceEvent = null,
-                        ),
-                    ),
+                    next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))),
                     onNextToday = { today++ },
                 )
             }
@@ -499,43 +674,118 @@ class CoachScreenTest {
         assertThat(today).isEqualTo(1)
     }
 
-    private fun blockedContext() = CoachNextContext(
-        session = PlannedSession(
-            date = LocalDate.of(2026, 11, 16),
-            type = WorkoutType.QUALITY,
-            title = "Ritmo forte",
-            durationMin = 35,
-            rationale = "Estímulo.",
-            ruleIds = listOf("R-PER-03"),
-            evidenceIds = listOf("EV-SEILER-2010"),
-            status = SessionStatus.PLANNED,
-        ),
-        isToday = true,
-        today = LocalDate.of(2026, 11, 16),
-        prescription = com.meucoach.core.domain.prescription.DailyPrescription(
-            date = LocalDate.of(2026, 11, 16),
-            plannedSessionId = null,
-            plannedType = WorkoutType.QUALITY,
-            plannedTitle = "Ritmo forte",
-            plannedDurationMin = 35,
-            prescribedType = WorkoutType.EASY,
-            title = "Fácil",
-            prescribedDurationMin = 25,
-            targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
-                primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
+    private val monday = LocalDate.of(2026, 11, 16)
+
+    private fun readyExplanation() = CoachExplanationState.Ready(
+        title = "Semana atual",
+        body = "Plano da semana.",
+        bullets = emptyList(),
+    )
+
+    private fun session(
+        date: LocalDate = monday.plusDays(1),
+        type: WorkoutType = WorkoutType.EASY,
+        title: String = "Fácil",
+        durationMin: Int = 30,
+    ) = PlannedSession(
+        date = date,
+        type = type,
+        title = title,
+        durationMin = durationMin,
+        rationale = "Base.",
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        status = SessionStatus.PLANNED,
+    )
+
+    private fun trainingContext(
+        date: LocalDate = monday.plusDays(1),
+        prescription: DailyPrescription? = null,
+        readiness: ReadinessResult? = null,
+        hasCheckIn: Boolean = false,
+        sleepMinutes: Int? = null,
+    ) = CoachNextContext(
+        subject = CoachNextSubject.Training(session(date)),
+        today = monday,
+        hasPlan = true,
+        hasProfile = true,
+        prescription = prescription,
+        readiness = readiness,
+        hasCheckIn = hasCheckIn,
+        sleepMinutes = sleepMinutes,
+    )
+
+    private fun raceContext(date: LocalDate) = CoachNextContext(
+        subject = CoachNextSubject.Race(
+            RaceEvent(
+                id = "race-1",
+                distance = RaceDistance.FIVE_K,
+                targetDate = date,
+                createdAt = java.time.Instant.parse("2026-11-16T12:00:00Z"),
+                updatedAt = java.time.Instant.parse("2026-11-16T12:00:00Z"),
             ),
-            adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE,
-            rationale = "Dia leve.",
-            ruleIds = listOf("R-PRESC-02"),
-            evidenceIds = listOf("EV-SAW-2016"),
-            confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
-            engineVersion = "daily-prescription-v6",
-            inputsHash = "hash",
-            qualityBlockReason = com.meucoach.core.domain.prescription.QualityBlockReason.SUBJECTIVE_MISSING,
-            decisionDetail = "check-in de hoje ausente",
-            unlockHint = "Faça o check-in de hoje para liberar o treino forte.",
         ),
-        raceEvent = null,
+        today = monday,
+        hasPlan = true,
+        hasProfile = true,
+    )
+
+    private fun prescription(
+        adjustment: PrescriptionAdjustment,
+        reason: QualityBlockReason? = null,
+        prescribedType: WorkoutType = WorkoutType.EASY,
+        prescribedTitle: String = "Fácil",
+        prescribedDuration: Int? = 25,
+        unlockHint: String = "Faça o check-in de hoje para liberar o treino forte.",
+    ) = DailyPrescription(
+        date = monday,
+        plannedSessionId = null,
+        plannedType = WorkoutType.QUALITY,
+        plannedTitle = "Ritmo forte",
+        plannedDurationMin = 35,
+        prescribedType = prescribedType,
+        title = prescribedTitle,
+        prescribedDurationMin = prescribedDuration,
+        targets = PrescriptionTargets(primary = TargetKind.RPE),
+        adjustment = adjustment,
+        rationale = "Dia leve.",
+        ruleIds = listOf("R-PRESC-02"),
+        evidenceIds = listOf("EV-SAW-2016"),
+        confidence = DataConfidence.MEDIUM,
+        engineVersion = "daily-prescription-v6",
+        inputsHash = "hash",
+        qualityBlockReason = reason,
+        decisionDetail = if (reason == null) null else "check-in de hoje ausente",
+        unlockHint = if (reason == null) null else unlockHint,
+    )
+
+    private fun readiness(score: Int, level: ReadinessLevel, flags: Set<ReadinessFlag>) = ReadinessResult(
+        score = score,
+        level = level,
+        confidence = DataConfidence.MEDIUM,
+        components = if (ReadinessFlag.INSUFFICIENT_DATA in flags) {
+            emptyMap()
+        } else {
+            mapOf(ReadinessComponent.SUBJECTIVE to score)
+        },
+        missing = emptySet(),
+        flags = flags,
+    )
+
+    private fun emptyProgressSummary() = com.meucoach.core.domain.coach.CoachProgressSummary(
+        availableWeeks = 0,
+        plannedSessions = 0,
+        doneSessions = 0,
+        adherencePercent = null,
+        plannedMinutes = 0,
+        executedMinutes = 0,
+        extraMinutes = 0,
+        volumePercent = null,
+        avgReadiness = null,
+        redDays = 0,
+        avgSleepMinutes = null,
+        shortNights = 0,
+        easyPercent28d = null,
     )
 
     @Test

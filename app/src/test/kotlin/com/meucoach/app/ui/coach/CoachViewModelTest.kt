@@ -19,14 +19,10 @@ import com.meucoach.app.application.replanPlan
 import com.meucoach.app.application.replanProfile
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachGuardsContext
-import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextContext
-import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanContext
-import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachProgressContext
-import com.meucoach.app.coach.CoachProgressSource
-import com.meucoach.app.coach.CoachReviewSource
+import com.meucoach.app.coach.CoachSources
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.replan.ReplanControllerFactory
 import com.meucoach.app.replan.ReplanOperations
@@ -44,6 +40,7 @@ import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.CoachMessageKind
+import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -91,7 +88,7 @@ class CoachViewModelTest {
     private lateinit var consent: CoachConsentStore
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
-    private lateinit var next: MutableStateFlow<CoachNextContext?>
+    private lateinit var next: MutableStateFlow<CoachNextContext>
     private lateinit var guards: MutableStateFlow<CoachGuardsContext>
     private lateinit var progress: MutableStateFlow<CoachProgressContext>
     private lateinit var database: MeuCoachDatabase
@@ -137,7 +134,7 @@ class CoachViewModelTest {
         consent = CoachConsentStore(context, "coach-vm-${System.nanoTime()}")
         plans = MutableStateFlow(null)
         reviews = MutableStateFlow(null)
-        next = MutableStateFlow(null)
+        next = MutableStateFlow(emptyNextContext())
         guards = MutableStateFlow(CoachGuardsContext(emptyList()))
         progress = MutableStateFlow(CoachProgressContext(emptyList(), null, 0, null, LocalDate.of(2026, 11, 16)))
         database = Room
@@ -189,21 +186,23 @@ class CoachViewModelTest {
     private fun viewModel(api: FakeCoachApi): CoachViewModel {
         val vm = CoachViewModel(
             consent = consent,
-            plans = object : CoachPlanSource {
-                override fun observeCurrent() = plans
-            },
-            reviews = object : CoachReviewSource {
-                override fun observeLastClosedWeek() = reviews
-            },
-            nextSource = object : CoachNextSource {
-                override fun observeNext() = next
-            },
-            guardsSource = object : CoachGuardsSource {
-                override fun observeGuards() = guards
-            },
-            progressSource = object : CoachProgressSource {
-                override fun observeProgress() = progress
-            },
+            sources = CoachSources(
+                plans = object : com.meucoach.app.coach.CoachPlanSource {
+                    override fun observeCurrent() = plans
+                },
+                reviews = object : com.meucoach.app.coach.CoachReviewSource {
+                    override fun observeLastClosedWeek() = reviews
+                },
+                next = object : com.meucoach.app.coach.CoachNextSource {
+                    override fun observeNext() = next
+                },
+                guards = object : com.meucoach.app.coach.CoachGuardsSource {
+                    override fun observeGuards() = guards
+                },
+                progress = object : com.meucoach.app.coach.CoachProgressSource {
+                    override fun observeProgress() = progress
+                },
+            ),
             api = api,
             memory = memory,
             appScope = CoroutineScope(Dispatchers.Unconfined),
@@ -300,11 +299,16 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `progresso oculto sem consentimento`(): Unit = runBlocking {
+    fun `progresso local aparece sem consentimento`(): Unit = runBlocking {
         progress.value = progressContext()
         val vm = viewModel(FakeCoachApi())
 
-        assertThat(vm.progress.value).isInstanceOf(CoachProgressUiState.Hidden::class.java)
+        withTimeout(2000) {
+            while (vm.progress.value !is CoachProgressUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(vm.progress.value).isInstanceOf(CoachProgressUiState.Ready::class.java)
     }
 
     @Test
@@ -349,11 +353,16 @@ class CoachViewModelTest {
     )
 
     @Test
-    fun `guardas ocultas sem consentimento`(): Unit = runBlocking {
+    fun `guardas locais aparecem sem consentimento`(): Unit = runBlocking {
         guards.value = CoachGuardsContext(listOf(recoveryGuard()))
         val vm = viewModel(FakeCoachApi())
 
-        assertThat(vm.guards.value).isInstanceOf(CoachGuardsUiState.Hidden::class.java)
+        withTimeout(2000) {
+            while (vm.guards.value !is CoachGuardsUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(vm.guards.value).isInstanceOf(CoachGuardsUiState.Ready::class.java)
     }
 
     @Test
@@ -378,16 +387,21 @@ class CoachViewModelTest {
     )
 
     @Test
-    fun `next fica oculto sem consentimento`(): Unit = runBlocking {
+    fun `next local aparece sem consentimento`(): Unit = runBlocking {
         next.value = nextContext()
         val vm = viewModel(FakeCoachApi())
 
-        assertThat(vm.next.value).isInstanceOf(CoachNextUiState.Hidden::class.java)
+        withTimeout(2000) {
+            while (vm.next.value !is CoachNextUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(vm.next.value).isInstanceOf(CoachNextUiState.Ready::class.java)
     }
 
     @Test
-    fun `next vazio sem sessao futura`(): Unit = runBlocking {
-        consent.grant()
+    fun `next vazio so quando existe plano e nada pendente`(): Unit = runBlocking {
+        next.value = emptyNextContext(hasPlan = true)
         val vm = viewModel(FakeCoachApi())
 
         withTimeout(2000) {
@@ -396,6 +410,19 @@ class CoachViewModelTest {
             }
         }
         assertThat(vm.next.value).isInstanceOf(CoachNextUiState.Empty::class.java)
+    }
+
+    @Test
+    fun `next sem plano vira onboarding`(): Unit = runBlocking {
+        next.value = emptyNextContext(hasPlan = false)
+        val vm = viewModel(FakeCoachApi())
+
+        withTimeout(2000) {
+            while (vm.next.value !is CoachNextUiState.Onboarding) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(vm.next.value).isInstanceOf(CoachNextUiState.Onboarding::class.java)
     }
 
     @Test
@@ -410,25 +437,63 @@ class CoachViewModelTest {
             }
         }
         val ready = vm.next.value as CoachNextUiState.Ready
-        assertThat(ready.context.session.date).isEqualTo(LocalDate.of(2026, 11, 17))
+        val training = ready.context.subject as CoachNextSubject.Training
+        assertThat(training.session.date).isEqualTo(LocalDate.of(2026, 11, 17))
         assertThat(ready.context.isToday).isFalse()
     }
 
+    @Test
+    fun `next com prova sem sessao fica pronto`(): Unit = runBlocking {
+        next.value = raceNextContext()
+        val vm = viewModel(FakeCoachApi())
+
+        withTimeout(2000) {
+            while (vm.next.value !is CoachNextUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        val ready = vm.next.value as CoachNextUiState.Ready
+        assertThat(ready.context.subject).isInstanceOf(CoachNextSubject.Race::class.java)
+    }
+
     private fun nextContext() = CoachNextContext(
-        session = PlannedSession(
-            date = LocalDate.of(2026, 11, 17),
-            type = WorkoutType.EASY,
-            title = "Fácil",
-            durationMin = 30,
-            rationale = "Base",
-            ruleIds = listOf("R-ZONE-01"),
-            evidenceIds = listOf("EV-SEILER-2010"),
-            status = SessionStatus.PLANNED,
+        subject = CoachNextSubject.Training(
+            PlannedSession(
+                date = LocalDate.of(2026, 11, 17),
+                type = WorkoutType.EASY,
+                title = "Fácil",
+                durationMin = 30,
+                rationale = "Base",
+                ruleIds = listOf("R-ZONE-01"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = SessionStatus.PLANNED,
+            ),
         ),
-        isToday = false,
         today = LocalDate.of(2026, 11, 16),
-        prescription = null,
-        raceEvent = null,
+        hasPlan = true,
+        hasProfile = true,
+    )
+
+    private fun emptyNextContext(hasPlan: Boolean = true) = CoachNextContext(
+        subject = null,
+        today = LocalDate.of(2026, 11, 16),
+        hasPlan = hasPlan,
+        hasProfile = true,
+    )
+
+    private fun raceNextContext() = CoachNextContext(
+        subject = CoachNextSubject.Race(
+            com.meucoach.core.model.RaceEvent(
+                id = "race-1",
+                distance = com.meucoach.core.model.RaceDistance.FIVE_K,
+                targetDate = LocalDate.of(2026, 11, 17),
+                createdAt = Instant.parse("2026-11-16T12:00:00Z"),
+                updatedAt = Instant.parse("2026-11-16T12:00:00Z"),
+            ),
+        ),
+        today = LocalDate.of(2026, 11, 16),
+        hasPlan = true,
+        hasProfile = true,
     )
 
     @Test

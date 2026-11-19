@@ -23,7 +23,14 @@ sealed interface CoachValidationResult {
 object CoachResponseValidator {
     private val pacePattern = Regex("""\d{1,2}:\d{2}(/km)?""")
     private val bpmPattern = Regex("""\d{2,3}\s?bpm""", RegexOption.IGNORE_CASE)
+
+    /**
+     * Tokens that only exist as metrics. The word boundary keeps "atl" out of
+     * "atleta"/"atletas" and "ctl" out of "controle" (P-10), while still
+     * rejecting the standalone acronyms.
+     */
     private val forbiddenTokens = listOf("vdot", "acwr", "tss", "trimp", "ctl", "atl", "tsb", "lthr", "vo2")
+        .map { token -> token to Regex("""\b${Regex.escape(token)}\b""", RegexOption.IGNORE_CASE) }
     private val minutesPattern = Regex("""(\d{1,4})\s?min""", RegexOption.IGNORE_CASE)
     private val percentPattern = Regex("""(\d{1,3})\s?%""")
     private val internalCodePattern = Regex("""\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b""")
@@ -72,7 +79,9 @@ object CoachResponseValidator {
         allowedPercents: Set<Int>?,
         forbiddenCodes: Set<String>,
     ): String? {
-        val forbidden = forbiddenTokens.firstOrNull { it in combined.lowercase() }
+        val forbidden = forbiddenTokens
+            .firstOrNull { (_, pattern) -> pattern.containsMatchIn(combined) }
+            ?.first
         val internalCode = internalCodePattern.find(combined)?.value
             ?: forbiddenCodes.firstOrNull { it.lowercase() in combined.lowercase() }
         val inventedMinutes = minutesPattern.findAll(combined)

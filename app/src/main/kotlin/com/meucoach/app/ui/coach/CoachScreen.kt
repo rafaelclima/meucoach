@@ -41,6 +41,9 @@ fun CoachRoute(
     onCheckInClick: () -> Unit = {},
     onTodayClick: () -> Unit = {},
     onTrendsClick: () -> Unit = {},
+    onOnboardingProfile: () -> Unit = {},
+    onOnboardingCalibration: () -> Unit = {},
+    onOnboardingImport: () -> Unit = {},
 ) {
     val consented by viewModel.consented.collectAsStateWithLifecycle()
     val dismissed by viewModel.dismissed.collectAsStateWithLifecycle()
@@ -70,6 +73,9 @@ fun CoachRoute(
         onNextRetry = { viewModel.retry() },
         onNextCheckIn = onCheckInClick,
         onNextToday = onTodayClick,
+        onOnboardingProfile = onOnboardingProfile,
+        onOnboardingCalibration = onOnboardingCalibration,
+        onOnboardingImport = onOnboardingImport,
         onGuardsRetry = { viewModel.retry() },
         onProgressRetry = { viewModel.retry() },
         onProgressTrends = onTrendsClick,
@@ -123,6 +129,9 @@ fun CoachScreen(
     onNextRetry: () -> Unit = {},
     onNextCheckIn: () -> Unit = {},
     onNextToday: () -> Unit = {},
+    onOnboardingProfile: () -> Unit = {},
+    onOnboardingCalibration: () -> Unit = {},
+    onOnboardingImport: () -> Unit = {},
     guards: CoachGuardsUiState = CoachGuardsUiState.Hidden,
     onGuardsRetry: () -> Unit = {},
     progress: CoachProgressUiState = CoachProgressUiState.Hidden,
@@ -155,40 +164,17 @@ fun CoachScreen(
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = McTheme.colors.textSecondary,
         )
-        if (showConsent) {
-            McCard {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "Ativar o Coach?",
-                        style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                        color = McTheme.colors.textPrimary,
-                    )
-                    Text(
-                        text = "Para explicar sua semana, o app envia um resumo dos treinos " +
-                            "(sem nome e sem mapa) para o serviço de IA. " +
-                            "Você pode desligar quando quiser em Dados.",
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                        color = McTheme.colors.textSecondary,
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        McPrimaryButton(text = "Ativar", onClick = onGrant, modifier = Modifier.weight(1f))
-                        McSecondaryButton(text = "Depois", onClick = onDismiss, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        } else if (consented) {
-            CoachNextCard(
-                state = next,
-                onRetry = onNextRetry,
-                onCheckIn = onNextCheckIn,
-                onToday = onNextToday,
-            )
+        val onboarding = next is CoachNextUiState.Onboarding
+        CoachNextCard(
+            state = next,
+            onRetry = onNextRetry,
+            onCheckIn = onNextCheckIn,
+            onToday = onNextToday,
+            onProfile = onOnboardingProfile,
+            onCalibration = onOnboardingCalibration,
+            onImport = onOnboardingImport,
+        )
+        if (!onboarding) {
             CoachGuardsCard(state = guards, onRetry = onGuardsRetry)
             CoachReplanCard(
                 state = replan,
@@ -208,101 +194,93 @@ fun CoachScreen(
                     )
                 }
             }
-            when (explanation) {
-                CoachExplanationState.Unavailable -> {
-                    McCard(modifier = Modifier.testTag("coach-empty-path")) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = "Monte seu plano para começar",
-                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                color = McTheme.colors.textPrimary,
-                            )
-                            Text(
-                                text = "Complete perfil e disponibilidade, importe um treino ou faça " +
-                                    "a calibração. O próximo treino aparece aqui.",
-                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                color = McTheme.colors.textSecondary,
-                            )
-                        }
-                    }
-                }
+            if (consented) {
+                when (explanation) {
+                    // The local card covers "no plan"; a consented user without a
+                    // plan must not see a second onboarding message here.
+                    CoachExplanationState.Unavailable -> Unit
 
-                CoachExplanationState.Loading -> {
-                    McCard {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            CircularProgressIndicator(color = McTheme.colors.accent)
-                            Text(
-                                text = "Consultando o Coach…",
-                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                color = McTheme.colors.textPrimary,
-                            )
-                            Text(
-                                text = "Analisando sua semana e seus treinos.",
-                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                color = McTheme.colors.textTertiary,
-                            )
+                    CoachExplanationState.Loading -> {
+                        McCard {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                CircularProgressIndicator(color = McTheme.colors.accent)
+                                Text(
+                                    text = "Consultando o Coach…",
+                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                    color = McTheme.colors.textPrimary,
+                                )
+                                Text(
+                                    text = "Analisando sua semana e seus treinos.",
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                    color = McTheme.colors.textTertiary,
+                                )
+                            }
                         }
                     }
-                }
 
-                is CoachExplanationState.Ready -> {
-                    CoachExplanationCard(explanation)
-                }
+                    is CoachExplanationState.Ready -> {
+                        CoachExplanationCard(explanation)
+                    }
 
-                is CoachExplanationState.Fallback -> {
-                    McCard {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = "Resumo da semana",
-                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                color = McTheme.colors.textPrimary,
-                            )
-                            Text(
-                                text = explanation.planRationale,
-                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                                color = McTheme.colors.textSecondary,
-                            )
-                            Text(
-                                text = explanation.reason,
-                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                color = McTheme.colors.textTertiary,
-                                modifier = Modifier.testTag("coach-fallback-reason"),
-                            )
-                            Text(
-                                text = "O Coach não conseguiu explicar desta vez. Tente de novo em instantes.",
-                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                color = McTheme.colors.textTertiary,
-                            )
+                    is CoachExplanationState.Fallback -> {
+                        McCard {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = "Resumo da semana",
+                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                    color = McTheme.colors.textPrimary,
+                                )
+                                Text(
+                                    text = explanation.planRationale,
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                                    color = McTheme.colors.textSecondary,
+                                )
+                                Text(
+                                    text = CoachFallbackLabels.reasonCopy(explanation.reason),
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                    color = McTheme.colors.textTertiary,
+                                    modifier = Modifier.testTag("coach-fallback-reason"),
+                                )
+                                Text(
+                                    text = "O Coach não conseguiu explicar desta vez. " +
+                                        "Tente de novo em instantes.",
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                    color = McTheme.colors.textTertiary,
+                                )
+                            }
                         }
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
-                        TextButton(onClick = onRevoke) {
-                            Text(
-                                text = "Desativar",
-                                color = McTheme.colors.textTertiary,
-                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
+                            TextButton(onClick = onRevoke) {
+                                Text(
+                                    text = "Desativar IA",
+                                    color = McTheme.colors.textTertiary,
+                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
                     }
                 }
+                review?.let { CoachReviewCard(review = it, state = reviewState) }
+            } else {
+                CoachAiInviteCard(
+                    expanded = showConsent,
+                    onGrant = onGrant,
+                    onDismiss = onDismiss,
+                )
             }
-            review?.let { CoachReviewCard(review = it, state = reviewState) }
             CoachProgressCard(state = progress, onRetry = onProgressRetry, onTrends = onProgressTrends)
-            if (history != CoachHistoryState.Hidden) {
+            if (consented && history != CoachHistoryState.Hidden) {
                 CoachHistoryCard(
                     state = history,
                     onClear = onClearHistory,
@@ -311,26 +289,21 @@ fun CoachScreen(
                     onDeleteSummary = onDeleteHistorySummary,
                 )
             }
-            TextButton(
-                onClick = onRevoke,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-                    .testTag("coach-disable"),
-            ) {
-                Text(
-                    text = "Desativar Coach",
-                    color = McTheme.colors.textTertiary,
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                )
+            if (consented) {
+                TextButton(
+                    onClick = onRevoke,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .testTag("coach-disable"),
+                ) {
+                    Text(
+                        text = "Desativar IA",
+                        color = McTheme.colors.textTertiary,
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
-        } else {
-            Text(
-                text = "Na primeira vez, pedimos sua permissão para usar um resumo dos treinos. " +
-                    "Nada sai do aparelho sem você permitir.",
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = McTheme.colors.textTertiary,
-            )
         }
     }
 
@@ -376,5 +349,77 @@ fun CoachScreen(
             onReview = onReplanLessTimeSelected,
             onDismiss = onReplanDismissIntent,
         )
+    }
+}
+
+/**
+ * AI is optional; the deterministic Coach never depends on it (P-03).
+ *
+ * After "Depois" the card collapses but keeps a persistent "Ativar IA", so the
+ * screen never becomes a dead end.
+ */
+@Composable
+private fun CoachAiInviteCard(
+    expanded: Boolean,
+    onGrant: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    McCard(modifier = modifier.testTag("coach-ai-invite")) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "IA do Coach (opcional)",
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                color = McTheme.colors.textPrimary,
+            )
+            Text(
+                text = "Seu próximo treino, as travas e a evolução já funcionam no aparelho, sem IA.",
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                color = McTheme.colors.textSecondary,
+            )
+            if (expanded) {
+                Text(
+                    text = "Para reescrever a explicação e a revisão, o app envia um resumo dos " +
+                        "treinos (sem nome e sem mapa) ao serviço de IA. O motor continua decidindo.",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = McTheme.colors.textSecondary,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    McPrimaryButton(
+                        text = "Ativar IA",
+                        onClick = onGrant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("coach-ai-grant"),
+                    )
+                    McSecondaryButton(
+                        text = "Depois",
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("coach-ai-later"),
+                    )
+                }
+            } else {
+                Text(
+                    text = "A explicação em texto continua desligada.",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = McTheme.colors.textTertiary,
+                )
+                McPrimaryButton(
+                    text = "Ativar IA",
+                    onClick = onGrant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("coach-ai-grant"),
+                )
+            }
+        }
     }
 }

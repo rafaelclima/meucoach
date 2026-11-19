@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.19 · **Data:** 18/11/2026 · Coach auditoria: 2.435 testes (1130 domain / 1033 app / 232 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
+**Versão:** 1.20 · **Data:** 19/11/2026 · Bloco A do Coach: 2.555 testes (1178 domain / 1105 app / 232 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -92,9 +92,9 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (18/11/2026, Coach auditoria):
+Evidência atual (19/11/2026, Bloco A do Coach):
 
-- 2.435 testes no repositório (1130 em `core:domain`, 1033 em `:app`, 232 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- 2.555 testes no repositório (1178 em `core:domain`, 1105 em `:app`, 232 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
 - Comandos de referência: `./gradlew :core:domain:test :core:model:test :core:data:testDebugUnitTest --rerun-tasks` + `./gradlew :app:testDebugUnitTest --rerun-tasks --no-parallel` (a suíte do app cai nos flakes do §10.1 sob paralelismo; sem paralelismo fica verde).
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
@@ -239,6 +239,11 @@ Evidência atual (18/11/2026, Coach auditoria):
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino, CTA do briefing e plano (inclui o card do plano com versão).
 - `SessionBriefingScreenshotTest`: golden dark/light do conteúdo do briefing (foco, alvo, rationale, como correr e se estiver difícil).
 - `ReplanScreenshotTest`: golden dark/light do card de sugestão de replanejamento.
+- `CoachNextResolverTest` (Bloco A): prova vence hoje/amanhã mesmo sem sessão na data; prova no domingo com plano encerrado no sábado aparece antes de “semana concluída”; treino antes de uma prova distante continua sendo o próximo.
+- `CoachNextSourceTest` (Bloco A): prova hoje/amanhã sem sessão e sem prescrição, prontidão/score/sono derivados do check-in e métricas, ausência de check-in como dados insuficientes (nunca “moderada 50”).
+- `CoachNextLabelsTest`/`CoachScreenTest` (Bloco A): headline segue a prescrição (DOWNGRADE/REST), planejado só como linha secundária, descanso sem duração, semáforo com rótulo+score, amanhã sem semáforo inventado, `unlockHint`/ACWR fora do card, fallback sem código interno e onboarding único com CTAs.
+- `CoachViewModelTest` (Bloco A): F1/F2/F4 locais aparecem sem consentimento de IA; `Onboarding` sem plano, `Empty` só com plano e nada pendente; CTA “Ativar IA” persiste depois de “Depois”.
+- `CoachResponseValidatorTest` (Bloco A): “atleta” e “controle” passam; “atl” isolado continua barrado.
 - `BottomBarScreenshotTest`: goldens dark/light da barra (`bottom-bar-*`) com os cinco tabs e o Coach selecionado; também cobre seleção (`Role.Tab`) e clique.
 - `TrainingPlanRepositoryTest`: round-trip da semana, substituição de sessões, status/motivo, exclusão e semana vazia.
 - `MeuCoachDatabaseMigrationTest`: 7→8 adiciona status da sessão sem perder o plano.

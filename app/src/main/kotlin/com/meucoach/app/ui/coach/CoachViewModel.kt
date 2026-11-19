@@ -4,13 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachGuardsContext
-import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextContext
-import com.meucoach.app.coach.CoachNextSource
-import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachProgressContext
-import com.meucoach.app.coach.CoachProgressSource
-import com.meucoach.app.coach.CoachReviewSource
+import com.meucoach.app.coach.CoachSources
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.replan.ReplanControllerFactory
 import com.meucoach.app.ui.replan.LessTimeChange
@@ -39,7 +35,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -73,18 +68,22 @@ sealed interface CoachReviewState {
 }
 
 /**
- * Next relevant session for the Coach tab (PRD evolução, F1).
+ * Next relevant event for the Coach tab (PRD evolução, F1).
  *
- * `Hidden` is the no-consent state. `Ready` carries the read-only pick of
- * [CoachNextSource]: the session plus the latest persisted prescription of
- * its date (null while the day has no decision yet) and a race event on the
- * date. It never triggers a new prescription.
+ * Local and always rendered, even without AI consent. `Ready` carries the
+ * read-only pick of [CoachNextSource] and its readiness when the day is today;
+ * `Onboarding` is the single path when there is no profile or plan. The tab
+ * never triggers a new prescription.
  */
 sealed interface CoachNextUiState {
     data object Hidden : CoachNextUiState
 
     data object Loading : CoachNextUiState
 
+    /** No profile or plan: the screen shows one onboarding card with CTAs. */
+    data object Onboarding : CoachNextUiState
+
+    /** A plan exists and has no pending future session (and no relevant race). */
     data object Empty : CoachNextUiState
 
     data class Ready(val context: CoachNextContext) : CoachNextUiState
@@ -95,9 +94,9 @@ sealed interface CoachNextUiState {
 /**
  * Structural guards for the Coach tab (PRD evolução, F2).
  *
- * `Hidden` is the no-consent state. `Ready` carries the read-only guards
- * resolved from the shared signals; an empty list means a green week and the
- * UI shows a single quiet line instead of an empty card.
+ * Local and always rendered, even without AI consent. `Ready` carries the
+ * read-only guards resolved from the shared signals; an empty list means a
+ * green week and the UI shows a single quiet line instead of an empty card.
  */
 sealed interface CoachGuardsUiState {
     data object Hidden : CoachGuardsUiState
@@ -112,9 +111,9 @@ sealed interface CoachGuardsUiState {
 /**
  * Four-week rollup for the Coach tab (PRD evolução, F4).
  *
- * `Hidden` is the no-consent state. `Ready` carries the pure rollup of the
- * last closed weeks plus the profile for the VDOT line; weeks without data
- * surface as a quiet empty card instead of an error.
+ * Local and always rendered, even without AI consent. `Ready` carries the pure
+ * rollup of the last closed weeks plus the profile for the VDOT line; weeks
+ * without data surface as a quiet empty card instead of an error.
  */
 sealed interface CoachProgressUiState {
     data object Hidden : CoachProgressUiState
@@ -154,11 +153,7 @@ sealed interface CoachHistoryState {
 @HiltViewModel
 class CoachViewModel @Inject constructor(
     private val consent: CoachConsentStore,
-    private val plans: CoachPlanSource,
-    private val reviews: CoachReviewSource,
-    private val nextSource: CoachNextSource,
-    private val guardsSource: CoachGuardsSource,
-    private val progressSource: CoachProgressSource,
+    private val sources: CoachSources,
     private val api: CoachApi,
     private val memory: CoachMemoryRepository,
     @ApplicationScope private val appScope: CoroutineScope,
@@ -188,13 +183,13 @@ class CoachViewModel @Inject constructor(
     private val _history = MutableStateFlow<CoachHistoryState>(CoachHistoryState.Hidden)
     val history: StateFlow<CoachHistoryState> = _history
 
-    private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Hidden)
+    private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Loading)
     val next: StateFlow<CoachNextUiState> = _next
 
-    private val _guards = MutableStateFlow<CoachGuardsUiState>(CoachGuardsUiState.Hidden)
+    private val _guards = MutableStateFlow<CoachGuardsUiState>(CoachGuardsUiState.Loading)
     val guards: StateFlow<CoachGuardsUiState> = _guards
 
-    private val _progress = MutableStateFlow<CoachProgressUiState>(CoachProgressUiState.Hidden)
+    private val _progress = MutableStateFlow<CoachProgressUiState>(CoachProgressUiState.Loading)
     val progress: StateFlow<CoachProgressUiState> = _progress
 
     /** Hash of the explanation currently rendered; excluded from the archive. */
@@ -250,7 +245,7 @@ class CoachViewModel @Inject constructor(
                 }
         }
         viewModelScope.launch {
-            combine(_consented, plans.observeCurrent(), retryTick) { isConsented, context, tick ->
+            combine(_consented, sources.plans.observeCurrent(), retryTick) { isConsented, context, tick ->
                 Triple(isConsented, context, tick)
             }.collect { (isConsented, context, _) ->
                 val plan = context?.plan
@@ -327,7 +322,7 @@ class CoachViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            combine(_consented, reviews.observeLastClosedWeek(), retryTick) { isConsented, review, tick ->
+            combine(_consented, sources.reviews.observeLastClosedWeek(), retryTick) { isConsented, review, tick ->
                 Triple(isConsented, review, tick)
             }.collect { (isConsented, review, _) ->
                 _review.value = review
@@ -397,87 +392,72 @@ class CoachViewModel @Inject constructor(
     }
 
     /**
-     * Next relevant session, read-only. A future day without a persisted
-     * prescription surfaces with `prescription == null`; this never computes
-     * or appends a prescription for a day that has not arrived (ADR 0023).
+     * Next relevant event, read-only and local. A future day without a
+     * persisted prescription surfaces with `prescription == null`; this never
+     * computes or appends a prescription for a day that has not arrived
+     * (ADR 0023). Consent only gates the AI explanation, never this card.
      * [retry] restarts the collection, so the error state can recover.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeNext() {
         viewModelScope.launch {
-            combine(_consented, retryTick) { isConsented, _ -> isConsented }
-                .flatMapLatest { isConsented ->
-                    if (!isConsented) {
-                        flowOf(CoachNextUiState.Hidden)
-                    } else {
-                        nextSource.observeNext()
-                            .map { context ->
-                                if (context == null) {
-                                    CoachNextUiState.Empty
-                                } else {
-                                    CoachNextUiState.Ready(context)
-                                }
-                            }
-                            .onStart { emit(CoachNextUiState.Loading) }
-                            .catch { error ->
-                                android.util.Log.d("Coach", "next failed: ${error.message}")
-                                emit(CoachNextUiState.Error("Não foi possível carregar o próximo treino."))
-                            }
+            retryTick.flatMapLatest {
+                sources.next.observeNext()
+                    .map { context -> toNextReady(context) }
+                    .onStart { emit(CoachNextUiState.Loading) }
+                    .catch { error ->
+                        android.util.Log.d("Coach", "next failed: ${error.message}")
+                        emit(CoachNextUiState.Error("Não foi possível carregar o próximo treino."))
                     }
-                }
-                .collect { _next.value = it }
+            }.collect { _next.value = it }
         }
     }
 
+    private fun toNextReady(context: CoachNextContext): CoachNextUiState = when {
+        context.subject != null -> CoachNextUiState.Ready(context)
+        !context.hasProfile || !context.hasPlan -> CoachNextUiState.Onboarding
+        else -> CoachNextUiState.Empty
+    }
+
     /**
-     * Structural guards, read-only. [retry] restarts the collection, so the
+     * Structural guards, read-only and local. Consent only gates the AI
+     * explanation, never this card. [retry] restarts the collection, so the
      * error state can recover.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeGuards() {
         viewModelScope.launch {
-            combine(_consented, retryTick) { isConsented, _ -> isConsented }
-                .flatMapLatest { isConsented ->
-                    if (!isConsented) {
-                        flowOf(CoachGuardsUiState.Hidden)
-                    } else {
-                        guardsSource.observeGuards()
-                            .map { context -> toGuardsReady(context) }
-                            .onStart { emit(CoachGuardsUiState.Loading) }
-                            .catch { error ->
-                                android.util.Log.d("Coach", "guards failed: ${error.message}")
-                                emit(CoachGuardsUiState.Error("Não foi possível carregar as travas da semana."))
-                            }
+            retryTick.flatMapLatest {
+                sources.guards.observeGuards()
+                    .map { context -> toGuardsReady(context) }
+                    .onStart { emit(CoachGuardsUiState.Loading) }
+                    .catch { error ->
+                        android.util.Log.d("Coach", "guards failed: ${error.message}")
+                        emit(CoachGuardsUiState.Error("Não foi possível carregar as travas da semana."))
                     }
-                }
-                .collect { _guards.value = it }
+            }.collect { _guards.value = it }
         }
     }
 
     private fun toGuardsReady(context: CoachGuardsContext): CoachGuardsUiState = CoachGuardsUiState.Ready(context)
 
     /**
-     * Four-week rollup, read-only. [retry] restarts the collection, so the
+     * Four-week rollup, read-only and local. Consent only gates the AI
+     * explanation, never this card. [retry] restarts the collection, so the
      * error state can recover.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeProgress() {
         viewModelScope.launch {
-            combine(_consented, retryTick) { isConsented, _ -> isConsented }
-                .flatMapLatest { isConsented ->
-                    if (!isConsented) {
-                        flowOf(CoachProgressUiState.Hidden)
-                    } else {
-                        progressSource.observeProgress()
-                            .map { context -> toProgressReady(context) }
-                            .onStart { emit(CoachProgressUiState.Loading) }
-                            .catch { error ->
-                                android.util.Log.d("Coach", "progress failed: ${error.message}")
-                                emit(CoachProgressUiState.Error("Não foi possível carregar sua evolução."))
-                            }
+            retryTick.flatMapLatest {
+                sources.progress.observeProgress()
+                    .map { context -> toProgressReady(context) }
+                    .onStart { emit(CoachProgressUiState.Loading) }
+                    .catch { error ->
+                        android.util.Log.d("Coach", "progress failed: ${error.message}")
+                        emit(CoachProgressUiState.Error("Não foi possível carregar sua evolução."))
                     }
-                }
-                .collect { _progress.value = it }
+            }.collect { _progress.value = it }
         }
     }
 

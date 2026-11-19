@@ -246,6 +246,13 @@ private fun MainContent() {
                         onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
                         onTodayClick = { navController.navigateToTab(AppDestination.Today.route) },
                         onTrendsClick = { navController.navigateToTab(AppDestination.Trends.route) },
+                        onOnboardingProfile = {
+                            navController.navigateToTab(AppDestination.Profile.route)
+                        },
+                        onOnboardingCalibration = { navController.navigate(calibrationRoute()) },
+                        onOnboardingImport = {
+                            navController.navigateToTab(AppDestination.Activities.route)
+                        },
                     )
                 }
                 composable(AppDestination.Profile.route) {
