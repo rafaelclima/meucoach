@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (PRD evolução do Coach + F3-1 Unavailable acionável)
+**Atualizado:** 19/11/2026 (F3-2 fallback exibe motivo)
+
+## Sessão 2026-11-19 — F3-2 (fallback exibe motivo)
+
+**Objetivo:** fatia mínima da Fase 0: o card de fallback mostrava texto fixo e ignorava o campo `reason` (motivo do validador/rede) — informação útil para diagnóstico e para o usuário entender o que houve.
+
+### Concluído
+
+- **TDD:** `CoachScreenTest` ganhou `fallback exibe o motivo com tag propria` (red → green).
+- **UI:** ramo `Fallback` do `CoachScreen` exibe `explanation.reason` com `testTag("coach-fallback-reason")`, mantendo rationale + retry + Desativar neutro. Sem regra de treino, sem persistência, sem ADR.
+- **Gates:** `coach.*`, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Próxima fatia F3: reordenação (replan antes da explicação) ou checklist determinístico no fallback (uma por sessão).
 
 ## Sessão 2026-11-19 — PRD evolução do Coach + F3-1 (Unavailable acionável)
 

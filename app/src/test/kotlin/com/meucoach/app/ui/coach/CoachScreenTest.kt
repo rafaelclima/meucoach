@@ -306,6 +306,22 @@ class CoachScreenTest {
         ).performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun `fallback exibe o motivo com tag propria`() {
+        setContent(
+            explanation = CoachExplanationState.Fallback(
+                reason = "Resposta contém pace, que só o motor pode prescrever",
+                planRationale = "Plano da semana.",
+            ),
+        )
+
+        compose.onNodeWithTag("coach-fallback-reason").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            "Resposta contém pace, que só o motor pode prescrever",
+            substring = true,
+        ).performScrollTo().assertIsDisplayed()
+    }
+
     private fun setContent(
         explanation: CoachExplanationState = CoachExplanationState.Ready(
             title = "Semana atual",

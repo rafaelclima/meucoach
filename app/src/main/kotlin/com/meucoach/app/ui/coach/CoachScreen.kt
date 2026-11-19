@@ -222,6 +222,12 @@ fun CoachScreen(
                                 color = McTheme.colors.textSecondary,
                             )
                             Text(
+                                text = explanation.reason,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                color = McTheme.colors.textTertiary,
+                                modifier = Modifier.testTag("coach-fallback-reason"),
+                            )
+                            Text(
                                 text = "O Coach não conseguiu explicar desta vez. Tente de novo em instantes.",
                                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                                 color = McTheme.colors.textTertiary,
