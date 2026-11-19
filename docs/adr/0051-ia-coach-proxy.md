@@ -156,6 +156,14 @@ modelos sem publicar o app.
 - **Testes:** prompt/validator puros, `CoachApi` com servidor local, consent
   store, ViewModel (explicação e revisão), source da semana fechada e tela. Sem
   dados reais no CI; o teste real é manual contra a VPS.
+- **Correção 19/11/2026 (JSON inválido no explain):** `buildOpenRouterBody`
+  montava o corpo por interpolação sem escapar o system prompt; `SYSTEM_EXPLAIN`
+  e `SYSTEM_REPLAN` contêm `{"title":...}` literal e geravam JSON inválido →
+  OpenRouter 400 em todo `explain`/`replan-suggest`, enquanto `review` (sem
+  aspas internas) passava. Corpo agora via `buildJsonObject`
+  (`kotlinx-serialization-json`), com `OpenRouterBodyTest` de regressão.
+  **Exige redeploy no Dokploy.** App passa a incluir os primeiros 200 chars do
+  erro do provedor no `IOException` para diagnóstico via `logcat -s Coach`.
 
 ---
 

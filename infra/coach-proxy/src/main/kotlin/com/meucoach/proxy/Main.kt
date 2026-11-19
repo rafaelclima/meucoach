@@ -21,6 +21,11 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -79,17 +84,35 @@ fun main() {
     }.start(wait = true)
 }
 
-private fun buildOpenRouterBody(model: String, kind: String, payload: String): String {
-    val escaped = payload.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+/**
+ * OpenRouter request body built with kotlinx.serialization so system prompts
+ * and payloads containing quotes/newlines can never break the JSON.
+ * Manual string interpolation used to emit the inner `{"title":...}` of the
+ * system prompts unescaped, which OpenRouter rejected with 400 for explain
+ * while review (no inner quotes) kept working.
+ */
+internal fun buildOpenRouterBody(model: String, kind: String, payload: String): String {
     val system = when (kind) {
         "review" -> SYSTEM_REVIEW
         "replan-suggest" -> SYSTEM_REPLAN
         else -> SYSTEM_EXPLAIN
     }
-    val body = """{"model":"$model","messages":""" +
-        """[{"role":"system","content":"$system"},{"role":"user","content":"$escaped"}],""" +
-        """"response_format":{"type":"json_object"}}"""
-    return body
+    return buildJsonObject {
+        put("model", model)
+        putJsonArray("messages") {
+            addJsonObject {
+                put("role", "system")
+                put("content", system)
+            }
+            addJsonObject {
+                put("role", "user")
+                put("content", payload)
+            }
+        }
+        putJsonObject("response_format") {
+            put("type", "json_object")
+        }
+    }.toString()
 }
 
 private const val SYSTEM_EXPLAIN =

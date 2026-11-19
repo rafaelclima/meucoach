@@ -78,7 +78,7 @@ class HttpCoachApi(private val baseUrl: String, private val token: String, priva
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val body = stream?.bufferedReader(Charsets.UTF_8)?.readText().orEmpty()
-            if (code !in 200..299) throw IOException("coach upstream $code")
+            if (code !in 200..299) throw IOException("coach upstream $code: ${body.take(200)}")
             parse(body)
         } finally {
             connection.disconnect()

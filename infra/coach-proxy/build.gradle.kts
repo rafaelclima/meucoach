@@ -15,6 +15,9 @@ dependencies {
     implementation("io.ktor:ktor-client-core:3.1.2")
     implementation("io.ktor:ktor-client-cio:3.1.2")
     implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    testImplementation(kotlin("test"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("ch.qos.logback:logback-classic:1.5.18")
 }
 
