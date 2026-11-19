@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F3-3 replan antes da explicação)
+**Atualizado:** 19/11/2026 (F1-1 CoachNextResolver puro)
+
+## Sessão 2026-11-19 — F1-1 (CoachNextResolver puro)
+
+**Objetivo:** primeira fatia da Fase 1 sem tocar em prescrição: pick read-only da próxima sessão (hoje `PLANNED` pendente vence, senão a futura `PLANNED` mais próxima; `DONE`/`CLOSED`/passado ignorados). Nunca calcula nem persiste prescrição — a autoridade do dia continua em `DailyPrescription`/`GetTodayDecision`.
+
+### Concluído
+
+- **TDD:** `CoachNextResolverTest` (4 casos: hoje vence, próxima futura, ignora histórico/passado, vazio → null) red → green.
+- **Domínio:** `CoachNextResolver` + `CoachNextSession(session, isToday)` em `core/domain/coach/`, puro, sem Android/Room/Hilt.
+- **Gates:** `:core:domain:test`, `koverVerify`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Próxima: F1-2 `CoachNextSource` (observar semana + prescrição vigente só-leitura) + estado no `CoachViewModel` (sem escrever prescrição futura).
 
 ## Sessão 2026-11-19 — F3-3 (replan antes da explicação)
 
