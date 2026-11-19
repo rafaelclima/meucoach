@@ -85,7 +85,11 @@ class CoachProgressSourceTest {
             plans = plans,
             activities = activities,
             raceEvents = raceEvents,
-            assembler = WeeklyReviewAssembler(plans, prescriptions, TrainingSignalSource(checkIns, metrics, activities, executions)),
+            assembler = WeeklyReviewAssembler(
+                plans,
+                prescriptions,
+                TrainingSignalSource(checkIns, metrics, activities, executions),
+            ),
             time = FakeTimeProvider(Instant.parse("2026-11-18T12:00:00Z"), ZoneOffset.UTC),
         )
     }
@@ -102,6 +106,7 @@ class CoachProgressSourceTest {
 
         assertThat(context.weeks).isEmpty()
         assertThat(context.profile).isNull()
+        assertThat(context.today).isEqualTo(LocalDate.of(2026, 11, 18))
     }
 
     @Test

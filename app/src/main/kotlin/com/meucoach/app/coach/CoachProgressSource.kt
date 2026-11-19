@@ -41,6 +41,7 @@ data class CoachProgressContext(
     val easyPercent28d: Int?,
     val intensitySessions28d: Int,
     val profile: AthleteProfile?,
+    val today: LocalDate,
 )
 
 interface CoachProgressSource {
@@ -67,7 +68,8 @@ class RoomCoachProgressSource @Inject constructor(
         }
 
     private suspend fun load(today: LocalDate, starts: List<LocalDate>): CoachProgressContext {
-        val profile = profiles.getProfile() ?: return CoachProgressContext(emptyList(), null, 0, null)
+        val profile = profiles.getProfile()
+            ?: return CoachProgressContext(emptyList(), null, 0, null, today)
         val zone = runCatching { ZoneId.of(profile.timezone) }.getOrDefault(ZoneId.systemDefault())
         val summaries = activities.listActivitySummaries()
         val completion = completionCalculator.calculate(
@@ -104,6 +106,7 @@ class RoomCoachProgressSource @Inject constructor(
             easyPercent28d = intensity?.let { Math.round(it.easyPercent()).toInt() },
             intensitySessions28d = sessions.size,
             profile = profile,
+            today = today,
         )
     }
 

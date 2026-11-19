@@ -8,6 +8,8 @@ import com.meucoach.app.coach.CoachGuardsSource
 import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanSource
+import com.meucoach.app.coach.CoachProgressContext
+import com.meucoach.app.coach.CoachProgressSource
 import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.replan.ReplanControllerFactory
@@ -20,11 +22,14 @@ import com.meucoach.core.domain.coach.CoachHistory
 import com.meucoach.core.domain.coach.CoachMemoryMessage
 import com.meucoach.core.domain.coach.CoachMemorySummary
 import com.meucoach.core.domain.coach.CoachMessageKind
+import com.meucoach.core.domain.coach.CoachProgress
+import com.meucoach.core.domain.coach.CoachProgressSummary
 import com.meucoach.core.domain.coach.CoachPromptBuilder
 import com.meucoach.core.domain.coach.CoachResponseValidator
 import com.meucoach.core.domain.coach.CoachReviewPromptBuilder
 import com.meucoach.core.domain.coach.CoachValidationResult
 import com.meucoach.core.domain.review.WeeklyReview
+import com.meucoach.core.model.AthleteProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -105,6 +110,28 @@ sealed interface CoachGuardsUiState {
 }
 
 /**
+ * Four-week rollup for the Coach tab (PRD evolução, F4).
+ *
+ * `Hidden` is the no-consent state. `Ready` carries the pure rollup of the
+ * last closed weeks plus the profile for the VDOT line; weeks without data
+ * surface as a quiet empty card instead of an error.
+ */
+sealed interface CoachProgressUiState {
+    data object Hidden : CoachProgressUiState
+
+    data object Loading : CoachProgressUiState
+
+    data class Ready(
+        val summary: CoachProgressSummary,
+        val totalWeeks: Int,
+        val profile: AthleteProfile?,
+        val today: LocalDate,
+    ) : CoachProgressUiState
+
+    data class Error(val reason: String) : CoachProgressUiState
+}
+
+/**
  * Read-only list of what the Coach already persisted (PRD decisions 17/25).
  *
  * `Hidden` is the no-consent state: without opt-in the tab never shows nor
@@ -131,6 +158,7 @@ class CoachViewModel @Inject constructor(
     private val reviews: CoachReviewSource,
     private val nextSource: CoachNextSource,
     private val guardsSource: CoachGuardsSource,
+    private val progressSource: CoachProgressSource,
     private val api: CoachApi,
     private val memory: CoachMemoryRepository,
     @ApplicationScope private val appScope: CoroutineScope,
@@ -166,6 +194,9 @@ class CoachViewModel @Inject constructor(
     private val _guards = MutableStateFlow<CoachGuardsUiState>(CoachGuardsUiState.Hidden)
     val guards: StateFlow<CoachGuardsUiState> = _guards
 
+    private val _progress = MutableStateFlow<CoachProgressUiState>(CoachProgressUiState.Hidden)
+    val progress: StateFlow<CoachProgressUiState> = _progress
+
     /** Hash of the explanation currently rendered; excluded from the archive. */
     private val currentExplainHash = MutableStateFlow<String?>(null)
 
@@ -181,6 +212,7 @@ class CoachViewModel @Inject constructor(
         }
         observeNext()
         observeGuards()
+        observeProgress()
         viewModelScope.launch {
             combine(_consented, historyRetryTick) { isConsented, tick -> isConsented to tick }
                 .collectLatest { (isConsented, _) ->
@@ -423,6 +455,38 @@ class CoachViewModel @Inject constructor(
     }
 
     private fun toGuardsReady(context: CoachGuardsContext): CoachGuardsUiState = CoachGuardsUiState.Ready(context)
+
+    /**
+     * Four-week rollup, read-only. [retry] restarts the collection, so the
+     * error state can recover.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeProgress() {
+        viewModelScope.launch {
+            combine(_consented, retryTick) { isConsented, _ -> isConsented }
+                .flatMapLatest { isConsented ->
+                    if (!isConsented) {
+                        flowOf(CoachProgressUiState.Hidden)
+                    } else {
+                        progressSource.observeProgress()
+                            .map { context -> toProgressReady(context) }
+                            .onStart { emit(CoachProgressUiState.Loading) }
+                            .catch { error ->
+                                android.util.Log.d("Coach", "progress failed: ${error.message}")
+                                emit(CoachProgressUiState.Error("Não foi possível carregar sua evolução."))
+                            }
+                    }
+                }
+                .collect { _progress.value = it }
+        }
+    }
+
+    private fun toProgressReady(context: CoachProgressContext): CoachProgressUiState = CoachProgressUiState.Ready(
+        summary = CoachProgress.summarize(context.weeks, context.easyPercent28d),
+        totalWeeks = context.weeks.size,
+        profile = context.profile,
+        today = context.today,
+    )
 
     fun grant() {
         consent.grant()

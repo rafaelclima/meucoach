@@ -245,6 +245,7 @@ private fun MainContent() {
                     CoachRoute(
                         onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
                         onTodayClick = { navController.navigateToTab(AppDestination.Today.route) },
+                        onTrendsClick = { navController.navigateToTab(AppDestination.Trends.route) },
                     )
                 }
                 composable(AppDestination.Profile.route) {

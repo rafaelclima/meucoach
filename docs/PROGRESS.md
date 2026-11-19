@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F4-1 source das 4 semanas)
+**Atualizado:** 19/11/2026 (F4-2/F4-3 síntese de 4 semanas)
+
+## Sessão 2026-11-19 — F4-2/F4-3 (síntese de 4 semanas)
+
+**Objetivo:** fechar o PRD de evolução: card "EVOLUÇÃO · 4 SEMANAS" entre a revisão e o histórico, display-only e determinístico (sem IA nesta fatia, conforme decisão registrada).
+
+### Concluído
+
+- **Domínio:** `CoachProgress.summarize` + `CoachProgressSummary` puros (extra conta p/ volume, nunca p/ adesão; vazias fora das médias; sem semana com dados → tudo nulo). 3 testes.
+- **App:** `CoachProgressLabels` (cobertura parcial, adesão, volume, extra, 28d fácil, prontidão, sono, VDOT só com proveniência ≤56d — 4 testes), `CoachProgressUiState` no VM (Hidden/Loading/Ready/Error, retry reinicia), `CoachProgressCard` (linha quieta sem base, fileiras + "Ver Tendências", erro com retry), fiação no topo do `CoachScreen` + `CoachRoute` (Tendências via `navigateToTab`).
+- **Testes:** 101 coach (tela+VM+labels+sources), 0 falhas; domain cheio + `koverVerify`, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- PRD de evolução **encerrado** (F3/F1/F2/F4). Próximo, à escolha: validar no aparelho (build com token, conferir os 3 cards novos + revisão sem códigos) ou P1-12/ROADMAP.
 
 ## Sessão 2026-11-19 — F4-1 (source das 4 semanas)
 

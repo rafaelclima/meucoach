@@ -24,6 +24,8 @@ import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanContext
 import com.meucoach.app.coach.CoachPlanSource
+import com.meucoach.app.coach.CoachProgressContext
+import com.meucoach.app.coach.CoachProgressSource
 import com.meucoach.app.coach.CoachReviewSource
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.replan.ReplanControllerFactory
@@ -91,6 +93,7 @@ class CoachViewModelTest {
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
     private lateinit var next: MutableStateFlow<CoachNextContext?>
     private lateinit var guards: MutableStateFlow<CoachGuardsContext>
+    private lateinit var progress: MutableStateFlow<CoachProgressContext>
     private lateinit var database: MeuCoachDatabase
     private lateinit var memory: CoachMemoryRepository
     private lateinit var profiles: ProfileRepository
@@ -136,6 +139,7 @@ class CoachViewModelTest {
         reviews = MutableStateFlow(null)
         next = MutableStateFlow(null)
         guards = MutableStateFlow(CoachGuardsContext(emptyList()))
+        progress = MutableStateFlow(CoachProgressContext(emptyList(), null, 0, null, LocalDate.of(2026, 11, 16)))
         database = Room
             .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
             .allowMainThreadQueries()
@@ -196,6 +200,9 @@ class CoachViewModelTest {
             },
             guardsSource = object : CoachGuardsSource {
                 override fun observeGuards() = guards
+            },
+            progressSource = object : CoachProgressSource {
+                override fun observeProgress() = progress
             },
             api = api,
             memory = memory,
@@ -291,6 +298,55 @@ class CoachViewModelTest {
 
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
     }
+
+    @Test
+    fun `progresso oculto sem consentimento`(): Unit = runBlocking {
+        progress.value = progressContext()
+        val vm = viewModel(FakeCoachApi())
+
+        assertThat(vm.progress.value).isInstanceOf(CoachProgressUiState.Hidden::class.java)
+    }
+
+    @Test
+    fun `progresso pronto agrega as semanas`(): Unit = runBlocking {
+        consent.grant()
+        progress.value = progressContext()
+        val vm = viewModel(FakeCoachApi())
+
+        withTimeout(2000) {
+            while (vm.progress.value !is CoachProgressUiState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        val ready = vm.progress.value as CoachProgressUiState.Ready
+        assertThat(ready.summary.availableWeeks).isEqualTo(1)
+        assertThat(ready.summary.adherencePercent).isEqualTo(100)
+    }
+
+    private fun progressContext() = CoachProgressContext(
+        weeks = listOf(
+            com.meucoach.core.domain.review.WeeklyReview(
+                weekStart = LocalDate.of(2026, 11, 9),
+                weekEnd = LocalDate.of(2026, 11, 15),
+                status = com.meucoach.core.domain.review.WeeklyReviewStatus.AVAILABLE,
+                adherence = com.meucoach.core.domain.review.WeeklyAdherence(3, 3, 3, 0, 0, 0),
+                volume = com.meucoach.core.domain.review.WeeklyVolume(114, 129, 113, 28),
+                quality = null,
+                intensity = null,
+                intensitySessions = 0,
+                readiness = null,
+                sleep = null,
+                observations = emptyList(),
+                ruleIds = emptyList(),
+                evidenceIds = emptyList(),
+                confidence = com.meucoach.core.model.DataConfidence.HIGH,
+            ),
+        ),
+        easyPercent28d = 46,
+        intensitySessions28d = 4,
+        profile = null,
+        today = LocalDate.of(2026, 11, 16),
+    )
 
     @Test
     fun `guardas ocultas sem consentimento`(): Unit = runBlocking {

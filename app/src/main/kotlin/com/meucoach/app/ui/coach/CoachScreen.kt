@@ -40,6 +40,7 @@ fun CoachRoute(
     viewModel: CoachViewModel = hiltViewModel(),
     onCheckInClick: () -> Unit = {},
     onTodayClick: () -> Unit = {},
+    onTrendsClick: () -> Unit = {},
 ) {
     val consented by viewModel.consented.collectAsStateWithLifecycle()
     val dismissed by viewModel.dismissed.collectAsStateWithLifecycle()
@@ -49,6 +50,7 @@ fun CoachRoute(
     val history by viewModel.history.collectAsStateWithLifecycle()
     val next by viewModel.next.collectAsStateWithLifecycle()
     val guards by viewModel.guards.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
     val replan by viewModel.replan.collectAsStateWithLifecycle()
     CoachScreen(
         consented = consented,
@@ -59,6 +61,7 @@ fun CoachRoute(
         history = history,
         next = next,
         guards = guards,
+        progress = progress,
         replan = replan,
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
@@ -68,6 +71,8 @@ fun CoachRoute(
         onNextCheckIn = onCheckInClick,
         onNextToday = onTodayClick,
         onGuardsRetry = { viewModel.retry() },
+        onProgressRetry = { viewModel.retry() },
+        onProgressTrends = onTrendsClick,
         onClearHistory = { viewModel.clearHistory() },
         onRetryHistory = { viewModel.retryHistory() },
         onDeleteHistoryMessage = { viewModel.deleteHistoryMessage(it) },
@@ -120,6 +125,9 @@ fun CoachScreen(
     onNextToday: () -> Unit = {},
     guards: CoachGuardsUiState = CoachGuardsUiState.Hidden,
     onGuardsRetry: () -> Unit = {},
+    progress: CoachProgressUiState = CoachProgressUiState.Hidden,
+    onProgressRetry: () -> Unit = {},
+    onProgressTrends: () -> Unit = {},
     onDeleteHistoryMessage: (String) -> Unit = {},
     onDeleteHistorySummary: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -293,6 +301,7 @@ fun CoachScreen(
                 }
             }
             review?.let { CoachReviewCard(review = it, state = reviewState) }
+            CoachProgressCard(state = progress, onRetry = onProgressRetry, onTrends = onProgressTrends)
             if (history != CoachHistoryState.Hidden) {
                 CoachHistoryCard(
                     state = history,

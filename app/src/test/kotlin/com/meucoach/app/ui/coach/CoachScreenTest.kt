@@ -617,6 +617,143 @@ class CoachScreenTest {
         assertThat(retried).isEqualTo(1)
     }
 
+    @Test
+    fun `evolucao mostra os agregados das semanas`() {
+        setContent(
+            progress = CoachProgressUiState.Ready(
+                summary = com.meucoach.core.domain.coach.CoachProgressSummary(
+                    availableWeeks = 4,
+                    plannedSessions = 9,
+                    doneSessions = 6,
+                    adherencePercent = 67,
+                    plannedMinutes = 214,
+                    executedMinutes = 219,
+                    extraMinutes = 28,
+                    volumePercent = 102,
+                    avgReadiness = 62,
+                    redDays = 1,
+                    avgSleepMinutes = 360,
+                    shortNights = 2,
+                    easyPercent28d = 52,
+                ),
+                totalWeeks = 4,
+                profile = null,
+                today = LocalDate.of(2026, 11, 19),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("EVOLUÇÃO · 4 SEMANAS").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("6 de 9 sessões do plano (67%)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Planejado 3h34 · feito 3h39 (102%)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("52% fácil nos últimos 28 dias (alvo ~80%).").performScrollTo()
+            .assertIsDisplayed()
+        compose.onNodeWithText("Sem VDOT recente — correndo por RPE.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `evolucao vazia mostra caminho sem numero`() {
+        setContent(
+            progress = CoachProgressUiState.Ready(
+                summary = com.meucoach.core.domain.coach.CoachProgressSummary(
+                    availableWeeks = 0,
+                    plannedSessions = 0,
+                    doneSessions = 0,
+                    adherencePercent = null,
+                    plannedMinutes = 0,
+                    executedMinutes = 0,
+                    extraMinutes = 0,
+                    volumePercent = null,
+                    avgReadiness = null,
+                    redDays = 0,
+                    avgSleepMinutes = null,
+                    shortNights = 0,
+                    easyPercent28d = null,
+                ),
+                totalWeeks = 4,
+                profile = null,
+                today = LocalDate.of(2026, 11, 19),
+            ),
+        )
+
+        compose.onNodeWithText("Pouco histórico ainda.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("6 de 9 sessões do plano (67%)").assertDoesNotExist()
+    }
+
+    @Test
+    fun `erro da evolucao tem tentar de novo`() {
+        var retried = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Ready(
+                        title = "Semana atual",
+                        body = "Plano da semana.",
+                        bullets = emptyList(),
+                    ),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    progress = CoachProgressUiState.Error("Sem conexão."),
+                    onProgressRetry = { retried++ },
+                    onProgressTrends = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-progress-retry").performScrollTo().performClick()
+        assertThat(retried).isEqualTo(1)
+    }
+
+    @Test
+    fun `evolucao leva a Tendencias`() {
+        var trends = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Ready(
+                        title = "Semana atual",
+                        body = "Plano da semana.",
+                        bullets = emptyList(),
+                    ),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    progress = CoachProgressUiState.Ready(
+                        summary = com.meucoach.core.domain.coach.CoachProgressSummary(
+                            availableWeeks = 0,
+                            plannedSessions = 0,
+                            doneSessions = 0,
+                            adherencePercent = null,
+                            plannedMinutes = 0,
+                            executedMinutes = 0,
+                            extraMinutes = 0,
+                            volumePercent = null,
+                            avgReadiness = null,
+                            redDays = 0,
+                            avgSleepMinutes = null,
+                            shortNights = 0,
+                            easyPercent28d = null,
+                        ),
+                        totalWeeks = 4,
+                        profile = null,
+                        today = LocalDate.of(2026, 11, 19),
+                    ),
+                    onProgressTrends = { trends++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-progress-trends").performScrollTo().performClick()
+        assertThat(trends).isEqualTo(1)
+    }
+
     private fun setContent(
         explanation: CoachExplanationState = CoachExplanationState.Ready(
             title = "Semana atual",
@@ -625,6 +762,7 @@ class CoachScreenTest {
         ),
         next: CoachNextUiState = CoachNextUiState.Hidden,
         guards: CoachGuardsUiState = CoachGuardsUiState.Hidden,
+        progress: CoachProgressUiState = CoachProgressUiState.Hidden,
         review: WeeklyReview? = null,
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
@@ -652,6 +790,7 @@ class CoachScreenTest {
                     onNextToday = {},
                     guards = guards,
                     onGuardsRetry = {},
+                    progress = progress,
                     review = review,
                     reviewState = reviewState,
                     replan = replan,
