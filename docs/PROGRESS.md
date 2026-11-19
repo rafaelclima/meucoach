@@ -1,6 +1,21 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F4-2/F4-3 síntese de 4 semanas)
+**Atualizado:** 19/11/2026 (fix: progresso reage a perfil/provas)
+
+## Sessão 2026-11-19 — Fix: progresso reage a perfil/provas
+
+**Achado no aparelho:** após calibrar Tier B (VDOT 30,6 gravado com proveniência e data), o card de evolução seguiu em "Sem VDOT recente". Causa no código: `RoomCoachProgressSource` só reemitia na virada do dia (`time.today`); `observeProfile`/`observeAll` nunca eram coletados. O banco estava correto — a UI nunca recarregava.
+
+### Concluído
+
+- **Fix:** `observeProgress` combina `today + observeProfile + observeAll(provas)` com `flatMapLatest`; perfil nulo → contexto vazio, sem exceção.
+- **Teste de regressão:** `reemite quando o perfil muda` (coleta contínua, salva depois, segunda emissão com perfil).
+- **Gates:** source + `ui.coach.*`, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Reinstalar no aparelho e conferir "VDOT 31 (estimativa de treino em 19/11)".
+- Apagar `/tmp/opencode/coach-check/meucoach-debug.db` (cópia diagnóstica do banco; fora do repo, mas limpar).
 
 ## Sessão 2026-11-19 — F4-2/F4-3 (síntese de 4 semanas)
 

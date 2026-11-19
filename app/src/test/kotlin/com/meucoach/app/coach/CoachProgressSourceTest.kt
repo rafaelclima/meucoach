@@ -32,10 +32,14 @@ import com.meucoach.core.model.Sport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Before
@@ -129,6 +133,22 @@ class CoachProgressSourceTest {
         assertThat(last.adherence?.done).isEqualTo(1)
         assertThat(context.weeks.take(3).map { it.status }).containsOnly(WeeklyReviewStatus.EMPTY_NO_DATA)
         assertThat(context.profile?.id).isEqualTo("athlete-1")
+    }
+
+    @Test
+    fun `reemite quando o perfil muda`(): Unit = runBlocking {
+        val emissions = mutableListOf<CoachProgressContext>()
+        val job = launch { source.observeProgress().take(2).toList(emissions) }
+        withTimeout(2000) {
+            while (emissions.isEmpty()) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        profiles.saveProfile(profile())
+        withTimeout(5000) { job.join() }
+
+        assertThat(emissions).hasSize(2)
+        assertThat(emissions.last().profile?.id).isEqualTo("athlete-1")
     }
 
     private fun plan() = WeeklyPlan(

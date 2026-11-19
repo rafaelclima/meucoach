@@ -13,13 +13,13 @@ import com.meucoach.core.domain.trends.IntensityDistributionCalculator
 import com.meucoach.core.domain.trends.IntensitySession
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
@@ -60,26 +60,33 @@ class RoomCoachProgressSource @Inject constructor(
     private val intensityCalculator = IntensityDistributionCalculator()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun observeProgress(): Flow<CoachProgressContext> = time.today
-        .map { it to closedStarts(it) }
-        .distinctUntilChanged { previous, current -> previous.second == current.second }
-        .flatMapLatest { (today, starts) ->
-            flow { emit(load(today, starts)) }
+    override fun observeProgress(): Flow<CoachProgressContext> = combine(
+        time.today,
+        profiles.observeProfile(),
+        raceEvents.observeAll(),
+    ) { today, profile, races -> Triple(today, profile, races) }
+        .flatMapLatest { (today, profile, races) ->
+            flow { emit(load(today, profile, races, closedStarts(today))) }
         }
 
-    private suspend fun load(today: LocalDate, starts: List<LocalDate>): CoachProgressContext {
-        val profile = profiles.getProfile()
-            ?: return CoachProgressContext(emptyList(), null, 0, null, today)
+    private suspend fun load(
+        today: LocalDate,
+        profile: AthleteProfile?,
+        races: List<RaceEvent>,
+        starts: List<LocalDate>,
+    ): CoachProgressContext {
+        if (profile == null) return CoachProgressContext(emptyList(), null, 0, null, today)
         val zone = runCatching { ZoneId.of(profile.timezone) }.getOrDefault(ZoneId.systemDefault())
         val summaries = activities.listActivitySummaries()
+        val excluded = races
+            .filter { it.targetDate in starts.first()..starts.last().plusDays(6) }
+            .map { it.targetDate }
+            .toSet()
         val completion = completionCalculator.calculate(
             plans = plans.getWeeks(starts + today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))),
             today = today,
             weeks = starts.size + 1,
-            excludedDates = raceEvents.getDatesBetween(
-                starts.first(),
-                starts.last().plusDays(6),
-            ),
+            excludedDates = excluded,
         )
         val weeks = starts.map { weekStart ->
             assembler.assemble(
