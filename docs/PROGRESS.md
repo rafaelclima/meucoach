@@ -1,6 +1,21 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F1-4 ações do card: check-in + Ver no Hoje)
+**Atualizado:** 19/11/2026 (F2-1 CoachGuards puro)
+
+## Sessão 2026-11-19 — F2-1 (CoachGuards puro)
+
+**Objetivo:** primeira fatia da F2 sem tocar em UI: resolver determinístico das travas estruturais (recuperação, prova/taper, fonte, calibração, monotonia, pico, disponibilidade). Sono/check-in do dia ficam na F1 (sem duplicar); o resolver só descreve o que o motor já calculou.
+
+### Concluído
+
+- **TDD:** `CoachGuardsTest` (8 casos: verde vazio, calibração com progresso X/28, base parcial instável, fonte velha, janela com teto e fim, race-week vs taper, monotonia+pico, sem disponibilidade) red → green.
+- **Domínio:** `CoachGuardInputs/CoachGuard/CoachGuardKind/CoachGuards` em `core/domain/coach/`, puro. Janela ativa via `RecoveryWindow.active`; prova/taper por distância (7d race-week, 14/21d taper); calibração espelha `G-LOAD-03` (8/28 instável segue em calibração, sem exibir ACWR).
+- **Gates:** `:core:domain:test` cheia + `koverVerify` + parser 93,01% + `spotlessCheck` verdes.
+- **Nota de gate:** `koverVerify` após `--tests` filtrado reprova o gate do parser por coverage parcial; gate real exige a suíte cheia (comportamento pré-existente, sem relação com a mudança).
+
+### Pendente
+
+- Próxima: F2-2 source (`TrainingSignalSource` + plano + provas no Coach) + estado no VM; depois F2-3 `CoachGuardsCard` + fiação.
 
 ## Sessão 2026-11-19 — F1-4 (ações do card: check-in + Ver no Hoje)
 
