@@ -1,6 +1,23 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F2-3 card das travas)
+**Atualizado:** 19/11/2026 (leak de códigos internos na revisão)
+
+## Sessão 2026-11-19 — Leak de códigos internos na revisão
+
+**Achado no aparelho:** narrativa da revisão exibia `(INTENSITY_ABOVE_EASY_TARGET)` e `Regras aplicadas: R-REVIEW-01 e R-PLAN-06`. O validador barrava pace/FC/siglas de métrica, mas não códigos do motor — e o prompt envia `observations` + `ruleIds`, então o modelo os ecoava. Contraria a decisão 22 do `PRD_IA_COACH` (IDs só em log, UI limpa).
+
+### Concluído
+
+- **Domínio:** `CoachResponseValidator.validate` ganhou `forbiddenCodes: Set<String>` (match case-insensitive) + regex `SCREAMING_SNAKE` sempre ativa; motivo `Resposta contém código interno: X`. 3 testes novos (observação, ruleId upper/lower, prosa limpa passa).
+- **App:** `CoachViewModel` passa `prompt.ruleIds` no explain e `observations + ruleIds` na revisão; vazamento cai em `Fallback` determinístico sem gravar memória. 2 testes (explicação e revisão com código → fallback + nada persistido).
+- **Proxy:** `SYSTEM_EXPLAIN`/`SYSTEM_REVIEW` proíbem ecoar códigos internos; teste `system prompts forbid internal codes` verde.
+- **Gates:** domain cheio + `koverVerify`, coach suites, proxy `test`, `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- **Redeploy do proxy no Dokploy** (rebuild; sem isso só o validador do app protege — o que já basta para a UI nunca exibir códigos).
+- Linhas já persistidas no aparelho com códigos expiram por TTL (90/180d); nenhuma migração.
+- Próxima: F4 síntese de 4 semanas — sua escolha.
 
 ## Sessão 2026-11-19 — F2-3 (card das travas)
 

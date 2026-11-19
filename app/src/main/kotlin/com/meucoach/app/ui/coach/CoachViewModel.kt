@@ -242,7 +242,12 @@ class CoachViewModel @Inject constructor(
                     val allowed = prompt.sessions.mapNotNull { it.durationMin }.toSet() +
                         prompt.weeklyMinutes +
                         listOfNotNull(prompt.executedMinutes)
-                    when (val validated = CoachResponseValidator.validate(raw, allowed)) {
+                    val validated = CoachResponseValidator.validate(
+                        raw,
+                        allowed,
+                        forbiddenCodes = prompt.ruleIds.toSet(),
+                    )
+                    when (validated) {
                         is CoachValidationResult.Valid -> {
                             val response = validated.response
                             recordSafely {
@@ -311,6 +316,7 @@ class CoachViewModel @Inject constructor(
                         raw = raw,
                         allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
                         allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
+                        forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
                     )
                     when (validated) {
                         is CoachValidationResult.Valid -> {

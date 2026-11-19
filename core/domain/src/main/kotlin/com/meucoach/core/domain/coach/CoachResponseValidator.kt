@@ -26,16 +26,24 @@ object CoachResponseValidator {
     private val forbiddenTokens = listOf("vdot", "acwr", "tss", "trimp", "ctl", "atl", "tsb", "lthr", "vo2")
     private val minutesPattern = Regex("""(\d{1,4})\s?min""", RegexOption.IGNORE_CASE)
     private val percentPattern = Regex("""(\d{1,3})\s?%""")
+    private val internalCodePattern = Regex("""\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b""")
 
     /**
      * [allowedPercents] enables the share check used by the weekly review: when
      * the caller supplies the computed shares, any other percentage is an
      * invention. `null` keeps the explain behaviour unchanged.
+     *
+     * [forbiddenCodes] bars the prompt's internal codes (observation kinds and
+     * rule ids, e.g. `INTENSITY_ABOVE_EASY_TARGET`, `R-REVIEW-01`): the UI
+     * shows prose, never engine identifiers (PRD IA Coach, decisão 22). The
+     * match is case-insensitive and any SCREAMING_SNAKE token is barred even
+     * when the caller forgets the set.
      */
     fun validate(
         raw: CoachRawResponse,
         allowedMinutes: Set<Int>,
         allowedPercents: Set<Int>? = null,
+        forbiddenCodes: Set<String> = emptySet(),
     ): CoachValidationResult {
         if (raw.title.isBlank() || raw.body.isBlank()) {
             return CoachValidationResult.Invalid("Título e corpo são obrigatórios")
@@ -46,7 +54,7 @@ object CoachResponseValidator {
                 raw.body,
             ) + raw.bullets + listOfNotNull(raw.suggestedAction)
             ).joinToString("\n")
-        val reason = invalidReason(combined, allowedMinutes, allowedPercents)
+        val reason = invalidReason(combined, allowedMinutes, allowedPercents, forbiddenCodes)
         if (reason != null) return CoachValidationResult.Invalid(reason)
         return CoachValidationResult.Valid(
             CoachResponse(
@@ -58,8 +66,15 @@ object CoachResponseValidator {
         )
     }
 
-    private fun invalidReason(combined: String, allowedMinutes: Set<Int>, allowedPercents: Set<Int>?): String? {
+    private fun invalidReason(
+        combined: String,
+        allowedMinutes: Set<Int>,
+        allowedPercents: Set<Int>?,
+        forbiddenCodes: Set<String>,
+    ): String? {
         val forbidden = forbiddenTokens.firstOrNull { it in combined.lowercase() }
+        val internalCode = internalCodePattern.find(combined)?.value
+            ?: forbiddenCodes.firstOrNull { it.lowercase() in combined.lowercase() }
         val inventedMinutes = minutesPattern.findAll(combined)
             .map { it.groupValues[1].toInt() }
             .firstOrNull { it !in allowedMinutes }
@@ -76,6 +91,8 @@ object CoachResponseValidator {
                 "Resposta contém FC, que só o motor pode prescrever"
 
             forbidden != null -> "Resposta contém métrica proibida: $forbidden"
+
+            internalCode != null -> "Resposta contém código interno: $internalCode"
 
             inventedMinutes != null -> "Resposta contém duração não planejada: $inventedMinutes min"
 

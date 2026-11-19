@@ -631,6 +631,29 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `codigo interno na explicacao vira Fallback sem gravar`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Foco", body = "Regras R-PLAN-02 aplicadas.")))
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Fallback::class.java)
+        assertThat(database.coachMessageDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `codigo interno na revisao cai para o resumo do motor sem gravar`(): Unit = runBlocking {
+        consent.grant()
+        reviews.value = weeklyReview()
+        val vm = viewModel(
+            FakeCoachApi(CoachRawResponse(title = "T", body = "Semana com ADHERENCE_PARTIAL, R-REVIEW-01.")),
+        )
+
+        assertThat(awaitReviewSettled(vm)).isInstanceOf(CoachReviewState.Fallback::class.java)
+        assertThat(vm.review.value).isNotNull
+        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+    }
+
+    @Test
     fun `revisao valida vira Ready com o resumo deterministico exposto`() {
         consent.grant()
         reviews.value = weeklyReview()

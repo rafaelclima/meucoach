@@ -120,12 +120,16 @@ private const val SYSTEM_EXPLAIN =
         "Reescreva apenas o rationale do motor. Nunca invente pace, FC, carga, volume, VDOT ou ACWR. " +
         "Nunca cite nomes ou siglas de metricas (ACWR, VDOT, TSB, CTL, ATL, TRIMP, rTSS, LTHR); " +
         "fale de carga e recuperacao em linguagem simples. " +
+        "Nunca mostre codigos internos do motor (tipos de observacao em CAIXA_ALTA com underline, " +
+        "ids como R-REVIEW-01 ou EV-SEILER-2010); use sempre texto corrido em pt-BR. " +
         "Dado ausente e null: diga que faltam dados. Estimativa permitida so textual e marcada como estimativa. " +
         "Sem diagnostico, sem musculacao, sem nutricao (exceto hidratacao estatica). " +
         "Responda em JSON {\"title\":\"string curta\",\"body\":\"string em pt-BR\",\"bullets\":[\"string\"]}. " +
         "title e body devem ser strings; body nunca pode ser objeto ou JSON serializado."
 private const val SYSTEM_REVIEW =
     "Voce resume a semana anterior a partir do planejado x executado. Mesmas regras do explain, sem numeros novos. " +
+        "Nunca mostre codigos internos do motor (tipos de observacao em CAIXA_ALTA com underline, " +
+        "ids como R-REVIEW-01 ou EV-SEILER-2010); use sempre texto corrido em pt-BR. " +
         "Use o mesmo schema: title e body como strings; body nunca como objeto."
 private const val SYSTEM_REPLAN =
     "Voce sugere slots de replanejo a partir do plano vigente. Nunca crie treino forte novo; so reorganize o futuro. " +

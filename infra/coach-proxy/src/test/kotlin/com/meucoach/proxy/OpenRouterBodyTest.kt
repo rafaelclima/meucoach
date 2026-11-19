@@ -47,4 +47,19 @@ class OpenRouterBodyTest {
         val body = buildOpenRouterBody("some-model:free", "review", "{\"weekStart\":\"2026-11-09\"}")
         Json.parseToJsonElement(body)
     }
+
+    @Test
+    fun `system prompts forbid internal codes`() {
+        for (kind in listOf("explain", "review")) {
+            val body = buildOpenRouterBody("some-model:free", kind, "{}")
+            val system = Json.parseToJsonElement(body)
+                .jsonObject["messages"]!!.jsonArray[0]
+                .jsonObject["content"]!!.jsonPrimitive.content
+
+            assertTrue(
+                system.contains("codigos internos"),
+                "$kind system prompt must forbid echoing engine codes",
+            )
+        }
+    }
 }
