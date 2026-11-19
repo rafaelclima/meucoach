@@ -425,6 +425,116 @@ class CoachScreenTest {
         assertThat(retried).isEqualTo(1)
     }
 
+    @Test
+    fun `proximo com check-in pendente oferece acao`() {
+        var checkedIn = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Ready(
+                        title = "Semana atual",
+                        body = "Plano da semana.",
+                        bullets = emptyList(),
+                    ),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Ready(blockedContext()),
+                    onNextCheckIn = { checkedIn++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-next-checkin").performScrollTo().performClick()
+        assertThat(checkedIn).isEqualTo(1)
+    }
+
+    @Test
+    fun `proximo leva ao Hoje`() {
+        var today = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = CoachExplanationState.Ready(
+                        title = "Semana atual",
+                        body = "Plano da semana.",
+                        bullets = emptyList(),
+                    ),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = {},
+                    onRetry = {},
+                    next = CoachNextUiState.Ready(
+                        CoachNextContext(
+                            session = PlannedSession(
+                                date = LocalDate.of(2026, 11, 17),
+                                type = WorkoutType.EASY,
+                                title = "Fácil",
+                                durationMin = 30,
+                                rationale = "Base.",
+                                ruleIds = listOf("R-ZONE-01"),
+                                evidenceIds = listOf("EV-SEILER-2010"),
+                                status = SessionStatus.PLANNED,
+                            ),
+                            isToday = false,
+                            today = LocalDate.of(2026, 11, 16),
+                            prescription = null,
+                            raceEvent = null,
+                        ),
+                    ),
+                    onNextToday = { today++ },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-next-today").performScrollTo().performClick()
+        assertThat(today).isEqualTo(1)
+    }
+
+    private fun blockedContext() = CoachNextContext(
+        session = PlannedSession(
+            date = LocalDate.of(2026, 11, 16),
+            type = WorkoutType.QUALITY,
+            title = "Ritmo forte",
+            durationMin = 35,
+            rationale = "Estímulo.",
+            ruleIds = listOf("R-PER-03"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            status = SessionStatus.PLANNED,
+        ),
+        isToday = true,
+        today = LocalDate.of(2026, 11, 16),
+        prescription = com.meucoach.core.domain.prescription.DailyPrescription(
+            date = LocalDate.of(2026, 11, 16),
+            plannedSessionId = null,
+            plannedType = WorkoutType.QUALITY,
+            plannedTitle = "Ritmo forte",
+            plannedDurationMin = 35,
+            prescribedType = WorkoutType.EASY,
+            title = "Fácil",
+            prescribedDurationMin = 25,
+            targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
+                primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
+            ),
+            adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE,
+            rationale = "Dia leve.",
+            ruleIds = listOf("R-PRESC-02"),
+            evidenceIds = listOf("EV-SAW-2016"),
+            confidence = com.meucoach.core.model.DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v6",
+            inputsHash = "hash",
+            qualityBlockReason = com.meucoach.core.domain.prescription.QualityBlockReason.SUBJECTIVE_MISSING,
+            decisionDetail = "check-in de hoje ausente",
+            unlockHint = "Faça o check-in de hoje para liberar o treino forte.",
+        ),
+        raceEvent = null,
+    )
+
     private fun setContent(
         explanation: CoachExplanationState = CoachExplanationState.Ready(
             title = "Semana atual",

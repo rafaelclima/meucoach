@@ -242,7 +242,10 @@ private fun MainContent() {
                     TrendsScreen(onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) })
                 }
                 composable(AppDestination.Coach.route) {
-                    CoachRoute()
+                    CoachRoute(
+                        onCheckInClick = { navController.navigate(CHECK_IN_ROUTE) },
+                        onTodayClick = { navController.navigateToTab(AppDestination.Today.route) },
+                    )
                 }
                 composable(AppDestination.Profile.route) {
                     ProfileScreen(

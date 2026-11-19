@@ -36,7 +36,11 @@ import com.meucoach.core.domain.review.WeeklyReview
 import java.time.LocalDate
 
 @Composable
-fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
+fun CoachRoute(
+    viewModel: CoachViewModel = hiltViewModel(),
+    onCheckInClick: () -> Unit = {},
+    onTodayClick: () -> Unit = {},
+) {
     val consented by viewModel.consented.collectAsStateWithLifecycle()
     val dismissed by viewModel.dismissed.collectAsStateWithLifecycle()
     val explanation by viewModel.explanation.collectAsStateWithLifecycle()
@@ -59,6 +63,8 @@ fun CoachRoute(viewModel: CoachViewModel = hiltViewModel()) {
         onRevoke = { viewModel.revoke() },
         onRetry = { viewModel.retry() },
         onNextRetry = { viewModel.retry() },
+        onNextCheckIn = onCheckInClick,
+        onNextToday = onTodayClick,
         onClearHistory = { viewModel.clearHistory() },
         onRetryHistory = { viewModel.retryHistory() },
         onDeleteHistoryMessage = { viewModel.deleteHistoryMessage(it) },
@@ -107,6 +113,8 @@ fun CoachScreen(
     onClearHistory: () -> Unit = {},
     onRetryHistory: () -> Unit = {},
     onNextRetry: () -> Unit = {},
+    onNextCheckIn: () -> Unit = {},
+    onNextToday: () -> Unit = {},
     onDeleteHistoryMessage: (String) -> Unit = {},
     onDeleteHistorySummary: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -162,7 +170,12 @@ fun CoachScreen(
                 }
             }
         } else if (consented) {
-            CoachNextCard(state = next, onRetry = onNextRetry)
+            CoachNextCard(
+                state = next,
+                onRetry = onNextRetry,
+                onCheckIn = onNextCheckIn,
+                onToday = onNextToday,
+            )
             CoachReplanCard(
                 state = replan,
                 onRequest = onReplanRequest,

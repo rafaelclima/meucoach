@@ -2,6 +2,7 @@ package com.meucoach.app.ui.coach
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -10,9 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.component.McCard
+import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.QualityBlockReason
 
 /**
  * Next relevant session at the top of the Coach tab (PRD evolução, F1).
@@ -22,7 +25,13 @@ import com.meucoach.core.designsystem.theme.McTheme
  * A future day without a decision yet shows the plan without deciding.
  */
 @Composable
-internal fun CoachNextCard(state: CoachNextUiState, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+internal fun CoachNextCard(
+    state: CoachNextUiState,
+    onRetry: () -> Unit,
+    onCheckIn: () -> Unit = {},
+    onToday: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val colors = McTheme.colors
     when (state) {
         CoachNextUiState.Hidden -> Unit
@@ -98,6 +107,37 @@ internal fun CoachNextCard(state: CoachNextUiState, onRetry: () -> Unit, modifie
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                     )
+                    val needsCheckIn = state.context.prescription?.qualityBlockReason ==
+                        QualityBlockReason.SUBJECTIVE_MISSING
+                    if (needsCheckIn) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            McPrimaryButton(
+                                text = "Fazer check-in",
+                                onClick = onCheckIn,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("coach-next-checkin"),
+                            )
+                            McSecondaryButton(
+                                text = "Ver no Hoje",
+                                onClick = onToday,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("coach-next-today"),
+                            )
+                        }
+                    } else {
+                        McSecondaryButton(
+                            text = "Ver no Hoje",
+                            onClick = onToday,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("coach-next-today"),
+                        )
+                    }
                     Text(
                         text = "O motor decide; a IA só reescreve.",
                         style = McTextStyles.caption,

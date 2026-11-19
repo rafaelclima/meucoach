@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F1-3b card do próximo treino no topo)
+**Atualizado:** 19/11/2026 (F1-4 ações do card: check-in + Ver no Hoje)
+
+## Sessão 2026-11-19 — F1-4 (ações do card: check-in + Ver no Hoje)
+
+**Objetivo:** fechar a F1: o card deixava o `unlockHint` como texto sem ação. Agora o desbloqueio é tocável e há ponte para o Hoje.
+
+### Concluído
+
+- **TDD:** 2 testes de tela (`check-in pendente oferece ação`, `leva ao Hoje`); suítes coach verdes.
+- **App:** `CoachNextCard` mostra `Fazer check-in` (primário) só com `SUBJECTIVE_MISSING` + `Ver no Hoje` (secundário) em todo `Ready`; `CoachRoute(onCheckInClick, onTodayClick)` fia `CHECK_IN_ROUTE` e a aba Hoje no `MeuCoachApp` (mesmo padrão do `TrendsScreen`).
+- **Gates:** `coach.*`, `assembleDebug`, `spotlessCheck` verdes. Sem regra de treino, sem prescrição escrita.
+
+### Pendente
+
+- Próxima: F2 guardas de carga/janela (só leitura) — sua escolha.
 
 ## Sessão 2026-11-19 — F1-3b (card do próximo treino no topo)
 
