@@ -1,6 +1,23 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (fix do "Ajustar a semana" travado no longão — ver sessão abaixo)
+**Atualizado:** 19/11/2026 (PRD evolução do Coach + F3-1 Unavailable acionável)
+
+## Sessão 2026-11-19 — PRD evolução do Coach + F3-1 (Unavailable acionável)
+
+**Objetivo:** transformar a análise do Coach em PRD implementável e abrir a Fase 0 com uma fatia mínima verificável.
+
+**Handoff:** `docs/PRD_EVOLUCAO_COACH.md` (F1 só exibir, F4 determinístico primeiro, copy amigável — decisões registradas no doc em 19/11/2026).
+
+### Concluído
+
+- **PRD:** `docs/PRD_EVOLUCAO_COACH.md` v0.1 com F1/F2/F3/F4, fases 0–2, testes e validação contra implementação (sem migração, sem dependência nova).
+- **F3-1 (TDD):** `CoachExplanationState.Unavailable` trocou “Em breve…” por card `coach-empty-path` com “Monte seu plano para começar” + caminho (perfil/disponibilidade/importar/calibração). Sem navegação nova, sem regra de treino, sem ADR (só copy de UI).
+- **Testes:** `CoachScreenTest` ganhou `sem plano mostra caminho acionavel...` + parâmetro `explanation` no `setContent` (default preserva demais testes); `:app:testDebugUnitTest --tests '...coach.*'`, `assembleDebug` e `spotlessCheck` verdes.
+
+### Pendente
+
+- Commitar `docs/PRD_EVOLUCAO_COACH.md` (untracked) junto desta fatia.
+- Próxima fatia F3: fallback acionável da explicação ou reordenação da tela (uma por sessão).
 
 ## Sessão 2026-11-19 — "Ajustar a semana" travado em "único longão por semana"
 

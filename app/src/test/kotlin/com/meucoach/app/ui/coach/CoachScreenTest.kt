@@ -294,7 +294,24 @@ class CoachScreenTest {
         assertThat(undone).isEqualTo(2)
     }
 
+    @Test
+    fun `sem plano mostra caminho acionavel em vez de em breve`() {
+        setContent(explanation = CoachExplanationState.Unavailable)
+
+        compose.onNodeWithTag("coach-empty-path").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Monte seu plano para começar").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            "Complete perfil e disponibilidade, importe um treino ou faça a calibração.",
+            substring = true,
+        ).performScrollTo().assertIsDisplayed()
+    }
+
     private fun setContent(
+        explanation: CoachExplanationState = CoachExplanationState.Ready(
+            title = "Semana atual",
+            body = "Plano da semana.",
+            bullets = emptyList(),
+        ),
         review: WeeklyReview? = null,
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
@@ -311,11 +328,7 @@ class CoachScreenTest {
                 CoachScreen(
                     consented = true,
                     showConsent = false,
-                    explanation = CoachExplanationState.Ready(
-                        title = "Semana atual",
-                        body = "Plano da semana.",
-                        bullets = emptyList(),
-                    ),
+                    explanation = explanation,
                     onGrant = {},
                     onDismiss = {},
                     onRevoke = {},

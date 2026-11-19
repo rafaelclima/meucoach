@@ -159,11 +159,24 @@ fun CoachScreen(
         } else if (consented) {
             when (explanation) {
                 CoachExplanationState.Unavailable -> {
-                    Text(
-                        text = "Coach ativado. Em breve: explicação da semana e ajuda para reorganizar treinos.",
-                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                        color = McTheme.colors.textTertiary,
-                    )
+                    McCard(modifier = Modifier.testTag("coach-empty-path")) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "Monte seu plano para começar",
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                color = McTheme.colors.textPrimary,
+                            )
+                            Text(
+                                text = "Complete perfil e disponibilidade, importe um treino ou faça " +
+                                    "a calibração. O próximo treino aparece aqui.",
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                color = McTheme.colors.textSecondary,
+                            )
+                        }
+                    }
                 }
 
                 CoachExplanationState.Loading -> {
