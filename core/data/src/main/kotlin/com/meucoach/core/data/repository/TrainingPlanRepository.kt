@@ -105,15 +105,25 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
         dao.observeSessions(weekStart.toString()),
     ) { plan, sessions -> plan?.toModel(sessions) }
 
+    /**
+     * Re-emits on content, revision version or hash changes. Each emission
+     * reads the record in one transaction, so the explanation never observes a
+     * replan halfway (new version with the previous sessions).
+     */
+    fun observeWeekRecord(weekStart: LocalDate): Flow<StoredWeeklyPlan?> = combine(
+        dao.observePlan(weekStart.toString()),
+        dao.observeSessions(weekStart.toString()),
+    ) { _, _ -> getWeekRecord(weekStart) }
+
     suspend fun getWeek(weekStart: LocalDate): WeeklyPlan? {
         val plan = dao.getPlan(weekStart.toString()) ?: return null
         return plan.toModel(dao.getSessions(weekStart.toString()))
     }
 
     /** Reads the domain plan together with version/hashes used by the replanner. */
-    suspend fun getWeekRecord(weekStart: LocalDate): StoredWeeklyPlan? {
-        val plan = dao.getPlan(weekStart.toString()) ?: return null
-        return plan.toRecord(dao.getSessions(weekStart.toString()))
+    suspend fun getWeekRecord(weekStart: LocalDate): StoredWeeklyPlan? = database.withTransaction {
+        val plan = dao.getPlan(weekStart.toString()) ?: return@withTransaction null
+        plan.toRecord(dao.getSessions(weekStart.toString()))
     }
 
     suspend fun getWeeks(weekStarts: List<LocalDate>): List<WeeklyPlan> = weekStarts.mapNotNull { getWeek(it) }

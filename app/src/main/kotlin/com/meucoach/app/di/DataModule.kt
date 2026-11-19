@@ -9,11 +9,13 @@ import com.meucoach.app.coach.CoachNextSource
 import com.meucoach.app.coach.CoachPlanSource
 import com.meucoach.app.coach.CoachProgressSource
 import com.meucoach.app.coach.CoachReviewSource
+import com.meucoach.app.coach.CoachSignalsSource
 import com.meucoach.app.coach.RoomCoachGuardsSource
 import com.meucoach.app.coach.RoomCoachNextSource
 import com.meucoach.app.coach.RoomCoachPlanSource
 import com.meucoach.app.coach.RoomCoachProgressSource
 import com.meucoach.app.coach.RoomCoachReviewSource
+import com.meucoach.app.coach.RoomCoachSignalsSource
 import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.firstrun.FirstRunTipStore
 import com.meucoach.app.importer.ImportedRunPromptStore
@@ -193,12 +195,27 @@ object DataModule {
 
     @Provides
     @Singleton
+    fun provideCoachSignalsSource(
+        checkIns: CheckInRepository,
+        metrics: DailyMetricsRepository,
+        activities: ActivityRepository,
+        executions: SessionExecutionRepository,
+    ): CoachSignalsSource = RoomCoachSignalsSource(
+        checkIns = checkIns,
+        metrics = metrics,
+        activities = activities,
+        executions = executions,
+    )
+
+    @Provides
+    @Singleton
     fun provideCoachReviewSource(
         profiles: ProfileRepository,
         activities: ActivityRepository,
         plans: TrainingPlanRepository,
         raceEvents: RaceEventRepository,
         assembler: WeeklyReviewAssembler,
+        coachSignals: CoachSignalsSource,
         time: TimeProvider,
     ): CoachReviewSource = RoomCoachReviewSource(
         profiles = profiles,
@@ -206,6 +223,7 @@ object DataModule {
         plans = plans,
         raceEvents = raceEvents,
         assembler = assembler,
+        coachSignals = coachSignals,
         time = time,
     )
 
@@ -233,14 +251,18 @@ object DataModule {
     @Singleton
     fun provideCoachGuardsSource(
         profiles: ProfileRepository,
+        plans: TrainingPlanRepository,
         raceEvents: RaceEventRepository,
         signals: TrainingSignalSource,
+        coachSignals: CoachSignalsSource,
         time: TimeProvider,
         clock: Clock,
     ): CoachGuardsSource = RoomCoachGuardsSource(
         profiles = profiles,
+        plans = plans,
         raceEvents = raceEvents,
         signals = signals,
+        coachSignals = coachSignals,
         time = time,
         clock = clock,
     )
@@ -253,6 +275,7 @@ object DataModule {
         activities: ActivityRepository,
         raceEvents: RaceEventRepository,
         assembler: WeeklyReviewAssembler,
+        coachSignals: CoachSignalsSource,
         time: TimeProvider,
     ): CoachProgressSource = RoomCoachProgressSource(
         profiles = profiles,
@@ -260,6 +283,7 @@ object DataModule {
         activities = activities,
         raceEvents = raceEvents,
         assembler = assembler,
+        coachSignals = coachSignals,
         time = time,
     )
 

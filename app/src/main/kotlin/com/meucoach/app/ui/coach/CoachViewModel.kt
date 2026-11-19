@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.meucoach.app.coach.CoachConsentStore
 import com.meucoach.app.coach.CoachGuardsContext
 import com.meucoach.app.coach.CoachNextContext
+import com.meucoach.app.coach.CoachPlanContext
 import com.meucoach.app.coach.CoachProgressContext
 import com.meucoach.app.coach.CoachSources
 import com.meucoach.app.di.ApplicationScope
@@ -197,7 +198,7 @@ class CoachViewModel @Inject constructor(
 
     private val retryTick = MutableStateFlow(0)
     private val historyRetryTick = MutableStateFlow(0)
-    private var lastHash: String? = null
+    private var lastExplainContext: CoachPlanContext? = null
     private var lastReviewHash: String? = null
 
     init {
@@ -250,14 +251,12 @@ class CoachViewModel @Inject constructor(
             }.collect { (isConsented, context, _) ->
                 val plan = context?.plan
                 if (!isConsented || plan == null) {
-                    lastHash = null
+                    lastExplainContext = null
                     currentExplainHash.value = null
                     _explanation.value = CoachExplanationState.Unavailable
                     return@collect
                 }
-                if (context.inputsHash == lastHash &&
-                    _explanation.value is CoachExplanationState.Ready
-                ) {
+                if (context == lastExplainContext && _explanation.value is CoachExplanationState.Ready) {
                     return@collect
                 }
                 currentExplainHash.value = context.inputsHash
@@ -286,7 +285,7 @@ class CoachViewModel @Inject constructor(
                                     bullets = response.bullets,
                                 )
                             }
-                            lastHash = context.inputsHash
+                            lastExplainContext = context
                             currentExplainHash.value = context.inputsHash
                             android.util.Log.d("Coach", "explain ok hash=${context.inputsHash}")
                             _explanation.value = CoachExplanationState.Ready(
@@ -522,7 +521,7 @@ class CoachViewModel @Inject constructor(
     }
 
     fun retry() {
-        lastHash = null
+        lastExplainContext = null
         lastReviewHash = null
         retryTick.value += 1
     }

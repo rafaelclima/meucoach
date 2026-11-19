@@ -94,6 +94,7 @@ class CoachProgressSourceTest {
                 prescriptions,
                 TrainingSignalSource(checkIns, metrics, activities, executions),
             ),
+            coachSignals = RoomCoachSignalsSource(checkIns, metrics, activities, executions),
             time = FakeTimeProvider(Instant.parse("2026-11-18T12:00:00Z"), ZoneOffset.UTC),
         )
     }

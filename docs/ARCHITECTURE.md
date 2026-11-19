@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.11 · **Data:** 18/11/2026 · **Reconciliação:** IA Coach F1/F4 + 3.2 + 3.3-A/B e Room v19 (memória local, ADR 0052).
+**Versão:** 1.12 · **Data:** 19/11/2026 · **Reconciliação:** Blocos A/B do Coach (F1 verdadeiro + composição reativa read-only) sobre IA Coach + Room v19.
 
 ## 1. Restrições e forças
 
@@ -172,6 +172,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 | `ActivityInsightsCalculator` | laps da atividade | insights com `ruleId`, evidência, confiança e tom |
 
 `PrescriptionEngine`/`PlanEngine` foram nomes de planejamento; o código real usa os componentes acima. O catálogo canônico de regras e evidências é `docs/SPORTS_SCIENCE.md` §13, espelhado em `ExplanationCatalog.kt`; não há tabela de evidências no Room.
+
+**Aba Coach (read-only, Blocos A/B):** `CoachSignalsSource` observa check-ins, métricas, atividades, última importação e execuções em uma única emissão (`PersistedTrainingSignals`). `RoomCoachGuardsSource`, `RoomCoachProgressSource` e `RoomCoachReviewSource` compartilham essa leitura e observam perfil, semanas persistidas e provas; cada emissão monta F4 uma vez pelo `WeeklyReviewAssembler`. `RoomCoachPlanSource` observa `observeWeekRecord` (conteúdo + `inputsHash` + `version`, leitura transacional) para a explicação ser invalidada após replanejamento. Nenhuma fonte escreve prescrição, plano ou perfil, e a regra continua no motor determinístico.
 
 ### 6.2 Versionamento do motor
 

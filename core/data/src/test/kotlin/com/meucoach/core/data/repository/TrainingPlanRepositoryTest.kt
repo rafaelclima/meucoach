@@ -79,6 +79,17 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `observes the week record with revision metadata`(): Unit = runBlocking {
+        repository.saveWeek(plan())
+
+        val record = repository.observeWeekRecord(monday).first()
+
+        assertThat(record?.plan).isEqualTo(plan())
+        assertThat(record?.version).isEqualTo(1)
+        assertThat(record?.inputsHash).isNull()
+    }
+
+    @Test
     fun `replaces sessions when the week is saved again`(): Unit = runBlocking {
         repository.saveWeek(plan())
         val updated = plan().copy(
@@ -276,6 +287,7 @@ class TrainingPlanRepositoryTest {
     fun `starts empty`(): Unit = runBlocking {
         assertThat(repository.getWeek(monday)).isNull()
         assertThat(repository.observeWeek(monday).first()).isNull()
+        assertThat(repository.observeWeekRecord(monday).first()).isNull()
         assertThat(repository.consecutiveWeeksBefore(monday)).isZero()
     }
 

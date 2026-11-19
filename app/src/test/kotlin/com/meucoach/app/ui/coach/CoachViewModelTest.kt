@@ -299,6 +299,37 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `replanejamento reemite a explicacao mesmo com o mesmo hash`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1", version = 1)
+        val api = FakeCoachApi(CoachRawResponse(title = "Foco", body = "Ritmo controlado."))
+        val vm = viewModel(api)
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+        assertThat(api.calls).isEqualTo(1)
+
+        plans.value = CoachPlanContext(
+            plan = plan().copy(
+                sessions = plan().sessions.map { it.copy(title = "Fácil ajustado", durationMin = 25) },
+                weeklyMinutes = 25,
+            ),
+            inputsHash = "hash1",
+            version = 2,
+        )
+
+        withTimeout(2_000) {
+            while (api.calls < 2) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        withTimeout(2_000) {
+            while (vm.explanation.value !is CoachExplanationState.Ready) {
+                kotlinx.coroutines.delay(1)
+            }
+        }
+        assertThat(api.calls).isEqualTo(2)
+    }
+
+    @Test
     fun `progresso local aparece sem consentimento`(): Unit = runBlocking {
         progress.value = progressContext()
         val vm = viewModel(FakeCoachApi())

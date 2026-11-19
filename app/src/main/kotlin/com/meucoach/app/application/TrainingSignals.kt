@@ -111,24 +111,42 @@ class TrainingSignalSource @Inject constructor(
     private val executions: SessionExecutionRepository,
 ) {
     suspend fun snapshot(profile: AthleteProfile, today: LocalDate, checkedAt: Instant): TrainingSignals {
-        val checkIn = checkIns.get(today)
-        val metricsToday = metrics.getAll()
-        val summaries = activities.listActivitySummaries()
+        val persisted = PersistedTrainingSignals(
+            checkIns = checkIns.getAll(),
+            metrics = metrics.getAll(),
+            activities = activities.listActivitySummaries(),
+            lastImportedAt = activities.lastImportedAt(),
+            executions = executions.listAll(),
+        )
+        return snapshot(persisted, profile, today, checkedAt)
+    }
+
+    /**
+     * Same snapshot from one already-observed read. The Coach cards share a
+     * single reactive emission instead of each repository being read again.
+     */
+    fun snapshot(
+        persisted: PersistedTrainingSignals,
+        profile: AthleteProfile,
+        today: LocalDate,
+        checkedAt: Instant,
+    ): TrainingSignals {
+        val checkIn = persisted.checkInOn(today)
         return TrainingSignals(
             checkIn = checkIn,
-            metrics = metricsToday,
-            activities = summaries,
-            readiness = readinessResult(checkIn, metricsToday, today),
+            metrics = persisted.metrics,
+            activities = persisted.activities,
+            readiness = readinessResult(checkIn, persisted.metrics, today),
             load = buildLoadSnapshot(
-                activities = summaries,
+                activities = persisted.activities,
                 profile = profile,
                 today = today,
                 sourceStatus = ActivitySourceStatus(
-                    lastImportedAt = activities.lastImportedAt(),
+                    lastImportedAt = persisted.lastImportedAt,
                     checkedAt = checkedAt,
-                    firstActivityAt = summaries.minOfOrNull { it.startTime },
+                    firstActivityAt = persisted.activities.minOfOrNull { it.startTime },
                 ),
-                executions = executions.listAll(),
+                executions = persisted.executions,
             ),
         )
     }
@@ -144,6 +162,21 @@ class TrainingSignalSource @Inject constructor(
             today = today,
             days = days,
         )
+}
+
+/**
+ * One consistent read of the persisted inputs shared by the Coach cards
+ * (`2026-11-19`, Bloco B). It is a value object, not a decision: every field is
+ * what Room already holds, and consuming it never writes training data.
+ */
+data class PersistedTrainingSignals(
+    val checkIns: List<DailyCheckIn>,
+    val metrics: List<DailyMetrics>,
+    val activities: List<ActivitySummary>,
+    val lastImportedAt: Instant?,
+    val executions: List<SessionExecution>,
+) {
+    fun checkInOn(date: LocalDate): DailyCheckIn? = checkIns.firstOrNull { it.date == date }
 }
 
 /** The persisted signals of one day, read once for every surface that needs them. */

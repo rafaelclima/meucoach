@@ -1,6 +1,31 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (Bloco A — F1 verdadeiro)
+**Atualizado:** 19/11/2026 (Bloco B — reatividade de F2/F4/explicação/revisão)
+
+## Sessão 2026-11-19 — Bloco B: reatividade de F2/F4/explicação/revisão
+
+**Objetivo:** fazer as fontes do Coach reagirem a importação, check-in, execução, plano/replanejamento e prova, sem reabrir o app; e corrigir a explicação velha após “Ajustar a semana” (P-05/P-11).
+
+### Concluído
+
+- **Sinais compartilhados:** `CoachSignalsSource` (`RoomCoachSignalsSource`) observa check-ins, métricas, atividades, última importação e execuções em uma única emissão (`PersistedTrainingSignals`); `TrainingSignalSource` monta o snapshot a partir dessa leitura, sem cada source consultar o banco de novo.
+- **F2:** `RoomCoachGuardsSource` combina perfil, semana persistida (`observeWeek`), provas e os sinais reativos. Importar corrida, fazer check-in, concluir/editar/apagar execução, aceitar replanejamento e criar/alterar/encerrar prova reemitem as guardas.
+- **F4:** `RoomCoachProgressSource` observa as mesmas escritas, as quatro semanas fechadas e a semana corrente; cada emissão monta as 4 semanas uma única vez pelo `WeeklyReviewAssembler`, sem duplicar o cálculo no coletor.
+- **Revisão:** `RoomCoachReviewSource` observa a semana fechada, a semana corrente, perfil, provas e sinais; importação, conclusão, check-in, mudança de plano e prova na semana fechada reemitem a revisão.
+- **Explicação:** `RoomCoachPlanSource` passou a usar `observeWeekRecord` (conteúdo + `inputsHash` + `version`, leitura transacional); o `CoachViewModel` invalida o contexto anterior e recalcula quando o plano/versão/hash muda, mesmo com o mesmo `inputsHash`. `TrainingPlanRepository.getWeekRecord` agora lê plano+sessões em uma transação.
+- **Sem escrita:** nenhuma fonte escreve prescrição, plano ou perfil; sem migração, sem dependência e sem mudança no motor/`ApplyReplan`.
+- **Testes:** 2.566 no repositório (1178 domain / 1115 app / 233 data / 40 model), 0 falhas. Novos: `CoachPlanSourceTest` (4), `CoachSourceReactivityTest` (5, segunda emissão em Room in-memory), `CoachViewModelTest` de replanejamento (1) e `TrainingPlanRepositoryTest` de `observeWeekRecord` (1).
+- **Docs:** `TESTING` (contagens e cobertura da reatividade), `DECISIONS` r1.66 e `ARCHITECTURE` (composição reativa do Coach), este diário e o handoff.
+
+### Pendente
+
+- Validar no aparelho o fluxo completo: importar corrida, check-in, concluir treino e aceitar “Ajustar a semana” conferindo F2/F4/revisão/explicação sem reabrir o app.
+- Bloco C (F4 correto) e Bloco D (qualidade/performance/acessibilidade) seguem fora desta fatia; S1–S6 continuam fora.
+
+### Próximo passo
+
+1. Rodar `./install.sh` e validar os quatro fluxos de reatividade no aparelho.
+2. Iniciar o Bloco C — F4 correto (`strongMinutes`/base real, alvo, exclusões e legado), conforme o handoff.
 
 ## Sessão 2026-11-19 — Bloco A: F1 verdadeiro
 

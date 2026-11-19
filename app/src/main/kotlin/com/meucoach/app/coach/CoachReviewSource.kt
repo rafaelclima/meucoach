@@ -1,5 +1,6 @@
 package com.meucoach.app.coach
 
+import com.meucoach.app.application.PersistedTrainingSignals
 import com.meucoach.app.application.WeeklyReviewAssembler
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
@@ -7,17 +8,19 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.prescription.PlanCompletionCalculator
+import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.trends.IntensityDistributionCalculator
 import com.meucoach.core.domain.trends.IntensitySession
 import com.meucoach.core.model.ActivitySummary
 import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.Sport
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -34,6 +37,10 @@ interface CoachReviewSource {
  * Reconstructs the same closed week the Tendências tab shows, from persisted
  * data only (FR-011, PRD IA Coach 3.2). The Coach tab never re-decides training:
  * it consumes the shared [WeeklyReviewAssembler] output.
+ *
+ * The closed week itself, the current week (completion window), the shared
+ * signals and the race events are observed: an import, a completion, a
+ * check-in or a plan revision in the closed week re-emits the review.
  */
 class RoomCoachReviewSource @Inject constructor(
     private val profiles: ProfileRepository,
@@ -41,6 +48,7 @@ class RoomCoachReviewSource @Inject constructor(
     private val plans: TrainingPlanRepository,
     private val raceEvents: RaceEventRepository,
     private val assembler: WeeklyReviewAssembler,
+    private val coachSignals: CoachSignalsSource,
     private val time: TimeProvider,
 ) : CoachReviewSource {
     private val completionCalculator = PlanCompletionCalculator()
@@ -51,18 +59,40 @@ class RoomCoachReviewSource @Inject constructor(
         .map { today -> today to lastClosedWeekStart(today) }
         .distinctUntilChanged { previous, current -> previous.second == current.second }
         .flatMapLatest { (today, weekStart) ->
-            flow { emit(load(weekStart, today)) }
+            val currentMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            combine(
+                profiles.observeProfile(),
+                plans.observeWeek(weekStart),
+                plans.observeWeek(currentMonday),
+                raceEvents.observeAll(),
+                coachSignals.observeSignals(),
+            ) { profile, closedPlan, currentPlan, races, persisted ->
+                if (profile == null) {
+                    null
+                } else {
+                    load(weekStart, today, profile, closedPlan, currentPlan, races, persisted)
+                }
+            }
         }
 
-    private suspend fun load(weekStart: LocalDate, today: LocalDate): WeeklyReview? {
-        val profile = profiles.getProfile() ?: return null
+    private suspend fun load(
+        weekStart: LocalDate,
+        today: LocalDate,
+        profile: AthleteProfile,
+        closedPlan: WeeklyPlan?,
+        currentPlan: WeeklyPlan?,
+        races: List<RaceEvent>,
+        persisted: PersistedTrainingSignals,
+    ): WeeklyReview {
         val zone = runCatching { ZoneId.of(profile.timezone) }.getOrDefault(ZoneId.systemDefault())
-        val summaries = activities.listActivitySummaries()
+        val summaries = persisted.activities
         val currentMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        val weekStarts = listOf(weekStart, currentMonday)
-        val excluded = raceEvents.getDatesBetween(weekStart, currentMonday.plusDays(6))
+        val excluded = races
+            .filter { it.targetDate in weekStart..currentMonday.plusDays(6) }
+            .map { it.targetDate }
+            .toSet()
         val completionWeek = completionCalculator.calculate(
-            plans = plans.getWeeks(weekStarts),
+            plans = listOfNotNull(closedPlan, currentPlan),
             today = today,
             weeks = 2,
             excludedDates = excluded,

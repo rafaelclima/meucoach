@@ -1,9 +1,9 @@
 # Handoff — Consolidação da tela Coach
 
 **Data:** 19/11/2026
-**Commit de referência:** `56bff84` (auditoria) + Bloco A em `PROGRESS.md`
+**Commit de referência:** `b75c4a9` (Bloco A) + Bloco B em `PROGRESS.md`
 **Auditoria detalhada:** `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`
-**Status:** Bloco A concluído; PRD de evolução **não encerrado**. Próxima fatia é o **Bloco B — reatividade**, não uma feature nova.
+**Status:** Blocos A e B concluídos; PRD de evolução **não encerrado**. Próxima fatia é o **Bloco C — F4 correto**, não uma feature nova.
 
 > Este documento é o bastão curto para a próxima sessão. Leia primeiro `AGENTS.md`, depois este handoff, depois a seção 1 e a matriz da auditoria. Não é necessário ler a auditoria inteira antes de começar a fatia.
 
@@ -35,6 +35,8 @@ Mas a auditoria encontrou problemas que mudam a **verdade da tela**:
 
 **Bloco A entregue em 19/11/2026.** F1 agora usa a `DailyPrescription` como headline, prova vence sem sessão artificial, prontidão/sono aparecem só para hoje, F1/F2/F4 não dependem do opt-in de IA, estados vazios convergiram em `Onboarding` e o gate do detekt está verde. P-01, P-02, P-03, P-04, P-09, P-10 e P-12 fechados no código e nos testes; validação manual segue pendente.
 
+**Bloco B entregue em 19/11/2026.** F2/F4/revisão compartilham `CoachSignalsSource` e reemitem após importação, check-in, execução, plano/replanejamento e prova. A explicação observa `observeWeekRecord` (conteúdo/`inputsHash`/versão) e o `CoachViewModel` recalcula após “Ajustar a semana”. P-05 e P-11 fechados no código e nos testes; validação manual segue pendente.
+
 ---
 
 ## 2. Baseline de validação
@@ -45,13 +47,13 @@ Mas a auditoria encontrou problemas que mudam a **verdade da tela**:
 | `./gradlew check` | **Verde** (detekt corrigido; lint incluso) |
 | `./gradlew spotlessCheck` | Verde |
 | `./gradlew koverVerify` | Verde |
-| `:core:domain:test` / `:app:testDebugUnitTest` | Verde (1178 / 1105; 0 falhas) |
+| `:core:domain:test` / `:app:testDebugUnitTest` / `:core:data:testDebugUnitTest` | Verde (1178 / 1115 / 233; 0 falhas) |
 | `./gradlew :app:lintDebug` | Verde |
 | Validação manual no aparelho | **Pendente** (`PROGRESS.md`) |
 
-Suíte do repositório: **2.555 testes** (1178 domain / 1105 app / 232 data / 40 model), 0 falhas e 0 `@Ignore`.
+Suíte do repositório: **2.566 testes** (1178 domain / 1115 app / 233 data / 40 model), 0 falhas e 0 `@Ignore`.
 
-Cobertura do app segue no gate de linha (78%); o Bloco B deve cobrir `RoomCoachPlanSource` (hoje 0% de branch) e os caminhos de segunda emissão.
+Cobertura do app segue no gate de linha (78%); o Bloco B cobre `RoomCoachPlanSource` e os caminhos de segunda emissão (`CoachSourceReactivityTest`).
 
 ---
 
@@ -164,12 +166,39 @@ Estas decisões são **recomendações da auditoria**; confirme com o usuário 0
 
 ---
 
-## 5. Depois do Bloco A
+## 5. Bloco B concluído — reatividade (P-05/P-11)
 
-**Bloco B — Reatividade (P-05/P-11)**
-- F2/F4/explicação/revisão reagindo a atividades, check-ins, execuções e planos.
-- Testes de segunda emissão após escrita.
-- Incluir `RoomCoachPlanSource` (hoje 0% de cobertura).
+**Objetivo:** F2/F4/explicação/revisão reagindo a atividades, check-ins, execuções, planos e provas, com teste de segunda emissão em Room in-memory.
+
+**Problemas fechados:** P-05 e P-11.
+**Fora do escopo (mantido):** F4 correta (Bloco C), S1–S6, acessibilidade ampla, benchmark/flowOn, motor, prescrição e `ApplyReplan`.
+
+### Como ficou
+
+- **Fonte compartilhada:** `CoachSignalsSource`/`RoomCoachSignalsSource` observa check-ins, métricas, atividades, última importação e execuções; `TrainingSignalSource` monta o snapshot a partir dessa leitura. Nenhuma fonte escreve.
+- **F2:** `RoomCoachGuardsSource` também observa a semana persistida e as provas; importar corrida, check-in, execução, replan e prova reemitem as guardas.
+- **F4:** `RoomCoachProgressSource` observa as mesmas escritas, as quatro semanas fechadas e a corrente; uma montagem de 4 semanas por emissão.
+- **Revisão:** `RoomCoachReviewSource` observa a semana fechada, a corrente, perfil, provas e sinais; importação/conclusão/check-in/plano/prova reemitem.
+- **Explicação:** `RoomCoachPlanSource` observa `observeWeekRecord` (conteúdo + `inputsHash` + `version`); `CoachViewModel` compara o contexto completo e recalcula após replanejamento, mesmo com o mesmo hash. `TrainingPlanRepository.getWeekRecord` lê plano+sessões em transação.
+- **Testes:** `CoachSourceReactivityTest` (5), `CoachPlanSourceTest` (4), `CoachViewModelTest` de replanejamento (1) e `TrainingPlanRepositoryTest` de `observeWeekRecord` (1).
+
+### Critérios de aceite do Bloco B
+
+- [x] Importar uma corrida e voltar ao Coach mostra F2/F4/revisão atualizados sem reabrir o app.
+- [x] Check-in do dia reemite F2/F4 (F1 já era reativo).
+- [x] Concluir um treino atualiza adesão/volume no mesmo fluxo.
+- [x] Aceitar “Ajustar a semana”/atualizar a semana produz novo contexto de explicação e novas guardas.
+- [x] Nenhum coletor escreve dados; `check`, `spotlessCheck`, `koverVerify` e `assembleDebug` verdes; sem migração e sem dado real.
+
+### Dívidas conhecidas (não bloqueiam o Bloco B)
+
+- Validar no aparelho o fluxo completo de reatividade (roteiro do Bloco D).
+- F4 ainda não é a evolução correta (Bloco C); a reatividade não mudou a regra.
+- A explicação continua limitada à semana vigente; a próxima semana segue fora do F1.
+
+---
+
+## 6. Depois do Bloco B
 
 **Bloco C — F4 correto (P-06/P-07)**
 - `strongMinutes`/`VolumeReference`, base real → alvo, `R-PLAN-01 v2`.
@@ -185,7 +214,7 @@ Estas decisões são **recomendações da auditoria**; confirme com o usuário 0
 
 ---
 
-## 6. O que não fazer
+## 7. O que não fazer
 
 - Não iniciar S1–S6.
 - Não reescrever a arquitetura inteira; a base read-only/domínio puro está correta.
@@ -197,13 +226,13 @@ Estas decisões são **recomendações da auditoria**; confirme com o usuário 0
 
 ---
 
-## 7. Prompt pronto para a nova sessão
+## 8. Prompt pronto para a nova sessão
 
-> Leia `AGENTS.md`, `docs/PROGRESS.md`, `docs/HANDOFF_COACH_CONSOLIDACAO.md` e a seção 1 + matriz da `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`. O Bloco A já foi entregue; implemente **apenas o Bloco B — reatividade**: F2/F4, explicação e revisão devem reagir a atividades, check-ins, execuções e replanejamento, com teste de segunda emissão após escrita, incluindo `RoomCoachPlanSource`. Não implemente F4 correta (Bloco C), S1–S6, acessibilidade ampla ou mudança de motor. Rode `./gradlew check`, `spotlessCheck`, `koverVerify`, `assembleDebug`. Atualize `PROGRESS.md` e este handoff ao final.
+> Leia `AGENTS.md`, `docs/PROGRESS.md`, `docs/HANDOFF_COACH_CONSOLIDACAO.md` e a seção 1 + matriz da `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md`. Os Blocos A e B já foram entregues; implemente **apenas o Bloco C — F4 correto**: `strongMinutes`/base real/alvo, exclusões de deload/taper/recovery, legado fora da adesão, prontidão de 4 semanas e golden `G-VOL-02`. Não implemente S1–S6, acessibilidade ampla, benchmark/timeout ou mudança de motor. Rode `./gradlew check`, `spotlessCheck`, `koverVerify`, `assembleDebug`. Atualize `PROGRESS.md` e este handoff ao final.
 
 ---
 
-## 8. Onde está cada detalhe
+## 9. Onde está cada detalhe
 
 | Assunto | Seção da auditoria |
 |---|---|

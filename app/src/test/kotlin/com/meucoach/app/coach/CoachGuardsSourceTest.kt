@@ -14,6 +14,7 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventOutcome
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.CoachGuardKind
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.RaceDistance
@@ -70,8 +71,10 @@ class CoachGuardsSourceTest {
         raceEvents = RaceEventRepository(database, clock)
         source = RoomCoachGuardsSource(
             profiles = profiles,
+            plans = TrainingPlanRepository(database, clock),
             raceEvents = raceEvents,
             signals = signals,
+            coachSignals = RoomCoachSignalsSource(checkIns, metrics, activities, executions),
             time = FakeTimeProvider(Instant.parse("2026-11-18T12:00:00Z"), ZoneOffset.UTC),
             clock = clock,
         )
