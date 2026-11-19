@@ -1,6 +1,23 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (fix: progresso reage a perfil/provas)
+**Atualizado:** 19/11/2026 (auditoria pós-implementação do Coach)
+
+## Sessão 2026-11-19 — Auditoria pós-implementação do Coach
+
+**Objetivo:** auditar a evolução F1–F4 contra o PRD, o código e os testes, sem alterar o produto.
+
+### Concluído
+
+- **Auditoria:** `docs/AUDITORIA_POS_IMPLEMENTACAO_COACH.md` com resumo executivo, matriz de conformidade F1–F4, auditoria técnica/UX/regras, análise de testes, 27 problemas priorizados, 6 sugestões e plano de ação em 3 grupos.
+- **Handoff:** `docs/HANDOFF_COACH_CONSOLIDACAO.md` com baseline, decisões a confirmar, Bloco A (“F1 verdadeiro”), blocos B/C/D, não-objetivos e prompt para a próxima sessão.
+- **Veredito:** PRD **não encerrado**; maturidade 2 de 4 (MVP parcial/beta interno). O motor e as fontes read-only estão corretos, mas F1 mostra o planejado em vez da prescrição, prova não tem precedência no fluxo real, F2/F4 não reagem a dados novos e F4 não calcula volume real/base/alvo.
+- **Gate:** `check` vermelho no detekt (`CoachProgressLabels.kt:69` ComplexCondition; `CoachViewModel.kt:155` LongParameterList). `assembleDebug`, `spotlessCheck`, `koverVerify` e `lintDebug` verdes; 141 testes focados do Coach passam, mas parte deles codifica premissas erradas (prova com sessão artificial; legado como adesão).
+- **Validação manual:** pendente (build com/sem token, prova, check-in, offline, 200%, TalkBack).
+
+### Pendente
+
+- Executar o **Bloco A — F1 verdadeiro** (prescrição, prova, prontidão/semáforo, consentimento local vs IA, estados vazios, fallback/validator e gate verde).
+- Depois: reatividade (Bloco B), F4 correto (Bloco C) e qualidade/manual (Bloco D). S1–S6 ficam fora até a consolidação.
 
 ## Sessão 2026-11-19 — Fix: progresso reage a perfil/provas
 
