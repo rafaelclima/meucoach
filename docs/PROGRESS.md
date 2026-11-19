@@ -1,6 +1,20 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (F1-1 CoachNextResolver puro)
+**Atualizado:** 19/11/2026 (F1-2 CoachNextSource só-leitura)
+
+## Sessão 2026-11-19 — F1-2 (CoachNextSource só-leitura)
+
+**Objetivo:** composição reativa da próxima sessão sem escrever prescrição: semana vigente + última prescrição persistida da data + evento de prova na data.
+
+### Concluído
+
+- **TDD:** `CoachNextSourceTest` (4 casos em Room in-memory: hoje pendente + prescrição vigente, futura sem prescrição, sem plano → null, prova na data) — 4 testes, 0 falhas.
+- **App:** `CoachNextContext(session, isToday, prescription, raceEvent)` + `RoomCoachNextSource` em `app/coach/` (espelha `RoomCoachPlanSource`/`RoomCoachReviewSource`); futuro sem linha persistida sai com `prescription == null`. Binding em `DataModule.provideCoachNextSource`.
+- **Gates:** `:app:testDebugUnitTest` (rerun), `assembleDebug`, `spotlessCheck` verdes.
+
+### Pendente
+
+- Próxima: F1-3 estado no `CoachViewModel` (consentimento + `CoachNextUiState`) + F1-4 `CoachNextCard` com semáforo/motivo e copy amigável.
 
 ## Sessão 2026-11-19 — F1-1 (CoachNextResolver puro)
 
