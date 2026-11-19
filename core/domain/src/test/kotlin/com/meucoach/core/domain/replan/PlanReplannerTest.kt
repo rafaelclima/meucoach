@@ -649,7 +649,49 @@ class PlanReplannerTest {
     }
 
     @Test
-    fun `does not schedule a second long run when one was already done`() {
+    fun `done long run does not block the replan with a phantom second long run`() {
+        val availability = mapOf(
+            DayOfWeek.TUESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 40,
+        )
+        val current = planOf(
+            session(
+                tuesday,
+                WorkoutType.LONG,
+                34,
+                status = SessionStatus.DONE,
+                completionEvidence = CompletionEvidence.ACTIVITY,
+                activityId = "activity-tue",
+            ),
+            session(friday, WorkoutType.EASY, 40),
+            session(sunday, WorkoutType.EASY, 40),
+        )
+
+        val result = planner.evaluate(
+            input(
+                current = current,
+                today = thursday,
+                trigger = ReplanTrigger.USER_REQUEST,
+                profile = profile(availability),
+            ),
+        )
+
+        if (result is ReplanResult.NoChange) {
+            assertThat(result.reason).doesNotContain("único longão")
+        } else {
+            val candidate = (result as ReplanResult.Suggest).candidate
+            assertThat(candidate.sessions.count { it.type == WorkoutType.LONG }).isEqualTo(1)
+            assertThat(
+                candidate.sessions.filter { it.date.isAfter(thursday) }.none {
+                    it.type == WorkoutType.LONG
+                },
+            ).isTrue()
+        }
+    }
+
+    @Test
+    fun `still rejects when two long runs were already done`() {
         val availability = mapOf(
             DayOfWeek.MONDAY to 90,
             DayOfWeek.WEDNESDAY to 40,
@@ -664,14 +706,21 @@ class PlanReplannerTest {
                 completionEvidence = CompletionEvidence.ACTIVITY,
                 activityId = "activity-mon",
             ),
-            session(wednesday, WorkoutType.EASY, 40),
+            session(
+                wednesday,
+                WorkoutType.LONG,
+                40,
+                status = SessionStatus.DONE,
+                completionEvidence = CompletionEvidence.ACTIVITY,
+                activityId = "activity-wed",
+            ),
             session(saturday, WorkoutType.EASY, 40),
         )
 
         val result = planner.evaluate(
             input(
                 current = current,
-                today = wednesday,
+                today = thursday,
                 trigger = ReplanTrigger.USER_REQUEST,
                 profile = profile(availability),
             ),

@@ -1,6 +1,44 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (Coach sem LLM no aparelho: proxy com JSON inválido no explain — ver sessão abaixo)
+**Atualizado:** 19/11/2026 (fix do "Ajustar a semana" travado no longão — ver sessão abaixo)
+
+## Sessão 2026-11-19 — "Ajustar a semana" travado em "único longão por semana"
+
+**Objetivo:** entender por que o botão só mostrava a mensagem e corrigir sem afrouxar o guardrail de 1 longão/semana.
+
+**Handoff:** `docs/adr/0028-versioned-plan-replanning.md` §12 (addendum com causa e correção).
+
+### Achado no aparelho/banco
+
+- Semana 11-16: ter 11-17 `LONG` 34 `DONE` + sex/dom `EASY` `PLANNED`; hoje qui 19/11.
+- O replanador regenerava sex/dom com o gerador, que escolhia um novo longão (domingo) → mesclada com 2 longões → `validationFailure` rejeitava tudo (`PlanReplanner.kt:326`). Determinístico: todo toque falhava igual até domingo.
+- Efeito colateral: o mesmo caminho bloqueava o upgrade automático v6→v7 na abertura (`UpgradeWeekOnOpening` → `NotNeeded`); semanas seguiam em `weekly-plan-v6`.
+
+### Concluído
+
+- **Domínio:** `WeeklyPlanInput.longAlreadyDone` (default `false`); gerador sem dia de longão quando `true` (dias restantes pelos próprios templates EASY/qualidade) + copy honesta no rationale; `PlanReplanner` deriva o sinal de `LONG` com status `DONE` (perdido/`CLOSED` não conta). Validador intacto: 2 longões `DONE` continuam rejeitados.
+- **Testes:** regressão com o estado exato do aparelho (ter LONG DONE + sex/dom EASY, T3 explícito → sem rejeição do longão, futuro sem LONG); guardrail reescrito para dois `DONE` (continua rejeitando); gerador direto com `longAlreadyDone` (sem LONG, dias preservados).
+- **Docs:** addendum §12 no ADR 0028, `DECISIONS` r1.64.
+
+### Testes
+
+- `:core:domain:test --rerun-tasks` verde (1152 casos, +2); `:core:data:testDebugUnitTest` verde; `:app:testDebugUnitTest --rerun-tasks --no-parallel` verde (1035, sem flakes desta vez).
+- `spotlessCheck`, `:core:domain:koverVerify` (FIT 93,01%) e `:core:domain:detekt` verdes (detekt pegou 1 linha longa herdada da sessão anterior, corrigida).
+- Nenhum dado real no repo; nenhuma migração; sem `fallbackToDestructiveMigration`.
+
+### Decisões e observações
+
+- O guardrail de 1 longão/semana (`R-PLAN-03`) não mudou — o que mudou é que o replanador não gera mais o segundo para depois rejeitar a semana inteira.
+- Com o fix, o toque no aparelho deve resultar em sugestão (conteúdo v7) ou no honesto "já está como deveria" — nunca mais só a mensagem do longão.
+- O upgrade v6→v7 na abertura destrava junto na próxima abertura com gate assentado.
+
+### Pendente
+
+- Validar no aparelho: "Ajustar a semana" → diff ou "já está como deveria"; conferir `generatorVersion` v7 na semana após aceite/abertura.
+
+### Próximo passo
+
+1. Gerar o APK (`./install.sh`), abrir o app (upgrade na abertura) e tocar "Ajustar a semana".
 
 ## Sessão 2026-11-19 — Coach no aparelho não recebe LLM (explain 400, review ok)
 

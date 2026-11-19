@@ -176,6 +176,12 @@ data class WeeklyPlanInput(
      * the upgrade path re-evaluates it when the data arrives.
      */
     val dataIncomplete: Boolean = false,
+    /**
+     * A long run was already completed this week (ADR 0028 addendum 19/11/2026).
+     * The week keeps a single longão: no new long day is scheduled and the
+     * remaining days stay easy (or keep their quality opportunity).
+     */
+    val longAlreadyDone: Boolean = false,
 ) {
     init {
         require(weekNumberInBlock >= 1) { "Week number in block must be >= 1" }
@@ -271,7 +277,13 @@ class WeeklyPlanGenerator {
         val eventDaysSkipped = days.size < daysAfterToday.size
         // A recovery day is active but never receives a long run (ADR 0037).
         // ADR 0045 §2.1: highest availability, then weekend, then later day.
-        val longDay = selectLongDay(days, availability, recovery, weekStart)
+        // A completed long run suppresses a second one: the week keeps a
+        // single longão (ADR 0028 addendum 19/11/2026).
+        val longDay = if (input.longAlreadyDone) {
+            null
+        } else {
+            selectLongDay(days, availability, recovery, weekStart)
+        }
         val recoveryDays = days.map { weekStart.plusDays((it.value - 1).toLong()) }
             .filter { recovery?.isActive(it) == true }
         val recoveryActive = recoveryDays.isNotEmpty()
@@ -822,6 +834,9 @@ class WeeklyPlanGenerator {
                         meso.phase == MesoPhase.BASE && qualitySelection.isEmpty() ->
                             "a primeira metade da base é só fácil, longão e strides; " +
                                 "o fartlek leve entra na segunda metade."
+
+                        input.longAlreadyDone ->
+                            "longão já concluído nesta semana."
 
                         else -> "sem dia seguro separado do longão."
                     },

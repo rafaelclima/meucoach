@@ -250,7 +250,6 @@ Sugerir em vez de executar alinha o app ao padrão já aceito na oferta de impor
 | **BL-020** | Pré-requisito para a revisão semanal completa. |
 
 ## 10. Notas de implementação (08/11/2026)
-
 - **R-01 (domínio):** `PlanReplanner` e contratos em `core/domain/replan`; 28 testes em `PlanReplannerTest` cobrindo limiar, `createdOn`, doença/REST, disponibilidade, T3, troca manual, teto de volume/qualidade, estados protegidos, semana/futuro ausentes e determinismo/hashes.
 - **R-02 (dados):** schema 13, `weekly_plan_revisions`, `applyReplan`, baseline explícito, `getWeekRecord`, export/reset. Migração `12→13` testada com hashes legados `NULL`.
 - **R-03 (app/UI):** `ReplanContextBuilder`, `EvaluateReplan`, `ApplyReplan`, `ReplanDiff`, `ReplanSuggestionStore`, `ReplanViewModel` e card. O aceite revalida versão/inputs; stale reavalia; a prescrição de hoje é testada antes/depois.
@@ -267,3 +266,9 @@ Sugerir em vez de executar alinha o app ao padrão já aceito na oferta de impor
 - `docs/PRD_COACH_CORRIDA.md` §6 (FR-011), §8 (BL-020)
 - `docs/SPORTS_SCIENCE.md` §8.8 (plano semanal conservador e replanejamento)
 - `docs/PLANO_TECNICO_CICLO_1.md` §6.3 (C1-03)
+
+## 12. Addendum 19/11/2026 — longão já concluído suprime o segundo (bug do "Ajustar a semana")
+
+**Sintoma no aparelho:** com o longão da semana `DONE` (ter 11-17) e o resto EASY, todo toque em "Ajustar a semana" terminava em `NoChange("O plano permite um único longão por semana.")`. O replanador regenerava o futuro com o gerador — que escolhia um novo dia de longão entre os dias restantes — e o validador rejeitava a semana mesclada com 2 longões. O botão ficava deterministicamente travado até domingo, e o mesmo caminho bloqueava o upgrade automático v6→v7 na abertura (`UpgradeWeekOnOpening` → `PlanReplanner.evaluate` → `NotNeeded`).
+
+**Correção:** `WeeklyPlanInput.longAlreadyDone` (default `false`, sem efeito nas semanas novas); quando `true`, o gerador não escolhe dia de longão e os dias restantes saem EASY/qualidade pelos próprios templates — sem sintético no replanador. O `PlanReplanner` deriva o sinal da semana vigente (`LONG` com status `DONE`, passado ou futuro; `CLOSED`/perdido não conta). O validador continua rejeitando 2 longões reais (dois `DONE`), e o `inputsHash` não muda (o sinal deriva das sessões, já hasheadas).

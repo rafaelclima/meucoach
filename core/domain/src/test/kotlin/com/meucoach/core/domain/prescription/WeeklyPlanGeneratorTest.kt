@@ -102,6 +102,30 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `skips the long run when one was already done this week`() {
+        val availability = mapOf(
+            DayOfWeek.TUESDAY to 40,
+            DayOfWeek.FRIDAY to 40,
+            DayOfWeek.SUNDAY to 40,
+        )
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = availability,
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ).copy(longAlreadyDone = true),
+        )
+
+        assertThat(plan.sessions.none { it.type == WorkoutType.LONG }).isTrue()
+        assertThat(plan.longRunMinutes).isNull()
+        assertThat(plan.sessions.map { it.date.dayOfWeek })
+            .containsExactly(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY, DayOfWeek.SUNDAY)
+    }
+
+    @Test
     fun `allows one quality session away from the long run`() {
         val plan = generator.generate(
             input(

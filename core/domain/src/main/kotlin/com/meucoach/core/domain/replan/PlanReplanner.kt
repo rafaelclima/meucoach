@@ -123,6 +123,12 @@ class PlanReplanner(private val generator: WeeklyPlanGenerator = WeeklyPlanGener
                 raceTargetTimeSec = input.raceTargetTimeSec,
                 eventDates = input.eventDates,
                 recovery = input.recovery,
+                // A completed long run suppresses a second one: without this
+                // the regenerated future always contains a new longão and the
+                // merge validator rejects the whole revision (ADR 0028 addendum).
+                longAlreadyDone = input.currentPlan.sessions.any {
+                    it.type == WorkoutType.LONG && it.status == SessionStatus.DONE
+                },
             ),
         )
         val raceDates = input.eventDates + listOfNotNull(input.race?.targetDate)

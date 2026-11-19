@@ -360,7 +360,8 @@ class DailyPrescriptionEngine {
         val evidence = baseEvidence(planned) +
             if (!history && gate != null) gate.evidenceIds else emptyList()
         val coldStartNote = if (!history && gate?.ruleId == "R-COLD-01") {
-            " Rampa de entrada: prova recente com VDOT libera esta qualidade curta; o volume segue mantido, sem progressão."
+            " Rampa de entrada: prova recente com VDOT libera esta qualidade curta; " +
+                "o volume segue mantido, sem progressão."
         } else {
             ""
         }
