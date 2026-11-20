@@ -1,6 +1,22 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Go: session header + failover entre provedores)
+**Atualizado:** 20/11/2026 (Handoff: upstream Go + F3-bolhas p/ próxima sessão)
+
+## Sessão 2026-11-20 — Handoff da retomada (Go degradado + F3-bolhas adiada)
+
+**Objetivo:** deixar a próxima sessão começando do zero, sem depender de memória.
+
+### Concluído
+
+- **Evidência do Dokploy (17:26):** Go (`deepseek`) timeout, `openrouter/free` timeout, `super-vl` timeout, `gemma` 429 — failover funcionou (tentou tudo, logou tudo, fallback correto). ID do DeepSeek validado indiretamente (timeout, não 404).
+- **Handoff criado:** `docs/HANDOFF_COACH_UPSTREAM_E_BOLHAS.md` — estado, evidências, checklist de retomada (§3), spec da F3-bolhas (§4) e prompt pronto (§5). Implementação da F3-bolhas **explicitamente adiada** a pedido do usuário.
+
+### Pendente (próxima sessão, ver handoff §3)
+
+1. Dokploy: deploy verde + 10 linhas `coach upstream`.
+2. Aparelho: retry + `logcat -s Coach`.
+3. Se lento: `COACH_UPSTREAM_TIMEOUT_MS=10000`, outro modelo Go, ou aceitar fallback.
+4. Só então: F3-bolhas do handoff §4.
 
 ## Sessão 2026-11-20 — Go pede `x-opencode-session` (400 MissingSessionID)
 
