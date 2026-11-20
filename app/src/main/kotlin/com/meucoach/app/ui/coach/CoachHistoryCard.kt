@@ -158,7 +158,6 @@ internal fun CoachHistoryCard(
                     if (showSummaries.isNotEmpty()) {
                         McDivider(modifier = Modifier.padding(vertical = 10.dp))
                     }
-                    HistorySectionTitle(text = "Conversa")
                     showMessages.forEachIndexed { index, message ->
                         if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
                         MessageRow(

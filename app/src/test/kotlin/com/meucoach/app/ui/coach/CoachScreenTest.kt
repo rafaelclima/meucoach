@@ -73,8 +73,12 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-review-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Sobre a semana passada").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Semana de 09/11 a 15/11").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Você cumpriu a maior parte do que planejou.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-review-numbers").assertDoesNotExist()
+
+        compose.onNodeWithTag("coach-review-numbers-toggle").performScrollTo().performClick()
+
         compose.onNodeWithText("3 de 4 sessões concluídas").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("75%").assertExists()
         compose.onNodeWithText("Volume: 2h planejados", substring = true).performScrollTo().assertIsDisplayed()
@@ -87,6 +91,7 @@ class CoachScreenTest {
             reviewState = CoachReviewState.Fallback("O Coach não respondeu."),
         )
 
+        compose.onNodeWithTag("coach-review-numbers-toggle").performScrollTo().performClick()
         compose.onNodeWithText("O que a semana mostrou").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões planejadas foram concluídas.", substring = true)
             .performScrollTo()
@@ -382,8 +387,8 @@ class CoachScreenTest {
             ),
         )
 
-        compose.onNodeWithText("Resumo da semana", substring = true).performScrollTo()
-        val cardY = compose.onNodeWithText("Resumo da semana", substring = true)
+        compose.onNodeWithTag("coach-fallback-reason").performScrollTo()
+        val cardY = compose.onNodeWithTag("coach-fallback-reason")
             .fetchSemanticsNode().positionInRoot.y
         val actionY = compose.onNodeWithText("Tentar de novo")
             .fetchSemanticsNode().positionInRoot.y
@@ -911,8 +916,11 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Sua evolução").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("6 de 9 sessões do plano (67%)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-progress-numbers").assertDoesNotExist()
+
+        compose.onNodeWithTag("coach-progress-numbers-toggle").performScrollTo().performClick()
+
         compose.onNodeWithText("Planejado 3h34 · feito 3h39 (102%)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("52% fácil nos últimos 28 dias (alvo ~80%).").performScrollTo()
             .assertIsDisplayed()
@@ -944,7 +952,9 @@ class CoachScreenTest {
             ),
         )
 
-        compose.onNodeWithText("Pouco histórico ainda.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Pouco histórico ainda.", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
         compose.onNodeWithText("6 de 9 sessões do plano (67%)").assertDoesNotExist()
     }
 
@@ -1027,10 +1037,12 @@ class CoachScreenTest {
         setContent()
 
         compose.onNodeWithTag("coach-chat-header").assertIsDisplayed()
-        compose.onNodeWithText("motor no comando", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("motor no comando").assertIsDisplayed()
+        compose.onNodeWithText("IA ativa").assertDoesNotExist()
         compose.onNodeWithTag("coach-chat-info").performClick()
         compose.onNodeWithTag("coach-how-it-works-sheet").assertIsDisplayed()
         compose.onNodeWithText("O motor decide o treino", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("IA ativa neste aparelho.", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("coach-how-it-works-close").performClick()
         compose.onNodeWithTag("coach-how-it-works-sheet").assertDoesNotExist()
     }

@@ -11,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -164,11 +163,7 @@ fun CoachScreen(
         if (replan.suggestion != null) replanSheetOpen = true
     }
     val onboarding = next is CoachNextUiState.Onboarding
-    val status = if (consented) {
-        "motor no comando · IA ativa"
-    } else {
-        "motor no comando · IA opcional"
-    }
+    val status = "motor no comando"
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -263,47 +258,19 @@ fun CoachScreen(
                             }
 
                             is CoachExplanationState.Fallback -> {
-                                McCard {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = "Resumo da semana",
-                                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                            color = McTheme.colors.textPrimary,
-                                        )
-                                        Text(
-                                            text = explanation.planRationale,
-                                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                                            color = McTheme.colors.textSecondary,
-                                        )
-                                        Text(
-                                            text = CoachFallbackLabels.reasonCopy(explanation.reason),
-                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                            color = McTheme.colors.textTertiary,
-                                            modifier = Modifier.testTag("coach-fallback-reason"),
-                                        )
-                                        Text(
-                                            text = "Me enrolei aqui — tenta de novo em instantes?",
-                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                            color = McTheme.colors.textTertiary,
-                                        )
-                                    }
-                                }
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
-                                    TextButton(onClick = onRevoke) {
-                                        Text(
-                                            text = "Desativar IA",
-                                            color = McTheme.colors.textTertiary,
-                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                        )
-                                    }
+                                    CoachBubbleSequence(
+                                        texts = CoachBubbles.split(explanation.planRationale),
+                                        testTag = "coach-fallback-plan",
+                                    )
+                                    CoachBubble(
+                                        text = CoachFallbackLabels.reasonCopy(explanation.reason),
+                                        testTag = "coach-fallback-reason",
+                                    )
                                 }
+                                McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
                             }
                         }
                     }
@@ -380,7 +347,11 @@ fun CoachScreen(
     }
 
     if (infoOpen) {
-        CoachHowItWorksSheet(onDismiss = { infoOpen = false }, onRevoke = onRevoke)
+        CoachHowItWorksSheet(
+            onDismiss = { infoOpen = false },
+            onRevoke = onRevoke,
+            aiActive = consented,
+        )
     }
     if (replanSheetOpen && replan.suggestion != null) {
         ReplanSuggestionSheet(

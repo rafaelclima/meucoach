@@ -44,6 +44,7 @@ class CoachHistoryTest {
         compose.onNodeWithText("Semana 1").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões.", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Explicação da semana", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Conversa").assertDoesNotExist()
         compose.onNodeWithText("Foco").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Mantivemos 30 min.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Editar").assertDoesNotExist()

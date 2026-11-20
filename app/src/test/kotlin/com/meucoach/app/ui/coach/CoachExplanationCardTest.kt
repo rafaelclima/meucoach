@@ -8,12 +8,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,7 +32,7 @@ class CoachExplanationCardTest {
     val compose = createComposeRule()
 
     @Test
-    fun `explicacao longa comeca recolhida e expande os bullets`() {
+    fun `explicacao longa vira bolhas curtas e bullets expandem`() {
         setContent(
             state = CoachExplanationState.Ready(
                 title = "Plano da semana",
@@ -38,11 +41,13 @@ class CoachExplanationCardTest {
             ),
         )
 
+        assertThat(compose.onAllNodesWithTag("coach-explanation-bubble").fetchSemanticsNodes().size)
+            .isGreaterThan(1)
         compose.onNodeWithTag("coach-explanation-bullets").assertDoesNotExist()
         compose.onNodeWithTag("coach-explanation-toggle").performScrollTo().performClick()
 
         compose.onNodeWithText("• Mantenha o volume atual").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Mostrar menos").assertExists()
+        compose.onNodeWithText("Ocultar detalhes").assertExists()
     }
 
     @Test
@@ -56,6 +61,7 @@ class CoachExplanationCardTest {
         )
 
         compose.onNodeWithTag("coach-explanation-toggle").assertDoesNotExist()
+        compose.onAllNodesWithTag("coach-explanation-bubble").onFirst().assertIsDisplayed()
     }
 
     private fun setContent(state: CoachExplanationState.Ready) {

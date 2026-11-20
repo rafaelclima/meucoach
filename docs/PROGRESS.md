@@ -1,6 +1,38 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Handoff: upstream Go + F3-bolhas p/ próxima sessão)
+**Atualizado:** 20/11/2026 (F3-bolhas implementada + checklist do upstream executado)
+
+## Sessão 2026-11-20 — F3-bolhas (chat sem paredes de texto) + checklist do upstream
+
+**Objetivo:** executar o checklist §3 do handoff (Dokploy + aparelho) e, só então, implementar a F3-bolhas do §4 com TDD.
+
+### Concluído
+
+- **Checklist Dokploy:** logs de 17:32 seguem degradados — Go `deepseek-v4.1-flash` timeout 15 s, `openrouter/free` timeout, `super-vl` timeout, `gemma` 429; `review latencyMs=45297`. Failover correto, **sem `upstream=go ... 200`** ainda.
+- **Checklist aparelho:** "Tentar de novo" às 14:40 → `review ok` (IA serviu a revisão) + `explain io: timeout` → fallback falado, sem crash. Captura confirmou o problema da F3-bolhas: explicação em parede de texto + tabela "O que o motor registrou" no fluxo.
+- **Splitter puro:** `CoachBubbles.split` (frases ≤140, quebra só em palavra inteira, pergunta final sozinha, whitespace normalizado) + `CoachBubblesTest` (7 casos).
+- **Explicação/revisão em bolhas:** `CoachBubbleSequence` (avatar só na 1ª), título/corpo fatiados; bullets da explicação em "Ver detalhes"; revisão com números/observações em "Ver números" — a observação determinística agora aparece mesmo com `Ready` (antes sumia).
+- **Progresso:** 1 bolha de adesão + agregados em "Ver números".
+- **Fallback:** só a fala do `CoachFallbackLabels` + "Tentar de novo"; saíram a linha duplicada "Me enrolei aqui…" e o "Desativar IA" do feed (ação só no "Como funciona"). Sem sobreposição (Column).
+- **Chrome:** header "motor no comando" (estado da IA no sheet), chips com end-padding, histórico sem "Conversa" duplicada, composer em uma linha.
+- **Upstream/Go:** doc atual confirma chave pessoal em Console → Account → Personal API keys (service account do print autentica, mas não é a via recomendada para a cota Go); default do proxy corrigido para `https://opencode.ai/inference/go/openai/v1/chat/completions` (o `/zen/go` era alias não documentado). Proxy 13/13.
+- **Testes:** 131 testes do Coach verdes (novos `CoachBubblesTest` + `CoachBubbleCardsTest`; `CoachScreenTest`/`CoachHistoryTest`/`CoachExplanationCardTest` atualizados).
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` (131), `assembleDebug`, `detekt`, `lintDebug`, `spotlessCheck`, proxy `test` verdes. Sem migração, sem dependência nova, sem dado real no diff.
+
+### Pendente
+
+- **Dokploy:** colar a chave pessoal do workspace Go em `COACH_GO_API_KEY`, confirmar **Settings › Privacy → Regions → Global** para DeepSeek V4.1 Flash e redeploy; esperar `coach upstream=go ... 200`. Se seguir lento: `COACH_UPSTREAM_TIMEOUT_MS=10000` ou `COACH_GO_MODELS=glm-5.3-flash` (ou `kimi-k3`).
+- **Aparelho:** `./install.sh` com o token e validar a F3-bolhas (bolhas ≤140, "Ver números", fonte 200%, dark/light, sem sobreposição).
+- Observar 1 semana: unificar card replan × quick replies; fundir `messages+summaries+eventos` num `ChatTurn` persistido.
+
+### Próximo passo
+
+1. Chave/região + redeploy + 10 linhas `coach upstream`.
+2. Instalar e validar a F3-bolhas no aparelho.
+3. Se validada: F4 (roteiros diários) do `PRD_COACH_CHAT`.
 
 ## Sessão 2026-11-20 — Handoff da retomada (Go degradado + F3-bolhas adiada)
 

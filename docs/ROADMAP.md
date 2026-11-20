@@ -364,7 +364,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P1-18 · IA Coach (fora dos ciclos 1–4)
 
-**Status:** concluído no MVP em 18/11/2026 (3.1 + 3.2 + 3.3-A/B/C + Room v19 + histórico + goldens da bar + auditoria de utilidade); validação visual do estado Ready fica para o build com token.
+**Status:** concluído no MVP em 18/11/2026 (3.1 + 3.2 + 3.3-A/B/C + Room v19 + histórico + goldens da bar + auditoria de utilidade); **F3-bolhas (chat sem paredes de texto) implementada em 20/11/2026**; falta a validação visual no aparelho com token e a chave Go/região Global no Dokploy.
 
 - [x] Proxy stateless no Dokploy, `X-Coach-Token`, cadeia com fallback e sem log de payload ([ADR 0051](adr/0051-ia-coach-proxy.md)).
 - [x] Aba central Coach, opt-in/revogação, explicação da semana com validação e fallback determinístico.
@@ -375,6 +375,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Histórico do Coach somente leitura na aba (só com opt-in), com resumos + conversa, loading/vazio/erro, TalkBack, dark/light, fonte 200%, “Apagar histórico” em bloco e apagar item a item com confirmação.
 - [x] Goldens Roborazzi da barra (`bottom-bar-dark/light`) com o Coach selecionado, seleção e clique dos cinco tabs.
 - [x] Auditoria de utilidade no aparelho: parser estrito, legado JSON oculto, histórico sem duplicação, explicação compacta, “Desativar” neutro e lixeira discreta.
+- [x] F3-bolhas (20/11/2026): `CoachBubbles` puro (≤140, palavra inteira, pergunta final), explicação/revisão em bolhas, “Ver números” para review/progresso, observações sempre no anexo, fallback sem duplicação, header “motor no comando”, chips com end-padding, histórico sem “Conversa” duplicada e composer de uma linha. 131 testes do Coach + gates verdes.
 - [ ] Validação visual do card Ready/histórico real no build com token; depois, pós-MVP (input livre, memória em prompt, “quero mais tempo”).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.

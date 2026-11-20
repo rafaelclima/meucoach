@@ -307,6 +307,8 @@ Novo: `CoachChatMapper` (puro) + `CoachPersona` (copy) + `CoachChatLabels` (fala
 
 ### F3 — Timeline consistente (revisada após auditoria no aparelho, 20/11/2026)
 
+**Status 20/11/2026:** F3 e F3-bolhas implementadas; falta `./install.sh` + validação visual no aparelho (fonte 200%, dark/light, "Ver números").
+
 **Achado da auditoria:** a ordem do feed já era temporalmente coerente
 (agora → semana → passada → 4 semanas → arquivo). As 4 quebras reais eram
 a camada interativa, não a ordem: ecos órfãos no meio do feed, chips que
@@ -333,6 +335,27 @@ A F3 como construída:
 Fora desta fatia (observar 1 semana de uso): unificar card replan ×
 quick replies (duplicação "Perdi treino"/"Perdi um treino"); fundir
 `messages+summaries+eventos` num `ChatTurn` único persistido.
+
+### F3-bolhas — implementada em 20/11/2026 (pós-captura no aparelho)
+
+O chrome já era chat, mas o corpo continuava relatório: `McCard` com ~400 chars
+corridos e tabelas de números. A UI passou a impor o formato (prompt não basta):
+
+- **Bolhas:** `CoachBubbles.split` puro (frases ≤140, quebra em palavra inteira,
+  pergunta final sozinha, whitespace normalizado). Título/corpo de explicação e
+  revisão viram `CoachBubbleSequence` (avatar só na primeira bolha).
+- **Anexos:** review e progresso colapsam adesão/volume/prontidão/sono/agregados
+  em um "Ver números" por seção; nenhum número some. Observações da revisão
+  aparecem no anexo mesmo com `Ready` (sinal de segurança nunca é escondido).
+- **Fallback:** só a fala do `CoachFallbackLabels` + "Tentar de novo"; a linha
+  duplicada e o "Desativar IA" saem do feed (ação fica no "Como funciona").
+- **Chrome:** status "motor no comando" (estado da IA no sheet), chips com
+  end-padding, histórico sem "Conversa" duplicada, composer em uma linha.
+- **Testes:** `CoachBubblesTest` + `CoachBubbleCardsTest` (≤140, "Ver números",
+  observações, 200%, light) e regressões de tela/histórico.
+
+Fora desta fatia: input livre digitado; fusão `messages+summaries+eventos` num
+`ChatTurn` persistido.
 
 ### F4 — Roteiros diários (abertura/pós-evento)
 
