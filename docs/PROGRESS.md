@@ -1,6 +1,50 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Coach chat F2 — voz do treinador)
+**Atualizado:** 20/11/2026 (Rota padrão da IA: openrouter/free)
+
+## Sessão 2026-11-20 — Rota padrão da IA vira openrouter/free
+
+**Objetivo:** colocar a rota unificada gratuita do OpenRouter como padrão do proxy.
+
+### Concluído
+
+- **`DEFAULT_MODELS` reordenado:** `openrouter/free` → `super-vl` → `inkling-2-small` (antes: `super-vl` primeiro). Os outros dois seguem como fallback automático; `OPENROUTER_MODELS` continua sobrescrevendo tudo.
+- **Docs:** cadeia atualizada no `PRD_IA_COACH.md`.
+
+### Validação
+
+- Proxy `test` verde (5/5). Sem mudança de contrato, schema ou app.
+
+### Pendente
+
+- Redeploy automático via push; conferir `logcat -s Coach` (`explain ok` / `review ok`) no aparelho.
+
+## Sessão 2026-11-20 — Coach chat F3 (timeline consistente)
+
+**Objetivo:** responder à auditoria da timeline (PRD_COACH_CHAT F3 revisada): rodapé fixo com ecos-ponte, Desativar no sheet, histórico colapsado — sem reescrever fontes.
+
+### Concluído
+
+- **Feed + rodapé:** tela vira `header rolável + feed (weight 1f) + rodapé fixo` (ecos, typing, quick replies em linha rolável, composer). Header fixo foi descartado: em fonte 200% o cromo espremia o feed a zero (regressão real, coberta por teste).
+- **Eco-ponte:** chip mostra sua mensagem no rodapé e rola até o destino (explicação/revisão via `bring-into-view`) ou abre o fluxo (pickers). Fim dos ecos órfãos no meio do feed.
+- **Desativar IA:** sai do feed, vira ação destrutiva no sheet "Como funciona" (tag `coach-disable` preservada).
+- **Histórico:** 1 resumo + 2 turnos + "Ver conversa completa (N)" / "Mostrar menos"; apagar bloco/item intacto.
+- **Regressão:** 2 testes novos (Desativar no sheet, explica-chip com retry) + 1 de histórico longo; 118+ testes do Coach verdes; ordem replan→explicação preservada.
+
+### Validação
+
+- `:app:testDebugUnitTest` (coach/replan/application), `assembleDebug`, `detekt`, `lintDebug`, `spotlessCheck` verdes.
+- Sem migração, sem dependência nova, sem dado real no diff.
+
+### Pendente
+
+- `./install.sh` + validar no aparelho: rodapé fixo ao rolar, eco-ponte rolando até o destino, sheet com Desativar, histórico colapsado, fonte 200%.
+- Observar 1 semana: unificar card replan × quick replies; fundir `messages+summaries+eventos` num `ChatTurn` persistido.
+
+### Próximo passo
+
+1. Instalar e conferir a F3 no aparelho.
+2. Se validada: F3 considerada concluída; próxima é polimento (F4 roteiros diários) ou o Bloco C do handoff.
 
 ## Sessão 2026-11-20 — Coach chat F2 (voz do treinador)
 

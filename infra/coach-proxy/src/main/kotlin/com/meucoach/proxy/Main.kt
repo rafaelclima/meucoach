@@ -146,8 +146,8 @@ private const val SYSTEM_REPLAN =
         "para confirmacao humana; title e body sao strings, nunca objetos."
 
 private val DEFAULT_MODELS = listOf(
-    "nvidia/nemotron-3.5-super-vl:free",
     "openrouter/free",
+    "nvidia/nemotron-3.5-super-vl:free",
     "thinkingmachines/inkling-2-small:free",
 )
 
