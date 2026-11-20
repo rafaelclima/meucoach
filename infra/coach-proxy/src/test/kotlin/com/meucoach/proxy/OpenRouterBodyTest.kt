@@ -57,7 +57,7 @@ class OpenRouterBodyTest {
                 .jsonObject["content"]!!.jsonPrimitive.content
 
             assertTrue(
-                system.contains("codigos internos"),
+                system.contains("códigos internos"),
                 "$kind system prompt must forbid echoing engine codes",
             )
         }
@@ -73,7 +73,8 @@ class OpenRouterBodyTest {
 
             assertTrue(system.contains("WhatsApp"), "$kind must frame the voice as a WhatsApp chat")
             assertTrue(system.contains("140"), "$kind must cap each message at 140 chars")
-            assertTrue(system.contains("pergunta ou acao"), "$kind must close with a question or action")
+            assertTrue(system.contains("pergunta ou ação"), "$kind must close with a question or action")
+            assertTrue(system.contains("acentuação correta"), "$kind must ask for correct pt-BR accents")
         }
     }
 

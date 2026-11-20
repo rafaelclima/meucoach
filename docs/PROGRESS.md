@@ -22,6 +22,7 @@
 - **Visual:** sem avatares repetidos no feed (o avatar fica no header, como chat direto); anexos com borda sutil; composer de uma linha; últimos 2 ecos no rodapé; 4 quick replies no rodapé (sem duplicar “Semana passada”).
 - **Lapidação pós-print:** chips do rodapé encurtados + fade na borda; retrovisor virou text buttons (não compete com os chips); fallback “Tentar de novo” virou text button; trava começa com “Um cuidado:”; CTA do dia vira “Ver como correr hoje” (hoje) ou “Ver o plano” (futuro).
 - **Go:** default `COACH_GO_MODELS` agora tenta `glm-5.3-flash` primeiro e `deepseek-v4.1-flash` depois; o log de 19:35 ainda mostrava o DeepSeek estourando 15 s e o OpenRouter free em 429. Proxy 14/14.
+- **LLM funcionando (19:55):** device mostra `explain ok` e `review ok`; o fallback sumiu. O texto chegou sem acentos (“entao”, “sessoes”) porque o próprio system prompt estava em ASCII; prompts reescritos em pt-BR com acentuação e teste exigindo “acentuação correta”. Precisa redeploy do proxy.
 - **Testes:** `CoachScreenTest`, `CoachHistoryTest` e `CoachExplanationCardTest` atualizados; novo teste de explicação longa que preserva a pergunta final e esconde o meio; 133 testes do Coach verdes.
 
 ### Validação
