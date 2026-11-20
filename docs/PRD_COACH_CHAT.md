@@ -377,6 +377,10 @@ empilhados. A v2 muda a **hierarquia**, não o motor:
   composer de uma linha, 4 quick replies, sem duplicar “Semana passada”.
 - **Fora:** timestamps, animação de 3 pontos e input livre continuam pós-MVP.
 
+**Próxima revisão (v3):** deduplicar ecos do rodapé (mesmo chip tocado duas vezes),
+deixar um chip “Retrovisor” sempre alcançável, suavizar o fade do último quick reply e
+verificar a acentuação da IA. Spec e prompt em `docs/HANDOFF_COACH_V3.md`.
+
 ### F4 — Roteiros diários (abertura/pós-evento)
 
 - Abertura do dia como primeira sequência + system turns (check-in/treino/import) + prova com precedência + véspera de amanhã. Deep-links: Ver como correr → briefing, Ver Tendências, Fazer check-in.

@@ -1,6 +1,12 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Coach v2 estilo WhatsApp + F3-bolhas + checklist do upstream)
+**Atualizado:** 20/11/2026 (Coach v2 no aparelho + LLM ok; próxima fatia Coach v3 documentada)
+
+## Próxima sessão — Coach v3 (handoff)
+
+Ver **`docs/HANDOFF_COACH_V3.md`** (prompt incluso). Foco: deduplicar ecos, chip
+“Retrovisor” sempre alcançável, fade do último chip e verificação dos acentos depois
+do redeploy do proxy (`017a23a`). O print de 19:12 e o logcat de 19:00 estão no handoff.
 
 ## Sessão 2026-11-20 — Coach v2: conversa de verdade (replanejamento da tela)
 
