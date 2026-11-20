@@ -13,8 +13,12 @@ import com.meucoach.app.ui.replan.ReplanChangeUi
 import com.meucoach.app.ui.replan.ReplanSuggestionUi
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.app.ui.replan.ReplanVersionChangeUi
+import com.meucoach.app.ui.replan.shortLabel
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.HeartRateTarget
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.replan.ReplanCause
@@ -93,6 +97,61 @@ class TodayReplanTest {
         compose.onNodeWithTag("replan-changes-sheet").assertIsDisplayed()
         compose.onNodeWithText("Plano v1 → v2").assertIsDisplayed()
         compose.onNodeWithText("Tempo · 30 min → Fácil e conversável · 30 min").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the target change when session labels are identical`() {
+        val targetChange = ReplanChangeUi(
+            date = future,
+            kind = ReplanChangeKind.MODIFIED,
+            kindLabel = "Muda",
+            previousLabel = "Fácil e conversável · 40 min",
+            nextLabel = "Fácil e conversável · 40 min",
+            previousTargetLabel = "FC 140–154 bpm",
+            nextTargetLabel = "FC 137–151 bpm",
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = planWithFuture()),
+                    replan = ReplanUiState(
+                        planVersion = 3,
+                        lastChange = ReplanVersionChangeUi(
+                            fromVersion = 2,
+                            toVersion = 3,
+                            reason = "Seu perfil de planejamento mudou.",
+                            changes = listOf(targetChange),
+                        ),
+                    ),
+                    onReplanRequest = {},
+                    onReplanAccept = {},
+                    onReplanDecline = {},
+                    onReplanSuppress = {},
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Ver o que mudou"))
+        compose.onNodeWithTag("plan-changes").performClick()
+
+        compose.onNodeWithTag("replan-changes-sheet").assertIsDisplayed()
+        compose.onNodeWithText("Fácil e conversável · 40 min").assertIsDisplayed()
+        compose.onNodeWithText("Fácil e conversável · 40 min → Fácil e conversável · 40 min")
+            .assertDoesNotExist()
+        compose.onNodeWithText("FC 140–154 bpm → FC 137–151 bpm").assertIsDisplayed()
+    }
+
+    @Test
+    fun `formats the leading heart-rate target for the diff`() {
+        val targets = PrescriptionTargets(
+            heartRate = HeartRateTarget(minBpm = 140, maxBpm = 154),
+            zone = "Z2",
+            primary = TargetKind.HEART_RATE,
+        )
+
+        assertThat(targets.shortLabel()).isEqualTo("FC 140–154 bpm")
     }
 
     @Test

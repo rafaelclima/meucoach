@@ -349,19 +349,41 @@ private fun ReplanChangeRow(change: ReplanChangeUi) {
                 color = kindColor,
             )
             Text(
-                text = when (change.kind) {
-                    ReplanChangeKind.ADDED -> change.nextLabel.orEmpty()
-
-                    ReplanChangeKind.REMOVED -> change.previousLabel.orEmpty()
-
-                    ReplanChangeKind.MODIFIED ->
-                        listOfNotNull(change.previousLabel, change.nextLabel).joinToString(" → ")
-                },
+                text = change.mainLabel(),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textPrimary,
             )
+            if (change.hasTargetChange()) {
+                Text(
+                    text = listOfNotNull(
+                        change.previousTargetLabel,
+                        change.nextTargetLabel,
+                    ).joinToString(" → "),
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
         }
     }
+}
+
+private fun ReplanChangeUi.mainLabel(): String = when (kind) {
+    ReplanChangeKind.ADDED -> nextLabel.orEmpty()
+
+    ReplanChangeKind.REMOVED -> previousLabel.orEmpty()
+
+    ReplanChangeKind.MODIFIED ->
+        if (previousLabel != null && previousLabel == nextLabel) {
+            previousLabel
+        } else {
+            listOfNotNull(previousLabel, nextLabel).joinToString(" → ")
+        }
+}
+
+private fun ReplanChangeUi.hasTargetChange(): Boolean {
+    if (kind != ReplanChangeKind.MODIFIED) return false
+    if (previousTargetLabel == nextTargetLabel) return false
+    return previousTargetLabel != null || nextTargetLabel != null
 }
 
 private const val MAX_PREVIEW_CHANGES = 3

@@ -1096,7 +1096,8 @@ private fun PlanWeekCard(
     val colors = McTheme.colors
     var skipTarget by remember { mutableStateOf<LocalDate?>(null) }
     var skipReason by remember { mutableStateOf("") }
-    var rationaleExpanded by remember { mutableStateOf(false) }
+    var rationaleExpanded by remember(plan.rationale) { mutableStateOf(false) }
+    var rationaleHasOverflow by remember(plan.rationale) { mutableStateOf(false) }
     McCard(variant = McCardVariant.INSET) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1321,8 +1322,13 @@ private fun PlanWeekCard(
             color = colors.textTertiary,
             maxLines = if (rationaleExpanded) Int.MAX_VALUE else 2,
             overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layoutResult ->
+                if (!rationaleExpanded && layoutResult.hasVisualOverflow) {
+                    rationaleHasOverflow = true
+                }
+            },
         )
-        if (plan.rationale.length > PLAN_RATIONALE_PREVIEW) {
+        if (rationaleHasOverflow || rationaleExpanded) {
             McTextButton(
                 text = if (rationaleExpanded) "Ver menos" else "Ver mais",
                 onClick = { rationaleExpanded = !rationaleExpanded },
@@ -2214,6 +2220,4 @@ private fun TodayScreenLightPreview() {
 
 private val PLAN_LOCALE = Locale.forLanguageTag("pt-BR")
 
-/** Roughly two caption lines at 360 dp before the plan rationale needs a "Ver mais". */
-private const val PLAN_RATIONALE_PREVIEW = 90
 private const val NO_VALUE = "—"

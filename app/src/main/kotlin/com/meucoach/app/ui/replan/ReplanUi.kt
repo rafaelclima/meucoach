@@ -67,6 +67,8 @@ data class ReplanChangeUi(
     val kindLabel: String,
     val previousLabel: String?,
     val nextLabel: String?,
+    val previousTargetLabel: String? = null,
+    val nextTargetLabel: String? = null,
 )
 
 internal fun ReplanSuggestion.toUi(changes: List<ReplanChange>): ReplanSuggestionUi = ReplanSuggestionUi(
@@ -187,9 +189,22 @@ internal fun ReplanChange.toUi(): ReplanChangeUi = ReplanChangeUi(
     },
     previousLabel = before?.label(),
     nextLabel = after?.label(),
+    previousTargetLabel = before?.targets?.shortLabel(),
+    nextTargetLabel = after?.targets?.shortLabel(),
 )
 
 internal fun PlannedSession.label(): String = durationMin?.let { "$title · $it min" } ?: title
+
+/**
+ * Alvo principal resumido para o diff. Quando título/duração são iguais mas o
+ * alvo mudou (ex: FC 140–154 → 137–151), é esse detalhe que explica o "Muda".
+ */
+internal fun com.meucoach.core.domain.prescription.PrescriptionTargets.shortLabel(): String? = heartRate?.let { hr ->
+    val range = hr.maxBpm?.let { max -> "${hr.minBpm}–$max" } ?: "${hr.minBpm}+"
+    "FC $range bpm"
+} ?: pace?.let { target ->
+    "Ritmo ${target.fast.format()}–${target.slow.format()} /km"
+} ?: rpe?.let { "Esforço $it/10" } ?: zone ?: distanceKm?.let { "$it km" }
 
 private val ReplanSuggestion.missedSentence: String
     get() = when (missedTrainableCount) {

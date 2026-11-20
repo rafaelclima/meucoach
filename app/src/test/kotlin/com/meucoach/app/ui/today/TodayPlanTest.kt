@@ -555,6 +555,26 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `hides the expand toggle when rationale fits in two lines`() {
+        val today = LocalDate.now()
+        val plan = planWith(today).copy(rationale = "Semana leve.")
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Semana leve."))
+        compose.onNodeWithText("Semana leve.").assertIsDisplayed()
+        compose.onAllNodesWithText("Ver mais").assertCountEquals(0)
+        compose.onAllNodesWithText("Ver menos").assertCountEquals(0)
+    }
+
+    @Test
     fun `shows a completed session`() {
         val today = LocalDate.now()
         compose.setContent {
