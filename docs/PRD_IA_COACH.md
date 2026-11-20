@@ -49,7 +49,7 @@ Dentro:
 - Revisão semana anterior (planejado × executado via `PlanCompletionCalculator` + `WeeklyReviewCalculator`).
 - Replanejo de imprevisto: "perdi treino X" / "só tenho 30min dia Y" (aceita vários dias e `0` remove o dia) / "trocar dia A por B" → `PlanReplanner` + confirmação + diff + undo.
 - Aba `Coach` com histórico da conversa + resumo persistido.
-- Proxy mínimo na VPS (OpenRouter), opt-in, Room v19.
+- Proxy mínimo na VPS (OpenRouter + OpenCode Go via cadeia com fallback), opt-in, Room v19.
 
 Fora do MVP (pós-MVP):
 - 3.4 disponibilidade futura por conversa, 3.5 check-in inteligente, 3.6 aderência contínua, §4 memória longitudinal completa, §5 iniciativa plena.

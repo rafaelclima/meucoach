@@ -87,4 +87,57 @@ class OpenRouterBodyTest {
         )
         assertTrue(DEFAULT_MODELS.all { it.endsWith(":free") || it == "openrouter/free" })
     }
+
+    @Test
+    fun `go goes first when its key is present`() {
+        val chain = buildChain(
+            openRouterKey = "or-key",
+            openRouterModels = listOf("openrouter/free"),
+            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goKey = "go-key",
+            goModels = listOf("deepseek-v4.1-flash"),
+        )
+
+        assertEquals(listOf("go", "openrouter"), chain.map { it.label })
+        assertEquals("deepseek-v4.1-flash", chain.first().models.first())
+    }
+
+    @Test
+    fun `chain degrades to openrouter only without a go key`() {
+        val chain = buildChain(
+            openRouterKey = "or-key",
+            openRouterModels = listOf("openrouter/free"),
+            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goKey = "",
+            goModels = listOf("deepseek-v4.1-flash"),
+        )
+
+        assertEquals(listOf("openrouter"), chain.map { it.label })
+    }
+
+    @Test
+    fun `chain can run on go only`() {
+        val chain = buildChain(
+            openRouterKey = "",
+            openRouterModels = emptyList(),
+            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goKey = "go-key",
+            goModels = listOf("deepseek-v4.1-flash"),
+        )
+
+        assertEquals(listOf("go"), chain.map { it.label })
+    }
+
+    @Test
+    fun `chain is empty without any key`() {
+        val chain = buildChain(
+            openRouterKey = "",
+            openRouterModels = listOf("openrouter/free"),
+            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goKey = "",
+            goModels = listOf("deepseek-v4.1-flash"),
+        )
+
+        assertTrue(chain.isEmpty())
+    }
 }

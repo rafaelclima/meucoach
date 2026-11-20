@@ -1,6 +1,26 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Rota padrão da IA: openrouter/free)
+**Atualizado:** 20/11/2026 (Upstream duplo: OpenCode Go + OpenRouter)
+
+## Sessão 2026-11-20 — Upstream duplo no proxy (Go primário)
+
+**Objetivo:** usar a assinatura OpenCode Go do usuário 0 como IA do Coach, com OpenRouter de fallback.
+
+### Concluído
+
+- **Proxy agnóstico a provedor:** `UpstreamTarget` + `buildChain()` puros — Go (`COACH_GO_URL`/`COACH_GO_API_KEY`/`COACH_GO_MODELS`, default DeepSeek V4.1 Flash) primeiro, OpenRouter depois; sem chave do Go, comportamento idêntico ao de antes. Headers iguais (Bearer), mesmo corpo JSON — app e validador intactos, sem mudança de contrato.
+- **Escolha do modelo:** DeepSeek V4.1 Flash (maior cota do Go, $100/mês, $0,14/$0,28 por 1M; Muse Spark descartado — exige treino com os dados). Confirmar id exato via `GET /zen/go/v1/models`; 404 cai no fallback sozinho.
+- **Docs:** addendum no ADR 0051 (envs, ressalvas off-label/cota/região Global/treino-com-dados), PRD e handoff atualizados.
+- **Testes:** proxy 10/10 (cadeia Go-primeiro, degradações, tripwire inkling). App sem toque — mesmo contrato.
+
+### Validação
+
+- Proxy `test` + `spotlessCheck` verdes. Sem migração, sem dependência nova, sem dado real.
+
+### Pendente
+
+- **Você no Dokploy:** adicionar `COACH_GO_API_KEY` (e checar região Global p/ DeepSeek) + rebuild. Sem a env, segue só OpenRouter.
+- Depois: `Tentar de novo` no aparelho + `logcat -s Coach` (`coach upstream=go model=deepseek...` no log do Dokploy).
 
 ## Sessão 2026-11-20 — Diagnóstico do 502: inkling morto + router lento
 

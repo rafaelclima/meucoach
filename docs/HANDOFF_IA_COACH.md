@@ -302,7 +302,7 @@ Proxy (não commitado):
 
 - URL: `https://meucoach-api.hojeafestaenossa.site`
 - Build com `-PcoachProxyUrl=... -PcoachProxyToken=...`; vazio = Coach desativado e fallback.
-- Token de produção no Dokploy (`COACH_PROXY_TOKEN`); chave OpenRouter em `OPENROUTER_API_KEY`. Nunca no repo, APK, log, issue ou prompt.
+- Token de produção no Dokploy (`COACH_PROXY_TOKEN`); chave OpenRouter em `OPENROUTER_API_KEY`, chave do Go em `COACH_GO_API_KEY` (`COACH_GO_MODELS` opcional, default `deepseek-v4.1-flash`). Nunca no repo, APK, log, issue ou prompt.
 - Backup real em `fixtures/private/` (gitignored); não usar em CI.
 
 Flakes conhecidos (ver `TESTING.md`): `TutorialSystemBackTest` (transação Room vazada) e `MetricsImportViewModelTest` (timeout de 30 s). Rodar isolado ou `--no-parallel`; consertar, não ignorar.

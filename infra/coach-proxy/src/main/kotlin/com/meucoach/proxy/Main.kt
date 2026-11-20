@@ -37,13 +37,26 @@ fun main() {
         ?.takeIf { it.isNotEmpty() }
         ?: System.getenv("OPENROUTER_MODEL")?.takeIf { it.isNotBlank() }?.let(::listOf)
         ?: DEFAULT_MODELS
-    require(openRouterKey.isNotBlank()) { "OPENROUTER_API_KEY required" }
+    val goUrl = System.getenv("COACH_GO_URL")?.takeIf { it.isNotBlank() }
+        ?: "https://opencode.ai/zen/go/v1/chat/completions"
+    val goKey = System.getenv("COACH_GO_API_KEY").orEmpty()
+    val goModels = System.getenv("COACH_GO_MODELS")?.split(",")
+        ?.map { it.trim() }
+        ?.filter { it.isNotBlank() }
+        ?.takeIf { it.isNotEmpty() }
+        ?: DEFAULT_GO_MODELS
+    require(openRouterKey.isNotBlank() || goKey.isNotBlank()) {
+        "OPENROUTER_API_KEY or COACH_GO_API_KEY required"
+    }
     require(proxyToken.isNotBlank()) { "COACH_PROXY_TOKEN required" }
+    val chain = buildChain(openRouterKey, models, goUrl, goKey, goModels)
 
     val upstream = HttpClient(CIO) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         install(HttpTimeout) {
-            requestTimeoutMillis = System.getenv("OPENROUTER_TIMEOUT_MS")?.toLongOrNull() ?: 15000
+            requestTimeoutMillis = System.getenv("COACH_UPSTREAM_TIMEOUT_MS")?.toLongOrNull()
+                ?: System.getenv("OPENROUTER_TIMEOUT_MS")?.toLongOrNull()
+                ?: 15000
         }
     }
 
@@ -61,7 +74,7 @@ fun main() {
                 // Sem log de payload (só status/latência no Dokploy).
                 val started = System.currentTimeMillis()
                 try {
-                    val upstream = tryModels(upstream, models, openRouterKey, kind, payload)
+                    val upstream = tryModels(upstream, chain, kind, payload)
                     if (upstream == null) {
                         call.respondText(
                             """{"error":"all_models_unavailable"}""",
@@ -146,8 +159,32 @@ private const val SYSTEM_REPLAN =
         "para confirmacao humana; title e body sao strings, nunca objetos."
 
 /**
- * Default chain. `openrouter/free` is the unified free router; the pinned
- * fallbacks must be live `:free` ids (see https://openrouter.ai/api/v1/models —
+ * Upstream targets in failover order. Go (assinatura) primeiro; OpenRouter
+ * free como fallback. Cada alvo só entra na cadeia com chave presente, então
+ * sem `COACH_GO_API_KEY` o comportamento é o de antes (só OpenRouter).
+ */
+data class UpstreamTarget(val label: String, val url: String, val key: String, val models: List<String>)
+
+internal fun buildChain(
+    openRouterKey: String,
+    openRouterModels: List<String>,
+    goUrl: String,
+    goKey: String,
+    goModels: List<String>,
+): List<UpstreamTarget> = buildList {
+    if (goKey.isNotBlank() && goModels.isNotEmpty()) {
+        add(UpstreamTarget("go", goUrl, goKey, goModels))
+    }
+    if (openRouterKey.isNotBlank() && openRouterModels.isNotEmpty()) {
+        add(UpstreamTarget("openrouter", OPENROUTER_URL, openRouterKey, openRouterModels))
+    }
+}
+
+private const val OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+/**
+ * Default OpenRouter chain. `openrouter/free` is the unified free router; the
+ * pinned fallbacks must be live `:free` ids (see https://openrouter.ai/api/v1/models —
  * free ids rotate and dead ones 404, e.g. inkling-2-small was retired).
  */
 internal val DEFAULT_MODELS = listOf(
@@ -156,35 +193,40 @@ internal val DEFAULT_MODELS = listOf(
     "google/gemma-4-31b-it:free",
 )
 
+/** Modelo padrão do Go: maior cota ($100/mês) e menor preço entre os viáveis. */
+internal val DEFAULT_GO_MODELS = listOf("deepseek-v4.1-flash")
+
 /**
- * Tenta os modelos em ordem e devolve o primeiro 2xx.
+ * Tenta os alvos em ordem (Go, depois OpenRouter) e dentro de cada alvo os
+ * modelos em ordem; devolve o primeiro 2xx.
  * 429/5xx/timeout passam para o próximo; outro 4xx retorna na hora
  * (erro do pedido, não do modelo). Sem log de payload.
  */
 private suspend fun tryModels(
     client: HttpClient,
-    models: List<String>,
-    openRouterKey: String,
+    chain: List<UpstreamTarget>,
     kind: String,
     payload: String,
 ): Pair<String, HttpStatusCode>? {
-    for (model in models) {
-        try {
-            val res = client.post("https://openrouter.ai/api/v1/chat/completions") {
-                header(HttpHeaders.Authorization, "Bearer $openRouterKey")
-                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                header("HTTP-Referer", "https://meucoach.app")
-                header("X-Title", "MeuCoach Coach")
-                setBody(buildOpenRouterBody(model, kind, payload))
+    for (target in chain) {
+        for (model in target.models) {
+            try {
+                val res = client.post(target.url) {
+                    header(HttpHeaders.Authorization, "Bearer ${target.key}")
+                    header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    header("HTTP-Referer", "https://meucoach.app")
+                    header("X-Title", "MeuCoach Coach")
+                    setBody(buildOpenRouterBody(model, kind, payload))
+                }
+                if (res.status.value in 200..299) return res.bodyAsText() to res.status
+                println("coach upstream=${target.label} model=$model status=${res.status.value} (trying next)")
+                // 400/401/402/422 são problema do pedido ou da conta: não adianta trocar de modelo.
+                if (res.status.value in listOf(400, 401, 402, 422)) {
+                    return res.bodyAsText() to res.status
+                }
+            } catch (e: Exception) {
+                println("coach upstream=${target.label} model=$model error=${e.message} (trying next)")
             }
-            if (res.status.value in 200..299) return res.bodyAsText() to res.status
-            println("coach model=$model status=${res.status.value} (trying next)")
-            // 400/401/402/422 são problema do pedido ou da conta: não adianta trocar de modelo.
-            if (res.status.value in listOf(400, 401, 402, 422)) {
-                return res.bodyAsText() to res.status
-            }
-        } catch (e: Exception) {
-            println("coach model=$model error=${e.message} (trying next)")
         }
     }
     // 400/401/402/422 retornam na hora; aqui só restam 403/404/429/5xx/timeout.

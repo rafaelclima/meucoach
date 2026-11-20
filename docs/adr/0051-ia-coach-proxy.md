@@ -156,6 +156,22 @@ modelos sem publicar o app.
 - **Testes:** prompt/validator puros, `CoachApi` com servidor local, consent
   store, ViewModel (explicação e revisão), source da semana fechada e tela. Sem
   dados reais no CI; o teste real é manual contra a VPS.
+- **Correção 20/11/2026 (upstream duplo: OpenCode Go + OpenRouter):**
+  assinatura Go do usuário 0 alimenta o Coach via endpoint OpenAI-compatible
+  (`COACH_GO_URL`, default `https://opencode.ai/zen/go/v1/chat/completions`)
+  com `COACH_GO_API_KEY` e `COACH_GO_MODELS` (default
+  `deepseek-v4.1-flash`: maior cota do Go, $100/mês). A cadeia tenta o Go
+  primeiro e cai no OpenRouter sozinha (`UpstreamTarget` + `buildChain`
+  puros, com teste-tripwire); sem chave do Go, o comportamento é o de antes.
+  Envs só no Dokploy, nunca no APK; `COACH_UPSTREAM_TIMEOUT_MS` opcional
+  (cai para o legado `OPENROUTER_TIMEOUT_MS`, default 15 s).
+  **Exige redeploy + `COACH_GO_API_KEY` no Dokploy.** Ressalvas aceitas:
+  Go é off-label para tráfego não-agente (monitorado contra abuso),
+  cota compartilhada com o uso no coding, DeepSeek exige região Global no
+  console, e o Go bloqueia por padrão endpoints que treinam com os dados
+  (manter assim). Confirmar o id exato em
+  `GET opencode.ai/zen/go/v1/models` com a chave (404 cai no fallback
+  sozinho, sem quebrar a aba).
 - **Correção 19/11/2026 (JSON inválido no explain):** `buildOpenRouterBody`
   montava o corpo por interpolação sem escapar o system prompt; `SYSTEM_EXPLAIN`
   e `SYSTEM_REPLAN` contêm `{"title":...}` literal e geravam JSON inválido →
