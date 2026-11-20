@@ -40,7 +40,7 @@ fun main() {
         ?: System.getenv("OPENROUTER_MODEL")?.takeIf { it.isNotBlank() }?.let(::listOf)
         ?: DEFAULT_MODELS
     val goUrl = System.getenv("COACH_GO_URL")?.takeIf { it.isNotBlank() }
-        ?: "https://opencode.ai/zen/go/v1/chat/completions"
+        ?: DEFAULT_GO_URL
     val goKey = System.getenv("COACH_GO_API_KEY").orEmpty()
     val goModels = System.getenv("COACH_GO_MODELS")?.split(",")
         ?.map { it.trim() }
@@ -203,6 +203,13 @@ internal fun sessionIdFor(kind: String, payload: String): String {
 }
 
 private const val OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+/**
+ * Documented Go base URL (`https://opencode.ai/inference/go`) plus the OpenAI
+ * Chat Completions path. The old `/zen/go/v1/...` alias answered `/models` but
+ * is not in the current Console docs; keep the canonical path.
+ */
+internal const val DEFAULT_GO_URL = "https://opencode.ai/inference/go/openai/v1/chat/completions"
 
 /**
  * Default OpenRouter chain. `openrouter/free` is the unified free router; the

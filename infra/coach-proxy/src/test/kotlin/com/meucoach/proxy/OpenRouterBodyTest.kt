@@ -89,11 +89,19 @@ class OpenRouterBodyTest {
     }
 
     @Test
+    fun `default go url follows the console docs`() {
+        assertEquals(
+            "https://opencode.ai/inference/go/openai/v1/chat/completions",
+            DEFAULT_GO_URL,
+        )
+    }
+
+    @Test
     fun `go goes first when its key is present`() {
         val chain = buildChain(
             openRouterKey = "or-key",
             openRouterModels = listOf("openrouter/free"),
-            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goUrl = DEFAULT_GO_URL,
             goKey = "go-key",
             goModels = listOf("deepseek-v4.1-flash"),
         )
@@ -107,7 +115,7 @@ class OpenRouterBodyTest {
         val chain = buildChain(
             openRouterKey = "or-key",
             openRouterModels = listOf("openrouter/free"),
-            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goUrl = DEFAULT_GO_URL,
             goKey = "",
             goModels = listOf("deepseek-v4.1-flash"),
         )
@@ -120,7 +128,7 @@ class OpenRouterBodyTest {
         val chain = buildChain(
             openRouterKey = "",
             openRouterModels = emptyList(),
-            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goUrl = DEFAULT_GO_URL,
             goKey = "go-key",
             goModels = listOf("deepseek-v4.1-flash"),
         )
@@ -133,7 +141,7 @@ class OpenRouterBodyTest {
         val chain = buildChain(
             openRouterKey = "",
             openRouterModels = listOf("openrouter/free"),
-            goUrl = "https://opencode.ai/zen/go/v1/chat/completions",
+            goUrl = DEFAULT_GO_URL,
             goKey = "",
             goModels = listOf("deepseek-v4.1-flash"),
         )
