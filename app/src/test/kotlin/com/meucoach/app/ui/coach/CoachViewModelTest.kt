@@ -97,6 +97,7 @@ class CoachViewModelTest {
     private lateinit var checkIns: CheckInRepository
     private lateinit var planRepository: TrainingPlanRepository
     private lateinit var replanFactory: ReplanControllerFactory
+    private val dispatcher = UnconfinedTestDispatcher()
     private val viewModels = mutableListOf<CoachViewModel>()
     private val appScopes = mutableListOf<CoroutineScope>()
     private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
@@ -130,7 +131,7 @@ class CoachViewModelTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(dispatcher)
         val context = ApplicationProvider.getApplicationContext<Context>()
         consent = CoachConsentStore(context, "coach-vm-${System.nanoTime()}")
         plans = MutableStateFlow(null)
@@ -183,13 +184,14 @@ class CoachViewModelTest {
         // them before closing it so `Dispatchers.resetMain` never races a write.
         appScopes.forEach { it.cancel() }
         appScopes.clear()
+        dispatcher.scheduler.advanceUntilIdle()
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
     }
 
     private fun viewModel(api: FakeCoachApi): CoachViewModel {
-        val appScope = CoroutineScope(Dispatchers.Unconfined)
+        val appScope = CoroutineScope(dispatcher)
         appScopes += appScope
         val vm = CoachViewModel(
             consent = consent,

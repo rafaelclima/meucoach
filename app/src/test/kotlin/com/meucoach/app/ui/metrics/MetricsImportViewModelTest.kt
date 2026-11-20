@@ -24,12 +24,14 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import java.util.concurrent.Executors
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class MetricsImportViewModelTest {
     private val dispatcher = UnconfinedTestDispatcher()
+    private val databaseExecutor = Executors.newSingleThreadExecutor()
     private lateinit var context: Context
     private lateinit var database: MeuCoachDatabase
     private lateinit var repository: DailyMetricsRepository
@@ -43,6 +45,10 @@ class MetricsImportViewModelTest {
             Room
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
                 .allowMainThreadQueries()
+                // A dedicated executor keeps this test isolated from a writer
+                // left behind by another class on Room's shared IO pool.
+                .setQueryExecutor(databaseExecutor)
+                .setTransactionExecutor(databaseExecutor)
                 .build()
         repository = DailyMetricsRepository(database)
     }
@@ -51,6 +57,7 @@ class MetricsImportViewModelTest {
     fun tearDown() {
         currentViewModel?.viewModelScope?.cancel()
         database.close()
+        databaseExecutor.shutdownNow()
         Dispatchers.resetMain()
     }
 

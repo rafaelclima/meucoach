@@ -46,6 +46,7 @@ import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.ReadinessLevel
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,6 +61,15 @@ import java.time.LocalDate
 class CoachScreenTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @After
+    fun settleAnimations() {
+        // Quick replies animate the feed scroll on the main clock. Let it
+        // finish before the rule disposes, so `Dispatchers.Main` is free for
+        // the next test class (otherwise coroutines-test warns/throws).
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+    }
 
     @Test
     fun `mostra a narrativa e o resumo deterministico da semana`() {
