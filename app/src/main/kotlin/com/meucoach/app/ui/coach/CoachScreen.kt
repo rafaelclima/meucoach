@@ -7,10 +7,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,7 +37,6 @@ import com.meucoach.app.ui.replan.ReplanChangesSheet
 import com.meucoach.app.ui.replan.ReplanMessageCard
 import com.meucoach.app.ui.replan.ReplanSuggestionSheet
 import com.meucoach.app.ui.replan.ReplanUiState
-import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTheme
@@ -104,6 +108,7 @@ fun CoachRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoachScreen(
     consented: Boolean,
@@ -150,11 +155,15 @@ fun CoachScreen(
     var replanSheetOpen by rememberSaveable { mutableStateOf(false) }
     var replanChangesOpen by rememberSaveable { mutableStateOf(false) }
     var infoOpen by rememberSaveable { mutableStateOf(false) }
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
+    var showReview by rememberSaveable { mutableStateOf(false) }
+    var showProgress by rememberSaveable { mutableStateOf(false) }
     val userEchoes = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
     val feedScroll = rememberScrollState()
     var explainY by remember { mutableStateOf<Int?>(null) }
-    var reviewY by remember { mutableStateOf<Int?>(null) }
+    val reviewBring = remember { BringIntoViewRequester() }
+    val progressBring = remember { BringIntoViewRequester() }
     fun scrollTo(y: Int?) {
         if (y == null) return
         scope.launch { feedScroll.animateScrollTo(y.coerceAtLeast(0)) }
@@ -162,8 +171,19 @@ fun CoachScreen(
     LaunchedEffect(replan.suggestion != null) {
         if (replan.suggestion != null) replanSheetOpen = true
     }
+    LaunchedEffect(showReview) {
+        if (showReview) reviewBring.bringIntoView()
+    }
+    LaunchedEffect(showProgress) {
+        if (showProgress) progressBring.bringIntoView()
+    }
     val onboarding = next is CoachNextUiState.Onboarding
     val status = "motor no comando"
+    val reviewAvailable = consented && review != null
+    val historyAvailable = consented && history != CoachHistoryState.Hidden
+    val progressAvailable = progress != CoachProgressUiState.Hidden
+    val historySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -179,18 +199,11 @@ fun CoachScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CoachChatHeader(status = status, onInfoClick = { infoOpen = true })
-            if (onboarding) {
-                CoachBubble(
-                    text = "Opa! Pra eu montar seus treinos, preciso de 3 coisas. " +
-                        "Me conta aqui embaixo que eu já organizo.",
-                    testTag = "coach-chat-opening",
-                )
-            } else {
-                CoachBubble(
-                    text = "Opa, bora ver o que importa hoje? Separei tudo aqui embaixo.",
-                    testTag = "coach-chat-opening",
-                )
-            }
+            CoachDateDivider(text = "Hoje")
+            CoachBubbleSequence(
+                texts = CoachBubbles.split(openingText(next)),
+                testTag = "coach-chat-opening",
+            )
             CoachNextCard(
                 state = next,
                 onRetry = onNextRetry,
@@ -202,12 +215,6 @@ fun CoachScreen(
             )
             if (!onboarding) {
                 CoachGuardsCard(state = guards, onRetry = onGuardsRetry)
-                CoachReplanCard(
-                    state = replan,
-                    onRequest = onReplanRequest,
-                    onMissed = onReplanRequestMissed,
-                    onLessTime = onReplanRequestLessTime,
-                )
                 if (replan.suggestion == null) {
                     replan.message?.let { message ->
                         ReplanMessageCard(
@@ -232,25 +239,10 @@ fun CoachScreen(
                             CoachExplanationState.Unavailable -> Unit
 
                             CoachExplanationState.Loading -> {
-                                McCard {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        CircularProgressIndicator(color = McTheme.colors.accent)
-                                        Text(
-                                            text = "Consultando o Coach…",
-                                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                            color = McTheme.colors.textPrimary,
-                                        )
-                                        Text(
-                                            text = "Analisando sua semana e seus treinos.",
-                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                            color = McTheme.colors.textTertiary,
-                                        )
-                                    }
-                                }
+                                CoachBubble(
+                                    text = "Deixa eu olhar sua semana…",
+                                    testTag = "coach-explanation-loading",
+                                )
                             }
 
                             is CoachExplanationState.Ready -> {
@@ -274,15 +266,6 @@ fun CoachScreen(
                             }
                         }
                     }
-                    review?.let { current ->
-                        Column(
-                            modifier = Modifier.onGloballyPositioned {
-                                reviewY = it.positionInParent().y.roundToInt()
-                            },
-                        ) {
-                            CoachReviewCard(review = current, state = reviewState)
-                        }
-                    }
                 } else {
                     CoachAiInviteCard(
                         expanded = showConsent,
@@ -290,15 +273,38 @@ fun CoachScreen(
                         onDismiss = onDismiss,
                     )
                 }
-                CoachProgressCard(state = progress, onRetry = onProgressRetry, onTrends = onProgressTrends)
-                if (consented && history != CoachHistoryState.Hidden) {
-                    CoachHistoryCard(
-                        state = history,
-                        onClear = onClearHistory,
-                        onRetry = onRetryHistory,
-                        onDeleteMessage = onDeleteHistoryMessage,
-                        onDeleteSummary = onDeleteHistorySummary,
+                if (reviewAvailable || progressAvailable || historyAvailable) {
+                    CoachRetroPrompt(
+                        showReview = showReview && reviewAvailable,
+                        showProgress = showProgress && progressAvailable,
+                        reviewAvailable = reviewAvailable,
+                        progressAvailable = progressAvailable,
+                        historyAvailable = historyAvailable,
+                        onReview = {
+                            userEchoes.add("Como foi minha semana passada?")
+                            showReview = true
+                            showProgress = false
+                        },
+                        onProgress = {
+                            showProgress = !showProgress
+                            if (showProgress) showReview = false
+                        },
+                        onHistory = { historyOpen = true },
                     )
+                }
+                if (reviewAvailable && showReview) {
+                    Column(modifier = Modifier.bringIntoViewRequester(reviewBring)) {
+                        CoachReviewCard(review = review, state = reviewState)
+                    }
+                }
+                if (progressAvailable && showProgress) {
+                    Column(modifier = Modifier.bringIntoViewRequester(progressBring)) {
+                        CoachProgressCard(
+                            state = progress,
+                            onRetry = onProgressRetry,
+                            onTrends = onProgressTrends,
+                        )
+                    }
                 }
             }
         }
@@ -309,10 +315,11 @@ fun CoachScreen(
                     .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (explanation is CoachExplanationState.Loading || reviewState is CoachReviewState.Loading) {
-                    CoachTyping()
-                }
-                userEchoes.forEach { echo ->
+                val typing = explanation is CoachExplanationState.Loading ||
+                    (showReview && reviewState is CoachReviewState.Loading) ||
+                    (showProgress && progress is CoachProgressUiState.Loading)
+                if (typing) CoachTyping()
+                userEchoes.takeLast(2).forEach { echo ->
                     UserBubble(
                         text = echo,
                         testTag = "coach-user-echo",
@@ -323,10 +330,6 @@ fun CoachScreen(
                         userEchoes.add("Pode explicar minha semana?")
                         onRetry()
                         scrollTo(explainY)
-                    },
-                    onReview = {
-                        userEchoes.add("Como foi minha semana passada?")
-                        scrollTo(reviewY)
                     },
                     onMissed = {
                         userEchoes.add("Perdi o treino de ontem")
@@ -352,6 +355,29 @@ fun CoachScreen(
             onRevoke = onRevoke,
             aiActive = consented,
         )
+    }
+    if (historyOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { historyOpen = false },
+            sheetState = historySheetState,
+            containerColor = McTheme.colors.surface,
+            modifier = Modifier.testTag("coach-history-sheet"),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+            ) {
+                CoachHistoryCard(
+                    state = history,
+                    onClear = onClearHistory,
+                    onRetry = onRetryHistory,
+                    onDeleteMessage = onDeleteHistoryMessage,
+                    onDeleteSummary = onDeleteHistorySummary,
+                )
+            }
+        }
     }
     if (replanSheetOpen && replan.suggestion != null) {
         ReplanSuggestionSheet(
@@ -401,8 +427,8 @@ fun CoachScreen(
 /**
  * AI is optional; the deterministic Coach never depends on it (P-03).
  *
- * After "Depois" the card collapses but keeps a persistent "Ativar IA", so the
- * screen never becomes a dead end.
+ * The invite is a chat bubble, not a card: after "Depois" it keeps a persistent
+ * "Ativar IA" so the screen never becomes a dead end.
  */
 @Composable
 private fun CoachAiInviteCard(
@@ -411,61 +437,60 @@ private fun CoachAiInviteCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    McCard(modifier = modifier.testTag("coach-ai-invite")) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "IA do Coach (opcional)",
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                color = McTheme.colors.textPrimary,
-            )
-            Text(
-                text = "Seu próximo treino, as travas e a evolução já funcionam no aparelho, sem IA.",
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = McTheme.colors.textSecondary,
-            )
-            if (expanded) {
-                Text(
-                    text = "Para reescrever a explicação e a revisão, o app envia um resumo dos " +
-                        "treinos (sem nome e sem mapa) ao serviço de IA. O motor continua decidindo.",
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    color = McTheme.colors.textSecondary,
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                ) {
-                    McPrimaryButton(
-                        text = "Ativar IA",
-                        onClick = onGrant,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("coach-ai-grant"),
-                    )
-                    McSecondaryButton(
-                        text = "Depois",
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("coach-ai-later"),
-                    )
-                }
+    val colors = McTheme.colors
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("coach-ai-invite"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CoachBubble(
+            text = if (expanded) {
+                "A IA é opcional: seu treino, as travas e a evolução já funcionam no aparelho. " +
+                    "Quer que eu escreva a explicação e a revisão? Envio só um resumo, sem nome e sem mapa."
             } else {
-                Text(
-                    text = "A explicação em texto continua desligada.",
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    color = McTheme.colors.textTertiary,
-                )
+                "A explicação em texto está desligada. Quer ligar a IA?"
+            },
+            testTag = "coach-ai-invite-bubble",
+        )
+        if (expanded) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 McPrimaryButton(
                     text = "Ativar IA",
                     onClick = onGrant,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
                         .testTag("coach-ai-grant"),
                 )
+                McSecondaryButton(
+                    text = "Depois",
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("coach-ai-later"),
+                )
+            }
+        } else {
+            TextButton(
+                onClick = onGrant,
+                modifier = Modifier.testTag("coach-ai-grant"),
+            ) {
+                Text(text = "Ativar IA", color = colors.accentText)
             }
         }
     }
+}
+
+private fun openingText(next: CoachNextUiState): String = when (next) {
+    CoachNextUiState.Empty -> "Fechamos a semana. Descansa que segunda eu trago a próxima."
+
+    is CoachNextUiState.Onboarding ->
+        "Opa! Pra eu montar seus treinos, preciso de 3 coisas. " +
+            "Me conta aqui embaixo que eu já organizo."
+
+    is CoachNextUiState.Error -> "Não consegui carregar aqui. Tenta de novo?"
+
+    else -> "Oi, bora ver o que importa?"
 }

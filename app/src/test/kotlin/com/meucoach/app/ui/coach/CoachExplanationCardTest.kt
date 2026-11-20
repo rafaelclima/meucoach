@@ -47,7 +47,31 @@ class CoachExplanationCardTest {
         compose.onNodeWithTag("coach-explanation-toggle").performScrollTo().performClick()
 
         compose.onNodeWithText("• Mantenha o volume atual").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Ocultar detalhes").assertExists()
+        compose.onNodeWithText("Mostrar menos").assertExists()
+    }
+
+    @Test
+    fun `explicacao longa preserva a pergunta final e esconde o meio`() {
+        val body = "Primeira frase com detalhe suficiente para ocupar a bolha inteira sem caber junto. " +
+            "Segunda frase também comprida para forçar outra bolha e preservar o corte. " +
+            "Terceira frase fica escondida no meio até você pedir os detalhes. " +
+            "Bora seguir assim?"
+        setContent(
+            state = CoachExplanationState.Ready(
+                title = "Semana",
+                body = body,
+                bullets = emptyList(),
+            ),
+        )
+
+        compose.onNodeWithText("Bora seguir assim?").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Terceira frase fica escondida", substring = true).assertDoesNotExist()
+
+        compose.onNodeWithTag("coach-explanation-toggle").performScrollTo().performClick()
+
+        compose.onNodeWithText("Terceira frase fica escondida", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     @Test

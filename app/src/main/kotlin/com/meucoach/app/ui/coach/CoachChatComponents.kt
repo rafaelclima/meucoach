@@ -1,10 +1,12 @@
 package com.meucoach.app.ui.coach
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,8 +15,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
 
@@ -74,18 +81,17 @@ internal fun CoachChatHeader(status: String, onInfoClick: () -> Unit, modifier: 
                 color = colors.textSecondary,
             )
         }
-        TextButton(
+        IconButton(
             onClick = onInfoClick,
             modifier = Modifier
                 .padding(end = 44.dp)
                 .testTag("coach-chat-info")
                 .semantics { contentDescription = "Como funciona o Coach" },
         ) {
-            Text(
-                text = "Como funciona",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary,
-                maxLines = 1,
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = colors.textSecondary,
             )
         }
     }
@@ -96,7 +102,7 @@ internal fun CoachBubble(
     text: String,
     modifier: Modifier = Modifier,
     testTag: String = "coach-bubble",
-    showAvatar: Boolean = true,
+    showAvatar: Boolean = false,
 ) {
     val colors = McTheme.colors
     Row(
@@ -119,8 +125,6 @@ internal fun CoachBubble(
                     color = colors.onAccent,
                 )
             }
-        } else {
-            Spacer(modifier = Modifier.size(28.dp))
         }
         Surface(
             modifier = Modifier
@@ -141,21 +145,131 @@ internal fun CoachBubble(
 }
 
 /**
- * Consecutive coach bubbles share one avatar, like a chat thread. Each bubble
- * keeps its own text semantics so TalkBack reads them one by one.
+ * Consecutive coach bubbles share one visual group. Direct chat hides per
+ * message avatars (the header already identifies the coach), so bubbles stay
+ * close to the edge and the conversation reads cleaner.
  */
 @Composable
-internal fun CoachBubbleSequence(texts: List<String>, testTag: String, modifier: Modifier = Modifier) {
+internal fun CoachBubbleSequence(
+    texts: List<String>,
+    testTag: String,
+    modifier: Modifier = Modifier,
+    showAvatar: Boolean = false,
+) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        texts.forEachIndexed { index, text ->
+        texts.forEach { text ->
             CoachBubble(
                 text = text,
                 testTag = testTag,
-                showAvatar = index == 0,
+                showAvatar = showAvatar,
             )
+        }
+    }
+}
+
+/** Chat date divider: one quiet label, never a report overline. */
+@Composable
+internal fun CoachDateDivider(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = McTheme.colors.textTertiary,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .testTag("coach-date-divider"),
+    )
+}
+
+/**
+ * A rounded attachment that belongs to the conversation (today's session,
+ * guards, numbers). It aligns under the coach avatar and never fills the whole
+ * width, so the feed still reads as chat instead of a dashboard.
+ */
+@Composable
+internal fun CoachAttachment(
+    testTag: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier
+            .padding(end = 24.dp)
+            .testTag(testTag),
+        shape = MaterialTheme.shapes.large,
+        color = McTheme.colors.surfaceElevated,
+        border = BorderStroke(1.dp, McTheme.colors.borderSubtle),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            content = content,
+        )
+    }
+}
+
+/**
+ * One coach prompt for the retrovisor. Review, evolution and history are on
+ * demand: the feed stays a conversation instead of a report with every section
+ * open at once.
+ */
+@Composable
+internal fun CoachRetroPrompt(
+    showReview: Boolean,
+    showProgress: Boolean,
+    reviewAvailable: Boolean,
+    progressAvailable: Boolean,
+    historyAvailable: Boolean,
+    onReview: () -> Unit,
+    onProgress: () -> Unit,
+    onHistory: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("coach-retro-prompt"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CoachBubble(
+            text = "Quer olhar pra trás?",
+            testTag = "coach-retro-bubble",
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+        ) {
+            if (reviewAvailable) {
+                FilterChip(
+                    selected = showReview,
+                    onClick = onReview,
+                    label = { Text("Semana passada") },
+                    modifier = Modifier.testTag("coach-retro-review"),
+                )
+            }
+            if (progressAvailable) {
+                FilterChip(
+                    selected = showProgress,
+                    onClick = onProgress,
+                    label = { Text("Evolução") },
+                    modifier = Modifier.testTag("coach-retro-progress"),
+                )
+            }
+            if (historyAvailable) {
+                FilterChip(
+                    selected = false,
+                    onClick = onHistory,
+                    label = { Text("Histórico") },
+                    modifier = Modifier.testTag("coach-retro-history"),
+                )
+            }
+            Spacer(modifier = Modifier.width(24.dp))
         }
     }
 }
@@ -222,7 +336,6 @@ internal fun CoachTyping(modifier: Modifier = Modifier) {
 @Composable
 internal fun CoachQuickReplies(
     onExplain: () -> Unit,
-    onReview: () -> Unit,
     onMissed: () -> Unit,
     onLessTime: () -> Unit,
     onAdjust: () -> Unit,
@@ -236,7 +349,6 @@ internal fun CoachQuickReplies(
             .testTag("coach-quick-replies"),
     ) {
         QuickChip(text = "Explica minha semana", testTag = "coach-quick-explain", onClick = onExplain)
-        QuickChip(text = "Semana passada?", testTag = "coach-quick-review", onClick = onReview)
         QuickChip(text = "Perdi um treino", testTag = "coach-quick-missed", onClick = onMissed)
         QuickChip(text = "Só tenho 30 min", testTag = "coach-quick-less-time", onClick = onLessTime)
         QuickChip(text = "Ajustar a semana", testTag = "coach-quick-adjust", onClick = onAdjust)

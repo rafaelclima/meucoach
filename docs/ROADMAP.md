@@ -376,6 +376,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Goldens Roborazzi da barra (`bottom-bar-dark/light`) com o Coach selecionado, seleção e clique dos cinco tabs.
 - [x] Auditoria de utilidade no aparelho: parser estrito, legado JSON oculto, histórico sem duplicação, explicação compacta, “Desativar” neutro e lixeira discreta.
 - [x] F3-bolhas (20/11/2026): `CoachBubbles` puro (≤140, palavra inteira, pergunta final), explicação/revisão em bolhas, “Ver números” para review/progresso, observações sempre no anexo, fallback sem duplicação, header “motor no comando”, chips com end-padding, histórico sem “Conversa” duplicada e composer de uma linha. 131 testes do Coach + gates verdes.
+- [x] Coach v2 estilo WhatsApp (20/11/2026): feed sem os três cartões grandes, anexo compacto do dia, travas só quando existem, replan via quick replies (card removido), explicação recolhida em 3 bolhas + “Ver detalhes”, retrovisor sob demanda (revisão/evolução no feed, histórico em sheet) e sem avatares repetidos. 133 testes do Coach verdes.
 - [ ] Validação visual do card Ready/histórico real no build com token; depois, pós-MVP (input livre, memória em prompt, “quero mais tempo”).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.

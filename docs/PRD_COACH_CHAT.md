@@ -357,6 +357,26 @@ corridos e tabelas de números. A UI passou a impor o formato (prompt não basta
 Fora desta fatia: input livre digitado; fusão `messages+summaries+eventos` num
 `ChatTurn` persistido.
 
+### Revisão v2 — conversa enxuta (20/11/2026, feedback do usuário 0)
+
+A tela ainda abria com três cartões grandes e revisão/evolução/histórico sempre
+empilhados. A v2 muda a **hierarquia**, não o motor:
+
+- **Abertura:** divisor “Hoje”, 1 bolha de abertura e um anexo compacto do dia
+  (headline, planejado, motivo, prontidão, “Ver no Hoje”). Sem overline de card.
+- **Travas:** só quando existem; bolhas curtas com “Ver mais”. Semana limpa não
+  ocupa o feed.
+- **Replan:** `CoachReplanCard` removido do feed; quick replies e sheets fazem o
+  mesmo fluxo.
+- **Explicação:** até 3 bolhas (2 + pergunta final) e “Ver detalhes” para o meio
+  e os bullets.
+- **Retrovisor sob demanda:** revisão/evolução/histórico aparecem ao tocar em
+  “Quer olhar pra trás?”; histórico em bottom sheet. `bring-into-view` leva até
+  a seção revelada.
+- **Direção visual:** avatar só no header (chat direto), anexos com borda sutil,
+  composer de uma linha, 4 quick replies, sem duplicar “Semana passada”.
+- **Fora:** timestamps, animação de 3 pontos e input livre continuam pós-MVP.
+
 ### F4 — Roteiros diários (abertura/pós-evento)
 
 - Abertura do dia como primeira sequência + system turns (check-in/treino/import) + prova com precedência + véspera de amanhã. Deep-links: Ver como correr → briefing, Ver Tendências, Fazer check-in.

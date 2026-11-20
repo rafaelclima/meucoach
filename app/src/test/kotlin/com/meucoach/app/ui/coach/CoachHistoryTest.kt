@@ -2,6 +2,7 @@ package com.meucoach.app.ui.coach
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.coach.CoachMemoryMessage
@@ -37,6 +39,7 @@ class CoachHistoryTest {
     @Test
     fun `historico mostra resumos e conversa em leitura`() {
         setContent(history = readyHistory())
+        openHistory()
 
         compose.onNodeWithTag("coach-history-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Nossa conversa").performScrollTo().assertIsDisplayed()
@@ -54,6 +57,7 @@ class CoachHistoryTest {
     @Test
     fun `historico vazio explica que ainda nao ha conversa`() {
         setContent(history = CoachHistoryState.Empty)
+        openHistory()
 
         compose.onNodeWithTag("coach-history-empty").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Nada guardado ainda", substring = true)
@@ -68,6 +72,7 @@ class CoachHistoryTest {
             history = CoachHistoryState.Error("Não foi possível carregar o histórico."),
             onRetry = { retried++ },
         )
+        openHistory()
 
         compose.onNodeWithTag("coach-history-error").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-history-retry").performScrollTo().performClick()
@@ -78,6 +83,7 @@ class CoachHistoryTest {
     @Test
     fun `historico em carregamento mostra progresso`() {
         setContent(history = CoachHistoryState.Loading)
+        openHistory()
 
         compose.onNodeWithTag("coach-history-loading").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Carregando histórico…").performScrollTo().assertIsDisplayed()
@@ -94,6 +100,7 @@ class CoachHistoryTest {
     fun `apagar historico pede confirmacao e nao apaga ao cancelar`() {
         var cleared = 0
         setContent(history = readyHistory(), onClear = { cleared++ })
+        openHistory()
 
         compose.onNodeWithContentDescription("Apagar todo o histórico do Coach")
             .performScrollTo()
@@ -115,6 +122,7 @@ class CoachHistoryTest {
     fun `apagar mensagem individual pede confirmacao`() {
         var deletedId: String? = null
         setContent(history = readyHistory(), onDeleteMessage = { deletedId = it })
+        openHistory()
 
         compose.onNodeWithTag("coach-history-delete-message-message-1")
             .performScrollTo()
@@ -137,6 +145,7 @@ class CoachHistoryTest {
     fun `apagar resumo individual pede confirmacao`() {
         var deletedWeek: LocalDate? = null
         setContent(history = readyHistory(), onDeleteSummary = { deletedWeek = it })
+        openHistory()
 
         compose.onNodeWithTag("coach-history-delete-summary-2026-11-02")
             .performScrollTo()
@@ -150,6 +159,7 @@ class CoachHistoryTest {
     @Test
     fun `historico aparece no tema claro`() {
         setContent(history = readyHistory(), dark = false)
+        openHistory()
 
         compose.onNodeWithTag("coach-history-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Resumo da semana de 02/11").performScrollTo().assertIsDisplayed()
@@ -158,6 +168,7 @@ class CoachHistoryTest {
     @Test
     fun `historico suporta fonte 200 porcento`() {
         setContent(history = readyHistory(), fontScale = 2f)
+        openHistory()
 
         compose.onNodeWithTag("coach-history-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Foco").performScrollTo().assertIsDisplayed()
@@ -216,6 +227,7 @@ class CoachHistoryTest {
             ),
         )
         setContent(history = CoachHistoryState.Ready(summaries, messages))
+        openHistory()
 
         compose.onNodeWithText("Semana nova").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Nova 1").performScrollTo().assertIsDisplayed()
@@ -253,6 +265,14 @@ class CoachHistoryTest {
             ),
         ),
     )
+
+    private fun openHistory() {
+        compose.onNodeWithTag("coach-retro-history").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        compose.onNodeWithTag("coach-history-sheet").assertIsDisplayed()
+    }
 
     private fun setContent(
         history: CoachHistoryState,

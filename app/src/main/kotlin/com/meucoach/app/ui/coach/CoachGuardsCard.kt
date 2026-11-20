@@ -2,9 +2,8 @@ package com.meucoach.app.ui.coach
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,21 +12,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.meucoach.core.designsystem.component.McCard
-import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McSecondaryButton
-import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
-import com.meucoach.core.domain.coach.CoachGuard
 
-private const val VISIBLE_GUARDS = 4
+private const val VISIBLE_GUARDS = 2
 
 /**
- * Structural guards below the next-session card (PRD evolução, F2).
+ * Structural guards as short coach bubbles (PRD evolução F2 + WhatsApp redesign).
  *
- * Display-only: every line derives from the shared signals the engine
- * already holds. A green week shows one quiet line; longer lists expand on
- * demand instead of pushing the actions down.
+ * A green week says nothing: no empty card competing with the conversation.
+ * When there is a guard, the coach names it in one bubble and expands the rest
+ * only if the athlete asks.
  */
 @Composable
 internal fun CoachGuardsCard(state: CoachGuardsUiState, onRetry: () -> Unit, modifier: Modifier = Modifier) {
@@ -36,93 +31,53 @@ internal fun CoachGuardsCard(state: CoachGuardsUiState, onRetry: () -> Unit, mod
         CoachGuardsUiState.Hidden -> Unit
 
         CoachGuardsUiState.Loading -> {
-            McCard(modifier = modifier.testTag("coach-guards-loading")) {
-                Text(
-                    text = "Consultando as travas da semana…",
-                    style = McTextStyles.caption,
-                    color = colors.textTertiary,
+            CoachBubble(
+                text = "Consultando as travas da semana…",
+                modifier = modifier,
+                testTag = "coach-guards-loading",
+            )
+        }
+
+        is CoachGuardsUiState.Error -> {
+            Column(
+                modifier = modifier.testTag("coach-guards-error"),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CoachBubble(text = state.reason, testTag = "coach-guards-error-bubble")
+                McSecondaryButton(
+                    text = "Tentar de novo",
+                    onClick = onRetry,
+                    modifier = Modifier.testTag("coach-guards-retry"),
                 )
             }
         }
 
-        is CoachGuardsUiState.Error -> {
-            McCard(modifier = modifier.testTag("coach-guards-error")) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = state.reason,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
-                    McSecondaryButton(
-                        text = "Tentar de novo",
-                        onClick = onRetry,
-                        modifier = Modifier.testTag("coach-guards-retry"),
+        is CoachGuardsUiState.Ready -> {
+            if (state.context.guards.isEmpty()) return
+            var expanded by rememberSaveable { mutableStateOf(false) }
+            val visible = if (expanded) state.context.guards else state.context.guards.take(VISIBLE_GUARDS)
+            Column(
+                modifier = modifier.testTag("coach-guards-card"),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                visible.forEach { guard ->
+                    CoachBubble(
+                        text = "${guard.title} ${guard.detail}",
+                        testTag = "coach-guard-bubble",
                     )
                 }
-            }
-        }
-
-        is CoachGuardsUiState.Ready -> {
-            var expanded by rememberSaveable { mutableStateOf(false) }
-            McCard(modifier = modifier.testTag("coach-guards-card")) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "O que pode te travar",
-                        style = McTextStyles.overline,
-                        color = colors.textTertiary,
-                    )
-                    if (state.context.guards.isEmpty()) {
+                if (!expanded && state.context.guards.size > VISIBLE_GUARDS) {
+                    TextButton(
+                        onClick = { expanded = true },
+                        modifier = Modifier.testTag("coach-guards-more"),
+                    ) {
                         Text(
-                            text = "Nenhum bloqueio ativo — siga o plano.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
+                            text = "Ver mais (${state.context.guards.size - VISIBLE_GUARDS})",
+                            color = colors.accentText,
                         )
-                    } else {
-                        val visible = if (expanded) {
-                            state.context.guards
-                        } else {
-                            state.context.guards.take(VISIBLE_GUARDS)
-                        }
-                        visible.forEachIndexed { index, guard ->
-                            if (index > 0) McDivider()
-                            GuardRow(guard = guard)
-                        }
-                        if (!expanded && state.context.guards.size > VISIBLE_GUARDS) {
-                            McSecondaryButton(
-                                text = "Ver mais (${state.context.guards.size - VISIBLE_GUARDS})",
-                                onClick = { expanded = true },
-                                modifier = Modifier.testTag("coach-guards-more"),
-                            )
-                        }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GuardRow(guard: CoachGuard) {
-    val colors = McTheme.colors
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(
-            text = guard.title,
-            style = MaterialTheme.typography.titleSmall,
-            color = colors.textPrimary,
-        )
-        Text(
-            text = guard.detail,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
     }
 }

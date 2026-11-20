@@ -1,6 +1,42 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (F3-bolhas implementada + checklist do upstream executado)
+**Atualizado:** 20/11/2026 (Coach v2 estilo WhatsApp + F3-bolhas + checklist do upstream)
+
+## Sessão 2026-11-20 — Coach v2: conversa de verdade (replanejamento da tela)
+
+**Objetivo:** responder ao feedback de que a aba Coach ficou confusa: menos cartões, mais conversa, retrovisor sob demanda e anexos compactos.
+
+### Diagnóstico
+
+- A tela abria com **três cartões grandes** (o que importa hoje, travas, ajustar a semana) antes de qualquer conversa.
+- Revisão, evolução e histórico ficavam **sempre empilhados** no feed, mesmo quando o usuário só queria saber o treino do dia.
+- O feed repetia avatares “C” em cada bolha e a explicação longa ocupava a tela inteira.
+
+### Concluído
+
+- **Feed enxuto:** header com ícone de info, divisor “Hoje”, 1 bolha de abertura e um **anexo compacto do dia** (headline, planejado, motivo, prontidão e “Ver no Hoje”).
+- **Travas:** só aparecem quando existem; viram bolhas curtas (2 + “Ver mais”), sem cartão vazio nem overline.
+- **Replan:** o `CoachReplanCard` saiu do feed; “Ajustar a semana”, “Perdi um treino” e “Só tenho 30 min” continuam nos quick replies e nos sheets existentes. Arquivo removido.
+- **Explicação:** vira no máximo 3 bolhas (2 primeiras + pergunta final) com “Ver detalhes”; o meio e os bullets ficam no anexo. Sem paredes de texto.
+- **Retrovisor sob demanda:** uma bolha “Quer olhar pra trás?” com chips “Semana passada”, “Evolução” e “Histórico”. Revisão e evolução só entram no feed quando tocadas (com bring-into-view); histórico abre em **bottom sheet** com rolagem.
+- **Visual:** sem avatares repetidos no feed (o avatar fica no header, como chat direto); anexos com borda sutil; composer de uma linha; últimos 2 ecos no rodapé; 4 quick replies no rodapé (sem duplicar “Semana passada”).
+- **Testes:** `CoachScreenTest`, `CoachHistoryTest` e `CoachExplanationCardTest` atualizados; novo teste de explicação longa que preserva a pergunta final e esconde o meio; 133 testes do Coach verdes.
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` (133) verde; `spotlessApply` e `check` em seguida. Sem migração, sem dependência nova, sem dado real.
+
+### Pendente
+
+- `./install.sh` com o token e validação visual no aparelho (dark/light, fonte 200%, chips, sheets, sem sobreposição).
+- **Dokploy:** rebuild/redeploy a partir do commit novo (o push `455511c` já foi feito; o container das 18:49 ainda é o antigo, com `/zen/go`). Confirmar `upstream=go ... 200`.
+- Observar 1 semana: unificar mensagens + resumos + eventos num `ChatTurn` persistido.
+
+### Próximo passo
+
+1. Redeploy do proxy + `COACH_GO_API_KEY`/região Global; conferir logs.
+2. Instalar e validar o Coach v2 no aparelho.
+3. Se validado: F4 (roteiros diários) do `PRD_COACH_CHAT`.
 
 ## Sessão 2026-11-20 — F3-bolhas (chat sem paredes de texto) + checklist do upstream
 

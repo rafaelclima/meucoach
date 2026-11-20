@@ -1,11 +1,16 @@
 package com.meucoach.app.ui.coach
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.meucoach.app.application.ReplanChangeKind
@@ -82,6 +87,7 @@ class CoachScreenTest {
             ),
         )
 
+        compose.onNodeWithTag("coach-retro-review").performScrollTo().performClick()
         compose.onNodeWithTag("coach-review-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Semana de 09/11 a 15/11").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Você cumpriu a maior parte do que planejou.").performScrollTo().assertIsDisplayed()
@@ -101,6 +107,7 @@ class CoachScreenTest {
             reviewState = CoachReviewState.Fallback("O Coach não respondeu."),
         )
 
+        compose.onNodeWithTag("coach-retro-review").performScrollTo().performClick()
         compose.onNodeWithTag("coach-review-numbers-toggle").performScrollTo().performClick()
         compose.onNodeWithText("O que a semana mostrou").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões planejadas foram concluídas.", substring = true)
@@ -131,6 +138,7 @@ class CoachScreenTest {
             reviewState = CoachReviewState.Unavailable,
         )
 
+        compose.onNodeWithTag("coach-retro-review").performScrollTo().performClick()
         compose.onNodeWithText(
             "Não há plano, corridas ou check-ins registrados nessa semana.",
         ).performScrollTo().assertIsDisplayed()
@@ -147,10 +155,9 @@ class CoachScreenTest {
             onReplanRequestLessTime = { lessTime++ },
         )
 
-        compose.onNodeWithTag("coach-replan-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("coach-replan-request").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-replan-missed").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-replan-less-time").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-adjust").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-missed").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-less-time").performScrollTo().performClick()
 
         assertThat(plain).isEqualTo(1)
         assertThat(missed).isEqualTo(1)
@@ -378,14 +385,21 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `replan vem antes da explicacao`() {
-        setContent()
+    fun `retrovisor vem depois da explicacao`() {
+        setContent(
+            progress = CoachProgressUiState.Ready(
+                summary = emptyProgressSummary(),
+                totalWeeks = 4,
+                profile = null,
+                today = monday,
+            ),
+        )
 
-        val replanY = compose.onNodeWithTag("coach-replan-card").fetchSemanticsNode().positionInRoot.y
         val explanationY =
             compose.onNodeWithTag("coach-explanation-card").fetchSemanticsNode().positionInRoot.y
+        val retroY = compose.onNodeWithTag("coach-retro-prompt").fetchSemanticsNode().positionInRoot.y
 
-        assertThat(replanY).isLessThan(explanationY)
+        assertThat(explanationY).isLessThan(retroY)
     }
 
     @Test
@@ -411,7 +425,7 @@ class CoachScreenTest {
         setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("O que importa hoje").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-date-divider").assertIsDisplayed()
         compose.onNodeWithText("Amanhã · Planejado: Fácil · 30 min").performScrollTo().assertIsDisplayed()
     }
 
@@ -420,7 +434,6 @@ class CoachScreenTest {
         setContent(next = CoachNextUiState.Ready(raceContext(monday.plusDays(1))))
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Dia de prova").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Amanhã · Dia de prova").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Fácil", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Semana concluída.").assertDoesNotExist()
@@ -485,7 +498,7 @@ class CoachScreenTest {
 
         compose.onNodeWithText("ACWR", substring = true).assertDoesNotExist()
         compose.onNodeWithText("1,50", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("carga estiver na faixa", substring = true)
+        compose.onNodeWithText("Carga alta: dia leve.", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
     }
@@ -593,11 +606,16 @@ class CoachScreenTest {
         }
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("coach-guards-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-guards-card").assertDoesNotExist()
         compose.onNodeWithTag("coach-ai-invite").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-ai-grant").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-ai-later").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-retro-progress").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitForIdle()
+        compose.onNodeWithTag("coach-retro-progress").assertIsSelected()
+        compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -843,9 +861,13 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-guards-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Recuperação até 18/11.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Recuperação até 18/11.", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
         compose.onNodeWithText("Base de card em calibração.").assertDoesNotExist()
-        compose.onNodeWithText("Base de carga em calibração.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Base de carga em calibração.", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     @Test
@@ -859,18 +881,18 @@ class CoachScreenTest {
         }
         setContent(guards = CoachGuardsUiState.Ready(CoachGuardsContext(five)))
 
-        compose.onNodeWithText("Trava 4").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Trava 5").assertDoesNotExist()
+        compose.onNodeWithText("Trava 2", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Trava 3", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("coach-guards-more").performScrollTo().performClick()
-        compose.onNodeWithText("Trava 5").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Trava 5", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun `sem travas mostra linha quieta`() {
+    fun `sem travas nao ocupa o feed`() {
         setContent(guards = CoachGuardsUiState.Ready(CoachGuardsContext(emptyList())))
 
-        compose.onNodeWithTag("coach-guards-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Nenhum bloqueio ativo — siga o plano.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-guards-card").assertDoesNotExist()
+        compose.onNodeWithText("Nenhum bloqueio ativo — siga o plano.").assertDoesNotExist()
     }
 
     @Test
@@ -925,6 +947,7 @@ class CoachScreenTest {
             ),
         )
 
+        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
         compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("6 de 9 sessões do plano (67%)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-progress-numbers").assertDoesNotExist()
@@ -962,6 +985,7 @@ class CoachScreenTest {
             ),
         )
 
+        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
         compose.onNodeWithText("Pouco histórico ainda.", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
@@ -992,6 +1016,7 @@ class CoachScreenTest {
             }
         }
 
+        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
         compose.onNodeWithTag("coach-progress-retry").performScrollTo().performClick()
         assertThat(retried).isEqualTo(1)
     }
@@ -1038,6 +1063,7 @@ class CoachScreenTest {
             }
         }
 
+        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
         compose.onNodeWithTag("coach-progress-trends").performScrollTo().performClick()
         assertThat(trends).isEqualTo(1)
     }
@@ -1086,8 +1112,8 @@ class CoachScreenTest {
     fun `abertura conversa aparece antes do proximo treino`() {
         setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
-        compose.onNodeWithTag("coach-chat-opening").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Opa, bora ver o que importa hoje?", substring = true)
+        compose.onAllNodesWithTag("coach-chat-opening").onFirst().performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("bora ver o que importa?", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
     }
