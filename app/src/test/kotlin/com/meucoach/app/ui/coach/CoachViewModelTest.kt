@@ -98,6 +98,7 @@ class CoachViewModelTest {
     private lateinit var planRepository: TrainingPlanRepository
     private lateinit var replanFactory: ReplanControllerFactory
     private val viewModels = mutableListOf<CoachViewModel>()
+    private val appScopes = mutableListOf<CoroutineScope>()
     private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
     private val timeProvider = FakeTimeProvider(clock.instant(), ZoneOffset.UTC)
 
@@ -178,12 +179,18 @@ class CoachViewModelTest {
     fun tearDown() {
         viewModels.forEach { it.viewModelScope.cancel() }
         viewModels.clear()
+        // Room writes launched in appScope can still touch the database; cancel
+        // them before closing it so `Dispatchers.resetMain` never races a write.
+        appScopes.forEach { it.cancel() }
+        appScopes.clear()
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
         Dispatchers.resetMain()
     }
 
     private fun viewModel(api: FakeCoachApi): CoachViewModel {
+        val appScope = CoroutineScope(Dispatchers.Unconfined)
+        appScopes += appScope
         val vm = CoachViewModel(
             consent = consent,
             sources = CoachSources(
@@ -205,7 +212,7 @@ class CoachViewModelTest {
             ),
             api = api,
             memory = memory,
-            appScope = CoroutineScope(Dispatchers.Unconfined),
+            appScope = appScope,
             replanFactory = replanFactory,
         )
         viewModels += vm
