@@ -374,6 +374,24 @@ class CoachScreenTest {
     }
 
     @Test
+    fun `acoes do fallback ficam abaixo do cartao sem sobrepor`() {
+        setContent(
+            explanation = CoachExplanationState.Fallback(
+                reason = "Sem conexão aqui — te mostro o plano direto do motor.",
+                planRationale = "Plano da semana.",
+            ),
+        )
+
+        compose.onNodeWithText("Resumo da semana", substring = true).performScrollTo()
+        val cardY = compose.onNodeWithText("Resumo da semana", substring = true)
+            .fetchSemanticsNode().positionInRoot.y
+        val actionY = compose.onNodeWithText("Tentar de novo")
+            .fetchSemanticsNode().positionInRoot.y
+
+        assertThat(cardY).isLessThan(actionY)
+    }
+
+    @Test
     fun `proximo treino aparece no topo com o planejado`() {
         setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
@@ -1008,12 +1026,37 @@ class CoachScreenTest {
     fun `chat header abre como funciona sem tecnices no corpo`() {
         setContent()
 
-        compose.onNodeWithTag("coach-chat-header").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("motor no comando", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("coach-chat-info").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-chat-header").assertIsDisplayed()
+        compose.onNodeWithText("motor no comando", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("coach-chat-info").performClick()
         compose.onNodeWithTag("coach-how-it-works-sheet").assertIsDisplayed()
         compose.onNodeWithText("O motor decide o treino", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("coach-how-it-works-close").performClick()
+        compose.onNodeWithTag("coach-how-it-works-sheet").assertDoesNotExist()
+    }
+
+    @Test
+    fun `desativar IA mora no como funciona`() {
+        var revoked = 0
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                CoachScreen(
+                    consented = true,
+                    showConsent = false,
+                    explanation = readyExplanation(),
+                    onGrant = {},
+                    onDismiss = {},
+                    onRevoke = { revoked++ },
+                    onRetry = {},
+                    next = CoachNextUiState.Hidden,
+                )
+            }
+        }
+
+        compose.onNodeWithTag("coach-disable").assertDoesNotExist()
+        compose.onNodeWithTag("coach-chat-info").performClick()
+        compose.onNodeWithTag("coach-disable").performClick()
+        assertThat(revoked).isEqualTo(1)
         compose.onNodeWithTag("coach-how-it-works-sheet").assertDoesNotExist()
     }
 
@@ -1033,8 +1076,8 @@ class CoachScreenTest {
         setContent(onReplanRequestMissed = { missed++ })
 
         compose.onNodeWithTag("coach-quick-missed").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-user-echo").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Perdi o treino de ontem").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-user-echo").assertIsDisplayed()
+        compose.onNodeWithText("Perdi o treino de ontem").assertIsDisplayed()
         assertThat(missed).isEqualTo(1)
     }
 
@@ -1044,25 +1087,35 @@ class CoachScreenTest {
         setContent(onReplanRequestLessTime = { lessTime++ })
 
         compose.onNodeWithTag("coach-quick-less-time").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-user-echo").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Só tenho 30 min na quinta").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-user-echo").assertIsDisplayed()
+        compose.onNodeWithText("Só tenho 30 min na quinta").assertIsDisplayed()
         assertThat(lessTime).isEqualTo(1)
+    }
+
+    @Test
+    fun `quick reply explica semana pede retry e mostra sua mensagem`() {
+        var retried = 0
+        setContent(onRetry = { retried++ })
+
+        compose.onNodeWithTag("coach-quick-explain").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-user-echo").assertIsDisplayed()
+        compose.onNodeWithText("Pode explicar minha semana?").assertIsDisplayed()
+        assertThat(retried).isEqualTo(1)
     }
 
     @Test
     fun `digitando aparece enquanto a IA carrega`() {
         setContent(explanation = CoachExplanationState.Loading)
 
-        compose.onNodeWithTag("coach-typing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-typing").assertIsDisplayed()
     }
 
     @Test
     fun `composer indica input futuro sem fingir conversa livre`() {
         setContent()
 
-        compose.onNodeWithTag("coach-composer").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-composer").assertIsDisplayed()
         compose.onNodeWithText("Em breve você poderá digitar", substring = true)
-            .performScrollTo()
             .assertIsDisplayed()
     }
 
@@ -1085,6 +1138,7 @@ class CoachScreenTest {
         onReplanLessTimeSelected: (List<LessTimeChange>) -> Unit = {},
         onReplanAccept: () -> Unit = {},
         onReplanUndo: () -> Unit = {},
+        onRetry: () -> Unit = {},
     ) {
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -1095,7 +1149,7 @@ class CoachScreenTest {
                     onGrant = {},
                     onDismiss = {},
                     onRevoke = {},
-                    onRetry = {},
+                    onRetry = onRetry,
                     next = next,
                     onNextCheckIn = {},
                     onNextRetry = {},

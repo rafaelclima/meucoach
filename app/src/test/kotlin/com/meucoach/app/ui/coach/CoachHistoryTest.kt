@@ -165,6 +165,70 @@ class CoachHistoryTest {
             .assertIsDisplayed()
     }
 
+    @Test
+    fun `historico longo mostra recentes com ver conversa completa`() {
+        val summaries = listOf(
+            CoachMemorySummary(
+                weekStart = LocalDate.of(2026, 11, 9),
+                inputsHash = "review-new",
+                title = "Semana nova",
+                body = "Corpo novo.",
+                bullets = emptyList(),
+                createdAt = createdAt,
+            ),
+            CoachMemorySummary(
+                weekStart = LocalDate.of(2026, 11, 2),
+                inputsHash = "review-old",
+                title = "Semana velha",
+                body = "Corpo velho.",
+                bullets = emptyList(),
+                createdAt = createdAt,
+            ),
+        )
+        val messages = listOf(
+            CoachMemoryMessage(
+                id = "new-1",
+                kind = CoachMessageKind.EXPLAIN,
+                inputsHash = "new-1",
+                title = "Nova 1",
+                body = "Corpo nova 1.",
+                bullets = emptyList(),
+                createdAt = createdAt,
+            ),
+            CoachMemoryMessage(
+                id = "new-2",
+                kind = CoachMessageKind.EXPLAIN,
+                inputsHash = "new-2",
+                title = "Nova 2",
+                body = "Corpo nova 2.",
+                bullets = emptyList(),
+                createdAt = createdAt,
+            ),
+            CoachMemoryMessage(
+                id = "old-1",
+                kind = CoachMessageKind.EXPLAIN,
+                inputsHash = "old-1",
+                title = "Velha",
+                body = "Corpo velha.",
+                bullets = emptyList(),
+                createdAt = createdAt,
+            ),
+        )
+        setContent(history = CoachHistoryState.Ready(summaries, messages))
+
+        compose.onNodeWithText("Semana nova").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Nova 1").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Nova 2").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Semana velha").assertDoesNotExist()
+        compose.onNodeWithText("Velha").assertDoesNotExist()
+        compose.onNodeWithTag("coach-history-more").performScrollTo().performClick()
+
+        compose.onNodeWithText("Semana velha").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Velha").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-history-less").performScrollTo().performClick()
+        compose.onNodeWithText("Velha").assertDoesNotExist()
+    }
+
     private fun readyHistory() = CoachHistoryState.Ready(
         summaries = listOf(
             CoachMemorySummary(

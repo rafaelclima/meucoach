@@ -1,6 +1,7 @@
 package com.meucoach.app.ui.coach
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
@@ -190,50 +192,18 @@ internal fun CoachQuickReplies(
     onAdjust: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .testTag("coach-quick-replies"),
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            QuickChip(
-                text = "Explica minha semana",
-                testTag = "coach-quick-explain",
-                onClick = onExplain,
-                modifier = Modifier.weight(1f),
-            )
-            QuickChip(
-                text = "Semana passada?",
-                testTag = "coach-quick-review",
-                onClick = onReview,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            QuickChip(
-                text = "Perdi um treino",
-                testTag = "coach-quick-missed",
-                onClick = onMissed,
-                modifier = Modifier.weight(1f),
-            )
-            QuickChip(
-                text = "Só tenho 30 min",
-                testTag = "coach-quick-less-time",
-                onClick = onLessTime,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        QuickChip(
-            text = "Ajustar a semana",
-            testTag = "coach-quick-adjust",
-            onClick = onAdjust,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        QuickChip(text = "Explica minha semana", testTag = "coach-quick-explain", onClick = onExplain)
+        QuickChip(text = "Semana passada?", testTag = "coach-quick-review", onClick = onReview)
+        QuickChip(text = "Perdi um treino", testTag = "coach-quick-missed", onClick = onMissed)
+        QuickChip(text = "Só tenho 30 min", testTag = "coach-quick-less-time", onClick = onLessTime)
+        QuickChip(text = "Ajustar a semana", testTag = "coach-quick-adjust", onClick = onAdjust)
     }
 }
 
@@ -248,7 +218,7 @@ private fun QuickChip(text: String, testTag: String, onClick: () -> Unit, modifi
 }
 
 @Composable
-internal fun CoachHowItWorksSheet(onDismiss: () -> Unit) {
+internal fun CoachHowItWorksSheet(onDismiss: () -> Unit, onRevoke: () -> Unit = {}) {
     val colors = McTheme.colors
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -267,6 +237,17 @@ internal fun CoachHowItWorksSheet(onDismiss: () -> Unit) {
                 modifier = Modifier.testTag("coach-how-it-works-close"),
             ) {
                 Text(text = "Entendi", color = colors.textPrimary)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onRevoke()
+                    onDismiss()
+                },
+                modifier = Modifier.testTag("coach-disable"),
+            ) {
+                Text(text = "Desativar IA", color = colors.danger)
             }
         },
         containerColor = colors.surface,

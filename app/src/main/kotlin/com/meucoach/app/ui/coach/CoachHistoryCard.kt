@@ -137,9 +137,13 @@ internal fun CoachHistoryCard(
             }
 
             is CoachHistoryState.Ready -> {
-                if (state.summaries.isNotEmpty()) {
+                var expanded by rememberSaveable { mutableStateOf(false) }
+                val totalItems = state.summaries.size + state.messages.size
+                val showSummaries = if (expanded) state.summaries else state.summaries.take(1)
+                val showMessages = if (expanded) state.messages else state.messages.take(2)
+                if (showSummaries.isNotEmpty()) {
                     HistorySectionTitle(text = "Resumos por semana")
-                    state.summaries.forEachIndexed { index, summary ->
+                    showSummaries.forEachIndexed { index, summary ->
                         if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
                         SummaryRow(
                             summary = summary,
@@ -150,12 +154,12 @@ internal fun CoachHistoryCard(
                         )
                     }
                 }
-                if (state.messages.isNotEmpty()) {
-                    if (state.summaries.isNotEmpty()) {
+                if (showMessages.isNotEmpty()) {
+                    if (showSummaries.isNotEmpty()) {
                         McDivider(modifier = Modifier.padding(vertical = 10.dp))
                     }
                     HistorySectionTitle(text = "Conversa")
-                    state.messages.forEachIndexed { index, message ->
+                    showMessages.forEachIndexed { index, message ->
                         if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
                         MessageRow(
                             message = message,
@@ -165,6 +169,20 @@ internal fun CoachHistoryCard(
                             },
                         )
                     }
+                }
+                if (!expanded && totalItems > 3) {
+                    McSecondaryButton(
+                        text = "Ver conversa completa",
+                        onClick = { expanded = true },
+                        modifier = Modifier.testTag("coach-history-more"),
+                    )
+                }
+                if (expanded && totalItems > 3) {
+                    McSecondaryButton(
+                        text = "Mostrar menos",
+                        onClick = { expanded = false },
+                        modifier = Modifier.testTag("coach-history-less"),
+                    )
                 }
                 TextButton(
                     onClick = { confirmingClear = true },

@@ -18,9 +18,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -35,7 +38,9 @@ import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.review.WeeklyReview
+import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.math.roundToInt
 
 @Composable
 fun CoachRoute(
@@ -147,6 +152,14 @@ fun CoachScreen(
     var replanChangesOpen by rememberSaveable { mutableStateOf(false) }
     var infoOpen by rememberSaveable { mutableStateOf(false) }
     val userEchoes = remember { mutableStateListOf<String>() }
+    val scope = rememberCoroutineScope()
+    val feedScroll = rememberScrollState()
+    var explainY by remember { mutableStateOf<Int?>(null) }
+    var reviewY by remember { mutableStateOf<Int?>(null) }
+    fun scrollTo(y: Int?) {
+        if (y == null) return
+        scope.launch { feedScroll.animateScrollTo(y.coerceAtLeast(0)) }
+    }
     LaunchedEffect(replan.suggestion != null) {
         if (replan.suggestion != null) replanSheetOpen = true
     }
@@ -160,200 +173,214 @@ fun CoachScreen(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp)
             .testTag("coach-timeline"),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CoachChatHeader(status = status, onInfoClick = { infoOpen = true })
-        if (onboarding) {
-            CoachBubble(
-                text = "Opa! Pra eu montar seus treinos, preciso de 3 coisas. " +
-                    "Me conta aqui embaixo que eu já organizo.",
-                testTag = "coach-chat-opening",
-            )
-        } else {
-            CoachBubble(
-                text = "Opa, bora ver o que importa hoje? Separei tudo aqui embaixo.",
-                testTag = "coach-chat-opening",
-            )
-        }
-        CoachNextCard(
-            state = next,
-            onRetry = onNextRetry,
-            onCheckIn = onNextCheckIn,
-            onToday = onNextToday,
-            onProfile = onOnboardingProfile,
-            onCalibration = onOnboardingCalibration,
-            onImport = onOnboardingImport,
-        )
-        if (!onboarding) {
-            CoachGuardsCard(state = guards, onRetry = onGuardsRetry)
-            CoachReplanCard(
-                state = replan,
-                onRequest = onReplanRequest,
-                onMissed = onReplanRequestMissed,
-                onLessTime = onReplanRequestLessTime,
-            )
-            if (replan.suggestion == null) {
-                replan.message?.let { message ->
-                    ReplanMessageCard(
-                        message = message,
-                        onDismiss = onReplanConsumeMessage,
-                        canUndo = replan.canUndo,
-                        isUndoing = replan.isUndoing,
-                        onUndo = onReplanUndo,
-                        onShowChanges = replan.lastChange?.let { { replanChangesOpen = true } },
-                    )
-                }
-            }
-            userEchoes.forEach { echo ->
-                UserBubble(
-                    text = echo,
-                    testTag = "coach-user-echo",
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(feedScroll)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .testTag("coach-feed"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CoachChatHeader(status = status, onInfoClick = { infoOpen = true })
+            if (onboarding) {
+                CoachBubble(
+                    text = "Opa! Pra eu montar seus treinos, preciso de 3 coisas. " +
+                        "Me conta aqui embaixo que eu já organizo.",
+                    testTag = "coach-chat-opening",
                 )
-            }
-            CoachQuickReplies(
-                onExplain = {
-                    userEchoes.add("Pode explicar minha semana?")
-                    onRetry()
-                },
-                onReview = {
-                    userEchoes.add("Como foi minha semana passada?")
-                },
-                onMissed = {
-                    userEchoes.add("Perdi o treino de ontem")
-                    onReplanRequestMissed()
-                },
-                onLessTime = {
-                    userEchoes.add("Só tenho 30 min na quinta")
-                    onReplanRequestLessTime()
-                },
-                onAdjust = {
-                    userEchoes.add("Quero ajustar a semana")
-                    onReplanRequest()
-                },
-            )
-            if (explanation is CoachExplanationState.Loading || reviewState is CoachReviewState.Loading) {
-                CoachTyping()
-            }
-            if (consented) {
-                when (explanation) {
-                    // The local card covers "no plan"; a consented user without a
-                    // plan must not see a second onboarding message here.
-                    CoachExplanationState.Unavailable -> Unit
-
-                    CoachExplanationState.Loading -> {
-                        McCard {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                CircularProgressIndicator(color = McTheme.colors.accent)
-                                Text(
-                                    text = "Consultando o Coach…",
-                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                    color = McTheme.colors.textPrimary,
-                                )
-                                Text(
-                                    text = "Analisando sua semana e seus treinos.",
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                    color = McTheme.colors.textTertiary,
-                                )
-                            }
-                        }
-                    }
-
-                    is CoachExplanationState.Ready -> {
-                        CoachExplanationCard(explanation)
-                    }
-
-                    is CoachExplanationState.Fallback -> {
-                        McCard {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "Resumo da semana",
-                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                                    color = McTheme.colors.textPrimary,
-                                )
-                                Text(
-                                    text = explanation.planRationale,
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                                    color = McTheme.colors.textSecondary,
-                                )
-                                Text(
-                                    text = CoachFallbackLabels.reasonCopy(explanation.reason),
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                    color = McTheme.colors.textTertiary,
-                                    modifier = Modifier.testTag("coach-fallback-reason"),
-                                )
-                                Text(
-                                    text = "Me enrolei aqui — tenta de novo em instantes?",
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                    color = McTheme.colors.textTertiary,
-                                )
-                            }
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                        ) {
-                            McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
-                            TextButton(onClick = onRevoke) {
-                                Text(
-                                    text = "Desativar IA",
-                                    color = McTheme.colors.textTertiary,
-                                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                        }
-                    }
-                }
-                review?.let { current ->
-                    CoachReviewCard(review = current, state = reviewState)
-                }
             } else {
-                CoachAiInviteCard(
-                    expanded = showConsent,
-                    onGrant = onGrant,
-                    onDismiss = onDismiss,
+                CoachBubble(
+                    text = "Opa, bora ver o que importa hoje? Separei tudo aqui embaixo.",
+                    testTag = "coach-chat-opening",
                 )
             }
-            CoachProgressCard(state = progress, onRetry = onProgressRetry, onTrends = onProgressTrends)
-            if (consented && history != CoachHistoryState.Hidden) {
-                CoachHistoryCard(
-                    state = history,
-                    onClear = onClearHistory,
-                    onRetry = onRetryHistory,
-                    onDeleteMessage = onDeleteHistoryMessage,
-                    onDeleteSummary = onDeleteHistorySummary,
+            CoachNextCard(
+                state = next,
+                onRetry = onNextRetry,
+                onCheckIn = onNextCheckIn,
+                onToday = onNextToday,
+                onProfile = onOnboardingProfile,
+                onCalibration = onOnboardingCalibration,
+                onImport = onOnboardingImport,
+            )
+            if (!onboarding) {
+                CoachGuardsCard(state = guards, onRetry = onGuardsRetry)
+                CoachReplanCard(
+                    state = replan,
+                    onRequest = onReplanRequest,
+                    onMissed = onReplanRequestMissed,
+                    onLessTime = onReplanRequestLessTime,
                 )
-            }
-            if (consented) {
-                TextButton(
-                    onClick = onRevoke,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                        .testTag("coach-disable"),
-                ) {
-                    Text(
-                        text = "Desativar IA",
-                        color = McTheme.colors.textTertiary,
-                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                if (replan.suggestion == null) {
+                    replan.message?.let { message ->
+                        ReplanMessageCard(
+                            message = message,
+                            onDismiss = onReplanConsumeMessage,
+                            canUndo = replan.canUndo,
+                            isUndoing = replan.isUndoing,
+                            onUndo = onReplanUndo,
+                            onShowChanges = replan.lastChange?.let { { replanChangesOpen = true } },
+                        )
+                    }
+                }
+                if (consented) {
+                    Column(
+                        modifier = Modifier.onGloballyPositioned {
+                            explainY = it.positionInParent().y.roundToInt()
+                        },
+                    ) {
+                        when (explanation) {
+                            // The local card covers "no plan"; a consented user without a
+                            // plan must not see a second onboarding message here.
+                            CoachExplanationState.Unavailable -> Unit
+
+                            CoachExplanationState.Loading -> {
+                                McCard {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        CircularProgressIndicator(color = McTheme.colors.accent)
+                                        Text(
+                                            text = "Consultando o Coach…",
+                                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                            color = McTheme.colors.textPrimary,
+                                        )
+                                        Text(
+                                            text = "Analisando sua semana e seus treinos.",
+                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                            color = McTheme.colors.textTertiary,
+                                        )
+                                    }
+                                }
+                            }
+
+                            is CoachExplanationState.Ready -> {
+                                CoachExplanationCard(explanation)
+                            }
+
+                            is CoachExplanationState.Fallback -> {
+                                McCard {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = "Resumo da semana",
+                                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                            color = McTheme.colors.textPrimary,
+                                        )
+                                        Text(
+                                            text = explanation.planRationale,
+                                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                                            color = McTheme.colors.textSecondary,
+                                        )
+                                        Text(
+                                            text = CoachFallbackLabels.reasonCopy(explanation.reason),
+                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                            color = McTheme.colors.textTertiary,
+                                            modifier = Modifier.testTag("coach-fallback-reason"),
+                                        )
+                                        Text(
+                                            text = "Me enrolei aqui — tenta de novo em instantes?",
+                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                            color = McTheme.colors.textTertiary,
+                                        )
+                                    }
+                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
+                                    TextButton(onClick = onRevoke) {
+                                        Text(
+                                            text = "Desativar IA",
+                                            color = McTheme.colors.textTertiary,
+                                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    review?.let { current ->
+                        Column(
+                            modifier = Modifier.onGloballyPositioned {
+                                reviewY = it.positionInParent().y.roundToInt()
+                            },
+                        ) {
+                            CoachReviewCard(review = current, state = reviewState)
+                        }
+                    }
+                } else {
+                    CoachAiInviteCard(
+                        expanded = showConsent,
+                        onGrant = onGrant,
+                        onDismiss = onDismiss,
+                    )
+                }
+                CoachProgressCard(state = progress, onRetry = onProgressRetry, onTrends = onProgressTrends)
+                if (consented && history != CoachHistoryState.Hidden) {
+                    CoachHistoryCard(
+                        state = history,
+                        onClear = onClearHistory,
+                        onRetry = onRetryHistory,
+                        onDeleteMessage = onDeleteHistoryMessage,
+                        onDeleteSummary = onDeleteHistorySummary,
                     )
                 }
             }
-            CoachComposerHint()
+        }
+        if (!onboarding) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (explanation is CoachExplanationState.Loading || reviewState is CoachReviewState.Loading) {
+                    CoachTyping()
+                }
+                userEchoes.forEach { echo ->
+                    UserBubble(
+                        text = echo,
+                        testTag = "coach-user-echo",
+                    )
+                }
+                CoachQuickReplies(
+                    onExplain = {
+                        userEchoes.add("Pode explicar minha semana?")
+                        onRetry()
+                        scrollTo(explainY)
+                    },
+                    onReview = {
+                        userEchoes.add("Como foi minha semana passada?")
+                        scrollTo(reviewY)
+                    },
+                    onMissed = {
+                        userEchoes.add("Perdi o treino de ontem")
+                        onReplanRequestMissed()
+                    },
+                    onLessTime = {
+                        userEchoes.add("Só tenho 30 min na quinta")
+                        onReplanRequestLessTime()
+                    },
+                    onAdjust = {
+                        userEchoes.add("Quero ajustar a semana")
+                        onReplanRequest()
+                    },
+                )
+                CoachComposerHint()
+            }
         }
     }
 
     if (infoOpen) {
-        CoachHowItWorksSheet(onDismiss = { infoOpen = false })
+        CoachHowItWorksSheet(onDismiss = { infoOpen = false }, onRevoke = onRevoke)
     }
     if (replanSheetOpen && replan.suggestion != null) {
         ReplanSuggestionSheet(

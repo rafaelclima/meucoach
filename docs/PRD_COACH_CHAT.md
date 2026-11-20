@@ -305,10 +305,34 @@ Novo: `CoachChatMapper` (puro) + `CoachPersona` (copy) + `CoachChatLabels` (fala
 - `CoachPersona` + `CoachChatLabels` + `CoachFallbackLabels` como fala + `SYSTEM_EXPLAIN/REVIEW` reescritos (redeploy proxy manual). Validador com limite de tamanho + `reason` nunca na UI.
 - Concluída quando: explicação/revisão chegam em 2–3 bolhas curtas com pergunta final; fallback soa humano; nenhum código interno na tela.
 
-### F3 — Timeline única (arquivo vira conversa)
+### F3 — Timeline consistente (revisada após auditoria no aparelho, 20/11/2026)
 
-- `CoachChatMapper` puro + fusão `messages+summaries+eventos` ordenada + long-press apagar + onboarding em 1 sequência. Remove `Resumos/Conversa` separados e "Desativar IA" do fim.
-- Concluída quando: histórico antigo aparece como bolhas; nada se repete; revogar apaga e volta ao onboarding.
+**Achado da auditoria:** a ordem do feed já era temporalmente coerente
+(agora → semana → passada → 4 semanas → arquivo). As 4 quebras reais eram
+a camada interativa, não a ordem: ecos órfãos no meio do feed, chips que
+somem ao rolar, "Desativar IA" no meio da conversa e histórico pesado.
+A F3 como construída:
+
+- **Feed rolável** (mesma ordem F1/F2, sem Desativar): abertura → próximo →
+  travas → replan (+mensagem) → explicação → revisão → progresso →
+  histórico. Header rola junto (cromo fixo mínimo = rodapé).
+- **Rodapé fixo:** último(s) eco(s) seu + `digitando…` + quick replies em
+  linha rolável + composer. Sempre visíveis, em qualquer altura.
+- **Eco-ponte:** tocar chip mostra sua mensagem no rodapé e rola até o
+  destino (`bring-into-view` na explicação/revisão) ou abre o fluxo
+  (pickers do replan). Pergunta e resposta adjacentes de verdade.
+- **"Desativar IA"** sai do feed e vira ação destrutiva dentro do sheet
+  "Como funciona" (com confirmação implícita pelo contexto do sheet).
+- **Histórico colapsado:** mostra 1 resumo + 2 turnos recentes +
+  "Ver conversa completa (N)" / "Mostrar menos". Mesmas exclusões
+  (sem repetir explicação corrente nem revisão visível) e mesmo
+  apagar em bloco/item.
+- **Robustez:** cromo fixo enxuto (só rodapé) para nunca espremer o feed
+  a zero em fonte 200%/telas pequenas (regressão coberta por teste).
+
+Fora desta fatia (observar 1 semana de uso): unificar card replan ×
+quick replies (duplicação "Perdi treino"/"Perdi um treino"); fundir
+`messages+summaries+eventos` num `ChatTurn` único persistido.
 
 ### F4 — Roteiros diários (abertura/pós-evento)
 

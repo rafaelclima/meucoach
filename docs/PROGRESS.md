@@ -29,7 +29,8 @@
 - **Eco-ponte:** chip mostra sua mensagem no rodapé e rola até o destino (explicação/revisão via `bring-into-view`) ou abre o fluxo (pickers). Fim dos ecos órfãos no meio do feed.
 - **Desativar IA:** sai do feed, vira ação destrutiva no sheet "Como funciona" (tag `coach-disable` preservada).
 - **Histórico:** 1 resumo + 2 turnos + "Ver conversa completa (N)" / "Mostrar menos"; apagar bloco/item intacto.
-- **Regressão:** 2 testes novos (Desativar no sheet, explica-chip com retry) + 1 de histórico longo; 118+ testes do Coach verdes; ordem replan→explicação preservada.
+- **Hotfix pós-aparelho:** o `Box` de medição empilhava card + ações do fallback (texto sobreposto); trocado por `Column` + regressão (`acoes do fallback ficam abaixo do cartao sem sobrepor`). Causa externa naquele dia: upstream OpenRouter 502 (proxy `/health` 200) — fallback determinístico segurou sem crash.
+- **Regressão:** 3 testes novos no `CoachScreenTest` (Desativar no sheet, explica-chip com retry, sem sobreposição) + 1 de histórico longo; 118+ testes do Coach verdes; ordem replan→explicação preservada.
 
 ### Validação
 
