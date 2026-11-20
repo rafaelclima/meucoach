@@ -145,10 +145,15 @@ private const val SYSTEM_REPLAN =
         "Responda em JSON {\"title\":\"string\",\"body\":\"string\",\"bullets\":[\"string\"],\"slots\":{}} " +
         "para confirmacao humana; title e body sao strings, nunca objetos."
 
-private val DEFAULT_MODELS = listOf(
+/**
+ * Default chain. `openrouter/free` is the unified free router; the pinned
+ * fallbacks must be live `:free` ids (see https://openrouter.ai/api/v1/models —
+ * free ids rotate and dead ones 404, e.g. inkling-2-small was retired).
+ */
+internal val DEFAULT_MODELS = listOf(
     "openrouter/free",
     "nvidia/nemotron-3.5-super-vl:free",
-    "thinkingmachines/inkling-2-small:free",
+    "google/gemma-4-31b-it:free",
 )
 
 /**

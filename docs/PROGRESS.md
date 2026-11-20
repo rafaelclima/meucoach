@@ -2,6 +2,25 @@
 
 **Atualizado:** 20/11/2026 (Rota padrão da IA: openrouter/free)
 
+## Sessão 2026-11-20 — Diagnóstico do 502: inkling morto + router lento
+
+**Objetivo:** entender por que a IA parou de responder (502 em explain/review desde ~13:40).
+
+### Concluído
+
+- **Causa raiz (logs do Dokploy):** `openrouter/free` e `super-vl` com timeout de 15 s; `thinkingmachines/inkling-2-small:free` com **404** — ID aposentado pelo OpenRouter (confirmado na lista viva de `/api/v1/models`: 12 ids `:free`, sem inkling).
+- **Fix:** cadeia vira `openrouter/free` → `super-vl` → `google/gemma-4-31b-it:free` (Gemma IT ao vivo, bom em JSON/pt-BR). `DEFAULT_MODELS` agora é `internal` + teste-tripwire (`default chain routes free first with live fallbacks`) que barra ids mortos conhecidos.
+- **Comportamento validado:** proxy `/health` 200 + 401 sem token; app caiu no fallback determinístico sem crash durante o outage.
+
+### Validação
+
+- Proxy `test` verde (6/6), `spotlessCheck` verde. Sem mudança de contrato, schema ou app.
+
+### Pendente
+
+- Redeploy via push; `Tentar de novo` no aparelho. Se o router seguir lento, a cadeia cai para `super-vl` → `gemma` sozinha.
+- Futuro: ler `coach model=... status=...` no Dokploy para afinar; `OPENROUTER_TIMEOUT_MS` continua ajustável por env.
+
 ## Sessão 2026-11-20 — Rota padrão da IA vira openrouter/free
 
 **Objetivo:** colocar a rota unificada gratuita do OpenRouter como padrão do proxy.

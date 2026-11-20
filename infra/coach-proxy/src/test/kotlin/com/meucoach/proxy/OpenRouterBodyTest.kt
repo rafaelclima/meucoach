@@ -76,4 +76,15 @@ class OpenRouterBodyTest {
             assertTrue(system.contains("pergunta ou acao"), "$kind must close with a question or action")
         }
     }
+
+    @Test
+    fun `default chain routes free first with live fallbacks`() {
+        assertEquals("openrouter/free", DEFAULT_MODELS.first())
+        assertTrue(DEFAULT_MODELS.size >= 2, "chain needs fallbacks when the router stalls")
+        assertTrue(
+            DEFAULT_MODELS.none { it.contains("inkling") },
+            "inkling-2-small was retired by OpenRouter (404); pin a live :free id",
+        )
+        assertTrue(DEFAULT_MODELS.all { it.endsWith(":free") || it == "openrouter/free" })
+    }
 }
