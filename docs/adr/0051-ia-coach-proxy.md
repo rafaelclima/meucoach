@@ -169,7 +169,8 @@ modelos sem publicar o app.
   (`COACH_GO_URL`, default
   `https://opencode.ai/inference/go/openai/v1/chat/completions`, o base URL
   documentado para Go) com `COACH_GO_API_KEY` e `COACH_GO_MODELS` (default
-  `deepseek-v4.1-flash`: maior cota do Go, $100/mês). A cadeia tenta o Go
+  `glm-5.3-flash` → `deepseek-v4.1-flash`: o flash responde mais rápido e o
+  DeepSeek fica como segunda tentativa de maior cota). A cadeia tenta o Go
   primeiro e cai no OpenRouter sozinha (`UpstreamTarget` + `buildChain`
   puros, com teste-tripwire); sem chave do Go, o comportamento é o de antes.
   Envs só no Dokploy, nunca no APK; `COACH_UPSTREAM_TIMEOUT_MS` opcional

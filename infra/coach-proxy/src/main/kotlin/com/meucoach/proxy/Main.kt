@@ -222,8 +222,13 @@ internal val DEFAULT_MODELS = listOf(
     "google/gemma-4-31b-it:free",
 )
 
-/** Modelo padrão do Go: maior cota ($100/mês) e menor preço entre os viáveis. */
-internal val DEFAULT_GO_MODELS = listOf("deepseek-v4.1-flash")
+/**
+ * Modelos padrão do Go, em ordem de tentativa. GLM-5.3-Flash primeiro por ser
+ * um modelo "flash" (resposta curta, latência baixa) e retenção 0 dias; o
+ * DeepSeek V4.1 Flash fica como segunda tentativa por ter a maior cota.
+ * Se o workspace não tiver um deles, o 4xx cai para o próximo sem quebrar.
+ */
+internal val DEFAULT_GO_MODELS = listOf("glm-5.3-flash", "deepseek-v4.1-flash")
 
 /**
  * Tenta os alvos em ordem (Go, depois OpenRouter) e dentro de cada alvo os

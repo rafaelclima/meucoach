@@ -20,6 +20,8 @@
 - **Explicação:** vira no máximo 3 bolhas (2 primeiras + pergunta final) com “Ver detalhes”; o meio e os bullets ficam no anexo. Sem paredes de texto.
 - **Retrovisor sob demanda:** uma bolha “Quer olhar pra trás?” com chips “Semana passada”, “Evolução” e “Histórico”. Revisão e evolução só entram no feed quando tocadas (com bring-into-view); histórico abre em **bottom sheet** com rolagem.
 - **Visual:** sem avatares repetidos no feed (o avatar fica no header, como chat direto); anexos com borda sutil; composer de uma linha; últimos 2 ecos no rodapé; 4 quick replies no rodapé (sem duplicar “Semana passada”).
+- **Lapidação pós-print:** chips do rodapé encurtados + fade na borda; retrovisor virou text buttons (não compete com os chips); fallback “Tentar de novo” virou text button; trava começa com “Um cuidado:”; CTA do dia vira “Ver como correr hoje” (hoje) ou “Ver o plano” (futuro).
+- **Go:** default `COACH_GO_MODELS` agora tenta `glm-5.3-flash` primeiro e `deepseek-v4.1-flash` depois; o log de 19:35 ainda mostrava o DeepSeek estourando 15 s e o OpenRouter free em 429. Proxy 14/14.
 - **Testes:** `CoachScreenTest`, `CoachHistoryTest` e `CoachExplanationCardTest` atualizados; novo teste de explicação longa que preserva a pergunta final e esconde o meio; 133 testes do Coach verdes.
 
 ### Validação

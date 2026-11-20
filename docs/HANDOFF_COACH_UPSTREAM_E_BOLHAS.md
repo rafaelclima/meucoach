@@ -50,7 +50,7 @@ Leitura:
 |---|---|---|
 | Proxy multi-upstream (Go → OpenRouter, session header, failover em 4xx) | ✅ No ar, testado (13/13); default Go agora é `/inference/go/openai/v1/chat/completions` | `infra/coach-proxy/.../Main.kt`, `OpenRouterBodyTest` |
 | Cadeia OpenRouter (`openrouter/free` → `super-vl` → `gemma-4-31b-it`) | ✅ No ar; gemma substituiu o inkling morto (404) | `DEFAULT_MODELS` |
-| Modelo Go (`deepseek-v4.1-flash`, $100/mês de cota, retenção 0 dias) | ✅ ID confirmado em `GET /inference/go/v1/models`; falta a chave certa + região Global | `COACH_GO_*` (envs só no Dokploy) |
+| Modelo Go (`glm-5.3-flash` → `deepseek-v4.1-flash`, retenção 0 dias) | ⚠️ Default novo (flash primeiro); log de 19:35 ainda era só DeepSeek timeout + OpenRouter 429 | `COACH_GO_*` (envs só no Dokploy) |
 | App | ✅ F3-bolhas implementada (bolhas + "Ver números"); falta instalar no aparelho | `app/ui/coach/*` |
 | Voz nova nos prompts | ✅ No ar (telas mostram "Bora?", "me diz se ficou bom") | `SYSTEM_EXPLAIN/REVIEW` |
 | Docs | ✅ ADR 0051 (addenda Go + session header), PRD, handoff, PROGRESS | `docs/adr/0051-ia-coach-proxy.md` etc. |
@@ -76,6 +76,9 @@ Envs no Dokploy (fonte da verdade operacional): `COACH_PROXY_TOKEN`, `OPENROUTER
 - O print `opencode_go.png` mostra o fluxo **"Connect a client" → Create API key**, que cria uma **service account**. Ela autentica, mas a doc diz que service accounts não são cobertas pelo Go Teams; para a cota Go, prefira a chave pessoal acima.
 - O print usa o base URL pay-as-you-go (`https://opencode.ai/inference/openai/v1/...`). Para Go, o base URL é `https://opencode.ai/inference/go` + `/openai/v1/chat/completions`; o default do proxy já foi corrigido para essa URL canônica.
 - Confirme em **Settings › Privacy → Regions** que **Global** está habilitado para DeepSeek V4.1 Flash; sem isso o Go pode recusar/travar esse modelo.
+- **Log 19:35:** a URL canônica já está em uso, mas o Go DeepSeek estourou 15 s e o OpenRouter free respondeu 429. O default do proxy agora tenta `glm-5.3-flash` primeiro; falta redeploy. Teste direto com a chave no seu terminal (não colar aqui):
+  `curl -m 60 https://opencode.ai/inference/go/openai/v1/chat/completions -H "Authorization: Bearer $COACH_GO_API_KEY" -H "Content-Type: application/json" -H "x-opencode-session: meucoach-diagnose" -d '{"model":"glm-5.3-flash","messages":[{"role":"user","content":"Responda só ok"}]}'`
+  Se 200 → modelo/timeout do proxy; se 401/403 → chave/região; se timeout → modelo/região.
 - **Nunca** colar a chave em chat, issue, commit ou log.
 
 ---

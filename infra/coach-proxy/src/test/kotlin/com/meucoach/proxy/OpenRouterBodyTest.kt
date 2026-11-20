@@ -97,6 +97,12 @@ class OpenRouterBodyTest {
     }
 
     @Test
+    fun `default go chain tries the fast model first`() {
+        assertEquals("glm-5.3-flash", DEFAULT_GO_MODELS.first())
+        assertEquals("deepseek-v4.1-flash", DEFAULT_GO_MODELS.last())
+    }
+
+    @Test
     fun `go goes first when its key is present`() {
         val chain = buildChain(
             openRouterKey = "or-key",
