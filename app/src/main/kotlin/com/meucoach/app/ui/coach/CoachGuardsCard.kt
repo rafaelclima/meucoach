@@ -60,9 +60,13 @@ internal fun CoachGuardsCard(state: CoachGuardsUiState, onRetry: () -> Unit, mod
                 modifier = modifier.testTag("coach-guards-card"),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                visible.forEach { guard ->
+                visible.forEachIndexed { index, guard ->
                     CoachBubble(
-                        text = "${guard.title} ${guard.detail}",
+                        text = if (index == 0) {
+                            "Um cuidado: ${guard.title} ${guard.detail}"
+                        } else {
+                            "Também: ${guard.title} ${guard.detail}"
+                        },
                         testTag = "coach-guard-bubble",
                     )
                 }

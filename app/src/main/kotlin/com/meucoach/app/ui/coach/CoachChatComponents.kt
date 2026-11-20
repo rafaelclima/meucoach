@@ -29,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -229,6 +231,7 @@ internal fun CoachRetroPrompt(
     onHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = McTheme.colors
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -240,34 +243,40 @@ internal fun CoachRetroPrompt(
             testTag = "coach-retro-bubble",
         )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
         ) {
             if (reviewAvailable) {
-                FilterChip(
-                    selected = showReview,
+                TextButton(
                     onClick = onReview,
-                    label = { Text("Semana passada") },
                     modifier = Modifier.testTag("coach-retro-review"),
-                )
+                ) {
+                    Text(
+                        text = if (showReview) "Ocultar semana" else "Semana passada",
+                        color = if (showReview) colors.accentText else colors.textSecondary,
+                    )
+                }
             }
             if (progressAvailable) {
-                FilterChip(
-                    selected = showProgress,
+                TextButton(
                     onClick = onProgress,
-                    label = { Text("Evolução") },
                     modifier = Modifier.testTag("coach-retro-progress"),
-                )
+                ) {
+                    Text(
+                        text = if (showProgress) "Ocultar evolução" else "Evolução",
+                        color = if (showProgress) colors.accentText else colors.textSecondary,
+                    )
+                }
             }
             if (historyAvailable) {
-                FilterChip(
-                    selected = false,
+                TextButton(
                     onClick = onHistory,
-                    label = { Text("Histórico") },
                     modifier = Modifier.testTag("coach-retro-history"),
-                )
+                ) {
+                    Text(text = "Histórico", color = colors.textSecondary)
+                }
             }
             Spacer(modifier = Modifier.width(24.dp))
         }
@@ -341,18 +350,32 @@ internal fun CoachQuickReplies(
     onAdjust: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .testTag("coach-quick-replies"),
-    ) {
-        QuickChip(text = "Explica minha semana", testTag = "coach-quick-explain", onClick = onExplain)
-        QuickChip(text = "Perdi um treino", testTag = "coach-quick-missed", onClick = onMissed)
-        QuickChip(text = "Só tenho 30 min", testTag = "coach-quick-less-time", onClick = onLessTime)
-        QuickChip(text = "Ajustar a semana", testTag = "coach-quick-adjust", onClick = onAdjust)
-        Spacer(modifier = Modifier.width(24.dp))
+    Box(modifier = modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .testTag("coach-quick-replies"),
+        ) {
+            QuickChip(text = "Explica a semana", testTag = "coach-quick-explain", onClick = onExplain)
+            QuickChip(text = "Perdi treino", testTag = "coach-quick-missed", onClick = onMissed)
+            QuickChip(text = "Só 30 min", testTag = "coach-quick-less-time", onClick = onLessTime)
+            QuickChip(text = "Ajustar semana", testTag = "coach-quick-adjust", onClick = onAdjust)
+            Spacer(modifier = Modifier.width(32.dp))
+        }
+        // A fade says "there are more chips" instead of a chip cut off at the edge.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        0.86f to Color.Transparent,
+                        1f to McTheme.colors.background,
+                    ),
+                ),
+        )
     }
 }
 

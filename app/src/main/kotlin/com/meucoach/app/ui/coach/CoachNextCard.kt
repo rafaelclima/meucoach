@@ -20,6 +20,7 @@ import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.component.McSignalDot
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.prescription.QualityBlockReason
 import com.meucoach.core.model.ReadinessLevel
 
@@ -181,6 +182,11 @@ private fun ReadyCard(state: CoachNextUiState.Ready, onCheckIn: () -> Unit, onTo
             !context.hasCheckIn ||
                 context.prescription?.qualityBlockReason == QualityBlockReason.SUBJECTIVE_MISSING
             )
+        val actionLabel = when {
+            context.subject is CoachNextSubject.Race -> "Ver no Hoje"
+            context.isToday -> "Ver como correr hoje"
+            else -> "Ver o plano"
+        }
         if (needsCheckIn) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -198,7 +204,7 @@ private fun ReadyCard(state: CoachNextUiState.Ready, onCheckIn: () -> Unit, onTo
                     onClick = onToday,
                     modifier = Modifier.testTag("coach-next-today"),
                 ) {
-                    Text(text = "Ver no Hoje", color = colors.accentText)
+                    Text(text = actionLabel, color = colors.accentText)
                 }
             }
         } else {
@@ -206,7 +212,7 @@ private fun ReadyCard(state: CoachNextUiState.Ready, onCheckIn: () -> Unit, onTo
                 onClick = onToday,
                 modifier = Modifier.testTag("coach-next-today"),
             ) {
-                Text(text = "Ver no Hoje", color = colors.accentText)
+                Text(text = actionLabel, color = colors.accentText)
             }
         }
     }

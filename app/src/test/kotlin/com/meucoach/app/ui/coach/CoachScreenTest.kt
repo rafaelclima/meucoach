@@ -2,7 +2,6 @@ package com.meucoach.app.ui.coach
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
@@ -614,7 +613,6 @@ class CoachScreenTest {
             .performSemanticsAction(SemanticsActions.OnClick)
         compose.mainClock.advanceTimeBy(1_000)
         compose.waitForIdle()
-        compose.onNodeWithTag("coach-retro-progress").assertIsSelected()
         compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
     }
 

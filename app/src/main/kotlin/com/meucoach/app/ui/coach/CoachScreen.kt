@@ -262,7 +262,12 @@ fun CoachScreen(
                                         testTag = "coach-fallback-plan",
                                     )
                                 }
-                                McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
+                                TextButton(
+                                    onClick = onRetry,
+                                    modifier = Modifier.testTag("coach-fallback-retry"),
+                                ) {
+                                    Text(text = "Tentar de novo", color = McTheme.colors.accentText)
+                                }
                             }
                         }
                     }
@@ -281,9 +286,11 @@ fun CoachScreen(
                         progressAvailable = progressAvailable,
                         historyAvailable = historyAvailable,
                         onReview = {
-                            userEchoes.add("Como foi minha semana passada?")
-                            showReview = true
-                            showProgress = false
+                            showReview = !showReview
+                            if (showReview) {
+                                userEchoes.add("Como foi minha semana passada?")
+                                showProgress = false
+                            }
                         },
                         onProgress = {
                             showProgress = !showProgress
