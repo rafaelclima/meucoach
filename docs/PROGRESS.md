@@ -1,6 +1,24 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Upstream duplo: OpenCode Go + OpenRouter)
+**Atualizado:** 20/11/2026 (Go: session header + failover entre provedores)
+
+## Sessão 2026-11-20 — Go pede `x-opencode-session` (400 MissingSessionID)
+
+**Objetivo:** fazer o Go rotear (logs do Dokploy mostravam 400 em tudo).
+
+### Concluído
+
+- **Causa:** Go exige `x-opencode-session` estável por conversa + UA própria; sem isso, 400 e nada roteia.
+- **Fix:** proxy envia `x-opencode-session = meucoach-coach-{kind}-{inputsHash}` (só hash, sem dado) e `User-Agent: MeuCoach-Coach/1.0`; 4xx não abortam mais a cadeia (guardam o 1º erro duro e seguem; esgotou tudo, o erro duro vence o 502).
+- **Testes:** proxy 12/12 (`sessionIdFor` incluso). App sem toque.
+
+### Validação
+
+- Proxy `test` + `spotlessCheck` verdes. Sem migração, sem dado real.
+
+### Pendente
+
+- Redeploy + `Tentar de novo`; esperar `coach upstream=go ... 200` no Dokploy (se 4xx persistir, o OpenRouter assume sozinho e o log mostra o erro real).
 
 ## Sessão 2026-11-20 — Upstream duplo no proxy (Go primário)
 

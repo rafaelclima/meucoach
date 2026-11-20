@@ -156,6 +156,14 @@ modelos sem publicar o app.
 - **Testes:** prompt/validator puros, `CoachApi` com servidor local, consent
   store, ViewModel (explicação e revisão), source da semana fechada e tela. Sem
   dados reais no CI; o teste real é manual contra a VPS.
+- **Correção 20/11/2026 (Go exige `x-opencode-session`):** sem o header o Go
+  devolve 400 `MissingSessionID` e nada funciona. Proxy agora envia
+  `x-opencode-session = meucoach-coach-{kind}-{inputsHash}` (estável por
+  conversa, só hash, bom pro cache deles) + `User-Agent: MeuCoach-Coach/1.0`
+  (exigências de roteamento do Go). De quebra, 4xx não abortam mais a cadeia:
+  guardam o primeiro erro duro e seguem para o próximo provedor (chave ruim
+  num provedor não veta o outro); no esgotamento, o erro duro vence o 502
+  genérico. Teste `sessionIdFor` (hash/ausência/JSON inválido).
 - **Correção 20/11/2026 (upstream duplo: OpenCode Go + OpenRouter):**
   assinatura Go do usuário 0 alimenta o Coach via endpoint OpenAI-compatible
   (`COACH_GO_URL`, default `https://opencode.ai/zen/go/v1/chat/completions`)

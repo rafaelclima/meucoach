@@ -23,6 +23,8 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -163,7 +165,13 @@ private const val SYSTEM_REPLAN =
  * free como fallback. Cada alvo só entra na cadeia com chave presente, então
  * sem `COACH_GO_API_KEY` o comportamento é o de antes (só OpenRouter).
  */
-data class UpstreamTarget(val label: String, val url: String, val key: String, val models: List<String>)
+data class UpstreamTarget(
+    val label: String,
+    val url: String,
+    val key: String,
+    val models: List<String>,
+    val userAgent: String? = null,
+)
 
 internal fun buildChain(
     openRouterKey: String,
@@ -173,11 +181,25 @@ internal fun buildChain(
     goModels: List<String>,
 ): List<UpstreamTarget> = buildList {
     if (goKey.isNotBlank() && goModels.isNotEmpty()) {
-        add(UpstreamTarget("go", goUrl, goKey, goModels))
+        add(UpstreamTarget("go", goUrl, goKey, goModels, userAgent = "MeuCoach-Coach/1.0"))
     }
     if (openRouterKey.isNotBlank() && openRouterModels.isNotEmpty()) {
         add(UpstreamTarget("openrouter", OPENROUTER_URL, openRouterKey, openRouterModels))
     }
+}
+
+/**
+ * Sessão estável por conversa, exigida pelo roteamento do Go
+ * (`x-opencode-session`; sem ela o Go devolve 400 MissingSessionID).
+ * Deriva do `inputsHash` do prompt — mesmo conteúdo, mesma sessão
+ * (bom para o cache deles); nunca carrega dado de saúde, só o hash.
+ */
+internal fun sessionIdFor(kind: String, payload: String): String {
+    val hash = runCatching {
+        Json.parseToJsonElement(payload).jsonObject["inputsHash"]
+            ?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+    }.getOrNull()
+    return "meucoach-coach-$kind-${hash ?: "unknown"}"
 }
 
 private const val OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -199,8 +221,9 @@ internal val DEFAULT_GO_MODELS = listOf("deepseek-v4.1-flash")
 /**
  * Tenta os alvos em ordem (Go, depois OpenRouter) e dentro de cada alvo os
  * modelos em ordem; devolve o primeiro 2xx.
- * 429/5xx/timeout passam para o próximo; outro 4xx retorna na hora
- * (erro do pedido, não do modelo). Sem log de payload.
+ * 429/5xx/timeout e 4xx passam para o próximo alvo/modelo; se a cadeia
+ * esgotar, devolve o primeiro erro "duro" (400/401/402/422) para diagnóstico
+ * — uma chave ruim num provedor não pode vetar o outro. Sem log de payload.
  */
 private suspend fun tryModels(
     client: HttpClient,
@@ -208,6 +231,8 @@ private suspend fun tryModels(
     kind: String,
     payload: String,
 ): Pair<String, HttpStatusCode>? {
+    var hardError: Pair<String, HttpStatusCode>? = null
+    val session = sessionIdFor(kind, payload)
     for (target in chain) {
         for (model in target.models) {
             try {
@@ -216,19 +241,22 @@ private suspend fun tryModels(
                     header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                     header("HTTP-Referer", "https://meucoach.app")
                     header("X-Title", "MeuCoach Coach")
+                    header("x-opencode-session", session)
+                    target.userAgent?.let { header(HttpHeaders.UserAgent, it) }
                     setBody(buildOpenRouterBody(model, kind, payload))
                 }
                 if (res.status.value in 200..299) return res.bodyAsText() to res.status
                 println("coach upstream=${target.label} model=$model status=${res.status.value} (trying next)")
-                // 400/401/402/422 são problema do pedido ou da conta: não adianta trocar de modelo.
-                if (res.status.value in listOf(400, 401, 402, 422)) {
-                    return res.bodyAsText() to res.status
+                // 400/401/402/422 são problema do pedido ou da conta naquele
+                // provedor: guarda o primeiro para diagnóstico e segue a cadeia.
+                if (hardError == null && res.status.value in listOf(400, 401, 402, 422)) {
+                    hardError = res.bodyAsText() to res.status
                 }
             } catch (e: Exception) {
                 println("coach upstream=${target.label} model=$model error=${e.message} (trying next)")
             }
         }
     }
-    // 400/401/402/422 retornam na hora; aqui só restam 403/404/429/5xx/timeout.
-    return null
+    // Cadeia esgotada: prefere o erro duro (diagnóstico real) ao 502 genérico.
+    return hardError
 }

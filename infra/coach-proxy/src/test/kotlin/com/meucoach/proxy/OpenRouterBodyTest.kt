@@ -140,4 +140,17 @@ class OpenRouterBodyTest {
 
         assertTrue(chain.isEmpty())
     }
+
+    @Test
+    fun `session id derives from the prompt hash`() {
+        val id = sessionIdFor("explain", """{"inputsHash":"abc123","foo":1}""")
+
+        assertEquals("meucoach-coach-explain-abc123", id)
+    }
+
+    @Test
+    fun `session id falls back without a hash`() {
+        assertEquals("meucoach-coach-review-unknown", sessionIdFor("review", "{}"))
+        assertEquals("meucoach-coach-review-unknown", sessionIdFor("review", "not-json"))
+    }
 }
