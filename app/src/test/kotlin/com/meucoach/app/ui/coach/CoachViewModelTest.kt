@@ -69,7 +69,9 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
+import org.junit.AfterClass
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -85,6 +87,24 @@ import java.time.ZoneOffset
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class CoachViewModelTest {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    companion object {
+        private val dispatcher = UnconfinedTestDispatcher()
+
+        @BeforeClass
+        @JvmStatic
+        fun setUpClass() {
+            Dispatchers.setMain(dispatcher)
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun tearDownClass() {
+            dispatcher.scheduler.advanceUntilIdle()
+            Dispatchers.resetMain()
+        }
+    }
+
     private lateinit var consent: CoachConsentStore
     private lateinit var plans: MutableStateFlow<CoachPlanContext?>
     private lateinit var reviews: MutableStateFlow<WeeklyReview?>
@@ -97,7 +117,6 @@ class CoachViewModelTest {
     private lateinit var checkIns: CheckInRepository
     private lateinit var planRepository: TrainingPlanRepository
     private lateinit var replanFactory: ReplanControllerFactory
-    private val dispatcher = UnconfinedTestDispatcher()
     private val viewModels = mutableListOf<CoachViewModel>()
     private val appScopes = mutableListOf<CoroutineScope>()
     private val clock = Clock.fixed(Instant.parse("2026-11-04T12:00:00Z"), ZoneOffset.UTC)
@@ -131,7 +150,6 @@ class CoachViewModelTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
     fun setUp() {
-        Dispatchers.setMain(dispatcher)
         val context = ApplicationProvider.getApplicationContext<Context>()
         consent = CoachConsentStore(context, "coach-vm-${System.nanoTime()}")
         plans = MutableStateFlow(null)
@@ -187,7 +205,6 @@ class CoachViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         shadowOf(Looper.getMainLooper()).idle()
         database.close()
-        Dispatchers.resetMain()
     }
 
     private fun viewModel(api: FakeCoachApi): CoachViewModel {
