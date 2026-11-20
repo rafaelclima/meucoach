@@ -261,13 +261,13 @@ fun CoachScreen(
                                 Column(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    CoachBubbleSequence(
-                                        texts = CoachBubbles.split(explanation.planRationale),
-                                        testTag = "coach-fallback-plan",
-                                    )
                                     CoachBubble(
                                         text = CoachFallbackLabels.reasonCopy(explanation.reason),
                                         testTag = "coach-fallback-reason",
+                                    )
+                                    CoachBubbleSequence(
+                                        texts = CoachBubbles.split(explanation.planRationale),
+                                        testTag = "coach-fallback-plan",
                                     )
                                 }
                                 McSecondaryButton(text = "Tentar de novo", onClick = onRetry)
