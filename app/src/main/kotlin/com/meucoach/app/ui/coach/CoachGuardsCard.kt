@@ -73,7 +73,7 @@ internal fun CoachGuardsCard(state: CoachGuardsUiState, onRetry: () -> Unit, mod
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "TRAVAS DA SEMANA",
+                        text = "O que pode te travar",
                         style = McTextStyles.overline,
                         color = colors.textTertiary,
                     )

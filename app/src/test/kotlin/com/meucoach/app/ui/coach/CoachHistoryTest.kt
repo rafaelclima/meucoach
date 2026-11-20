@@ -39,7 +39,7 @@ class CoachHistoryTest {
         setContent(history = readyHistory())
 
         compose.onNodeWithTag("coach-history-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("HISTÓRICO DO COACH").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Nossa conversa").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Resumo da semana de 02/11").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Semana 1").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões.", substring = true).performScrollTo().assertIsDisplayed()

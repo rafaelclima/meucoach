@@ -136,4 +136,26 @@ class CoachResponseValidatorTest {
         assertTrue(valid is CoachValidationResult.Valid)
         assertTrue(unchecked is CoachValidationResult.Valid)
     }
+
+    @Test
+    fun `barra resposta longa demais para o chat`() {
+        val longBody = "a".repeat(CoachResponseValidator.MAX_TOTAL_CHARS)
+        val result = CoachResponseValidator.validate(
+            CoachRawResponse(title = "Semana", body = longBody),
+            allowedMinutes = setOf(30),
+        )
+
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
+    fun `aceita narrativa longa dentro do teto do chat`() {
+        val body = "Você manteve os 30 min leves com boa consistência. ".repeat(20).trim()
+        val result = CoachResponseValidator.validate(
+            CoachRawResponse(title = "Semana", body = body),
+            allowedMinutes = setOf(30),
+        )
+
+        assertTrue(result is CoachValidationResult.Valid)
+    }
 }

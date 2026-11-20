@@ -25,6 +25,14 @@ object CoachResponseValidator {
     private val bpmPattern = Regex("""\d{2,3}\s?bpm""", RegexOption.IGNORE_CASE)
 
     /**
+     * Absurd-length guard for the chat surface (PRD_COACH_CHAT F2). Real
+     * narratives stay far below this; a runaway completion must fall back
+     * instead of flooding the timeline. Brevity itself (3 short bubbles) is
+     * enforced by the system prompts, not here.
+     */
+    const val MAX_TOTAL_CHARS = 2000
+
+    /**
      * Tokens that only exist as metrics. The word boundary keeps "atl" out of
      * "atleta"/"atletas" and "ctl" out of "controle" (P-10), while still
      * rejecting the standalone acronyms.
@@ -54,6 +62,9 @@ object CoachResponseValidator {
     ): CoachValidationResult {
         if (raw.title.isBlank() || raw.body.isBlank()) {
             return CoachValidationResult.Invalid("Título e corpo são obrigatórios")
+        }
+        if (raw.title.length + raw.body.length + raw.bullets.sumOf { it.length } > MAX_TOTAL_CHARS) {
+            return CoachValidationResult.Invalid("Resposta longa demais para o chat")
         }
         val combined = (
             listOf(

@@ -73,7 +73,7 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-review-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("REVISÃO DA SEMANA PASSADA").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sobre a semana passada").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Você cumpriu a maior parte do que planejou.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões concluídas").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("75%").assertExists()
@@ -342,7 +342,7 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-fallback-reason").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("termo interno", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("me enrolei", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("ADHERENCE_PARTIAL", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Resposta contém", substring = true).assertDoesNotExist()
     }
@@ -351,13 +351,13 @@ class CoachScreenTest {
     fun `fallback de rede mantem copy amigavel`() {
         setContent(
             explanation = CoachExplanationState.Fallback(
-                reason = "Sem conexão com o Coach. Mostrando o resumo do motor.",
+                reason = "Sem conexão aqui — te mostro o plano direto do motor.",
                 planRationale = "Plano da semana.",
             ),
         )
 
         compose.onNodeWithText(
-            "Sem conexão com o Coach. Mostrando o resumo do motor.",
+            "Sem conexão aqui — te mostro o plano direto do motor.",
             substring = true,
         ).performScrollTo().assertIsDisplayed()
     }
@@ -378,7 +378,7 @@ class CoachScreenTest {
         setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("PRÓXIMO TREINO").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("O que importa hoje").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Amanhã · Planejado: Fácil · 30 min").performScrollTo().assertIsDisplayed()
     }
 
@@ -387,7 +387,7 @@ class CoachScreenTest {
         setContent(next = CoachNextUiState.Ready(raceContext(monday.plusDays(1))))
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("PRÓXIMA PROVA").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dia de prova").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Amanhã · Dia de prova").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Fácil", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Semana concluída.").assertDoesNotExist()
@@ -893,7 +893,7 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("EVOLUÇÃO · 4 SEMANAS").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sua evolução").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("6 de 9 sessões do plano (67%)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Planejado 3h34 · feito 3h39 (102%)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("52% fácil nos últimos 28 dias (alvo ~80%).").performScrollTo()
@@ -1002,6 +1002,68 @@ class CoachScreenTest {
 
         compose.onNodeWithTag("coach-progress-trends").performScrollTo().performClick()
         assertThat(trends).isEqualTo(1)
+    }
+
+    @Test
+    fun `chat header abre como funciona sem tecnices no corpo`() {
+        setContent()
+
+        compose.onNodeWithTag("coach-chat-header").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("motor no comando", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-chat-info").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-how-it-works-sheet").assertIsDisplayed()
+        compose.onNodeWithText("O motor decide o treino", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("coach-how-it-works-close").performClick()
+        compose.onNodeWithTag("coach-how-it-works-sheet").assertDoesNotExist()
+    }
+
+    @Test
+    fun `abertura conversa aparece antes do proximo treino`() {
+        setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
+
+        compose.onNodeWithTag("coach-chat-opening").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Opa, bora ver o que importa hoje?", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `quick reply perdi treino vira mensagem sua e chama o fluxo`() {
+        var missed = 0
+        setContent(onReplanRequestMissed = { missed++ })
+
+        compose.onNodeWithTag("coach-quick-missed").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-user-echo").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Perdi o treino de ontem").performScrollTo().assertIsDisplayed()
+        assertThat(missed).isEqualTo(1)
+    }
+
+    @Test
+    fun `quick reply menos tempo vira mensagem sua e chama o fluxo`() {
+        var lessTime = 0
+        setContent(onReplanRequestLessTime = { lessTime++ })
+
+        compose.onNodeWithTag("coach-quick-less-time").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-user-echo").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Só tenho 30 min na quinta").performScrollTo().assertIsDisplayed()
+        assertThat(lessTime).isEqualTo(1)
+    }
+
+    @Test
+    fun `digitando aparece enquanto a IA carrega`() {
+        setContent(explanation = CoachExplanationState.Loading)
+
+        compose.onNodeWithTag("coach-typing").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `composer indica input futuro sem fingir conversa livre`() {
+        setContent()
+
+        compose.onNodeWithTag("coach-composer").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Em breve você poderá digitar", substring = true)
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     private fun setContent(

@@ -35,7 +35,7 @@ internal fun CoachReplanCard(
     val busy = state.isLoading || state.isApplying || state.isUndoing
     McCard(modifier = modifier.testTag("coach-replan-card")) {
         Text(
-            text = "AJUSTAR A SEMANA",
+            text = "Precisou mudar alguma coisa?",
             style = McTextStyles.overline,
             color = colors.textTertiary,
         )

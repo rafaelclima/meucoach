@@ -62,4 +62,18 @@ class OpenRouterBodyTest {
             )
         }
     }
+
+    @Test
+    fun `system prompts speak as a chat coach`() {
+        for (kind in listOf("explain", "review")) {
+            val body = buildOpenRouterBody("some-model:free", kind, "{}")
+            val system = Json.parseToJsonElement(body)
+                .jsonObject["messages"]!!.jsonArray[0]
+                .jsonObject["content"]!!.jsonPrimitive.content
+
+            assertTrue(system.contains("WhatsApp"), "$kind must frame the voice as a WhatsApp chat")
+            assertTrue(system.contains("140"), "$kind must cap each message at 140 chars")
+            assertTrue(system.contains("pergunta ou acao"), "$kind must close with a question or action")
+        }
+    }
 }

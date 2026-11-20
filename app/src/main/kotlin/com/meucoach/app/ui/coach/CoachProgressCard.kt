@@ -70,7 +70,7 @@ internal fun CoachProgressCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "EVOLUÇÃO · 4 SEMANAS",
+                        text = "Sua evolução",
                         style = McTextStyles.overline,
                         color = colors.textTertiary,
                     )
@@ -113,11 +113,6 @@ internal fun CoachProgressCard(
                         text = "Ver Tendências",
                         onClick = onTrends,
                         modifier = Modifier.testTag("coach-progress-trends"),
-                    )
-                    Text(
-                        text = "Sem nota, streak ou cobrança.",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
                     )
                 }
             }

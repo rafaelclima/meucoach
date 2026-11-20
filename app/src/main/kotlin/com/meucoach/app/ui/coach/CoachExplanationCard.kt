@@ -35,7 +35,7 @@ internal fun CoachExplanationCard(state: CoachExplanationState.Ready, modifier: 
 
     McCard(modifier = modifier.testTag("coach-explanation-card")) {
         Text(
-            text = "EXPLICAÇÃO DA SEMANA",
+            text = "Sobre a sua semana",
             style = McTextStyles.overline,
             color = colors.textTertiary,
         )
@@ -81,10 +81,5 @@ internal fun CoachExplanationCard(state: CoachExplanationState.Ready, modifier: 
                 )
             }
         }
-        Text(
-            text = "A IA só reescreve o plano do motor; nenhum número nasce daqui.",
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
     }
 }

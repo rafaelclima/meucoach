@@ -29,7 +29,7 @@ internal fun CoachReviewCard(review: WeeklyReview, state: CoachReviewState, modi
     val colors = McTheme.colors
     McCard(modifier = modifier.testTag("coach-review-card")) {
         Text(
-            text = "REVISÃO DA SEMANA PASSADA",
+            text = "Sobre a semana passada",
             style = McTextStyles.overline,
             color = colors.textTertiary,
         )
@@ -181,11 +181,5 @@ internal fun CoachReviewCard(review: WeeklyReview, state: CoachReviewState, modi
                 )
             }
         }
-
-        Text(
-            text = "Resumo da semana fechada. Sem nota, streak ou cobrança.",
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
     }
 }

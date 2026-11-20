@@ -1,6 +1,90 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (install.sh multi-máquina + keystore compartilhado)
+**Atualizado:** 20/11/2026 (Coach chat F2 — voz do treinador)
+
+## Sessão 2026-11-20 — Coach chat F2 (voz do treinador)
+
+**Objetivo:** dar voz de treinador à timeline da F1: fim dos overlines burocráticos, fallback em 1ª pessoa, trava de tamanho no validador e prompts do proxy como mensageiro (PRD_COACH_CHAT F2).
+
+### Concluído
+
+- **Header:** "Como funciona" com `endPadding` de 44dp — não fica mais sob a engrenagem global.
+- **Labels humanos:** `O que importa hoje`/`Dia de prova`, `O que pode te travar`, `Precisou mudar alguma coisa?`, `Sobre a sua semana`, `Sobre a semana passada`, `Sua evolução`, `Nossa conversa` (antes: overlines em caixa alta).
+- **Fallback falado:** `CoachFallbackLabels` em 1ª pessoa ("Me enrolei aqui — tenta de novo em instantes?") e `reason` técnico nunca na UI (inclui o novo motivo "longa demais").
+- **Validador:** `MAX_TOTAL_CHARS = 2000` (guarda contra completion descontrolada; brevidade 3×140 fica nos prompts). 2 testes novos, 13/13 verdes.
+- **Proxy:** `SYSTEM_EXPLAIN/REVIEW` reescritos (WhatsApp, 2ª pessoa, ≤3 msgs de 140 chars, fecha com pergunta/ação, sem 3ª pessoa institucional). Contrato intacto (title/body strings, sem números novos, sem códigos). Teste novo "speak as a chat coach" verde (5/5 no proxy).
+- **Regressão:** testes de tela atualizados para os novos labels/copy (43+ testes do Coach verdes); ordem replan→explicação preservada.
+
+### Validação
+
+- Proxy `test` (5/5), `:core:domain:test` + `koverVerify`, coach/replan/app suites, `assembleDebug`, `detekt`, `lintDebug`, `spotlessCheck` verdes.
+- Sem migração, sem dependência nova, sem dado real no diff.
+
+### Pendente
+
+- **Redeploy do proxy no Dokploy** (rebuild; sem isso o aparelho segue com a voz antiga — o app já protege via validador/fallback).
+- Validar no aparelho: header sem sobreposição, labels novos, fallback falado e respostas curtas em 2ª pessoa após o redeploy.
+- F3 (timeline única: arquivo vira conversa) só após F2 validada.
+
+### Próximo passo
+
+1. Redeploy do proxy + `./install.sh` e conferir a voz nova no aparelho.
+2. Iniciar F3 do `PRD_COACH_CHAT` (fusão `messages+summaries+eventos`).
+
+## Sessão 2026-11-20 — Coach chat F1 (timeline de conversa)
+
+**Objetivo:** dar a primeira cara de conversa à aba Coach (PRD_COACH_CHAT F1) sem tocar em motor, schema ou proxy: header de conversa, bolhas, quick-replies que viram mensagem sua, "digitando…", "Como funciona" e composer futuro.
+
+### Concluído
+
+- **PRD:** `docs/PRD_COACH_CHAT.md` v0.1 (persona, turnos, roteiros, prompts, fases F0–F4).
+- **Chat chrome:** `CoachChatComponents.kt` (header com status + info, `CoachBubble`/`UserBubble`, `CoachTyping`, `CoachQuickReplies`, `CoachHowItWorksSheet`, `CoachComposerHint`). Só apresentação; nenhum número novo.
+- **Timeline:** `CoachScreen` vira coluna de conversa (`coach-timeline`) com abertura ("Opa, bora ver o que importa hoje?"), cards existentes como anexos na mesma ordem (replan antes da explicação preservado), ecos seus via quick-reply (`Perdi o treino de ontem`, `Só tenho 30 min na quinta`, `Pode explicar minha semana?`, `Como foi minha semana passada?`, `Quero ajustar a semana`), typing no loading e composer desabilitado honesto.
+- **Voz:** disclaimers de engenharia saem do corpo (`O motor decide…`, `A IA só reescreve…`, `Sem nota…` em Next/Explanation/Review/Progress) e vão para o sheet único "Como funciona o Coach".
+- **Regressão:** 6 testes novos no `CoachScreenTest` (header + sheet, abertura, 2 echoes com callback, typing, composer). 43 testes do Coach verdes; ordem replan→explicação preservada.
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` verde (43 testes).
+- `:app:assembleDebug`, `:app:detekt`, `:app:lintDebug` e `spotlessCheck` verdes.
+- Sem migração, sem dependência nova, sem dado real no diff.
+
+### Pendente
+
+- Validar no aparelho: cara de chat em dark/light, fonte 200%, TalkBack por bolha, build com/sem token.
+- F2 (voz nova: persona nos prompts + fallback falado + fim dos overlines) só após F1 validada.
+
+### Próximo passo
+
+1. Rodar `./install.sh` e conferir a timeline no aparelho.
+2. Iniciar F2 do `PRD_COACH_CHAT` (persona + `SYSTEM_EXPLAIN/REVIEW` + validador com limite de tamanho).
+
+## Sessão 2026-11-20 — Ver mais indevido + diff idêntico no replanejamento
+
+**Objetivo:** corrigir dois achados validados no aparelho (SM-S928B via `adb`): (1) “Ver mais” aparecendo com o rationale cabendo em 2 linhas; (2) “Ver o que mudou” abrindo um “Muda” com título/duração idênticos antes/depois.
+
+### Concluído
+
+- **Causa 1:** `PlanWeekCard` mostrava o toggle por `rationale.length > 90`; o rationale vigente tinha 93 chars e cabia em 2 linhas. Troca para overflow real (`onTextLayout.hasVisualOverflow`, com estado zerado por rationale), seguindo o padrão do `CoachExplanationCard`. Constante `PLAN_RATIONALE_PREVIEW` removida.
+- **Causa 2:** a revisão vigente era `PROFILE_CHANGED` com diff só no alvo (mesmo título/duração, alvo de FC alguns bpm diferente no Dom futuro). O `ReplanChangeUi.label()` mostra só título/duração (conforme `COMMUNICATION.md`), então o “Muda” parecia idêntico. Domínio mantido (ADR 0028 §3.8: mudança de alvo gera sugestão); o fix é de display.
+- **Display do diff:** `ReplanChangeUi` ganhou `previousTargetLabel`/`nextTargetLabel` via `PrescriptionTargets.shortLabel()` (FC/ritmo/esforço/zona); `ReplanChangeRow` não duplica mais “X → X” (mostra o rótulo uma vez) e exibe a linha do alvo (`A → B`) quando ele muda.
+- **Regressão:** `TodayPlanTest.hides the expand toggle when rationale fits in two lines`; `TodayReplanTest.shows the target change when session labels are identical` (sem seta duplicada + linha do alvo) e `formats the leading heart-rate target for the diff`.
+- **Privacidade:** banco copiado via `run-as` para `/tmp` fora do repo e apagado após a leitura; nenhum dado real no diff.
+
+### Validação
+
+- `./gradlew :app:assembleDebug`, `:app:detekt` e `spotlessCheck` verdes.
+- `:app:testDebugUnitTest` para `today.*`, `replan.*` e `CoachScreenTest` verdes.
+- `check` completo: 1118 testes com 1 falha flaky fora do escopo (timeout/concorrência de `Main` em `MetricsImport`/`CoachViewModel`, passa isolado; sem código compartilhado com este diff).
+- Validado no aparelho pelo usuário 0 em 20/11/2026: rationale curto sem “Ver mais”, rationale longo com expandir/recolher, e “O que mudou” com rótulo único + linha do alvo.
+
+### Pendente
+
+- Decidir se regra/mudança só de `ruleIds` (sem diferença visível nem de alvo) deve continuar gerando versão — hoje gera por ADR 0028 §3.8.
+
+### Próximo passo
+
+1. Retomar o Bloco C — F4 correto, conforme o handoff.
 
 ## Sessão 2026-11-20 — install.sh para as duas máquinas Linux
 

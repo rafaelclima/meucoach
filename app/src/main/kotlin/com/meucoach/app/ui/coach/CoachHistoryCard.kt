@@ -69,7 +69,7 @@ internal fun CoachHistoryCard(
 
     McCard(modifier = modifier.testTag("coach-history-card")) {
         Text(
-            text = "HISTÓRICO DO COACH",
+            text = "Nossa conversa",
             style = McTextStyles.overline,
             color = colors.textTertiary,
             modifier = Modifier.semantics { heading() },

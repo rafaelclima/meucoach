@@ -15,7 +15,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -143,28 +145,39 @@ fun CoachScreen(
 ) {
     var replanSheetOpen by rememberSaveable { mutableStateOf(false) }
     var replanChangesOpen by rememberSaveable { mutableStateOf(false) }
+    var infoOpen by rememberSaveable { mutableStateOf(false) }
+    val userEchoes = remember { mutableStateListOf<String>() }
     LaunchedEffect(replan.suggestion != null) {
         if (replan.suggestion != null) replanSheetOpen = true
+    }
+    val onboarding = next is CoachNextUiState.Onboarding
+    val status = if (consented) {
+        "motor no comando · IA ativa"
+    } else {
+        "motor no comando · IA opcional"
     }
     Column(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .testTag("coach-timeline"),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "Coach",
-            style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
-            color = McTheme.colors.textPrimary,
-        )
-        Text(
-            text = "Sua semana, a revisão anterior e os ajustes — com o motor no comando.",
-            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-            color = McTheme.colors.textSecondary,
-        )
-        val onboarding = next is CoachNextUiState.Onboarding
+        CoachChatHeader(status = status, onInfoClick = { infoOpen = true })
+        if (onboarding) {
+            CoachBubble(
+                text = "Opa! Pra eu montar seus treinos, preciso de 3 coisas. " +
+                    "Me conta aqui embaixo que eu já organizo.",
+                testTag = "coach-chat-opening",
+            )
+        } else {
+            CoachBubble(
+                text = "Opa, bora ver o que importa hoje? Separei tudo aqui embaixo.",
+                testTag = "coach-chat-opening",
+            )
+        }
         CoachNextCard(
             state = next,
             onRetry = onNextRetry,
@@ -193,6 +206,36 @@ fun CoachScreen(
                         onShowChanges = replan.lastChange?.let { { replanChangesOpen = true } },
                     )
                 }
+            }
+            userEchoes.forEach { echo ->
+                UserBubble(
+                    text = echo,
+                    testTag = "coach-user-echo",
+                )
+            }
+            CoachQuickReplies(
+                onExplain = {
+                    userEchoes.add("Pode explicar minha semana?")
+                    onRetry()
+                },
+                onReview = {
+                    userEchoes.add("Como foi minha semana passada?")
+                },
+                onMissed = {
+                    userEchoes.add("Perdi o treino de ontem")
+                    onReplanRequestMissed()
+                },
+                onLessTime = {
+                    userEchoes.add("Só tenho 30 min na quinta")
+                    onReplanRequestLessTime()
+                },
+                onAdjust = {
+                    userEchoes.add("Quero ajustar a semana")
+                    onReplanRequest()
+                },
+            )
+            if (explanation is CoachExplanationState.Loading || reviewState is CoachReviewState.Loading) {
+                CoachTyping()
             }
             if (consented) {
                 when (explanation) {
@@ -249,8 +292,7 @@ fun CoachScreen(
                                     modifier = Modifier.testTag("coach-fallback-reason"),
                                 )
                                 Text(
-                                    text = "O Coach não conseguiu explicar desta vez. " +
-                                        "Tente de novo em instantes.",
+                                    text = "Me enrolei aqui — tenta de novo em instantes?",
                                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                                     color = McTheme.colors.textTertiary,
                                 )
@@ -271,7 +313,9 @@ fun CoachScreen(
                         }
                     }
                 }
-                review?.let { CoachReviewCard(review = it, state = reviewState) }
+                review?.let { current ->
+                    CoachReviewCard(review = current, state = reviewState)
+                }
             } else {
                 CoachAiInviteCard(
                     expanded = showConsent,
@@ -304,9 +348,13 @@ fun CoachScreen(
                     )
                 }
             }
+            CoachComposerHint()
         }
     }
 
+    if (infoOpen) {
+        CoachHowItWorksSheet(onDismiss = { infoOpen = false })
+    }
     if (replanSheetOpen && replan.suggestion != null) {
         ReplanSuggestionSheet(
             state = replan,

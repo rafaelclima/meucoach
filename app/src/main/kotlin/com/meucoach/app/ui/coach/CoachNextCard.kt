@@ -166,7 +166,7 @@ private fun ReadyCard(state: CoachNextUiState.Ready, onCheckIn: () -> Unit, onTo
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = if (race) "PRÓXIMA PROVA" else "PRÓXIMO TREINO",
+                text = if (race) "Dia de prova" else "O que importa hoje",
                 style = McTextStyles.overline,
                 color = colors.textTertiary,
             )
@@ -244,11 +244,6 @@ private fun ReadyCard(state: CoachNextUiState.Ready, onCheckIn: () -> Unit, onTo
                         .testTag("coach-next-today"),
                 )
             }
-            Text(
-                text = "O motor decide; a IA só reescreve.",
-                style = McTextStyles.caption,
-                color = colors.textTertiary,
-            )
         }
     }
 }
