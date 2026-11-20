@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 19/11/2026 (Bloco B — reatividade de F2/F4/explicação/revisão)
+**Atualizado:** 20/11/2026 (install.sh multi-máquina + keystore compartilhado)
+
+## Sessão 2026-11-20 — install.sh para as duas máquinas Linux
+
+**Objetivo:** fazer o `install.sh` funcionar nas duas máquinas de desenvolvimento sem editar arquivos rastreados e sem perder dados quando a assinatura do APK muda.
+
+### Concluído
+
+- **JDK portátil:** `mise.toml` passou de um patch fixo (`17.0.2+8`/`17.0.21`) para `java = "17"`; cada máquina resolve o patch 17.x que tem instalado. O script usa `mise exec` quando disponível e cai para `JAVA_HOME`/`java` (17+) sem depender do caminho do SDK.
+- **Keystore compartilhado:** `--export-key`, `--import-key` e `--keystore-info` copiam/conferem o debug keystore que o Gradle realmente usa. O caminho é descoberto por `:app:signingReport`, então funciona com `~/.config/.android`, `~/.android` ou `ANDROID_USER_HOME`; o SHA-256 é calculado pelo certificado exportado.
+- **Instalação:** `adb` é localizado por `ADB`/PATH/`ANDROID_HOME`/`ANDROID_SDK_ROOT`/`local.properties`/`~/Android/Sdk`/`/opt/android-sdk`; múltiplos aparelhos orientam `ANDROID_SERIAL`.
+- **Assinatura incompatível:** o script explica como sincronizar o keystore e só faz backup (`run-as`) + desinstalação + restauração após confirmação (`-y` automatiza). Se o app não for debugável, exige confirmação explícita de perda de dados.
+- **Privacidade:** backup e exportação recusam caminhos dentro do repositório; o keystore nunca é commitado.
+
+### Validação
+
+- `bash -n install.sh`, `./install.sh --help` e `./install.sh --keystore-info` verdes.
+- `./gradlew check` e `./gradlew spotlessCheck` verdes.
+- SHA-256 do `--keystore-info` igual ao `:app:signingReport` (`24:5A:...:A5:05`).
+- `--export-key`/`--import-key` de ida e volta com o mesmo fingerprint; `--export-key` dentro do repo recusado.
+- Aparelho real (SM-S928B): `adb install -r` preservou os dados (assinatura local igual à instalada); `--backup`/`--restore` reais com SHA-256 idêntico de DB/prefs/files e app abrindo a frio em 838 ms.
+- Nenhum dado real, token ou keystore no diff.
+
+### Pendente
+
+- Na outra máquina: `./install.sh --import-key <arquivo exportado>` e validar `adb install -r` preservando os dados no aparelho.
+
+### Próximo passo
+
+1. Sincronizar o keystore entre as duas máquinas e rodar `./install.sh` em cada uma.
+2. Retomar o Bloco C — F4 correto, conforme o handoff.
 
 ## Sessão 2026-11-19 — Bloco B: reatividade de F2/F4/explicação/revisão
 

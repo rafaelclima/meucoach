@@ -15,14 +15,14 @@
 
 ### 1.1 JDK
 
-O repositório fixa o patch em `mise.toml` (Java 17.0.21). Com `mise`:
+O repositório fixa a série 17 em `mise.toml` (`java = "17"`); cada máquina usa o patch 17.x que já tem instalado (ou o mise instala o mais recente). Com `mise`:
 
 ```bash
 mise install
-mise exec -- java -version   # 17.0.21
+mise exec -- java -version   # 17.x
 ```
 
-Sem `mise`, use qualquer JDK 17+ no `JAVA_HOME`:
+Sem `mise`, use um JDK 17 no `JAVA_HOME`:
 
 ```bash
 export JAVA_HOME="/caminho/para/jdk-17"
@@ -118,9 +118,23 @@ O script da raiz pergunta o token do proxy a cada reinstalação; ele não fica 
 
 - Token válido: a aba Coach chama o proxy configurado (`COACH_PROXY_URL`, padrão de produção) e grava histórico local com opt-in.
 - Enter vazio: instala o APK sem token; a aba Coach usa o fallback determinístico.
-- O script usa `mise exec` quando disponível, encontra o `adb` em `ADB`/`ANDROID_HOME`/`ANDROID_SDK_ROOT`/`local.properties` e usa `adb install -r` para preservar os dados.
+- O script usa `mise exec` quando disponível (JDK 17.x), encontra o `adb` em `ADB`/`ANDROID_HOME`/`ANDROID_SDK_ROOT`/`local.properties` e usa `adb install -r` para preservar os dados.
 - Para trocar a URL: `COACH_PROXY_URL=https://... ./install.sh`.
 - Com mais de um aparelho conectado: `ANDROID_SERIAL=<serial> ./install.sh`.
+
+#### Duas máquinas de desenvolvimento
+
+O `adb install -r` só preserva os dados quando o APK tem a mesma assinatura. Use o mesmo debug keystore nas duas máquinas:
+
+```bash
+# na máquina que fez a última instalação
+./install.sh --export-key ~/meucoach-debug.keystore
+# na outra máquina (transfira por scp/pendrive; nunca commite)
+./install.sh --import-key ~/meucoach-debug.keystore
+./install.sh --keystore-info   # confere caminho + SHA-256
+```
+
+O caminho do keystore pode variar (`~/.config/.android`, `~/.android` ou `ANDROID_USER_HOME`); o script pergunta ao Gradle qual é o ativo em cada máquina. Se a assinatura ainda diferir, o install oferece backup via `run-as`, desinstalação e restauração; `--backup`/`--restore` fazem o mesmo manualmente.
 
 ## 5. Dados privados e fixtures
 
@@ -214,7 +228,7 @@ Migrações: `./gradlew :backend:flywayMigrate` ou entrypoint do container.
 | `compileSdk 37 required` | platform 37 não instalada | `sdkmanager "platforms;android-37.0"` |
 | `Unsupported class file major version` | JDK incompatível | usar JDK 17 |
 | Build lento/daemon travado | cache | `./gradlew --stop && ./gradlew clean` |
-| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | assinatura/versão | desinstalar app antigo |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | assinatura diferente entre máquinas | `./install.sh --export-key`/`--import-key`; se ainda falhar, backup + desinstalar |
 | Health Connect sem dados | Zepp não sincronizou | abrir Zepp → sincronizar → Health Connect |
 | FIT não importa | arquivo corrompido/CRC | validar com `fitdecode`; ver detalhe do erro |
 | Cobertura abaixo de 85% | branches sem teste | `koverHtmlReport` e cobrir casos |

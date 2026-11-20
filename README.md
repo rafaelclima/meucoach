@@ -27,7 +27,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 
 ## Stack verificada (out/2026)
 
-- AGP 9.4.1 · Gradle 9.8.2 · Kotlin 2.4.21 · KSP 2.3.12 · JDK 17 (`mise.toml` fixa 17.0.21)
+- AGP 9.4.1 · Gradle 9.8.2 · Kotlin 2.4.21 · KSP 2.3.12 · JDK 17 (`mise.toml` fixa a série 17; cada máquina usa o patch instalado)
 - compileSdk 37 · targetSdk 36 · minSdk 26
 - Compose BOM 2026.09.00 · Material 3 · Activity 1.13.0 · Lifecycle 2.11.0
 - Room 2.8.5 · Hilt 2.60.1 · DataStore 1.3.0 · WorkManager 2.12.0
@@ -59,7 +59,18 @@ No Android Studio: abra a raiz do repositório e rode a configuração `app`.
 - cole o token e pressione Enter para instalar com IA;
 - pressione Enter vazio para instalar sem IA (fallback determinístico).
 
-O token é lido sem eco e não é gravado no repositório. O script usa o `mise.toml` (JDK 17.0.21), encontra o `adb` por `ADB`, `ANDROID_HOME`, `ANDROID_SDK_ROOT` ou `local.properties`, e respeita `ANDROID_SERIAL` quando há mais de um aparelho. Requer depuração USB autorizada.
+O token é lido sem eco e não é gravado no repositório. O script usa o `mise.toml` (JDK 17.x), encontra o `adb` por `ADB`, `ANDROID_HOME`, `ANDROID_SDK_ROOT` ou `local.properties`, e respeita `ANDROID_SERIAL` quando há mais de um aparelho. Requer depuração USB autorizada.
+
+Com duas máquinas de desenvolvimento, use o **mesmo debug keystore** nas duas para o `adb install -r` preservar os dados:
+
+```bash
+# na máquina que fez a última instalação
+./install.sh --export-key ~/meucoach-debug.keystore
+# na outra máquina (o arquivo vai por scp/pendrive; nunca commite)
+./install.sh --import-key ~/meucoach-debug.keystore
+```
+
+`./install.sh --keystore-info` mostra caminho e SHA-256 para conferir. Se as assinaturas ainda diferirem (primeira execução antes da sincronização), o script oferece backup via `run-as` + desinstalação + restauração; `--backup`/`--restore` fazem esses passos manualmente.
 
 ## Estrutura
 

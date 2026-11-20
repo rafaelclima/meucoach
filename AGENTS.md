@@ -28,6 +28,7 @@ Leia primeiro:
   - `./gradlew koverVerify`
   - `./gradlew :core:domain:test`
   - `./install.sh` (instala no aparelho; pede o token do Coach a cada execução, vazio = sem IA)
+  - `./install.sh --export-key/--import-key` (mesmo debug keystore entre as duas máquinas; `--keystore-info` confere o SHA-256)
 - SDK local: `local.properties` (ignorado). Platform 37 e build-tools 37.0.0.
 
 ## 3. Regras de arquitetura
