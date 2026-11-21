@@ -10,8 +10,7 @@ import com.meucoach.app.firstrun.FirstRunMetricsStore
 import com.meucoach.app.importer.ImportStaging
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
-import com.meucoach.core.data.db.entity.CoachMessageEntity
-import com.meucoach.core.data.db.entity.CoachSummaryEntity
+import com.meucoach.core.data.db.entity.ChatTurnEntity
 import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
@@ -153,25 +152,18 @@ class DataManagementViewModelTest {
     @Test
     fun `deletion reports the coach memory when it exists`(): Unit = runBlocking {
         seedProfileAndActivity()
-        database.coachMessageDao().insert(
-            CoachMessageEntity(
+        database.chatTurnDao().insert(
+            ChatTurnEntity(
                 id = "message-1",
-                kind = "EXPLAIN",
-                inputsHash = "hash-1",
+                role = "COACH",
                 title = "Foco",
                 body = "Vamos manter os 30 min.",
                 bulletsJson = "[]",
+                origin = "EXPLAIN",
+                inputsHash = "hash-1",
+                weekStart = null,
                 createdAt = clock.millis(),
-            ),
-        )
-        database.coachSummaryDao().upsert(
-            CoachSummaryEntity(
-                weekStart = "2026-10-26",
-                inputsHash = "review-1",
-                title = "Semana passada",
-                body = "3 de 4 sessões.",
-                bulletsJson = "[]",
-                createdAt = clock.millis(),
+                expiresAt = clock.millis() + 90L * 24 * 60 * 60 * 1000,
             ),
         )
 
@@ -179,10 +171,9 @@ class DataManagementViewModelTest {
 
         val state = viewModel.uiState.first { !it.isDeleting }
         assertThat(state.message).contains(
-            "O histórico do Coach também foi apagado (1 mensagem e 1 resumo).",
+            "O histórico do Coach também foi apagado (1 turno).",
         )
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
     }
 
     @Test

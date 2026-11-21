@@ -562,7 +562,7 @@ class CoachViewModelTest {
 
         assertThat(vm.explanation.value).isInstanceOf(CoachExplanationState.Unavailable::class.java)
         assertThat(api.calls).isEqualTo(0)
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
     }
 
     @Test
@@ -597,9 +597,9 @@ class CoachViewModelTest {
         )
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
 
-        val message = database.coachMessageDao().getAll().single()
+        val message = database.chatTurnDao().getAll().single()
 
-        assertThat(message.kind).isEqualTo("EXPLAIN")
+        assertThat(message.origin).isEqualTo("EXPLAIN")
         assertThat(message.inputsHash).isEqualTo("hash1")
         assertThat(message.title).isEqualTo("Foco")
         assertThat(message.bulletsJson).isEqualTo("[\"Base\"]")
@@ -612,7 +612,7 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "Corra a 6:10/km")))
 
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Fallback::class.java)
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
     }
 
     @Test
@@ -625,15 +625,17 @@ class CoachViewModelTest {
 
         assertThat(awaitReviewSettled(vm)).isInstanceOf(CoachReviewState.Ready::class.java)
 
-        val message = database.coachMessageDao().getAll().single()
-        assertThat(message.kind).isEqualTo("REVIEW")
-        assertThat(message.inputsHash)
-            .isEqualTo(com.meucoach.core.domain.coach.CoachReviewPromptBuilder.build(weeklyReview()).inputsHash)
+        val hash = com.meucoach.core.domain.coach.CoachReviewPromptBuilder.build(weeklyReview()).inputsHash
+        val turns = database.chatTurnDao().getAll()
+        assertThat(turns).hasSize(2)
 
-        val summary = database.coachSummaryDao().getAll().single()
-        assertThat(summary.weekStart).isEqualTo("2026-11-09")
+        val message = turns.single { it.origin == "REVIEW" }
+        assertThat(message.inputsHash).isEqualTo(hash)
+
+        val summary = turns.single { it.origin == "SUMMARY" }
+        assertThat(summary.id).isEqualTo("summary-2026-11-09")
         assertThat(summary.title).isEqualTo("Semana passada")
-        assertThat(summary.inputsHash).isEqualTo(message.inputsHash)
+        assertThat(summary.inputsHash).isEqualTo(hash)
     }
 
     @Test
@@ -643,7 +645,7 @@ class CoachViewModelTest {
         plans.value = CoachPlanContext(plan(), "hash1")
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Foco", body = "Vamos manter os 30 min.")))
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
-        assertThat(database.coachMessageDao().getAll()).hasSize(1)
+        assertThat(database.chatTurnDao().getAll()).hasSize(1)
         memory.recordSummary(
             weekStart = LocalDate.of(2026, 11, 9),
             inputsHash = "review-1",
@@ -651,19 +653,18 @@ class CoachViewModelTest {
             body = "3 de 4",
             bullets = emptyList(),
         )
-        assertThat(database.coachSummaryDao().getAll()).hasSize(1)
+        assertThat(database.chatTurnDao().getAll()).hasSize(2)
 
         vm.revoke()
 
         withTimeout(2_000) {
-            while (database.coachMessageDao().getAll().isNotEmpty()) {
+            while (database.chatTurnDao().getAll().isNotEmpty()) {
                 kotlinx.coroutines.delay(1)
             }
         }
         assertThat(consent.isConsented()).isFalse()
         assertThat(vm.consented.value).isFalse()
         assertThat(vm.explanation.value).isInstanceOf(CoachExplanationState.Unavailable::class.java)
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
         assertThat(database.trainingPlanDao().getPlan("2026-11-16")).isNotNull()
     }
 
@@ -673,7 +674,7 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
 
         assertThat(vm.history.value).isEqualTo(CoachHistoryState.Hidden)
-        assertThat(database.coachMessageDao().getAll()).hasSize(1)
+        assertThat(database.chatTurnDao().getAll()).hasSize(1)
     }
 
     @Test
@@ -720,8 +721,7 @@ class CoachViewModelTest {
         vm.clearHistory()
 
         awaitHistory(vm) { it is CoachHistoryState.Empty }
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
         assertThat(database.trainingPlanDao().getPlan("2026-11-16")).isNotNull()
         assertThat(consent.isConsented()).isTrue()
     }
@@ -781,7 +781,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `apagar mensagem individual mantem o restante e os treinos`(): Unit = runBlocking {
+    fun `apagar turn de mensagem mantem o restante e os treinos`(): Unit = runBlocking {
         planRepository.saveWeek(plan())
         consent.grant()
         memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
@@ -789,9 +789,7 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
         val ready = awaitHistory(vm) as CoachHistoryState.Ready
 
-        vm.deleteHistoryMessage(
-            ready.turns.single { it.id.startsWith("message-") }.id.removePrefix("message-"),
-        )
+        vm.deleteHistoryTurn(ready.turns.single { it.id.startsWith("message-") })
 
         val after = awaitHistory(vm) {
             it is CoachHistoryState.Ready && it.turns.none { turn -> turn.id.startsWith("message-") }
@@ -802,14 +800,14 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `apagar resumo individual mantem as mensagens`(): Unit = runBlocking {
+    fun `apagar turn de resumo mantem as mensagens`(): Unit = runBlocking {
         consent.grant()
         memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
         memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
         val ready = awaitHistory(vm) as CoachHistoryState.Ready
 
-        vm.deleteHistorySummary(LocalDate.of(2026, 11, 2))
+        vm.deleteHistoryTurn(ready.turns.single { it.id == "summary-2026-11-02" })
 
         val after = awaitHistory(vm) {
             it is CoachHistoryState.Ready && it.turns.none { turn -> turn.id == "summary-2026-11-02" }
@@ -820,7 +818,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `apagar turn unificado remove as duas linhas`(): Unit = runBlocking {
+    fun `apagar turn remove so a linha do turn`(): Unit = runBlocking {
         consent.grant()
         memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
         memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
@@ -833,8 +831,8 @@ class CoachViewModelTest {
         awaitHistory(vm) {
             it is CoachHistoryState.Ready && it.turns.none { turn -> turn.id == "summary-2026-11-02" }
         }
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
-        assertThat(database.chatTurnDao().getAll()).hasSize(1)
+        assertThat(database.chatTurnDao().getAll().map { it.id })
+            .containsExactly(ready.turns.single { it.id.startsWith("message-") }.id)
     }
 
     @Test
@@ -844,7 +842,7 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Foco", body = "Regras R-PLAN-02 aplicadas.")))
 
         assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Fallback::class.java)
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
     }
 
     @Test
@@ -857,7 +855,7 @@ class CoachViewModelTest {
 
         assertThat(awaitReviewSettled(vm)).isInstanceOf(CoachReviewState.Fallback::class.java)
         assertThat(vm.review.value).isNotNull
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
     }
 
     @Test

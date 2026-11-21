@@ -6,8 +6,6 @@ import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.data.db.entity.ChatTurnEntity
-import com.meucoach.core.data.db.entity.CoachMessageEntity
-import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
@@ -34,14 +32,12 @@ data class UserDataDeletion(
     val executions: Int = 0,
     val planRevisions: Int = 0,
     val raceEvents: Int = 0,
-    val coachMessages: Int = 0,
-    val coachSummaries: Int = 0,
     val coachTurns: Int = 0,
 ) {
     val removedAnything: Boolean
         get() = activities > 0 || checkIns > 0 || metrics > 0 || plans > 0 ||
             prescriptions > 0 || executions > 0 || planRevisions > 0 || raceEvents > 0 ||
-            coachMessages > 0 || coachSummaries > 0 || coachTurns > 0 || profileDeleted
+            coachTurns > 0 || profileDeleted
 }
 
 /**
@@ -69,8 +65,6 @@ class UserDataRepository(
                 .put("dailyPrescriptions", exportPrescriptions())
                 .put("sessionExecutions", exportExecutions(trashedIds))
                 .put("raceEvents", exportRaceEvents())
-                .put("coachMessages", exportCoachMessages())
-                .put("coachSummaries", exportCoachSummaries())
                 .put("coachTurns", exportCoachTurns())
                 .put("activities", exportActivities(includeTrash))
                 .put(
@@ -98,8 +92,6 @@ class UserDataRepository(
             database.trainingPlanDao().deleteAllSessions()
             val plans = database.trainingPlanDao().deleteAllPlans()
             val prescriptions = database.dailyPrescriptionDao().deleteAll()
-            val coachMessages = database.coachMessageDao().deleteAll()
-            val coachSummaries = database.coachSummaryDao().deleteAll()
             val coachTurns = database.chatTurnDao().deleteAll()
             val profileDeleted = database.profileDao().deleteAll() > 0
             UserDataDeletion(
@@ -112,8 +104,6 @@ class UserDataRepository(
                 executions = executions,
                 planRevisions = planRevisions,
                 raceEvents = raceEvents,
-                coachMessages = coachMessages,
-                coachSummaries = coachSummaries,
                 coachTurns = coachTurns,
             )
         }
@@ -174,16 +164,6 @@ class UserDataRepository(
         .getAll()
         .toJsonArray { it.toJson() }
 
-    private suspend fun exportCoachMessages(): JSONArray = database
-        .coachMessageDao()
-        .getAll()
-        .toJsonArray { it.toJson() }
-
-    private suspend fun exportCoachSummaries(): JSONArray = database
-        .coachSummaryDao()
-        .getAll()
-        .toJsonArray { it.toJson() }
-
     private suspend fun exportCoachTurns(): JSONArray = database
         .chatTurnDao()
         .getAll()
@@ -209,25 +189,6 @@ private fun RaceEventEntity.toJson(): JSONObject = JSONObject().apply {
     put("resolvedAt", resolvedAt?.let { Instant.ofEpochMilli(it).toString() } ?: JSONObject.NULL)
 }
 
-private fun CoachMessageEntity.toJson(): JSONObject = JSONObject().apply {
-    put("id", id)
-    put("kind", kind)
-    put("inputsHash", inputsHash)
-    put("title", title)
-    put("body", body)
-    put("bullets", runCatching { JSONArray(bulletsJson) }.getOrElse { JSONArray() })
-    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
-}
-
-private fun CoachSummaryEntity.toJson(): JSONObject = JSONObject().apply {
-    put("weekStart", weekStart)
-    put("inputsHash", inputsHash)
-    put("title", title)
-    put("body", body)
-    put("bullets", runCatching { JSONArray(bulletsJson) }.getOrElse { JSONArray() })
-    put("createdAt", Instant.ofEpochMilli(createdAt).toString())
-}
-
 private fun ChatTurnEntity.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("role", role)
@@ -236,6 +197,7 @@ private fun ChatTurnEntity.toJson(): JSONObject = JSONObject().apply {
     put("bullets", runCatching { JSONArray(bulletsJson) }.getOrElse { JSONArray() })
     put("origin", origin)
     putNullable("weekStart", weekStart)
+    putNullable("inputsHash", inputsHash)
     put("createdAt", Instant.ofEpochMilli(createdAt).toString())
     put("expiresAt", Instant.ofEpochMilli(expiresAt).toString())
 }

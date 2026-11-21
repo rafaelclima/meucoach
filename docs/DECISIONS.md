@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.67 · **Data:** 21/11/2026
+**Versão:** 1.68 · **Data:** 21/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -65,6 +65,7 @@
 > Revisão 1.65 (19/11/2026): Bloco A da consolidação do Coach — F1 usa a `DailyPrescription` como headline (planejado só como linha secundária; REST sem duração), `RaceEvent` tem precedência hoje/amanhã/sem sessão restante sem exigir sessão artificial, prontidão/sono do dia aparecem no card (amanhã nunca ganha semáforo inventado), F1/F2/F4 locais não dependem do opt-in de IA (só explicação/revisão) e “Depois” mantém “Ativar IA” persistente, onboarding único sem perfil/plano, fallback sem `reason` técnico, `unlockHint`/ACWR fora do F1 e tokens do validador com limite de palavra. Gate do detekt corrigido (`CoachSources`, `vdotLine`). Sem migração, sem regra de treino nova.
 > Revisão 1.66 (19/11/2026): Bloco B da consolidação do Coach — composição reativa read-only: `CoachSignalsSource` compartilha check-ins/métricas/atividades/execuções; F2/F4/revisão observam também semana persistida e provas; `RoomCoachPlanSource` observa `observeWeekRecord` (conteúdo + `inputsHash` + versão, leitura transacional) e o `CoachViewModel` recalcula a explicação após replanejamento mesmo com o mesmo hash. Nenhuma fonte escreve; sem motor, schema, dependência ou migração nova.
 > Revisão 1.67 (21/11/2026): ADR 0054 proposto — timeline única do Coach (`ChatTurn`, Room v20 futura): domínio puro `ChatTurn.Coach` + `ChatTurns.fromMemory` reutilizando `CoachHistory.view` (paridade das regras, intercalado por `createdAt` desc); `You`/`System` seguem efêmeros; persistência (`chat_turns` aditiva + backfill + TTL por `expiresAt`), repository, export/delete e histórico como timeline ficam para as fatias 2–4. F4 validada no aparelho; sem motor, sem IA nova.
+> Revisão 1.68 (21/11/2026): ADR 0055 implementado — Coach em tabela única (Room v21): `chat_turns` ganha `inputsHash` (preenchido das tabelas v19 na `MIGRATION_20_21`) + índice único `(origin, inputsHash)`; escrita só em `chat_turns`, tabelas/DAOs/entidades v19 removidos; `ChatTurns.visibleTurns` aplica as regras do arquivo direto nos turns e a VM observa `observeTurns()`; export perde `coachMessages`/`coachSummaries` (turn leva `inputsHash`) e a nota da tela Dados conta turnos. Vocabulário v19 (`CoachMemory*`, `fromMemory`) removido com a mesma cobertura sobre turns; sem motor, ciência ou contrato com o proxy.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

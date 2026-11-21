@@ -1,6 +1,79 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ChatTurn fatia 4 — histórico como timeline; epic encerrado)
+**Atualizado:** 21/11/2026 (v21 — Coach em tabela única; epic ChatTurn encerrado)
+
+## Sessão 2026-11-21 — v21: Coach em tabela única (TDD, ADR 0055)
+
+**Objetivo:** fechar o epic `ChatTurn` executando o `docs/HANDOFF_POS_CHAT_TURNS.md`
+§3: escrita só em `chat_turns`, `MIGRATION_20_21` removendo as tabelas v19,
+export/delete sem as chaves v19 e schema `21.json`.
+
+### Decisão de desenho (divergência justificada do handoff)
+
+- O handoff previa v21 só com `DROP TABLE`. Ao trocar a VM para `observeTurns()`,
+  as regras do arquivo ("resumo substitui o review do mesmo hash", "explicação
+  corrente de fora") perderiam o `inputsHash` — regressão visível no aparelho
+  (explicação corrente e review+resumo duplicados).
+- Por isso a v21 adiciona `inputsHash` a `chat_turns` (nullable, ausência honesta)
+  + índice único `(origin, inputsHash)`, com a `MIGRATION_20_21` preenchendo a
+  coluna a partir das tabelas v19 **antes** de derrubá-las (única fonte para
+  linhas legadas; sem número inventado). Registrado no ADR 0055 (alternativas e
+  rollout), sem reescrever o passado.
+
+### Concluído
+
+- **Domínio:** `ChatTurn.Coach` ganha `inputsHash: String?`; `ChatTurns.visibleTurns`
+  aplica as regras do arquivo direto nos turns (review coberto pelo resumo do mesmo
+  hash some; explicação corrente e semana em revisão ficam de fora; empate mostra o
+  resumo antes; hash ausente nunca esconde) com ordenação newest-first determinística.
+  Vocabulário v19 removido (`CoachMemory*`, `CoachHistory.view`, `fromMemory`) com a
+  mesma cobertura, agora sobre turns (`ChatTurnTest` reescrito, `CoachHistoryTest` de
+  domínio removido e dobrado nos casos de `visibleTurns`).
+- **Efeito colateral corrigido:** o `toTurn` da f3 não preenchia `weekStart`, então
+  resumos lidos do banco perdiam a semana; a v21 preenche (com parse defensivo).
+- **DB v21:** entidades/DAOs v19 apagados; `ChatTurnEntity` com `inputsHash` +
+  único `(origin, inputsHash)`; `MIGRATION_20_21` (ADD COLUMN + UPDATE…SELECT das
+  v19 + índice único + DROPs); `VERSION = 21`; cadeia 1→21 e schema `21.json`.
+- **Repository:** `recordMessage/recordSummary` escrevem só `chat_turns` (poda por
+  `expiresAt` em toda escrita, dedupe por conflito no índice único);
+  `observeMessages/observeSummaries`, `deleteMessage/deleteSummary` e a poda por
+  dois cutoffs saem; `visibleTurns` fica com o chamador (VM tem o estado vivo).
+- **Export/delete:** sem `coachMessages`/`coachSummaries`; turn exportado leva
+  `inputsHash`; `UserDataDeletion` perde as duas contagens e a nota da tela Dados
+  vira "O histórico do Coach também foi apagado (N turno(s))." Não há import de
+  backup no produto (só export), então exports antigos seguem como arquivo morto
+  fora do app — documentado no ADR 0055 e no `DATA_MODEL`.
+- **VM:** histórico via `observeTurns()` + `visibleTurns`; `deleteHistoryMessage`/
+  `deleteHistorySummary` saem e `deleteHistoryTurn` apaga só o turn.
+- **Testes:** repository (9), `UserDataRepository` (export/delete só turns),
+  `MigrationTest` (cadeia 1→21 + dourado 20→21 com `inputsHash` exato e v19
+  ausentes + round-trip/dedupe no schema 21), VM (turns com `inputsHash`,
+  apagar por turn) e Dados (nota em turnos). `CoachHistoryTest` de UI intacto
+  (constrói `ChatTurn.Coach` com default `null`).
+- **Docs:** ADR 0055; `DECISIONS` r1.68; `ARCHITECTURE` (v21), `DATA_MODEL`
+  (§3.12 + §7), `TESTING`, `ROADMAP` (P1-18) atualizados.
+- **Sem** mudança de motor, ciência, copy (só a nota de exclusão, forçada pela
+  remoção das chaves), contrato com o proxy, dependência ou dado real.
+
+### Validação
+
+- `:core:domain:test` (TDD: vermelho → verde), `:core:data:testDebugUnitTest`,
+  `:app:testDebugUnitTest` (coach + data) verdes durante a sessão.
+- Gates finais verdes: `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`,
+  inclui `detekt`, `lint`, `koverVerify` e `spotlessCheck`) + proxy `test`
+  com `--rerun-tasks`. (Uma run combinada anterior falhou de forma transitória
+  no `:spotlessKotlin` lendo um `.class` em `build/`; re-run isolado passou e o
+  `spotlessApply` corrigiu uma violação real de linhas em branco no `when` de
+  `visibleTurns`.)
+- Schema `21.json` exportado e validado pelo `MigrationTestHelper` (SQL da
+  migração confere com o schema gerado pelo Room).
+
+### Pendente
+
+1. `./install.sh` + conferir no aparelho: timeline intacta (sem duplicar a
+   explicação corrente nem review+resumo), apagar item e "apagar tudo" com a
+   nota em turnos.
+2. Push para `dev` (após gates verdes).
 
 ## Sessão 2026-11-21 — ChatTurn fatia 4: histórico como timeline (TDD)
 

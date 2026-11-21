@@ -5,8 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ChatTurnEntity
-import com.meucoach.core.data.db.entity.CoachMessageEntity
-import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.health.HealthSyncStore
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -143,17 +141,9 @@ class UserDataRepositoryTest {
         assertThat(race.has("completionSource")).isTrue()
         assertThat(race.isNull("completionSource")).isTrue()
         assertThat(race.getString("resolvedAt")).isEqualTo(clock.instant().toString())
-        val message = export.getJSONArray("coachMessages").getJSONObject(0)
-        assertThat(message.getString("kind")).isEqualTo("EXPLAIN")
-        assertThat(message.getString("inputsHash")).isEqualTo("coach-hash")
-        assertThat(message.getJSONArray("bullets").getString(0)).isEqualTo("Base")
-        assertThat(message.getString("createdAt")).isEqualTo(clock.instant().toString())
-        val summary = export.getJSONArray("coachSummaries").getJSONObject(0)
-        assertThat(summary.getString("weekStart")).isEqualTo(monday.minusWeeks(1).toString())
-        assertThat(summary.getString("title")).isEqualTo("Semana passada")
-        assertThat(summary.getJSONArray("bullets").length()).isZero()
         val turn = export.getJSONArray("coachTurns").getJSONObject(0)
         assertThat(turn.getString("origin")).isEqualTo("EXPLAIN")
+        assertThat(turn.getString("inputsHash")).isEqualTo("coach-hash")
         assertThat(turn.getString("title")).isEqualTo("Foco")
         assertThat(turn.getJSONArray("bullets").getString(0)).isEqualTo("Base")
         assertThat(turn.isNull("weekStart")).isTrue()
@@ -228,8 +218,6 @@ class UserDataRepositoryTest {
         assertThat(deletion.executions).isEqualTo(1)
         assertThat(deletion.planRevisions).isEqualTo(1)
         assertThat(deletion.raceEvents).isEqualTo(1)
-        assertThat(deletion.coachMessages).isEqualTo(1)
-        assertThat(deletion.coachSummaries).isEqualTo(1)
         assertThat(deletion.coachTurns).isEqualTo(1)
         assertThat(deletion.profileDeleted).isTrue()
         assertThat(deletion.removedAnything).isTrue()
@@ -244,8 +232,7 @@ class UserDataRepositoryTest {
         assertThat(database.sessionExecutionDao().getAll()).isEmpty()
         assertThat(database.dailyPrescriptionDao().getAll()).isEmpty()
         assertThat(database.raceEventDao().getAll()).isEmpty()
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
     }
 
     @Test
@@ -309,27 +296,6 @@ class UserDataRepositoryTest {
             ),
         ) as RaceEventOutcome.Saved
         events.cancel(race.event.id)
-        database.coachMessageDao().insert(
-            CoachMessageEntity(
-                id = "message-1",
-                kind = "EXPLAIN",
-                inputsHash = "coach-hash",
-                title = "Foco",
-                body = "Vamos manter os 30 min.",
-                bulletsJson = "[\"Base\"]",
-                createdAt = clock.millis(),
-            ),
-        )
-        database.coachSummaryDao().upsert(
-            CoachSummaryEntity(
-                weekStart = monday.minusWeeks(1).toString(),
-                inputsHash = "review-hash",
-                title = "Semana passada",
-                body = "3 de 4 sessões.",
-                bulletsJson = "[]",
-                createdAt = clock.millis(),
-            ),
-        )
         database.chatTurnDao().insert(
             ChatTurnEntity(
                 id = "message-message-1",
@@ -338,6 +304,7 @@ class UserDataRepositoryTest {
                 body = "Vamos manter os 30 min.",
                 bulletsJson = "[\"Base\"]",
                 origin = "EXPLAIN",
+                inputsHash = "coach-hash",
                 weekStart = null,
                 createdAt = clock.millis(),
                 expiresAt = clock.millis() + 90L * 24 * 60 * 60 * 1000,

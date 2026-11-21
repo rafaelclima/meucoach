@@ -371,7 +371,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Revisão da semana fechada reutilizando `WeeklyReviewAssembler` (mesma semana de Tendências).
 - [x] Replanejamento com confirmação/diff/undo e intents explícitos (“perdi o treino X”, “só tenho 30 min no dia Y”) via `ReplanController`.
 - [x] 3.3-C: “tenho menos tempo” com vários dias por pedido e `0` removendo o dia inteiro, sempre no perfil efêmero (sem tocar em `AthleteProfile`/`availabilityHash`).
-- [x] Room v19: `coach_messages`/`coach_summaries`, TTL 90/180 dias, revogação apaga, export/delete incluem ([ADR 0052](adr/0052-ia-coach-memory-schema-v19.md)).
+- [x] Room v21 (21/11/2026): `chat_turns` como tabela única (`inputsHash` preenchido das tabelas v19 na `MIGRATION_20_21` + índice único `(origin, inputsHash)`), escrita só em `chat_turns`, tabelas/DAOs v19 removidos, `visibleTurns` no domínio, histórico como timeline única e export/delete sem as chaves v19 ([ADR 0055](adr/0055-chat-turn-single-table-v21.md)).
 - [x] Histórico do Coach somente leitura na aba (só com opt-in), com resumos + conversa, loading/vazio/erro, TalkBack, dark/light, fonte 200%, “Apagar histórico” em bloco e apagar item a item com confirmação.
 - [x] Goldens Roborazzi da barra (`bottom-bar-dark/light`) com o Coach selecionado, seleção e clique dos cinco tabs.
 - [x] Auditoria de utilidade no aparelho: parser estrito, legado JSON oculto, histórico sem duplicação, explicação compacta, “Desativar” neutro e lixeira discreta.

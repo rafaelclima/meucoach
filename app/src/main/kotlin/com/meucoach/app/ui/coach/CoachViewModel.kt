@@ -17,8 +17,6 @@ import com.meucoach.core.data.coach.CoachKind
 import com.meucoach.core.data.coach.CoachMemoryRepository
 import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.ChatTurns
-import com.meucoach.core.domain.coach.CoachMemoryMessage
-import com.meucoach.core.domain.coach.CoachMemorySummary
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachProgress
 import com.meucoach.core.domain.coach.CoachProgressSummary
@@ -217,21 +215,19 @@ class CoachViewModel @Inject constructor(
                         return@collectLatest
                     }
                     combine(
-                        memory.observeMessages(),
-                        memory.observeSummaries(),
+                        memory.observeTurns(),
                         currentExplainHash,
                         _review,
-                    ) { messages, summaries, explainHash, review ->
-                        val turns = ChatTurns.fromMemory(
-                            messages = messages,
-                            summaries = summaries,
+                    ) { turns, explainHash, review ->
+                        val visible = ChatTurns.visibleTurns(
+                            turns = turns,
                             currentExplainHash = explainHash,
                             currentReviewWeek = review?.weekStart,
                         )
-                        if (turns.isEmpty()) {
+                        if (visible.isEmpty()) {
                             CoachHistoryState.Empty
                         } else {
-                            CoachHistoryState.Ready(turns = turns)
+                            CoachHistoryState.Ready(turns = visible)
                         }
                     }
                         .onStart { emit(CoachHistoryState.Loading) }
@@ -496,37 +492,9 @@ class CoachViewModel @Inject constructor(
         }
     }
 
-    /** Removes one validated turn; the rest of the history and training data stay. */
-    fun deleteHistoryMessage(id: String) = deleteHistoryEntry {
-        memory.deleteMessage(id)
-        memory.deleteTurn("message-$id")
-    }
-
-    /** Removes one weekly summary; the conversation and training data stay. */
-    fun deleteHistorySummary(weekStart: LocalDate) = deleteHistoryEntry {
-        memory.deleteSummary(weekStart)
-        memory.deleteTurn("summary-$weekStart")
-    }
-
-    /** Removes one unified timeline turn from both memory tables. */
+    /** Removes one unified timeline turn; training data is untouched. */
     fun deleteHistoryTurn(turn: ChatTurn) = deleteHistoryEntry {
-        when (turn) {
-            is ChatTurn.Coach -> when (turn.origin) {
-                ChatTurn.Origin.SUMMARY -> {
-                    runCatching { LocalDate.parse(turn.id.removePrefix("summary-")) }
-                        .getOrNull()
-                        ?.let { week ->
-                            memory.deleteSummary(week)
-                            memory.deleteTurn(turn.id)
-                        }
-                }
-
-                ChatTurn.Origin.EXPLAIN, ChatTurn.Origin.REVIEW -> {
-                    memory.deleteMessage(turn.id.removePrefix("message-"))
-                    memory.deleteTurn(turn.id)
-                }
-            }
-        }
+        memory.deleteTurn(turn.id)
     }
 
     fun retryHistory() {

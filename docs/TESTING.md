@@ -107,7 +107,7 @@ Evidência atual (19/11/2026, Bloco B do Coach):
 ## 5.1 Testes de persistência
 
 - `MeuCoachDatabaseTest` (Robolectric): CRUD do agregado, lista observável, soft delete, cascata de laps/samples, `SET NULL` em import jobs e unicidade de `sourceFileSha256`.
-- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 18→19, incluindo backfill de `DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED`, hashes legados desconhecidos na 12→13, fingerprint/checkpoint `NULL` na 13→14, `race_events` vazia sem backfill na 14→15 e `coach_messages`/`coach_summaries` vazias na 18→19.
+- `MeuCoachDatabaseMigrationTest` (Robolectric + `MigrationTestHelper`): migrações 1→2 até 20→21, incluindo backfill de `DONE → LEGACY_UNVERIFIED`, `SKIPPED → CLOSED/USER_SKIPPED`, hashes legados desconhecidos na 12→13, fingerprint/checkpoint `NULL` na 13→14, `race_events` vazia sem backfill na 14→15, `coach_messages`/`coach_summaries` vazias na 18→19, `chat_turns` com backfill na 19→20 e `inputsHash` preenchido + tabelas v19 removidas na 20→21.
 - `SampleBlobCodecTest`: round-trip de todas as colunas e developer fields, compressão, timestamps reconstruídos, gzip inválido, truncamento, versão desconhecida, contagem absurda, bytes extras e ordem dos samples.
 - `ActivityRepositoryTest`: salvar/listar/abrir, dedup por SHA-256, blob corrompido e encoding desconhecido com `sampleWarning`, soft delete, exclusão permanente e export JSON.
 - `UuidV7Test`: versão 7, variante RFC e determinismo com clock/random fixos.
@@ -222,20 +222,20 @@ Evidência atual (19/11/2026, Bloco B do Coach):
 - `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale, undo (restaura o futuro e limpa a oferta) e ausência de semana.
 - `ReplanSuggestionStoreTest`: recusa por semana/versão/hash, supressão por dia, clear e reset.
 - `CoachViewModelTest`/`CoachScreenTest` (3.3-A): ação rápida avalia T3, aceite/undo na aba Coach, ausência de semana, sheet de diff com selo de versão e “Desfazer” após aplicar.
-- `CoachMemoryPolicyTest` (Room v19): mensagens 90 dias e resumos 180, com corte inclusivo.
-- `CoachMemoryRepositoryTest` (Room v19): round-trip e ordem cronológica, dedupe por `(kind, inputsHash)`, um resumo por semana com o último texto validado, prune com boundary, prune na escrita e clear.
-- `CoachMemoryRepositoryTest` (histórico): Flow newest-first mapeado para `CoachMemoryMessage`/`CoachMemorySummary`, linha ilegível (kind/data/body JSON legado) ignorada sem derrubar a lista e apagar uma mensagem/resumo preservando o resto.
-- `MeuCoachDatabaseMigrationTest` (18→19): preserva plano/sessão, cria as duas tabelas vazias e o round-trip/dedupe passam no schema 19.
-- `UserDataRepositoryTest` (Room v19): export inclui `coachMessages`/`coachSummaries`; delete conta e remove as duas sem tocar no resto.
-- `CoachViewModelTest` (Room v19): explicação válida grava, fallback não grava, revisão grava mensagem + resumo e revogar apaga a memória preservando o plano.
-- `CoachViewModelTest` (histórico): oculto sem opt-in, vazio, lista resumos/conversa, apagar histórico e apagar mensagem/resumo individual preservando o restante.
-- `CoachHistoryTest` (histórico): leitura sem edição, loading/vazio/erro com retry, gate de opt-in, confirmação/cancelamento do apagar em bloco e por item, tema claro e fonte 200%.
+- `CoachMemoryPolicyTest` (Room v21): mensagens 90 dias e resumos 180, com corte inclusivo; `turnExpiresAt` segue a origem.
+- `CoachMemoryRepositoryTest` (Room v21): escrita só em `chat_turns` com `inputsHash` e TTL por origem, dedupe por `(origin, inputsHash)`, um resumo por semana com o último texto validado, prune por `expiresAt` com boundary, prune na escrita e clear; Flow newest-first com linha ilegível (role/origem, body JSON legado, branco) ignorada e `NULL` de hash preservado; apagar um turn preserva o resto.
+- `MeuCoachDatabaseMigrationTest` (cadeia 1→21): 19→20 preserva as tabelas v19 com backfill dourado; 20→21 preenche `inputsHash` das tabelas v19 e as remove, com TTL intacto.
+- `UserDataRepositoryTest` (Room v21): export só com `coachTurns` (inclui `inputsHash`); delete conta e remove só os turns sem tocar no resto.
+- `CoachViewModelTest` (Room v21): explicação válida grava, fallback não grava, revisão grava review + resumo e revogar apaga a memória preservando o plano.
+- `CoachViewModelTest` (histórico): oculto sem opt-in, vazio, lista resumos/conversa com consentimento, apagar histórico e apagar turn individual (mensagem/resumo) preservando o restante.
+- `CoachHistoryTest` (histórico): timeline única intercalada, resumo substituindo o review do mesmo hash, confirmação/cancelamento do apagar em bloco e por item, tema claro e fonte 200%.
+- `ChatTurnTest` (domínio, v21): `visibleTurns` esconde review coberto pelo resumo do mesmo hash, explicação corrente e semana em revisão; empate mostra o resumo antes; hash ausente nunca esconde.
 - `PlanReplannerTest` (3.3-C): remover um dia (`0`) e reduzir outro no mesmo pedido, `canonical` independente da ordem, datas duplicadas recusadas e canonical vazio legado preservado; o hash de um único dia não muda.
 - `CoachViewModelTest`/`CoachScreenTest` (3.3-C): picker multi-seleção envia dois `LessTimeChange`, `0` remove os dias e o aceite mantém `AthleteProfile`/`availabilityHash` intactos.
 - `CoachApiTest` (auditoria): parser rejeita body objeto, title/body vazios e JSON inválido em vez de exibir/gravar texto cru.
 - `CoachHistoryTest` (auditoria): resumo substitui o turno `REVIEW`, review sem resumo permanece, payload diferente não é ocultado e explicação/revisão correntes não se repetem no arquivo.
 - `CoachExplanationCardTest` (auditoria): explicação longa começa recolhida, expande bullets e explicação curta sem bullets não mostra o toggle.
-- `DataManagementViewModelTest` (Room v19): a mensagem de exclusão cita mensagens/resumos do Coach.
+- `DataManagementViewModelTest` (Room v21): a mensagem de exclusão cita os turnos do Coach.
 - `TodayScreenshotTest`: golden dark/light da Hoje com prontidão, treino, CTA do briefing e plano (inclui o card do plano com versão).
 - `SessionBriefingScreenshotTest`: golden dark/light do conteúdo do briefing (foco, alvo, rationale, como correr e se estiver difícil).
 - `ReplanScreenshotTest`: golden dark/light do card de sugestão de replanejamento.

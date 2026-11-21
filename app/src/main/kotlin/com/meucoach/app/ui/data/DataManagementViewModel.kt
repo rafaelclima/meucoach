@@ -193,15 +193,8 @@ class DataManagementViewModel @Inject constructor(
     }
 
     private fun UserDataDeletion.coachMemoryNote(): String {
-        val parts = buildList {
-            if (coachMessages > 0) {
-                add("$coachMessages ${if (coachMessages == 1) "mensagem" else "mensagens"}")
-            }
-            if (coachSummaries > 0) {
-                add("$coachSummaries ${if (coachSummaries == 1) "resumo" else "resumos"}")
-            }
-        }
-        if (parts.isEmpty()) return ""
-        return " O histórico do Coach também foi apagado (${parts.joinToString(" e ")})."
+        if (coachTurns == 0) return ""
+        return " O histórico do Coach também foi apagado " +
+            "($coachTurns ${if (coachTurns == 1) "turno" else "turnos"})."
     }
 }

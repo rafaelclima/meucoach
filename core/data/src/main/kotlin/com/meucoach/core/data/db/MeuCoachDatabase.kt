@@ -10,8 +10,6 @@ import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.AthleteProfileDao
 import com.meucoach.core.data.db.dao.ChatTurnDao
-import com.meucoach.core.data.db.dao.CoachMessageDao
-import com.meucoach.core.data.db.dao.CoachSummaryDao
 import com.meucoach.core.data.db.dao.DailyCheckInDao
 import com.meucoach.core.data.db.dao.DailyMetricsDao
 import com.meucoach.core.data.db.dao.DailyPrescriptionDao
@@ -26,8 +24,6 @@ import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
 import com.meucoach.core.data.db.entity.ChatTurnEntity
-import com.meucoach.core.data.db.entity.CoachMessageEntity
-import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
 import com.meucoach.core.data.db.entity.DailyMetricsEntity
 import com.meucoach.core.data.db.entity.DailyPrescriptionEntity
@@ -56,8 +52,6 @@ import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
         SessionExecutionEntity::class,
         WeeklyPlanRevisionEntity::class,
         RaceEventEntity::class,
-        CoachMessageEntity::class,
-        CoachSummaryEntity::class,
         ChatTurnEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
@@ -90,14 +84,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun raceEventDao(): RaceEventDao
 
-    abstract fun coachMessageDao(): CoachMessageDao
-
-    abstract fun coachSummaryDao(): CoachSummaryDao
-
     abstract fun chatTurnDao(): ChatTurnDao
 
     companion object {
-        const val VERSION = 20
+        const val VERSION = 21
         const val NAME = "meucoach.db"
 
         /**
@@ -703,6 +693,51 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 21 retires the v19 tables: `chat_turns` is the single Coach
+         * memory (ADR 0055).
+         *
+         * `inputsHash` is added first and backfilled from the v19 tables while
+         * they still exist — they are the only source of the motor context for
+         * legacy rows, and the visibility rules need it. Rows the backfill
+         * cannot match keep `NULL`, which never hides a turn. The unique
+         * `(origin, inputsHash)` index restores the v19 write-once guarantee
+         * (`NULL` rows never conflict in SQLite); v20 states reachable through
+         * the dual write cannot violate it, because the v19 unique
+         * `(kind, inputsHash)` allowed only one message per context.
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `chat_turns` ADD COLUMN `inputsHash` TEXT")
+                db.execSQL(
+                    """
+                    UPDATE `chat_turns`
+                    SET `inputsHash` = (
+                        SELECT `m`.`inputsHash` FROM `coach_messages` AS `m`
+                        WHERE `chat_turns`.`id` = 'message-' || `m`.`id`
+                    )
+                    WHERE `origin` IN ('EXPLAIN', 'REVIEW')
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    UPDATE `chat_turns`
+                    SET `inputsHash` = (
+                        SELECT `s`.`inputsHash` FROM `coach_summaries` AS `s`
+                        WHERE `chat_turns`.`id` = 'summary-' || `s`.`weekStart`
+                    )
+                    WHERE `origin` = 'SUMMARY'
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_chat_turns_origin_inputsHash` " +
+                        "ON `chat_turns` (`origin`, `inputsHash`)",
+                )
+                db.execSQL("DROP TABLE `coach_messages`")
+                db.execSQL("DROP TABLE `coach_summaries`")
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -725,6 +760,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_17_18,
                 MIGRATION_18_19,
                 MIGRATION_19_20,
+                MIGRATION_20_21,
             )
             .build()
     }

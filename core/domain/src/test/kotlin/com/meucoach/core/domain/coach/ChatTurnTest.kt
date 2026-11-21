@@ -9,70 +9,154 @@ class ChatTurnTest {
     private val now = Instant.parse("2026-11-20T12:00:00Z")
 
     @Test
-    fun `memoria vira turns preservando as regras de visibilidade`() {
-        val explain = message(CoachMessageKind.EXPLAIN, "explain-1", "Foco", now.minusSeconds(300))
-        val review = message(CoachMessageKind.REVIEW, "review-1", "Revisão", now.minusSeconds(200))
-        val summary = summary("review-1", now.minusSeconds(100))
-
-        val turns = ChatTurns.fromMemory(listOf(explain, review), listOf(summary))
-
-        assertThat(turns).hasSize(2)
-        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin }).containsExactly(
+    fun `resumo substitui o review do mesmo hash na timeline`() {
+        val explain = turn("message-e1", ChatTurn.Origin.EXPLAIN, "explain-1", now.minusSeconds(300))
+        val review = turn("message-r1", ChatTurn.Origin.REVIEW, "review-1", now.minusSeconds(200))
+        val summary = turn(
+            "summary-2026-11-09",
             ChatTurn.Origin.SUMMARY,
-            ChatTurn.Origin.EXPLAIN,
-        )
-    }
-
-    @Test
-    fun `explicacao corrente e semana em revisao nao entram no arquivo`() {
-        val current = message(CoachMessageKind.EXPLAIN, "explain-current", "Atual", now)
-        val summary = summary("review-current", now, LocalDate.of(2026, 11, 9))
-
-        val turns = ChatTurns.fromMemory(
-            messages = listOf(current),
-            summaries = listOf(summary),
-            currentExplainHash = "explain-current",
-            currentReviewWeek = LocalDate.of(2026, 11, 9),
+            "review-1",
+            now.minusSeconds(100),
+            weekStart = LocalDate.of(2026, 11, 9),
         )
 
-        assertThat(turns).isEmpty()
+        val visible = ChatTurns.visibleTurns(listOf(explain, review, summary))
+
+        assertThat(visible.map { it.id }).containsExactly("summary-2026-11-09", "message-e1")
     }
 
     @Test
     fun `review sem resumo continua visivel como turn`() {
-        val review = message(CoachMessageKind.REVIEW, "review-1", "Revisão", now)
+        val review = turn("message-r1", ChatTurn.Origin.REVIEW, "review-1", now)
 
-        val turns = ChatTurns.fromMemory(listOf(review), emptyList())
+        val visible = ChatTurns.visibleTurns(listOf(review))
 
-        assertThat(turns).hasSize(1)
-        val coach = turns.single() as ChatTurn.Coach
+        assertThat(visible).hasSize(1)
+        val coach = visible.single() as ChatTurn.Coach
         assertThat(coach.origin).isEqualTo(ChatTurn.Origin.REVIEW)
-        assertThat(coach.title).isEqualTo("Revisão")
+        assertThat(coach.title).isEqualTo("Título de message-r1.")
     }
 
     @Test
-    fun `memoria vazia vira lista vazia`() {
-        assertThat(ChatTurns.fromMemory(emptyList(), emptyList())).isEmpty()
+    fun `resumo nao esconde review de outro payload`() {
+        val review = turn("message-r2", ChatTurn.Origin.REVIEW, "review-2", now)
+        val summary = turn(
+            "summary-2026-11-09",
+            ChatTurn.Origin.SUMMARY,
+            "review-1",
+            now,
+            weekStart = LocalDate.of(2026, 11, 9),
+        )
+
+        val visible = ChatTurns.visibleTurns(listOf(review, summary))
+
+        assertThat(visible.map { it.id }).containsExactlyInAnyOrder("message-r2", "summary-2026-11-09")
     }
 
-    private fun message(kind: CoachMessageKind, inputsHash: String, title: String, createdAt: Instant) =
-        CoachMemoryMessage(
-            id = "msg-$inputsHash",
-            kind = kind,
-            inputsHash = inputsHash,
-            title = title,
-            body = "Corpo de $title.",
-            bullets = emptyList(),
-            createdAt = createdAt,
+    @Test
+    fun `explicacao corrente e semana em revisao nao entram no arquivo`() {
+        val current = turn("message-cur", ChatTurn.Origin.EXPLAIN, "explain-current", now)
+        val summary = turn(
+            "summary-2026-11-09",
+            ChatTurn.Origin.SUMMARY,
+            "review-current",
+            now,
+            weekStart = LocalDate.of(2026, 11, 9),
         )
 
-    private fun summary(inputsHash: String, createdAt: Instant, weekStart: LocalDate = LocalDate.of(2026, 11, 9)) =
-        CoachMemorySummary(
-            weekStart = weekStart,
-            inputsHash = inputsHash,
-            title = "Resumo",
-            body = "Corpo do resumo.",
-            bullets = emptyList(),
-            createdAt = createdAt,
+        val visible = ChatTurns.visibleTurns(
+            turns = listOf(current, summary),
+            currentExplainHash = "explain-current",
+            currentReviewWeek = LocalDate.of(2026, 11, 9),
         )
+
+        assertThat(visible).isEmpty()
+    }
+
+    @Test
+    fun `explicacao antiga e resumo de outra semana continuam no arquivo`() {
+        val older = turn("message-old", ChatTurn.Origin.EXPLAIN, "explain-old", now.minusSeconds(60))
+        val current = turn("message-cur", ChatTurn.Origin.EXPLAIN, "explain-current", now)
+        val currentSummary = turn(
+            "summary-2026-11-09",
+            ChatTurn.Origin.SUMMARY,
+            "review-current",
+            now,
+            weekStart = LocalDate.of(2026, 11, 9),
+        )
+        val olderSummary = turn(
+            "summary-2026-11-02",
+            ChatTurn.Origin.SUMMARY,
+            "review-old",
+            now.minusSeconds(120),
+            weekStart = LocalDate.of(2026, 11, 2),
+        )
+
+        val visible = ChatTurns.visibleTurns(
+            turns = listOf(current, older, currentSummary, olderSummary),
+            currentExplainHash = "explain-current",
+            currentReviewWeek = LocalDate.of(2026, 11, 9),
+        )
+
+        assertThat(visible.map { it.id }).containsExactly("message-old", "summary-2026-11-02")
+    }
+
+    @Test
+    fun `empate de createdAt mostra o resumo antes`() {
+        val review = turn("message-r1", ChatTurn.Origin.REVIEW, "review-1", now)
+        val summary = turn(
+            "summary-2026-11-09",
+            ChatTurn.Origin.SUMMARY,
+            "review-9",
+            now,
+            weekStart = LocalDate.of(2026, 11, 9),
+        )
+
+        val visible = ChatTurns.visibleTurns(listOf(review, summary))
+
+        assertThat(visible.map { it.id }).containsExactly("summary-2026-11-09", "message-r1")
+    }
+
+    @Test
+    fun `hash ausente nunca esconde o turn`() {
+        val review = turn("message-r1", ChatTurn.Origin.REVIEW, null, now.minusSeconds(10))
+        val summary = turn(
+            "summary-2026-11-09",
+            ChatTurn.Origin.SUMMARY,
+            null,
+            now,
+            weekStart = LocalDate.of(2026, 11, 9),
+        )
+        val explain = turn("message-e1", ChatTurn.Origin.EXPLAIN, null, now.minusSeconds(20))
+
+        val visible = ChatTurns.visibleTurns(
+            turns = listOf(review, summary, explain),
+            currentExplainHash = "explain-current",
+        )
+
+        assertThat(visible.map { it.id })
+            .containsExactly("summary-2026-11-09", "message-r1", "message-e1")
+    }
+
+    @Test
+    fun `timeline vazia continua vazia`() {
+        assertThat(ChatTurns.visibleTurns(emptyList())).isEmpty()
+    }
+
+    private fun turn(
+        id: String,
+        origin: ChatTurn.Origin,
+        inputsHash: String?,
+        createdAt: Instant,
+        weekStart: LocalDate? = null,
+    ) = ChatTurn.Coach(
+        id = id,
+        title = "Título de $id.",
+        body = "Corpo de $id.",
+        bullets = emptyList(),
+        createdAt = createdAt,
+        origin = origin,
+        weekStart = weekStart,
+        inputsHash = inputsHash,
+    )
 }

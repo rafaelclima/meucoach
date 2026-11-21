@@ -5,8 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
 import com.meucoach.core.data.db.entity.ChatTurnEntity
-import com.meucoach.core.data.db.entity.CoachMessageEntity
-import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.CoachMessageKind
 import kotlinx.coroutines.flow.first
@@ -52,23 +50,25 @@ class CoachMemoryRepositoryTest {
     }
 
     @Test
-    fun `records messages and reads them in chronological order`(): Unit = runBlocking {
+    fun `records messages as turns with the origin TTL`(): Unit = runBlocking {
         assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", listOf("Base")))
             .isTrue()
-        clock.instant = now.plusSeconds(60)
-        assertThat(memory.recordMessage(CoachMessageKind.REVIEW, "hash-2", "Semana", "3 de 4", emptyList()))
-            .isTrue()
 
-        val messages = database.coachMessageDao().getAll()
+        val turns = database.chatTurnDao().getAll()
 
-        assertThat(messages.map { it.kind }).containsExactly("EXPLAIN", "REVIEW")
-        assertThat(messages.first().body).isEqualTo("40 min")
-        assertThat(messages.first().bulletsJson).isEqualTo("[\"Base\"]")
-        assertThat(messages.last().createdAt).isEqualTo(clock.millis())
+        assertThat(turns).hasSize(1)
+        val turn = turns.single()
+        assertThat(turn.id).isEqualTo("message-message-1")
+        assertThat(turn.origin).isEqualTo("EXPLAIN")
+        assertThat(turn.inputsHash).isEqualTo("hash-1")
+        assertThat(turn.body).isEqualTo("40 min")
+        assertThat(turn.bulletsJson).isEqualTo("[\"Base\"]")
+        assertThat(turn.createdAt).isEqualTo(now.toEpochMilli())
+        assertThat(turn.expiresAt).isEqualTo(now.plus(Duration.ofDays(90)).toEpochMilli())
     }
 
     @Test
-    fun `reopening the same motor context does not duplicate the conversation`(): Unit = runBlocking {
+    fun `reopening the same motor context does not duplicate the turn`(): Unit = runBlocking {
         assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList()))
             .isTrue()
         clock.instant = now.plusSeconds(30)
@@ -76,9 +76,9 @@ class CoachMemoryRepositoryTest {
         assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList()))
             .isFalse()
 
-        val messages = database.coachMessageDao().getAll()
-        assertThat(messages).hasSize(1)
-        assertThat(messages.single().createdAt).isEqualTo(now.toEpochMilli())
+        val turns = database.chatTurnDao().getAll()
+        assertThat(turns).hasSize(1)
+        assertThat(turns.single().createdAt).isEqualTo(now.toEpochMilli())
     }
 
     @Test
@@ -100,214 +100,32 @@ class CoachMemoryRepositoryTest {
             emptyList(),
         )
 
-        val summaries = database.coachSummaryDao().getAll()
+        val turns = database.chatTurnDao().getAll()
 
-        assertThat(summaries.map { it.weekStart })
-            .containsExactly("2026-11-09", "2026-11-02")
-        assertThat(summaries.last().title).isEqualTo("Semana 1 revisada")
-        assertThat(summaries.last().inputsHash).isEqualTo("review-1b")
+        assertThat(turns.map { it.id })
+            .containsExactly("summary-2026-11-02", "summary-2026-11-09")
+        val rewritten = turns.single { it.id == "summary-2026-11-02" }
+        assertThat(rewritten.title).isEqualTo("Semana 1 revisada")
+        assertThat(rewritten.inputsHash).isEqualTo("review-1b")
+        assertThat(rewritten.weekStart).isEqualTo("2026-11-02")
+        assertThat(rewritten.origin).isEqualTo("SUMMARY")
+        assertThat(rewritten.expiresAt)
+            .isEqualTo(now.plusSeconds(60).plus(Duration.ofDays(180)).toEpochMilli())
     }
 
     @Test
-    fun `prunes rows older than the TTL and keeps the boundary`(): Unit = runBlocking {
-        database.coachMessageDao().insert(message("old", "hash-old", now.minus(Duration.ofDays(91))))
-        database.coachMessageDao().insert(message("edge", "hash-edge", now.minus(Duration.ofDays(90))))
-        database.coachSummaryDao().upsert(summary("2026-08-01", now.minus(Duration.ofDays(181))))
-        database.coachSummaryDao().upsert(summary("2026-08-02", now.minus(Duration.ofDays(180))))
-
-        val pruned = memory.pruneExpired()
-
-        assertThat(pruned.messages).isEqualTo(1)
-        assertThat(pruned.summaries).isEqualTo(1)
-        assertThat(pruned.removedAnything).isTrue()
-        assertThat(database.coachMessageDao().getAll().map { it.id }).containsExactly("edge")
-        assertThat(database.coachSummaryDao().getAll().map { it.weekStart }).containsExactly("2026-08-02")
-    }
-
-    @Test
-    fun `writing prunes expired messages before inserting`(): Unit = runBlocking {
-        database.coachMessageDao().insert(message("old", "hash-old", now.minus(Duration.ofDays(120))))
-
-        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-new", "Foco", "40 min", emptyList())
-
-        assertThat(database.coachMessageDao().getAll().map { it.inputsHash })
-            .containsExactly("hash-new")
-    }
-
-    @Test
-    fun `clearing erases messages and summaries`(): Unit = runBlocking {
-        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
-        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
-
-        memory.clearAll()
-
-        assertThat(database.coachMessageDao().getAll()).isEmpty()
-        assertThat(database.coachSummaryDao().getAll()).isEmpty()
-    }
-
-    @Test
-    fun `observes the memory as newest-first read-only rows`(): Unit = runBlocking {
-        memory.recordMessage(
-            CoachMessageKind.EXPLAIN,
-            "hash-1",
-            "Foco",
-            "40 min",
-            listOf("Base", "Leve"),
-        )
-        clock.instant = now.plusSeconds(60)
-        memory.recordMessage(CoachMessageKind.REVIEW, "hash-2", "Semana", "3 de 4", emptyList())
-        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
-        memory.recordSummary(LocalDate.of(2026, 11, 9), "review-2", "Semana 2", "4 de 4", listOf("Adesão"))
-
-        val messages = memory.observeMessages().first()
-
-        assertThat(messages.map { it.kind })
-            .containsExactly(CoachMessageKind.REVIEW, CoachMessageKind.EXPLAIN)
-        assertThat(messages.first().createdAt).isEqualTo(now.plusSeconds(60))
-        assertThat(messages.last().bullets).containsExactly("Base", "Leve")
-
-        val summaries = memory.observeSummaries().first()
-
-        assertThat(summaries.map { it.weekStart })
-            .containsExactly(LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 2))
-        assertThat(summaries.first().bullets).containsExactly("Adesão")
-    }
-
-    @Test
-    fun `deletes one message without touching the rest`(): Unit = runBlocking {
-        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
-        clock.instant = now.plusSeconds(60)
-        memory.recordMessage(CoachMessageKind.REVIEW, "hash-2", "Semana", "3 de 4", emptyList())
-        val explain = memory.observeMessages().first().single { it.kind == CoachMessageKind.EXPLAIN }
-
-        assertThat(memory.deleteMessage(explain.id)).isTrue()
-
-        assertThat(memory.observeMessages().first().map { it.kind })
-            .containsExactly(CoachMessageKind.REVIEW)
-        assertThat(memory.deleteMessage(explain.id)).isFalse()
-    }
-
-    @Test
-    fun `deletes one summary by week without touching the rest`(): Unit = runBlocking {
-        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
-        memory.recordSummary(LocalDate.of(2026, 11, 9), "review-2", "Semana 2", "4 de 4", emptyList())
-
-        assertThat(memory.deleteSummary(LocalDate.of(2026, 11, 2))).isTrue()
-
-        assertThat(memory.observeSummaries().first().map { it.weekStart })
-            .containsExactly(LocalDate.of(2026, 11, 9))
-        assertThat(memory.deleteSummary(LocalDate.of(2026, 11, 2))).isFalse()
-    }
-
-    @Test
-    fun `unreadable memory rows are ignored instead of breaking the history`(): Unit = runBlocking {
-        database.coachMessageDao().insert(
-            CoachMessageEntity(
-                id = "bad-kind",
-                kind = "UNKNOWN",
-                inputsHash = "hash",
-                title = "T",
-                body = "B",
-                bulletsJson = "[]",
-                createdAt = now.toEpochMilli(),
-            ),
-        )
-        database.coachSummaryDao().upsert(
-            CoachSummaryEntity(
-                weekStart = "not-a-date",
-                inputsHash = "hash",
-                title = "T",
-                body = "B",
-                bulletsJson = "[]",
-                createdAt = now.toEpochMilli(),
-            ),
-        )
-        // Older builds could persist a provider payload whose body was an object.
-        database.coachMessageDao().insert(
-            CoachMessageEntity(
-                id = "legacy-json",
-                kind = CoachMessageKind.EXPLAIN.name,
-                inputsHash = "legacy",
-                title = "Coach",
-                body = """{"":": "Semana de 09/11 a 15/11."}""",
-                bulletsJson = "[]",
-                createdAt = now.toEpochMilli(),
-            ),
-        )
-        database.coachSummaryDao().upsert(
-            CoachSummaryEntity(
-                weekStart = "2026-11-09",
-                inputsHash = "legacy",
-                title = "Coach",
-                body = """{"":": "Semana de 09/11 a 15/11."}""",
-                bulletsJson = "[]",
-                createdAt = now.toEpochMilli(),
-            ),
-        )
-
-        assertThat(memory.observeMessages().first()).isEmpty()
-        assertThat(memory.observeSummaries().first()).isEmpty()
-    }
-
-    @Test
-    fun `records mirror the turn into chat turns with the origin TTL`(): Unit = runBlocking {
-        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", listOf("Base"))
+    fun `records mirror reviews and summaries under stable ids`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.REVIEW, "review-1", "Revisão", "3 de 4", emptyList())
         memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
 
         val turns = database.chatTurnDao().getAll()
 
         assertThat(turns.map { it.id }).containsExactly("summary-2026-11-02", "message-message-1")
-        val explain = turns.single { it.id == "message-message-1" }
-        assertThat(explain.origin).isEqualTo("EXPLAIN")
-        assertThat(explain.expiresAt).isEqualTo(now.plus(Duration.ofDays(90)).toEpochMilli())
-        val summary = turns.single { it.id == "summary-2026-11-02" }
-        assertThat(summary.origin).isEqualTo("SUMMARY")
-        assertThat(summary.weekStart).isEqualTo("2026-11-02")
-        assertThat(summary.expiresAt).isEqualTo(now.plus(Duration.ofDays(180)).toEpochMilli())
+        assertThat(turns.single { it.id == "message-message-1" }.origin).isEqualTo("REVIEW")
     }
 
     @Test
-    fun `duplicate message does not duplicate the turn`(): Unit = runBlocking {
-        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
-        clock.instant = now.plusSeconds(30)
-
-        assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList()))
-            .isFalse()
-        assertThat(database.chatTurnDao().getAll()).hasSize(1)
-    }
-
-    @Test
-    fun `re-recorded summary replaces the turn narrative`(): Unit = runBlocking {
-        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
-        clock.instant = now.plusSeconds(60)
-        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1b", "Semana revisada", "ok", emptyList())
-
-        val turns = database.chatTurnDao().getAll()
-
-        assertThat(turns).hasSize(1)
-        assertThat(turns.single().title).isEqualTo("Semana revisada")
-    }
-
-    @Test
-    fun `observes turns newest-first skipping corrupted rows`(): Unit = runBlocking {
-        database.chatTurnDao().insert(turn("t-old", "EXPLAIN", now.minusSeconds(60)))
-        database.chatTurnDao().insert(turn("t-new", "SUMMARY", now, weekStart = "2026-11-09"))
-        database.chatTurnDao().insert(turn("t-bad-origin", "YOU", now))
-        database.chatTurnDao().insert(
-            turn("t-json", "EXPLAIN", now, body = """{"":": "legado"}"""),
-        )
-
-        val turns = memory.observeTurns().first()
-
-        assertThat(turns.map { it.id }).containsExactly("t-new", "t-old")
-        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin }).containsExactly(
-            ChatTurn.Origin.SUMMARY,
-            ChatTurn.Origin.EXPLAIN,
-        )
-    }
-
-    @Test
-    fun `prunes expired turns by expiresAt`(): Unit = runBlocking {
+    fun `prunes expired turns by expiresAt and keeps the boundary`(): Unit = runBlocking {
         database.chatTurnDao().insert(turn("t-old", "EXPLAIN", now.minus(Duration.ofDays(91))))
         database.chatTurnDao().insert(turn("t-edge", "EXPLAIN", now.minus(Duration.ofDays(89))))
 
@@ -316,6 +134,51 @@ class CoachMemoryRepositoryTest {
         assertThat(pruned.turns).isEqualTo(1)
         assertThat(pruned.removedAnything).isTrue()
         assertThat(database.chatTurnDao().getAll().map { it.id }).containsExactly("t-edge")
+    }
+
+    @Test
+    fun `writing prunes expired turns before inserting`(): Unit = runBlocking {
+        database.chatTurnDao().insert(
+            turn("t-old", "EXPLAIN", now.minus(Duration.ofDays(120)), inputsHash = "hash-new"),
+        )
+
+        assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-new", "Foco", "40 min", emptyList()))
+            .isTrue()
+
+        assertThat(database.chatTurnDao().getAll().map { it.inputsHash }).containsExactly("hash-new")
+    }
+
+    @Test
+    fun `clearing erases every turn`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
+
+        memory.clearAll()
+
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `observes turns newest-first skipping corrupted rows`(): Unit = runBlocking {
+        database.chatTurnDao().insert(turn("t-old", "EXPLAIN", now.minusSeconds(60)))
+        database.chatTurnDao().insert(turn("t-new", "SUMMARY", now, weekStart = "2026-11-09"))
+        database.chatTurnDao().insert(turn("t-null-hash", "EXPLAIN", now.minusSeconds(30), inputsHash = null))
+        database.chatTurnDao().insert(turn("t-bad-role", "EXPLAIN", now, role = "YOU"))
+        database.chatTurnDao().insert(turn("t-bad-origin", "YOU", now))
+        database.chatTurnDao().insert(
+            turn("t-json", "EXPLAIN", now, body = """{"":": "legado"}"""),
+        )
+        database.chatTurnDao().insert(turn("t-blank", "EXPLAIN", now, title = "  "))
+
+        val turns = memory.observeTurns().first()
+
+        assertThat(turns.map { it.id }).containsExactly("t-new", "t-null-hash", "t-old")
+        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin }).containsExactly(
+            ChatTurn.Origin.SUMMARY,
+            ChatTurn.Origin.EXPLAIN,
+            ChatTurn.Origin.EXPLAIN,
+        )
+        assertThat(turns.single { it.id == "t-null-hash" }.let { it as ChatTurn.Coach }.inputsHash).isNull()
     }
 
     @Test
@@ -331,51 +194,26 @@ class CoachMemoryRepositoryTest {
         assertThat(memory.deleteTurn("message-message-1")).isFalse()
     }
 
-    @Test
-    fun `clearing erases turns too`(): Unit = runBlocking {
-        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
-        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
-
-        memory.clearAll()
-
-        assertThat(database.chatTurnDao().getAll()).isEmpty()
-    }
-
     private fun turn(
         id: String,
         origin: String,
         createdAt: Instant,
         weekStart: String? = null,
         body: String = "Corpo",
+        title: String = "Titulo",
+        role: String = "COACH",
+        inputsHash: String? = "hash-$id",
     ) = ChatTurnEntity(
         id = id,
-        role = "COACH",
-        title = "Titulo",
+        role = role,
+        title = title,
         body = body,
         bulletsJson = "[]",
         origin = origin,
         weekStart = weekStart,
         createdAt = createdAt.toEpochMilli(),
         expiresAt = createdAt.plus(Duration.ofDays(90)).toEpochMilli(),
-    )
-
-    private fun message(id: String, hash: String, createdAt: Instant) = CoachMessageEntity(
-        id = id,
-        kind = CoachMessageKind.EXPLAIN.name,
-        inputsHash = hash,
-        title = "Foco",
-        body = "40 min",
-        bulletsJson = "[]",
-        createdAt = createdAt.toEpochMilli(),
-    )
-
-    private fun summary(weekStart: String, createdAt: Instant) = CoachSummaryEntity(
-        weekStart = weekStart,
-        inputsHash = "review-$weekStart",
-        title = "Semana",
-        body = "3 de 4",
-        bulletsJson = "[]",
-        createdAt = createdAt.toEpochMilli(),
+        inputsHash = inputsHash,
     )
 
     private class MutableClock(var instant: Instant) : Clock() {

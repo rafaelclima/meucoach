@@ -336,22 +336,25 @@ suficiente, pode não existir nunca.
 
 O job nasce em `PARSING` (uma única escrita) e só o pipeline o move para um estado terminal; `ImportJobGuard` fecha como `FAILED` qualquer erro inesperado depois da criação e a leitura da lista fecha `QUEUED`/`PARSING` com mais de 1 h (processo morto). `QUEUED` permanece no enum para linhas antigas.
 
-### 3.12 Memória do Coach (v19, ADR 0052)
+### 3.12 Memória do Coach (v21, ADR 0055)
 
-Duas tabelas opcionais, sem FK com treino e sem relação com o motor:
+Tabela única, sem FK com treino e sem relação com o motor:
 
-`coach_messages`: `id` (UUID v7, PK), `kind` (`EXPLAIN`/`REVIEW`), `inputsHash`,
-`title`, `body`, `bulletsJson`, `createdAt`. Índice `createdAt` e índice único
-`(kind, inputsHash)` — a mesma avaliação não duplica a conversa.
-
-`coach_summaries`: `weekStart` (PK), `inputsHash`, `title`, `body`,
-`bulletsJson`, `createdAt`. No máximo um resumo por semana fechada.
+`chat_turns`: `id` (`message-{id}`/`summary-{semana}`, PK), `role` (`COACH`),
+`title`, `body`, `bulletsJson`, `origin` (`EXPLAIN`/`REVIEW`/`SUMMARY`),
+`weekStart` (só em `SUMMARY`), `createdAt`, `expiresAt` (TTL por origem calculado
+na escrita), `inputsHash` (contexto do motor; `NULL` só em linha legada sem par
+na v19). Índice `createdAt`, índice `expiresAt` e índices únicos
+`(origin, weekStart)` — um resumo por semana — e `(origin, inputsHash)` — o
+mesmo contexto não duplica a conversa.
 
 Regras: só texto aprovado pelo `CoachResponseValidator` é gravado; revogar o
-opt-in apaga as duas tabelas; export/delete as incluem; TTL de 90 dias
-(mensagens) e 180 dias (resumos), com expiração preguiçosa na abertura/escrita.
-A memória é contexto de copy, **nunca** fonte de carga, pace, FC, volume ou
-plano. O proxy continua stateless.
+opt-in apaga a tabela; export/delete a incluem; expiração preguiçosa por
+`expiresAt` (90 dias explicação/revisão, 180 resumos) em toda escrita. A memória
+é contexto de copy, **nunca** fonte de carga, pace, FC, volume ou plano. O proxy
+continua stateless. Não há import de backup no produto (só export): exports
+antigos com `coachMessages`/`coachSummaries` seguem legíveis fora do app, mas o
+app não os lê de volta.
 
 ## 4. Deduplicação e merge
 
@@ -385,7 +388,7 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v19**; migrações 1→2 até 18→19 testadas em Robolectric.
+- Estado atual: banco **v21**; migrações 1→2 até 20→21 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
@@ -396,6 +399,8 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 - `16→17` adiciona proveniência de calibração a `athlete_profile` (`vdotSource`, `vdotCalibratedAt`, `vdotReferenceDistanceM`, `vdotReferenceDurationSec`; ADR 0036): VDOT legado tem fonte/data desconhecidas e não gera previsão até recalibrar.
 - `17→18` (C4-45, ADR 0048 §2.3) adiciona `generatorVersion` (`NOT NULL DEFAULT 'weekly-plan-v6'`, valor de legado; o motor atual grava `weekly-plan-v7`) a `weekly_plans`, `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` a `planned_sessions` e `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` a `daily_prescriptions`. Nenhuma linha é reescrita; desconhecido decodifica como `null`, nunca parcial.
 - `18→19` (ADR 0052) cria `coach_messages` (índice `createdAt` + único `kind`/`inputsHash`) e `coach_summaries` (PK `weekStart`), ambas vazias. Nenhuma tabela existente é reescrita; o histórico de treino é preservado campo a campo.
+- `19→20` (ADR 0054) cria `chat_turns` + índices e faz backfill (mensagens com TTL 90 d, resumos 180 d; linhas corrompidas de fora); tabelas v19 intactas.
+- `20→21` (ADR 0055) adiciona `inputsHash` em `chat_turns` (preenchido das tabelas v19), cria o índice único `(origin, inputsHash)` e remove `coach_messages`/`coach_summaries`. Sem backfill de linhas; dado sem par mantém `NULL`.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.

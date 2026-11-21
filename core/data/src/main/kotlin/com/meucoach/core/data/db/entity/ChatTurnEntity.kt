@@ -23,6 +23,7 @@ import androidx.room.PrimaryKey
         Index(value = ["createdAt"]),
         Index(value = ["expiresAt"]),
         Index(value = ["origin", "weekStart"], unique = true),
+        Index(value = ["origin", "inputsHash"], unique = true),
     ],
 )
 data class ChatTurnEntity(
@@ -37,4 +38,10 @@ data class ChatTurnEntity(
     val weekStart: String?,
     val createdAt: Long,
     val expiresAt: Long,
+    /**
+     * Motor context that produced the validated text. `null` only on legacy
+     * rows the 20→21 migration could not match to a v19 row; new writes
+     * always set it so reopening the same context never duplicates the turn.
+     */
+    val inputsHash: String? = null,
 )
