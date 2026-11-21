@@ -22,6 +22,8 @@ sealed interface ChatTurn {
         val bullets: List<String>,
         override val createdAt: Instant,
         val origin: Origin,
+        /** Only set for `SUMMARY` turns; the week the narrative covers. */
+        val weekStart: LocalDate? = null,
     ) : ChatTurn
 
     enum class Origin { EXPLAIN, REVIEW, SUMMARY }
@@ -53,6 +55,7 @@ object ChatTurns {
                         bullets = summary.bullets,
                         createdAt = summary.createdAt,
                         origin = ChatTurn.Origin.SUMMARY,
+                        weekStart = summary.weekStart,
                     ),
                 )
             }

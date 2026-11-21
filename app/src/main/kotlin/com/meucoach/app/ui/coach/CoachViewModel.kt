@@ -15,7 +15,8 @@ import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.coach.CoachApi
 import com.meucoach.core.data.coach.CoachKind
 import com.meucoach.core.data.coach.CoachMemoryRepository
-import com.meucoach.core.domain.coach.CoachHistory
+import com.meucoach.core.domain.coach.ChatTurn
+import com.meucoach.core.domain.coach.ChatTurns
 import com.meucoach.core.domain.coach.CoachMemoryMessage
 import com.meucoach.core.domain.coach.CoachMemorySummary
 import com.meucoach.core.domain.coach.CoachMessageKind
@@ -145,8 +146,7 @@ sealed interface CoachHistoryState {
 
     data object Empty : CoachHistoryState
 
-    data class Ready(val summaries: List<CoachMemorySummary>, val messages: List<CoachMemoryMessage>) :
-        CoachHistoryState
+    data class Ready(val turns: List<ChatTurn>) : CoachHistoryState
 
     data class Error(val reason: String) : CoachHistoryState
 }
@@ -222,19 +222,16 @@ class CoachViewModel @Inject constructor(
                         currentExplainHash,
                         _review,
                     ) { messages, summaries, explainHash, review ->
-                        val visible = CoachHistory.view(
+                        val turns = ChatTurns.fromMemory(
                             messages = messages,
                             summaries = summaries,
                             currentExplainHash = explainHash,
                             currentReviewWeek = review?.weekStart,
                         )
-                        if (visible.isEmpty) {
+                        if (turns.isEmpty()) {
                             CoachHistoryState.Empty
                         } else {
-                            CoachHistoryState.Ready(
-                                summaries = visible.summaries,
-                                messages = visible.messages,
-                            )
+                            CoachHistoryState.Ready(turns = turns)
                         }
                     }
                         .onStart { emit(CoachHistoryState.Loading) }
@@ -500,10 +497,37 @@ class CoachViewModel @Inject constructor(
     }
 
     /** Removes one validated turn; the rest of the history and training data stay. */
-    fun deleteHistoryMessage(id: String) = deleteHistoryEntry { memory.deleteMessage(id) }
+    fun deleteHistoryMessage(id: String) = deleteHistoryEntry {
+        memory.deleteMessage(id)
+        memory.deleteTurn("message-$id")
+    }
 
     /** Removes one weekly summary; the conversation and training data stay. */
-    fun deleteHistorySummary(weekStart: LocalDate) = deleteHistoryEntry { memory.deleteSummary(weekStart) }
+    fun deleteHistorySummary(weekStart: LocalDate) = deleteHistoryEntry {
+        memory.deleteSummary(weekStart)
+        memory.deleteTurn("summary-$weekStart")
+    }
+
+    /** Removes one unified timeline turn from both memory tables. */
+    fun deleteHistoryTurn(turn: ChatTurn) = deleteHistoryEntry {
+        when (turn) {
+            is ChatTurn.Coach -> when (turn.origin) {
+                ChatTurn.Origin.SUMMARY -> {
+                    runCatching { LocalDate.parse(turn.id.removePrefix("summary-")) }
+                        .getOrNull()
+                        ?.let { week ->
+                            memory.deleteSummary(week)
+                            memory.deleteTurn(turn.id)
+                        }
+                }
+
+                ChatTurn.Origin.EXPLAIN, ChatTurn.Origin.REVIEW -> {
+                    memory.deleteMessage(turn.id.removePrefix("message-"))
+                    memory.deleteTurn(turn.id)
+                }
+            }
+        }
+    }
 
     fun retryHistory() {
         historyRetryTick.value += 1

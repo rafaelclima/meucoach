@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ChatTurn fatia 3 — repository + export/delete; próxima: histórico)
+**Atualizado:** 21/11/2026 (ChatTurn fatia 4 — histórico como timeline; epic encerrado)
+
+## Sessão 2026-11-21 — ChatTurn fatia 4: histórico como timeline (TDD)
+
+**Objetivo:** fechar o epic (ADR 0054 passo 4): o arquivo vira continuação da conversa.
+
+### Concluído
+
+- **`CoachHistoryState.Ready(turns)`**: a VM mapeia via `ChatTurns.fromMemory`
+  (paridade total das regras) em vez de montar `CoachHistory.view` na mão.
+- **Apagar unificado**: `deleteHistoryTurn(turn)` remove as duas linhas (v19 +
+  `chat_turns`); `deleteHistoryMessage/Summary` estendidos para a mesma paridade.
+- **Card**: seções “Resumos/Conversa” viram lista intercalada (3 + “Ver conversa
+  completa”), um diálogo de apagar genérico e tags por turn
+  (`coach-history-turn/delete-turn-{id}`).
+- **Testes**: `CoachHistoryTest` reescrito para turns (ordens, temas, fonte 200%,
+  apagar item/resumo via turn) + VM (`turns` no lugar de messages/summaries,
+  roteamento do delete unificado com as duas tabelas). Dois asserts com id fixo
+  quebraram (UUID real no teste da VM) e viraram asserts por origem — teste honesto.
+- **Sem** migração nova, sem dependência, sem número/treino tocado.
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` verde com
+  `--rerun-tasks`; `check`, `spotlessCheck` e proxy `test` verdes.
+
+### Pendente
+
+1. `./install.sh` + conferir o histórico no aparelho (timeline intercalada, apagar item).
+2. v21 (futura): remover escrita dupla e tabelas v19.
+
+## Sessão 2026-11-21 — ChatTurn fatia 3: repository em `chat_turns` + paridade (TDD)
 
 ## Sessão 2026-11-21 — ChatTurn fatia 3: repository em `chat_turns` + paridade (TDD)
 

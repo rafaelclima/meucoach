@@ -40,6 +40,7 @@ import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.review.WeeklyReview
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -92,8 +93,7 @@ fun CoachRoute(
         onProgressTrends = onTrendsClick,
         onClearHistory = { viewModel.clearHistory() },
         onRetryHistory = { viewModel.retryHistory() },
-        onDeleteHistoryMessage = { viewModel.deleteHistoryMessage(it) },
-        onDeleteHistorySummary = { viewModel.deleteHistorySummary(it) },
+        onDeleteHistoryTurn = { viewModel.deleteHistoryTurn(it) },
         onReplanRequest = { viewModel.requestReplan() },
         onReplanRequestMissed = { viewModel.requestMissedSession() },
         onReplanRequestLessTime = { viewModel.requestLessTime() },
@@ -149,8 +149,7 @@ fun CoachScreen(
     progress: CoachProgressUiState = CoachProgressUiState.Hidden,
     onProgressRetry: () -> Unit = {},
     onProgressTrends: () -> Unit = {},
-    onDeleteHistoryMessage: (String) -> Unit = {},
-    onDeleteHistorySummary: (LocalDate) -> Unit = {},
+    onDeleteHistoryTurn: (ChatTurn) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var replanSheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -429,8 +428,7 @@ fun CoachScreen(
                     state = history,
                     onClear = onClearHistory,
                     onRetry = onRetryHistory,
-                    onDeleteMessage = onDeleteHistoryMessage,
-                    onDeleteSummary = onDeleteHistorySummary,
+                    onDeleteTurn = onDeleteHistoryTurn,
                 )
             }
         }

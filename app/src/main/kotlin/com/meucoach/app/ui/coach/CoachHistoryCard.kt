@@ -18,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,9 +33,7 @@ import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McSecondaryButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
-import com.meucoach.core.domain.coach.CoachMemoryMessage
-import com.meucoach.core.domain.coach.CoachMemorySummary
-import com.meucoach.core.domain.coach.CoachMessageKind
+import com.meucoach.core.domain.coach.ChatTurn
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -58,14 +57,12 @@ internal fun CoachHistoryCard(
     state: CoachHistoryState,
     onClear: () -> Unit,
     onRetry: () -> Unit,
-    onDeleteMessage: (String) -> Unit,
-    onDeleteSummary: (LocalDate) -> Unit,
+    onDeleteTurn: (ChatTurn) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
     var confirmingClear by rememberSaveable { mutableStateOf(false) }
-    var pendingDeleteKind by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingDeleteKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingDeleteTurn by remember { mutableStateOf<ChatTurn?>(null) }
 
     McCard(modifier = modifier.testTag("coach-history-card")) {
         Text(
@@ -138,36 +135,14 @@ internal fun CoachHistoryCard(
 
             is CoachHistoryState.Ready -> {
                 var expanded by rememberSaveable { mutableStateOf(false) }
-                val totalItems = state.summaries.size + state.messages.size
-                val showSummaries = if (expanded) state.summaries else state.summaries.take(1)
-                val showMessages = if (expanded) state.messages else state.messages.take(2)
-                if (showSummaries.isNotEmpty()) {
-                    HistorySectionTitle(text = "Resumos por semana")
-                    showSummaries.forEachIndexed { index, summary ->
-                        if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        SummaryRow(
-                            summary = summary,
-                            onDelete = {
-                                pendingDeleteKind = "summary"
-                                pendingDeleteKey = summary.weekStart.toString()
-                            },
-                        )
-                    }
-                }
-                if (showMessages.isNotEmpty()) {
-                    if (showSummaries.isNotEmpty()) {
-                        McDivider(modifier = Modifier.padding(vertical = 10.dp))
-                    }
-                    showMessages.forEachIndexed { index, message ->
-                        if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        MessageRow(
-                            message = message,
-                            onDelete = {
-                                pendingDeleteKind = "message"
-                                pendingDeleteKey = message.id
-                            },
-                        )
-                    }
+                val totalItems = state.turns.size
+                val showTurns = if (expanded) state.turns else state.turns.take(3)
+                showTurns.filterIsInstance<ChatTurn.Coach>().forEachIndexed { index, turn ->
+                    if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    TurnRow(
+                        turn = turn,
+                        onDelete = { pendingDeleteTurn = turn },
+                    )
                 }
                 if (!expanded && totalItems > 3) {
                     McSecondaryButton(
@@ -230,24 +205,12 @@ internal fun CoachHistoryCard(
         )
     }
 
-    val deleteKind = pendingDeleteKind
-    val deleteKey = pendingDeleteKey
-    if (deleteKind != null && deleteKey != null) {
+    val deleteTurn = pendingDeleteTurn
+    if (deleteTurn != null) {
         AlertDialog(
-            onDismissRequest = {
-                pendingDeleteKind = null
-                pendingDeleteKey = null
-            },
+            onDismissRequest = { pendingDeleteTurn = null },
             modifier = Modifier.testTag("coach-history-delete-dialog"),
-            title = {
-                Text(
-                    text = if (deleteKind == "message") {
-                        "Apagar esta mensagem do histórico?"
-                    } else {
-                        "Apagar este resumo da semana?"
-                    },
-                )
-            },
+            title = { Text(text = "Apagar este item do histórico?") },
             text = {
                 Text(
                     text = "O item será removido deste aparelho. " +
@@ -257,15 +220,8 @@ internal fun CoachHistoryCard(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingDeleteKind = null
-                        pendingDeleteKey = null
-                        if (deleteKind == "message") {
-                            onDeleteMessage(deleteKey)
-                        } else {
-                            runCatching { LocalDate.parse(deleteKey) }
-                                .getOrNull()
-                                ?.let(onDeleteSummary)
-                        }
+                        pendingDeleteTurn = null
+                        onDeleteTurn(deleteTurn)
                     },
                     modifier = Modifier.testTag("coach-history-delete-confirm"),
                 ) {
@@ -273,12 +229,7 @@ internal fun CoachHistoryCard(
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        pendingDeleteKind = null
-                        pendingDeleteKey = null
-                    },
-                ) {
+                TextButton(onClick = { pendingDeleteTurn = null }) {
                     Text(text = "Cancelar", color = colors.textPrimary)
                 }
             },
@@ -290,41 +241,25 @@ internal fun CoachHistoryCard(
 }
 
 @Composable
-private fun HistorySectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        color = McTheme.colors.textPrimary,
-        modifier = Modifier
-            .padding(bottom = 4.dp)
-            .semantics { heading() },
-    )
-}
+private fun TurnRow(turn: ChatTurn.Coach, onDelete: () -> Unit) {
+    val meta = when (turn.origin) {
+        ChatTurn.Origin.SUMMARY -> {
+            val week = turn.weekStart ?: turn.dateInSystemZone()
+            "Resumo da semana de ${SUMMARY_DATE.format(week)}"
+        }
 
-@Composable
-private fun SummaryRow(summary: CoachMemorySummary, onDelete: () -> Unit) {
-    HistoryRow(
-        tag = "coach-history-summary-${summary.weekStart}",
-        meta = "Resumo da semana de ${SUMMARY_DATE.format(summary.weekStart)}",
-        title = summary.title,
-        body = summary.body,
-        bullets = summary.bullets,
-        deleteTag = "coach-history-delete-summary-${summary.weekStart}",
-        deleteDescription = "Apagar resumo da semana de ${SUMMARY_DATE.format(summary.weekStart)}",
-        onDelete = onDelete,
-    )
-}
+        ChatTurn.Origin.EXPLAIN -> "Explicação da semana · ${HISTORY_DATE.format(turn.dateInSystemZone())}"
 
-@Composable
-private fun MessageRow(message: CoachMemoryMessage, onDelete: () -> Unit) {
+        ChatTurn.Origin.REVIEW -> "Revisão da semana · ${HISTORY_DATE.format(turn.dateInSystemZone())}"
+    }
     HistoryRow(
-        tag = "coach-history-message-${message.id}",
-        meta = "${kindLabel(message.kind)} · ${HISTORY_DATE.format(message.createdAt.dateInSystemZone())}",
-        title = message.title,
-        body = message.body,
-        bullets = message.bullets,
-        deleteTag = "coach-history-delete-message-${message.id}",
-        deleteDescription = "Apagar mensagem: ${message.title}",
+        tag = "coach-history-turn-${turn.id}",
+        meta = meta,
+        title = turn.title,
+        body = turn.body,
+        bullets = turn.bullets,
+        deleteTag = "coach-history-delete-turn-${turn.id}",
+        deleteDescription = "Apagar item: ${turn.title}",
         onDelete = onDelete,
     )
 }
@@ -393,9 +328,6 @@ private fun HistoryRow(
     }
 }
 
-private fun kindLabel(kind: CoachMessageKind): String = when (kind) {
-    CoachMessageKind.EXPLAIN -> "Explicação da semana"
-    CoachMessageKind.REVIEW -> "Revisão da semana"
-}
-
 private fun Instant.dateInSystemZone(): LocalDate = atZone(ZoneId.systemDefault()).toLocalDate()
+
+private fun ChatTurn.dateInSystemZone(): LocalDate = createdAt.dateInSystemZone()

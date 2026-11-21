@@ -1,6 +1,6 @@
 # ADR 0054 — Timeline única do Coach (`chat_turns`, Room v20)
 
-**Status:** Proposto em 2026-11-21 (fatia 1 — domínio — implementada; persistência e UI pendentes).
+**Status:** Aceito e implementado em 21/11/2026 (fatias 1–4: domínio, v20, repository, histórico).
 **Data:** 2026-11-21
 **Escopo:** `core/domain/coach/ChatTurn.kt`, futuro `chat_turns` (v20),
 `CoachMemoryRepository`, `CoachViewModel`, `UserDataRepository`, `MigrationTest`.

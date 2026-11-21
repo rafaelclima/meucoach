@@ -39,6 +39,7 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachRawResponse
@@ -698,9 +699,13 @@ class CoachViewModelTest {
 
         val ready = awaitHistory(vm) as CoachHistoryState.Ready
 
-        assertThat(ready.messages.single().title).isEqualTo("Foco")
-        assertThat(ready.messages.single().bullets).containsExactly("Base")
-        assertThat(ready.summaries.single().weekStart).isEqualTo(LocalDate.of(2026, 11, 2))
+        assertThat(ready.turns).hasSize(2)
+        assertThat(ready.turns.filterIsInstance<ChatTurn.Coach>().map { it.origin }).containsExactly(
+            ChatTurn.Origin.SUMMARY,
+            ChatTurn.Origin.EXPLAIN,
+        )
+        assertThat(ready.turns.single { it.id.startsWith("message-") }.let { it as ChatTurn.Coach }.bullets)
+            .containsExactly("Base")
     }
 
     @Test
@@ -729,8 +734,8 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
 
         val ready = awaitHistory(vm) as CoachHistoryState.Ready
-        assertThat(ready.messages).isEmpty()
-        assertThat(ready.summaries).hasSize(1)
+        assertThat(ready.turns).hasSize(1)
+        assertThat((ready.turns.single() as ChatTurn.Coach).origin).isEqualTo(ChatTurn.Origin.SUMMARY)
     }
 
     @Test
@@ -767,9 +772,12 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "Semana passada", body = "3 de 4 sessões.")))
 
         val ready = awaitHistory(vm) {
-            it is CoachHistoryState.Ready && it.summaries.map { summary -> summary.weekStart } == listOf(older)
+            it is CoachHistoryState.Ready &&
+                it.turns.filterIsInstance<ChatTurn.Coach>().mapNotNull { turn -> turn.weekStart } == listOf(older)
         } as CoachHistoryState.Ready
-        assertThat(ready.summaries.map { it.weekStart }).containsExactly(older)
+        assertThat(
+            ready.turns.filterIsInstance<ChatTurn.Coach>().mapNotNull { turn -> turn.weekStart },
+        ).containsExactly(older)
     }
 
     @Test
@@ -781,14 +789,16 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
         val ready = awaitHistory(vm) as CoachHistoryState.Ready
 
-        vm.deleteHistoryMessage(ready.messages.single().id)
+        vm.deleteHistoryMessage(
+            ready.turns.single { it.id.startsWith("message-") }.id.removePrefix("message-"),
+        )
 
         val after = awaitHistory(vm) {
-            it is CoachHistoryState.Ready && it.messages.isEmpty()
+            it is CoachHistoryState.Ready && it.turns.none { turn -> turn.id.startsWith("message-") }
         } as CoachHistoryState.Ready
-        assertThat(after.messages).isEmpty()
-        assertThat(after.summaries).hasSize(1)
+        assertThat(after.turns.map { it.id }).containsExactly("summary-2026-11-02")
         assertThat(database.trainingPlanDao().getPlan("2026-11-16")).isNotNull()
+        assertThat(database.chatTurnDao().getAll().map { it.id }).containsExactly("summary-2026-11-02")
     }
 
     @Test
@@ -799,13 +809,32 @@ class CoachViewModelTest {
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
         val ready = awaitHistory(vm) as CoachHistoryState.Ready
 
-        vm.deleteHistorySummary(ready.summaries.single().weekStart)
+        vm.deleteHistorySummary(LocalDate.of(2026, 11, 2))
 
         val after = awaitHistory(vm) {
-            it is CoachHistoryState.Ready && it.summaries.isEmpty()
+            it is CoachHistoryState.Ready && it.turns.none { turn -> turn.id == "summary-2026-11-02" }
         } as CoachHistoryState.Ready
-        assertThat(after.summaries).isEmpty()
-        assertThat(after.messages).hasSize(1)
+        assertThat(after.turns).hasSize(1)
+        assertThat((after.turns.single() as ChatTurn.Coach).origin).isEqualTo(ChatTurn.Origin.EXPLAIN)
+        assertThat(database.chatTurnDao().getAll()).hasSize(1)
+    }
+
+    @Test
+    fun `apagar turn unificado remove as duas linhas`(): Unit = runBlocking {
+        consent.grant()
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana 1", "3 de 4", emptyList())
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
+        val ready = awaitHistory(vm) as CoachHistoryState.Ready
+        val summaryTurn = ready.turns.single { it.id == "summary-2026-11-02" }
+
+        vm.deleteHistoryTurn(summaryTurn)
+
+        awaitHistory(vm) {
+            it is CoachHistoryState.Ready && it.turns.none { turn -> turn.id == "summary-2026-11-02" }
+        }
+        assertThat(database.coachSummaryDao().getAll()).isEmpty()
+        assertThat(database.chatTurnDao().getAll()).hasSize(1)
     }
 
     @Test

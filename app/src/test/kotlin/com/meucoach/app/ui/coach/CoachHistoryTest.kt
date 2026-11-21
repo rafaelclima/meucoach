@@ -14,9 +14,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import com.meucoach.core.designsystem.theme.McTheme
-import com.meucoach.core.domain.coach.CoachMemoryMessage
-import com.meucoach.core.domain.coach.CoachMemorySummary
-import com.meucoach.core.domain.coach.CoachMessageKind
+import com.meucoach.core.domain.coach.ChatTurn
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -37,7 +35,7 @@ class CoachHistoryTest {
     private val createdAt = Instant.parse("2026-11-18T12:00:00Z")
 
     @Test
-    fun `historico mostra resumos e conversa em leitura`() {
+    fun `historico mostra a timeline unificada em leitura`() {
         setContent(history = readyHistory())
         openHistory()
 
@@ -47,7 +45,6 @@ class CoachHistoryTest {
         compose.onNodeWithText("Semana 1").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões.", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Explicação da semana", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Conversa").assertDoesNotExist()
         compose.onNodeWithText("Foco").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Mantivemos 30 min.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Editar").assertDoesNotExist()
@@ -119,41 +116,42 @@ class CoachHistoryTest {
     }
 
     @Test
-    fun `apagar mensagem individual pede confirmacao`() {
-        var deletedId: String? = null
-        setContent(history = readyHistory(), onDeleteMessage = { deletedId = it })
+    fun `apagar item individual pede confirmacao`() {
+        var deleted: ChatTurn? = null
+        setContent(history = readyHistory(), onDeleteTurn = { deleted = it })
         openHistory()
 
-        compose.onNodeWithTag("coach-history-delete-message-message-1")
+        compose.onNodeWithTag("coach-history-delete-turn-message-message-1")
             .performScrollTo()
             .assertHasClickAction()
             .performClick()
         compose.onNodeWithTag("coach-history-delete-dialog").assertIsDisplayed()
-        compose.onNodeWithText("Apagar esta mensagem do histórico?", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Apagar este item do histórico?", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Cancelar").performClick()
-        assertThat(deletedId).isNull()
+        assertThat(deleted).isNull()
 
-        compose.onNodeWithTag("coach-history-delete-message-message-1")
+        compose.onNodeWithTag("coach-history-delete-turn-message-message-1")
             .performScrollTo()
             .performClick()
         compose.onNodeWithTag("coach-history-delete-confirm").performClick()
 
-        assertThat(deletedId).isEqualTo("message-1")
+        assertThat((deleted as? ChatTurn.Coach)?.title).isEqualTo("Foco")
     }
 
     @Test
-    fun `apagar resumo individual pede confirmacao`() {
-        var deletedWeek: LocalDate? = null
-        setContent(history = readyHistory(), onDeleteSummary = { deletedWeek = it })
+    fun `apagar resumo individual passa o turn do resumo`() {
+        var deleted: ChatTurn? = null
+        setContent(history = readyHistory(), onDeleteTurn = { deleted = it })
         openHistory()
 
-        compose.onNodeWithTag("coach-history-delete-summary-2026-11-02")
+        compose.onNodeWithTag("coach-history-delete-turn-summary-2026-11-02")
             .performScrollTo()
             .performClick()
-        compose.onNodeWithText("Apagar este resumo da semana?", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("coach-history-delete-confirm").performClick()
 
-        assertThat(deletedWeek).isEqualTo(LocalDate.of(2026, 11, 2))
+        val turn = deleted as? ChatTurn.Coach
+        assertThat(turn?.origin).isEqualTo(ChatTurn.Origin.SUMMARY)
+        assertThat(turn?.weekStart).isEqualTo(LocalDate.of(2026, 11, 2))
     }
 
     @Test
@@ -179,54 +177,17 @@ class CoachHistoryTest {
 
     @Test
     fun `historico longo mostra recentes com ver conversa completa`() {
-        val summaries = listOf(
-            CoachMemorySummary(
-                weekStart = LocalDate.of(2026, 11, 9),
-                inputsHash = "review-new",
-                title = "Semana nova",
-                body = "Corpo novo.",
-                bullets = emptyList(),
-                createdAt = createdAt,
-            ),
-            CoachMemorySummary(
-                weekStart = LocalDate.of(2026, 11, 2),
-                inputsHash = "review-old",
-                title = "Semana velha",
-                body = "Corpo velho.",
-                bullets = emptyList(),
-                createdAt = createdAt,
+        setContent(
+            history = CoachHistoryState.Ready(
+                turns = listOf(
+                    turn("summary-2026-11-09", ChatTurn.Origin.SUMMARY, "Semana nova", weekStart = "2026-11-09"),
+                    turn("message-new-1", ChatTurn.Origin.EXPLAIN, "Nova 1"),
+                    turn("message-new-2", ChatTurn.Origin.EXPLAIN, "Nova 2"),
+                    turn("summary-2026-11-02", ChatTurn.Origin.SUMMARY, "Semana velha", weekStart = "2026-11-02"),
+                    turn("message-old-1", ChatTurn.Origin.EXPLAIN, "Velha"),
+                ),
             ),
         )
-        val messages = listOf(
-            CoachMemoryMessage(
-                id = "new-1",
-                kind = CoachMessageKind.EXPLAIN,
-                inputsHash = "new-1",
-                title = "Nova 1",
-                body = "Corpo nova 1.",
-                bullets = emptyList(),
-                createdAt = createdAt,
-            ),
-            CoachMemoryMessage(
-                id = "new-2",
-                kind = CoachMessageKind.EXPLAIN,
-                inputsHash = "new-2",
-                title = "Nova 2",
-                body = "Corpo nova 2.",
-                bullets = emptyList(),
-                createdAt = createdAt,
-            ),
-            CoachMemoryMessage(
-                id = "old-1",
-                kind = CoachMessageKind.EXPLAIN,
-                inputsHash = "old-1",
-                title = "Velha",
-                body = "Corpo velha.",
-                bullets = emptyList(),
-                createdAt = createdAt,
-            ),
-        )
-        setContent(history = CoachHistoryState.Ready(summaries, messages))
         openHistory()
 
         compose.onNodeWithText("Semana nova").performScrollTo().assertIsDisplayed()
@@ -243,27 +204,40 @@ class CoachHistoryTest {
     }
 
     private fun readyHistory() = CoachHistoryState.Ready(
-        summaries = listOf(
-            CoachMemorySummary(
-                weekStart = LocalDate.of(2026, 11, 2),
-                inputsHash = "review-hash",
-                title = "Semana 1",
+        turns = listOf(
+            turn(
+                "summary-2026-11-02",
+                ChatTurn.Origin.SUMMARY,
+                "Semana 1",
                 body = "3 de 4 sessões.",
                 bullets = listOf("Adesão"),
-                createdAt = createdAt,
+                weekStart = "2026-11-02",
             ),
-        ),
-        messages = listOf(
-            CoachMemoryMessage(
-                id = "message-1",
-                kind = CoachMessageKind.EXPLAIN,
-                inputsHash = "explain-hash",
-                title = "Foco",
+            turn(
+                "message-message-1",
+                ChatTurn.Origin.EXPLAIN,
+                "Foco",
                 body = "Mantivemos 30 min.",
                 bullets = listOf("Base"),
-                createdAt = createdAt,
             ),
         ),
+    )
+
+    private fun turn(
+        id: String,
+        origin: ChatTurn.Origin,
+        title: String,
+        body: String = "Corpo de $title.",
+        bullets: List<String> = emptyList(),
+        weekStart: String? = null,
+    ) = ChatTurn.Coach(
+        id = id,
+        title = title,
+        body = body,
+        bullets = bullets,
+        createdAt = createdAt,
+        origin = origin,
+        weekStart = weekStart?.let(LocalDate::parse),
     )
 
     private fun openHistory() {
@@ -281,8 +255,7 @@ class CoachHistoryTest {
         fontScale: Float = 1f,
         onClear: () -> Unit = {},
         onRetry: () -> Unit = {},
-        onDeleteMessage: (String) -> Unit = {},
-        onDeleteSummary: (LocalDate) -> Unit = {},
+        onDeleteTurn: (ChatTurn) -> Unit = {},
     ) {
         compose.setContent {
             val density = LocalDensity.current
@@ -305,8 +278,7 @@ class CoachHistoryTest {
                         history = history,
                         onClearHistory = onClear,
                         onRetryHistory = onRetry,
-                        onDeleteHistoryMessage = onDeleteMessage,
-                        onDeleteHistorySummary = onDeleteSummary,
+                        onDeleteHistoryTurn = onDeleteTurn,
                     )
                 }
             }
