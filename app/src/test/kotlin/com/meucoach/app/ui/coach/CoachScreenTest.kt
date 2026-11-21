@@ -2,6 +2,7 @@ package com.meucoach.app.ui.coach
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
@@ -1111,7 +1112,7 @@ class CoachScreenTest {
         setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
         compose.onAllNodesWithTag("coach-chat-opening").onFirst().performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("bora ver o que importa?", substring = true)
+        compose.onNodeWithText("Amanhã tem Fácil · 30 min", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
     }
@@ -1172,6 +1173,20 @@ class CoachScreenTest {
         compose.waitForIdle()
 
         compose.onNodeWithTag("coach-retro-prompt").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `abertura de prova fala boa prova`() {
+        setContent(next = CoachNextUiState.Ready(raceContext(monday.plusDays(1))))
+
+        compose.onNodeWithTag("coach-chat-opening").assertTextContains("dia de prova", substring = true)
+    }
+
+    @Test
+    fun `abertura sem check-in pede check-in`() {
+        setContent(next = CoachNextUiState.Ready(trainingContext(monday)))
+
+        compose.onNodeWithTag("coach-chat-opening").assertTextContains("check-in", substring = true)
     }
 
     @Test

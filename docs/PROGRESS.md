@@ -1,15 +1,45 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Coach v3 implementada localmente + gates verdes; pendente redeploy do proxy e validação no aparelho)
+**Atualizado:** 20/11/2026 (F4-1 implementada + gates verdes; validar no aparelho)
 
-## Próxima sessão — pós-v3 (redeploy + aparelho)
+## Sessão 2026-11-20 — F4-1: abertura do dia orientada a dados (TDD)
 
-Ver **`docs/HANDOFF_COACH_V3.md`** (status atualizado). O código da v3 está pronto e testado:
-dedup de ecos, chip “Retrovisor” no rodapé e fade suavizado. Falta: (1) redeploy do
-proxy no Dokploy (leva `017a23a` + a requebra de linha desta sessão), (2) `./install.sh`
-com o token e print do Coach no aparelho (dark/light, fonte 200%), (3) conferir os
-acentos (“você”, “então”, “fácil”, “sessões”) — se o GLM continuar sem acentos, trocar
-`COACH_GO_MODELS` para `deepseek-v4.1-flash` e comparar.
+**Objetivo:** primeira fatia do `PRD_COACH_CHAT` §7.1/F4: a bolha de abertura deixa de ser
+genérica e passa a usar o `CoachNextContext` que a tela já tem.
+
+### Concluído
+
+- **`CoachOpeningLabels` puro** (app/ui.coach, espelha `CoachNextLabels`): `greeting(hora)` —
+  Bom dia (5–11h), Boa tarde (12–18h), Boa noite (resto); `opening(context, hora)` com
+  prioridade prova hoje (“boa prova!”) → prova amanhã → véspera de treino (“Amanhã tem
+  {título} · {min}”, dado planejado do contexto, nunca como prescrito) → hoje sem
+  check-in e sem prescrição (convite de check-in de 15 s) → genérica curta.
+  Toda variante ≤140 chars (uma bolha).
+- **Fiação:** `CoachScreen.openingText(next, hora)` — `Ready` usa o labels; `Empty`/
+  `Onboarding`/`Error` inalterados. Sem fonte nova, sem motor, sem schema.
+- **Testes:** `CoachOpeningLabelsTest` (7 casos: saudação, prova hoje/amanhã, véspera,
+  check-in, genérica com prescrição, teto de 140) + 2 regressões no `CoachScreenTest`
+  (abertura de prova, abertura sem check-in) + 1 teste atualizado para a copy de véspera.
+- **Fora desta fatia:** system turns pós-evento (7.2), nome na saudação (contexto não
+  carrega nome), prova com data distante (genérica).
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` verde com `--rerun-tasks`.
+- `./gradlew check`, `spotlessCheck` e proxy `test` verdes.
+
+### Pendente
+
+1. `./install.sh` + conferir a abertura no aparelho (prova/véspera/check-in conforme o dia).
+2. Próxima: F4-2 — system turns pós check-in/treino/import (7.2).
+
+## Próxima sessão — F4-1 (abertura do dia orientada a dados)
+
+Ver **`docs/PRD_COACH_CHAT.md`** §7.1/F4. Primeira fatia pequena: a bolha de abertura
+deixa de ser genérica (“Oi, bora ver o que importa?”) e passa a usar o `CoachNextContext`
+que já existe (prova hoje/amanhã, véspera de treino, check-in pendente, saudação por hora)
+via `CoachOpeningLabels` puro + TDD. Fora desta fatia: system turns pós-evento (7.2),
+nome do corredor na saudação (contexto não carrega nome) e qualquer mudança de motor/schema.
 
 ## Sessão 2026-11-20 — Coach v3: ecos, Retrovisor e fade (TDD)
 

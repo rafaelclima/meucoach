@@ -43,6 +43,7 @@ import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.review.WeeklyReview
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.math.roundToInt
 
 @Composable
@@ -182,6 +183,7 @@ fun CoachScreen(
         if (showProgress) progressBring.bringIntoView()
     }
     val onboarding = next is CoachNextUiState.Onboarding
+    val hour = remember { LocalTime.now().hour }
     val status = "motor no comando"
     val reviewAvailable = consented && review != null
     val historyAvailable = consented && history != CoachHistoryState.Hidden
@@ -205,7 +207,7 @@ fun CoachScreen(
             CoachChatHeader(status = status, onInfoClick = { infoOpen = true })
             CoachDateDivider(text = "Hoje")
             CoachBubbleSequence(
-                texts = CoachBubbles.split(openingText(next)),
+                texts = CoachBubbles.split(openingText(next, hour)),
                 testTag = "coach-chat-opening",
             )
             CoachNextCard(
@@ -501,7 +503,7 @@ private fun CoachAiInviteCard(
     }
 }
 
-private fun openingText(next: CoachNextUiState): String = when (next) {
+private fun openingText(next: CoachNextUiState, hour: Int): String = when (next) {
     CoachNextUiState.Empty -> "Fechamos a semana. Descansa que segunda eu trago a próxima."
 
     is CoachNextUiState.Onboarding ->
@@ -509,6 +511,8 @@ private fun openingText(next: CoachNextUiState): String = when (next) {
             "Me conta aqui embaixo que eu já organizo."
 
     is CoachNextUiState.Error -> "Não consegui carregar aqui. Tenta de novo?"
+
+    is CoachNextUiState.Ready -> CoachOpeningLabels.opening(next.context, hour)
 
     else -> "Oi, bora ver o que importa?"
 }
