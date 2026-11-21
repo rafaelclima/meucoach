@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ChatTurn fatia 1 — domínio + ADR 0054; persistência/UI nas próximas)
+**Atualizado:** 21/11/2026 (ChatTurn fatia 2 — persistência v20 + migração; próxima: repository)
+
+## Sessão 2026-11-21 — ChatTurn fatia 2: entidade/DAO/`MIGRATION_19_20` (TDD)
+
+**Objetivo:** persistência da timeline única (ADR 0054 §2.2): tabela `chat_turns`
++ backfill dourado, sem mudar leitura/escrita do app ainda.
+
+### Concluído
+
+- **`ChatTurnEntity`** (`chat_turns`, índices `createdAt`/`expiresAt` + único
+  `(origin, weekStart)`) e **`ChatTurnDao`** (insert IGNORE, `observeAll`/`getAll`
+  desc, poda por `expiresAt`, delete por id/total) — espelham o padrão v19.
+- **`MIGRATION_19_20`**: cria tabela + índices e faz backfill — messages (TTL 90 d)
+  e summaries (TTL 180 d), ids derivados (`message-{id}`, `summary-{weekStart}`),
+  corrompidas (branco/JSON) de fora, tabelas v19 intactas para downgrade.
+- **`MigrationTest` dourado**: v19 com 2 messages (1 corrompida) + 1 summary →
+  `chat_turns` com 2 linhas, `expiresAt` exato, origem/`weekStart` certos, v19 intacta.
+- **Fallout mecânico**: 16 testes 1→20 atualizados (migração na cadeia + versão 20 +
+  nomes); demais asserts de versão usam a constante. Schema `20.json` exportado.
+- **Sem** mudança de repository, UI, contrato ou dado real.
+
+### Validação
+
+- `:core:data:testDebugUnitTest` (cheia, `--rerun-tasks`), `check`,
+  `spotlessCheck` e proxy `test` verdes.
+
+### Pendente
+
+1. Fatia 3: repository lendo `chat_turns` (escrita dupla temporária) + export/delete.
+2. Fatia 4: `CoachHistoryState` com `List<ChatTurn>` + histórico como timeline.
+
+## Sessão 2026-11-21 — ChatTurn fatia 1: domínio + ADR 0054 (TDD)
 
 ## Sessão 2026-11-21 — ChatTurn fatia 1: domínio + ADR 0054 (TDD)
 

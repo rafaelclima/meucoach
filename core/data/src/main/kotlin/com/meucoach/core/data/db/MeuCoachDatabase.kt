@@ -9,6 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.meucoach.core.data.db.dao.ActivityAlternateDao
 import com.meucoach.core.data.db.dao.ActivityDao
 import com.meucoach.core.data.db.dao.AthleteProfileDao
+import com.meucoach.core.data.db.dao.ChatTurnDao
 import com.meucoach.core.data.db.dao.CoachMessageDao
 import com.meucoach.core.data.db.dao.CoachSummaryDao
 import com.meucoach.core.data.db.dao.DailyCheckInDao
@@ -24,6 +25,7 @@ import com.meucoach.core.data.db.dao.WeeklyPlanRevisionDao
 import com.meucoach.core.data.db.entity.ActivityAlternateEntity
 import com.meucoach.core.data.db.entity.ActivityEntity
 import com.meucoach.core.data.db.entity.AthleteProfileEntity
+import com.meucoach.core.data.db.entity.ChatTurnEntity
 import com.meucoach.core.data.db.entity.CoachMessageEntity
 import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.db.entity.DailyCheckInEntity
@@ -56,6 +58,7 @@ import com.meucoach.core.data.db.entity.WeeklyPlanRevisionEntity
         RaceEventEntity::class,
         CoachMessageEntity::class,
         CoachSummaryEntity::class,
+        ChatTurnEntity::class,
     ],
     version = MeuCoachDatabase.VERSION,
     exportSchema = true,
@@ -91,8 +94,10 @@ abstract class MeuCoachDatabase : RoomDatabase() {
 
     abstract fun coachSummaryDao(): CoachSummaryDao
 
+    abstract fun chatTurnDao(): ChatTurnDao
+
     companion object {
-        const val VERSION = 19
+        const val VERSION = 20
         const val NAME = "meucoach.db"
 
         /**
@@ -630,6 +635,74 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 20 unifies the Coach memory into `chat_turns` (ADR 0054).
+         *
+         * The table is created empty and backfilled from `coach_messages`
+         * (90 d TTL) and `coach_summaries` (180 d TTL). Corrupted rows — blank
+         * title/body or a provider payload stored as a JSON object — are
+         * skipped, mirroring the repository filters; the v19 tables stay
+         * untouched for a safe downgrade.
+         */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `chat_turns` (
+                        `id` TEXT NOT NULL,
+                        `role` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `bulletsJson` TEXT NOT NULL,
+                        `origin` TEXT NOT NULL,
+                        `weekStart` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `expiresAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_chat_turns_createdAt` " +
+                        "ON `chat_turns` (`createdAt`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_chat_turns_expiresAt` " +
+                        "ON `chat_turns` (`expiresAt`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_chat_turns_origin_weekStart` " +
+                        "ON `chat_turns` (`origin`, `weekStart`)",
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `chat_turns`
+                        (`id`, `role`, `title`, `body`, `bulletsJson`, `origin`,
+                         `weekStart`, `createdAt`, `expiresAt`)
+                    SELECT 'message-' || `id`, 'COACH', `title`, `body`, `bulletsJson`,
+                        `kind`, NULL, `createdAt`, `createdAt` + 7776000000
+                    FROM `coach_messages`
+                    WHERE TRIM(`title`) != ''
+                        AND TRIM(`body`) != ''
+                        AND TRIM(`body`) NOT LIKE '{%'
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `chat_turns`
+                        (`id`, `role`, `title`, `body`, `bulletsJson`, `origin`,
+                         `weekStart`, `createdAt`, `expiresAt`)
+                    SELECT 'summary-' || `weekStart`, 'COACH', `title`, `body`, `bulletsJson`,
+                        'SUMMARY', `weekStart`, `createdAt`, `createdAt` + 15552000000
+                    FROM `coach_summaries`
+                    WHERE TRIM(`title`) != ''
+                        AND TRIM(`body`) != ''
+                        AND TRIM(`body`) NOT LIKE '{%'
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -651,6 +724,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_16_17,
                 MIGRATION_17_18,
                 MIGRATION_18_19,
+                MIGRATION_19_20,
             )
             .build()
     }
