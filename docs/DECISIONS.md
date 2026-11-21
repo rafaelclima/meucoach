@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.68 · **Data:** 21/11/2026
+**Versão:** 1.69 · **Data:** 21/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -66,6 +66,7 @@
 > Revisão 1.66 (19/11/2026): Bloco B da consolidação do Coach — composição reativa read-only: `CoachSignalsSource` compartilha check-ins/métricas/atividades/execuções; F2/F4/revisão observam também semana persistida e provas; `RoomCoachPlanSource` observa `observeWeekRecord` (conteúdo + `inputsHash` + versão, leitura transacional) e o `CoachViewModel` recalcula a explicação após replanejamento mesmo com o mesmo hash. Nenhuma fonte escreve; sem motor, schema, dependência ou migração nova.
 > Revisão 1.67 (21/11/2026): ADR 0054 proposto — timeline única do Coach (`ChatTurn`, Room v20 futura): domínio puro `ChatTurn.Coach` + `ChatTurns.fromMemory` reutilizando `CoachHistory.view` (paridade das regras, intercalado por `createdAt` desc); `You`/`System` seguem efêmeros; persistência (`chat_turns` aditiva + backfill + TTL por `expiresAt`), repository, export/delete e histórico como timeline ficam para as fatias 2–4. F4 validada no aparelho; sem motor, sem IA nova.
 > Revisão 1.68 (21/11/2026): ADR 0055 implementado — Coach em tabela única (Room v21): `chat_turns` ganha `inputsHash` (preenchido das tabelas v19 na `MIGRATION_20_21`) + índice único `(origin, inputsHash)`; escrita só em `chat_turns`, tabelas/DAOs/entidades v19 removidos; `ChatTurns.visibleTurns` aplica as regras do arquivo direto nos turns e a VM observa `observeTurns()`; export perde `coachMessages`/`coachSummaries` (turn leva `inputsHash`) e a nota da tela Dados conta turnos. Vocabulário v19 (`CoachMemory*`, `fromMemory`) removido com a mesma cobertura sobre turns; sem motor, ciência ou contrato com o proxy.
+> Revisão 1.69 (21/11/2026): ADR 0056 proposto (sessão só desenho, sem código) — input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` vai ao proxy, nunca texto cru), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, turno `You` persistido em `chat_turns` v22 futura (TTL 90 d, opt-in, revogar apaga) e `System` segue efêmero; rollout em 7 fatias.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -122,6 +123,9 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0051](adr/0051-ia-coach-proxy.md) | Proxy stateless do IA Coach (OpenRouter atrás de `X-Coach-Token`, cadeia com fallback, sem payload em log) | Aceito e implementado (F1/F4 + 3.2 + 3.3-A/B/C; memória local no ADR 0052; histórico e goldens da bar concluídos) | 18/11/2026 |
 | [0052](adr/0052-ia-coach-memory-schema-v19.md) | Memória local do IA Coach: `coach_messages`/`coach_summaries`, schema v19, TTL 90/180 dias, revogação apaga e export/delete incluem | Aceito e implementado (F3/Room v19: TTL preguiçoso, índice único por contexto, texto sempre validado, memória fora do motor; histórico UI somente leitura com apagar em bloco e individual) | 18/11/2026 |
 | [0053](adr/0053-cold-start-ramp.md) | Rampa de entrada do cold-start: intermediário com VDOT recente mantém 1 qualidade ≤30min sem 8 dias (`R-COLD-01`); sugestão de nível na calibração | Implementado em 19/11/2026 (domínio puro + wiring Hoje + hint calibração; sem migração) | 19/11/2026 |
+| [0054](adr/0054-chat-turn-memory-v20.md) | Timeline única do Coach (`ChatTurn`, Room v20): domínio puro + `ChatTurns.fromMemory` com paridade das regras; `You`/`System` efêmeros; `chat_turns` aditiva com backfill e TTL por `expiresAt` | Aceito e implementado em 21/11/2026 (fatias 1–4: domínio, v20, repository, histórico) | 21/11/2026 |
+| [0055](adr/0055-chat-turn-single-table-v21.md) | Coach em tabela única (`chat_turns`, Room v21): `inputsHash` + índice único `(origin, inputsHash)`; escrita só em `chat_turns`, tabelas v19 removidas; `visibleTurns` direto nos turns | Aceito e implementado em 21/11/2026 (v21: escrita só em `chat_turns`) | 21/11/2026 |
+| [0056](adr/0056-coach-free-input.md) | Input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` ao proxy), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, `You` persistido em `chat_turns` v22 futura (TTL 90 d) | Proposto em 21/11/2026 (sessão só desenho, sem código) | 21/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

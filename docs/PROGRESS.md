@@ -1,6 +1,35 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (v21 — Coach em tabela única; epic ChatTurn encerrado)
+**Atualizado:** 21/11/2026 (ADR 0056 proposto — input livre, só desenho, sem código)
+
+## Sessão 2026-11-21 — ADR 0056: input livre digitado (desenho, sem código)
+
+**Objetivo:** redigir o ADR do input livre digitado na aba Coach (pós-MVP,
+handoff §4 item 1), sem alterar código.
+
+### Concluído
+
+- **ADR 0056 proposto** (`docs/adr/0056-coach-free-input.md`): parser
+  determinístico local (7 intents: `ASK_WEEK`, `ASK_REVIEW`, `REPORT_DONE`,
+  `REQUEST_ADJUST`, `ASK_CAPABILITIES`, `ASK_CLARIFY`, `OUT_OF_SCOPE`; só
+  `intent + slots` vai ao proxy, nunca texto cru); validador barra número
+  fora do plano, prescrição nova, diagnóstico/escopo proibido e promessa de
+  memória (`reason` técnico nunca na UI); LLM nunca escreve prescrição,
+  plano, carga, `ruleId`/`evidenceId` (ajuste só via `ReplanSuggestion` com
+  aceite + undo); turno `You` persistido em `chat_turns` v22 futura
+  (`role YOU`, `origin` nullable, TTL 90 d, opt-in, revogar apaga,
+  export inclui) e `System` segue efêmero; contrato `free-answer` e rollout
+  em 7 fatias.
+- **DECISIONS** r1.69 + linha do ADR 0056 (e reconciliação das linhas
+  ausentes 0054/0055, sem reescrever o passado).
+- Sem código, sem migração, sem motor/ciência/copy tocados; sem dado real
+  no diff.
+
+### Pendente
+
+1. Implementação fatiada do ADR 0056 (domínio → validador → proxy →
+   repository v22 → UI → aparelho), uma fatia pequena por sessão.
+2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — v21: Coach em tabela única (TDD, ADR 0055)
 
