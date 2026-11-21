@@ -1,6 +1,41 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 proposto — input livre, só desenho, sem código)
+**Atualizado:** 21/11/2026 (ADR 0056 fatia 2 — `FreeInputParser` puro, 20 testes verdes)
+
+## Sessão 2026-11-21 — ADR 0056 fatia 2: parser de intenção em `core:domain` (TDD)
+
+**Objetivo:** implementar o passo 2 do rollout do ADR 0056 (parser
+determinístico local + slots + testes), sem tocar em validador, proxy,
+repository ou UI.
+
+### Concluído
+
+- **Domínio:** `FreeInputIntent` (7 intents do ADR), `FreeInputSlots`
+  (`dayOfWeek`/`minutes`, ausência honesta), `FreeInputParse` (`sanitized`
+  com trim + colapso de espaço + teto de 500) e `FreeInputParser` puro
+  (`core/domain/coach`, sem Android/rede): normalização sem acento/caixa,
+  checagem de escopo antes dos slots (dor/sintoma/número novo/plano novo
+  → `OUT_OF_SCOPE`), negação anula relato, 2+ intents → `ASK_CLARIFY`,
+  falta de número em pedido de tempo curto → `ASK_CLARIFY`, dias relativos
+  (`hoje`/`amanhã`/`ontem`) resolvidos contra o `today` injetado, minutos
+  5–600.
+- **Testes:** `FreeInputParserTest` com 20 casos (intents, slots, `ontem`
+  resolvido, caixa/acento, escopo vencendo slot, ambíguo, em branco,
+  nonsense, teto de 500). TDD: teste vermelho (referência inexistente) →
+  implementação → verde.
+- **Gates:** `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`, inclui
+  `detekt`, `lint`, `koverVerify` e `spotlessCheck`). No caminho: detekt
+  `ReturnCount` no `parse` (7 > 4) corrigido com `resolveIntent` +
+  `needsClarification`/`minutesOf` + `when` final; formatação via
+  `spotlessApply`.
+- Sem validador/proxy/repository/UI/migração tocados; sem motor, ciência,
+  copy ou dado real no diff.
+
+### Pendente
+
+1. ADR 0056 fatias 3–7 (validador → proxy `free-answer` → repository v22
+   → UI → aparelho), uma fatia pequena por sessão.
+2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056: input livre digitado (desenho, sem código)
 

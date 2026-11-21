@@ -152,9 +152,10 @@ falado, que **não** vira memória (paridade ADR 0052 §2.2).
 ## 4. Rollout (fatiado, uma fatia pequena por sessão)
 
 1. ~~ADR (esta sessão, sem código).~~
-2. Domínio puro: `FreeInputIntent` + slots + `FreeInputParserTest` (intents,
+2. ~~Domínio puro: `FreeInputIntent` + slots + `FreeInputParserTest` (intents,
    ambíguo → `ASK_CLARIFY`, fora-escopo → `OUT_OF_SCOPE`, dia/minutos
-   inválidos recusados). Sem Android/rede.
+   inválidos recusados). Sem Android/rede.~~ (Implementado em 21/11/2026:
+   `FreeInputParser` + 20 testes verdes, `check` + `spotlessCheck` verdes.)
 3. Validador: léxico médico/escopo + distâncias do plano em
    `CoachResponseValidator` + `CoachResponseValidatorTest`. `explain`/`review`
    intactos.

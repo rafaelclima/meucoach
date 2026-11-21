@@ -379,6 +379,8 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Coach v2 estilo WhatsApp (20/11/2026): feed sem os três cartões grandes, anexo compacto do dia, travas só quando existem, replan via quick replies (card removido), explicação recolhida em 3 bolhas + “Ver detalhes”, retrovisor sob demanda (revisão/evolução no feed, histórico em sheet) e sem avatares repetidos. 133 testes do Coach verdes.
 - [x] Coach v3 (20/11/2026, validada no aparelho via adb): ecos deduplicados, chip “Retrovisor” rolando até o prompt, fade suavizado e acentos da IA após redeploy. Spec em `docs/HANDOFF_COACH_V3.md`.
 - [ ] Validação visual do card Ready/histórico real no build com token; depois, pós-MVP (input livre, memória em prompt, “quero mais tempo”).
+- [x] ADR 0056 proposto (21/11/2026): input livre digitado com parser determinístico local, validador estendido, `You` persistido em `chat_turns` v22 futura e `System` efêmero ([ADR 0056](adr/0056-coach-free-input.md)).
+- [x] ADR 0056 fatia 2 (21/11/2026): `FreeInputParser` puro em `core:domain` (7 intents, slots dia/minutos, escopo antes de slot, `ASK_CLARIFY` em ambíguo/sem-número, 20 testes verdes, `check` + `spotlessCheck` verdes).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 
