@@ -210,6 +210,18 @@ fun CoachScreen(
                 texts = CoachBubbles.split(openingText(next, hour)),
                 testTag = "coach-chat-opening",
             )
+            (next as? CoachNextUiState.Ready)?.context?.let { context ->
+                CoachCheckInLabels.ack(context)?.let { ack ->
+                    CoachSystemLine(
+                        text = CoachCheckInLabels.SYSTEM_LINE,
+                        testTag = "coach-system-checkin",
+                    )
+                    CoachBubble(
+                        text = ack,
+                        testTag = "coach-checkin-ack",
+                    )
+                }
+            }
             CoachNextCard(
                 state = next,
                 onRetry = onNextRetry,

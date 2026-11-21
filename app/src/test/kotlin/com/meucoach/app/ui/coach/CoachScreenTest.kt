@@ -1176,6 +1176,36 @@ class CoachScreenTest {
     }
 
     @Test
+    fun `check-in feito mostra system turn com resposta curta`() {
+        setContent(
+            next = CoachNextUiState.Ready(
+                trainingContext(
+                    date = monday,
+                    prescription = prescription(
+                        adjustment = PrescriptionAdjustment.KEEP,
+                    ),
+                    hasCheckIn = true,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-system-checkin").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Check-in feito", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-checkin-ack").performScrollTo().assertTextContains(
+            "como planejado",
+            substring = true,
+        )
+    }
+
+    @Test
+    fun `sem check-in nao mostra system turn`() {
+        setContent(next = CoachNextUiState.Ready(trainingContext(date = monday)))
+
+        compose.onNodeWithTag("coach-system-checkin").assertDoesNotExist()
+        compose.onNodeWithTag("coach-checkin-ack").assertDoesNotExist()
+    }
+
+    @Test
     fun `abertura de prova fala boa prova`() {
         setContent(next = CoachNextUiState.Ready(raceContext(monday.plusDays(1))))
 

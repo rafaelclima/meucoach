@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (F4-1 implementada + gates verdes; validar no aparelho)
+**Atualizado:** 20/11/2026 (F4-2a implementada + gates verdes; validar no aparelho)
+
+## Sessão 2026-11-20 — F4-2a: system turn pós check-in (TDD)
+
+**Objetivo:** primeira metade do `PRD_COACH_CHAT` §7.2: quando o check-in de hoje existe,
+o feed mostra `System` (“Check-in feito ✓”) + resposta curta do coach, tudo local e
+determinístico (sem IA nova).
+
+### Concluído
+
+- **`CoachCheckInLabels` puro:** `SYSTEM_LINE` + `ack(context)` — qualidade mantida segue
+  “como planejado”; bloqueada reusa o `blockCopy` do card (mesma língua); sem prescrição,
+  “a decisão sai no Hoje”. Sem check-in, véspera, prova ou sem assunto → `null` (some).
+- **Fiação:** `CoachSystemLine` (linha quieta centralizada, `textTertiary`) + bolha de ack
+  logo após a abertura, antes do card do dia. Aparece com ou sem opt-in (dado local).
+- **Testes:** `CoachCheckInLabelsTest` (7 casos) + 2 regressões no `CoachScreenTest`
+  (system turn com liberação; ausente sem check-in). `property-naming` do ktlint pego no
+  gate e corrigido (`SYSTEM_LINE`).
+- **Fora desta fatia (F4-2b):** system turns pós treino concluído/import (exigem sinais de
+  atividade, fora do `CoachNextContext`).
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` verde com `--rerun-tasks`.
+- `./gradlew check`, `spotlessCheck` e proxy `test` verdes.
+
+### Pendente
+
+1. `./install.sh` + conferir o system turn no aparelho (com check-in feito hoje).
+2. Próxima: F4-2b — system turns pós treino/import.
+
+## Sessão 2026-11-20 — F4-1: abertura do dia orientada a dados (TDD)
 
 ## Sessão 2026-11-20 — F4-1: abertura do dia orientada a dados (TDD)
 

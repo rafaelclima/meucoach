@@ -308,6 +308,20 @@ internal fun UserBubble(text: String, modifier: Modifier = Modifier, testTag: St
 }
 
 @Composable
+internal fun CoachSystemLine(text: String, modifier: Modifier = Modifier, testTag: String = "coach-system-line") {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = McTheme.colors.textTertiary,
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .testTag(testTag),
+    )
+}
+
+@Composable
 internal fun CoachTyping(modifier: Modifier = Modifier) {
     val colors = McTheme.colors
     Row(
