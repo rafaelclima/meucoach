@@ -3,8 +3,6 @@ package com.meucoach.app.coach
 import com.meucoach.app.application.readinessResult
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.time.weekStart
-import com.meucoach.core.data.repository.CheckInRepository
-import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
@@ -12,6 +10,7 @@ import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.CoachNextResolver
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.prescription.DailyPrescription
+import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,6 +43,8 @@ data class CoachNextContext(
     val readiness: ReadinessResult? = null,
     val hasCheckIn: Boolean = false,
     val sleepMinutes: Int? = null,
+    val todaySession: PlannedSession? = null,
+    val importedToday: Boolean = false,
 ) {
     val isToday: Boolean get() = subject?.date == today
 
@@ -60,8 +61,7 @@ class RoomCoachNextSource @Inject constructor(
     private val prescriptions: DailyPrescriptionRepository,
     private val raceEvents: RaceEventRepository,
     private val profiles: ProfileRepository,
-    private val checkIns: CheckInRepository,
-    private val metrics: DailyMetricsRepository,
+    private val signals: CoachSignalsSource,
     private val time: TimeProvider,
 ) : CoachNextSource {
     private data class Draft(
@@ -73,6 +73,8 @@ class RoomCoachNextSource @Inject constructor(
         val hasCheckIn: Boolean,
         val sleepMinutes: Int?,
         val prescriptionDate: LocalDate?,
+        val todaySession: PlannedSession?,
+        val importedToday: Boolean,
     ) {
         fun toContext(prescription: DailyPrescription?) = CoachNextContext(
             subject = subject,
@@ -83,6 +85,8 @@ class RoomCoachNextSource @Inject constructor(
             readiness = readiness,
             hasCheckIn = hasCheckIn,
             sleepMinutes = sleepMinutes,
+            todaySession = todaySession,
+            importedToday = importedToday,
         )
     }
 
@@ -94,15 +98,17 @@ class RoomCoachNextSource @Inject constructor(
             combine(
                 plans.observeWeek(weekStart),
                 profiles.observeProfile(),
-                checkIns.observe(today),
-                metrics.observeAll(),
+                signals.observeSignals(),
                 raceEvents.observeAll(),
-            ) { plan, profile, checkIn, dailyMetrics, races ->
+                time.zoneId,
+            ) { plan, profile, persisted, races, zone ->
                 val next = CoachNextResolver.resolve(
                     sessions = plan?.sessions.orEmpty(),
                     today = today,
                     races = races,
                 )
+                val checkIn = persisted.checkInOn(today)
+                val dailyMetrics = persisted.metrics
                 val inputs = DailyMetricsReadinessBuilder.build(dailyMetrics, today)
                 Draft(
                     today = today,
@@ -113,6 +119,8 @@ class RoomCoachNextSource @Inject constructor(
                     hasCheckIn = checkIn != null,
                     sleepMinutes = inputs.sleep?.durationMin,
                     prescriptionDate = (next?.subject as? CoachNextSubject.Training)?.session?.date,
+                    todaySession = plan?.sessions?.find { it.date == today },
+                    importedToday = persisted.lastImportedAt?.atZone(zone)?.toLocalDate() == today,
                 )
             }.flatMapLatest { draft ->
                 val date = draft.prescriptionDate

@@ -7,12 +7,14 @@ import com.meucoach.app.application.replanCheckIn
 import com.meucoach.app.application.replanProfile
 import com.meucoach.app.time.FakeTimeProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.CheckInRepository
 import com.meucoach.core.data.repository.DailyMetricsRepository
 import com.meucoach.core.data.repository.DailyPrescriptionRepository
 import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.prescription.DailyPrescription
@@ -25,11 +27,15 @@ import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.ReadinessFlag
+import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.ImportedActivity
+import com.meucoach.core.model.Pace
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
+import com.meucoach.core.model.Sport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -61,6 +67,8 @@ class CoachNextSourceTest {
     private lateinit var profiles: ProfileRepository
     private lateinit var checkIns: CheckInRepository
     private lateinit var metrics: DailyMetricsRepository
+    private lateinit var activities: ActivityRepository
+    private lateinit var executions: SessionExecutionRepository
     private lateinit var source: CoachNextSource
 
     @Before
@@ -78,6 +86,8 @@ class CoachNextSourceTest {
         profiles = ProfileRepository(database, clock)
         checkIns = CheckInRepository(database, clock)
         metrics = DailyMetricsRepository(database, clock)
+        activities = ActivityRepository(database = database, clock = clock)
+        executions = SessionExecutionRepository(database, clock)
         source = sourceAt(Instant.parse("2026-11-16T12:00:00Z"))
     }
 
@@ -86,8 +96,12 @@ class CoachNextSourceTest {
         prescriptions = prescriptions,
         raceEvents = raceEvents,
         profiles = profiles,
-        checkIns = checkIns,
-        metrics = metrics,
+        signals = RoomCoachSignalsSource(
+            checkIns = checkIns,
+            metrics = metrics,
+            activities = activities,
+            executions = executions,
+        ),
         time = FakeTimeProvider(instant, ZoneOffset.UTC),
     )
 
@@ -214,6 +228,56 @@ class CoachNextSourceTest {
         assertThat(next.readiness?.flags).contains(ReadinessFlag.SUBJECTIVE_MISSING)
     }
 
+    @Test
+    fun `hoje feito carrega a sessao de hoje mesmo concluida`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        plans.saveWeek(plan(todayStatus = SessionStatus.DONE))
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.subject).isEqualTo(CoachNextSubject.Training(planSession(monday.plusDays(2))))
+        assertThat(next.todaySession?.date).isEqualTo(monday)
+        assertThat(next.todaySession?.status).isEqualTo(SessionStatus.DONE)
+    }
+
+    @Test
+    fun `hoje pendente carrega a sessao de hoje ainda aberta`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        plans.saveWeek(plan(todayStatus = SessionStatus.PLANNED))
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.todaySession?.date).isEqualTo(monday)
+        assertThat(next.todaySession?.status).isEqualTo(SessionStatus.PLANNED)
+    }
+
+    @Test
+    fun `sem plano nao ha sessao de hoje`(): Unit = runBlocking {
+        val next = source.observeNext().first()
+
+        assertThat(next.todaySession).isNull()
+    }
+
+    @Test
+    fun `importacao de hoje sinaliza o turn de carga`(): Unit = runBlocking {
+        profiles.saveProfile(replanProfile())
+        plans.saveWeek(plan(todayStatus = SessionStatus.PLANNED))
+        activities.saveImportedActivity(activity())
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.importedToday).isTrue()
+    }
+
+    @Test
+    fun `sem importacao nao sinaliza importacao de hoje`(): Unit = runBlocking {
+        plans.saveWeek(plan(todayStatus = SessionStatus.PLANNED))
+
+        val next = source.observeNext().first { it.subject != null }
+
+        assertThat(next.importedToday).isFalse()
+    }
+
     private fun plan(todayStatus: SessionStatus) = WeeklyPlan(
         weekStart = monday,
         sessions = listOf(
@@ -245,6 +309,16 @@ class CoachNextSourceTest {
         } else {
             null
         },
+    )
+
+    private fun activity() = ImportedActivity(
+        source = ActivitySource.FIT,
+        sport = Sport.RUNNING,
+        startTime = Instant.parse("2026-11-16T10:00:00Z"),
+        durationSec = 1_800,
+        distanceM = 5_000.0,
+        averageHeartRate = 150,
+        averagePace = Pace.fromSecondsPerKm(360),
     )
 
     private fun prescription(date: LocalDate) = DailyPrescription(

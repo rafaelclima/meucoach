@@ -46,6 +46,7 @@ import com.meucoach.core.domain.review.WeeklyReviewObservation
 import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.RaceEvent
@@ -748,12 +749,26 @@ class CoachScreenTest {
         status = SessionStatus.PLANNED,
     )
 
+    private fun doneSession() = PlannedSession(
+        date = monday,
+        type = WorkoutType.EASY,
+        title = "Fácil",
+        durationMin = 30,
+        rationale = "Base.",
+        ruleIds = listOf("R-ZONE-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        status = SessionStatus.DONE,
+        completionEvidence = CompletionEvidence.MANUAL,
+    )
+
     private fun trainingContext(
         date: LocalDate = monday.plusDays(1),
         prescription: DailyPrescription? = null,
         readiness: ReadinessResult? = null,
         hasCheckIn: Boolean = false,
         sleepMinutes: Int? = null,
+        todaySession: PlannedSession? = null,
+        importedToday: Boolean = false,
     ) = CoachNextContext(
         subject = CoachNextSubject.Training(session(date)),
         today = monday,
@@ -763,6 +778,8 @@ class CoachScreenTest {
         readiness = readiness,
         hasCheckIn = hasCheckIn,
         sleepMinutes = sleepMinutes,
+        todaySession = todaySession,
+        importedToday = importedToday,
     )
 
     private fun raceContext(date: LocalDate) = CoachNextContext(
@@ -1173,6 +1190,36 @@ class CoachScreenTest {
         compose.waitForIdle()
 
         compose.onNodeWithTag("coach-retro-prompt").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `importacao de hoje mostra system turn de carga`() {
+        setContent(next = CoachNextUiState.Ready(trainingContext(importedToday = true)))
+
+        compose.onNodeWithTag("coach-system-import").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-import-ack").performScrollTo().assertTextContains(
+            "Já entrou na carga",
+            substring = true,
+        )
+    }
+
+    @Test
+    fun `treino feito mostra system turn comemorando`() {
+        setContent(next = CoachNextUiState.Ready(trainingContext(todaySession = doneSession())))
+
+        compose.onNodeWithTag("coach-system-done").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-done-cheer").performScrollTo().assertTextContains(
+            "Fácil",
+            substring = true,
+        )
+    }
+
+    @Test
+    fun `treino pendente nao mostra system turn de conclusao`() {
+        setContent(next = CoachNextUiState.Ready(trainingContext()))
+
+        compose.onNodeWithTag("coach-system-done").assertDoesNotExist()
+        compose.onNodeWithTag("coach-done-cheer").assertDoesNotExist()
     }
 
     @Test

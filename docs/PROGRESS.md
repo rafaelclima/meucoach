@@ -1,6 +1,40 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (F4-2a implementada + gates verdes; validar no aparelho)
+**Atualizado:** 20/11/2026 (F4-2b implementada + gates verdes; validar no aparelho)
+
+## Sessão 2026-11-20 — F4-2b: system turns pós treino e pós import (TDD)
+
+**Objetivo:** fechar o `PRD_COACH_CHAT` §7.2 com dois turns locais e determinísticos
+(sem IA nova, sem CTA — deep-links já existem nos cards).
+
+### Concluído
+
+- **Treino feito:** `CoachNextContext.todaySession` (a sessão de hoje, mesmo `DONE` —
+  o resolver já a ignorava para o "próximo"). `CoachDoneLabels.cheer` celebra com o
+  título (“Boa! Fácil feito.”); prova/pendente/ausente → some.
+- **Import de hoje:** `importedToday` via `ActivityRepository.observeLastImportedAt()` na
+  zona do `TimeProvider`; `CoachImportLabels.ack` (“Recebi sua corrida. Já entrou na
+  carga.”). Sem import hoje ou sem plano → some.
+- **Refactor de fonte:** `RoomCoachNextSource` passou a beber do `CoachSignalsSource`
+  compartilhado (Bloco B) em vez de 3 repos isolados — 6 params, detekt verde, e F1
+  reage a import/execução como as outras fontes. Binding e `DataModuleTest` intactos.
+- **UI:** `System` + bolha após o turn de check-in (abertura → check-in → treino →
+  import → card). Tags `coach-system-done/done-cheer/import/import-ack`.
+- **Testes:** `CoachDoneLabelsTest` (6) + `CoachImportLabelsTest` (4) + 3 na fonte Room
+  (DONE/PLANNED de hoje, import hoje) + 3 regressões na tela. Detekt `LongParameterList`
+  pego no gate e eliminado com o `coachSignals` (precedente do Bloco B), não suprimido.
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*' 'com.meucoach.app.coach.*'`
+  verde com `--rerun-tasks`. `./gradlew check`, `spotlessCheck` e proxy `test` verdes.
+
+### Pendente
+
+1. `./install.sh` + conferir os turns no aparelho (treino feito / import de hoje).
+2. F4 considerada encerrada após validação; próxima: a definir (observar 1 semana de uso).
+
+## Sessão 2026-11-20 — F4-2a: system turn pós check-in (TDD)
 
 ## Sessão 2026-11-20 — F4-2a: system turn pós check-in (TDD)
 

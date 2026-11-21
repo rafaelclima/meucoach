@@ -222,6 +222,30 @@ fun CoachScreen(
                     )
                 }
             }
+            (next as? CoachNextUiState.Ready)?.context?.let { context ->
+                CoachDoneLabels.cheer(context)?.let { cheer ->
+                    CoachSystemLine(
+                        text = CoachDoneLabels.SYSTEM_LINE,
+                        testTag = "coach-system-done",
+                    )
+                    CoachBubble(
+                        text = cheer,
+                        testTag = "coach-done-cheer",
+                    )
+                }
+            }
+            (next as? CoachNextUiState.Ready)?.context?.let { context ->
+                CoachImportLabels.ack(context)?.let { ack ->
+                    CoachSystemLine(
+                        text = CoachImportLabels.SYSTEM_LINE,
+                        testTag = "coach-system-import",
+                    )
+                    CoachBubble(
+                        text = ack,
+                        testTag = "coach-import-ack",
+                    )
+                }
+            }
             CoachNextCard(
                 state = next,
                 onRetry = onNextRetry,
