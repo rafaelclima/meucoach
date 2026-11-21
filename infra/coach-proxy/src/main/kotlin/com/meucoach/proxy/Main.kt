@@ -158,7 +158,8 @@ private const val SYSTEM_REVIEW =
         "com underline, ids como R-REVIEW-01 ou EV-SEILER-2010); use sempre texto corrido em pt-BR. " +
         "Use o mesmo schema: title e body como strings; body nunca como objeto."
 private const val SYSTEM_REPLAN =
-    "Você sugere slots de replanejamento a partir do plano vigente. Nunca crie treino forte novo; só reorganize o futuro. " +
+    "Você sugere slots de replanejamento a partir do plano vigente. " +
+        "Nunca crie treino forte novo; só reorganize o futuro. " +
         "Responda em JSON {\"title\":\"string\",\"body\":\"string\",\"bullets\":[\"string\"],\"slots\":{}} " +
         "para confirmação humana; title e body são strings, nunca objetos."
 

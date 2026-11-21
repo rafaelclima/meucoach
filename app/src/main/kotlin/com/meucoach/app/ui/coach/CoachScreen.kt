@@ -162,11 +162,15 @@ fun CoachScreen(
     val scope = rememberCoroutineScope()
     val feedScroll = rememberScrollState()
     var explainY by remember { mutableStateOf<Int?>(null) }
+    var retroY by remember { mutableStateOf<Int?>(null) }
     val reviewBring = remember { BringIntoViewRequester() }
     val progressBring = remember { BringIntoViewRequester() }
     fun scrollTo(y: Int?) {
         if (y == null) return
         scope.launch { feedScroll.animateScrollTo(y.coerceAtLeast(0)) }
+    }
+    fun addEcho(text: String) {
+        if (userEchoes.lastOrNull() != text) userEchoes.add(text)
     }
     LaunchedEffect(replan.suggestion != null) {
         if (replan.suggestion != null) replanSheetOpen = true
@@ -279,25 +283,31 @@ fun CoachScreen(
                     )
                 }
                 if (reviewAvailable || progressAvailable || historyAvailable) {
-                    CoachRetroPrompt(
-                        showReview = showReview && reviewAvailable,
-                        showProgress = showProgress && progressAvailable,
-                        reviewAvailable = reviewAvailable,
-                        progressAvailable = progressAvailable,
-                        historyAvailable = historyAvailable,
-                        onReview = {
-                            showReview = !showReview
-                            if (showReview) {
-                                userEchoes.add("Como foi minha semana passada?")
-                                showProgress = false
-                            }
+                    Column(
+                        modifier = Modifier.onGloballyPositioned {
+                            retroY = it.positionInParent().y.roundToInt()
                         },
-                        onProgress = {
-                            showProgress = !showProgress
-                            if (showProgress) showReview = false
-                        },
-                        onHistory = { historyOpen = true },
-                    )
+                    ) {
+                        CoachRetroPrompt(
+                            showReview = showReview && reviewAvailable,
+                            showProgress = showProgress && progressAvailable,
+                            reviewAvailable = reviewAvailable,
+                            progressAvailable = progressAvailable,
+                            historyAvailable = historyAvailable,
+                            onReview = {
+                                showReview = !showReview
+                                if (showReview) {
+                                    addEcho("Como foi minha semana passada?")
+                                    showProgress = false
+                                }
+                            },
+                            onProgress = {
+                                showProgress = !showProgress
+                                if (showProgress) showReview = false
+                            },
+                            onHistory = { historyOpen = true },
+                        )
+                    }
                 }
                 if (reviewAvailable && showReview) {
                     Column(modifier = Modifier.bringIntoViewRequester(reviewBring)) {
@@ -334,20 +344,21 @@ fun CoachScreen(
                 }
                 CoachQuickReplies(
                     onExplain = {
-                        userEchoes.add("Pode explicar minha semana?")
+                        addEcho("Pode explicar minha semana?")
                         onRetry()
                         scrollTo(explainY)
                     },
+                    onRetro = { scrollTo(retroY) },
                     onMissed = {
-                        userEchoes.add("Perdi o treino de ontem")
+                        addEcho("Perdi o treino de ontem")
                         onReplanRequestMissed()
                     },
                     onLessTime = {
-                        userEchoes.add("Só tenho 30 min na quinta")
+                        addEcho("Só tenho 30 min na quinta")
                         onReplanRequestLessTime()
                     },
                     onAdjust = {
-                        userEchoes.add("Quero ajustar a semana")
+                        addEcho("Quero ajustar a semana")
                         onReplanRequest()
                     },
                 )

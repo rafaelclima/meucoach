@@ -349,6 +349,7 @@ internal fun CoachQuickReplies(
     onLessTime: () -> Unit,
     onAdjust: () -> Unit,
     modifier: Modifier = Modifier,
+    onRetro: () -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -359,19 +360,21 @@ internal fun CoachQuickReplies(
                 .testTag("coach-quick-replies"),
         ) {
             QuickChip(text = "Explica a semana", testTag = "coach-quick-explain", onClick = onExplain)
+            QuickChip(text = "Retrovisor", testTag = "coach-quick-retro", onClick = onRetro)
             QuickChip(text = "Perdi treino", testTag = "coach-quick-missed", onClick = onMissed)
             QuickChip(text = "Só 30 min", testTag = "coach-quick-less-time", onClick = onLessTime)
             QuickChip(text = "Ajustar semana", testTag = "coach-quick-adjust", onClick = onAdjust)
-            Spacer(modifier = Modifier.width(32.dp))
+            Spacer(modifier = Modifier.width(40.dp))
         }
         // A fade says "there are more chips" instead of a chip cut off at the edge.
+        // It starts at 0.94 so the last chip text stays readable (v3).
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .background(
                     Brush.horizontalGradient(
                         0f to Color.Transparent,
-                        0.86f to Color.Transparent,
+                        0.94f to Color.Transparent,
                         1f to McTheme.colors.background,
                     ),
                 ),

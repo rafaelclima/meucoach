@@ -1150,6 +1150,31 @@ class CoachScreenTest {
     }
 
     @Test
+    fun `mesmo chip tocado duas vezes gera um unico eco`() {
+        setContent()
+
+        compose.onNodeWithTag("coach-quick-explain").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("coach-quick-explain").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        compose.onAllNodesWithTag("coach-user-echo").fetchSemanticsNodes().let {
+            assertThat(it).hasSize(1)
+        }
+        compose.onNodeWithText("Pode explicar minha semana?").assertIsDisplayed()
+    }
+
+    @Test
+    fun `retrovisor no rodape rola ate o prompt`() {
+        setContent(review = review())
+
+        compose.onNodeWithTag("coach-quick-retro").performScrollTo().performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("coach-retro-prompt").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun `digitando aparece enquanto a IA carrega`() {
         setContent(explanation = CoachExplanationState.Loading)
 

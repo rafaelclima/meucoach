@@ -1,10 +1,11 @@
 # HANDOFF — Coach v3 (rodapé, retrovisor e acentos)
 
-**Atualizado:** 20/11/2026 ~19:20 (BRT)
-**Status:** v2 no aparelho, direção aprovada (~8,5/10); LLM voltou a responder
-(`explain ok` / `review ok` às 19:00); faltam 3 ajustes de UX e a verificação dos acentos.
-**Commits no ar:** `59b09d6` (lapidação v2), `d0d65b5` (GLM-5.3-Flash antes do DeepSeek),
-`017a23a` (prompts com acentuação — **ainda precisa de redeploy do proxy**).
+**Atualizado:** 20/11/2026 ~noite (BRT)
+**Status:** v3 implementada localmente + gates verdes (`check`, `spotlessCheck`, proxy `test`,
+135 testes do Coach com `--rerun-tasks`); **pendente redeploy do proxy e print no aparelho**.
+LLM segue ok (`explain ok` / `review ok` às 19:00).
+**Commits no ar:** `59b09d6` (lapidação v2), `d0d65b5` (GLM-5.3-Flash primeiro), `017a23a`
+(prompts com acentuação — **ainda precisa de redeploy**, mais a requebra de linha desta sessão).
 
 ---
 
@@ -88,15 +89,22 @@
 
 ## 6. Prompt para a próxima sessão
 
-> Continue o MeuCoach pela feature Coach-chat, fatia **Coach v3**. Leia `AGENTS.md`,
-> `docs/PROGRESS.md` (topo), `docs/HANDOFF_COACH_V3.md` e `docs/PRD_COACH_CHAT.md`
-> (F3/F4). Estado: v2 no aparelho e a LLM voltou (`explain ok`/`review ok` às 19:00);
-> o proxy precisa de redeploy do commit `017a23a` para os acentos. O print de 19:12
-> mostrou 4 problemas: ecos duplicados, retrovisor abaixo da dobra, fade forte no
-> último chip e texto sem acentos. Implemente a fatia v3 do handoff com TDD:
-> (1) deduplicar ecos, (2) chip “Retrovisor” no rodapé rolando até o prompt,
-> (3) suavizar o fade, (4) verificar acentos após o redeploy. Antes de codar, confirme
-> `git status`, rode os gates do AGENTS.md e peça o print atual se o aparelho não
-> estiver na tela do Coach. Ao terminar, atualize `PROGRESS.md`/handoff, rode
-> `check`, `spotlessCheck`, proxy `test`, instale e valide no aparelho. Não mexa em
-> motor, schema ou prompt para decidir treino; LLM só reescreve.
+> Continue o MeuCoach pela feature Coach-chat, fatia **pós-v3 (redeploy + aparelho)**.
+> Leia `AGENTS.md`, `docs/PROGRESS.md` (topo) e `docs/HANDOFF_COACH_V3.md`. Estado: v3
+> implementada e com gates verdes (dedup de ecos, chip “Retrovisor”, fade suavizado);
+> o proxy precisa de redeploy (leva `017a23a` + requebra de linha) e o aparelho precisa
+> de `./install.sh` + print da aba Coach. Valide no print: eco único, Retrovisor rolando
+> até o prompt, fade legível e acentos (“você”, “então”, “fácil”, “sessões”). Se o GLM
+> ignorar os acentos, teste `deepseek-v4.1-flash`. Se validada: F4 (roteiros diários) do
+> `PRD_COACH_CHAT`. Não mexa em motor, schema ou prompt para decidir treino; LLM só reescreve.
+
+## 7. Resultado da sessão v3 (20/11 noite)
+
+- `CoachScreen.kt`: `addEcho` com dedup (5 chamadas migradas), `retroY` capturado com
+  `onGloballyPositioned` e `onRetro = { scrollTo(retroY) }`.
+- `CoachChatComponents.kt`: chip “Retrovisor” (`coach-quick-retro`) após “Explica a semana”;
+  fade `0.86f → 0.94f`, spacer `32 → 40 dp`.
+- `CoachScreenTest.kt`: 2 regressões novas (eco único; retrovisor rola até o prompt).
+- Proxy `Main.kt`: só requebra de linha do `SYSTEM_REPLAN` (spotless; conteúdo idêntico).
+- Gates: `ui.coach.*` (135, `--rerun-tasks`), `check`, `spotlessCheck`, proxy `test` — verdes.
+- Não feito aqui (precisa de você): redeploy no Dokploy, `./install.sh`, print no aparelho.

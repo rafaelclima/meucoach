@@ -1,12 +1,54 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (Coach v2 no aparelho + LLM ok; próxima fatia Coach v3 documentada)
+**Atualizado:** 20/11/2026 (Coach v3 implementada localmente + gates verdes; pendente redeploy do proxy e validação no aparelho)
 
-## Próxima sessão — Coach v3 (handoff)
+## Próxima sessão — pós-v3 (redeploy + aparelho)
 
-Ver **`docs/HANDOFF_COACH_V3.md`** (prompt incluso). Foco: deduplicar ecos, chip
-“Retrovisor” sempre alcançável, fade do último chip e verificação dos acentos depois
-do redeploy do proxy (`017a23a`). O print de 19:12 e o logcat de 19:00 estão no handoff.
+Ver **`docs/HANDOFF_COACH_V3.md`** (status atualizado). O código da v3 está pronto e testado:
+dedup de ecos, chip “Retrovisor” no rodapé e fade suavizado. Falta: (1) redeploy do
+proxy no Dokploy (leva `017a23a` + a requebra de linha desta sessão), (2) `./install.sh`
+com o token e print do Coach no aparelho (dark/light, fonte 200%), (3) conferir os
+acentos (“você”, “então”, “fácil”, “sessões”) — se o GLM continuar sem acentos, trocar
+`COACH_GO_MODELS` para `deepseek-v4.1-flash` e comparar.
+
+## Sessão 2026-11-20 — Coach v3: ecos, Retrovisor e fade (TDD)
+
+**Objetivo:** executar a fatia do `docs/HANDOFF_COACH_V3.md` §4: os 3 itens de código
+(dedup, Retrovisor alcançável, fade) + deixar a acentuação pronta para verificação
+pós-redeploy.
+
+### Concluído
+
+- **Ecos sem duplicata:** `CoachScreen` ganhou `addEcho` (ignora se o último eco for
+  igual); os 5 pontos de `userEchoes.add` (explicar/perdido/30min/ajustar/semana
+  passada) passam por ele. O mesmo chip tocado duas vezes gera 1 bolha.
+- **Retrovisor sempre alcançável:** chip “Retrovisor” (`coach-quick-retro`) no rodapé,
+  logo após “Explica a semana” (espelha a ordem do feed: explicação → retrovisor →
+  replan). Tocar rola até o `coach-retro-prompt` (`retroY` via `onGloballyPositioned` +
+  `animateScrollTo`, mesmo padrão do `explainY`). Prompt inline mantido, sem sheet novo.
+- **Fade discreto:** gradiente de `0.86f` para `0.94f` e spacer final de 32 dp para
+  40 dp; o texto do último chip continua legível. Sem teste de pixel (validar no print).
+- **Acentuação:** o prompt com acentos (`017a23a`) já está no código e o proxy segue
+  14/14; o container do Dokploy ainda é o antigo — **redeploy pendente**, verificação
+  dos acentos fica para o aparelho.
+- **Spotless de quebra:** `SYSTEM_REPLAN` no proxy estourou 120 cols desde o `017a23a`;
+  só requebrei a concatenação da string (conteúdo do prompt idêntico).
+- **Testes:** 2 regressões novas no `CoachScreenTest` (eco único após duplo toque;
+  `coach-quick-retro` deixa o prompt visível). Suíte `ui.coach.*` verde com `--rerun-tasks`.
+- **Sem** migração, sem dependência nova, sem dado real, sem mudança de motor/ciência/schema.
+
+### Validação
+
+- `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` (135 testes) verde com `--rerun-tasks`.
+- `./gradlew check`, `spotlessCheck` e proxy `test` verdes.
+
+### Pendente (você, com o aparelho)
+
+1. **Dokploy:** redeploy do proxy (inclui `017a23a` + requebra desta sessão); confirmar `upstream=go ... 200`.
+2. `./install.sh` com o token + print da aba Coach (dark/light, fonte 200% se der).
+3. Conferir no print: 1 eco após duplo toque, chip “Retrovisor” visível no rodapé e rolando até o prompt, fade sem cobrir “Ajustar semana”, acentos (“você”, “então”, “fácil”, “sessões”).
+4. Se o GLM ignorar os acentos: `COACH_GO_MODELS=deepseek-v4.1-flash` e comparar.
+5. Se validada: F4 (roteiros diários) do `PRD_COACH_CHAT`.
 
 ## Sessão 2026-11-20 — Coach v2: conversa de verdade (replanejamento da tela)
 
