@@ -92,11 +92,10 @@ export/delete sem as chaves v19 e schema `21.json`.
 
 ### Pendente
 
-1. **Você no aparelho:** abrir "Histórico" no Retrovisor e conferir a timeline
-   (resumo + 3 turns antigos, sem duplicar a explicação corrente nem review
-   coberto); cancelar o diálogo de apagar (nada apagado). "Apagar tudo" da tela
-   Dados **não** foi testado de propósito (apagaria treinos reais) — a nota em
-   turnos está coberta por teste.
+1. ✅ **Validado pelo usuário 0 no aparelho (21/11):** timeline do Histórico
+   conferida (resumo + turns antigos, sem duplicação). Nada apagado.
+2. Próxima sessão: input livre digitado — sessão-ADR (desenho + decisão, sem
+   código), conforme prompt abaixo.
 
 ## Sessão 2026-11-21 — ChatTurn fatia 4: histórico como timeline (TDD)
 
