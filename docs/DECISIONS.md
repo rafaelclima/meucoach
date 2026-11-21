@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.66 · **Data:** 19/11/2026
+**Versão:** 1.67 · **Data:** 21/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -64,6 +64,7 @@
 > Revisão 1.64 (19/11/2026): addendum ao ADR 0028 — longão `DONE` na semana suprime o segundo longão na regeneração (`WeeklyPlanInput.longAlreadyDone`, gerador sem dia de longão, replanador deriva das sessões `DONE`); corrige o "Ajustar a semana" travado em "único longão por semana" e destrava o upgrade v6→v7 na abertura; validador continua rejeitando 2 longões reais; sem migração.
 > Revisão 1.65 (19/11/2026): Bloco A da consolidação do Coach — F1 usa a `DailyPrescription` como headline (planejado só como linha secundária; REST sem duração), `RaceEvent` tem precedência hoje/amanhã/sem sessão restante sem exigir sessão artificial, prontidão/sono do dia aparecem no card (amanhã nunca ganha semáforo inventado), F1/F2/F4 locais não dependem do opt-in de IA (só explicação/revisão) e “Depois” mantém “Ativar IA” persistente, onboarding único sem perfil/plano, fallback sem `reason` técnico, `unlockHint`/ACWR fora do F1 e tokens do validador com limite de palavra. Gate do detekt corrigido (`CoachSources`, `vdotLine`). Sem migração, sem regra de treino nova.
 > Revisão 1.66 (19/11/2026): Bloco B da consolidação do Coach — composição reativa read-only: `CoachSignalsSource` compartilha check-ins/métricas/atividades/execuções; F2/F4/revisão observam também semana persistida e provas; `RoomCoachPlanSource` observa `observeWeekRecord` (conteúdo + `inputsHash` + versão, leitura transacional) e o `CoachViewModel` recalcula a explicação após replanejamento mesmo com o mesmo hash. Nenhuma fonte escreve; sem motor, schema, dependência ou migração nova.
+> Revisão 1.67 (21/11/2026): ADR 0054 proposto — timeline única do Coach (`ChatTurn`, Room v20 futura): domínio puro `ChatTurn.Coach` + `ChatTurns.fromMemory` reutilizando `CoachHistory.view` (paridade das regras, intercalado por `createdAt` desc); `You`/`System` seguem efêmeros; persistência (`chat_turns` aditiva + backfill + TTL por `expiresAt`), repository, export/delete e histórico como timeline ficam para as fatias 2–4. F4 validada no aparelho; sem motor, sem IA nova.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

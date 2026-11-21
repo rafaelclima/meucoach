@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 20/11/2026 (F4-2b implementada + gates verdes; validar no aparelho)
+**Atualizado:** 21/11/2026 (ChatTurn fatia 1 — domínio + ADR 0054; persistência/UI nas próximas)
+
+## Sessão 2026-11-21 — ChatTurn fatia 1: domínio + ADR 0054 (TDD)
+
+**Objetivo:** abrir a fusão `messages+summaries → ChatTurn` (PRD_COACH_CHAT F3/pós-F4)
+pela fatia sem risco: modelo puro + decisão de schema registrada, sem tocar em DB/UI.
+
+### Concluído
+
+- **`ChatTurn` puro** (`core/domain/coach/ChatTurn.kt`): `Coach(id, title, body, bullets,
+  createdAt, origin)` com `Origin { EXPLAIN, REVIEW, SUMMARY }`; `You`/`System`
+  seguem efêmeros (feed já os deriva do estado vivo).
+- **`ChatTurns.fromMemory`** reutiliza `CoachHistory.view` (paridade total: resumo
+  substitui review do mesmo hash, corrente/semana em revisão de fora) e intercala por
+  `createdAt` desc (empate: resumo antes). IDs derivados estáveis.
+- **ADR 0054** (`docs/adr/0054-chat-turn-memory-v20.md`): tabela `chat_turns` aditiva,
+  `MIGRATION_19_20` com backfill + TTL por `expiresAt`, escrita dupla temporária,
+  paridade de export/delete/revogação e rollout em 4 fatias.
+- **Testes:** `ChatTurnTest` (5 casos); `DECISIONS.md` r1.67 (acrescentada, passado intacto).
+
+### Validação
+
+- `:core:domain:test` (cheia, `--rerun-tasks`) + `koverVerify`, `check`,
+  `spotlessCheck` verdes. Sem migração, sem dependência, sem dado real.
+
+### Pendente
+
+1. Fatia 2: entidade/DAO/`MIGRATION_19_20` + backfill + `MigrationTest` dourado.
+2. Fatia 3: repository em `chat_turns` + export/delete. Fatia 4: histórico como timeline.
 
 ## Sessão 2026-11-20 — F4-2b: system turns pós treino e pós import (TDD)
 
