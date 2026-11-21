@@ -26,6 +26,17 @@
 - `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` verde com
   `--rerun-tasks`; `check`, `spotlessCheck` e proxy `test` verdes.
 
+### Validação no aparelho (21/11 ~15:09, via adb)
+
+- Build da fatia 4 no aparelho: histórico abre sem títulos de seção (timeline
+  única) e o apagar usa o diálogo genérico “Apagar este item do histórico?”;
+  diálogo cancelado, nada apagado.
+- Feed íntegro: abertura orientada a dados (“Boa tarde! Amanhã tem Fácil e
+  conversável · 40 min…”), travas, explicação em 3 bolhas acentuada, Retrovisor
+  rolando até o prompt. `explain ok` + `review ok` no logcat.
+- Sem resumo gravado para este usuário ainda — intercalado resumo+turno fica para
+  quando houver `recordSummary` em uso real.
+
 ### Pendente
 
 1. `./install.sh` + conferir o histórico no aparelho (timeline intercalada, apagar item).
