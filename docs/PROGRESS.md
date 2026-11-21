@@ -57,8 +57,30 @@ export/delete sem as chaves v19 e schema `21.json`.
 
 ### Validação
 
-- `:core:domain:test` (TDD: vermelho → verde), `:core:data:testDebugUnitTest`,
-  `:app:testDebugUnitTest` (coach + data) verdes durante a sessão.
+- Gates finais verdes: `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`,
+  inclui `detekt`, `lint`, `koverVerify` e `spotlessCheck`) + proxy `test`
+  com `--rerun-tasks`. (Uma run combinada anterior falhou de forma transitória
+  no `:spotlessKotlin` lendo um `.class` em `build/`; re-run isolado passou e o
+  `spotlessApply` corrigiu uma violação real de linhas em branco no `when` de
+  `visibleTurns`.)
+- Schema `21.json` exportado e validado pelo `MigrationTestHelper` (SQL da
+  migração confere com o schema gerado pelo Room).
+- Push `0221a80` para `dev` (gates verdes, sem dado real no diff).
+
+### Validação no aparelho (21/11 ~16:13, via adb, build v21)
+
+- Banco ao vivo via `run-as` (cópia descartada após leitura): `user_version = 21`,
+  só `chat_turns` (v19 fora); 5 turns, `inputsHash` preenchido em todos (zero
+  `NULL`): `summary-2026-11-09` (SUMMARY, gravado hoje 15:05) e o REVIEW de 19/11
+  têm o **mesmo** `inputsHash` (dedupe do re-consulta funcionando: reabrir o
+  contexto não duplicou); o EXPLAIN corrente tem exatamente o hash do `explain ok`
+  do logcat (fica fora do arquivo enquanto o card mostra).
+- Feed íntegro: abertura, trava, explicação em 3 bolhas acentuada
+  (`explain ok` + `review ok` no logcat), Retrovisor rolando até o prompt via chip.
+- Histórico como timeline (resumo + 3 EXPLAINs antigos, sem duplicar explicação
+  corrente nem review coberto) validado nos dados; abertura visual do sheet pelo
+  adb não confirmada (toques no botão pequeno não acertaram) — **pedir ao
+  usuário 0 para abrir "Histórico" e conferir/cancelar o apagar de um item**.
 - Gates finais verdes: `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`,
   inclui `detekt`, `lint`, `koverVerify` e `spotlessCheck`) + proxy `test`
   com `--rerun-tasks`. (Uma run combinada anterior falhou de forma transitória
@@ -70,10 +92,11 @@ export/delete sem as chaves v19 e schema `21.json`.
 
 ### Pendente
 
-1. `./install.sh` + conferir no aparelho: timeline intacta (sem duplicar a
-   explicação corrente nem review+resumo), apagar item e "apagar tudo" com a
-   nota em turnos.
-2. Push para `dev` (após gates verdes).
+1. **Você no aparelho:** abrir "Histórico" no Retrovisor e conferir a timeline
+   (resumo + 3 turns antigos, sem duplicar a explicação corrente nem review
+   coberto); cancelar o diálogo de apagar (nada apagado). "Apagar tudo" da tela
+   Dados **não** foi testado de propósito (apagaria treinos reais) — a nota em
+   turnos está coberta por teste.
 
 ## Sessão 2026-11-21 — ChatTurn fatia 4: histórico como timeline (TDD)
 
