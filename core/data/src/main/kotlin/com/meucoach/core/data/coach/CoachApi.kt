@@ -1,5 +1,6 @@
 package com.meucoach.core.data.coach
 
+import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachPrompt
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.coach.CoachReviewAdherence
@@ -18,6 +19,7 @@ enum class CoachKind(val path: String) {
     EXPLAIN("explain"),
     REVIEW("review"),
     REPLAN_SUGGEST("replan-suggest"),
+    FREE_ANSWER("free-answer"),
 }
 
 interface CoachApi {
@@ -26,6 +28,9 @@ interface CoachApi {
 
     @Throws(IOException::class)
     suspend fun review(prompt: CoachReviewPrompt): CoachRawResponse
+
+    @Throws(IOException::class)
+    suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse
 }
 
 class DisabledCoachApi : CoachApi {
@@ -33,12 +38,17 @@ class DisabledCoachApi : CoachApi {
         throw IOException("coach disabled")
 
     override suspend fun review(prompt: CoachReviewPrompt): CoachRawResponse = throw IOException("coach disabled")
+
+    override suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse =
+        throw IOException("coach disabled")
 }
 
 class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOException? = null) : CoachApi {
     var calls = 0
         private set
     var reviewCalls = 0
+        private set
+    var freeAnswerCalls = 0
         private set
 
     override suspend fun explain(prompt: CoachPrompt, kind: CoachKind): CoachRawResponse {
@@ -52,6 +62,12 @@ class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOExceptio
         error?.let { throw it }
         return response ?: CoachRawResponse(title = "Coach", body = "Resposta de teste.")
     }
+
+    override suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse {
+        freeAnswerCalls += 1
+        error?.let { throw it }
+        return response ?: CoachRawResponse(title = "Coach", body = "Resposta de teste.")
+    }
 }
 
 class HttpCoachApi(private val baseUrl: String, private val token: String, private val timeoutMs: Int = 45_000) :
@@ -61,6 +77,9 @@ class HttpCoachApi(private val baseUrl: String, private val token: String, priva
 
     override suspend fun review(prompt: CoachReviewPrompt): CoachRawResponse =
         post(CoachKind.REVIEW.path, payload(prompt))
+
+    override suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse =
+        post(CoachKind.FREE_ANSWER.path, payload(prompt))
 
     private suspend fun post(path: String, json: String): CoachRawResponse = withContext(Dispatchers.IO) {
         require(baseUrl.isNotBlank()) { "Coach base URL must not be blank" }
@@ -122,6 +141,18 @@ class HttpCoachApi(private val baseUrl: String, private val token: String, priva
         .put("observations", prompt.observations)
         .put("ruleIds", prompt.ruleIds)
         .put("confidence", prompt.confidence)
+        .toString()
+
+    private fun payload(prompt: CoachFreeAnswerPrompt): String = JSONObject()
+        .put("inputsHash", prompt.inputsHash)
+        .put("locale", prompt.locale)
+        .put("intent", prompt.intent.name)
+        .put("dayOfWeek", prompt.dayOfWeek?.name ?: JSONObject.NULL)
+        .put("minutes", prompt.minutes ?: JSONObject.NULL)
+        .put("allowedMinutes", prompt.allowedMinutes.sorted())
+        .put("allowedPercents", prompt.allowedPercents.sorted())
+        .put("allowedDistancesKm", prompt.allowedDistancesKm.sorted())
+        .put("engineContext", prompt.engineContext)
         .toString()
 
     private fun CoachReviewAdherence.toJson(): JSONObject = JSONObject()

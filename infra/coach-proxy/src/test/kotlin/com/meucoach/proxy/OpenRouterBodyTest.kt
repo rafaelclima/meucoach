@@ -157,6 +157,54 @@ class OpenRouterBodyTest {
     }
 
     @Test
+    fun `free-answer body is valid JSON`() {
+        val body = buildOpenRouterBody("some-model:free", "free-answer", "{\"intent\":\"ASK_WEEK\"}")
+        val parsed = Json.parseToJsonElement(body).jsonObject
+
+        assertEquals(2, parsed["messages"]!!.jsonArray.size)
+        assertEquals(
+            "json_object",
+            parsed["response_format"]!!.jsonObject["type"]!!.jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun `free-answer has its own system prompt driven by intent`() {
+        val free = buildOpenRouterBody("some-model:free", "free-answer", "{}")
+        val explain = buildOpenRouterBody("some-model:free", "explain", "{}")
+        fun system(body: String) = Json.parseToJsonElement(body)
+            .jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonPrimitive.content
+
+        assertTrue(system(free).contains("intent"), "free-answer must read intent + slots, never raw text")
+        assertTrue(system(free) != system(explain), "free-answer must not reuse the explain prompt")
+    }
+
+    @Test
+    fun `free-answer speaks as a chat coach`() {
+        val body = buildOpenRouterBody("some-model:free", "free-answer", "{}")
+        val system = Json.parseToJsonElement(body)
+            .jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonPrimitive.content
+
+        assertTrue(system.contains("WhatsApp"), "free-answer must frame the voice as a WhatsApp chat")
+        assertTrue(system.contains("140"), "free-answer must cap each message at 140 chars")
+        assertTrue(system.contains("pergunta ou ação"), "free-answer must close with a question or action")
+        assertTrue(system.contains("códigos internos"), "free-answer must forbid echoing engine codes")
+    }
+
+    @Test
+    fun `free-answer forbids diagnosis and prescription`() {
+        val body = buildOpenRouterBody("some-model:free", "free-answer", "{}")
+        val system = Json.parseToJsonElement(body)
+            .jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonPrimitive.content
+
+        assertTrue(system.contains("diagnostique"), "free-answer must never diagnose")
+        assertTrue(system.contains("prescreva"), "free-answer must never prescribe a new workout")
+    }
+
+    @Test
     fun `session id derives from the prompt hash`() {
         val id = sessionIdFor("explain", """{"inputsHash":"abc123","foo":1}""")
 

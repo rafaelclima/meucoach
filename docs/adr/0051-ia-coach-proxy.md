@@ -59,7 +59,7 @@ modelos sem publicar o app.
 
 - `GET /health` → `ok` (sem autenticação, para o health check do Dokploy).
 - `POST /api/v1/coach/{kind}` com `X-Coach-Token`.
-  - `kind`: `explain`, `review`, `replan-suggest`.
+  - `kind`: `explain`, `review`, `replan-suggest`, `free-answer` (addendum ADR 0056 f4, 21/11/2026: resposta livre por `intent + slots + contexto do motor`, sem texto digitado; exige redeploy).
   - Corpo: JSON minimizado montado no domínio (sem nome, GPS, timestamps exatos
     ou texto livre do atleta).
   - Resposta: repasse do provedor (envelope OpenRouter); o app extrai

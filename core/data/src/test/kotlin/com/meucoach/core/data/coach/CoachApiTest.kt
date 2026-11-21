@@ -1,15 +1,18 @@
 package com.meucoach.core.data.coach
 
+import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachPrompt
 import com.meucoach.core.domain.coach.CoachReviewAdherence
 import com.meucoach.core.domain.coach.CoachReviewPrompt
 import com.meucoach.core.domain.coach.CoachReviewVolume
 import com.meucoach.core.domain.coach.CoachSessionSummary
+import com.meucoach.core.domain.coach.FreeInputIntent
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
 import java.io.IOException
+import java.time.DayOfWeek
 
 class CoachApiTest {
     private fun prompt() = CoachPrompt(
@@ -114,6 +117,47 @@ class CoachApiTest {
             assertThat(received).contains("\"planned\":4")
             assertThat(received).contains("\"percentOfPlan\":75")
             assertThat(received).doesNotContain("Rafael")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun `freeAnswer usa o endpoint free-answer com intent e slots, sem texto digitado`() {
+        val inner = """{"title":"Entendido","body":"Fechado, mexo só quinta e sexta."}"""
+        val escaped = inner.replace("\\", "\\\\").replace("\"", "\\\"")
+        var received = ""
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress(0), 0)
+        server.createContext("/api/v1/coach/free-answer") { exchange ->
+            received = exchange.requestBody.bufferedReader().readText()
+            val res = """{"choices":[{"message":{"content":"$escaped"}}]}""".toByteArray()
+            exchange.sendResponseHeaders(200, res.size.toLong())
+            exchange.responseBody.use { it.write(res) }
+        }
+        server.start()
+        try {
+            val api = HttpCoachApi(baseUrl = "http://localhost:${server.address.port}", token = "t")
+            val out = runBlocking {
+                api.freeAnswer(
+                    CoachFreeAnswerPrompt(
+                        inputsHash = "coach-free-v1|hash",
+                        intent = FreeInputIntent.REQUEST_ADJUST,
+                        dayOfWeek = DayOfWeek.THURSDAY,
+                        minutes = 30,
+                        allowedMinutes = setOf(30, 40),
+                        allowedPercents = setOf(80, 20),
+                        allowedDistancesKm = setOf(8.0),
+                        engineContext = "Semana base com 3 treinos",
+                    ),
+                )
+            }
+
+            assertThat(out.title).isEqualTo("Entendido")
+            assertThat(received).contains("\"intent\":\"REQUEST_ADJUST\"")
+            assertThat(received).contains("\"dayOfWeek\":\"THURSDAY\"")
+            assertThat(received).contains("\"minutes\":30")
+            assertThat(received).contains("\"inputsHash\":\"coach-free-v1|hash\"")
+            assertThat(received).doesNotContain("so tenho")
         } finally {
             server.stop(0)
         }

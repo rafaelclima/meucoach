@@ -160,8 +160,10 @@ falado, que **não** vira memória (paridade ADR 0052 §2.2).
    `CoachResponseValidator` + `CoachResponseValidatorTest`. `explain`/`review`
    intactos.~~ (Implementado em 21/11/2026: `validateFreeAnswer` + 16 testes
    verdes, `check` + `spotlessCheck` verdes.)
-4. Proxy: `kind free-answer` + system prompt de mensageiro + contrato
-   intent+slots (redeploy Dokploy manual). Sem log de payload.
+4. ~~Proxy: `kind free-answer` + system prompt de mensageiro + contrato
+   intent+slots (redeploy Dokploy manual). Sem log de payload.~~
+   (Implementado em 21/11/2026: `SYSTEM_FREE_ANSWER` + `CoachKind.FREE_ANSWER` +
+   `CoachFreeAnswerPrompt`/`HttpCoachApi`; redeploy pendente.)
 5. Repository: v22 aditiva (`role YOU`, `origin` nullable, índice mantido)
    + `MigrationTest` dourado 21→22 + export/delete com turns `YOU`.
 6. UI: composer habilitado, bolha `YOU` lima, quick-replies mantidos, typing,

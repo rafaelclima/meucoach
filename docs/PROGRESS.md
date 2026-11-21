@@ -1,6 +1,48 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 fatia 3 — `validateFreeAnswer`, 16 testes verdes)
+**Atualizado:** 21/11/2026 (ADR 0056 fatia 4 — proxy `free-answer`, contrato no app)
+
+## Sessão 2026-11-21 — ADR 0056 fatia 4: proxy `free-answer` + contrato (TDD)
+
+**Objetivo:** implementar o passo 4 do rollout do ADR 0056 (kind
+`free-answer` no proxy com system prompt de mensageiro + contrato
+`intent + slots` no app), sem chamar a IA nova e sem tocar em
+repository ou UI.
+
+### Concluído
+
+- **Proxy:** `SYSTEM_FREE_ANSWER` + ramo `"free-answer"` no
+  `buildOpenRouterBody` (voz WhatsApp/140 chars/pergunta final, só
+  `intent + slots + contexto`, nunca texto digitado; proíbe inventar
+  número, diagnosticar, prescrever e prometer memória; mesmo schema
+  `title/body/bullets`). `sessionIdFor` e cadeia/fallback intactos; sem
+  log de payload.
+- **Contrato no app:** `CoachKind.FREE_ANSWER`, `CoachFreeAnswerPrompt`
+  puro em `core:domain` (intent + slots validados + números permitidos +
+  `engineContext` determinístico; **sem campo para texto digitado**),
+  `CoachApi.freeAnswer` com payload `intent/dayOfWeek/minutes/allowed*` +
+  `inputsHash` em `HttpCoachApi`, `Fake`/`Disabled` atualizados. Sem
+  chamador ainda (fatia 6 liga a UI).
+- **Testes:** proxy 18/18 (4 novos: JSON válido, prompt próprio por
+  intent, voz chat, sem diagnóstico/prescrição); `CoachApiTest` 9/9
+  (round-trip local: endpoint `free-answer`, `intent`/`slots`/`hash` no
+  corpo, texto digitado ausente). TDD: 2 testes do proxy falharam antes
+  da implementação, como esperado.
+- **Limitação conhecida:** exige redeploy manual no Dokploy para valer
+  no aparelho; sem ele, o proxy atual responde `free-answer` com o
+  prompt de `explain`.
+- **Gates:** root `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`) +
+  proxy `test --rerun-tasks` (18/18). No caminho: `MaxLineLength` em
+  4 linhas do prompt novo + formatação, corrigidos.
+- Sem repository/UI/migração tocados; sem motor, ciência ou dado real
+  no diff.
+
+### Pendente
+
+1. **Redeploy do proxy no Dokploy** (manual, com a mesma env atual).
+2. ADR 0056 fatias 5–7 (repository v22 → UI → aparelho), uma fatia
+   pequena por sessão.
+3. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 3: validador do caminho livre (TDD)
 
