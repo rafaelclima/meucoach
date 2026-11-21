@@ -42,13 +42,21 @@ pós-redeploy.
 - `:app:testDebugUnitTest --tests 'com.meucoach.app.ui.coach.*'` (135 testes) verde com `--rerun-tasks`.
 - `./gradlew check`, `spotlessCheck` e proxy `test` verdes.
 
-### Pendente (você, com o aparelho)
+### Validação no aparelho (20/11 ~22:37, via adb)
 
-1. **Dokploy:** redeploy do proxy (inclui `017a23a` + requebra desta sessão); confirmar `upstream=go ... 200`.
-2. `./install.sh` com o token + print da aba Coach (dark/light, fonte 200% se der).
-3. Conferir no print: 1 eco após duplo toque, chip “Retrovisor” visível no rodapé e rolando até o prompt, fade sem cobrir “Ajustar semana”, acentos (“você”, “então”, “fácil”, “sessões”).
-4. Se o GLM ignorar os acentos: `COACH_GO_MODELS=deepseek-v4.1-flash` e comparar.
-5. Se validada: F4 (roteiros diários) do `PRD_COACH_CHAT`.
+- **Acentos OK:** redeploy confirmado — a explicação regenerada às 22:37 veio acentuada
+  (“Você já fez o longo de 34 min e o leve de 25 min; falta o rodado leve de domingo.”,
+  “Fácil e conversável”, “decisão”, “calibração”, “então”). GLM respeitou; sem trocar modelo.
+- **Dedup OK:** dois toques reais no “Explica a semana” → 1 eco “Pode explicar minha semana?”;
+  `explain ok`/`review ok` no logcat a cada retry.
+- **Retrovisor OK:** chip no rodapé rola o feed até o prompt com “Semana passada / Evolução /
+  Histórico” visíveis (estavam abaixo da dobra — era só isso).
+- **Fade OK:** “Perdi treino” legível na borda (fade só insinua rolagem).
+- Screenshots em `/tmp/opencode/coach-v3/` (fora do repo; apagar ao final).
+
+### Pendente
+
+1. Se validada (está): F4 (roteiros diários) do `PRD_COACH_CHAT`.
 
 ## Sessão 2026-11-20 — Coach v2: conversa de verdade (replanejamento da tela)
 

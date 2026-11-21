@@ -1,11 +1,10 @@
 # HANDOFF — Coach v3 (rodapé, retrovisor e acentos)
 
-**Atualizado:** 20/11/2026 ~noite (BRT)
-**Status:** v3 implementada localmente + gates verdes (`check`, `spotlessCheck`, proxy `test`,
-135 testes do Coach com `--rerun-tasks`); **pendente redeploy do proxy e print no aparelho**.
-LLM segue ok (`explain ok` / `review ok` às 19:00).
+**Atualizado:** 20/11/2026 ~22:37 (BRT)
+**Status:** v3 **validada no aparelho via adb** (acentos, dedup, Retrovisor, fade — ver §7).
+Próxima: F4 (roteiros diários) do `PRD_COACH_CHAT`.
 **Commits no ar:** `59b09d6` (lapidação v2), `d0d65b5` (GLM-5.3-Flash primeiro), `017a23a`
-(prompts com acentuação — **ainda precisa de redeploy**, mais a requebra de linha desta sessão).
+(prompts com acentuação — **redeploy feito em 20/11, verificado no aparelho**), `01f67b1` (v3).
 
 ---
 
@@ -107,4 +106,7 @@ LLM segue ok (`explain ok` / `review ok` às 19:00).
 - `CoachScreenTest.kt`: 2 regressões novas (eco único; retrovisor rola até o prompt).
 - Proxy `Main.kt`: só requebra de linha do `SYSTEM_REPLAN` (spotless; conteúdo idêntico).
 - Gates: `ui.coach.*` (135, `--rerun-tasks`), `check`, `spotlessCheck`, proxy `test` — verdes.
-- Não feito aqui (precisa de você): redeploy no Dokploy, `./install.sh`, print no aparelho.
+- **Validação no aparelho (22:37, via adb):** redeploy feito; explicação regenerada com
+  acentos (“Você já fez o longo de 34 min…”, “Fácil e conversável”); duplo toque real no
+  “Explica a semana” → 1 eco; chip Retrovisor rola até “Semana passada / Evolução /
+  Histórico”; fade legível. Logcat: `explain ok` + `review ok` a cada retry.
