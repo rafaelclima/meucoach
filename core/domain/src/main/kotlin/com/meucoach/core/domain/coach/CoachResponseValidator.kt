@@ -1,5 +1,7 @@
 package com.meucoach.core.domain.coach
 
+import kotlin.math.abs
+
 data class CoachRawResponse(
     val title: String,
     val body: String,
@@ -42,6 +44,57 @@ object CoachResponseValidator {
     private val minutesPattern = Regex("""(\d{1,4})\s?min""", RegexOption.IGNORE_CASE)
     private val percentPattern = Regex("""(\d{1,3})\s?%""")
     private val internalCodePattern = Regex("""\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b""")
+    private val distancePattern = Regex("""(\d+(?:[.,]\d+)?)\s?km""", RegexOption.IGNORE_CASE)
+    private val digitPattern = Regex("""\d""")
+
+    /**
+     * Normalized (lowercase, no accents) tokens for the free-answer path.
+     * Prescription verbs only matter with a number or a structural change;
+     * plain rest-day rewording ("descanse bem") has neither and still passes.
+     */
+    private val prescriptionVerbs =
+        listOf(
+            "faca",
+            "corra",
+            "troque",
+            "descanse",
+            "aumente",
+            "reduza",
+            "pule",
+            "corte",
+            "adicione",
+            "inclua",
+            "repita",
+        ).map { verb -> verb to Regex("""\b${Regex.escape(verb)}\b""") }
+    private val structuralTokens =
+        listOf("descanso", "pule", "adiciona", "corta", "move", "adiar", "antecipa")
+            .map { token -> token to Regex("""\b${Regex.escape(token)}\b""") }
+    private val medicalTokens =
+        listOf("dor", "dores", "doendo")
+            .map { token -> token to Regex("""\b${Regex.escape(token)}\b""") } +
+            listOf(
+                "doenca",
+                "lesao",
+                "tendinite",
+                "canelite",
+                "medico",
+                "diagnostico",
+                "remedio",
+                "suplemento",
+                "dieta",
+                "muscula",
+                "academia",
+                "fisioter",
+                "torcao",
+                "entorse",
+                "fratura",
+                "cirurgia",
+                "inflam",
+                "emagrec",
+            ).map { prefix -> prefix to Regex("""\b${Regex.escape(prefix)}""") }
+    private val memoryPromises =
+        listOf("vou lembrar", "nao vou esquecer", "anotei", "memorizei", "jamais esqueco")
+            .map { phrase -> phrase to Regex(Regex.escape(phrase)) }
 
     /**
      * [allowedPercents] enables the share check used by the weekly review: when
@@ -82,6 +135,49 @@ object CoachResponseValidator {
                 suggestedAction = raw.suggestedAction?.trim()?.takeIf { it.isNotEmpty() },
             ),
         )
+    }
+
+    /**
+     * Free-answer path of the validator (ADR 0056 §2.2): every base rule still
+     * applies, and the response may only cite durations, distances and shares
+     * already present in the current prescription. Prescription verbs with a
+     * number or a structural change, medical/scope lexicon and memory promises
+     * are `Invalid`. The legacy `validate` path is untouched.
+     */
+    fun validateFreeAnswer(
+        raw: CoachRawResponse,
+        allowedMinutes: Set<Int>,
+        allowedPercents: Set<Int>,
+        allowedDistancesKm: Set<Double>,
+        forbiddenCodes: Set<String> = emptySet(),
+    ): CoachValidationResult {
+        val base = validate(raw, allowedMinutes, allowedPercents, forbiddenCodes)
+        if (base is CoachValidationResult.Invalid) return base
+        val normalized = normalizedKeywordForm(
+            (listOf(raw.title, raw.body) + raw.bullets + listOfNotNull(raw.suggestedAction)).joinToString("\n"),
+        )
+        val reason = freeAnswerReason(normalized, allowedDistancesKm) ?: return base
+        return CoachValidationResult.Invalid(reason)
+    }
+
+    private fun freeAnswerReason(normalized: String, allowedDistancesKm: Set<Double>): String? {
+        val inventedDistance = distancePattern.findAll(normalized)
+            .map { it.groupValues[1].replace(',', '.').toDouble() }
+            .firstOrNull { candidate -> allowedDistancesKm.none { abs(it - candidate) < 1e-6 } }
+        val prescribes = prescriptionVerbs.any { (_, pattern) -> pattern.containsMatchIn(normalized) } &&
+            (
+                digitPattern.containsMatchIn(normalized) ||
+                    structuralTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
+                )
+        val outOfScope = medicalTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
+        val memoryPromise = memoryPromises.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
+        return when {
+            inventedDistance != null -> "Resposta contém distância fora do plano: $inventedDistance km"
+            prescribes -> "Resposta sugere treino novo — ajuste só com sua confirmação"
+            outOfScope -> "Resposta fora do escopo do Coach"
+            memoryPromise -> "Resposta promete memória que o Coach não tem"
+            else -> null
+        }
     }
 
     private fun invalidReason(

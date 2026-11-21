@@ -156,9 +156,10 @@ falado, que **não** vira memória (paridade ADR 0052 §2.2).
    ambíguo → `ASK_CLARIFY`, fora-escopo → `OUT_OF_SCOPE`, dia/minutos
    inválidos recusados). Sem Android/rede.~~ (Implementado em 21/11/2026:
    `FreeInputParser` + 20 testes verdes, `check` + `spotlessCheck` verdes.)
-3. Validador: léxico médico/escopo + distâncias do plano em
+3. ~~Validador: léxico médico/escopo + distâncias do plano em
    `CoachResponseValidator` + `CoachResponseValidatorTest`. `explain`/`review`
-   intactos.
+   intactos.~~ (Implementado em 21/11/2026: `validateFreeAnswer` + 16 testes
+   verdes, `check` + `spotlessCheck` verdes.)
 4. Proxy: `kind free-answer` + system prompt de mensageiro + contrato
    intent+slots (redeploy Dokploy manual). Sem log de payload.
 5. Repository: v22 aditiva (`role YOU`, `origin` nullable, índice mantido)

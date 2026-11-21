@@ -1,6 +1,47 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 fatia 2 — `FreeInputParser` puro, 20 testes verdes)
+**Atualizado:** 21/11/2026 (ADR 0056 fatia 3 — `validateFreeAnswer`, 16 testes verdes)
+
+## Sessão 2026-11-21 — ADR 0056 fatia 3: validador do caminho livre (TDD)
+
+**Objetivo:** implementar o passo 3 do rollout do ADR 0056 (o que o
+`CoachResponseValidator` barra em texto livre), sem afrouxar o
+`explain`/`review` e sem tocar em proxy, repository ou UI.
+
+### Concluído
+
+- **Domínio:** `CoachResponseValidator.validateFreeAnswer` (novo caminho,
+  legado intacto): delega a base (pace, `bpm`, siglas, códigos internos,
+  minutos/porcentuais inventados, teto 2000) e acrescenta distância fora
+  do plano (`X km` com vírgula/ponto, tolerância 1e-6), verbo de
+  prescrição + número/estrutura ("Faça 6…", "Troque…por descanso",
+  "Descanse 3 dias"), léxico médico/sintoma e escopo proibido
+  (dor/dores/doendo com borda total para não casar "dormir"; demais
+  por prefixo para pegar plural/feminino), promessa de memória
+  ("vou lembrar", "anotei") — tudo em forma normalizada (caixa/acento).
+  Reformulação de descanso sem número/estrutura e copy estática de
+  hidratação do ADR 0029 passam; `reason`s sem dado de treino.
+- **Refatoração:** `normalizedKeywordForm` interno extraído para
+  `TextNormalization.kt` e reusado pelo `FreeInputParser` (sem mudança
+  de comportamento).
+- **Testes:** `CoachFreeAnswerValidatorTest` com 16 casos (TDD: vermelho
+  por referência inexistente → verde; 1 falha real no caminho —
+  `\bmuscula\b` não casava "musculação" — corrigida com prefixo).
+  Legado com sintoma continua `Valid` (prova de "sem afrouxar").
+- **Limitação conhecida:** atalho `5k`/`10k` não é barrado de propósito
+  (distância de prova, vocabulário padrão; barrar geraria falso positivo
+  estilo `atl`/`atleta`).
+- **Gates:** `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`, inclui
+  `detekt`, `lint`, `koverVerify` e `spotlessCheck`). No caminho: detekt
+  `MaxLineLength` e formatação, ambos corrigidos.
+- Sem proxy/repository/UI/migração tocados; sem motor, ciência ou dado
+  real no diff.
+
+### Pendente
+
+1. ADR 0056 fatias 4–7 (proxy `free-answer` → repository v22 → UI →
+   aparelho), uma fatia pequena por sessão.
+2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 2: parser de intenção em `core:domain` (TDD)
 

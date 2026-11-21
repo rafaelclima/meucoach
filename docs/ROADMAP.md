@@ -381,6 +381,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [ ] Validação visual do card Ready/histórico real no build com token; depois, pós-MVP (input livre, memória em prompt, “quero mais tempo”).
 - [x] ADR 0056 proposto (21/11/2026): input livre digitado com parser determinístico local, validador estendido, `You` persistido em `chat_turns` v22 futura e `System` efêmero ([ADR 0056](adr/0056-coach-free-input.md)).
 - [x] ADR 0056 fatia 2 (21/11/2026): `FreeInputParser` puro em `core:domain` (7 intents, slots dia/minutos, escopo antes de slot, `ASK_CLARIFY` em ambíguo/sem-número, 20 testes verdes, `check` + `spotlessCheck` verdes).
+- [x] ADR 0056 fatia 3 (21/11/2026): `validateFreeAnswer` no `CoachResponseValidator` (distância fora do plano, prescrição nova, léxico médico/escopo, promessa de memória; legado intacto, 16 testes verdes, `check` + `spotlessCheck` verdes).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 

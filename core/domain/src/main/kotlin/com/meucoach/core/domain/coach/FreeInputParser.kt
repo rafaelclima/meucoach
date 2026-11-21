@@ -1,6 +1,5 @@
 package com.meucoach.core.domain.coach
 
-import java.text.Normalizer
 import java.time.DayOfWeek
 
 /**
@@ -103,7 +102,7 @@ object FreeInputParser {
      */
     fun parse(text: String, today: DayOfWeek): FreeInputParse {
         val sanitized = whitespace.replace(text.trim(), " ").take(MAX_CHARS)
-        val normalized = stripAccents(sanitized.lowercase())
+        val normalized = normalizedKeywordForm(sanitized)
         val intent = resolveIntent(normalized)
         val slots = if (intent == FreeInputIntent.REQUEST_ADJUST) extractSlots(normalized, today) else FreeInputSlots()
         return FreeInputParse(intent, slots, sanitized)
@@ -173,7 +172,4 @@ object FreeInputParser {
         }
         return FreeInputSlots(dayOfWeek = relative ?: named, minutes = minutes)
     }
-
-    private fun stripAccents(value: String): String =
-        Normalizer.normalize(value, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "")
 }
