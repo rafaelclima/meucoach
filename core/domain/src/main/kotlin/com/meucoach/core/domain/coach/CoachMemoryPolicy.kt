@@ -30,4 +30,15 @@ object CoachMemoryPolicy {
 
     /** A row exactly at the cutoff is still valid; only older rows expire. */
     fun isSummaryExpired(createdAt: Instant, now: Instant): Boolean = createdAt.isBefore(summaryCutoff(now))
+
+    /**
+     * When a turn leaves the device (Room v20, ADR 0054): explanation/review
+     * turns live 90 d, summaries 180 d — the same TTL as the tables they unify.
+     */
+    fun turnExpiresAt(createdAt: Instant, origin: ChatTurn.Origin): Instant = createdAt.plus(
+        when (origin) {
+            ChatTurn.Origin.SUMMARY -> summaryTtl
+            ChatTurn.Origin.EXPLAIN, ChatTurn.Origin.REVIEW -> messageTtl
+        },
+    )
 }

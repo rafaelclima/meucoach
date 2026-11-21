@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.db.entity.ChatTurnEntity
 import com.meucoach.core.data.db.entity.CoachMessageEntity
 import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.health.HealthSyncStore
@@ -151,6 +152,11 @@ class UserDataRepositoryTest {
         assertThat(summary.getString("weekStart")).isEqualTo(monday.minusWeeks(1).toString())
         assertThat(summary.getString("title")).isEqualTo("Semana passada")
         assertThat(summary.getJSONArray("bullets").length()).isZero()
+        val turn = export.getJSONArray("coachTurns").getJSONObject(0)
+        assertThat(turn.getString("origin")).isEqualTo("EXPLAIN")
+        assertThat(turn.getString("title")).isEqualTo("Foco")
+        assertThat(turn.getJSONArray("bullets").getString(0)).isEqualTo("Base")
+        assertThat(turn.isNull("weekStart")).isTrue()
     }
 
     @Test
@@ -224,6 +230,7 @@ class UserDataRepositoryTest {
         assertThat(deletion.raceEvents).isEqualTo(1)
         assertThat(deletion.coachMessages).isEqualTo(1)
         assertThat(deletion.coachSummaries).isEqualTo(1)
+        assertThat(deletion.coachTurns).isEqualTo(1)
         assertThat(deletion.profileDeleted).isTrue()
         assertThat(deletion.removedAnything).isTrue()
         assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
@@ -321,6 +328,19 @@ class UserDataRepositoryTest {
                 body = "3 de 4 sessões.",
                 bulletsJson = "[]",
                 createdAt = clock.millis(),
+            ),
+        )
+        database.chatTurnDao().insert(
+            ChatTurnEntity(
+                id = "message-message-1",
+                role = "COACH",
+                title = "Foco",
+                body = "Vamos manter os 30 min.",
+                bulletsJson = "[\"Base\"]",
+                origin = "EXPLAIN",
+                weekStart = null,
+                createdAt = clock.millis(),
+                expiresAt = clock.millis() + 90L * 24 * 60 * 60 * 1000,
             ),
         )
     }

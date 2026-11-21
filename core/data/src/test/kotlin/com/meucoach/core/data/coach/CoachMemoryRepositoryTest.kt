@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.db.entity.ChatTurnEntity
 import com.meucoach.core.data.db.entity.CoachMessageEntity
 import com.meucoach.core.data.db.entity.CoachSummaryEntity
+import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.CoachMessageKind
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -246,6 +248,116 @@ class CoachMemoryRepositoryTest {
         assertThat(memory.observeMessages().first()).isEmpty()
         assertThat(memory.observeSummaries().first()).isEmpty()
     }
+
+    @Test
+    fun `records mirror the turn into chat turns with the origin TTL`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", listOf("Base"))
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
+
+        val turns = database.chatTurnDao().getAll()
+
+        assertThat(turns.map { it.id }).containsExactly("summary-2026-11-02", "message-message-1")
+        val explain = turns.single { it.id == "message-message-1" }
+        assertThat(explain.origin).isEqualTo("EXPLAIN")
+        assertThat(explain.expiresAt).isEqualTo(now.plus(Duration.ofDays(90)).toEpochMilli())
+        val summary = turns.single { it.id == "summary-2026-11-02" }
+        assertThat(summary.origin).isEqualTo("SUMMARY")
+        assertThat(summary.weekStart).isEqualTo("2026-11-02")
+        assertThat(summary.expiresAt).isEqualTo(now.plus(Duration.ofDays(180)).toEpochMilli())
+    }
+
+    @Test
+    fun `duplicate message does not duplicate the turn`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
+        clock.instant = now.plusSeconds(30)
+
+        assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList()))
+            .isFalse()
+        assertThat(database.chatTurnDao().getAll()).hasSize(1)
+    }
+
+    @Test
+    fun `re-recorded summary replaces the turn narrative`(): Unit = runBlocking {
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
+        clock.instant = now.plusSeconds(60)
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1b", "Semana revisada", "ok", emptyList())
+
+        val turns = database.chatTurnDao().getAll()
+
+        assertThat(turns).hasSize(1)
+        assertThat(turns.single().title).isEqualTo("Semana revisada")
+    }
+
+    @Test
+    fun `observes turns newest-first skipping corrupted rows`(): Unit = runBlocking {
+        database.chatTurnDao().insert(turn("t-old", "EXPLAIN", now.minusSeconds(60)))
+        database.chatTurnDao().insert(turn("t-new", "SUMMARY", now, weekStart = "2026-11-09"))
+        database.chatTurnDao().insert(turn("t-bad-origin", "YOU", now))
+        database.chatTurnDao().insert(
+            turn("t-json", "EXPLAIN", now, body = """{"":": "legado"}"""),
+        )
+
+        val turns = memory.observeTurns().first()
+
+        assertThat(turns.map { it.id }).containsExactly("t-new", "t-old")
+        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin }).containsExactly(
+            ChatTurn.Origin.SUMMARY,
+            ChatTurn.Origin.EXPLAIN,
+        )
+    }
+
+    @Test
+    fun `prunes expired turns by expiresAt`(): Unit = runBlocking {
+        database.chatTurnDao().insert(turn("t-old", "EXPLAIN", now.minus(Duration.ofDays(91))))
+        database.chatTurnDao().insert(turn("t-edge", "EXPLAIN", now.minus(Duration.ofDays(89))))
+
+        val pruned = memory.pruneExpired()
+
+        assertThat(pruned.turns).isEqualTo(1)
+        assertThat(pruned.removedAnything).isTrue()
+        assertThat(database.chatTurnDao().getAll().map { it.id }).containsExactly("t-edge")
+    }
+
+    @Test
+    fun `deletes one turn by id without touching the rest`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
+        clock.instant = now.plusSeconds(60)
+        memory.recordMessage(CoachMessageKind.REVIEW, "hash-2", "Semana", "3 de 4", emptyList())
+
+        assertThat(memory.deleteTurn("message-message-1")).isTrue()
+
+        assertThat(memory.observeTurns().first().map { it.id })
+            .containsExactly("message-message-2")
+        assertThat(memory.deleteTurn("message-message-1")).isFalse()
+    }
+
+    @Test
+    fun `clearing erases turns too`(): Unit = runBlocking {
+        memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList())
+        memory.recordSummary(LocalDate.of(2026, 11, 2), "review-1", "Semana", "3 de 4", emptyList())
+
+        memory.clearAll()
+
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
+    }
+
+    private fun turn(
+        id: String,
+        origin: String,
+        createdAt: Instant,
+        weekStart: String? = null,
+        body: String = "Corpo",
+    ) = ChatTurnEntity(
+        id = id,
+        role = "COACH",
+        title = "Titulo",
+        body = body,
+        bulletsJson = "[]",
+        origin = origin,
+        weekStart = weekStart,
+        createdAt = createdAt.toEpochMilli(),
+        expiresAt = createdAt.plus(Duration.ofDays(90)).toEpochMilli(),
+    )
 
     private fun message(id: String, hash: String, createdAt: Instant) = CoachMessageEntity(
         id = id,

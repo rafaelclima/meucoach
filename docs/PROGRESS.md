@@ -1,6 +1,39 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ChatTurn fatia 2 — persistência v20 + migração; próxima: repository)
+**Atualizado:** 21/11/2026 (ChatTurn fatia 3 — repository + export/delete; próxima: histórico)
+
+## Sessão 2026-11-21 — ChatTurn fatia 3: repository em `chat_turns` + paridade (TDD)
+
+**Objetivo:** ler/escrever a timeline unificada (ADR 0054 §2.2/rollout passo 3):
+escrita dupla temporária + export/delete/revogação cobrindo `chat_turns`.
+
+### Concluído
+
+- **Política:** `CoachMemoryPolicy.turnExpiresAt(createdAt, origin)` — 90 d para
+  EXPLAIN/REVIEW, 180 d para SUMMARY (mesmo TTL das tabelas unificadas).
+- **Repository:** `recordMessage/recordSummary` espelham em `chat_turns` (ids
+  `message-{id}`/`summary-{semana}`, `expiresAt` por origem; resumo re-gravado
+  substitui o turn; duplicata não duplica o turn); `observeTurns()` com os mesmos
+  filtros de corrupção; poda por `expiresAt`; `clearAll` e `deleteTurn(id)` novos.
+  Leitura antiga (`observeMessages/Summaries`) intacta — a troca é a fatia 4.
+- **Paridade:** export inclui `coachTurns` (id/role/title/body/bullets/origin/
+  weekStart?/createdAt/expiresAt); `deleteAllData` apaga e conta `coachTurns`
+  (revogação via `clearAll` já cobria).
+- **Testes:** 7 no repository (espelho, duplicata, re-gravação, ordenação +
+  corrupção, poda, delete, clear) + 1 política + seed/asserts de export/delete.
+  Inconsistência backfill×escrita pega em teste e alinhada (`message-{id}`).
+
+### Validação
+
+- `:core:data:testDebugUnitTest` e `:core:domain:test` (cheias, `--rerun-tasks`),
+  `koverVerify`, `check`, `spotlessCheck` e proxy `test` verdes.
+
+### Pendente
+
+1. Fatia 4: `CoachHistoryState` com `List<ChatTurn>` + histórico como timeline.
+2. v21 (futura): remover escrita dupla e tabelas v19.
+
+## Sessão 2026-11-21 — ChatTurn fatia 2: entidade/DAO/`MIGRATION_19_20` (TDD)
 
 ## Sessão 2026-11-21 — ChatTurn fatia 2: entidade/DAO/`MIGRATION_19_20` (TDD)
 

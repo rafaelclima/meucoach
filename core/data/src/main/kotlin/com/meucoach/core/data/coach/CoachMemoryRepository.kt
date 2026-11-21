@@ -2,9 +2,11 @@ package com.meucoach.core.data.coach
 
 import androidx.room.withTransaction
 import com.meucoach.core.data.db.MeuCoachDatabase
+import com.meucoach.core.data.db.entity.ChatTurnEntity
 import com.meucoach.core.data.db.entity.CoachMessageEntity
 import com.meucoach.core.data.db.entity.CoachSummaryEntity
 import com.meucoach.core.data.id.UuidV7
+import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.CoachMemoryMessage
 import com.meucoach.core.domain.coach.CoachMemoryPolicy
 import com.meucoach.core.domain.coach.CoachMemorySummary
@@ -17,8 +19,8 @@ import java.time.Instant
 import java.time.LocalDate
 
 /** Rows removed by one lazy TTL pass. */
-data class CoachMemoryPruneResult(val messages: Int, val summaries: Int) {
-    val removedAnything: Boolean get() = messages > 0 || summaries > 0
+data class CoachMemoryPruneResult(val messages: Int, val summaries: Int, val turns: Int = 0) {
+    val removedAnything: Boolean get() = messages > 0 || summaries > 0 || turns > 0
 }
 
 /**
@@ -42,12 +44,14 @@ class CoachMemoryRepository(
         CoachMemoryPruneResult(
             messages = database.coachMessageDao().deleteOlderThan(messageCutoffMillis(now)),
             summaries = database.coachSummaryDao().deleteOlderThan(summaryCutoffMillis(now)),
+            turns = database.chatTurnDao().deleteOlderThan(now),
         )
     }
 
     /**
      * Stores a validated turn. The same `(kind, inputsHash)` is written once;
-     * reopening the tab or retrying does not duplicate the conversation.
+     * reopening the tab or retrying does not duplicate the conversation. The
+     * unified `chat_turns` row mirrors the write (ADR 0054, dual write until v21).
      */
     suspend fun recordMessage(
         kind: CoachMessageKind,
@@ -58,9 +62,10 @@ class CoachMemoryRepository(
     ): Boolean = database.withTransaction {
         val now = clock.millis()
         database.coachMessageDao().deleteOlderThan(messageCutoffMillis(now))
+        val id = idGenerator()
         val inserted = database.coachMessageDao().insert(
             CoachMessageEntity(
-                id = idGenerator(),
+                id = id,
                 kind = kind.name,
                 inputsHash = inputsHash,
                 title = title,
@@ -69,6 +74,11 @@ class CoachMemoryRepository(
                 createdAt = now,
             ),
         )
+        if (inserted != -1L) {
+            database.chatTurnDao().insert(
+                turnEntity("message-$id", kind.name, title, body, bullets, now),
+            )
+        }
         inserted != -1L
     }
 
@@ -93,6 +103,18 @@ class CoachMemoryRepository(
                     createdAt = now,
                 ),
             )
+            database.chatTurnDao().deleteById("summary-$weekStart")
+            database.chatTurnDao().insert(
+                turnEntity(
+                    id = "summary-$weekStart",
+                    origin = ChatTurn.Origin.SUMMARY.name,
+                    title = title,
+                    body = body,
+                    bullets = bullets,
+                    now = now,
+                    weekStart = weekStart.toString(),
+                ),
+            )
         }
     }
 
@@ -101,6 +123,7 @@ class CoachMemoryRepository(
         database.withTransaction {
             database.coachMessageDao().deleteAll()
             database.coachSummaryDao().deleteAll()
+            database.chatTurnDao().deleteAll()
         }
     }
 
@@ -110,6 +133,19 @@ class CoachMemoryRepository(
     /** Removes one weekly summary; returns false when the row was already gone. */
     suspend fun deleteSummary(weekStart: LocalDate): Boolean =
         database.coachSummaryDao().deleteByWeek(weekStart.toString()) > 0
+
+    /** Removes one unified turn; returns false when the row was already gone. */
+    suspend fun deleteTurn(id: String): Boolean = database.chatTurnDao().deleteById(id) > 0
+
+    /**
+     * Unified timeline for the Coach tab (newest first). Same corruption
+     * filters as the v19 rows: blank titles/bodies, provider JSON objects and
+     * unknown roles/origins are ignored instead of breaking the list.
+     */
+    fun observeTurns(): Flow<List<ChatTurn>> = database
+        .chatTurnDao()
+        .observeAll()
+        .map { rows -> rows.mapNotNull { it.toTurn() } }
 
     /**
      * Read-only history for the Coach tab (newest first).
@@ -152,6 +188,48 @@ class CoachMemoryRepository(
             bullets = bulletsFromJson(bulletsJson),
             createdAt = Instant.ofEpochMilli(createdAt),
         )
+    }
+
+    private fun ChatTurnEntity.toTurn(): ChatTurn.Coach? {
+        if (role != TURN_ROLE_COACH) return null
+        if (title.isBlank() || body.isBlank() || body.isLegacyJsonObject()) return null
+        val turnOrigin = ChatTurn.Origin.entries.firstOrNull { it.name == origin } ?: return null
+        return ChatTurn.Coach(
+            id = id,
+            title = title,
+            body = body,
+            bullets = bulletsFromJson(bulletsJson),
+            createdAt = Instant.ofEpochMilli(createdAt),
+            origin = turnOrigin,
+        )
+    }
+
+    private fun turnEntity(
+        id: String,
+        origin: String,
+        title: String,
+        body: String,
+        bullets: List<String>,
+        now: Long,
+        weekStart: String? = null,
+    ): ChatTurnEntity {
+        val createdAt = Instant.ofEpochMilli(now)
+        val turnOrigin = ChatTurn.Origin.valueOf(origin)
+        return ChatTurnEntity(
+            id = id,
+            role = TURN_ROLE_COACH,
+            title = title,
+            body = body,
+            bulletsJson = bulletsToJson(bullets),
+            origin = origin,
+            weekStart = weekStart,
+            createdAt = now,
+            expiresAt = CoachMemoryPolicy.turnExpiresAt(createdAt, turnOrigin).toEpochMilli(),
+        )
+    }
+
+    private companion object {
+        const val TURN_ROLE_COACH = "COACH"
     }
 
     /**

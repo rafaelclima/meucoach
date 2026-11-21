@@ -33,4 +33,16 @@ class CoachMemoryPolicyTest {
         assertThat(CoachMemoryPolicy.messageCutoff(now)).isEqualTo(now.minus(Duration.ofDays(90)))
         assertThat(CoachMemoryPolicy.summaryCutoff(now)).isEqualTo(now.minus(Duration.ofDays(180)))
     }
+
+    @Test
+    fun `turn expiry follows the origin TTL`() {
+        val createdAt = Instant.parse("2026-11-18T12:00:00Z")
+
+        assertThat(CoachMemoryPolicy.turnExpiresAt(createdAt, ChatTurn.Origin.EXPLAIN))
+            .isEqualTo(createdAt.plus(Duration.ofDays(90)))
+        assertThat(CoachMemoryPolicy.turnExpiresAt(createdAt, ChatTurn.Origin.REVIEW))
+            .isEqualTo(createdAt.plus(Duration.ofDays(90)))
+        assertThat(CoachMemoryPolicy.turnExpiresAt(createdAt, ChatTurn.Origin.SUMMARY))
+            .isEqualTo(createdAt.plus(Duration.ofDays(180)))
+    }
 }

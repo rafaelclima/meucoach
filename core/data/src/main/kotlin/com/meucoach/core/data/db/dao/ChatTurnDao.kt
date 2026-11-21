@@ -25,5 +25,5 @@ interface ChatTurnDao {
     suspend fun deleteById(id: String): Int
 
     @Query("DELETE FROM chat_turns")
-    suspend fun deleteAll()
+    suspend fun deleteAll(): Int
 }
