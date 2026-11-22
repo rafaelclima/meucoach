@@ -137,7 +137,12 @@ para a próxima fatia.
     dos dois lados da palavra. Ritmo médio e FC de referência vêm do motor
     em cartão determinístico (`CoachSessionReference`); a LLM continua sem
     escrever dígito de pace/bpm e o validador segue intacto.~~
-12. Próxima: WHY/prontidão/método.
+12. ~~Evolução por pergunta (22/11/2026, pedido do usuário 0): "e como anda
+    minha evolução?" caía em OUT_OF_SCOPE — a whitelist não tinha intent de
+    trajetória. Novo `ASK_PROGRESS` + `CoachProgressAnswer` puro (mesmo
+    rollup do Tendências: treinos, volume, % fácil; alvo 80/20 estático),
+    `NO_PROGRESS` determinístico sem semana fechada.~~
+13. Próxima: WHY/prontidão/método.
 
 ## 5. Exchanges e persistência determinística (itens 2-base e 3)
 

@@ -16,6 +16,7 @@ enum class FreeInputIntent {
     ASK_SESSION,
     ASK_HOW_TO_RUN,
     ASK_REVIEW,
+    ASK_PROGRESS,
     REPORT_DONE,
     REQUEST_ADJUST,
     ASK_CAPABILITIES,
@@ -95,6 +96,13 @@ object FreeInputParser {
         Regex("""\b(revisao|resumo da semana|como foi)\b"""),
     )
 
+    private val progressPatterns = listOf(
+        Regex("""\bevolu"""),
+        Regex("""\bprogresso\b"""),
+        Regex("""\bmelhorando\b"""),
+        Regex("""\bcomo (estou|anda)\b"""),
+    )
+
     private val becausePattern = Regex("""(porque|por que).*(hoje|treino|facil|forte|descanso)""")
 
     private val weekPatterns = listOf(
@@ -166,13 +174,14 @@ object FreeInputParser {
         val adjust: Boolean,
         val report: Boolean,
         val review: Boolean,
+        val progress: Boolean,
         val training: Boolean,
         val howTo: Boolean,
         val session: Boolean,
         val week: Boolean,
         val capabilities: Boolean,
     ) {
-        val matches: Int get() = listOf(adjust, report, review, training, week, capabilities).count { it }
+        val matches: Int get() = listOf(adjust, report, review, progress, training, week, capabilities).count { it }
     }
 
     private fun matchFlags(normalized: String): MatchFlags {
@@ -184,6 +193,7 @@ object FreeInputParser {
             adjust = explicitAdjust || timeShortage.containsMatchIn(normalized),
             report = !negation.containsMatchIn(normalized) && reportPatterns.any { it.containsMatchIn(normalized) },
             review = reviewPatterns.any { it.containsMatchIn(normalized) },
+            progress = progressPatterns.any { it.containsMatchIn(normalized) },
             training = howTo || session,
             howTo = howTo,
             session = session,
@@ -196,6 +206,7 @@ object FreeInputParser {
         flags.adjust -> FreeInputIntent.REQUEST_ADJUST
         flags.report -> FreeInputIntent.REPORT_DONE
         flags.review -> FreeInputIntent.ASK_REVIEW
+        flags.progress -> FreeInputIntent.ASK_PROGRESS
         flags.howTo -> FreeInputIntent.ASK_HOW_TO_RUN
         flags.session -> FreeInputIntent.ASK_SESSION
         flags.week -> FreeInputIntent.ASK_WEEK

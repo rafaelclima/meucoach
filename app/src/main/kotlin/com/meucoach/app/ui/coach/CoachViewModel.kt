@@ -7,6 +7,7 @@ import com.meucoach.app.coach.CoachGuardsContext
 import com.meucoach.app.coach.CoachNextContext
 import com.meucoach.app.coach.CoachPlanContext
 import com.meucoach.app.coach.CoachProgressContext
+import com.meucoach.app.coach.CoachProgressSource
 import com.meucoach.app.coach.CoachSources
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.replan.ReplanControllerFactory
@@ -21,6 +22,7 @@ import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachProgress
+import com.meucoach.core.domain.coach.CoachProgressAnswer
 import com.meucoach.core.domain.coach.CoachProgressSummary
 import com.meucoach.core.domain.coach.CoachPromptBuilder
 import com.meucoach.core.domain.coach.CoachResponseValidator
@@ -631,6 +633,8 @@ class CoachViewModel @Inject constructor(
             FreeInputIntent.ASK_HOW_TO_RUN -> answerSession(parsed, SessionTask.HOW_TO, exchangeId)
 
             FreeInputIntent.ASK_REVIEW -> answerReview(parsed, exchangeId)
+
+            FreeInputIntent.ASK_PROGRESS -> answerProgress(parsed, exchangeId)
         }
     }
 
@@ -756,23 +760,6 @@ class CoachViewModel @Inject constructor(
         )
     }
 
-    /**
-     * Days that never need a model call: out-of-week, past, rest or already
-     * done. Returns the deterministic copy, or null when the question needs
-     * the `free-answer` model path with the session context.
-     */
-    private data class FreeAnswerRequest(
-        val parsed: FreeInputParse,
-        val exchangeId: String,
-        val contextHash: String,
-        val allowedMinutes: Set<Int>,
-        val allowedPercents: Set<Int>,
-        val allowedDistancesKm: Set<Double>,
-        val forbiddenCodes: Set<String>,
-        val engineContext: String,
-        val reference: List<String> = emptyList(),
-    )
-
     private suspend fun answerReview(parsed: FreeInputParse, exchangeId: String) {
         val review = sources.reviews.observeLastClosedWeek().first()
         if (review == null) {
@@ -860,16 +847,17 @@ class CoachViewModel @Inject constructor(
         }
     }
 
-    private fun reviewLine(prompt: CoachReviewPrompt): String {
-        val done = prompt.adherence?.done
-        val planned = prompt.adherence?.planned
-        val percent = prompt.volume?.percentOfPlan
-        return if (done != null && planned != null && percent != null) {
-            "Semana ${prompt.weekStart}: $done de $planned treinos, $percent% do volume."
-        } else {
-            "Semana ${prompt.weekStart} fechada."
-        }
+    private suspend fun answerProgress(parsed: FreeInputParse, exchangeId: String) {
+        answerProgressContent(
+            parsed = parsed,
+            exchangeId = exchangeId,
+            progress = sources.progress,
+            settle = ::settle,
+            send = ::freeAnswer,
+        )
     }
+
+    private fun reviewLine(prompt: CoachReviewPrompt): String = reviewSummaryLine(prompt)
 
     fun retryHistory() {
         historyRetryTick.value += 1
@@ -930,6 +918,58 @@ class CoachViewModel @Inject constructor(
     }
 }
 
+private data class FreeAnswerRequest(
+    val parsed: FreeInputParse,
+    val exchangeId: String,
+    val contextHash: String,
+    val allowedMinutes: Set<Int>,
+    val allowedPercents: Set<Int>,
+    val allowedDistancesKm: Set<Double>,
+    val forbiddenCodes: Set<String>,
+    val engineContext: String,
+    val reference: List<String> = emptyList(),
+)
+
+private suspend fun answerProgressContent(
+    parsed: FreeInputParse,
+    exchangeId: String,
+    progress: CoachProgressSource,
+    settle: (String, FreeAnswerUiState) -> Unit,
+    send: suspend (FreeAnswerRequest) -> Unit,
+) {
+    val context = progress.observeProgress().first()
+    val summary = CoachProgress.summarize(context.weeks, context.easyPercent28d)
+    if (summary.availableWeeks == 0) {
+        settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PROGRESS))
+        return
+    }
+    val answer = CoachProgressAnswer.build(summary)
+    val forbidden = context.weeks.flatMap { it.ruleIds + it.evidenceIds }.toSet()
+    send(
+        FreeAnswerRequest(
+            parsed = parsed,
+            exchangeId = exchangeId,
+            contextHash = "progress|${context.today}",
+            allowedMinutes = answer.allowedMinutes,
+            allowedPercents = answer.allowedPercents,
+            allowedDistancesKm = emptySet(),
+            forbiddenCodes = forbidden,
+            engineContext = answer.engineContext,
+        ),
+    )
+}
+
+private fun reviewSummaryLine(prompt: CoachReviewPrompt): String {
+    val done = prompt.adherence?.done
+    val planned = prompt.adherence?.planned
+    val percent = prompt.volume?.percentOfPlan
+    return if (done != null && planned != null && percent != null) {
+        "Semana ${prompt.weekStart}: $done de $planned treinos, $percent% do volume."
+    } else {
+        "Semana ${prompt.weekStart} fechada."
+    }
+}
+
 /**
  * Days that never need a model call: out-of-week, past, rest or already
  * done. Returns the deterministic copy, or null when the question needs
@@ -970,16 +1010,17 @@ private fun dayLabel(today: LocalDate, target: LocalDate): String = when (target
 private const val MAX_EXCHANGES = 30
 private object FreeAnswerCopy {
     const val OUT_OF_SCOPE =
-        "Isso eu não faço por aqui — mas posso dizer o que tem amanhã, como correr cada treino e explicar a semana. " +
+        "Isso eu não faço por aqui — mas conto sua evolução, explico a semana e digo como correr. " +
             "Toca numa sugestão que eu organizo."
     const val CLARIFY = "Não entendi direito — me diz o dia e quantos minutos você tem?"
     const val CAPABILITIES =
-        "Posso dizer o que tem no dia, como correr cada treino, explicar a semana e ajudar a ajustar. " +
+        "Posso dizer o treino do dia, como correr, explicar a semana, contar sua evolução e ajustar. " +
             "É só me dizer — ou tocar numa sugestão."
     const val REPORT_ACK = "Boa! Marca lá no Hoje pra entrar na conta — por aqui eu sigo o plano."
     const val ADJUST_ACK = "Fechado, vamos ajustar. Confere as opções aqui embaixo."
     const val NO_PLAN = "Ainda estou montando sua semana — assim que o plano sair eu explico."
     const val NO_REVIEW = "A semana passada ainda não fechou por aqui — me pergunta de novo depois."
+    const val NO_PROGRESS = "Ainda não tenho semanas fechadas por aqui — me pergunta de novo daqui a pouco."
     const val NO_CONNECTION = "Sem conexão com o Coach. O plano segue o mesmo — tá aqui embaixo."
     const val GENERIC = "O Coach não respondeu. O plano segue o mesmo — tá aqui embaixo."
     const val OUTSIDE_WEEK =

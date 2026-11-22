@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 dica com dia antes + referência do motor)
+**Atualizado:** 22/11/2026 (ADR 0057 evolução por pergunta)
+
+## Sessão 2026-11-22 — Evolução por pergunta (TDD)
+
+**Pedido do usuário 0 (com razão):** "e como anda minha evolução?" caiu em
+`OUT_OF_SCOPE` — a whitelist do parser não tinha intent de trajetória, mas
+o dado existe (`CoachProgressSource`, o mesmo do Tendências).
+
+### Concluído
+
+- **Parser:** `ASK_PROGRESS` (`evolu*`, `progresso`, `melhorando`,
+  `como estou/anda`; sem âncora de treino não rouba `HOW_TO`/`ASK_WEEK`;
+  revisão + evolução juntas → `ASK_CLARIFY`).
+- **Domínio:** `CoachProgressAnswer` puro (treinos, volume, % fácil + alvo
+  80/20 estático; sem VDOT/pontuação/sono — povão no chat, técnico no
+  Tendências).
+- **App:** `answerProgress` (sem semana fechada → `NO_PROGRESS`
+  determinístico; senão `free-answer` com o rollup; `LargeClass` exigiu
+  tirar `FreeAnswerRequest`/`reviewLine`/`answerProgress` da VM).
+- **Testes:** parser 37/37, builder 2/2, VM 71/71, `check` + `spotlessCheck`
+  verdes. Sem proxy/schema/motor.
+- **Docs:** item 12 no ADR 0057 + esta entrada.
+
+### Próximo
+
+1. `./install.sh` + perguntar "e como anda minha evolução?" — esperar
+   resumo de rua com os números do Tendências, sem jargão.
+2. WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — Parser cobre "dica" invertida + referência do motor (TDD)
 

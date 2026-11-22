@@ -161,6 +161,31 @@ class FreeInputParserTest {
     }
 
     @Test
+    fun `como anda minha evolucao vira ASK_PROGRESS`() {
+        val parsed = FreeInputParser.parse("e como anda minha evolução?", DayOfWeek.SUNDAY)
+        assertEquals(FreeInputIntent.ASK_PROGRESS, parsed.intent)
+        assertEquals(FreeInputSlots(), parsed.slots)
+    }
+
+    @Test
+    fun `como estou evoluindo vira ASK_PROGRESS`() {
+        val parsed = FreeInputParser.parse("como estou evoluindo?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_PROGRESS, parsed.intent)
+    }
+
+    @Test
+    fun `progresso vira ASK_PROGRESS`() {
+        val parsed = FreeInputParser.parse("mostra meu progresso", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_PROGRESS, parsed.intent)
+    }
+
+    @Test
+    fun `revisao e evolucao juntas viram ASK_CLARIFY`() {
+        val parsed = FreeInputParser.parse("como foi minha evolução na semana passada?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_CLARIFY, parsed.intent)
+    }
+
+    @Test
     fun `dica no fim da frase com dia antes vira ASK_HOW_TO_RUN`() {
         val parsed = FreeInputParser.parse("e pra hoje, qual a dica?", DayOfWeek.SUNDAY)
         assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)

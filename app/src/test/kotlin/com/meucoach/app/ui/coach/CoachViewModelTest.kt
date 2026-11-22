@@ -1638,6 +1638,39 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `progress question calls free-answer with rollup context`(): Unit = runBlocking {
+        consent.grant()
+        progress.value = progressContext()
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Evolução", body = "3 de 3, volume bom. Bora?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("e como anda minha evolução?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        assertThat(api.lastFreeAnswerPrompt?.intent).isEqualTo(FreeInputIntent.ASK_PROGRESS)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("3 de 3")
+        assertThat(api.lastFreeAnswerPrompt?.allowedMinutes).contains(114)
+    }
+
+    @Test
+    fun `progress without closed weeks falls back`(): Unit = runBlocking {
+        consent.grant()
+        progress.value = CoachProgressContext(emptyList(), null, 0, null, LocalDate.of(2026, 11, 16))
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("como anda minha evolução?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("semanas fechadas")
+        assertThat(api.freeAnswerCalls).isZero()
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    @Test
     fun `echoQuestion appends an idle exchange and dedupes repeats`() {
         consent.grant()
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
