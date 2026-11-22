@@ -52,9 +52,23 @@ fora-escopo com fallback, revogar apaga, offline determinístico.
   pergunta final de fechamento que o prompt pede. Validador não exige;
   possível polish de prompt (exige redeploy) após a confirmação.
 
+### Confirmação do usuário 0 com o dedo (22:19)
+
+- **1. "Explica a semana": sim, ecoou** — quirk do `adb input tap`, não bug.
+- **2. "Tentar de novo": sim, respondeu** — e o banco prova o acerto fino:
+  nenhum `YOU` duplicado (retry não regrava a pergunta) e nenhum
+  `ANSWER` duplicado (dedupe por `(origin, inputsHash)` ignorou a
+  regravação do mesmo contexto). 6 `YOU` + 2 `ANSWER` + 5 legadas.
+- **3. "Ver conversa completa": abre** — mas o turno-lixo
+  "a bpode%fazer?m" **continua no banco** (deleção com o dedo ficou
+  pendente; o expandir via adb segue sem registrar o toque).
+- **4. Revogar: não testar** — a pedido do usuário; segue coberto por
+  testes (mesmo `clearAll` validado nas v19/v21).
+
 ### Próximo
 
-1. Confirmações do usuário 0 acima (dedo) + decisão sobre revogar.
+1. Pedir ao usuário 0 que apague o turno-lixo no histórico expandido
+   (1 toque na lixeira + confirmar) — última pendência da fatia 7.
 2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 6: UI do input livre (TDD)
