@@ -1,6 +1,52 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (Arte PNG F5: aba "Arte PNG" no Studio com prévia, swatches e a11y)
+**Atualizado:** 22/11/2026 (Arte PNG F6: export PNG síncrono + salvar/compartilhar + reuso)
+
+## Sessão 2026-11-22 — Arte PNG F6: export e share (TDD)
+
+**Quinta fatia do PRD de Arte PNG** (ADR 0058 §2.7): os CTAs da aba Arte
+passam a render em resolução de export (1080), publicar no MediaStore e
+abrir a share sheet — sem Worker e sem permissão de armazenamento.
+
+### Concluído
+
+- **`GalleryImagePublisher`** (`app/story/GalleryImagePublisher.kt`):
+  `ImagePublishResult(uri, savedToGallery)` + `MediaStoreGalleryImagePublisher`
+  — lógica extraída do `publishImage` privado de `CanvasStoryVideoExporter`.
+  O vídeo passa a usar o publisher; capa/pôster continuam falha-tolerante
+  (imagem não derruba o vídeo). Sem branch `<Q` e sem
+  `WRITE_EXTERNAL_STORAGE` (ADR 0059).
+- **`ArtPngExporter`/`CanvasArtPngExporter`**: export síncrono no
+  `Dispatchers.Default` — render 1080 via `StoryArtRenderer`, PNG no cache
+  (`art/…-arte-4x5.png`) e publicação em `Pictures/MeuCoach`.
+  **Reuso por `ArtExportKey(activityId, recipe, format)`** (novo tipo puro
+  em `core:domain`): `Compartilhar` com receita inalterada reutiliza o
+  último PNG (`reused = true`); `Salvar PNG` sempre publica nova cópia
+  (intenção explícita). `ArtPngExport`: `Published`/`NoRoute`/`Failure`.
+- **`StoryFileNames.art(plan, format, stamp)`** → `…-arte-4x5.png` /
+  `…-arte-1x1.png`, sem colidir com `…-poster-4x5.png`.
+- **VM**: `shareArt`/`saveArtPng`/`retryArtExport`; `ArtExportUiState`
+  (Idle/Exporting/Done/Error) no `StoryStudioUiState`; falha volta inline
+  e "Tentar novamente" re-executa o último alvo. Sem persistência da
+  receita ainda (F7 grava ao Salvar/Compartilhar).
+- **UI**: botões ficam "Compartilhando…"/"Salvando…" desabilitados durante
+  o export; `Done` de share entrega o `Uri` para a share sheet
+  (`shareMedia` com `FLAG_GRANT_READ_URI_PERMISSION`); `Done` de save
+  confirma "PNG salvo em Pictures/MeuCoach."; erro inline + retry.
+- **Testes:** `ArtPngExportTest` (7: publicação no MediaStore + limpeza da
+  linha pendente, reuso por key, regeneração em mudança de receita, save
+  sempre novo, sem rota); `StoryFileNamesTest` +1; VM +3 (share/save/
+  failure+retry); `ArtStudioContentTest` +5 (busy, confirmations, share
+  handoff, erro+retry). `check`, `verifyRoborazziDebug` e
+  baseline do detekt (VM já estava listado por LongParameterList) verdes.
+
+### Pendente
+
+- **F7:** `ArtRecipeCodec` + `ArtRecipeStore` (`meucoach_art`) — switch
+  "Salvar como padrão" grava ao Salvar/Compartilhar; extras de JSON
+  desconhecidos caem no default.
+- **F8:** docs finais (DESIGN_SYSTEM/DoD/ROADMAP) + validação no aparelho
+  dos dois CTAs e do reuso.
 
 ## Sessão 2026-11-22 — Arte PNG F5: aba do Studio (TDD)
 
@@ -16,7 +62,7 @@ de composição e golden da aba.
   resumo trocam por aba (`ArtRecipe.summaryLine()`:
   "4:5 · Anton · texto branco · traçado lima.").
 - **`StoryStudioComponents.kt`:** `StudioCardHeader`, `ExtrasCounter`,
-  `StudioPill`, `SectionLabel`, `ExtraTile` (com `tagPrefix`/hint), 
+  `StudioPill`, `SectionLabel`, `ExtraTile` (com `tagPrefix`/hint),
   `StudioSaveDefaultCard` e `uiLabel` extraídos para as duas abas.
 - **`ArtStudioContent.kt`:** prévia 540 px sobre checkerboard escuro
   default + toggle claro/escuro + label "Fundo transparente"; debounce de
