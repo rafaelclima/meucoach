@@ -1,6 +1,22 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 todos os modelos com timeout; fallback gravado e ponto cego fechado)
+**Atualizado:** 22/11/2026 (ADR 0057 MiMo servindo em produção, failover validado)
+
+## Sessão 2026-11-22 — MiMo responde; failover validado no log real
+
+**Evidência do Dokploy (usuário 0):** na abertura da aba, MiMo estourou 2×
+e o GLM serviu `review` (16,5 s) e `explain` (16,8 s); na pergunta,
+`mimo-v2.6-flash status=200` com `free-answer` em 9,9 s. Nenhuma mudança
+de código entre o antes e o depois — era congestionamento, e a cadeia fez
+o que foi desenhada para fazer (próximo da fila assume).
+
+### Lido no log
+
+- Latências ainda altas (9–17 s vs. 2–4 s saudável): gateway degradado,
+  mas funcional. Manter `COACH_UPSTREAM_TIMEOUT_MS=15000` (abaixar para
+  8 s cortaria sucessos lentos legítimos como o de 9,9 s).
+- O log novo (`served` com modelo) estreou aqui e já pagou o investimento:
+  sem ele, o `review ok`/`explain ok` seguiria sem autor conhecido.
 
 ## Sessão 2026-11-22 — Quando todos os upstreams estouram (observabilidade)
 
