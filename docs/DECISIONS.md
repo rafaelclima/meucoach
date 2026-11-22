@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.84 · **Data:** 22/11/2026
+**Versão:** 1.85 · **Data:** 22/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -82,6 +82,7 @@
 > Revisão 1.82 (22/11/2026): ADR 0057 MiMo-V2.6-Flash primeiro no Go (sem variante de pensamento); OpenRouter travado free-only por política; proxy 19 testes, `spotlessCheck` verde.
 > Revisão 1.83 (22/11/2026): ADR 0058 proposto — Arte PNG da rota como card transparente 4:5/1:1 no Story Studio, 6 fontes, 8 swatches, 2 extras, `SharedPreferences` `meucoach_art`, Q+ MediaStore / API 26–28 share-only, spike de alpha e exceção de AA; PRD v0.2 fechado, implementação F2–F8 pendente.
 > Revisão 1.84 (22/11/2026): ADR 0059 aceito e implementado — `minSdk` 31 (Android 12+) no app e módulos Android; story sem branch `<Q` e sem `WRITE_EXTERNAL_STORAGE`; ADR 0058 atualizado para MediaStore sempre.
+> Revisão 1.85 (22/11/2026): ADR 0058 aceito e implementado (F2–F8) — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor`, 4 famílias de fonte OFL + NOTICE, `StoryArtRenderer` transparente com alpha por pixel e goldens, aba "Arte PNG" no Studio com prévia checkerboard/debounce/swatches/fonte, `GalleryImagePublisher` extraído do vídeo + export síncrono com reuso por `ArtExportKey`, persistência `meucoach_art` (codec versionado com decode tolerante) e limpeza no reset de dados. Spike de alpha validado no Instagram (alpha preservado via figurinha). Básico validado no aparelho pelo usuário 0 em 22/11/2026.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -142,7 +143,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0055](adr/0055-chat-turn-single-table-v21.md) | Coach em tabela única (`chat_turns`, Room v21): `inputsHash` + índice único `(origin, inputsHash)`; escrita só em `chat_turns`, tabelas v19 removidas; `visibleTurns` direto nos turns | Aceito e implementado em 21/11/2026 (v21: escrita só em `chat_turns`) | 21/11/2026 |
 | [0056](adr/0056-coach-free-input.md) | Input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` ao proxy), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, `You` persistido em `chat_turns` v22 (TTL 90 d) | Proposto em 21/11/2026; implementado em 21/11/2026 (parser, validador, proxy/contrato, repository v22, UI, aparelho); ver ADR 0057 para as respostas de sessão | 21/11/2026 |
 | [0057](adr/0057-coach-session-answers.md) | Respostas de sessão no Coach: `ASK_SESSION`/`ASK_HOW_TO_RUN`, `CoachSessionAnswer` puro (contexto por sessão, futuro sempre planejado, prontidão/sono só hoje), VM responde local primeiro (passado/descanso/fora/dia feito sem rede) e só chama `free-answer` com sessão `PLANNED` | Aceito e implementado em 22/11/2026 (parser 27 + builder 6 + VM 60 testes; `check`, `spotlessCheck`, `koverVerify`, detekt verdes; sem proxy/schema) | 22/11/2026 |
-| [0058](adr/0058-art-png-route.md) | Arte PNG da rota: card transparente 4:5/1:1 no Story Studio, 6 fontes, 8 swatches, 2 extras, `SharedPreferences` `meucoach_art`, Android 12+ / MediaStore, alpha spike e exceção de AA | Proposto — decisões de produto fechadas em 22/11/2026; F0/spikes, F2–F8 pendentes | 22/11/2026 |
+| [0058](adr/0058-art-png-route.md) | Arte PNG da rota: card transparente 4:5/1:1 no Story Studio, 6 fontes, 8 swatches, 2 extras, `SharedPreferences` `meucoach_art`, Android 12+ / MediaStore, alpha spike e exceção de AA | Aceito e implementado em 22/11/2026 (F2–F7 + spike de alpha validado; básico validado no aparelho pelo usuário 0) | 22/11/2026 |
 | [0059](adr/0059-min-sdk-31.md) | Plataforma mínima Android 12 (API 31): app e módulos Android, story sem branch `<Q`, sem `WRITE_EXTERNAL_STORAGE`; alvo real do usuário 0 | Aceito e implementado em 22/11/2026 (`minSdk 31`, `StoryVideoExporter`/worker simplificados, docs de plataforma atualizados) | 22/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).

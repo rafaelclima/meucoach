@@ -1,6 +1,42 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (Arte PNG F7: persistência `meucoach_art` integrada)
+**Atualizado:** 22/11/2026 (Arte PNG F8: feature fechada — DoD verdes e validada no aparelho)
+
+## Sessão 2026-11-22 — Arte PNG F8: fechamento da feature
+
+**Última fatia do ADR 0058**: validação no aparelho pelo usuário 0 ("o
+básico foi validado. tudo ok."), gates finais e docs.
+
+### DoD do PRD §12 — estado
+
+- [x] `./gradlew :app:assembleDebug`, `check`, `spotlessCheck`,
+  `koverVerify` e lint/detekt verdes (invocações separadas do gate
+  visual — o `--tests` combinado com kover re-executa a suíte filtrada e
+  derruba a cobertura do artefato).
+- [x] `:app:verifyRoborazziDebug --tests "*Art*"` verde: goldens
+  `art-png-4x5-default/1x1-default/4x5-customized` + `art-studio-tab-dark`.
+- [x] Alpha de fundo = 0 por pixel (cantos 24×24 + maioria do canvas);
+  sem rota → `null`; rota sem distorção (F4).
+- [x] `Paint.hasGlyph` nas 6 fontes (strings do card + çãáéô) e `tnum`
+  medido em Inter/Geist; data "24 out 2026" via `ArtDateFormatter`.
+- [x] UI: TalkBack (swatches/seleção/descrição da prévia), 48 dp, estados
+  loading/empty/error com "Tentar novamente", checkerboard com label,
+  aviso de contraste, CTA compartilhar primário / salvar secundário,
+  reuso por key (validado no aparelho: sem PNG duplicado).
+- [x] Android 12+: MediaStore `Pictures/MeuCoach`, sem permissão de
+  armazenamento (ADR 0059).
+- [x] Vídeo, capa e pôster sem regressão (goldens + aparelho).
+- [x] Persistência: `meucoach_art` sobrevive a restart; "Restaurar
+  padrão" limpa o store; reset de dados limpa a preferência.
+- [x] `PROGRESS`, `ROADMAP`, `DESIGN_SYSTEM` (§4.1 fontes) e
+  `DECISIONS` (rev. 1.85, ADR 0058 aceito) atualizados. ADR 0058 status
+  Aceito com spike de alpha registrado.
+- [x] Nenhum dado real no diff; NOTICE OFL no APK/repo.
+
+### Sobre os guardas de escopo (o que NÃO saiu)
+
+Sem `ROUTE_CROP`, sem 9:16 na arte, sem 7ª fonte (Barlow), sem
+`lime-pressed`, sem color picker livre, sem mapa/tiles — §4 do PRD é lei.
 
 ## Sessão 2026-11-22 — Arte PNG F7: codec + store (TDD)
 

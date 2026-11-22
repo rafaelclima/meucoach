@@ -747,7 +747,7 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 
 ### P3-06 · Arte PNG da rota (card transparente 4:5/1:1)
 
-**Status:** decisões de produto fechadas em 22/11/2026; PRD v0.2 e ADR 0058/0059 publicados; spike de alpha validado; F2–F7 feitos; F8 (docs/DoD + validação no aparelho) pendente.
+**Status:** concluída em 22/11/2026 (F2–F8 implementadas; spike de alpha e validação básica no aparelho feitos; ajustes finos de layout ficam para a spec visual final).
 
 Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/0058-art-png-route.md).
 
@@ -759,7 +759,7 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/00
 - [x] F5 — aba Arte PNG no Studio + prévia + a11y (22/11/2026; export dos CTAs na F6, persistência na F7).
 - [x] F6 — `GalleryImagePublisher` + salvar/compartilhar + reuso (22/11/2026; validação no aparelho pendente).
 - [x] F7 — `ArtRecipeCodec` + `ArtRecipeStore` integrados + polimento (22/11/2026).
-- [ ] F8 — docs/DoD.
+- [x] F8 — docs/DoD (22/11/2026; validação básica no aparelho pelo usuário 0).
 
 ---
 
