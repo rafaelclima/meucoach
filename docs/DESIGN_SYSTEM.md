@@ -124,6 +124,9 @@ O resultado deve parecer um equipamento de precisão, não um brinquedo.
 
 Ambas são embarcadas como fontes variáveis. Sem fontes proprietárias (Satoshi/General Sans) para evitar risco de licença no APK.
 
+**Famílias da Arte PNG** (ADR 0058 §2.5; exclusivas do card, não usadas na UI do app):
+**Bebas Neue**, **Anton**, **Oswald** (500 + 700, arquivos estáticos) e **Archivo Black**, todas OFL 1.1, com NOTICE em `core/designsystem/src/main/res/raw/notice_art_fonts.txt`. O picker mostra os nomes em Inter + preview único da família selecionada; o card usa a receita (`ArtRecipe.font`).
+
 ### 4.2 Escala
 
 | Token | Tamanho / linha | Peso | Uso |
