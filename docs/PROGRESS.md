@@ -1,6 +1,58 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (F0: spike de alpha no Instagram validado — alpha preservado)
+**Atualizado:** 22/11/2026 (Arte PNG F5: aba "Arte PNG" no Studio com prévia, swatches e a11y)
+
+## Sessão 2026-11-22 — Arte PNG F5: aba do Studio (TDD)
+
+**Quarta fatia do PRD de Arte PNG** (ADR 0058 §2.8): o Studio ganha o
+segmento "Vídeo | Arte PNG" e a aba completa da arte. TDD: testes de VM,
+de composição e golden da aba.
+
+### Concluído
+
+- **Chrome compartilhado:** header/fechar agora são únicos em
+  `StoryStudioContent` (o conteúdo de vídeo deixa de duplicar) + segmento
+  `Vídeo | Arte PNG` (48 dp, `selected` para TalkBack). Título e linha de
+  resumo trocam por aba (`ArtRecipe.summaryLine()`:
+  "4:5 · Anton · texto branco · traçado lima.").
+- **`StoryStudioComponents.kt`:** `StudioCardHeader`, `ExtrasCounter`,
+  `StudioPill`, `SectionLabel`, `ExtraTile` (com `tagPrefix`/hint), 
+  `StudioSaveDefaultCard` e `uiLabel` extraídos para as duas abas.
+- **`ArtStudioContent.kt`:** prévia 540 px sobre checkerboard escuro
+  default + toggle claro/escuro + label "Fundo transparente"; debounce de
+  ~120 ms e um render em voo (`produceState` + `Dispatchers.Default`),
+  prévia anterior permanece durante re-render; estados Loading/Empty
+  ("Sem rota suficiente para a arte")/Error ("Tentar novamente"); chips de
+  formato (4:5/1:1); extras com `EXTRA_CHOICES` + disponibilidade (máx. 2);
+  8 swatches para texto e 8 para traçado (independentes, círculo com o
+  `argb` da arte, `selected` + check, labels "Cor do texto: ciano");
+  fonte com nomes em Inter + preview único da família selecionada; CTAs
+  `Compartilhar` (primário) e `Salvar PNG` (secundário) habilitados só
+  com rota — o export real é a F6; switch "Salvar como padrão" +
+  "Restaurar padrão" (persistência na F7).
+- **`ArtContrast.kt`:** razão WCAG pura + aviso quando texto (4.5:1) ou
+  traçado (3:1) falham no checkerboard em exibição ("confira sobre a
+  foto"). Texto branco no fundo claro **avisa por design** — testado.
+- **ViewModel:** `artRecipe`/`artSaveAsDefault` no `StoryStudioUiState`;
+  `selectArtFormat/toggleArtExtra/selectArtTextColor/selectArtRouteColor/
+  selectArtFont/setArtSaveAsDefault/resetArtRecipe`; `openStoryStudio`
+  filtra extras de vídeo (MAX_HR/FASTEST_KM) e indisponíveis da receita
+  de arte; `StoryStudioActions.art` agrupa os callbacks da tela.
+- **Testes:** 7 no VM (defaults, seleção, limite, extras inválidos,
+  reset, switch); 16 em `ArtStudioContentTest` (segmento troca de aba,
+  formato, extras, swatches + TalkBack, fonte, CTAs com/sem rota, label,
+  48 dp); 7 em `ArtContrastTest`; golden `art-studio-tab-dark.png`.
+  Regressão: os 16 testes existentes do `StoryStudioContentTest`
+  passaram sem mudança. `check` + `verifyRoborazziDebug` verdes.
+
+### Pendente
+
+- **F6:** `GalleryImagePublisher` + salvar/compartilhar + reuso por key
+  (os CTAs já estão na UI, callbacks ainda no-op).
+- **F7:** `ArtRecipeCodec` + `ArtRecipeStore` (`meucoach_art`) — o switch
+  grava a partir daí.
+- Spec visual final: posições do layout seguem o ADR; ajustes após
+  validação no aparelho regravam os goldens.
 
 ## Sessão 2026-11-22 — F0: spike de alpha no Instagram validado (usuário 0)
 

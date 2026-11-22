@@ -747,7 +747,7 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 
 ### P3-06 · Arte PNG da rota (card transparente 4:5/1:1)
 
-**Status:** decisões de produto fechadas em 22/11/2026; PRD v0.2 e ADR 0058/0059 publicados; F2–F4 feitos; F0/spikes e F5–F8 pendentes.
+**Status:** decisões de produto fechadas em 22/11/2026; PRD v0.2 e ADR 0058/0059 publicados; spike de alpha validado; F2–F5 feitos; F6–F8 pendentes.
 
 Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/0058-art-png-route.md).
 
@@ -756,7 +756,7 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/00
 - [x] F2 — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor` (22/11/2026).
 - [x] F3 — 4 fontes novas + tokens/`McColors` + NOTICE + testes de glifo (22/11/2026).
 - [x] F4 — `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel (22/11/2026; posições finais aguardam a spec visual do F0).
-- [ ] F5 — aba Arte PNG no Studio + prévia + a11y.
+- [x] F5 — aba Arte PNG no Studio + prévia + a11y (22/11/2026; export dos CTAs na F6, persistência na F7).
 - [ ] F6 — `GalleryImagePublisher` + salvar/compartilhar + reuso.
 - [ ] F7 — `ArtRecipeCodec` + `ArtRecipeStore` integrados + polimento.
 - [ ] F8 — docs/DoD.
