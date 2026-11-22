@@ -59,17 +59,17 @@ fora-escopo com fallback, revogar apaga, offline determinístico.
   nenhum `YOU` duplicado (retry não regrava a pergunta) e nenhum
   `ANSWER` duplicado (dedupe por `(origin, inputsHash)` ignorou a
   regravação do mesmo contexto). 6 `YOU` + 2 `ANSWER` + 5 legadas.
-- **3. "Ver conversa completa": abre** — mas o turno-lixo
-  "a bpode%fazer?m" **continua no banco** (deleção com o dedo ficou
-  pendente; o expandir via adb segue sem registrar o toque).
+- **3. "Ver conversa completa": abre** — turno-lixo **apagado pelo
+  usuário 0 com o dedo** (confirmado no banco: 0 ocorrências, 5 `YOU` +
+  2 `ANSWER` + 5 legadas). Apagar por item validado no aparelho.
 - **4. Revogar: não testar** — a pedido do usuário; segue coberto por
   testes (mesmo `clearAll` validado nas v19/v21).
 
 ### Próximo
 
-1. Pedir ao usuário 0 que apague o turno-lixo no histórico expandido
-   (1 toque na lixeira + confirmar) — última pendência da fatia 7.
-2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
+**ADR 0056 encerrado no aparelho em 21/11/2026** (revogar dispensado pelo
+usuário 0; segue coberto por testes). Próxima sessão: demais itens do
+handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 6: UI do input livre (TDD)
 
