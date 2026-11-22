@@ -13,6 +13,8 @@ import java.time.DayOfWeek
  */
 enum class FreeInputIntent {
     ASK_WEEK,
+    ASK_SESSION,
+    ASK_HOW_TO_RUN,
     ASK_REVIEW,
     REPORT_DONE,
     REQUEST_ADJUST,
@@ -82,11 +84,32 @@ object FreeInputParser {
         Regex("""\b(revisao|resumo da semana|como foi)\b"""),
     )
 
+    private val becausePattern = Regex("""(porque|por que).*(hoje|treino|facil|forte|descanso)""")
+
     private val weekPatterns = listOf(
-        Regex("""(porque|por que).*(hoje|treino|facil|forte|descanso)"""),
-        Regex("""\b(o que tem|qual (e|o) treino|explica|explicacao|minha semana|proximo treino)\b"""),
+        becausePattern,
+        Regex("""\b(explica|explicacao|minha semana)\b"""),
+        Regex("""\bvolume\b.*\bsemana\b|\bsemana\b.*\bvolume\b"""),
+    )
+
+    private val howToPatterns = listOf(
+        Regex("""\bcomo\s+(corro|correr|faco|fazer|devo|levar)\b"""),
+        Regex("""\bcomo\s+e\b"""),
+        Regex("""\bdica\b.*(correr|corrida|treino|amanha|hoje|longao|rodagem)"""),
+        Regex("""(correr|corrida|treino|longao|rodagem).*\bdica\b"""),
+        Regex("""\bestrategia\b.*(treino|corrida|prova|longao)"""),
+        Regex("""\britmo\b.*(manter|levar|segurar)"""),
+    )
+
+    private val sessionPatterns = listOf(
+        Regex("""\b(o que (tem|tinha)|qual (e|o) treino|tem treino|proximo treino)\b"""),
+        Regex("""\btreino\b.*\b(hoje|amanha|ontem)\b"""),
+        Regex("""\b(hoje|amanha|ontem)\b.*\b(treino|corrida|correr|longao|teve|foi)\b"""),
         Regex("""(hoje|amanha) tem"""),
-        Regex("""treino de (hoje|amanha)"""),
+        Regex("""treino de (hoje|amanha|ontem)"""),
+        Regex("""(segunda|terca|quarta|quinta|sexta|sabado|domingo)\b.*(treino|corrida|tem|longao)"""),
+        Regex("""(seg|ter|qua|qui|sex|sab|dom)\b.*(treino|corrida|tem|longao)"""),
+        Regex("""(treino|corrida|longao).*(segunda|terca|quarta|quinta|sexta|sabado|domingo)"""),
     )
 
     private val capabilitiesPatterns = listOf(
@@ -104,29 +127,66 @@ object FreeInputParser {
         val sanitized = whitespace.replace(text.trim(), " ").take(MAX_CHARS)
         val normalized = normalizedKeywordForm(sanitized)
         val intent = resolveIntent(normalized)
-        val slots = if (intent == FreeInputIntent.REQUEST_ADJUST) extractSlots(normalized, today) else FreeInputSlots()
+        val slots = if (
+            intent == FreeInputIntent.REQUEST_ADJUST ||
+            intent == FreeInputIntent.ASK_SESSION ||
+            intent == FreeInputIntent.ASK_HOW_TO_RUN
+        ) {
+            extractSlots(normalized, today)
+        } else {
+            FreeInputSlots()
+        }
         return FreeInputParse(intent, slots, sanitized)
     }
 
     private fun resolveIntent(normalized: String): FreeInputIntent {
         if (normalized.isEmpty()) return FreeInputIntent.ASK_CLARIFY
         if (scopePatterns.any { it.containsMatchIn(normalized) }) return FreeInputIntent.OUT_OF_SCOPE
-        val adjust = adjustExplicit.any { it.containsMatchIn(normalized) } || timeShortage.containsMatchIn(normalized)
-        val report = !negation.containsMatchIn(normalized) && reportPatterns.any { it.containsMatchIn(normalized) }
-        val review = reviewPatterns.any { it.containsMatchIn(normalized) }
-        val week = weekPatterns.any { it.containsMatchIn(normalized) }
-        val capabilities = capabilitiesPatterns.any { it.containsMatchIn(normalized) }
-        val matches = listOf(adjust, report, review, week, capabilities).count { it }
-        return when {
-            matches >= 2 -> FreeInputIntent.ASK_CLARIFY
-            adjust && needsClarification(normalized) -> FreeInputIntent.ASK_CLARIFY
-            adjust -> FreeInputIntent.REQUEST_ADJUST
-            report -> FreeInputIntent.REPORT_DONE
-            review -> FreeInputIntent.ASK_REVIEW
-            week -> FreeInputIntent.ASK_WEEK
-            capabilities -> FreeInputIntent.ASK_CAPABILITIES
-            else -> FreeInputIntent.OUT_OF_SCOPE
-        }
+        val flags = matchFlags(normalized)
+        if (flags.matches >= 2) return FreeInputIntent.ASK_CLARIFY
+        if (flags.adjust && needsClarification(normalized)) return FreeInputIntent.ASK_CLARIFY
+        return decideIntent(flags)
+    }
+
+    private data class MatchFlags(
+        val adjust: Boolean,
+        val report: Boolean,
+        val review: Boolean,
+        val training: Boolean,
+        val howTo: Boolean,
+        val session: Boolean,
+        val week: Boolean,
+        val capabilities: Boolean,
+    ) {
+        val matches: Int get() = listOf(adjust, report, review, training, week, capabilities).count { it }
+    }
+
+    private fun matchFlags(normalized: String): MatchFlags {
+        val explicitAdjust = adjustExplicit.any { it.containsMatchIn(normalized) }
+        val because = becausePattern.containsMatchIn(normalized)
+        val howTo = !explicitAdjust && howToPatterns.any { it.containsMatchIn(normalized) }
+        val session = !because && !explicitAdjust && sessionPatterns.any { it.containsMatchIn(normalized) }
+        return MatchFlags(
+            adjust = explicitAdjust || timeShortage.containsMatchIn(normalized),
+            report = !negation.containsMatchIn(normalized) && reportPatterns.any { it.containsMatchIn(normalized) },
+            review = reviewPatterns.any { it.containsMatchIn(normalized) },
+            training = howTo || session,
+            howTo = howTo,
+            session = session,
+            week = weekPatterns.any { it.containsMatchIn(normalized) },
+            capabilities = capabilitiesPatterns.any { it.containsMatchIn(normalized) },
+        )
+    }
+
+    private fun decideIntent(flags: MatchFlags): FreeInputIntent = when {
+        flags.adjust -> FreeInputIntent.REQUEST_ADJUST
+        flags.report -> FreeInputIntent.REPORT_DONE
+        flags.review -> FreeInputIntent.ASK_REVIEW
+        flags.howTo -> FreeInputIntent.ASK_HOW_TO_RUN
+        flags.session -> FreeInputIntent.ASK_SESSION
+        flags.week -> FreeInputIntent.ASK_WEEK
+        flags.capabilities -> FreeInputIntent.ASK_CAPABILITIES
+        else -> FreeInputIntent.OUT_OF_SCOPE
     }
 
     /**

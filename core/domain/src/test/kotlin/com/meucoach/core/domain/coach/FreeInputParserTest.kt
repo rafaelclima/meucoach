@@ -13,9 +13,10 @@ class FreeInputParserTest {
     }
 
     @Test
-    fun `pergunta sobre amanha vira ASK_WEEK`() {
+    fun `pergunta sobre amanha vira ASK_SESSION`() {
         val parsed = FreeInputParser.parse("o que tem amanhã?", DayOfWeek.MONDAY)
-        assertEquals(FreeInputIntent.ASK_WEEK, parsed.intent)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY), parsed.slots)
     }
 
     @Test
@@ -136,5 +137,51 @@ class FreeInputParserTest {
     fun `sanitized limita a 500 caracteres`() {
         val parsed = FreeInputParser.parse("treino " + "x".repeat(600), DayOfWeek.MONDAY)
         assertTrue(parsed.sanitized.length <= FreeInputParser.MAX_CHARS)
+    }
+
+    @Test
+    fun `dica de como correr amanha vira ASK_HOW_TO_RUN`() {
+        val parsed = FreeInputParser.parse("me dá uma dica de como correr amanhã", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY), parsed.slots)
+    }
+
+    @Test
+    fun `como e o treino de hoje vira ASK_HOW_TO_RUN`() {
+        val parsed = FreeInputParser.parse("como é o treino de hoje?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.MONDAY), parsed.slots)
+    }
+
+    @Test
+    fun `qual treino de domingo vira ASK_SESSION`() {
+        val parsed = FreeInputParser.parse("qual o treino de domingo?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY), parsed.slots)
+    }
+
+    @Test
+    fun `como correr o longao vira ASK_HOW_TO_RUN sem dia`() {
+        val parsed = FreeInputParser.parse("como corro o longão?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
+        assertEquals(FreeInputSlots(), parsed.slots)
+    }
+
+    @Test
+    fun `por que facil hoje continua ASK_WEEK`() {
+        val parsed = FreeInputParser.parse("por que o treino de hoje é fácil?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_WEEK, parsed.intent)
+    }
+
+    @Test
+    fun `pedido de pace em pergunta de sessao continua OUT_OF_SCOPE`() {
+        val parsed = FreeInputParser.parse("qual meu pace pra amanhã?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.OUT_OF_SCOPE, parsed.intent)
+    }
+
+    @Test
+    fun `sessao mais relato vira ASK_CLARIFY`() {
+        val parsed = FreeInputParser.parse("fiz o longo e o que tem amanhã?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_CLARIFY, parsed.intent)
     }
 }

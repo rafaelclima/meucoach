@@ -19,16 +19,21 @@ import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.ChatTurns
 import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachMessageKind
+import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachProgress
 import com.meucoach.core.domain.coach.CoachProgressSummary
 import com.meucoach.core.domain.coach.CoachPromptBuilder
 import com.meucoach.core.domain.coach.CoachResponseValidator
 import com.meucoach.core.domain.coach.CoachReviewPrompt
 import com.meucoach.core.domain.coach.CoachReviewPromptBuilder
+import com.meucoach.core.domain.coach.CoachSessionAnswer
 import com.meucoach.core.domain.coach.CoachValidationResult
 import com.meucoach.core.domain.coach.FreeInputIntent
 import com.meucoach.core.domain.coach.FreeInputParse
 import com.meucoach.core.domain.coach.FreeInputParser
+import com.meucoach.core.domain.coach.SessionTask
+import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.model.AthleteProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -564,6 +569,10 @@ class CoachViewModel @Inject constructor(
 
                 FreeInputIntent.ASK_WEEK -> answerWeek(parsed)
 
+                FreeInputIntent.ASK_SESSION -> answerSession(parsed, SessionTask.WHAT)
+
+                FreeInputIntent.ASK_HOW_TO_RUN -> answerSession(parsed, SessionTask.HOW_TO)
+
                 FreeInputIntent.ASK_REVIEW -> answerReview(parsed)
             }
         }
@@ -593,6 +602,90 @@ class CoachViewModel @Inject constructor(
             forbiddenCodes = prompt.ruleIds.toSet(),
             engineContext = prompt.rationale,
         )
+    }
+
+    /**
+     * Session-specific answer (ASK_SESSION / ASK_HOW_TO_RUN).
+     *
+     * Past, rest and out-of-week days answer locally without a model call:
+     * instant, honest and free. Only a present/future `PLANNED` session goes
+     * to `free-answer` with a session-scoped `engineContext`, so the reply
+     * can only cite that session and the week total.
+     */
+    private suspend fun answerSession(parsed: FreeInputParse, task: SessionTask) {
+        val planContext = sources.plans.observeCurrent().first()
+        if (planContext == null) {
+            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN)
+            return
+        }
+        val plan = planContext.plan
+        val today = LocalDate.now(clock)
+        val nextContext = sources.next.observeNext().first()
+        val slotDay = parsed.slots.dayOfWeek
+        val target = if (slotDay != null) {
+            CoachSessionAnswer.resolveDayInWeek(today, slotDay)
+        } else {
+            (nextContext.subject as? CoachNextSubject.Training)?.session?.date ?: today
+        }
+        val localCopy = localSessionCopy(plan, today, target, task)
+        if (localCopy != null) {
+            _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(localCopy))
+            return
+        }
+        val session = plan.sessions.find { it.date == target } ?: return
+        val prescribed = if (target == today && nextContext.isToday) nextContext.prescription else null
+        val answer = CoachSessionAnswer.build(
+            today = today,
+            target = target,
+            sessions = plan.sessions,
+            weeklyMinutes = plan.weeklyMinutes,
+            task = task,
+            prescription = prescribed,
+            sleepMinutes = if (target == today) nextContext.sleepMinutes else null,
+            hasCheckIn = target == today && nextContext.hasCheckIn,
+        )
+        freeAnswer(
+            parsed = parsed,
+            contextHash = "${planContext.inputsHash}|$target",
+            allowedMinutes = answer.allowedMinutes,
+            allowedPercents = emptySet(),
+            allowedDistancesKm = answer.allowedDistancesKm,
+            forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
+            engineContext = answer.engineContext,
+        )
+    }
+
+    /**
+     * Days that never need a model call: out-of-week, past, rest or already
+     * done. Returns the deterministic copy, or null when the question needs
+     * the `free-answer` model path with the session context.
+     */
+    private fun localSessionCopy(plan: WeeklyPlan, today: LocalDate, target: LocalDate, task: SessionTask): String? {
+        val weekStart = CoachSessionAnswer.weekStart(today)
+        val session = plan.sessions.find { it.date == target }
+        val doneToday = target == today && session != null &&
+            (session.status == SessionStatus.DONE || session.status == SessionStatus.CLOSED)
+        return when {
+            target.isBefore(weekStart) || target.isAfter(weekStart.plusDays(6)) -> FreeAnswerCopy.OUTSIDE_WEEK
+
+            target.isBefore(today) -> FreeAnswerCopy.SESSION_PAST
+
+            session == null -> if (task == SessionTask.HOW_TO) {
+                FreeAnswerCopy.dayRestHowTo(dayLabel(today, target))
+            } else {
+                FreeAnswerCopy.dayRest(dayLabel(today, target))
+            }
+
+            doneToday -> FreeAnswerCopy.SESSION_DONE
+
+            else -> null
+        }
+    }
+
+    private fun dayLabel(today: LocalDate, target: LocalDate): String = when (target) {
+        today -> "Hoje"
+        today.plusDays(1) -> "Amanhã"
+        else -> "Esse dia"
     }
 
     private suspend fun answerReview(parsed: FreeInputParse) {
@@ -753,11 +846,11 @@ class CoachViewModel @Inject constructor(
  */
 private object FreeAnswerCopy {
     const val OUT_OF_SCOPE =
-        "Isso eu não faço por aqui — mas posso explicar sua semana ou ajudar a ajustar um treino. " +
+        "Isso eu não faço por aqui — mas posso dizer o que tem amanhã, como correr cada treino e explicar a semana. " +
             "Toca numa sugestão que eu organizo."
     const val CLARIFY = "Não entendi direito — me diz o dia e quantos minutos você tem?"
     const val CAPABILITIES =
-        "Posso explicar sua semana, contar como foi a passada e ajudar a ajustar um treino. " +
+        "Posso dizer o que tem no dia, como correr cada treino, explicar a semana e ajudar a ajustar. " +
             "É só me dizer — ou tocar numa sugestão."
     const val REPORT_ACK = "Boa! Marca lá no Hoje pra entrar na conta — por aqui eu sigo o plano."
     const val ADJUST_ACK = "Fechado, vamos ajustar. Confere as opções aqui embaixo."
@@ -765,4 +858,15 @@ private object FreeAnswerCopy {
     const val NO_REVIEW = "A semana passada ainda não fechou por aqui — me pergunta de novo depois."
     const val NO_CONNECTION = "Sem conexão com o Coach. O plano segue o mesmo — tá aqui embaixo."
     const val GENERIC = "O Coach não respondeu. O plano segue o mesmo — tá aqui embaixo."
+    const val OUTSIDE_WEEK =
+        "Esse dia é de outra semana — te mostro a semana atual ou como foi a passada?"
+    const val SESSION_PAST =
+        "Esse dia já passou por aqui — conta como foi lá no Hoje? Posso explicar a semana atual."
+    const val SESSION_DONE = "Hoje já foi — boa! Marca lá no Hoje pra entrar na conta."
+
+    fun dayRest(day: String): String =
+        "$day é descanso — sem treino planejado. Dorme bem hoje que conta. Quer ver a semana?"
+
+    fun dayRestHowTo(day: String): String =
+        "$day é descanso — sem treino. Descanso é treino: sem rodar pra compensar. Dorme bem que conta."
 }

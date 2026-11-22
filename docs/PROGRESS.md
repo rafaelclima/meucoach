@@ -1,6 +1,41 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (voz única na fonte + reparo dos títulos guardados)
+**Atualizado:** 22/11/2026 (ADR 0057: respostas de sessão no Coach)
+
+## Sessão 2026-11-22 — ADR 0057: o Coach responde a sessão (TDD)
+
+**Objetivo:** tirar o "isso eu não faço" das perguntas de treino — "o que tem
+amanhã?" e "dica de como correr amanhã" ganham contexto do motor, sem número
+novo e sem prescrever o futuro.
+
+### Concluído
+
+- **Mapa aprovado:** 8 famílias de interação (sessão, como-correr, porquê,
+  prontidão, semana, retrovisor, ajuste, método), todas grounded no motor;
+  fora segue recusado (dor/número novo/plano novo/dieta/musculação).
+- **Domínio:** `ASK_SESSION`/`ASK_HOW_TO_RUN` no parser (precedência: escopo >
+  ajuste explícito > resto; `como` vence `o quê`; `por que` segue semana;
+  ontem/hoje/amanhã/semana resolvem dia) + `CoachSessionAnswer` puro (dia
+  legível, futuro sempre "Planejado", prontidão/sono só hoje, esforço em
+  palavras, `allowedMinutes/Distances` da sessão). `detekt` exigiu quebrar
+  `resolveIntent` e `engineContext` em helpers (sem supressão).
+- **App:** `answerSession` na VM — passado, descanso, fora da semana e dia
+  feito respondem local (sem rede/latência/custo); só `PLANNED`
+  presente/futura vai ao `free-answer` com `contextHash = planHash|data` e
+  `forbiddenCodes` do plano + sessão. Cópias de capacidade atualizadas.
+- **Testes:** parser 27/27 (7 novos), builder 6/6, VM 60/60 (6 novos:
+  sessão/how-to via modelo, descanso/passado/feito/sem-plano sem rede).
+- **Gates:** `check` (inclui detekt, lint, kover e todos os testes),
+  `spotlessCheck` e `koverVerify` verdes. Sem proxy, schema, motor ou dado
+  real no diff.
+- **Docs:** ADR 0057 + `DECISIONS.md` r1.72 + linha no `ROADMAP.md`.
+
+### Próximo
+
+1. `./install.sh` + golden questions no aparelho (sessão de amanhã, como
+   correr, descanso, passado, offline, sem consentimento).
+2. Fatia WHY/prontidão/método no mesmo padrão; depois quick-replies e CTA
+   ("Ver como correr hoje" / "Ver plano").
 
 ## Sessão 2026-11-21 — Voz única na fonte + reparo do plano guardado (TDD)
 

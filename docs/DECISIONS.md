@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.71 · **Data:** 21/11/2026
+**Versão:** 1.72 · **Data:** 22/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -69,6 +69,7 @@
 > Revisão 1.69 (21/11/2026): ADR 0056 proposto (sessão só desenho, sem código) — input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` vai ao proxy, nunca texto cru), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, turno `You` persistido em `chat_turns` v22 futura (TTL 90 d, opt-in, revogar apaga) e `System` segue efêmero; rollout em 7 fatias.
 > Revisão 1.70 (21/11/2026): ADR 0056 fatias 2–5 implementadas — `FreeInputParser` puro (20 testes), `validateFreeAnswer` (16 testes), proxy `free-answer` + contrato no app (`CoachFreeAnswerPrompt`, 18 + 9 testes; redeploy pendente) e repository v22 (`ChatTurn.You`, `recordYouTurn`, `MIGRATION_21_22`, schema `22.json`, export/delete com `YOU`, cadeia 1→22, 10+13+9+19 testes); `check` + `spotlessCheck` verdes. Restam UI (fatia 6) e aparelho (fatia 7).
 > Revisão 1.71 (21/11/2026): ADR 0056 fatia 6 implementada — `Origin.ANSWER`, `FreeAnswerUiState` + `sendFreeText` na VM (determinísticas sem rede, semana/revisão via `free-answer` validado, ajuste via replan existente), `CoachComposer` 48 dp com TalkBack, bolhas/fallback/retry no rodapé, `YOU`/`ANSWER` no histórico (54+60+12+11 testes); `check` + `spotlessCheck` verdes. Restam redeploy do proxy e fatia 7 (aparelho).
+> Revisão 1.72 (22/11/2026): ADR 0057 aceito e implementado — respostas de sessão no Coach (`ASK_SESSION`/`ASK_HOW_TO_RUN`, `CoachSessionAnswer` puro, VM responde local primeiro e só chama `free-answer` com sessão `PLANNED`; parser 27 + builder 6 + VM 60 testes; `check`, `spotlessCheck`, `koverVerify`, detekt verdes; sem proxy/schema/motor).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -127,7 +128,8 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0053](adr/0053-cold-start-ramp.md) | Rampa de entrada do cold-start: intermediário com VDOT recente mantém 1 qualidade ≤30min sem 8 dias (`R-COLD-01`); sugestão de nível na calibração | Implementado em 19/11/2026 (domínio puro + wiring Hoje + hint calibração; sem migração) | 19/11/2026 |
 | [0054](adr/0054-chat-turn-memory-v20.md) | Timeline única do Coach (`ChatTurn`, Room v20): domínio puro + `ChatTurns.fromMemory` com paridade das regras; `You`/`System` efêmeros; `chat_turns` aditiva com backfill e TTL por `expiresAt` | Aceito e implementado em 21/11/2026 (fatias 1–4: domínio, v20, repository, histórico) | 21/11/2026 |
 | [0055](adr/0055-chat-turn-single-table-v21.md) | Coach em tabela única (`chat_turns`, Room v21): `inputsHash` + índice único `(origin, inputsHash)`; escrita só em `chat_turns`, tabelas v19 removidas; `visibleTurns` direto nos turns | Aceito e implementado em 21/11/2026 (v21: escrita só em `chat_turns`) | 21/11/2026 |
-| [0056](adr/0056-coach-free-input.md) | Input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` ao proxy), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, `You` persistido em `chat_turns` v22 (TTL 90 d) | Proposto em 21/11/2026; fatias 2–5 implementadas em 21/11/2026 (parser, validador, proxy/contrato, repository v22); restam redeploy, UI e aparelho | 21/11/2026 |
+| [0056](adr/0056-coach-free-input.md) | Input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` ao proxy), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, `You` persistido em `chat_turns` v22 (TTL 90 d) | Proposto em 21/11/2026; implementado em 21/11/2026 (parser, validador, proxy/contrato, repository v22, UI, aparelho); ver ADR 0057 para as respostas de sessão | 21/11/2026 |
+| [0057](adr/0057-coach-session-answers.md) | Respostas de sessão no Coach: `ASK_SESSION`/`ASK_HOW_TO_RUN`, `CoachSessionAnswer` puro (contexto por sessão, futuro sempre planejado, prontidão/sono só hoje), VM responde local primeiro (passado/descanso/fora/dia feito sem rede) e só chama `free-answer` com sessão `PLANNED` | Aceito e implementado em 22/11/2026 (parser 27 + builder 6 + VM 60 testes; `check`, `spotlessCheck`, `koverVerify`, detekt verdes; sem proxy/schema) | 22/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 

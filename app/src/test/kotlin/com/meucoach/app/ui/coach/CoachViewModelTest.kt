@@ -1174,7 +1174,7 @@ class CoachViewModelTest {
 
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
-        assertThat((state as FreeAnswerUiState.Ready).texts.single()).contains("Posso explicar")
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("Posso dizer")
         assertThat(api.freeAnswerCalls).isZero()
     }
 
@@ -1294,5 +1294,173 @@ class CoachViewModelTest {
         assertThat(vm.freeAnswer.value).isEqualTo(FreeAnswerUiState.Idle)
         assertThat(api.freeAnswerCalls).isZero()
         assertThat(memory.observeTurns().first()).isEmpty()
+    }
+
+    private fun sessionWeek(
+        weekStart: LocalDate,
+        sessionDate: LocalDate,
+        status: SessionStatus = SessionStatus.PLANNED,
+    ) = WeeklyPlan(
+        weekStart = weekStart,
+        sessions = listOf(
+            PlannedSession(
+                date = sessionDate,
+                type = WorkoutType.EASY,
+                title = "Rodagem",
+                durationMin = 40,
+                rationale = "Base aeróbica",
+                ruleIds = listOf("R-PLAN-02"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = status,
+            ),
+        ),
+        weeklyMinutes = 40,
+        longRunMinutes = null,
+        qualityCount = 0,
+        rationale = "Semana base",
+        confidence = DataConfidence.MEDIUM,
+        ruleIds = listOf("R-PLAN-02"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        createdOn = weekStart,
+        engineVersion = WeeklyPlanGenerator.ENGINE_VERSION,
+    )
+
+    private fun sessionNextContext(sessionDate: LocalDate, today: LocalDate = LocalDate.of(2026, 11, 4)) =
+        CoachNextContext(
+            subject = CoachNextSubject.Training(
+                PlannedSession(
+                    date = sessionDate,
+                    type = WorkoutType.EASY,
+                    title = "Rodagem",
+                    durationMin = 40,
+                    rationale = "Base aeróbica",
+                    ruleIds = listOf("R-PLAN-02"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                    status = SessionStatus.PLANNED,
+                ),
+            ),
+            today = today,
+            hasPlan = true,
+            hasProfile = true,
+        )
+
+    @Test
+    fun `session question calls free-answer with session context`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Amanhã", body = "Amanhã tem rodagem 40 min. Bora?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem amanhã?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        assertThat(api.lastFreeAnswerPrompt?.intent).isEqualTo(FreeInputIntent.ASK_SESSION)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("Rodagem")
+        assertThat(api.lastFreeAnswerPrompt?.allowedMinutes).contains(40)
+    }
+
+    @Test
+    fun `how-to question calls free-answer with effort guidance`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Como correr", body = "Saia fácil e segure até o fim. Bora?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("me dá uma dica de como correr amanhã")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        assertThat(api.lastFreeAnswerPrompt?.intent).isEqualTo(FreeInputIntent.ASK_HOW_TO_RUN)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("Como executar")
+    }
+
+    @Test
+    fun `rest day answers locally without a model call`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem domingo?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("descanso")
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `past day answers locally without a model call`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tinha ontem?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("já passou")
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `done today answers locally without a model call`(): Unit = runBlocking {
+        consent.grant()
+        val today = LocalDate.of(2026, 11, 4)
+        val doneSession = PlannedSession(
+            date = today,
+            type = WorkoutType.EASY,
+            title = "Rodagem",
+            durationMin = 40,
+            rationale = "Base aeróbica",
+            ruleIds = listOf("R-PLAN-02"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            status = SessionStatus.DONE,
+            completionEvidence = com.meucoach.core.model.CompletionEvidence.MANUAL,
+        )
+        plans.value = CoachPlanContext(
+            WeeklyPlan(
+                weekStart = LocalDate.of(2026, 11, 2),
+                sessions = listOf(doneSession),
+                weeklyMinutes = 40,
+                longRunMinutes = null,
+                qualityCount = 0,
+                rationale = "Semana base",
+                confidence = DataConfidence.MEDIUM,
+                ruleIds = listOf("R-PLAN-02"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                createdOn = LocalDate.of(2026, 11, 2),
+                engineVersion = WeeklyPlanGenerator.ENGINE_VERSION,
+            ),
+            "hash-s",
+        )
+        next.value = sessionNextContext(today, today)
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("como corro hoje?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `session without a plan falls back`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem amanhã?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat(api.freeAnswerCalls).isZero()
     }
 }
