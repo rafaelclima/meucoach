@@ -350,27 +350,6 @@ fun CoachScreen(
                         onRetryFreeAnswer = onRetryFreeAnswer,
                     )
                 }
-                if (reviewAvailable || progressAvailable || historyAvailable) {
-                    CoachRetroPrompt(
-                        showReview = showReview && reviewAvailable,
-                        showProgress = showProgress && progressAvailable,
-                        reviewAvailable = reviewAvailable,
-                        progressAvailable = progressAvailable,
-                        historyAvailable = historyAvailable,
-                        onReview = {
-                            showReview = !showReview
-                            if (showReview) {
-                                onEchoQuestion("Como foi minha semana passada?")
-                                showProgress = false
-                            }
-                        },
-                        onProgress = {
-                            showProgress = !showProgress
-                            if (showProgress) showReview = false
-                        },
-                        onHistory = { historyOpen = true },
-                    )
-                }
             }
         }
         if (!onboarding) {
@@ -412,6 +391,20 @@ fun CoachScreen(
                         onEchoQuestion("Quero ajustar a semana")
                         onReplanRequest()
                     },
+                    onReview = {
+                        onEchoQuestion("Como foi minha semana passada?")
+                        showReview = !showReview
+                        if (showReview) showProgress = false
+                    },
+                    onProgress = {
+                        onEchoQuestion("Como estou evoluindo?")
+                        showProgress = !showProgress
+                        if (showProgress) showReview = false
+                    },
+                    onHistory = { historyOpen = true },
+                    reviewAvailable = reviewAvailable,
+                    progressAvailable = progressAvailable,
+                    historyAvailable = historyAvailable,
                 )
                 if (consented) {
                     CoachComposer(

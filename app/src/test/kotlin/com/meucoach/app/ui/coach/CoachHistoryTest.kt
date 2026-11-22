@@ -269,7 +269,7 @@ class CoachHistoryTest {
     )
 
     private fun openHistory() {
-        compose.onNodeWithTag("coach-retro-history").performScrollTo()
+        compose.onNodeWithTag("coach-quick-history").performScrollTo()
             .performSemanticsAction(SemanticsActions.OnClick)
         compose.mainClock.advanceTimeBy(1_000)
         compose.waitForIdle()

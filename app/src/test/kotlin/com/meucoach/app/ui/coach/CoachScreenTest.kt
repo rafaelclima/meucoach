@@ -92,7 +92,7 @@ class CoachScreenTest {
             ),
         )
 
-        compose.onNodeWithTag("coach-retro-review").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-review").performScrollTo().performClick()
         compose.onNodeWithTag("coach-review-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Semana de 09/11 a 15/11").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Você cumpriu a maior parte do que planejou.").performScrollTo().assertIsDisplayed()
@@ -112,7 +112,7 @@ class CoachScreenTest {
             reviewState = CoachReviewState.Fallback("O Coach não respondeu."),
         )
 
-        compose.onNodeWithTag("coach-retro-review").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-review").performScrollTo().performClick()
         compose.onNodeWithTag("coach-review-numbers-toggle").performScrollTo().performClick()
         compose.onNodeWithText("O que a semana mostrou").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3 de 4 sessões planejadas foram concluídas.", substring = true)
@@ -143,7 +143,7 @@ class CoachScreenTest {
             reviewState = CoachReviewState.Unavailable,
         )
 
-        compose.onNodeWithTag("coach-retro-review").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-review").performScrollTo().performClick()
         compose.onNodeWithText(
             "Não há plano, corridas ou check-ins registrados nessa semana.",
         ).performScrollTo().assertIsDisplayed()
@@ -390,7 +390,7 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `retrovisor vem depois da explicacao`() {
+    fun `evolucao no rodape revela o card sem secao intermediaria`() {
         setContent(
             progress = CoachProgressUiState.Ready(
                 summary = emptyProgressSummary(),
@@ -400,11 +400,9 @@ class CoachScreenTest {
             ),
         )
 
-        val explanationY =
-            compose.onNodeWithTag("coach-explanation-card").fetchSemanticsNode().positionInRoot.y
-        val retroY = compose.onNodeWithTag("coach-retro-prompt").fetchSemanticsNode().positionInRoot.y
-
-        assertThat(explanationY).isLessThan(retroY)
+        compose.onNodeWithTag("coach-retro-prompt").assertDoesNotExist()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -615,7 +613,7 @@ class CoachScreenTest {
         compose.onNodeWithTag("coach-ai-invite").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-ai-grant").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-ai-later").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("coach-retro-progress").performScrollTo()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo()
             .performSemanticsAction(SemanticsActions.OnClick)
         compose.mainClock.advanceTimeBy(1_000)
         compose.waitForIdle()
@@ -967,7 +965,7 @@ class CoachScreenTest {
             ),
         )
 
-        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo().performClick()
         compose.onNodeWithTag("coach-progress-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("6 de 9 sessões do plano (67%)").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-progress-numbers").assertDoesNotExist()
@@ -1005,7 +1003,7 @@ class CoachScreenTest {
             ),
         )
 
-        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo().performClick()
         compose.onNodeWithText("Pouco histórico ainda.", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
@@ -1036,7 +1034,7 @@ class CoachScreenTest {
             }
         }
 
-        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo().performClick()
         compose.onNodeWithTag("coach-progress-retry").performScrollTo().performClick()
         assertThat(retried).isEqualTo(1)
     }
@@ -1083,7 +1081,7 @@ class CoachScreenTest {
             }
         }
 
-        compose.onNodeWithTag("coach-retro-progress").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo().performClick()
         compose.onNodeWithTag("coach-progress-trends").performScrollTo().performClick()
         assertThat(trends).isEqualTo(1)
     }
@@ -1196,18 +1194,23 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `retrovisor mora no fim do fluxo apos a conversa`() {
+    fun `olhar pra tras mora nos atalhos sem bolha-pergunta`() {
         setContent(
             review = review(),
-            exchanges = listOf(
-                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Ready(listOf("Hoje tem rodagem."))),
+            progress = CoachProgressUiState.Ready(
+                summary = emptyProgressSummary(),
+                totalWeeks = 4,
+                profile = null,
+                today = monday,
             ),
+            history = CoachHistoryState.Ready(emptyList()),
         )
 
-        val answerY = compose.onNodeWithTag("coach-free-answer").fetchSemanticsNode().positionInRoot.y
-        val retroY = compose.onNodeWithTag("coach-retro-prompt").fetchSemanticsNode().positionInRoot.y
-
-        assertThat(answerY).isLessThan(retroY)
+        compose.onNodeWithTag("coach-retro-prompt").assertDoesNotExist()
+        compose.onNodeWithTag("coach-retro-bubble").assertDoesNotExist()
+        compose.onNodeWithTag("coach-quick-review").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-quick-progress").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-quick-history").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -1416,6 +1419,7 @@ class CoachScreenTest {
         progress: CoachProgressUiState = CoachProgressUiState.Hidden,
         review: WeeklyReview? = null,
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
+        history: CoachHistoryState = CoachHistoryState.Hidden,
         replan: ReplanUiState = ReplanUiState(),
         consented: Boolean = true,
         exchanges: List<FreeExchange> = emptyList(),
@@ -1450,6 +1454,7 @@ class CoachScreenTest {
                     progress = progress,
                     review = review,
                     reviewState = reviewState,
+                    history = history,
                     replan = replan,
                     exchanges = exchanges,
                     onSendFreeText = onSendFreeText,

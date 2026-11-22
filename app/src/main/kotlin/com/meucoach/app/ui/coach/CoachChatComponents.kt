@@ -219,75 +219,6 @@ internal fun CoachAttachment(
     }
 }
 
-/**
- * One coach prompt for the retrovisor. Review, evolution and history are on
- * demand: the feed stays a conversation instead of a report with every section
- * open at once.
- */
-@Composable
-internal fun CoachRetroPrompt(
-    showReview: Boolean,
-    showProgress: Boolean,
-    reviewAvailable: Boolean,
-    progressAvailable: Boolean,
-    historyAvailable: Boolean,
-    onReview: () -> Unit,
-    onProgress: () -> Unit,
-    onHistory: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = McTheme.colors
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("coach-retro-prompt"),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CoachBubble(
-            text = "Quer olhar pra trás?",
-            testTag = "coach-retro-bubble",
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-        ) {
-            if (reviewAvailable) {
-                TextButton(
-                    onClick = onReview,
-                    modifier = Modifier.testTag("coach-retro-review"),
-                ) {
-                    Text(
-                        text = if (showReview) "Ocultar semana" else "Semana passada",
-                        color = if (showReview) colors.accentText else colors.textSecondary,
-                    )
-                }
-            }
-            if (progressAvailable) {
-                TextButton(
-                    onClick = onProgress,
-                    modifier = Modifier.testTag("coach-retro-progress"),
-                ) {
-                    Text(
-                        text = if (showProgress) "Ocultar evolução" else "Evolução",
-                        color = if (showProgress) colors.accentText else colors.textSecondary,
-                    )
-                }
-            }
-            if (historyAvailable) {
-                TextButton(
-                    onClick = onHistory,
-                    modifier = Modifier.testTag("coach-retro-history"),
-                ) {
-                    Text(text = "Histórico", color = colors.textSecondary)
-                }
-            }
-            Spacer(modifier = Modifier.width(24.dp))
-        }
-    }
-}
-
 @Composable
 internal fun UserBubble(text: String, modifier: Modifier = Modifier, testTag: String = "coach-user-bubble") {
     val colors = McTheme.colors
@@ -403,12 +334,23 @@ internal fun CoachTyping(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Quick replies of the Coach tab: actions first, look-back last. Every tap
+ * is a question or a request — the reply lands inline in the feed, never
+ * floating over it.
+ */
 @Composable
 internal fun CoachQuickReplies(
     onExplain: () -> Unit,
     onMissed: () -> Unit,
     onLessTime: () -> Unit,
     onAdjust: () -> Unit,
+    onReview: () -> Unit,
+    onProgress: () -> Unit,
+    onHistory: () -> Unit,
+    reviewAvailable: Boolean = false,
+    progressAvailable: Boolean = false,
+    historyAvailable: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
@@ -423,6 +365,15 @@ internal fun CoachQuickReplies(
             QuickChip(text = "Perdi treino", testTag = "coach-quick-missed", onClick = onMissed)
             QuickChip(text = "Tenho menos tempo", testTag = "coach-quick-less-time", onClick = onLessTime)
             QuickChip(text = "Ajustar semana", testTag = "coach-quick-adjust", onClick = onAdjust)
+            if (reviewAvailable) {
+                QuickChip(text = "Semana passada", testTag = "coach-quick-review", onClick = onReview)
+            }
+            if (progressAvailable) {
+                QuickChip(text = "Evolução", testTag = "coach-quick-progress", onClick = onProgress)
+            }
+            if (historyAvailable) {
+                QuickChip(text = "Histórico", testTag = "coach-quick-history", onClick = onHistory)
+            }
             Spacer(modifier = Modifier.width(40.dp))
         }
         // A fade says "there are more chips" instead of a chip cut off at the edge.

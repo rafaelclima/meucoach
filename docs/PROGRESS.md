@@ -1,6 +1,21 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 voz de treinador + chips + bolhas 160)
+**Atualizado:** 22/11/2026 (ADR 0057 sem retrovisor: chips no rodapé)
+
+## Sessão 2026-11-22 — Retrovisor vira chips (TDD)
+
+**Pedido do usuário 0:** a bolha "Quer olhar pra trás?" com botões tímidos
+no meio do feed incomodava — navegação disfarçada de conversa.
+
+### Concluído
+
+- **Tela:** seção `CoachRetroPrompt` eliminada (bolha + 3 text buttons);
+  Semana passada/Evolução/Histórico viram chips no rodapé (mesmos fluxos:
+  cards inline sob demanda com bring-into-view, sheet do histórico);
+  echo efêmero nos dois primeiros, histórico sem echo como antes.
+- **Testes:** tela/histórico atualizados (nova posição dos atalhos, sem
+  bolha-pergunta, toggle via chip); `check` + `spotlessCheck` verdes.
+- **Docs:** item 10 no ADR 0057 + esta entrada.
 
 ## Sessão 2026-11-22 — Voz humana, chips que falam e bolhas 160 (TDD)
 

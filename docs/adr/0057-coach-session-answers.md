@@ -128,7 +128,11 @@ para a próxima fatia.
    pessoa e veta 3ª pessoa. Bolhas 140 → 160. Chips: fora "Retrovisor",
    "Só 30 min" virou "Tenho menos tempo", bloco retrovisor para o fim do
    fluxo.~~
-10. Próxima: WHY/prontidão/método.
+10. ~~Retrovisor removido (22/11/2026, pedido do usuário 0): a seção "Quer
+    olhar pra trás?" saiu do feed; Semana passada/Evolução/Histórico viram
+    chips no rodapé (echo efêmero nos dois primeiros, cards inline sob
+    demanda como antes).~~
+11. Próxima: WHY/prontidão/método.
 
 ## 5. Exchanges e persistência determinística (itens 2-base e 3)
 
