@@ -622,7 +622,10 @@ class CoachViewModel @Inject constructor(
         val today = LocalDate.now(clock)
         val nextContext = sources.next.observeNext().first()
         val slotDay = parsed.slots.dayOfWeek
-        val target = if (slotDay != null) {
+        val dayOffset = parsed.slots.dayOffset
+        val target = if (dayOffset != null) {
+            today.plusDays(dayOffset.toLong())
+        } else if (slotDay != null) {
             CoachSessionAnswer.resolveDayInWeek(today, slotDay)
         } else {
             (nextContext.subject as? CoachNextSubject.Training)?.session?.date ?: today

@@ -16,7 +16,28 @@ class FreeInputParserTest {
     fun `pergunta sobre amanha vira ASK_SESSION`() {
         val parsed = FreeInputParser.parse("o que tem amanhã?", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
-        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY), parsed.slots)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY, dayOffset = 1), parsed.slots)
+    }
+
+    @Test
+    fun `amanha no domingo carrega offset exato`() {
+        val parsed = FreeInputParser.parse("o que tem amanhã?", DayOfWeek.SUNDAY)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.MONDAY, dayOffset = 1), parsed.slots)
+    }
+
+    @Test
+    fun `hoje carrega offset zero`() {
+        val parsed = FreeInputParser.parse("o que tem hoje?", DayOfWeek.SUNDAY)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY, dayOffset = 0), parsed.slots)
+    }
+
+    @Test
+    fun `dia nomeado nao tem offset`() {
+        val parsed = FreeInputParser.parse("qual o treino de domingo?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY), parsed.slots)
     }
 
     @Test
@@ -56,7 +77,7 @@ class FreeInputParserTest {
     fun `amanha resolve contra o dia informado`() {
         val parsed = FreeInputParser.parse("só tenho 20 min amanhã", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.REQUEST_ADJUST, parsed.intent)
-        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY, minutes = 20), parsed.slots)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY, minutes = 20, dayOffset = 1), parsed.slots)
     }
 
     @Test
@@ -70,7 +91,7 @@ class FreeInputParserTest {
     fun `nao fiz o treino de ontem vira REQUEST_ADJUST com ontem resolvido`() {
         val parsed = FreeInputParser.parse("não fiz o treino de ontem", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.REQUEST_ADJUST, parsed.intent)
-        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY), parsed.slots)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY, dayOffset = -1), parsed.slots)
     }
 
     @Test
@@ -143,14 +164,14 @@ class FreeInputParserTest {
     fun `dica de como correr amanha vira ASK_HOW_TO_RUN`() {
         val parsed = FreeInputParser.parse("me dá uma dica de como correr amanhã", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
-        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY), parsed.slots)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY, dayOffset = 1), parsed.slots)
     }
 
     @Test
     fun `como e o treino de hoje vira ASK_HOW_TO_RUN`() {
         val parsed = FreeInputParser.parse("como é o treino de hoje?", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
-        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.MONDAY), parsed.slots)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.MONDAY, dayOffset = 0), parsed.slots)
     }
 
     @Test

@@ -24,7 +24,18 @@ enum class FreeInputIntent {
 }
 
 /** Validated slots extracted from the text; absent means the text had none. */
-data class FreeInputSlots(val dayOfWeek: DayOfWeek? = null, val minutes: Int? = null)
+data class FreeInputSlots(
+    val dayOfWeek: DayOfWeek? = null,
+    val minutes: Int? = null,
+    /**
+     * Exact day offset when the text used a relative word (`ontem` = -1,
+     * `hoje` = 0, `amanhã` = +1). Relative words resolve against the day
+     * itself, never against the week layout: on a Sunday, "amanhã" is the
+     * next Monday (outside the current week), not the Monday six days back.
+     * Null means the day came from a weekday name (or there was no day).
+     */
+    val dayOffset: Int? = null,
+)
 
 /**
  * The parse result. [sanitized] is the trimmed, whitespace-collapsed text
@@ -203,33 +214,42 @@ object FreeInputParser {
 
     private fun extractSlots(normalized: String, today: DayOfWeek): FreeInputSlots {
         val minutes = minutesOf(normalized)
-        val named = listOf(
-            "segunda" to DayOfWeek.MONDAY,
-            "seg" to DayOfWeek.MONDAY,
-            "terca" to DayOfWeek.TUESDAY,
-            "ter" to DayOfWeek.TUESDAY,
-            "quarta" to DayOfWeek.WEDNESDAY,
-            "qua" to DayOfWeek.WEDNESDAY,
-            "quinta" to DayOfWeek.THURSDAY,
-            "qui" to DayOfWeek.THURSDAY,
-            "sexta" to DayOfWeek.FRIDAY,
-            "sex" to DayOfWeek.FRIDAY,
-            "sabado" to DayOfWeek.SATURDAY,
-            "sab" to DayOfWeek.SATURDAY,
-            "domingo" to DayOfWeek.SUNDAY,
-            "dom" to DayOfWeek.SUNDAY,
-        )
-            .mapNotNull { (token, day) ->
-                Regex("""\b$token\b""").find(normalized)?.let { WeekdayHit(it.range.first, day) }
-            }
-            .minByOrNull { it.start }
-            ?.day
+        val day = extractDay(normalized, today)
+        return FreeInputSlots(dayOfWeek = day?.dayOfWeek, minutes = minutes, dayOffset = day?.offset)
+    }
+
+    private data class DaySlot(val dayOfWeek: DayOfWeek, val offset: Int?)
+
+    private fun extractDay(normalized: String, today: DayOfWeek): DaySlot? {
         val relative = when {
-            Regex("""\bhoje\b""").containsMatchIn(normalized) -> today
-            Regex("""\bamanha\b""").containsMatchIn(normalized) -> today.plus(1)
-            Regex("""\bontem\b""").containsMatchIn(normalized) -> today.minus(1)
+            Regex("""\bhoje\b""").containsMatchIn(normalized) -> DaySlot(today, 0)
+            Regex("""\bamanha\b""").containsMatchIn(normalized) -> DaySlot(today.plus(1), 1)
+            Regex("""\bontem\b""").containsMatchIn(normalized) -> DaySlot(today.minus(1), -1)
             else -> null
         }
-        return FreeInputSlots(dayOfWeek = relative ?: named, minutes = minutes)
+        if (relative != null) return relative
+        return namedDay(normalized)?.let { DaySlot(it, null) }
     }
+
+    private fun namedDay(normalized: String): DayOfWeek? = listOf(
+        "segunda" to DayOfWeek.MONDAY,
+        "seg" to DayOfWeek.MONDAY,
+        "terca" to DayOfWeek.TUESDAY,
+        "ter" to DayOfWeek.TUESDAY,
+        "quarta" to DayOfWeek.WEDNESDAY,
+        "qua" to DayOfWeek.WEDNESDAY,
+        "quinta" to DayOfWeek.THURSDAY,
+        "qui" to DayOfWeek.THURSDAY,
+        "sexta" to DayOfWeek.FRIDAY,
+        "sex" to DayOfWeek.FRIDAY,
+        "sabado" to DayOfWeek.SATURDAY,
+        "sab" to DayOfWeek.SATURDAY,
+        "domingo" to DayOfWeek.SUNDAY,
+        "dom" to DayOfWeek.SUNDAY,
+    )
+        .mapNotNull { (token, day) ->
+            Regex("""\b$token\b""").find(normalized)?.let { WeekdayHit(it.range.first, day) }
+        }
+        .minByOrNull { it.start }
+        ?.day
 }

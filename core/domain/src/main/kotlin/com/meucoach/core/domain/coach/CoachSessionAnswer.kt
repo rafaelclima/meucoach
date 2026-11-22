@@ -158,15 +158,16 @@ object CoachSessionAnswer {
 
     private fun renderLines(input: EngineLines): String {
         val taskLine = taskLine(input.task)
+        val weekLine = "Semana: ${input.weeklyMinutes} min planejados no total."
         val session = input.session ?: return "$taskLine DIA: ${dayLine(input)}. " +
             "Sem sessão planejada nesse dia (descanso ou fora da disponibilidade). " +
-            "Semana: ${input.weeklyMinutes} min no total."
+            weekLine
         val kind = kindName(session.type)
         val duration = session.durationMin?.let { "$it min" } ?: "sem duração fixa"
         return "$taskLine DIA: ${dayLine(input)}. " +
             "SESSÃO: ${session.title} · $duration · $kind. ${authorityLine(input)}. " +
             "Motivo do plano: ${session.rationale}.${signalsLine(input)}${effortLine(input)} " +
-            "Semana: ${input.weeklyMinutes} min no total."
+            weekLine
     }
     private fun taskLine(task: SessionTask): String = when (task) {
         SessionTask.WHAT -> "TAREFA: dizer o que tem no dia, sem inventar número novo."

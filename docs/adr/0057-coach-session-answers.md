@@ -98,5 +98,11 @@ para a próxima fatia.
 2. ~~`CoachSessionAnswer` puro (6 testes).~~
 3. ~~VM `answerSession` + cópias determinísticas (6 testes novos, 60 na classe).~~
 4. Gates: `check`, `spotlessCheck`, `koverVerify`, detekt app/domain verdes.
-5. Próxima: WHY/prontidão/método no mesmo padrão; depois quick-replies e CTA
-   ("Ver como correr hoje" / "Ver plano") + golden questions no aparelho.
+5. ~~Fix validado no aparelho (22/11/2026): relativo com offset exato + total
+   rotulado "planejados".~~ Dia relativo (`hoje`/`amanhã`/`ontem`) resolve por
+   offset exato (`+0/+1/−1`) e nunca pela semana vigente — no domingo,
+   "amanhã" é segunda 23/11 (fora da semana), não a segunda 16/11 passada.
+   Só dia nomeado usa `resolveDayInWeek`. O `engineContext` declara
+   "min planejados" para a LLM não ler o total como executado.
+6. Próxima: WHY/prontidão/método no mesmo padrão; depois Q&A adjacente
+   (item 2 da avaliação) e determinísticas persistidas (item 3).

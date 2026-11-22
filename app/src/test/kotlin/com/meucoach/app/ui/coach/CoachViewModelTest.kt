@@ -209,7 +209,7 @@ class CoachViewModelTest {
         database.close()
     }
 
-    private fun viewModel(api: FakeCoachApi): CoachViewModel {
+    private fun viewModel(api: FakeCoachApi, viewClock: Clock = clock): CoachViewModel {
         val appScope = CoroutineScope(dispatcher)
         appScopes += appScope
         val vm = CoachViewModel(
@@ -233,7 +233,7 @@ class CoachViewModelTest {
             ),
             api = api,
             memory = memory,
-            clock = clock,
+            clock = viewClock,
             appScope = appScope,
             replanFactory = replanFactory,
         )
@@ -1461,6 +1461,41 @@ class CoachViewModelTest {
 
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `amanha no domingo cai fora da semana sem chamar o modelo`(): Unit = runBlocking {
+        consent.grant()
+        val sunday = LocalDate.of(2026, 11, 22)
+        plans.value = CoachPlanContext(
+            sessionWeek(LocalDate.of(2026, 11, 16), sunday),
+            "hash-sunday",
+        )
+        next.value = sessionNextContext(sunday, sunday)
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val sundayClock = Clock.fixed(Instant.parse("2026-11-22T12:00:00Z"), ZoneOffset.UTC)
+        val vm = viewModel(api, sundayClock)
+        vm.sendFreeText("o que tem amanhã?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("outra semana")
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `ontem usa offset exato e responde passado sem chamar o modelo`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem ontem?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("já passou")
         assertThat(api.freeAnswerCalls).isZero()
     }
 }

@@ -1,6 +1,34 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057: respostas de sessão no Coach)
+**Atualizado:** 22/11/2026 (ADR 0057 fix: relativo com offset exato + total planejado)
+
+## Sessão 2026-11-22 — ADR 0057 fix: "amanhã" no domingo ia para a segunda passada (TDD)
+
+**Achado no aparelho (usuário 0):** "o que tem amanhã?" no domingo respondeu
+`SESSION_PAST` ("Esse dia já passou") em vez de fora-da-semana. Causa: o slot
+`DayOfWeek.MONDAY` era resolvido na semana vigente (segunda 16/11). Relativo
+agora viaja com offset exato (`hoje` +0, `amanhã` +1, `ontem` −1); só dia
+nomeado usa `resolveDayInWeek`. Segundo achado: "está com 99 min na semana"
+lia o total planejado como executado — o `engineContext` agora declara
+"min planejados".
+
+### Concluído
+
+- **Domínio:** `FreeInputSlots.dayOffset` (+0/+1/−1 só para relativo; nomeado
+  fica nulo), `extractDay`/`namedDay` separados, `engineContext` com
+  "planejados". Parser 30/30 (3 novos de offset), builder 6/6.
+- **App:** `answerSession` prefere o offset (`today.plusDays`) ao
+  `resolveDayInWeek`; VM 62/62 (2 novos: amanhã-no-domingo → fora da semana,
+  ontem-offset → passado; helper aceita relógio).
+- **Gates:** `check` (detekt, lint, kover, todos os testes), `spotlessCheck`
+  verdes. Sem proxy/schema/motor.
+- **Docs:** addendum no ADR 0057 + esta entrada.
+
+### Próximo
+
+1. `./install.sh` + confirmar no aparelho: "amanhã" → "outra semana".
+2. Desenhar itens 2–3 da avaliação (Q&A adjacente, determinísticas
+   persistidas).
 
 ## Sessão 2026-11-22 — ADR 0057: o Coach responde a sessão (TDD)
 

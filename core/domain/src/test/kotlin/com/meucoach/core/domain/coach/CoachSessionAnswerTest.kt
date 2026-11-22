@@ -53,6 +53,7 @@ class CoachSessionAnswerTest {
         assertTrue(answer.allowedMinutes.contains(40))
         assertTrue(answer.allowedMinutes.contains(120))
         assertTrue(answer.engineContext.contains("Planejado"))
+        assertTrue(answer.engineContext.contains("planejados"))
         assertTrue(answer.engineContext.contains("Rodagem"))
         assertFalse(answer.engineContext.contains("6:10"))
     }
