@@ -312,6 +312,48 @@ internal fun UserBubble(text: String, modifier: Modifier = Modifier, testTag: St
     }
 }
 
+/**
+ * One free-text round trip in flow order (ADR 0057 item 2): the question
+ * bubble immediately followed by its answer, never floating over content.
+ */
+@Composable
+internal fun FreeExchangeRow(exchange: FreeExchange, onRetryFreeAnswer: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        UserBubble(
+            text = exchange.question,
+            testTag = "coach-user-message",
+        )
+        when (val answer = exchange.answer) {
+            is FreeAnswerUiState.Loading -> CoachTyping(
+                modifier = Modifier.testTag("coach-free-typing"),
+            )
+
+            is FreeAnswerUiState.Ready -> CoachBubbleSequence(
+                texts = answer.texts,
+                testTag = "coach-free-answer",
+            )
+
+            is FreeAnswerUiState.Fallback -> {
+                CoachBubble(
+                    text = answer.copy,
+                    testTag = "coach-free-fallback",
+                )
+                TextButton(
+                    onClick = onRetryFreeAnswer,
+                    modifier = Modifier.testTag("coach-free-retry"),
+                ) {
+                    Text(text = "Tentar de novo", color = McTheme.colors.accentText)
+                }
+            }
+
+            FreeAnswerUiState.Idle -> Unit
+        }
+    }
+}
+
 @Composable
 internal fun CoachSystemLine(text: String, modifier: Modifier = Modifier, testTag: String = "coach-system-line") {
     Text(
@@ -487,6 +529,7 @@ internal fun CoachComposer(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     modifier: Modifier = Modifier,
+    sendEnabled: Boolean = true,
 ) {
     val colors = McTheme.colors
     Row(
@@ -504,11 +547,12 @@ internal fun CoachComposer(
             placeholder = { Text(text = "Digite sua mensagem…") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { onSend() }),
+            keyboardActions = KeyboardActions(onSend = { if (sendEnabled) onSend() }),
             shape = MaterialTheme.shapes.medium,
         )
         IconButton(
             onClick = onSend,
+            enabled = sendEnabled,
             modifier = Modifier
                 .size(48.dp)
                 .semantics { contentDescription = "Enviar mensagem" }

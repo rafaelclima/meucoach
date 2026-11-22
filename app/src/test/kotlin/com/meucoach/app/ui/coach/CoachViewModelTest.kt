@@ -1570,6 +1570,21 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `echoQuestion appends an idle exchange and dedupes repeats`() {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.echoQuestion("Perdi o treino de ontem")
+        vm.echoQuestion("Perdi o treino de ontem")
+        vm.echoQuestion("  ")
+
+        assertThat(vm.exchanges.value).hasSize(1)
+        assertThat(vm.exchanges.value.single().question).isEqualTo("Perdi o treino de ontem")
+        assertThat(vm.exchanges.value.single().answer).isEqualTo(FreeAnswerUiState.Idle)
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
     fun `retry on failure reuses the exchange without duplicating the question`(): Unit = runBlocking {
         consent.grant()
         plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")

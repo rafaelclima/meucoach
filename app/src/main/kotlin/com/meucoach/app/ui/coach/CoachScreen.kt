@@ -20,7 +20,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,7 +62,7 @@ fun CoachRoute(
     val explanation by viewModel.explanation.collectAsStateWithLifecycle()
     val review by viewModel.review.collectAsStateWithLifecycle()
     val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
-    val freeAnswer by viewModel.freeAnswer.collectAsStateWithLifecycle()
+    val exchanges by viewModel.exchanges.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val next by viewModel.next.collectAsStateWithLifecycle()
     val guards by viewModel.guards.collectAsStateWithLifecycle()
@@ -80,10 +79,11 @@ fun CoachRoute(
         guards = guards,
         progress = progress,
         replan = replan,
-        freeAnswer = freeAnswer,
+        exchanges = exchanges,
         onSendFreeText = {
             viewModel.sendFreeText(it)
         },
+        onEchoQuestion = { viewModel.echoQuestion(it) },
         onRetryFreeAnswer = { viewModel.retryFreeAnswer() },
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
@@ -149,8 +149,9 @@ fun CoachScreen(
     onNextCheckIn: () -> Unit = {},
     onNextToday: () -> Unit = {},
     onSendFreeText: (String) -> Unit = {},
+    onEchoQuestion: (String) -> Unit = {},
     onRetryFreeAnswer: () -> Unit = {},
-    freeAnswer: FreeAnswerUiState = FreeAnswerUiState.Idle,
+    exchanges: List<FreeExchange> = emptyList(),
     onOnboardingProfile: () -> Unit = {},
     onOnboardingCalibration: () -> Unit = {},
     onOnboardingImport: () -> Unit = {},
@@ -168,7 +169,6 @@ fun CoachScreen(
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var showReview by rememberSaveable { mutableStateOf(false) }
     var showProgress by rememberSaveable { mutableStateOf(false) }
-    val userEchoes = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
     val feedScroll = rememberScrollState()
     var explainY by remember { mutableStateOf<Int?>(null) }
@@ -179,8 +179,10 @@ fun CoachScreen(
         if (y == null) return
         scope.launch { feedScroll.animateScrollTo(y.coerceAtLeast(0)) }
     }
-    fun addEcho(text: String) {
-        if (userEchoes.lastOrNull() != text) userEchoes.add(text)
+    LaunchedEffect(exchanges) {
+        if (exchanges.isNotEmpty()) {
+            feedScroll.animateScrollTo(feedScroll.maxValue)
+        }
     }
     LaunchedEffect(replan.suggestion != null) {
         if (replan.suggestion != null) replanSheetOpen = true
@@ -344,7 +346,7 @@ fun CoachScreen(
                             onReview = {
                                 showReview = !showReview
                                 if (showReview) {
-                                    addEcho("Como foi minha semana passada?")
+                                    onEchoQuestion("Como foi minha semana passada?")
                                     showProgress = false
                                 }
                             },
@@ -370,14 +372,20 @@ fun CoachScreen(
                         )
                     }
                 }
+                exchanges.forEach { exchange ->
+                    FreeExchangeRow(
+                        exchange = exchange,
+                        onRetryFreeAnswer = onRetryFreeAnswer,
+                    )
+                }
             }
         }
         if (!onboarding) {
             var draft by rememberSaveable { mutableStateOf("") }
+            val busy = exchanges.any { it.answer is FreeAnswerUiState.Loading }
             fun sendDraft() {
                 val text = draft.trim()
-                if (text.isEmpty()) return
-                addEcho(text)
+                if (text.isEmpty() || busy) return
                 onSendFreeText(text)
                 draft = ""
             }
@@ -391,53 +399,25 @@ fun CoachScreen(
             ) {
                 val typing = explanation is CoachExplanationState.Loading ||
                     (showReview && reviewState is CoachReviewState.Loading) ||
-                    (showProgress && progress is CoachProgressUiState.Loading) ||
-                    freeAnswer is FreeAnswerUiState.Loading
+                    (showProgress && progress is CoachProgressUiState.Loading)
                 if (typing) CoachTyping()
-                userEchoes.takeLast(2).forEach { echo ->
-                    UserBubble(
-                        text = echo,
-                        testTag = "coach-user-echo",
-                    )
-                }
-                when (val answer = freeAnswer) {
-                    is FreeAnswerUiState.Ready -> CoachBubbleSequence(
-                        texts = answer.texts,
-                        testTag = "coach-free-answer",
-                    )
-
-                    is FreeAnswerUiState.Fallback -> {
-                        CoachBubble(
-                            text = answer.copy,
-                            testTag = "coach-free-fallback",
-                        )
-                        TextButton(
-                            onClick = onRetryFreeAnswer,
-                            modifier = Modifier.testTag("coach-free-retry"),
-                        ) {
-                            Text(text = "Tentar de novo", color = McTheme.colors.accentText)
-                        }
-                    }
-
-                    FreeAnswerUiState.Idle, FreeAnswerUiState.Loading -> Unit
-                }
                 CoachQuickReplies(
                     onExplain = {
-                        addEcho("Pode explicar minha semana?")
+                        onEchoQuestion("Pode explicar minha semana?")
                         onRetry()
                         scrollTo(explainY)
                     },
                     onRetro = { scrollTo(retroY) },
                     onMissed = {
-                        addEcho("Perdi o treino de ontem")
+                        onEchoQuestion("Perdi o treino de ontem")
                         onReplanRequestMissed()
                     },
                     onLessTime = {
-                        addEcho("Só tenho 30 min na quinta")
+                        onEchoQuestion("Só tenho 30 min na quinta")
                         onReplanRequestLessTime()
                     },
                     onAdjust = {
-                        addEcho("Quero ajustar a semana")
+                        onEchoQuestion("Quero ajustar a semana")
                         onReplanRequest()
                     },
                 )
@@ -446,6 +426,7 @@ fun CoachScreen(
                         value = draft,
                         onValueChange = { draft = it },
                         onSend = ::sendDraft,
+                        sendEnabled = !busy,
                     )
                 } else {
                     CoachComposerHint()

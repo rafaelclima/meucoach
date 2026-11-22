@@ -1,6 +1,30 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 fix: relativo com offset exato + total planejado)
+**Atualizado:** 22/11/2026 (ADR 0057 item 2 UI: Q&A adjacente no fluxo)
+
+## Sessão 2026-11-22 — ADR 0057 item 2 (UI): Q&A adjacente no fluxo (TDD)
+
+**Fechamento do que a avaliação no aparelho pediu:** ecos flutuantes fora,
+pergunta e resposta andam juntas no fluxo, envio trava com `Loading`.
+
+### Concluído
+
+- **Tela:** `exchanges` renderizados inline no fim do feed (`FreeExchangeRow`:
+  bolha lima + bolhas/typing/fallback com retry por troca); auto-scroll ao
+  final; rodapé sem ecos e sem resposta (só typing das seções, quick replies
+  e composer); quick replies emitem `echoQuestion` (efêmero); composer com
+  `sendEnabled` desligado com `Loading`.
+- **VM:** `echoQuestion` (trim, teto 500, ignora vazio e repetição do
+  último).
+- **Testes:** pacote coach 201/201 + VM 67/67. `check` + `spotlessCheck`
+  verdes. Sem proxy/schema/motor.
+- **Docs:** esta entrada + §5 do ADR 0057.
+
+### Próximo
+
+1. `./install.sh` + validar no aparelho: Q&A adjacente, sem sobreposição,
+   envio travado no load, histórico com os pares.
+2. WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — ADR 0057 fix: "amanhã" no domingo ia para a segunda passada (TDD)
 
@@ -48,10 +72,10 @@ fatia de UI.
 
 ### Próximo
 
-1. `./install.sh` + confirmar no aparelho que nada mudou no visível e que o
-   histórico passa a mostrar pergunta + resposta nas determinísticas.
-2. Fatia de UI: rodapé lê `exchanges` (Q&A adjacente, item 2).
-3. Depois: WHY/prontidão/método.
+1. `./install.sh` + validar no aparelho: Q&A adjacente, sem sobreposição,
+   envio travado no load, histórico com os pares.
+2. WHY/prontidão/método.
+3. Depois de validado: avaliar remover o espelho legado `freeAnswer` da VM.
 
 ## Sessão 2026-11-22 — ADR 0057: o Coach responde a sessão (TDD)
 

@@ -580,6 +580,16 @@ class CoachViewModel @Inject constructor(
         }
     }
 
+    /** Ephemeral question echo for quick replies (item 2): in-flow, never persisted. */
+    fun echoQuestion(text: String) {
+        val clean = text.trim().take(FreeInputParser.MAX_CHARS)
+        if (clean.isEmpty()) return
+        if (_exchanges.value.lastOrNull()?.question == clean) return
+        _exchanges.value =
+            (_exchanges.value + FreeExchange(UUID.randomUUID().toString(), clean, FreeAnswerUiState.Idle))
+                .takeLast(MAX_EXCHANGES)
+    }
+
     /** Retries the latest failed exchange in place, without persisting the question twice. */
     fun retryFreeAnswer() {
         if (!_consented.value) return

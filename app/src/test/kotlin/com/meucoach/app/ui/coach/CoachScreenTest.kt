@@ -3,7 +3,9 @@ package com.meucoach.app.ui.coach
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
@@ -1137,51 +1139,52 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `quick reply perdi treino vira mensagem sua e chama o fluxo`() {
+    fun `quick reply perdi treino emite pergunta e chama o fluxo`() {
         var missed = 0
-        setContent(onReplanRequestMissed = { missed++ })
+        val echoes = mutableListOf<String>()
+        setContent(onReplanRequestMissed = { missed++ }, onEchoQuestion = { echoes += it })
 
         compose.onNodeWithTag("coach-quick-missed").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-user-echo").assertIsDisplayed()
-        compose.onNodeWithText("Perdi o treino de ontem").assertIsDisplayed()
+        assertThat(echoes).containsExactly("Perdi o treino de ontem")
         assertThat(missed).isEqualTo(1)
     }
 
     @Test
-    fun `quick reply menos tempo vira mensagem sua e chama o fluxo`() {
+    fun `quick reply menos tempo emite pergunta e chama o fluxo`() {
         var lessTime = 0
-        setContent(onReplanRequestLessTime = { lessTime++ })
+        val echoes = mutableListOf<String>()
+        setContent(onReplanRequestLessTime = { lessTime++ }, onEchoQuestion = { echoes += it })
 
         compose.onNodeWithTag("coach-quick-less-time").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-user-echo").assertIsDisplayed()
-        compose.onNodeWithText("Só tenho 30 min na quinta").assertIsDisplayed()
+        assertThat(echoes).containsExactly("Só tenho 30 min na quinta")
         assertThat(lessTime).isEqualTo(1)
     }
 
     @Test
-    fun `quick reply explica semana pede retry e mostra sua mensagem`() {
+    fun `quick reply explica semana emite pergunta e pede retry`() {
         var retried = 0
-        setContent(onRetry = { retried++ })
+        val echoes = mutableListOf<String>()
+        setContent(onRetry = { retried++ }, onEchoQuestion = { echoes += it })
 
         compose.onNodeWithTag("coach-quick-explain").performScrollTo().performClick()
-        compose.onNodeWithTag("coach-user-echo").assertIsDisplayed()
-        compose.onNodeWithText("Pode explicar minha semana?").assertIsDisplayed()
+        assertThat(echoes).containsExactly("Pode explicar minha semana?")
         assertThat(retried).isEqualTo(1)
     }
 
     @Test
-    fun `mesmo chip tocado duas vezes gera um unico eco`() {
-        setContent()
+    fun `toque duplo repassa as duas perguntas e a VM deduplica`() {
+        val echoes = mutableListOf<String>()
+        setContent(onEchoQuestion = { echoes += it })
 
         compose.onNodeWithTag("coach-quick-explain").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("coach-quick-explain").performScrollTo().performClick()
         compose.waitForIdle()
 
-        compose.onAllNodesWithTag("coach-user-echo").fetchSemanticsNodes().let {
-            assertThat(it).hasSize(1)
-        }
-        compose.onNodeWithText("Pode explicar minha semana?").assertIsDisplayed()
+        assertThat(echoes).containsExactly(
+            "Pode explicar minha semana?",
+            "Pode explicar minha semana?",
+        )
     }
 
     @Test
@@ -1297,7 +1300,7 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `composer envia a mensagem digitada como eco e callback`() {
+    fun `composer envia a mensagem digitada e limpa o campo`() {
         var sent: String? = null
         setContent(onSendFreeText = { sent = it })
 
@@ -1305,7 +1308,18 @@ class CoachScreenTest {
         compose.onNodeWithTag("coach-composer-send").performClick()
 
         assertThat(sent).isEqualTo("só tenho 30 min")
-        compose.onNodeWithText("só tenho 30 min").assertIsDisplayed()
+        compose.onNodeWithText("só tenho 30 min", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `composer trava o envio enquanto ha resposta carregando`() {
+        setContent(
+            exchanges = listOf(
+                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Loading),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-composer-send").assertIsNotEnabled()
     }
 
     @Test
@@ -1327,23 +1341,53 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `resposta livre valida mostra as bolhas`() {
-        setContent(freeAnswer = FreeAnswerUiState.Ready(listOf("Fechado.", "Bora?")))
+    fun `troca pergunta e resposta aparece adjacente no fluxo`() {
+        setContent(
+            exchanges = listOf(
+                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Ready(listOf("Fechado.", "Bora?"))),
+            ),
+        )
 
-        compose.onNodeWithText("Fechado.").assertIsDisplayed()
-        compose.onNodeWithText("Bora?").assertIsDisplayed()
+        compose.onNodeWithText("o que tem hoje?").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Fechado.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Bora?").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `troca carregando mostra digitando junto a pergunta`() {
+        setContent(
+            exchanges = listOf(
+                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Loading),
+            ),
+        )
+
+        compose.onNodeWithText("o que tem hoje?").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-free-typing").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `troca sem resposta mostra so a pergunta`() {
+        setContent(
+            exchanges = listOf(
+                FreeExchange("e1", "Perdi o treino de ontem", FreeAnswerUiState.Idle),
+            ),
+        )
+
+        compose.onNodeWithText("Perdi o treino de ontem").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `fallback livre mostra a fala com tentar de novo`() {
         var retried = 0
         setContent(
-            freeAnswer = FreeAnswerUiState.Fallback("Sem conexão com o Coach."),
+            exchanges = listOf(
+                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Fallback("Sem conexão com o Coach.")),
+            ),
             onRetryFreeAnswer = { retried++ },
         )
 
-        compose.onNodeWithTag("coach-free-fallback").assertIsDisplayed()
-        compose.onNodeWithTag("coach-free-retry").performClick()
+        compose.onNodeWithTag("coach-free-fallback").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-free-retry").performScrollTo().performClick()
 
         assertThat(retried).isEqualTo(1)
     }
@@ -1361,8 +1405,9 @@ class CoachScreenTest {
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
         consented: Boolean = true,
-        freeAnswer: FreeAnswerUiState = FreeAnswerUiState.Idle,
+        exchanges: List<FreeExchange> = emptyList(),
         onSendFreeText: (String) -> Unit = {},
+        onEchoQuestion: (String) -> Unit = {},
         onRetryFreeAnswer: () -> Unit = {},
         onReplanRequest: () -> Unit = {},
         onReplanRequestMissed: () -> Unit = {},
@@ -1393,8 +1438,9 @@ class CoachScreenTest {
                     review = review,
                     reviewState = reviewState,
                     replan = replan,
-                    freeAnswer = freeAnswer,
+                    exchanges = exchanges,
                     onSendFreeText = onSendFreeText,
+                    onEchoQuestion = onEchoQuestion,
                     onRetryFreeAnswer = onRetryFreeAnswer,
                     onReplanRequest = onReplanRequest,
                     onReplanRequestMissed = onReplanRequestMissed,
