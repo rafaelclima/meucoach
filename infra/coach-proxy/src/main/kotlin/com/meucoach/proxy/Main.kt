@@ -247,9 +247,11 @@ private const val OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completion
 internal const val DEFAULT_GO_URL = "https://opencode.ai/inference/go/openai/v1/chat/completions"
 
 /**
- * Default OpenRouter chain. `openrouter/free` is the unified free router; the
- * pinned fallbacks must be live `:free` ids (see https://openrouter.ai/api/v1/models —
- * free ids rotate and dead ones 404, e.g. inkling-2-small was retired).
+ * Default OpenRouter chain. Free-only by policy: there are no credits on the
+ * OpenRouter account, so every id here must end in `:free` (enforced by test).
+ * `openrouter/free` is the unified free router; the pinned fallbacks must be
+ * live `:free` ids (see https://openrouter.ai/api/v1/models — free ids rotate
+ * and dead ones 404, e.g. inkling-2-small was retired).
  */
 internal val DEFAULT_MODELS = listOf(
     "openrouter/free",
@@ -258,12 +260,13 @@ internal val DEFAULT_MODELS = listOf(
 )
 
 /**
- * Modelos padrão do Go, em ordem de tentativa. GLM-5.3-Flash primeiro por ser
- * um modelo "flash" (resposta curta, latência baixa) e retenção 0 dias; o
- * DeepSeek V4.1 Flash fica como segunda tentativa por ter a maior cota.
- * Se o workspace não tiver um deles, o 4xx cai para o próximo sem quebrar.
+ * Modelos padrão do Go, em ordem de tentativa. MiMo-V2.6-Flash primeiro por
+ * ser um modelo "flash" sem variante de pensamento (resposta direta,
+ * latência baixa); GLM e DeepSeek seguem como failover. A cota é a da
+ * assinatura Go — a perna OpenRouter é free-only por política (sem créditos
+ * naquela conta) e entra só se o Go falhar.
  */
-internal val DEFAULT_GO_MODELS = listOf("glm-5.3-flash", "deepseek-v4.1-flash")
+internal val DEFAULT_GO_MODELS = listOf("mimo-v2.6-flash", "glm-5.3-flash", "deepseek-v4.1-flash")
 
 /**
  * Tenta os alvos em ordem (Go, depois OpenRouter) e dentro de cada alvo os

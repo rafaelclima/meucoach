@@ -1,6 +1,31 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 fallback com conteúdo + teto de 25 s)
+**Atualizado:** 22/11/2026 (ADR 0057 MiMo-V2.6-Flash primeiro no Go)
+
+## Sessão 2026-11-22 — MiMo-V2.6-Flash primeiro na cadeia do Go (TDD)
+
+**Pedido do usuário 0:** trocar o modelo para o MiMo-V2.6-Flash (sem
+variante de pensamento) e fechar bem a resposta do OpenCode.
+
+### Concluído
+
+- **Verificado:** `mimo-v2.6-flash` existe no gateway Go (ID curto,
+  `featured`, dentro da cota da assinatura) e no OpenRouter
+  (`xiaomi/mimo-v2.6-flash`, $0,14/$0,28 por 1M, com `response_format`).
+- **Proxy:** `DEFAULT_GO_MODELS` agora `mimo,glm,deepseek` (era
+  `glm,deepseek`); perna OpenRouter segue free-only por política (sem
+  créditos naquela conta — travado em teste). Sem mudança de contrato:
+  env `COACH_GO_MODELS` continua podendo sobrescrever.
+- **Testes:** proxy 19/19 (default novo + trava free-only); `spotlessCheck`
+  verde. Modellista do Go é pública; nenhuma chave foi exposta.
+- **Docs:** HANDOFF (env default) + esta entrada.
+
+### Próximo
+
+1. Redeploy do proxy no Dokploy (sem env nova obrigatória — o default já
+   vale; `COACH_GO_MODELS` só se quiser outra ordem).
+2. Perguntar qualquer coisa e conferir no log
+   `coach upstream=go model=mimo-v2.6-flash status=200`.
 
 ## Sessão 2026-11-22 — Upstream degradado: resposta determinística em vez de silêncio (TDD)
 
