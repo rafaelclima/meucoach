@@ -41,7 +41,7 @@ São técnicos demais para alguém que está começando. O app promete "explicar
 | `ACWR > 1,5` | Alerta técnico sem explicação. | `Carga aumentou rápido (7 dias vs 28 dias) — cuidado, não é dia de forçar.` |
 | `Monotonia alta` | Termo técnico. | `Treinos repetidos demais — variedade baixa. Isso aumenta risco de lesão.` |
 | `Prontidão 72 · Verde` | Sem contexto para o usuário. | `Você está bem para correr (sono, fadiga, FC de repouso).` |
-| `Fácil Z2 · 40 min · 6,5 km` | `Z2` é técnico. | `Fácil (conversável) · 40 min · 6,5 km` — já está bom, mas explicar `Z2` no sheet. |
+| `Fácil Z2 · 40 min · 6,5 km` | `Z2` é técnico. | `Rodagem · 40 min · 6,5 km` — o nome do treino já é fala de corredor desde 21/11/2026 (decisão do usuário 0: vocabulário único no produto); `Z2` continua explicado no sheet. |
 
 ### 3.2 Tela Tendências (`TrendsScreen`)
 

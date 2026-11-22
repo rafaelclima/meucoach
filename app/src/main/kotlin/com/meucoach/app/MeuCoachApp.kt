@@ -4,8 +4,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -135,6 +137,7 @@ fun MeuCoachApp(gateViewModel: ProfileGateViewModel = hiltViewModel()) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MainContent() {
     val tutorialViewModel: TutorialViewModel = hiltViewModel()
@@ -147,13 +150,17 @@ private fun MainContent() {
     }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: AppDestination.Today.route
+    // Esconde a bottom bar com o teclado aberto: sem isso o input do Coach
+    // flutua acima do teclado (altura da bar + teclado) em vez de colar nele.
+    val imeVisible = WindowInsets.isImeVisible
     val showBottomBar = currentRoute != ACTIVITY_DETAIL_ROUTE &&
         currentRoute != PROFILE_EDIT_ROUTE &&
         currentRoute != CALIBRATION_ROUTE &&
         currentRoute != DATA_MANAGEMENT_ROUTE &&
         currentRoute != CHECK_IN_ROUTE &&
         currentRoute != TUTORIAL_ROUTE &&
-        currentRoute != AppDestination.Profile.route
+        currentRoute != AppDestination.Profile.route &&
+        !imeVisible
     val showGear = showBottomBar && currentRoute != AppDestination.Today.route
     val context = LocalContext.current
     val showDemoMessage: (String) -> Unit = { message ->

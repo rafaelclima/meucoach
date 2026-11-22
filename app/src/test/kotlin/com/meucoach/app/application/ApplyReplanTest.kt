@@ -138,7 +138,7 @@ class ApplyReplanTest {
         assertThat(protectedAfter).isEqualTo(protectedBefore)
         assertThat(protectedAfter.status).isEqualTo(SessionStatus.DONE)
         assertThat(after.sessions.first { it.date == REPLAN_WEEK_START.plusDays(4) }.title)
-            .isEqualTo("Fácil e conversável")
+            .isEqualTo("Rodagem")
 
         val afterPrescription = prescriptionFor(after)
         assertThat(afterPrescription.id).isEqualTo(beforePrescription.id)

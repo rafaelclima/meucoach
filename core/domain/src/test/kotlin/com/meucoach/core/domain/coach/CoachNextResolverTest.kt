@@ -119,7 +119,7 @@ class CoachNextResolverTest {
     private fun session(date: LocalDate, status: SessionStatus) = PlannedSession(
         date = date,
         type = WorkoutType.EASY,
-        title = "Fácil e conversável",
+        title = "Rodagem",
         durationMin = 30,
         rationale = "Base aeróbica.",
         ruleIds = listOf("R-PLAN-03"),

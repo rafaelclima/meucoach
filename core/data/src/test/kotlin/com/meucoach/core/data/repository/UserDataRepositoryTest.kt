@@ -413,10 +413,10 @@ class UserDataRepositoryTest {
         date = monday,
         plannedSessionId = "2026-11-02-2026-11-02",
         plannedType = WorkoutType.EASY,
-        plannedTitle = "Fácil e conversável",
+        plannedTitle = "Rodagem",
         plannedDurationMin = 40,
         prescribedType = WorkoutType.EASY,
-        title = "Fácil e conversável",
+        title = "Rodagem",
         prescribedDurationMin = 40,
         targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
             zone = "Z2",
@@ -481,7 +481,7 @@ class UserDataRepositoryTest {
         plannedTitle = "Fartlek leve",
         plannedDurationMin = 40,
         prescribedType = WorkoutType.EASY,
-        title = "Fácil, sem pressa",
+        title = "Rodagem leve",
         prescribedDurationMin = 30,
         targets = com.meucoach.core.domain.prescription.PrescriptionTargets(
             primary = com.meucoach.core.domain.prescription.TargetKind.RPE,
@@ -504,7 +504,7 @@ class UserDataRepositoryTest {
             PlannedSession(
                 date = monday,
                 type = WorkoutType.EASY,
-                title = "Fácil e conversável",
+                title = "Rodagem",
                 durationMin = 40,
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),

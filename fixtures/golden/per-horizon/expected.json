@@ -8,7 +8,7 @@
       {
         "dayOfWeek": "MONDAY",
         "type": "EASY",
-        "title": "Strides curtos",
+        "title": "Acelerações curtas",
         "durationMin": 25,
         "kind": null,
         "hasStructure": true
@@ -16,7 +16,7 @@
       {
         "dayOfWeek": "WEDNESDAY",
         "type": "QUALITY",
-        "title": "Intervalos",
+        "title": "Intervalado",
         "durationMin": 40,
         "kind": "INTERVALS",
         "planDecision": "QUALITY_OPPORTUNITY",
@@ -25,7 +25,7 @@
       {
         "dayOfWeek": "FRIDAY",
         "type": "EASY",
-        "title": "Fácil e conversável",
+        "title": "Rodagem",
         "durationMin": 40,
         "kind": null,
         "hasStructure": false
@@ -46,7 +46,7 @@
     ],
     "forbiddenTitles": [
       "Pace de prova 5K",
-      "Colinas",
+      "Subidas",
       "Fartlek"
     ]
   },

@@ -264,7 +264,7 @@ class SessionBriefingEngineTest {
 
     private fun prescription(
         type: WorkoutType = WorkoutType.EASY,
-        title: String = "Fácil e conversável",
+        title: String = "Rodagem",
         durationMin: Int? = 30,
         targets: PrescriptionTargets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment: PrescriptionAdjustment = PrescriptionAdjustment.KEEP,

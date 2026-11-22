@@ -187,7 +187,7 @@ fun demoTodayUiState(today: LocalDate, now: LocalTime = LocalTime.NOON): TodayUi
         ),
         workout =
         WorkoutUi(
-            title = "Fácil, sem pressa",
+            title = "Rodagem leve",
             zone = "Z2 · leve",
             duration = "40",
             distance = "6,0",

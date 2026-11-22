@@ -46,7 +46,7 @@ enum class DurationPolicy {
  * inventados.
  *
  * Títulos e descrições reutilizam o vocabulário do gerador ("Longão",
- * "Strides curtos", "Ritmo forte"/"Intervalos"); paces e durações derivam da
+ * "Acelerações curtas", "Ritmo forte"/"Intervalado"); paces e durações derivam da
  * calibração e da disponibilidade na fiação (fatia 3). Toda estrutura cita
  * `R-PER-02`.
  *
@@ -259,7 +259,7 @@ object SessionLibrary {
     private fun easy(recovery: Boolean): SessionTemplate = SessionTemplate(
         role = SessionRole.EASY_RUN,
         type = WorkoutType.EASY,
-        title = if (recovery) "Recuperação: fácil e curto" else "Fácil e conversável",
+        title = if (recovery) "Recuperação: fácil e curto" else "Rodagem",
         qualityKind = null,
         durationPolicy = DurationPolicy.EASY_SIZED,
         blurb = if (recovery) {
@@ -274,7 +274,7 @@ object SessionLibrary {
     private fun stridesBase(): SessionTemplate = SessionTemplate(
         role = SessionRole.STRIDES,
         type = WorkoutType.EASY,
-        title = "Strides curtos",
+        title = "Acelerações curtas",
         qualityKind = null,
         durationPolicy = DurationPolicy.MICRO_DOSE_25,
         blurb = "Estímulo neuromuscular curto no fim de um fácil; não conta como treino forte.",
@@ -286,7 +286,7 @@ object SessionLibrary {
     private fun introFartlek(): SessionTemplate = SessionTemplate(
         role = SessionRole.INTRO_FARTLEK,
         type = WorkoutType.EASY,
-        title = "Fácil com surtos",
+        title = "Rodagem com estímulos",
         qualityKind = null,
         durationPolicy = DurationPolicy.EASY_SIZED,
         blurb = "Surtos curtos e controlados no fácil, após 4 semanas consistentes; " +
@@ -313,10 +313,10 @@ object SessionLibrary {
     private fun stridesMicroDose(): SessionTemplate = SessionTemplate(
         role = SessionRole.STRIDES,
         type = WorkoutType.QUALITY,
-        title = "Strides curtos",
+        title = "Acelerações curtas",
         qualityKind = QualityKind.STRIDES_ONLY,
         durationPolicy = DurationPolicy.MICRO_DOSE_25,
-        blurb = "Semana de prova: micro-dose para manter o estímulo, sem fadiga.",
+        blurb = "Semana de prova: dose pequena para manter o estímulo, sem fadiga.",
         ruleIds = listOf(RULE_ID, "R-PER-04", "R-PLAN-05", "R-PLAN-10"),
         evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
         structure = stridesStructure(note = "Micro-dose de semana de prova; sem fadiga."),
@@ -391,7 +391,7 @@ object SessionLibrary {
     private fun intervals(repetitions: Int): SessionTemplate = SessionTemplate(
         role = SessionRole.QUALITY_MAIN,
         type = WorkoutType.QUALITY,
-        title = "Intervalos",
+        title = "Intervalado",
         qualityKind = QualityKind.INTERVALS,
         durationPolicy = DurationPolicy.QUALITY_SIZED,
         blurb = "Repetições fortes com recuperação leve entre elas.",
@@ -448,7 +448,7 @@ object SessionLibrary {
         return SessionTemplate(
             role = SessionRole.QUALITY_MAIN,
             type = WorkoutType.QUALITY,
-            title = "Colinas",
+            title = "Subidas",
             qualityKind = QualityKind.HILLS,
             durationPolicy = DurationPolicy.QUALITY_SIZED,
             blurb = "Subidas curtas e fortes, com recuperação caminhando.",
@@ -505,7 +505,7 @@ object SessionLibrary {
     private fun shortIntervals(): SessionTemplate = SessionTemplate(
         role = SessionRole.QUALITY_MAIN,
         type = WorkoutType.QUALITY,
-        title = "Intervalos curtos",
+        title = "Intervalado",
         qualityKind = QualityKind.INTERVALS,
         durationPolicy = DurationPolicy.QUALITY_SIZED,
         blurb = "Repetições curtas para a especificidade de 5K.",

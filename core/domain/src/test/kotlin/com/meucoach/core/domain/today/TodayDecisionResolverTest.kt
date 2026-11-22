@@ -24,7 +24,7 @@ class TodayDecisionResolverTest {
         val decision = TodayDecisionResolver.resolve(date = date, event = null, prescription = prescription())
 
         assertThat(decision).isInstanceOf(TodayDecision.Training::class.java)
-        assertThat((decision as TodayDecision.Training).prescription.title).isEqualTo("Fácil e conversável")
+        assertThat((decision as TodayDecision.Training).prescription.title).isEqualTo("Rodagem")
     }
 
     @Test
@@ -86,10 +86,10 @@ class TodayDecisionResolverTest {
         date = date,
         plannedSessionId = "plan-$date",
         plannedType = WorkoutType.EASY,
-        plannedTitle = "Fácil e conversável",
+        plannedTitle = "Rodagem",
         plannedDurationMin = 30,
         prescribedType = WorkoutType.EASY,
-        title = "Fácil e conversável",
+        title = "Rodagem",
         prescribedDurationMin = 30,
         targets = PrescriptionTargets(rpe = 4, primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.KEEP,

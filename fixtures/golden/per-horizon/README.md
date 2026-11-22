@@ -13,7 +13,7 @@ em manutenção, e o `PEAK` usa o pace da previsão atual, nunca a meta.
 ## O que o golden prova
 
 1. **Modo geral com qualidade:** a semana de 02/11/2026 é `BUILD` (rotação
-   geral), com "Intervalos" na quarta (`QUALITY_OPPORTUNITY`), strides `EASY`
+   geral), com "Intervalado" na quarta (`QUALITY_OPPORTUNITY`), strides `EASY`
    na segunda, fácil na sexta e "Longão" de 45 min no domingo; 150 min.
 2. **Bloco específico no fim:** a partir de 08/02/2027 (12 semanas antes da
    prova) o `MacroPlanResolver` usa a tabela de 5K de 12 semanas: `BASE` 5,

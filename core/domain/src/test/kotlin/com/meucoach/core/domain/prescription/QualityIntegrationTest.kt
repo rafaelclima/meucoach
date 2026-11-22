@@ -51,7 +51,7 @@ class QualityIntegrationTest {
 
         assertThat(first.qualityKind).isEqualTo(QualityKind.CONTINUOUS)
         assertThat(second.qualityKind).isEqualTo(QualityKind.INTERVALS)
-        assertThat(second.title).isEqualTo("Intervalos")
+        assertThat(second.title).isEqualTo("Intervalado")
         assertThat(second.qualityKind).isNotEqualTo(first.qualityKind)
     }
 
@@ -92,7 +92,7 @@ class QualityIntegrationTest {
 
         val quality = plan.sessions.single { it.type == WorkoutType.QUALITY }
 
-        assertThat(quality.title).isEqualTo("Strides curtos")
+        assertThat(quality.title).isEqualTo("Acelerações curtas")
         assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         assertThat(quality.durationMin).isEqualTo(25)
         assertThat(quality.structure).isNotNull
@@ -137,7 +137,7 @@ class QualityIntegrationTest {
 
         assertThat(plan.qualityCount).isZero()
         assertThat(plan.sessions).noneMatch { it.type == WorkoutType.QUALITY }
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
     }
 

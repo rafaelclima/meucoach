@@ -60,7 +60,7 @@ class WorkoutRecommenderTest {
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
-        assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
+        assertThat(recommendation.title).isEqualTo("Rodagem leve")
         assertThat(recommendation.ruleIds).contains("R-READY-03")
         assertThat(recommendation.rationale).contains("sem treino forte")
     }
@@ -96,7 +96,7 @@ class WorkoutRecommenderTest {
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
-        assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
+        assertThat(recommendation.title).isEqualTo("Rodagem leve")
         assertThat(recommendation.ruleIds).contains("R-READY-06")
         assertThat(recommendation.evidenceIds).contains("EV-SAW-2016")
         assertThat(recommendation.rationale).contains("check-in")
@@ -112,7 +112,7 @@ class WorkoutRecommenderTest {
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
-        assertThat(recommendation.title).isEqualTo("Fácil e conversável")
+        assertThat(recommendation.title).isEqualTo("Rodagem")
         assertThat(recommendation.ruleIds).doesNotContain("R-READY-06")
     }
 
@@ -176,7 +176,7 @@ class WorkoutRecommenderTest {
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
-        assertThat(recommendation.title).isEqualTo("Fácil, sem pressa")
+        assertThat(recommendation.title).isEqualTo("Rodagem leve")
         assertThat(recommendation.ruleIds).contains("R-DATA-01")
         assertThat(recommendation.evidenceIds).contains("EV-IMPELLIZZERI-2020")
         assertThat(recommendation.rationale).contains("carga suficiente", "8 dias")
@@ -207,7 +207,7 @@ class WorkoutRecommenderTest {
         )
 
         assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
-        assertThat(recommendation.title).isEqualTo("Fácil e conversável")
+        assertThat(recommendation.title).isEqualTo("Rodagem")
         assertThat(recommendation.pace).isEqualTo(
             PaceTarget(
                 fast = Pace.fromSecondsPerKm(450),

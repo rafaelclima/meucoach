@@ -39,7 +39,7 @@ object CoachNextLabels {
                 // Without a persisted decision the plan intent is labelled as
                 // such, never presented as if the engine had confirmed it.
                 val prefix = if (prescription == null) "Planejado: " else ""
-                val title = CoachSpeechLabels.speechTitle(prescription?.title ?: subject.session.title)
+                val title = prescription?.title ?: subject.session.title
                 // A prescription with no duration (rest) must never inherit the
                 // planned duration: the prescribed day is the truth.
                 val duration = (
@@ -59,7 +59,7 @@ object CoachNextLabels {
         val training = context.training ?: return null
         val prescription = context.prescription ?: return null
         if (!prescription.differsFromPlan) return null
-        val title = CoachSpeechLabels.speechTitle(prescription.plannedTitle ?: training.session.title)
+        val title = prescription.plannedTitle ?: training.session.title
         val duration = prescription.plannedDurationMin?.let { " · $it min" }.orEmpty()
         return "Planejado: $title$duration."
     }

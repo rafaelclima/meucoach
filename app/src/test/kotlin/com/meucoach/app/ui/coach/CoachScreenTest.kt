@@ -438,7 +438,7 @@ class CoachScreenTest {
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Amanhã · Dia de prova").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Fácil", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Rodagem", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Semana concluída.").assertDoesNotExist()
     }
 
@@ -738,7 +738,7 @@ class CoachScreenTest {
     private fun session(
         date: LocalDate = monday.plusDays(1),
         type: WorkoutType = WorkoutType.EASY,
-        title: String = "Fácil",
+        title: String = "Rodagem",
         durationMin: Int = 30,
     ) = PlannedSession(
         date = date,
@@ -754,7 +754,7 @@ class CoachScreenTest {
     private fun doneSession() = PlannedSession(
         date = monday,
         type = WorkoutType.EASY,
-        title = "Fácil",
+        title = "Rodagem",
         durationMin = 30,
         rationale = "Base.",
         ruleIds = listOf("R-ZONE-01"),
@@ -803,7 +803,7 @@ class CoachScreenTest {
         adjustment: PrescriptionAdjustment,
         reason: QualityBlockReason? = null,
         prescribedType: WorkoutType = WorkoutType.EASY,
-        prescribedTitle: String = "Fácil",
+        prescribedTitle: String = "Rodagem",
         prescribedDuration: Int? = 25,
         unlockHint: String = "Faça o check-in de hoje para liberar o treino forte.",
     ) = DailyPrescription(
@@ -1211,7 +1211,7 @@ class CoachScreenTest {
 
         compose.onNodeWithTag("coach-system-done").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-done-cheer").performScrollTo().assertTextContains(
-            "Fácil",
+            "Rodagem",
             substring = true,
         )
     }
@@ -1283,6 +1283,17 @@ class CoachScreenTest {
         compose.onNodeWithTag("coach-composer-send").assertHasClickAction()
         compose.onNodeWithText("Em breve você poderá digitar", substring = true)
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun `barra de input envolve o composer para ficar acima do teclado`() {
+        setContent()
+
+        // Regressão: sem o imePadding na barra, o teclado cobre o campo
+        // e o usuário não vê o que digita.
+        compose.onNodeWithTag("coach-input-bar").assertIsDisplayed()
+        compose.onNodeWithTag("coach-composer-input").assertIsDisplayed()
+        compose.onNodeWithTag("coach-composer-send").assertHasClickAction()
     }
 
     @Test

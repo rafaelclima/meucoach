@@ -189,7 +189,7 @@ class WorkoutStructureTest {
         val session = PlannedSession(
             date = LocalDate.of(2026, 11, 16),
             type = WorkoutType.EASY,
-            title = "Fácil e conversável",
+            title = "Rodagem",
             durationMin = 40,
             rationale = "Base aeróbica",
             ruleIds = listOf("R-PER-02"),

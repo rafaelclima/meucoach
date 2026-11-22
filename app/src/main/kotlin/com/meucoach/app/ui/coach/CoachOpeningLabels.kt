@@ -32,7 +32,7 @@ object CoachOpeningLabels {
                 !context.isToday -> {
                     val day = CoachNextLabels.dayLabel(context.today, subject.date, false)
                     val duration = subject.session.durationMin?.let { ", $it min" }.orEmpty()
-                    val workout = CoachSpeechLabels.speechInline(subject.session.title)
+                    val workout = subject.session.title.replaceFirstChar { it.lowercase() }
                     "$hello $day tem $workout$duration. Dorme bem hoje que conta."
                 }
 

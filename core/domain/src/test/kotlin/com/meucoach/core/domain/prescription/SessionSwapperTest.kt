@@ -13,7 +13,7 @@ class SessionSwapperTest {
     @Test
     fun `swaps planned sessions and keeps their dates`() {
         val plan = plan(
-            session(monday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(monday, WorkoutType.EASY, "Rodagem", 40),
             session(wednesday, WorkoutType.QUALITY, "Tempo", 30),
             session(saturday, WorkoutType.LONG, "Longão", 80),
         )
@@ -40,9 +40,9 @@ class SessionSwapperTest {
             cooldownMin = 5,
             totalMin = 40,
         )
-        val quality = session(monday, WorkoutType.EASY, "Fácil e conversável", 40).copy(
+        val quality = session(monday, WorkoutType.EASY, "Rodagem", 40).copy(
             type = WorkoutType.QUALITY,
-            title = "Intervalos",
+            title = "Intervalado",
             durationMin = 40,
             qualityKind = QualityKind.INTERVALS,
             planDecision = PlanDecision(PlanDecisionReason.QUALITY_OPPORTUNITY, "terça"),
@@ -51,7 +51,7 @@ class SessionSwapperTest {
         val tuesday = monday.plusDays(1)
         val plan = plan(
             quality,
-            session(tuesday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(tuesday, WorkoutType.EASY, "Rodagem", 40),
             session(saturday, WorkoutType.LONG, "Longão", 80),
         )
 
@@ -71,7 +71,7 @@ class SessionSwapperTest {
     @Test
     fun `rejects a swap involving a race date`() {
         val plan = plan(
-            session(monday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(monday, WorkoutType.EASY, "Rodagem", 40),
             session(wednesday, WorkoutType.QUALITY, "Tempo", 30),
         )
 
@@ -90,7 +90,7 @@ class SessionSwapperTest {
     @Test
     fun `rejects past or completed sessions`() {
         val plan = plan(
-            session(monday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(monday, WorkoutType.EASY, "Rodagem", 40),
             session(wednesday, WorkoutType.QUALITY, "Tempo", 30),
         )
 
@@ -118,10 +118,10 @@ class SessionSwapperTest {
     fun `rejects a quality next to the long run`() {
         val sunday = monday.plusDays(6)
         val plan = plan(
-            session(monday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(monday, WorkoutType.EASY, "Rodagem", 40),
             session(wednesday, WorkoutType.QUALITY, "Tempo", 30),
             session(saturday, WorkoutType.LONG, "Longão", 80),
-            session(sunday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(sunday, WorkoutType.EASY, "Rodagem", 40),
         )
 
         val result = SessionSwapper.swap(plan, wednesday, sunday, today = monday)
@@ -135,7 +135,7 @@ class SessionSwapperTest {
         val thursday = monday.plusDays(3)
         val plan = plan(
             session(monday, WorkoutType.QUALITY, "Tempo", 30),
-            session(tuesday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(tuesday, WorkoutType.EASY, "Rodagem", 40),
             session(thursday, WorkoutType.QUALITY, "Tempo", 30),
             session(saturday, WorkoutType.LONG, "Longão", 80),
         )
@@ -148,7 +148,7 @@ class SessionSwapperTest {
     @Test
     fun `rejects the same day, rest days and missing sessions`() {
         val plan = plan(
-            session(monday, WorkoutType.EASY, "Fácil e conversável", 40),
+            session(monday, WorkoutType.EASY, "Rodagem", 40),
             session(wednesday, WorkoutType.REST, "Descanso", null),
         )
 

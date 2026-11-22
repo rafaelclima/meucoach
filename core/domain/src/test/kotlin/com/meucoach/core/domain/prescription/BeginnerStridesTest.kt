@@ -29,7 +29,7 @@ import java.time.LocalDate
  * guarda `R-PRESC-04` do dia e não conta como qualidade. Sem 2+ dias fáceis
  * além do longão e fora dos dias fortes, não há strides. O iniciante com 4
  * semanas ≥80% de conclusão forte troca os strides pelo intro fartlek
- * ("Fácil com surtos"), ainda `EASY` e ainda sem qualidade.
+ * ("Rodagem com estímulos"), ainda `EASY` e ainda sem qualidade.
  */
 class BeginnerStridesTest {
     private val generator = WeeklyPlanGenerator()
@@ -48,7 +48,7 @@ class BeginnerStridesTest {
             ),
         )
 
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(strides.durationMin).isEqualTo(25)
         assertThat(strides.date.dayOfWeek).isEqualTo(DayOfWeek.MONDAY)
@@ -69,7 +69,7 @@ class BeginnerStridesTest {
             ),
         )
 
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(strides.durationMin).isEqualTo(20)
     }
@@ -85,7 +85,7 @@ class BeginnerStridesTest {
             ),
         )
 
-        assertThat(plan.sessions.map { it.title }).doesNotContain("Strides curtos")
+        assertThat(plan.sessions.map { it.title }).doesNotContain("Acelerações curtas")
         assertThat(plan.qualityCount).isZero()
     }
 
@@ -108,7 +108,7 @@ class BeginnerStridesTest {
         )
 
         assertThat(plan.rationale).contains("Fase BUILD")
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(plan.qualityCount).isZero()
     }
@@ -129,12 +129,12 @@ class BeginnerStridesTest {
             ),
         )
 
-        val intro = plan.sessions.single { it.title == "Fácil com surtos" }
+        val intro = plan.sessions.single { it.title == "Rodagem com estímulos" }
         assertThat(intro.type).isEqualTo(WorkoutType.EASY)
         assertThat(intro.durationMin).isEqualTo(20)
         assertThat(intro.date.dayOfWeek).isEqualTo(DayOfWeek.MONDAY)
         assertThat(intro.ruleIds).contains("R-PER-02")
-        assertThat(plan.sessions.map { it.title }).doesNotContain("Strides curtos")
+        assertThat(plan.sessions.map { it.title }).doesNotContain("Acelerações curtas")
         assertThat(plan.qualityCount).isZero()
     }
 
@@ -155,9 +155,9 @@ class BeginnerStridesTest {
             ),
         )
 
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
-        assertThat(plan.sessions.map { it.title }).doesNotContain("Fácil com surtos")
+        assertThat(plan.sessions.map { it.title }).doesNotContain("Rodagem com estímulos")
         assertThat(plan.qualityCount).isZero()
     }
 
@@ -179,7 +179,7 @@ class BeginnerStridesTest {
 
         val quality = plan.sessions.single { it.type == WorkoutType.QUALITY }
         assertThat(quality.date.dayOfWeek).isEqualTo(DayOfWeek.MONDAY)
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(strides.durationMin).isEqualTo(25)
         assertThat(strides.date.dayOfWeek).isEqualTo(DayOfWeek.WEDNESDAY)

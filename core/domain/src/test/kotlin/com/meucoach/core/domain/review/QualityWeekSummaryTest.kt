@@ -114,7 +114,7 @@ class QualityWeekSummaryTest {
         plannedTitle = "Ritmo forte",
         plannedDurationMin = 40,
         prescribedType = if (downgraded) WorkoutType.EASY else WorkoutType.QUALITY,
-        title = if (downgraded) "Fácil e conversável" else "Ritmo forte",
+        title = if (downgraded) "Rodagem" else "Ritmo forte",
         prescribedDurationMin = 40,
         targets = PrescriptionTargets(zone = "Z2", rpe = 4, primary = TargetKind.RPE),
         adjustment = if (downgraded) PrescriptionAdjustment.DOWNGRADE else adjustment,

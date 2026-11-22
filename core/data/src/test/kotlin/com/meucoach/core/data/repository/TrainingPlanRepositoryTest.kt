@@ -937,7 +937,7 @@ class TrainingPlanRepositoryTest {
             PlannedSession(
                 date = weekStart,
                 type = WorkoutType.EASY,
-                title = "Fácil e conversável",
+                title = "Rodagem",
                 durationMin = 40,
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),

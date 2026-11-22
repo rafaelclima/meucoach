@@ -96,7 +96,7 @@ class CoachOpeningLabelsTest {
             PlannedSession(
                 date = date,
                 type = WorkoutType.EASY,
-                title = "Fácil",
+                title = "Rodagem",
                 durationMin = 30,
                 rationale = "Base.",
                 ruleIds = listOf("R-ZONE-01"),
@@ -132,7 +132,7 @@ class CoachOpeningLabelsTest {
         plannedTitle = "Ritmo forte",
         plannedDurationMin = 35,
         prescribedType = WorkoutType.EASY,
-        title = "Fácil",
+        title = "Rodagem",
         prescribedDurationMin = 25,
         targets = PrescriptionTargets(primary = TargetKind.RPE),
         adjustment = PrescriptionAdjustment.DOWNGRADE,

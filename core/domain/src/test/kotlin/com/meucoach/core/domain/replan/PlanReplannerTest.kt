@@ -1867,7 +1867,7 @@ class PlanReplannerTest {
             if (session.type == WorkoutType.QUALITY) {
                 session.copy(
                     type = WorkoutType.EASY,
-                    title = "Fácil e conversável",
+                    title = "Rodagem",
                     qualityKind = null,
                     planDecision = null,
                     structure = null,
@@ -1995,7 +1995,7 @@ class PlanReplannerTest {
 
     private fun defaultTitle(type: WorkoutType): String = when (type) {
         WorkoutType.REST -> "Descanso"
-        WorkoutType.EASY -> "Fácil e conversável"
+        WorkoutType.EASY -> "Rodagem"
         WorkoutType.LONG -> "Longão"
         WorkoutType.QUALITY -> "Tempo"
     }
@@ -2012,7 +2012,7 @@ class PlanReplannerTest {
             PlannedSession(
                 date = previousMonday.plusDays(offset),
                 type = WorkoutType.EASY,
-                title = "Fácil e conversável",
+                title = "Rodagem",
                 durationMin = 40,
                 rationale = "Base aeróbica.",
                 ruleIds = listOf("R-ZONE-01"),

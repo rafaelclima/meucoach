@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -383,7 +384,9 @@ fun CoachScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                    .imePadding()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .testTag("coach-input-bar"),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 val typing = explanation is CoachExplanationState.Loading ||

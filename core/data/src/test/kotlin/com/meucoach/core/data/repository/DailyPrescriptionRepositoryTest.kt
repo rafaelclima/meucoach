@@ -142,7 +142,7 @@ class DailyPrescriptionRepositoryTest {
             prescription().copy(
                 plannedType = WorkoutType.QUALITY,
                 prescribedType = WorkoutType.QUALITY,
-                title = "Intervalos",
+                title = "Intervalado",
                 structure = structure,
             ),
         )
@@ -183,10 +183,10 @@ class DailyPrescriptionRepositoryTest {
         date = date,
         plannedSessionId = "2026-11-02-$date",
         plannedType = WorkoutType.EASY,
-        plannedTitle = "Fácil e conversável",
+        plannedTitle = "Rodagem",
         plannedDurationMin = 40,
         prescribedType = WorkoutType.EASY,
-        title = "Fácil e conversável",
+        title = "Rodagem",
         prescribedDurationMin = 40,
         targets = targets,
         adjustment = adjustment,

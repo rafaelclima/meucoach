@@ -205,14 +205,14 @@ class OpenRouterBodyTest {
     }
 
     @Test
-    fun `system prompts translate workout names to runner talk`() {
+    fun `system prompts keep runner talk and forbid taper`() {
         for (kind in listOf("explain", "review", "free-answer")) {
             val body = buildOpenRouterBody("some-model:free", kind, "{}")
             val system = Json.parseToJsonElement(body)
                 .jsonObject["messages"]!!.jsonArray[0]
                 .jsonObject["content"]!!.jsonPrimitive.content
 
-            assertTrue(system.contains("rodagem"), "$kind must translate easy runs to rodagem")
+            assertTrue(system.contains("rodagem"), "$kind must keep runner talk for easy runs")
             assertTrue(system.contains("micro-dose"), "$kind must forbid micro-dose")
         }
     }

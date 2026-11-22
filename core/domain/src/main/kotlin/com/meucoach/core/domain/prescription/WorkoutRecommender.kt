@@ -188,7 +188,7 @@ class WorkoutRecommender {
 
         return WorkoutRecommendation(
             type = WorkoutType.EASY,
-            title = if (conservative) "Fácil, sem pressa" else "Fácil e conversável",
+            title = if (conservative) "Rodagem leve" else "Rodagem",
             durationMin = duration,
             distanceKm = distance,
             pace = paceTarget,

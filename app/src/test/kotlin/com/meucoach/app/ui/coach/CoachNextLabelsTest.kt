@@ -283,7 +283,7 @@ class CoachNextLabelsTest {
         adjustment: PrescriptionAdjustment,
         reason: QualityBlockReason? = null,
         prescribedType: WorkoutType = WorkoutType.EASY,
-        prescribedTitle: String = "Fácil",
+        prescribedTitle: String = "Rodagem",
         prescribedDuration: Int? = 25,
     ) = DailyPrescription(
         date = monday,

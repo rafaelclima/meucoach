@@ -26,9 +26,9 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.ON_TARGET)
-        assertThat(verdict.headline).isEqualTo("Fácil bem feito")
+        assertThat(verdict.headline).isEqualTo("Rodagem bem feita")
         assertThat(verdict.proof).isEqualTo("90% no alvo")
-        assertThat(verdict.coachLine).isEqualTo("Fácil bem feito. Amanhã: 40 min leve.")
+        assertThat(verdict.coachLine).isEqualTo("Rodagem bem feita. Amanhã: 40 min leve.")
         assertThat(verdict.onTargetPercent).isEqualTo(90)
         assertThat(verdict.targetZones).containsExactly(HeartRateZone.Z2)
         assertThat(verdict.stamps.map { it.tone }).containsOnly(StoryVerdictTone.ON_TARGET)
@@ -235,7 +235,7 @@ class StoryVerdictCalculatorTest {
             nextSession = session(WorkoutType.LONG, date = DATE.plusDays(3), durationMin = 60),
         )
 
-        assertThat(verdict.coachLine).isEqualTo("Fácil bem feito. Próximo: longão de 60 min.")
+        assertThat(verdict.coachLine).isEqualTo("Rodagem bem feita. Próximo: longão de 60 min.")
     }
 
     private fun session(type: WorkoutType, date: LocalDate = DATE, durationMin: Int? = 40) = PlannedSession(

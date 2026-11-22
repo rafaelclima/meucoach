@@ -147,7 +147,7 @@ class PlanQualityGoldenTest {
 
         assertThat(plan.qualityCount).isZero()
         assertThat(plan.sessions).noneMatch { it.type == WorkoutType.QUALITY }
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(strides.qualityKind).isNull()
         assertThat(strides.structure).isNotNull

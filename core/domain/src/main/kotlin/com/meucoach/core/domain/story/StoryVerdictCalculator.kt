@@ -177,7 +177,7 @@ object StoryVerdictCalculator {
 
     private fun headlineFor(type: WorkoutType, tone: StoryVerdictTone): String = when (tone) {
         StoryVerdictTone.ON_TARGET -> when (type) {
-            WorkoutType.EASY -> "Fácil bem feito"
+            WorkoutType.EASY -> "Rodagem bem feita"
             WorkoutType.LONG -> "Longão bem feito"
             WorkoutType.QUALITY -> "Qualidade completa"
             WorkoutType.REST -> "Treino feito"

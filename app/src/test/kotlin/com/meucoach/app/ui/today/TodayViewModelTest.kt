@@ -89,7 +89,7 @@ class TodayViewModelTest {
             today = today,
         )
 
-        assertThat(state.workout.title).isEqualTo("Fácil e conversável")
+        assertThat(state.workout.title).isEqualTo("Rodagem")
         assertThat(state.workout.duration).isEqualTo("45")
         assertThat(state.workout.pace).isEqualTo("7:30–8:24")
         assertThat(state.workout.heartRate).isEqualTo("146–161")

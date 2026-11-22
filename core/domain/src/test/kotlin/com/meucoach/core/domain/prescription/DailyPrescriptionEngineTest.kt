@@ -1208,7 +1208,7 @@ class DailyPrescriptionEngineTest {
     private fun easySession(durationMin: Int) = PlannedSession(
         date = monday,
         type = WorkoutType.EASY,
-        title = "Fácil e conversável",
+        title = "Rodagem",
         durationMin = durationMin,
         rationale = "Base.",
         ruleIds = listOf("R-ZONE-01"),

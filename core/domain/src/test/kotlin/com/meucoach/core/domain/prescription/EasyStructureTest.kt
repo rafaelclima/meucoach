@@ -39,7 +39,7 @@ class EasyStructureTest {
             ),
         )
 
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         val structure = requireNotNull(strides.structure) { "Strides must carry a structure" }
         assertThat(structure.totalMin).isEqualTo(strides.durationMin)
         assertThat(structure.plannedSeconds).isLessThanOrEqualTo(strides.durationMin.orZero() * 60L)
@@ -58,7 +58,7 @@ class EasyStructureTest {
             ),
         )
 
-        val strides = plan.sessions.single { it.title == "Strides curtos" }
+        val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         val structure = requireNotNull(strides.structure) { "Strides must carry a structure" }
         assertThat(structure.totalMin).isEqualTo(20)
         assertThat(structure.plannedSeconds).isLessThanOrEqualTo(20L * 60L)
@@ -79,7 +79,7 @@ class EasyStructureTest {
             ),
         )
 
-        val intro = plan.sessions.single { it.title == "Fácil com surtos" }
+        val intro = plan.sessions.single { it.title == "Rodagem com estímulos" }
         val structure = requireNotNull(intro.structure) { "Intro must carry a structure" }
         assertThat(structure.totalMin).isEqualTo(intro.durationMin)
         assertThat(structure.plannedSeconds).isLessThanOrEqualTo(intro.durationMin.orZero() * 60L)

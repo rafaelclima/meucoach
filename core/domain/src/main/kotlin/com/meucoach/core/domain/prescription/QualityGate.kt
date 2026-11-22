@@ -173,7 +173,7 @@ object QualityGate {
             detail = "semana de prova: sem qualidade principal",
             ruleId = "R-PLAN-10",
             evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
-            unlockHint = "Semana de prova: a micro-dose já é o estímulo; o treino forte volta depois.",
+            unlockHint = "Semana de prova: a dose pequena já é o estímulo; o treino forte volta depois.",
         )
     }
 
@@ -192,10 +192,10 @@ object QualityGate {
         if (context.microDose || context.plan.phase != MesoPhase.TAPER) return null
         return blocked(
             reason = QualityBlockReason.TAPER_WINDOW,
-            detail = "fase de taper: apenas a micro-dose estrutural",
+            detail = "semana de prova: apenas a dose pequena estrutural",
             ruleId = "R-PLAN-05",
             evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
-            unlockHint = "Mantenha a micro-dose e guarde o treino forte para depois da prova.",
+            unlockHint = "Mantenha a dose pequena e guarde o treino forte para depois da prova.",
         )
     }
 

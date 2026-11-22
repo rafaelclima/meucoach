@@ -507,7 +507,7 @@ class WeeklyPlanGenerator {
                     PlannedSession(
                         date = date,
                         type = WorkoutType.EASY,
-                        title = "Fácil e conversável",
+                        title = "Rodagem",
                         durationMin = duration,
                         rationale = "Após a prova: sessão curta e leve, sem esforço.",
                         ruleIds = listOf("R-ZONE-01", "R-PLAN-06"),
@@ -632,7 +632,7 @@ class WeeklyPlanGenerator {
                         PlannedSession(
                             date = date,
                             type = WorkoutType.EASY,
-                            title = template?.title ?: "Strides curtos",
+                            title = template?.title ?: "Acelerações curtas",
                             durationMin = duration,
                             rationale = template?.blurb
                                 ?: "Estímulo neuromuscular curto, sem fadiga.",
@@ -655,7 +655,7 @@ class WeeklyPlanGenerator {
                             title = if (isRecoveryDay) {
                                 RECOVERY_TITLE
                             } else {
-                                easyTemplate(SessionRole.EASY_RUN)?.title ?: "Fácil e conversável"
+                                easyTemplate(SessionRole.EASY_RUN)?.title ?: "Rodagem"
                             },
                             durationMin = duration,
                             rationale = if (isRecoveryDay) {
@@ -1629,7 +1629,7 @@ class WeeklyPlanGenerator {
         const val ENGINE_VERSION = "weekly-plan-v7"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
-        private const val MICRO_DOSE_TITLE = "Strides curtos"
+        private const val MICRO_DOSE_TITLE = "Acelerações curtas"
         private const val LONG_RUN_TITLE = "Longão"
         private const val LONG_RUN_HONEST_TITLE = "Corrida mais longa"
         private const val MICRO_DOSE_MIN = 25

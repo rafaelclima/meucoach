@@ -76,7 +76,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.sessions.map { it.type })
             .containsExactly(WorkoutType.EASY, WorkoutType.EASY, WorkoutType.LONG)
         // Segunda é strides (EASY, 25 min): 25 + 40 + longão de 45 (piso do ADR 0045).
-        assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Strides curtos")
+        assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Acelerações curtas")
         assertThat(plan.longRunMinutes).isEqualTo(45)
         assertThat(plan.weeklyMinutes).isEqualTo(110)
         assertThat(plan.rationale).contains("iniciante")
@@ -586,7 +586,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(intermediate.sessions.first { it.type == WorkoutType.QUALITY }.title)
             .isEqualTo("Ritmo forte")
         assertThat(advanced.sessions.first { it.type == WorkoutType.QUALITY }.title)
-            .isEqualTo("Intervalos")
+            .isEqualTo("Intervalado")
     }
 
     @Test
@@ -1736,7 +1736,7 @@ class WeeklyPlanGeneratorTest {
         // R-PLAN-05/10 v2: dentro do corte vale 1 micro-dose ≤25 min, nunca zero.
         val micro = insideCutoff.sessions.filter { it.type == WorkoutType.QUALITY }
         assertThat(micro).hasSize(1)
-        assertThat(micro.single().title).isEqualTo("Strides curtos")
+        assertThat(micro.single().title).isEqualTo("Acelerações curtas")
         assertThat(micro.single().durationMin).isEqualTo(25)
         assertThat(insideCutoff.ruleIds).contains("R-PLAN-05", "R-PLAN-10")
     }
@@ -1841,7 +1841,7 @@ class WeeklyPlanGeneratorTest {
         val short = qualityFor(25)
         val long = qualityFor(45)
 
-        assertThat(short.title).isEqualTo("Intervalos")
+        assertThat(short.title).isEqualTo("Intervalado")
         assertThat(short.rationale).contains("Faça 2 × 3 min em ritmo de intervalado")
         assertThat(long.rationale).contains("Faça 6 × 3 min em ritmo de intervalado")
         assertThat(short.rationale).doesNotContain("trote")
@@ -1867,7 +1867,7 @@ class WeeklyPlanGeneratorTest {
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(quality.durationMin).isEqualTo(25)
-        assertThat(quality.title).isEqualTo("Strides curtos")
+        assertThat(quality.title).isEqualTo("Acelerações curtas")
         assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
         assertThat(quality.ruleIds).contains("R-PLAN-05")
@@ -1894,7 +1894,7 @@ class WeeklyPlanGeneratorTest {
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(quality.durationMin).isEqualTo(25)
-        assertThat(quality.title).isEqualTo("Strides curtos")
+        assertThat(quality.title).isEqualTo("Acelerações curtas")
         assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         assertThat(quality.rationale).doesNotContain("bloco mais curto")
         assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
@@ -1977,7 +1977,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.sessions.map { it.date }).containsExactly(monday, monday.plusDays(1), monday.plusDays(3))
         // Segunda é o dia de strides do iniciante (EASY, 25 min, sem taper).
         assertThat(plan.sessions.first { it.date == monday }.durationMin).isEqualTo(25)
-        assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Strides curtos")
+        assertThat(plan.sessions.first { it.date == monday }.title).isEqualTo("Acelerações curtas")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-05")
     }
 

@@ -59,7 +59,7 @@ class DailyStructureTest {
     private fun plannedQuality() = PlannedSession(
         date = date,
         type = WorkoutType.QUALITY,
-        title = "Intervalos",
+        title = "Intervalado",
         durationMin = 40,
         rationale = "Qualidade.",
         ruleIds = listOf("R-PER-02"),
@@ -71,7 +71,7 @@ class DailyStructureTest {
     private fun plannedStrides(duration: Int = 25) = PlannedSession(
         date = date,
         type = WorkoutType.EASY,
-        title = "Strides curtos",
+        title = "Acelerações curtas",
         durationMin = duration,
         rationale = "Strides.",
         ruleIds = listOf("R-PER-02"),

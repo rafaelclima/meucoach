@@ -706,7 +706,7 @@ class DailyPrescriptionEngine {
     }
 
     private companion object {
-        const val EASY_REDUCED_TITLE = "Fácil, sem pressa"
+        const val EASY_REDUCED_TITLE = "Rodagem leve"
         const val RECOVERY_REDUCED_TITLE = "Recuperação: fácil e curto"
     }
 }
