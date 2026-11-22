@@ -67,6 +67,9 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.ArtColor
+import com.meucoach.core.domain.story.ArtFont
+import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
@@ -112,6 +115,15 @@ fun ActivityDetailScreen(
             onGenerate = { viewModel.generateStory(palette) },
             onRetry = { viewModel.retryStory(palette) },
             onDismissIntro = viewModel::dismissStoryIntro,
+            art = ArtStudioActions(
+                onFormat = viewModel::selectArtFormat,
+                onToggleExtra = viewModel::toggleArtExtra,
+                onTextColor = viewModel::selectArtTextColor,
+                onRouteColor = viewModel::selectArtRouteColor,
+                onFont = viewModel::selectArtFont,
+                onSaveAsDefault = viewModel::setArtSaveAsDefault,
+                onReset = viewModel::resetArtRecipe,
+            ),
         ),
         modifier = modifier,
     )
@@ -133,6 +145,24 @@ internal data class StoryStudioActions(
     val onGenerate: () -> Unit = {},
     val onRetry: () -> Unit = {},
     val onDismissIntro: () -> Unit = {},
+    /** Callbacks of the transparent route art tab (ADR 0058). */
+    val art: ArtStudioActions = ArtStudioActions(),
+)
+
+/**
+ * Art tab callbacks (ADR 0058 §2.8). Share/save land with F6; the other
+ * controls edit the in-memory art recipe.
+ */
+internal data class ArtStudioActions(
+    val onFormat: (ArtFormat) -> Unit = {},
+    val onToggleExtra: (StoryExtra) -> Unit = {},
+    val onTextColor: (ArtColor) -> Unit = {},
+    val onRouteColor: (ArtColor) -> Unit = {},
+    val onFont: (ArtFont) -> Unit = {},
+    val onSaveAsDefault: (Boolean) -> Unit = {},
+    val onReset: () -> Unit = {},
+    val onShare: () -> Unit = {},
+    val onSave: () -> Unit = {},
 )
 
 @Composable
@@ -253,6 +283,7 @@ internal fun ActivityDetailContent(
             onSaveAsDefault = storyActions.onSaveAsDefault,
             onReset = storyActions.onReset,
             onGenerate = storyActions.onGenerate,
+            artActions = storyActions.art,
         )
     }
 

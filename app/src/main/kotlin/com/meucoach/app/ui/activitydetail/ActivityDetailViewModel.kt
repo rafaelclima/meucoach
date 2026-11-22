@@ -22,6 +22,10 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.domain.story.ArtColor
+import com.meucoach.core.domain.story.ArtFont
+import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
@@ -135,15 +139,21 @@ class ActivityDetailViewModel @Inject constructor(
     fun openStoryStudio() {
         _uiState.update { state ->
             val studio = state.storyStudio
+            // A default saved on another run may carry extras this activity
+            // does not have; the Studio only edits what it can show, and the
+            // recipe is the source of truth.
+            val available: (StoryExtra) -> Boolean = { extra ->
+                studio.extras.firstOrNull { it.extra == extra }?.isAvailable == true
+            }
             state.copy(
                 storyStudio = studio.copy(
                     isOpen = true,
-                    // A default saved on another run may carry extras this
-                    // activity does not have; the Studio only edits what it
-                    // can show, and the recipe is the source of truth.
-                    recipe = studio.recipe.copy(
-                        extras = studio.recipe.extras.filter { extra ->
-                            studio.extras.firstOrNull { it.extra == extra }?.isAvailable == true
+                    recipe = studio.recipe.copy(extras = studio.recipe.extras.filter(available)),
+                    // The art card offers a smaller set: video-only extras
+                    // never come back from a saved default (ADR 0058 §2.6).
+                    artRecipe = studio.artRecipe.copy(
+                        extras = studio.artRecipe.extras.filter { extra ->
+                            extra in ArtRecipe.EXTRA_CHOICES && available(extra)
                         },
                     ),
                 ),
@@ -205,6 +215,48 @@ class ActivityDetailViewModel @Inject constructor(
     fun resetStoryRecipe() {
         storyRecipe.reset()
         updateStoryRecipe(StoryRecipe())
+    }
+
+    // ---------------------------------------------------------------------
+    // Story Studio — transparent route art (ADR 0058)
+    // ---------------------------------------------------------------------
+
+    fun selectArtFormat(format: ArtFormat) {
+        updateArtRecipe { it.copy(format = format) }
+    }
+
+    fun toggleArtExtra(extra: StoryExtra) {
+        val studio = _uiState.value.storyStudio
+        val option = studio.extras.firstOrNull { it.extra == extra } ?: return
+        val selected = extra in studio.artRecipe.extras
+        if (extra !in ArtRecipe.EXTRA_CHOICES) return
+        if (!option.isAvailable && !selected) return
+        updateArtRecipe { it.toggleExtra(extra) }
+    }
+
+    fun selectArtTextColor(color: ArtColor) {
+        updateArtRecipe { it.copy(textColor = color) }
+    }
+
+    fun selectArtRouteColor(color: ArtColor) {
+        updateArtRecipe { it.copy(routeColor = color) }
+    }
+
+    fun selectArtFont(font: ArtFont) {
+        updateArtRecipe { it.copy(font = font) }
+    }
+
+    fun setArtSaveAsDefault(save: Boolean) {
+        _uiState.update { it.copy(storyStudio = it.storyStudio.copy(artSaveAsDefault = save)) }
+    }
+
+    /** Persistence lands with F7; today it resets only the in-memory recipe. */
+    fun resetArtRecipe() {
+        updateArtRecipe { ArtRecipe() }
+    }
+
+    private fun updateArtRecipe(transform: (ArtRecipe) -> ArtRecipe) {
+        _uiState.update { it.copy(storyStudio = it.storyStudio.copy(artRecipe = transform(it.storyStudio.artRecipe))) }
     }
 
     /**

@@ -4,10 +4,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.story.ArtColor
+import com.meucoach.core.domain.story.ArtFont
+import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMetricCatalog
 import com.meucoach.core.domain.story.StoryPlanCalculator
@@ -53,6 +60,49 @@ class StoryStudioScreenshotTest {
         capture(darkTheme = false) {
             StoryStudioUiState(recipe = StoryRecipe(), plan = plan(), extras = options())
         }
+    }
+
+    @Test
+    fun artStudioTabDark() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(McTheme.colors.background),
+                ) {
+                    StoryStudioContent(
+                        state = StoryStudioUiState(
+                            recipe = StoryRecipe(),
+                            plan = checkNotNull(plan()).copy(localDate = java.time.LocalDate.parse("2026-10-24")),
+                            extras = options(),
+                            artRecipe = ArtRecipe(
+                                extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR),
+                                font = ArtFont.ANTON,
+                                routeColor = ArtColor.CORAL,
+                            ),
+                        ),
+                        avatar = null,
+                        introSeen = true,
+                        onClose = {},
+                        onDismissIntro = {},
+                        onPreset = {},
+                        onToggleExtra = {},
+                        onDuration = {},
+                        onMapStyle = {},
+                        onSaveAsDefault = {},
+                        onReset = {},
+                        onGenerate = {},
+                        artActions = ArtStudioActions(),
+                    )
+                }
+            }
+        }
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("art-preview-ready").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onRoot().captureRoboImage("src/test/screenshots/art-studio-tab-dark.png")
     }
 
     private fun capture(darkTheme: Boolean, state: () -> StoryStudioUiState) {

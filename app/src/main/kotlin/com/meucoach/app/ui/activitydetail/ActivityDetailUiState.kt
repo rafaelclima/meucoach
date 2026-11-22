@@ -6,6 +6,7 @@ import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.feedback.SessionComparison
 import com.meucoach.core.domain.insights.ActivityInsight
+import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryRecipe
@@ -51,6 +52,10 @@ data class StoryStudioUiState(
     val extras: List<StoryExtraOption> = emptyList(),
     /** Whether the recipe is written to `meucoach_story` when the video is generated. */
     val saveAsDefault: Boolean = true,
+    /** Recipe of the transparent route card tab; persistence lands with F7. */
+    val artRecipe: ArtRecipe = ArtRecipe(),
+    /** Whether the art recipe is written to `meucoach_art` when saved or shared. */
+    val artSaveAsDefault: Boolean = true,
 )
 
 data class ActivityDetailUiState(

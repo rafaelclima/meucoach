@@ -33,6 +33,10 @@ import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
+import com.meucoach.core.domain.story.ArtColor
+import com.meucoach.core.domain.story.ArtFont
+import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.BoundingBox
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
@@ -451,6 +455,98 @@ class ActivityDetailViewModelTest {
             viewModel.setStorySaveAsDefault(true)
 
             assertThat(viewModel.uiState.value.storyStudio.saveAsDefault).isTrue()
+        }
+    }
+
+    @Test
+    fun `art recipe starts at the documented defaults`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val studio = viewModel("activity-1").uiState.first { !it.isLoading }.storyStudio
+
+            assertThat(studio.artRecipe).isEqualTo(ArtRecipe())
+            assertThat(studio.artSaveAsDefault).isTrue()
+        }
+    }
+
+    @Test
+    fun `selects art format colors and font`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.selectArtFormat(ArtFormat.SQUARE)
+            viewModel.selectArtTextColor(ArtColor.CYAN)
+            viewModel.selectArtRouteColor(ArtColor.CORAL)
+            viewModel.selectArtFont(ArtFont.ANTON)
+
+            val recipe = viewModel.uiState.value.storyStudio.artRecipe
+            assertThat(recipe.format).isEqualTo(ArtFormat.SQUARE)
+            assertThat(recipe.textColor).isEqualTo(ArtColor.CYAN)
+            assertThat(recipe.routeColor).isEqualTo(ArtColor.CORAL)
+            assertThat(recipe.font).isEqualTo(ArtFont.ANTON)
+            assertThat(recipe.extras).isEmpty()
+        }
+    }
+
+    @Test
+    fun `toggles art extras and ignores a third tap`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.toggleArtExtra(StoryExtra.DATE)
+            viewModel.toggleArtExtra(StoryExtra.AVG_HR)
+            viewModel.toggleArtExtra(StoryExtra.CADENCE)
+
+            assertThat(viewModel.uiState.value.storyStudio.artRecipe.extras)
+                .containsExactly(StoryExtra.DATE, StoryExtra.AVG_HR)
+        }
+    }
+
+    @Test
+    fun `art toggle ignores video-only and unavailable extras`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.toggleArtExtra(StoryExtra.MAX_HR)
+            viewModel.toggleArtExtra(StoryExtra.CADENCE)
+            viewModel.toggleArtExtra(StoryExtra.FASTEST_KM)
+
+            assertThat(viewModel.uiState.value.storyStudio.artRecipe.extras).isEmpty()
+        }
+    }
+
+    @Test
+    fun `resetting the art recipe returns to the defaults`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.selectArtFormat(ArtFormat.SQUARE)
+            viewModel.selectArtFont(ArtFont.ANTON)
+            viewModel.resetArtRecipe()
+
+            assertThat(viewModel.uiState.value.storyStudio.artRecipe).isEqualTo(ArtRecipe())
+        }
+    }
+
+    @Test
+    fun `art save as default can be turned back on`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.setArtSaveAsDefault(false)
+            viewModel.setArtSaveAsDefault(true)
+
+            assertThat(viewModel.uiState.value.storyStudio.artSaveAsDefault).isTrue()
         }
     }
 

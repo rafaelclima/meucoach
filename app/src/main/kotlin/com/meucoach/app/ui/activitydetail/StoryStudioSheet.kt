@@ -20,14 +20,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
@@ -45,7 +43,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -63,7 +60,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -78,7 +74,6 @@ import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McPrimaryButton
 import com.meucoach.core.designsystem.component.McSecondaryButton
-import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.story.StoryDuration
@@ -116,6 +111,12 @@ internal enum class StoryPreviewFrame(val label: String) {
     }
 }
 
+/** Tabs of the Studio chrome; both share header, close and the segment. */
+internal enum class StoryStudioTab(val label: String) {
+    VIDEO("Vídeo"),
+    ART("Arte PNG"),
+}
+
 /**
  * Modal Story Studio: recipe controls on top of the exact frames the export
  * will draw. The content composable is public to tests so the sheet chrome
@@ -136,6 +137,7 @@ internal fun StoryStudioSheet(
     onSaveAsDefault: (Boolean) -> Unit,
     onReset: () -> Unit,
     onGenerate: () -> Unit,
+    artActions: ArtStudioActions = ArtStudioActions(),
 ) {
     val colors = McTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -158,6 +160,7 @@ internal fun StoryStudioSheet(
             onSaveAsDefault = onSaveAsDefault,
             onReset = onReset,
             onGenerate = onGenerate,
+            artActions = artActions,
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding(),
@@ -180,8 +183,10 @@ internal fun StoryStudioContent(
     onReset: () -> Unit,
     onGenerate: () -> Unit,
     modifier: Modifier = Modifier,
+    artActions: ArtStudioActions = ArtStudioActions(),
 ) {
     val colors = McTheme.colors
+    var tab by rememberSaveable { mutableStateOf(StoryStudioTab.VIDEO) }
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -197,13 +202,19 @@ internal fun StoryStudioContent(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Personalize seu vídeo",
+                    text = if (tab == StoryStudioTab.VIDEO) "Personalize seu vídeo" else "Personalize sua arte",
                     style = MaterialTheme.typography.headlineSmall,
                     color = colors.textPrimary,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = state.recipe.summaryLine(),
+                    text = if (tab ==
+                        StoryStudioTab.VIDEO
+                    ) {
+                        state.recipe.summaryLine()
+                    } else {
+                        state.artRecipe.summaryLine()
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
                 )
@@ -221,242 +232,290 @@ internal fun StoryStudioContent(
                 )
             }
         }
+        Spacer(modifier = Modifier.height(12.dp))
+        StudioTabSegment(selected = tab, onSelect = { tab = it })
         Spacer(modifier = Modifier.height(16.dp))
-        StoryPreviewCard(
-            plan = state.plan,
-            recipe = state.recipe,
-            avatar = avatar,
+        if (tab == StoryStudioTab.VIDEO) {
+            StoryVideoContent(
+                state = state,
+                avatar = avatar,
+                introSeen = introSeen,
+                onDismissIntro = onDismissIntro,
+                onPreset = onPreset,
+                onToggleExtra = onToggleExtra,
+                onDuration = onDuration,
+                onMapStyle = onMapStyle,
+                onSaveAsDefault = onSaveAsDefault,
+                onReset = onReset,
+                onGenerate = onGenerate,
+            )
+        } else {
+            ArtStudioContent(state = state, actions = artActions)
+        }
+    }
+}
+
+/** The video tab: preview, recipe cards and the generate CTA. */
+@Composable
+private fun StoryVideoContent(
+    state: StoryStudioUiState,
+    avatar: Bitmap?,
+    introSeen: Boolean,
+    onDismissIntro: () -> Unit,
+    onPreset: (StoryPreset) -> Unit,
+    onToggleExtra: (StoryExtra) -> Unit,
+    onDuration: (StoryDuration) -> Unit,
+    onMapStyle: (StoryMapStyle) -> Unit,
+    onSaveAsDefault: (Boolean) -> Unit,
+    onReset: () -> Unit,
+    onGenerate: () -> Unit,
+) {
+    val colors = McTheme.colors
+    StoryPreviewCard(
+        plan = state.plan,
+        recipe = state.recipe,
+        avatar = avatar,
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+    McCard(variant = McCardVariant.DEFAULT) {
+        StudioCardHeader(
+            overline = "ESTILO",
+            title = "Como começar?",
+            subtitle = "Modelos prontos. Toque para trocar tudo de uma vez.",
+            trailing = if (state.recipe.preset == StoryPreset.CUSTOM) {
+                {
+                    CustomPill()
+                }
+            } else {
+                null
+            },
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        McCard(variant = McCardVariant.DEFAULT) {
-            StudioCardHeader(
-                overline = "ESTILO",
-                title = "Como começar?",
-                subtitle = "Modelos prontos. Toque para trocar tudo de uma vez.",
-                trailing = if (state.recipe.preset == StoryPreset.CUSTOM) {
-                    {
-                        CustomPill()
+        Spacer(modifier = Modifier.height(12.dp))
+        val presets = StoryPreset.entries.filter { it != StoryPreset.CUSTOM }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            presets.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { preset ->
+                        PresetCard(
+                            preset = preset,
+                            selected = state.recipe.preset == preset,
+                            onClick = { onPreset(preset) },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
-                } else {
-                    null
-                },
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            val presets = StoryPreset.entries.filter { it != StoryPreset.CUSTOM }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                presets.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { preset ->
-                            PresetCard(
-                                preset = preset,
-                                selected = state.recipe.preset == preset,
-                                onClick = { onPreset(preset) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        if (row.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                    if (row.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            EssentialsRow()
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        McCard(variant = McCardVariant.DEFAULT) {
-            StudioCardHeader(
-                overline = "EXTRAS (${state.recipe.extras.size}/${StoryRecipe.MAX_EXTRAS})",
-                title = "Destaques do vídeo",
-                subtitle = "Escolha até 2 métricas para o fechamento e os cards por km.",
-                trailing = {
-                    ExtrasCounter(
-                        selected = state.recipe.extras.size,
-                        max = StoryRecipe.MAX_EXTRAS,
-                    )
-                },
-                headingTag = "extras",
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                state.extras.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { option ->
-                            val selected = option.extra in state.recipe.extras
-                            val blocked = !selected && state.recipe.extras.size >= StoryRecipe.MAX_EXTRAS
-                            ExtraTile(
-                                option = option,
-                                selected = selected,
-                                enabled = (option.isAvailable && !blocked) || selected,
-                                onClick = { onToggleExtra(option.extra) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        if (row.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+        Spacer(modifier = Modifier.height(12.dp))
+        EssentialsRow()
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+    McCard(variant = McCardVariant.DEFAULT) {
+        StudioCardHeader(
+            overline = "EXTRAS (${state.recipe.extras.size}/${StoryRecipe.MAX_EXTRAS})",
+            title = "Destaques do vídeo",
+            subtitle = "Escolha até 2 métricas para o fechamento e os cards por km.",
+            trailing = {
+                ExtrasCounter(
+                    selected = state.recipe.extras.size,
+                    max = StoryRecipe.MAX_EXTRAS,
+                )
+            },
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            state.extras.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { option ->
+                        val selected = option.extra in state.recipe.extras
+                        val blocked = !selected && state.recipe.extras.size >= StoryRecipe.MAX_EXTRAS
+                        ExtraTile(
+                            option = option,
+                            selected = selected,
+                            enabled = (option.isAvailable && !blocked) || selected,
+                            onClick = { onToggleExtra(option.extra) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (row.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "Até 2 extras. Sem dado, a métrica fica de fora — nunca vira zero.",
-                style = McTextStyles.caption,
-                color = colors.textTertiary,
-            )
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        McCard(variant = McCardVariant.DEFAULT) {
-            StudioCardHeader(
-                overline = "VÍDEO",
-                title = "Formato de saída",
-                subtitle = "Duração e fundo do mapa. Vale para a prévia e o export.",
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            SectionLabel("DURAÇÃO")
-            Spacer(modifier = Modifier.height(2.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StoryDuration.entries.forEach { duration ->
-                    StudioPill(
-                        text = durationLabel(duration),
-                        selected = state.recipe.duration == duration,
-                        onClick = { onDuration(duration) },
-                        modifier = Modifier.testTag("story-duration-${duration.name.lowercase(Locale.ROOT)}"),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Automática acompanha a distância. Padrão 1080p30 · pronto para Reels e TikTok.",
-                style = McTextStyles.caption,
-                color = colors.textTertiary,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = colors.borderSubtle)
-            Spacer(modifier = Modifier.height(16.dp))
-            SectionLabel("MAPA")
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                mapStyles.forEach { (style, label) ->
-                    MapStyleCard(
-                        label = label,
-                        description = mapDescription(style),
-                        icon = mapIcon(style),
-                        selected = state.recipe.mapStyle == style,
-                        onClick = { onMapStyle(style) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("story-map-${style.name.lowercase(Locale.ROOT)}"),
-                    )
-                }
-            }
-            if (state.recipe.mapStyle == StoryMapStyle.TERRAIN) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Relevo do terreno via Mapzen · é baixado na primeira vez.",
-                    style = McTextStyles.caption,
-                    color = colors.textTertiary,
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "Até 2 extras. Sem dado, a métrica fica de fora — nunca vira zero.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+    McCard(variant = McCardVariant.DEFAULT) {
+        StudioCardHeader(
+            overline = "VÍDEO",
+            title = "Formato de saída",
+            subtitle = "Duração e fundo do mapa. Vale para a prévia e o export.",
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        SectionLabel("DURAÇÃO")
+        Spacer(modifier = Modifier.height(2.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            StoryDuration.entries.forEach { duration ->
+                StudioPill(
+                    text = durationLabel(duration),
+                    selected = state.recipe.duration == duration,
+                    onClick = { onDuration(duration) },
+                    modifier = Modifier.testTag("story-duration-${duration.name.lowercase(Locale.ROOT)}"),
                 )
             }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Automática acompanha a distância. Padrão 1080p30 · pronto para Reels e TikTok.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = colors.borderSubtle)
+        Spacer(modifier = Modifier.height(16.dp))
+        SectionLabel("MAPA")
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            mapStyles.forEach { (style, label) ->
+                MapStyleCard(
+                    label = label,
+                    description = mapDescription(style),
+                    icon = mapIcon(style),
+                    selected = state.recipe.mapStyle == style,
+                    onClick = { onMapStyle(style) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("story-map-${style.name.lowercase(Locale.ROOT)}"),
+                )
+            }
+        }
+        if (state.recipe.mapStyle == StoryMapStyle.TERRAIN) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "A prévia desenha a rota; o mapa escolhido entra no vídeo.",
+                text = "Relevo do terreno via Mapzen · é baixado na primeira vez.",
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
             )
         }
-        if (!introSeen) {
-            Spacer(modifier = Modifier.height(16.dp))
-            McCard(variant = McCardVariant.INSET) {
-                Text(
-                    text = "Antes de gerar",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = colors.textPrimary,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Terreno, " +
-                        "o relevo. Depois o app usa o cache. " +
-                        "Nenhuma coordenada exata sai do aparelho.",
-                    style = McTextStyles.caption,
-                    color = colors.textSecondary,
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                McSecondaryButton(
-                    text = "Entendi",
-                    onClick = onDismissIntro,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("story-intro-dismiss"),
-                    minHeight = 48.dp,
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "A prévia desenha a rota; o mapa escolhido entra no vídeo.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+    }
+    if (!introSeen) {
         Spacer(modifier = Modifier.height(16.dp))
         McCard(variant = McCardVariant.INSET) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .toggleable(
-                        value = state.saveAsDefault,
-                        role = Role.Checkbox,
-                        onValueChange = onSaveAsDefault,
-                    )
-                    .testTag("story-save-default"),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Salvar como padrão",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textPrimary,
-                    )
-                    Text(
-                        text = "O próximo story já abre com estas escolhas.",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Switch(
-                    checked = state.saveAsDefault,
-                    onCheckedChange = null,
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                McTextButton(
-                    text = "Restaurar padrão",
-                    onClick = onReset,
-                    modifier = Modifier.testTag("story-reset-recipe"),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        McPrimaryButton(
-            text = "Gerar vídeo",
-            onClick = onGenerate,
-            enabled = state.plan != null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("story-generate"),
-            minHeight = 56.dp,
-        )
-        if (state.plan == null) {
-            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Esta atividade não tem rota GPS suficiente para um story.",
+                text = "Antes de gerar",
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textPrimary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Na primeira vez, baixamos os tiles do mapa e, no estilo Terreno, " +
+                    "o relevo. Depois o app usa o cache. " +
+                    "Nenhuma coordenada exata sai do aparelho.",
                 style = McTextStyles.caption,
                 color = colors.textSecondary,
             )
+            Spacer(modifier = Modifier.height(10.dp))
+            McSecondaryButton(
+                text = "Entendi",
+                onClick = onDismissIntro,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("story-intro-dismiss"),
+                minHeight = 48.dp,
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+    StudioSaveDefaultCard(
+        save = state.saveAsDefault,
+        onSave = onSaveAsDefault,
+        onReset = onReset,
+        saveTag = "story-save-default",
+        resetTag = "story-reset-recipe",
+        caption = "O próximo story já abre com estas escolhas.",
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+    McPrimaryButton(
+        text = "Gerar vídeo",
+        onClick = onGenerate,
+        enabled = state.plan != null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("story-generate"),
+        minHeight = 56.dp,
+    )
+    if (state.plan == null) {
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Esta atividade não tem rota GPS suficiente para um story.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+    }
+}
+
+/** Two-option segment of the chrome: Vídeo | Arte PNG. */
+@Composable
+private fun StudioTabSegment(selected: StoryStudioTab, onSelect: (StoryStudioTab) -> Unit) {
+    val colors = McTheme.colors
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = colors.surfaceInset,
+        border = BorderStroke(1.dp, colors.borderSubtle),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            StoryStudioTab.entries.forEach { option ->
+                val isSelected = option == selected
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = if (isSelected) colors.accent else colors.surfaceInset,
+                    contentColor = if (isSelected) colors.onAccent else colors.textSecondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .clickable { onSelect(option) }
+                        .semantics {
+                            this.selected = isSelected
+                            contentDescription = if (isSelected) {
+                                "${option.label}, selecionado"
+                            } else {
+                                option.label
+                            }
+                        }
+                        .testTag("story-tab-${option.name.lowercase(Locale.ROOT)}"),
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 12.dp)) {
+                        Text(
+                            text = option.label,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -500,7 +559,6 @@ private fun StoryPreviewCard(plan: StoryPlan?, recipe: StoryRecipe, avatar: Bitm
                     text = "PRÉVIA",
                     style = McTextStyles.overline,
                     color = colors.textTertiary,
-                    modifier = Modifier.semantics { heading() },
                 )
                 Text(
                     text = "Como vai ficar",
@@ -625,46 +683,6 @@ private fun FrameSegmentedControl(
 }
 
 @Composable
-private fun StudioCardHeader(
-    overline: String,
-    title: String,
-    subtitle: String,
-    trailing: (@Composable () -> Unit)? = null,
-    headingTag: String? = null,
-) {
-    val colors = McTheme.colors
-    Row(verticalAlignment = Alignment.Top) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = overline,
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-                modifier = Modifier.semantics { heading() },
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-            if (headingTag == "extras") {
-                Spacer(modifier = Modifier.height(1.dp))
-            }
-        }
-        if (trailing != null) {
-            Spacer(modifier = Modifier.width(12.dp))
-            trailing()
-        }
-    }
-}
-
-@Composable
 private fun CustomPill() {
     val colors = McTheme.colors
     Surface(
@@ -677,24 +695,6 @@ private fun CustomPill() {
             style = McTextStyles.caption,
             color = colors.accentText,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-        )
-    }
-}
-
-@Composable
-private fun ExtrasCounter(selected: Int, max: Int) {
-    val colors = McTheme.colors
-    val complete = selected >= max
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = if (complete) colors.accentSoft else colors.surfaceInset,
-        border = BorderStroke(1.dp, if (complete) colors.accent.copy(alpha = 0.4f) else colors.borderSubtle),
-    ) {
-        Text(
-            text = "$selected/$max",
-            style = MaterialTheme.typography.labelLarge,
-            color = if (complete) colors.accentText else colors.textSecondary,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
         )
     }
 }
@@ -806,94 +806,6 @@ private fun PresetCard(preset: StoryPreset, selected: Boolean, onClick: () -> Un
 }
 
 @Composable
-private fun ExtraTile(
-    option: StoryExtraOption,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = McTheme.colors
-    val border = when {
-        selected -> BorderStroke(1.5.dp, colors.accent)
-        else -> BorderStroke(1.dp, colors.borderSubtle)
-    }
-    val container = when {
-        selected -> colors.accentSoft
-        !enabled -> colors.surfaceInset.copy(alpha = 0.6f)
-        else -> colors.surfaceInset
-    }
-    val status = when {
-        !option.isAvailable && !selected -> "${option.extra.uiLabel()} · ${option.reason}"
-        !option.isAvailable -> "${option.extra.uiLabel()} · ${option.reason}"
-        selected -> option.extra.uiLabel()
-        else -> option.extra.uiLabel()
-    }
-    val hint = when {
-        !option.isAvailable -> option.reason
-        selected -> "No vídeo"
-        else -> extraHint(option.extra)
-    }
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = container,
-        border = border,
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(enabled = enabled || selected, onClick = onClick)
-            .semantics {
-                this.selected = selected
-                contentDescription = if (selected) "$status, selecionado" else status
-            }
-            .testTag("story-extra-${option.extra.name.lowercase(Locale.ROOT)}"),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = CircleShape,
-                    color = if (selected) colors.accent else colors.surfaceElevated,
-                    border = if (selected) null else BorderStroke(1.dp, colors.borderSubtle),
-                ) {
-                    Icon(
-                        imageVector = extraIcon(option.extra),
-                        contentDescription = null,
-                        tint = if (!enabled && !selected) {
-                            colors.textTertiary
-                        } else if (selected) {
-                            colors.onAccent
-                        } else {
-                            colors.textSecondary
-                        },
-                        modifier = Modifier.padding(7.dp).size(16.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                if (selected) {
-                    Icon(
-                        imageVector = Icons.Outlined.Check,
-                        contentDescription = null,
-                        tint = colors.accentText,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = if (!option.isAvailable) status else option.extra.uiLabel(),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (!enabled && !selected) colors.textTertiary else colors.textPrimary,
-            )
-            Text(
-                text = hint ?: "",
-                style = McTextStyles.caption,
-                color = colors.textSecondary,
-            )
-        }
-    }
-}
-
-@Composable
 private fun MapStyleCard(
     label: String,
     description: String,
@@ -951,72 +863,6 @@ private fun MapStyleCard(
     }
 }
 
-@Composable
-private fun StudioPill(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    val colors = McTheme.colors
-    val container = when {
-        !enabled -> colors.surfaceInset.copy(alpha = 0.6f)
-        selected -> colors.accent
-        else -> colors.surfaceInset
-    }
-    val content = when {
-        !enabled -> colors.textTertiary
-        selected -> colors.onAccent
-        else -> colors.textPrimary
-    }
-    val border = when {
-        selected -> null
-        else -> BorderStroke(1.dp, colors.borderSubtle)
-    }
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = container,
-        contentColor = content,
-        border = border,
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .semantics {
-                this.selected = selected
-                contentDescription = if (selected) "$text, selecionado" else text
-            },
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            if (selected) {
-                Icon(
-                    imageVector = Icons.Outlined.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
-            Text(text = text, style = MaterialTheme.typography.labelLarge)
-        }
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = McTextStyles.overline,
-        color = McTheme.colors.textTertiary,
-        modifier = Modifier.semantics { heading() },
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-}
-
 private fun presetLabel(preset: StoryPreset): String = when (preset) {
     StoryPreset.ESSENTIAL -> "Essencial"
     StoryPreset.PERFORMANCE -> "Performance"
@@ -1039,26 +885,6 @@ private fun presetIcon(preset: StoryPreset): ImageVector = when (preset) {
     StoryPreset.PHYSIOLOGICAL -> Icons.Outlined.FavoriteBorder
     StoryPreset.COMPLETE -> Icons.Outlined.Layers
     StoryPreset.CUSTOM -> Icons.Outlined.Check
-}
-
-private fun extraIcon(extra: StoryExtra): ImageVector = when (extra) {
-    StoryExtra.CALORIES_TOTAL -> Icons.Outlined.LocalFireDepartment
-    StoryExtra.ELEVATION_GAIN -> Icons.Outlined.Terrain
-    StoryExtra.AVG_HR -> Icons.Outlined.FavoriteBorder
-    StoryExtra.MAX_HR -> Icons.Outlined.Favorite
-    StoryExtra.CADENCE -> Icons.AutoMirrored.Outlined.DirectionsRun
-    StoryExtra.FASTEST_KM -> Icons.Outlined.Bolt
-    StoryExtra.DATE -> Icons.Outlined.CalendarToday
-}
-
-private fun extraHint(extra: StoryExtra): String? = when (extra) {
-    StoryExtra.CALORIES_TOTAL -> "Total do treino"
-    StoryExtra.ELEVATION_GAIN -> "Ganho acumulado"
-    StoryExtra.AVG_HR -> "Média do treino"
-    StoryExtra.MAX_HR -> "Pico do treino"
-    StoryExtra.CADENCE -> "Passos por minuto"
-    StoryExtra.FASTEST_KM -> "Selo no card"
-    StoryExtra.DATE -> "Dia da corrida"
 }
 
 private fun mapIcon(style: StoryMapStyle): ImageVector = when (style) {
@@ -1105,16 +931,6 @@ private fun durationLabel(duration: StoryDuration): String = when (duration) {
     StoryDuration.SEC_30 -> "30 s"
     StoryDuration.SEC_45 -> "45 s"
     StoryDuration.SEC_60 -> "60 s"
-}
-
-internal fun StoryExtra.uiLabel(): String = when (this) {
-    StoryExtra.CALORIES_TOTAL -> "Calorias"
-    StoryExtra.ELEVATION_GAIN -> "Elevação"
-    StoryExtra.AVG_HR -> "FC média"
-    StoryExtra.MAX_HR -> "FC máxima"
-    StoryExtra.CADENCE -> "Cadência"
-    StoryExtra.FASTEST_KM -> "Km mais rápido"
-    StoryExtra.DATE -> "Data"
 }
 
 internal fun StoryRecipe.summaryLine(): String {
