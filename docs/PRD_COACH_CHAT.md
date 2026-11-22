@@ -93,7 +93,7 @@ E você não fala: sem input livre (fora do MVP por decisão), sem quick-reply q
 ### 4.2 Tom (normativo)
 
 1. **2ª pessoa, 1ª pessoa do plural.** "você", "a gente", "bora". Proibido 3ª pessoa institucional ("o motor", "a revisão", "o resumo").
-2. **Curto.** Cada bolha ≤ 140 caracteres, 1 ideia por bolha, máx. 3 bolhas seguidas antes de uma ação/pergunta. Texto longo vira anexo expansível, nunca bolha gigante.
+2. **Curto.** Cada bolha ≤ 160 caracteres, 1 ideia por bolha, máx. 3 bolhas seguidas antes de uma ação/pergunta. Texto longo vira anexo expansível, nunca bolha gigante.
 3. **Uma pergunta por vez.** Toda sequência do coach termina em pergunta ou ação tocável ("Bora fazer fácil hoje?" / "Confere aqui?" / "Como foi o sono?").
 4. **Fato + motivo + convite.** "Dormiu 5h40 (fato), por isso sem forte hoje (motivo), bora no fácil? (convite)". Nunca só fato, nunca só ordem.
 5. **Nunca culpa.** "Perdi treino" → "Acontece. A gente ajusta." Proibido: falhou, perdeu, atrasado, deveria, streak, cobrança, "você precisa".
@@ -254,7 +254,7 @@ Rascunho (proxy, sem log de payload):
 ```
 Voce e o Coach do Rafael, treinador de corrida, pt-BR, sem culpa.
 Reescreva APENAS o rationale do motor. Nunca invente pace, FC, carga, volume, VDOT, ACWR.
-Fale em 2a pessoa ("voce"), curto, como WhatsApp: max 3 mensagens, cada uma <= 140 chars.
+Fale em 2a pessoa ("voce"), curto, como WhatsApp: max 3 mensagens, cada uma <= 160 chars.
 Primeira mensagem: o que importa (fato + motivo). Segunda: detalhe se precisar. Ultima: pergunta ou acao ("Bora?", "Fechado?", "Confere aqui?").
 Nunca cite siglas (ACWR, VDOT, TSB...), codigos (R-..., EV-..., CAIXA_ALTA), nem diga "o motor/o resumo/a revisao".
 Dado ausente: diga que faltam dados, sem estimar numero.
@@ -341,7 +341,7 @@ quick replies (duplicação "Perdi treino"/"Perdi um treino"); fundir
 O chrome já era chat, mas o corpo continuava relatório: `McCard` com ~400 chars
 corridos e tabelas de números. A UI passou a impor o formato (prompt não basta):
 
-- **Bolhas:** `CoachBubbles.split` puro (frases ≤140, quebra em palavra inteira,
+- **Bolhas:** `CoachBubbles.split` puro (frases ≤160, quebra em palavra inteira,
   pergunta final sozinha, whitespace normalizado). Título/corpo de explicação e
   revisão viram `CoachBubbleSequence` (avatar só na primeira bolha).
 - **Anexos:** review e progresso colapsam adesão/volume/prontidão/sono/agregados
@@ -351,7 +351,7 @@ corridos e tabelas de números. A UI passou a impor o formato (prompt não basta
   duplicada e o "Desativar IA" saem do feed (ação fica no "Como funciona").
 - **Chrome:** status "motor no comando" (estado da IA no sheet), chips com
   end-padding, histórico sem "Conversa" duplicada, composer em uma linha.
-- **Testes:** `CoachBubblesTest` + `CoachBubbleCardsTest` (≤140, "Ver números",
+- **Testes:** `CoachBubblesTest` + `CoachBubbleCardsTest` (≤160, "Ver números",
   observações, 200%, light) e regressões de tela/histórico.
 
 Fora desta fatia: input livre digitado; fusão `messages+summaries+eventos` num
@@ -392,7 +392,7 @@ Fora deste PRD: input livre digitado, memória como contexto de prompt, "quero m
 
 ## 11. Testes (TDD, sem dado real)
 
-- **Domínio puro:** `CoachChatMapperTest` (agrupa 3 bolhas, corta longo para anexo, ordena por tempo, prova vence treino, sem plano → onboarding, dado ausente → null), `CoachPersonaTest` (≤140 chars, termina em pergunta/ação, sem sigla/código/3ª pessoa).
+- **Domínio puro:** `CoachChatMapperTest` (agrupa 3 bolhas, corta longo para anexo, ordena por tempo, prova vence treino, sem plano → onboarding, dado ausente → null), `CoachPersonaTest` (≤160 chars, termina em pergunta/ação, sem sigla/código/3ª pessoa).
 - **Validador:** texto longo → `Invalid`; sigla/código/número fora do permitido → `Invalid`; `reason` nunca contém dado de treino.
 - **VM/UI:** `CoachChatViewModelTest` (quick-reply emite `You` + chama controller, retry não duplica IA, revogar esconde), `CoachChatScreenTest` (bolhas alternadas, typing, quick-reply, anexo expansível, 200%, dark/light, TalkBack ordem topo→ação).
 - **Integração:** sources existentes com banco em memória; `MigrationTest` segue v19; sem nova migração.

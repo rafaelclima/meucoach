@@ -58,7 +58,7 @@ object CoachSessionAnswer {
         weeklyMinutes: Int,
         task: SessionTask,
         prescription: DailyPrescription? = null,
-        sleepMinutes: Int? = null,
+        shortSleep: Boolean = false,
         hasCheckIn: Boolean = false,
     ): SessionAnswer {
         val session = sessions.find { it.date == target }
@@ -86,7 +86,7 @@ object CoachSessionAnswer {
             weeklyMinutes = weeklyMinutes,
             prescribed = prescribed,
             isPlannedOnly = isPlannedOnly,
-            sleepMinutes = if (isToday) sleepMinutes else null,
+            shortSleep = shortSleep && isToday,
             hasCheckIn = hasCheckIn && isToday,
         )
         return SessionAnswer(
@@ -128,7 +128,7 @@ object CoachSessionAnswer {
         val weeklyMinutes: Int,
         val prescribed: DailyPrescription?,
         val isPlannedOnly: Boolean,
-        val sleepMinutes: Int?,
+        val shortSleep: Boolean,
         val hasCheckIn: Boolean,
     )
 
@@ -140,7 +140,7 @@ object CoachSessionAnswer {
         weeklyMinutes: Int,
         prescribed: DailyPrescription? = null,
         isPlannedOnly: Boolean = true,
-        sleepMinutes: Int? = null,
+        shortSleep: Boolean = false,
         hasCheckIn: Boolean = false,
     ): String = renderLines(
         EngineLines(
@@ -151,7 +151,7 @@ object CoachSessionAnswer {
             weeklyMinutes = weeklyMinutes,
             prescribed = prescribed,
             isPlannedOnly = isPlannedOnly,
-            sleepMinutes = sleepMinutes,
+            shortSleep = shortSleep,
             hasCheckIn = hasCheckIn,
         ),
     )
@@ -170,13 +170,19 @@ object CoachSessionAnswer {
             weekLine
     }
     private fun taskLine(task: SessionTask): String = when (task) {
-        SessionTask.WHAT -> "TAREFA: dizer o que tem no dia, sem inventar número novo."
+        SessionTask.WHAT ->
+            "TAREFA: dizer o que tem no dia, sem inventar número novo. " +
+                "Diga o essencial uma vez só: o que é, quanto tempo, e só mencione mudança " +
+                "quando houver (redução, descanso). Nunca diga 'o plano manteve' — diga o que o treino é."
 
         SessionTask.HOW_TO ->
-            "TAREFA: explicar como executar a sessão em linguagem de esforço e conversa, " +
-                "sem citar pace, FC ou números novos. Fale como quem corre junto " +
-                "('saia fácil', 'segure o esforço'), nunca ordene com número " +
-                "('faça X min'). Feche com pergunta ou ação."
+            "TAREFA: explicar como executar a sessão em linguagem de corrida, " +
+                "sem citar pace, FC ou números novos. Fale com o atleta (você): frases curtas, " +
+                "verbos de ação ('comece', 'segure', 'feche'). Pode usar 'soltinho', 'trotinho', " +
+                "'sem pressa'. Proibido jargão: 'conversável', 'esforço contínuo', 'o plano manteve'. " +
+                "Se o contexto disser sono curto, explique em uma frase o que muda " +
+                "('dormiu pouco, então começa bem solto'); sem sono curto, não fale de sono. " +
+                "Feche variando: Bora? / Fechado? / Topa? / Combinado?"
     }
 
     private fun dayLine(input: EngineLines): String =
@@ -207,8 +213,8 @@ object CoachSessionAnswer {
     }
 
     private fun signalsLine(input: EngineLines): String {
-        if (input.prescribed == null) return ""
-        val sleep = input.sleepMinutes?.let { " Sono ${formatMinutes(it)}." } ?: ""
+        if (input.prescribed == null && !input.shortSleep && !input.hasCheckIn) return ""
+        val sleep = if (input.shortSleep) " Sono curto." else ""
         val checkIn = if (input.hasCheckIn) " Check-in feito." else " Sem check-in ainda."
         return "$sleep$checkIn"
     }
@@ -218,17 +224,8 @@ object CoachSessionAnswer {
         val session = input.session ?: return ""
         if (session.type == WorkoutType.REST) return " Como executar: descanso é treino — sem rodar para compensar."
         val structure = if (session.structure != null) "com blocos" else "contínuo"
-        return " Como executar: saia fácil e conversável, esforço contínuo do início ao fim ($structure); " +
-            "se apertar, diminua o ritmo e feche leve, sem trocar por outro treino."
-    }
-
-    private fun formatMinutes(totalMin: Int): String {
-        val hours = totalMin / 60
-        val minutes = totalMin % 60
-        return if (hours <= 0) {
-            "${minutes}min"
-        } else {
-            "${hours}h" + if (minutes > 0) "%02d".format(minutes) else ""
-        }
+        return " Como executar: comece soltinho, sem pressa nos primeiros minutos; " +
+            "depois encaixe um ritmo leve, que dê para conversar ($structure); " +
+            "se apertar, diminua e feche leve, sem trocar por outro treino."
     }
 }

@@ -72,7 +72,7 @@ class OpenRouterBodyTest {
                 .jsonObject["content"]!!.jsonPrimitive.content
 
             assertTrue(system.contains("WhatsApp"), "$kind must frame the voice as a WhatsApp chat")
-            assertTrue(system.contains("140"), "$kind must cap each message at 140 chars")
+            assertTrue(system.contains("160"), "$kind must cap each message at 160 chars")
             assertTrue(system.contains("pergunta ou ação"), "$kind must close with a question or action")
             assertTrue(system.contains("acentuação correta"), "$kind must ask for correct pt-BR accents")
         }
@@ -188,9 +188,22 @@ class OpenRouterBodyTest {
             .jsonObject["content"]!!.jsonPrimitive.content
 
         assertTrue(system.contains("WhatsApp"), "free-answer must frame the voice as a WhatsApp chat")
-        assertTrue(system.contains("140"), "free-answer must cap each message at 140 chars")
+        assertTrue(system.contains("160"), "free-answer must cap each message at 160 chars")
         assertTrue(system.contains("pergunta ou ação"), "free-answer must close with a question or action")
         assertTrue(system.contains("códigos internos"), "free-answer must forbid echoing engine codes")
+    }
+
+    @Test
+    fun `free-answer speaks like a street coach, not a spreadsheet`() {
+        val body = buildOpenRouterBody("some-model:free", "free-answer", "{}")
+        val system = Json.parseToJsonElement(body)
+            .jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonPrimitive.content
+
+        assertTrue(system.contains("conversável"), "free-answer must ban the robotic easy-talk word")
+        assertTrue(system.contains("3ª pessoa"), "free-answer must talk to the athlete, not about him")
+        assertTrue(system.contains("Combinado?"), "free-answer must vary the closing question")
+        assertTrue(system.contains("sono"), "free-answer must explain sleep instead of quoting it")
     }
 
     @Test

@@ -410,7 +410,6 @@ internal fun CoachQuickReplies(
     onLessTime: () -> Unit,
     onAdjust: () -> Unit,
     modifier: Modifier = Modifier,
-    onRetro: () -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -421,9 +420,8 @@ internal fun CoachQuickReplies(
                 .testTag("coach-quick-replies"),
         ) {
             QuickChip(text = "Explica a semana", testTag = "coach-quick-explain", onClick = onExplain)
-            QuickChip(text = "Retrovisor", testTag = "coach-quick-retro", onClick = onRetro)
             QuickChip(text = "Perdi treino", testTag = "coach-quick-missed", onClick = onMissed)
-            QuickChip(text = "Só 30 min", testTag = "coach-quick-less-time", onClick = onLessTime)
+            QuickChip(text = "Tenho menos tempo", testTag = "coach-quick-less-time", onClick = onLessTime)
             QuickChip(text = "Ajustar semana", testTag = "coach-quick-adjust", onClick = onAdjust)
             Spacer(modifier = Modifier.width(40.dp))
         }

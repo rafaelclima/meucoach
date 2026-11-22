@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.76 · **Data:** 22/11/2026
+**Versão:** 1.77 · **Data:** 22/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -74,6 +74,7 @@
 > Revisão 1.74 (22/11/2026): ADR 0057 itens 2-base e 3 — `FreeExchange` na VM (pergunta + resposta que assenta no lugar, envio trava com `Loading`, espelho legado em `freeAnswer`, tela intacta) e todo `Ready` determinístico gravado como `ANSWER` (só `Fallback` efêmero); VM 66 testes, `check` + `spotlessCheck` verdes.
 > Revisão 1.75 (22/11/2026): ADR 0057 item 2 (UI) — `exchanges` inline no feed (`FreeExchangeRow`, auto-scroll, rodapé sem ecos/resposta, quick replies emitem `echoQuestion` efêmero, composer com `sendEnabled`); pacote coach 201 + VM 67 testes, `check` + `spotlessCheck` verdes.
 > Revisão 1.76 (22/11/2026): ADR 0057 porteira refinada pós-falha real — verbo de prescrição só é `Invalid` com número fora do permitido ou mudança estrutural (citar duração planejada passa); `engineContext` HOW_TO sem "reduza" e com steering; validador 19 testes, `check` + `spotlessCheck` verdes.
+> Revisão 1.77 (22/11/2026): ADR 0057 voz de treinador + chips + bolhas 160 — contexto em linguagem de corrida com anti-jargão, sono qualitativo via `SHORT_SLEEP`, prompt do proxy com banidos/fechamento variado (redeploy pendente), sem "Retrovisor", "Tenho menos tempo", retrovisor no fim do fluxo; validador 19 + builder 7 + VM 68 + tela 201 + proxy 19 testes, `check` + `spotlessCheck` verdes (1 flake honesto fora da área).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

@@ -1156,7 +1156,7 @@ class CoachScreenTest {
         setContent(onReplanRequestLessTime = { lessTime++ }, onEchoQuestion = { echoes += it })
 
         compose.onNodeWithTag("coach-quick-less-time").performScrollTo().performClick()
-        assertThat(echoes).containsExactly("Só tenho 30 min na quinta")
+        assertThat(echoes).containsExactly("Tenho menos tempo essa semana")
         assertThat(lessTime).isEqualTo(1)
     }
 
@@ -1188,13 +1188,26 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `retrovisor no rodape rola ate o prompt`() {
-        setContent(review = review())
+    fun `atalhos falam a lingua do ajuste sem botao morto`() {
+        setContent()
 
-        compose.onNodeWithTag("coach-quick-retro").performScrollTo().performClick()
-        compose.waitForIdle()
+        compose.onNodeWithTag("coach-quick-retro").assertDoesNotExist()
+        compose.onNodeWithTag("coach-quick-less-time").assertTextContains("Tenho menos tempo", substring = true)
+    }
 
-        compose.onNodeWithTag("coach-retro-prompt").performScrollTo().assertIsDisplayed()
+    @Test
+    fun `retrovisor mora no fim do fluxo apos a conversa`() {
+        setContent(
+            review = review(),
+            exchanges = listOf(
+                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Ready(listOf("Hoje tem rodagem."))),
+            ),
+        )
+
+        val answerY = compose.onNodeWithTag("coach-free-answer").fetchSemanticsNode().positionInRoot.y
+        val retroY = compose.onNodeWithTag("coach-retro-prompt").fetchSemanticsNode().positionInRoot.y
+
+        assertThat(answerY).isLessThan(retroY)
     }
 
     @Test

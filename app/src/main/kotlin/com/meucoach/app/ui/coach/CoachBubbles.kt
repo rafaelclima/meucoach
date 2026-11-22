@@ -9,7 +9,7 @@ package com.meucoach.app.ui.coach
  * the copy never loses meaning.
  */
 internal object CoachBubbles {
-    const val MAX_CHARS = 140
+    const val MAX_CHARS = 160
 
     private val whitespace = Regex("\\s+")
     private val endings = charArrayOf('.', '!', '?', '…')

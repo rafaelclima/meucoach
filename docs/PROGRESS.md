@@ -1,6 +1,40 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 porteira: verbo só morre com número fora do plano)
+**Atualizado:** 22/11/2026 (ADR 0057 voz de treinador + chips + bolhas 160)
+
+## Sessão 2026-11-22 — Voz humana, chips que falam e bolhas 160 (TDD)
+
+**Crítica do usuário 0 (com print e banco):** "sai fácil e conversável" não
+é fala de treinador; "Sono 6h49" sem o porquê confunde; "Quer olhar pra
+trás?" no meio do fluxo não faz sentido; "Retrovisor" não serve para nada;
+"Só 30 min" não diz nada.
+
+### Concluído
+
+- **Contexto (domínio):** esforço em linguagem de corrida ("comece
+  soltinho… que dê para conversar… diminua e feche leve"), steer anti-jargão
+  + anti-"o plano manteve" no WHAT, fechamentos variados; sono virou
+  qualitativo ("Sono curto" só com `SHORT_SLEEP < 6h`) — 6h49 some e não há
+  mais número sem interpretação; sem `formatMinutes`.
+- **Prompt (proxy, exige redeploy):** 2ª pessoa, banidos "conversável /
+  esforço contínuo / o plano manteve / nada forte no dia / dá pra conversar
+  o tempo todo", sono explicado em uma frase ou nem citado, fechamento
+  variado. Bolhas 140 → 160 nos 3 prompts + splitter (testes usam a
+  constante; goldens validam drift no `verifyRoborazzi`).
+- **Chips/retrovisor (app):** fora o chip "Retrovisor" (só rolava);
+  "Só 30 min" → "Tenho menos tempo"; bloco "Quer olhar pra trás?" para o fim
+  do fluxo, depois da conversa (testes de ordem atualizados).
+- **Testes:** validador 19/19, builder 7/7, VM 68/68 (sono curto no
+  contexto), tela 201/201, proxy 19/19 (teste novo anti-jargão).
+- **Gates:** `check` (1 flake honesto de `MetricsImportViewModelTest` sob
+  carga, 5/5 isolado, área intocada) + `spotlessCheck` verdes.
+- **Docs:** item 9 no ADR 0057 + esta entrada.
+
+### Próximo
+
+1. Redeploy do proxy + `./install.sh` + repetir "Qual a dica para a corrida
+   de hoje?" — esperar fala de rua, sem jargão, com fechamento variado.
+2. WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — Validador refinado após 2 rejeições reais no aparelho (TDD)
 

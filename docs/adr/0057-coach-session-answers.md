@@ -118,7 +118,17 @@ para a próxima fatia.
    com número fora do permitido ou mudança estrutural; citar duração
    planejada passa. O `engineContext` do HOW_TO não planta mais "reduza" e
    orienta "fale como quem corre junto, nunca ordene com número".~~
-9. Próxima: WHY/prontidão/método.
+9. ~~Voz de treinador + chips (22/11/2026, crítica do usuário 0): "sai fácil
+   e conversável" era jargão literal do contexto; "Sono 6h49" citava número
+   sem explicar o que muda; "Bora?" era o único fechamento. Contexto agora
+   fala como quem corre ("comece soltinho", "sem pressa", "que dê para
+   conversar") e proíbe jargão ("conversável", "esforço contínuo", "o plano
+   manteve"); sono só aparece como "Sono curto" com SHORT_SLEEP (< 6h) —
+   6h49 some do contexto; prompt do proxy varia o fechamento, exige 2ª
+   pessoa e veta 3ª pessoa. Bolhas 140 → 160. Chips: fora "Retrovisor",
+   "Só 30 min" virou "Tenho menos tempo", bloco retrovisor para o fim do
+   fluxo.~~
+10. Próxima: WHY/prontidão/método.
 
 ## 5. Exchanges e persistência determinística (itens 2-base e 3)
 

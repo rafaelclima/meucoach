@@ -172,7 +172,6 @@ fun CoachScreen(
     val scope = rememberCoroutineScope()
     val feedScroll = rememberScrollState()
     var explainY by remember { mutableStateOf<Int?>(null) }
-    var retroY by remember { mutableStateOf<Int?>(null) }
     val reviewBring = remember { BringIntoViewRequester() }
     val progressBring = remember { BringIntoViewRequester() }
     fun scrollTo(y: Int?) {
@@ -331,33 +330,6 @@ fun CoachScreen(
                         onDismiss = onDismiss,
                     )
                 }
-                if (reviewAvailable || progressAvailable || historyAvailable) {
-                    Column(
-                        modifier = Modifier.onGloballyPositioned {
-                            retroY = it.positionInParent().y.roundToInt()
-                        },
-                    ) {
-                        CoachRetroPrompt(
-                            showReview = showReview && reviewAvailable,
-                            showProgress = showProgress && progressAvailable,
-                            reviewAvailable = reviewAvailable,
-                            progressAvailable = progressAvailable,
-                            historyAvailable = historyAvailable,
-                            onReview = {
-                                showReview = !showReview
-                                if (showReview) {
-                                    onEchoQuestion("Como foi minha semana passada?")
-                                    showProgress = false
-                                }
-                            },
-                            onProgress = {
-                                showProgress = !showProgress
-                                if (showProgress) showReview = false
-                            },
-                            onHistory = { historyOpen = true },
-                        )
-                    }
-                }
                 if (reviewAvailable && showReview) {
                     Column(modifier = Modifier.bringIntoViewRequester(reviewBring)) {
                         CoachReviewCard(review = review, state = reviewState)
@@ -376,6 +348,27 @@ fun CoachScreen(
                     FreeExchangeRow(
                         exchange = exchange,
                         onRetryFreeAnswer = onRetryFreeAnswer,
+                    )
+                }
+                if (reviewAvailable || progressAvailable || historyAvailable) {
+                    CoachRetroPrompt(
+                        showReview = showReview && reviewAvailable,
+                        showProgress = showProgress && progressAvailable,
+                        reviewAvailable = reviewAvailable,
+                        progressAvailable = progressAvailable,
+                        historyAvailable = historyAvailable,
+                        onReview = {
+                            showReview = !showReview
+                            if (showReview) {
+                                onEchoQuestion("Como foi minha semana passada?")
+                                showProgress = false
+                            }
+                        },
+                        onProgress = {
+                            showProgress = !showProgress
+                            if (showProgress) showReview = false
+                        },
+                        onHistory = { historyOpen = true },
                     )
                 }
             }
@@ -407,13 +400,12 @@ fun CoachScreen(
                         onRetry()
                         scrollTo(explainY)
                     },
-                    onRetro = { scrollTo(retroY) },
                     onMissed = {
                         onEchoQuestion("Perdi o treino de ontem")
                         onReplanRequestMissed()
                     },
                     onLessTime = {
-                        onEchoQuestion("Só tenho 30 min na quinta")
+                        onEchoQuestion("Tenho menos tempo essa semana")
                         onReplanRequestLessTime()
                     },
                     onAdjust = {

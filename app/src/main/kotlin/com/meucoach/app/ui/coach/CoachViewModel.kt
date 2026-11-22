@@ -34,6 +34,7 @@ import com.meucoach.core.domain.coach.FreeInputParser
 import com.meucoach.core.domain.coach.SessionTask
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.model.AthleteProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -727,6 +728,8 @@ class CoachViewModel @Inject constructor(
         }
         val session = plan.sessions.find { it.date == target } ?: return
         val prescribed = if (target == today && nextContext.isToday) nextContext.prescription else null
+        val shortSleep = target == today &&
+            ReadinessFlag.SHORT_SLEEP in (nextContext.readiness?.flags ?: emptySet())
         val answer = CoachSessionAnswer.build(
             today = today,
             target = target,
@@ -734,7 +737,7 @@ class CoachViewModel @Inject constructor(
             weeklyMinutes = plan.weeklyMinutes,
             task = task,
             prescription = prescribed,
-            sleepMinutes = if (target == today) nextContext.sleepMinutes else null,
+            shortSleep = shortSleep,
             hasCheckIn = target == today && nextContext.hasCheckIn,
         )
         freeAnswer(

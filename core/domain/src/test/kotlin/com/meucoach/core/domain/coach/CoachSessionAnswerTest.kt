@@ -68,7 +68,8 @@ class CoachSessionAnswerTest {
             task = SessionTask.HOW_TO,
         )
         assertTrue(answer.engineContext.contains("Como executar"))
-        assertTrue(answer.engineContext.contains("conversável"))
+        assertTrue(answer.engineContext.contains("comece soltinho"))
+        assertTrue(answer.engineContext.contains("dê para conversar"))
         assertFalse(answer.engineContext.contains("reduza"))
         assertFalse(answer.engineContext.contains("bpm"))
     }
@@ -100,14 +101,49 @@ class CoachSessionAnswerTest {
             weeklyMinutes = 120,
             task = SessionTask.HOW_TO,
             prescription = prescription,
-            sleepMinutes = 340,
+            shortSleep = true,
             hasCheckIn = false,
         )
         assertEquals("Hoje", answer.dayLabel)
         assertFalse(answer.isPlannedOnly)
         assertTrue(answer.allowedMinutes.contains(30))
         assertTrue(answer.engineContext.contains("Reduzido para o dia"))
+        assertTrue(answer.engineContext.contains("Sono curto"))
         assertTrue(answer.engineContext.contains("Sem check-in ainda"))
+    }
+
+    @Test
+    fun `sono normal nao entra no contexto`() {
+        val prescription = DailyPrescription(
+            date = monday,
+            plannedSessionId = null,
+            plannedType = WorkoutType.EASY,
+            plannedTitle = "Rodagem",
+            plannedDurationMin = 40,
+            prescribedType = WorkoutType.EASY,
+            title = "Rodagem leve",
+            prescribedDurationMin = 30,
+            targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 4),
+            adjustment = PrescriptionAdjustment.KEEP,
+            rationale = "Dia verde",
+            ruleIds = listOf("R-PRESC-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v6",
+            inputsHash = "hash",
+        )
+        val answer = CoachSessionAnswer.build(
+            today = monday,
+            target = monday,
+            sessions = listOf(easySession(monday)),
+            weeklyMinutes = 120,
+            task = SessionTask.HOW_TO,
+            prescription = prescription,
+            shortSleep = false,
+            hasCheckIn = true,
+        )
+        assertFalse(answer.engineContext.contains("Sono"))
+        assertTrue(answer.engineContext.contains("Check-in feito"))
     }
 
     @Test

@@ -1328,24 +1328,28 @@ class CoachViewModelTest {
         engineVersion = WeeklyPlanGenerator.ENGINE_VERSION,
     )
 
-    private fun sessionNextContext(sessionDate: LocalDate, today: LocalDate = LocalDate.of(2026, 11, 4)) =
-        CoachNextContext(
-            subject = CoachNextSubject.Training(
-                PlannedSession(
-                    date = sessionDate,
-                    type = WorkoutType.EASY,
-                    title = "Rodagem",
-                    durationMin = 40,
-                    rationale = "Base aeróbica",
-                    ruleIds = listOf("R-PLAN-02"),
-                    evidenceIds = listOf("EV-SEILER-2010"),
-                    status = SessionStatus.PLANNED,
-                ),
+    private fun sessionNextContext(
+        sessionDate: LocalDate,
+        today: LocalDate = LocalDate.of(2026, 11, 4),
+        readiness: com.meucoach.core.domain.readiness.ReadinessResult? = null,
+    ) = CoachNextContext(
+        subject = CoachNextSubject.Training(
+            PlannedSession(
+                date = sessionDate,
+                type = WorkoutType.EASY,
+                title = "Rodagem",
+                durationMin = 40,
+                rationale = "Base aeróbica",
+                ruleIds = listOf("R-PLAN-02"),
+                evidenceIds = listOf("EV-SEILER-2010"),
+                status = SessionStatus.PLANNED,
             ),
-            today = today,
-            hasPlan = true,
-            hasProfile = true,
-        )
+        ),
+        today = today,
+        hasPlan = true,
+        hasProfile = true,
+        readiness = readiness,
+    )
 
     @Test
     fun `session question calls free-answer with session context`(): Unit = runBlocking {
@@ -1567,6 +1571,34 @@ class CoachViewModelTest {
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         assertThat(vm.exchanges.value).hasSize(1)
         assertThat(vm.exchanges.value.single().answer).isEqualTo(state)
+    }
+
+    @Test
+    fun `sono curto chega ao contexto da sessao sem numero solto`() {
+        consent.grant()
+        val today = LocalDate.of(2026, 11, 4)
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), today), "hash-s")
+        next.value = sessionNextContext(
+            sessionDate = today,
+            today = today,
+            readiness = com.meucoach.core.domain.readiness.ReadinessResult(
+                score = 55,
+                level = com.meucoach.core.model.ReadinessLevel.AMBER,
+                confidence = DataConfidence.MEDIUM,
+                components = mapOf(com.meucoach.core.domain.readiness.ReadinessComponent.SUBJECTIVE to 60),
+                missing = emptySet(),
+                flags = setOf(com.meucoach.core.domain.readiness.ReadinessFlag.SHORT_SLEEP),
+            ),
+        )
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Hoje", body = "Comece soltinho e encaixe o ritmo. Topa?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("como corro hoje?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("Sono curto")
     }
 
     @Test
