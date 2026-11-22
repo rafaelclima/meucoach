@@ -1,6 +1,37 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (Arte PNG F6: export PNG síncrono + salvar/compartilhar + reuso)
+**Atualizado:** 22/11/2026 (Arte PNG F7: persistência `meucoach_art` integrada)
+
+## Sessão 2026-11-22 — Arte PNG F7: codec + store (TDD)
+
+**Penúltima fatia do PRD de Arte PNG** (ADR 0058 §2.6): a receita da arte
+sobrevive a restart/update e "Restaurar padrão" limpa o próprio arquivo.
+
+### Concluído
+
+- **`ArtRecipeCodec`** (`app/story`): JSON versionado (`v = 1`) espelhando o
+  `StoryRecipeCodec` — decodificação tolerante: enum desconhecido volta ao
+  default documentado, payload corrompido/versão errada/duplicado/3 extras
+  caem em `ArtRecipe()`; extras de vídeo (`MAX_HR`/`FASTEST_KM`) vindos de
+  JSON são **semeados** (skipped), não fatais.
+- **`ArtRecipeStore`**: SharedPreferences **`meucoach_art`** (não DataStore),
+  `load/save/reset` próprios — reset não toca `meucoach_story`.
+- **VM**: carrega o store no `init`; `shareArt`/`saveArtPng` gravam a
+  receita quando o switch "Salvar como padrão" está ligado (mesma regra do
+  vídeo); `resetArtRecipe` limpa o store e volta ao default.
+- **DataResetCoordinator**: limpa `meucoach_art` como "receita de arte"
+  (export/delete explícitos; sem dados residuais de preferência).
+- **Testes:** `ArtRecipeCodecTest` (5: round-trip, keys/version, unknown
+  enums, extra de vídeo semeado, payload corrompido), `ArtRecipeStoreTest`
+  (3: default, reload, reset isolado do store do vídeo),
+  `DataResetCoordinatorTest` (seed+assert da arte), VM +4 (load salvo,
+  gravação com switch ligado/desligado, reset limpa o store). VM 57/57.
+  `check` + `verifyRoborazziDebug` verdes.
+
+### Pendente
+
+- **F8:** docs finais (DESIGN_SYSTEM/PROGRESS/ROADMAP/DoD), validação no
+  aparelho dos CTAs + persistência, e o gate `--tests "*Art*"` completo.
 
 ## Sessão 2026-11-22 — Arte PNG F6: export e share (TDD)
 
