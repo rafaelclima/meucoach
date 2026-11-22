@@ -260,7 +260,7 @@ class ActivityDetailViewModel @Inject constructor(
                 lthrBpm = lthr,
                 session = planned.current,
                 nextSession = planned.next,
-            )
+            )?.copy(localDate = stored.localDate)
         }
     }
 

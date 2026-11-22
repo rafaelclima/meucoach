@@ -502,6 +502,17 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `story plan carries the activity local date`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val state = viewModel("activity-1").uiState.first { !it.isLoading }
+
+            assertThat(state.activity?.localDate).isNotNull()
+            assertThat(state.storyStudio.plan?.localDate).isEqualTo(state.activity?.localDate)
+        }
+    }
+
+    @Test
     fun `changing the duration rebuilds the timeline`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
