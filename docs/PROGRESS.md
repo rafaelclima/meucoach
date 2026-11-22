@@ -1,6 +1,127 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (bugfix da data no plano do Studio + PRD v0.2/ADR 0058 + minSdk 31)
+**Atualizado:** 22/11/2026 (Arte PNG F4: `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel)
+
+## Sessão 2026-11-22 — Arte PNG F4: renderer transparente (TDD)
+
+**Terceira fatia de código do PRD de Arte PNG** (ADR 0058 §2.2/§5): renderer
+canvas puro, sem Compose, com layout por blocos format-aware. TDD: 12 testes
+antes da implementação (9 do renderer + 3 do formatador de data).
+
+### Concluído
+
+- **`StoryArtRenderer.kt`** em `app/story`: recebe `ArtRecipe`, `Typeface`,
+  `logoBitmap` e por chamada `plan`/`localDate`/`width`/`height` (preview
+  ~540 px, export 1080). Canvas `ARGB_8888` **sem `drawColor`** — fundo
+  transparente por construção; só texto, rota e marcadores são opacos.
+  - 4:5 pôster-like: marca → distância → colunas ritmo/tempo → extras →
+    rota quadrada → rodapé. 1:1 compacto: ritmo/tempo numa linha, sem
+    tagline. Coordenadas próprias em unidades de design (1080 de base),
+    nada copiado do `StoryPosterRenderer`.
+  - Rota em área sempre quadrada (aspecto preservado), casca `#08090B` a
+    70% + cor da receita; início na cor do texto, fim no coral; sem ticks
+    de splits; extras valor-only (máx. 2), data via `ArtDateFormatter`.
+  - Falha de render recicla o bitmap e repropaga; `writePng` recicla
+    sempre. Reusa `storyTextPaint` (tnum) e ganhou `fittedTextSize`
+    compartilhado em `StoryFrameRenderer.kt`.
+- **`ArtDateFormatter.kt`**: `d MMM uuuu` pt-BR sem ponto → "24 out 2026";
+  `null` → `null` (extra omitido).
+- **Testes** (`StoryArtRendererTest`, `ArtDateFormatterTest`): tamanhos
+  1080×1350/1080×1080; **alpha de fundo = 0** nos 4 cantos (24×24 px) e
+  maioria do canvas transparente; preview 540 com cantos transparentes;
+  sem rota → `null`; PNG com assinatura e dimensões; **aspecto da rota
+  preservado** (bbox lime vs. spans normalizados, 5%); cores/marcadores da
+  receita; colunas ritmo/tempo dentro das margens (regressão do overflow
+  "30:006:0" achado no golden).
+- **Goldens Roborazzi** (`ArtPngScreenshotTest` sobre checkerboard escuro):
+  `art-png-4x5-default.png`, `art-png-1x1-default.png`,
+  `art-png-4x5-customized.png` (Anton, rota coral, extras data+FC).
+  `:app:verifyRoborazziDebug --tests "*ArtPng*"` verde.
+- Suíte completa: 2.521 testes, 0 falhas; `assembleDebug`, `spotlessCheck`
+  verdes.
+
+### Pendente
+
+- Posições finais do layout dependem da **spec visual 4:5/1:1 (F0)** e do
+  spike de alpha; os goldens travam o estado atual e serão regravados se a
+  spec ajustar posições.
+- Próximo: **F6** (`GalleryImagePublisher` + salvar/compartilhar) pode ir
+  antes da F5; **F5** (UI) exige o spike de alpha.
+
+## Sessão 2026-11-22 — Arte PNG F3: fontes + tokens + NOTICE (TDD)
+
+**Segunda fatia de código do PRD de Arte PNG** (ADR 0058 §2.5/§2.4): as 6
+famílias do card embarcadas, `blue` no design system e NOTICE OFL. Testes
+escritos antes (`ArtFontsTest` com Robolectric NATIVE).
+
+### Concluído
+
+- **Fontes em `core/designsystem/src/main/res/font/`:** `bebas_neue.ttf`,
+  `anton.ttf`, `archivo_black.ttf` (regulares) e `oswald_500.ttf`/
+  `oswald_700.ttf` (estáticos, instâncias 500/700 — sem negrito sintético,
+  conforme ADR). Total +~590 KB no APK. Origem: `google/fonts` (OFL 1.1).
+- **`ArtFonts.kt` em `app/story`:** `ArtFont.family` (Compose, para o preview
+  do picker) e `ArtFont.typeface`/`typefaceBold` (canvas, para o renderer da
+  F4). Falta de fonte falha alto (`checkNotNull`), sem fallback silencioso
+  para a fonte do sistema.
+- **`McColors.blue`** seguindo o token `data/blue` por tema (`#6C9CFF` escuro,
+  `#2E5BCC` claro). `ArtColor.BLUE.argb` permanece o valor fixo da arte
+  (`#6C9CFF`), independente de tema.
+- **NOTICE:** `core/designsystem/src/main/res/raw/notice_art_fonts.txt`
+  (no APK e no repositório) com as 4 licenças OFL completas e a origem dos
+  arquivos.
+- **`ArtFontsTest`** (5 testes, `@GraphicsMode(NATIVE)`): as 6 fontes
+  carregam; glifos de "5,00 km · 31:04 · 5:58 /km" + `çãáéô` presentes em
+  todas; `tnum` tabular em Inter/Geist (medição real dos dígitos); fontes
+  display aceitam `tnum` sem quebrar; e as 4 display são medidas distintas
+  entre si e do `Typeface.DEFAULT` (guarda contra fallback silencioso).
+- `:app:assembleDebug`, `:app:testDebugUnitTest` e `spotlessCheck` verdes.
+- `DESIGN_SYSTEM.md` §4.1 ganhou a lista das famílias da arte.
+
+### Pendente / decisão aberta
+
+- **Fonte do swatch na UI:** os swatches da arte são tema-independentes
+  (`ArtColor.argb`); `McColors.blue`/`cyan` seguem o tema. Na F5 decidir se o
+  círculo do swatch usa `ArtColor.argb` (fiel ao PNG) ou token do tema.
+- **Spike de alpha no Instagram (F0)** continua pendente e bloqueia a F5.
+- Próximo: **F4** — `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel
+  (spec visual 4:5/1:1 do F0 é pré-requisito para as posições finais; o
+  renderer pode começar com o layout por blocos do ADR).
+
+## Sessão 2026-11-22 — Arte PNG F2: domínio da receita (TDD)
+
+**Primeira fatia de código do PRD de Arte PNG** (ADR 0058): modelo puro da
+receita em `core:domain`, sem UI, sem fontes e sem codec. TDD: 14 testes
+escritos antes da implementação.
+
+### Concluído
+
+- `ArtRecipe.kt` em `core/domain/.../story/`: `ArtFormat`
+  (`PORTRAIT_4_5` 1080×1350, `SQUARE` 1080×1080, com `fileTag` para os nomes
+  de arquivo `...-arte-4x5.png`/`...-arte-1x1.png`), `ArtFont` (6 famílias),
+  `ArtColor` (8 swatches com os valores dos tokens como `argb`, sem
+  `lime-pressed`) e `ArtRecipe`.
+- `ArtRecipe`: defaults 4:5/Inter/sem extras/texto branco/traço lima;
+  `require` de máx. 2 extras e sem duplicado; `toggleExtra` ignora o terceiro
+  toque (no-op, não derruba a tela); `withExtras`; `toStoryRecipe()` mapeia
+  os extras para `StoryRecipe(CUSTOM)` — métricas continuam sendo resolvidas
+  por `StoryRenderSpecResolver.fromPlan`.
+- `ArtRecipe.EXTRA_CHOICES`: os 5 extras do card (data, FC média, elevação,
+  calorias, cadência) em ordem de exibição; `MAX_HR`/`FASTEST_KM` ficam
+  fora (vídeo).
+- `ArtRecipeTest`: 14 testes (defaults, dimensões, `fileTag`, estabilidade
+  dos enums, paleta com valores, extras, limite, duplicados, toggle,
+  remoção, `withExtras`, `toStoryRecipe`). `:core:domain:test` e
+  `spotlessCheck` verdes.
+
+### Pendente / decisão aberta
+
+- O contrato da F2 valida só máx. 2/sem duplicado; a restrição aos 5 extras
+  de `EXTRA_CHOICES` ficou como metadado para a UI, não como `require` no
+  domínio. Se o F7 (`ArtRecipeCodec`) precisar rejeitar extras de vídeo
+  (ex.: `MAX_HR` vindo de JSON antigo), aí sim vira validação de decodificação.
+- F3 (fontes/tokens/`McColors`/NOTICE) e o spike de alpha no Instagram
+  (F0) continuam pendentes; F5 não começa antes do spike.
 
 ## Sessão 2026-11-22 — Story: data no plano do Studio (bugfix)
 

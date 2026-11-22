@@ -747,15 +747,15 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 
 ### P3-06 · Arte PNG da rota (card transparente 4:5/1:1)
 
-**Status:** decisões de produto fechadas em 22/11/2026; PRD v0.2 e ADR 0058/0059 publicados; F0/spikes e F2–F8 pendentes.
+**Status:** decisões de produto fechadas em 22/11/2026; PRD v0.2 e ADR 0058/0059 publicados; F2–F4 feitos; F0/spikes e F5–F8 pendentes.
 
 Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/0058-art-png-route.md).
 
 - [x] F1 — bugfix `localDate` no plano do Studio + regressão (22/11/2026).
 - [ ] F0 — spikes: alpha no Instagram, fontes (`hasGlyph`/`tnum`/700) e preview 540/debounce; spec visual 4:5/1:1.
-- [ ] F2 — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor`.
-- [ ] F3 — 4 fontes novas + tokens/`McColors` + NOTICE + testes de glifo.
-- [ ] F4 — `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel.
+- [x] F2 — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor` (22/11/2026).
+- [x] F3 — 4 fontes novas + tokens/`McColors` + NOTICE + testes de glifo (22/11/2026).
+- [x] F4 — `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel (22/11/2026; posições finais aguardam a spec visual do F0).
 - [ ] F5 — aba Arte PNG no Studio + prévia + a11y.
 - [ ] F6 — `GalleryImagePublisher` + salvar/compartilhar + reuso.
 - [ ] F7 — `ArtRecipeCodec` + `ArtRecipeStore` integrados + polimento.
