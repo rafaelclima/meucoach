@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 sem retrovisor: chips no rodapé)
+**Atualizado:** 22/11/2026 (ADR 0057 dica com dia antes + referência do motor)
+
+## Sessão 2026-11-22 — Parser cobre "dica" invertida + referência do motor (TDD)
+
+**Pedido do usuário 0:** (1) "e pra hoje, qual a dica?" caiu em
+`OUT_OF_SCOPE` enquanto "Qual a dica pra hoje?" funcionava — dia antes da
+palavra não casava; (2) quer ritmo médio e FC de referência vindos do motor.
+
+### Concluído
+
+- **Parser:** dia relativo/nomeado vale dos dois lados de "dica";
+  sem âncora segue `OUT_OF_SCOPE` (sem adivinhar). Parser 33/33.
+- **Referência do motor (decisão):** ritmo/FC/Zona/RPE em cartão
+  determinístico (`CoachSessionReference`, do plano/prescrição vigente)
+  inline na resposta e nos bullets do `ANSWER` gravado; a LLM continua
+  proibida de escrever dígito de pace/bpm — validador intacto, porque
+  conjunto não pega inversão semântica e cartão determinístico, sim.
+- **Testes:** referência 4/4, VM 69/69 (referência na troca e nos bullets),
+  pacote coach 206/206 (cartão junto da resposta), validador 19/19.
+  `check` + `spotlessCheck` verdes.
+- **Docs:** item 11 no ADR 0057 + esta entrada.
+
+### Próximo
+
+1. `./install.sh` + repetir as duas perguntas ("e pra hoje, qual a dica?",
+   "Qual a dica pra hoje?") — esperar mesma resposta, com cartão
+   "Referência do motor".
+2. WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — Retrovisor vira chips (TDD)
 

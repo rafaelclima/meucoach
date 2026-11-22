@@ -161,6 +161,26 @@ class FreeInputParserTest {
     }
 
     @Test
+    fun `dica no fim da frase com dia antes vira ASK_HOW_TO_RUN`() {
+        val parsed = FreeInputParser.parse("e pra hoje, qual a dica?", DayOfWeek.SUNDAY)
+        assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY, dayOffset = 0), parsed.slots)
+    }
+
+    @Test
+    fun `dica sem ancora de treino ou dia continua fora de escopo`() {
+        val parsed = FreeInputParser.parse("me dá uma dica", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.OUT_OF_SCOPE, parsed.intent)
+    }
+
+    @Test
+    fun `dica para dia nomeado vira ASK_HOW_TO_RUN`() {
+        val parsed = FreeInputParser.parse("qual a dica pra domingo?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.SUNDAY), parsed.slots)
+    }
+
+    @Test
     fun `dica de como correr amanha vira ASK_HOW_TO_RUN`() {
         val parsed = FreeInputParser.parse("me dá uma dica de como correr amanhã", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)

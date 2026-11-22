@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.coach.CoachSessionReference
 
 /**
  * Chat chrome da aba Coach (PRD_COACH_CHAT F1).
@@ -262,10 +263,15 @@ internal fun FreeExchangeRow(exchange: FreeExchange, onRetryFreeAnswer: () -> Un
                 modifier = Modifier.testTag("coach-free-typing"),
             )
 
-            is FreeAnswerUiState.Ready -> CoachBubbleSequence(
-                texts = answer.texts,
-                testTag = "coach-free-answer",
-            )
+            is FreeAnswerUiState.Ready -> {
+                CoachBubbleSequence(
+                    texts = answer.texts,
+                    testTag = "coach-free-answer",
+                )
+                if (answer.reference.isNotEmpty()) {
+                    CoachReferenceCard(lines = answer.reference)
+                }
+            }
 
             is FreeAnswerUiState.Fallback -> {
                 CoachBubble(
@@ -281,6 +287,32 @@ internal fun FreeExchangeRow(exchange: FreeExchange, onRetryFreeAnswer: () -> Un
             }
 
             FreeAnswerUiState.Idle -> Unit
+        }
+    }
+}
+
+/**
+ * Motor-decided numbers for a session answer (ADR 0057): pace and heart-rate
+ * reference rendered deterministically — the LLM never writes these digits.
+ */
+@Composable
+internal fun CoachReferenceCard(lines: List<String>, modifier: Modifier = Modifier) {
+    if (lines.isEmpty()) return
+    CoachAttachment(
+        testTag = "coach-reference",
+        modifier = modifier,
+    ) {
+        Text(
+            text = CoachSessionReference.TITLE,
+            style = MaterialTheme.typography.labelSmall,
+            color = McTheme.colors.textTertiary,
+        )
+        lines.forEach { line ->
+            Text(
+                text = line,
+                style = MaterialTheme.typography.bodyMedium,
+                color = McTheme.colors.textPrimary,
+            )
         }
     }
 }

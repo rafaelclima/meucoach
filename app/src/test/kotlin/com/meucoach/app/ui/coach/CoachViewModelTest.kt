@@ -46,7 +46,9 @@ import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.coach.FreeInputIntent
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -58,6 +60,7 @@ import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Pace
 import com.meucoach.core.model.WeeklyAvailability
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -1303,6 +1306,7 @@ class CoachViewModelTest {
         weekStart: LocalDate,
         sessionDate: LocalDate,
         status: SessionStatus = SessionStatus.PLANNED,
+        targets: PrescriptionTargets = PrescriptionTargets(primary = TargetKind.RPE),
     ) = WeeklyPlan(
         weekStart = weekStart,
         sessions = listOf(
@@ -1314,6 +1318,7 @@ class CoachViewModelTest {
                 rationale = "Base aeróbica",
                 ruleIds = listOf("R-PLAN-02"),
                 evidenceIds = listOf("EV-SEILER-2010"),
+                targets = targets,
                 status = status,
             ),
         ),
@@ -1599,6 +1604,37 @@ class CoachViewModelTest {
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("Sono curto")
+    }
+
+    @Test
+    fun `resposta de sessao carrega referencia do motor e grava nos bullets`(): Unit = runBlocking {
+        consent.grant()
+        val targets = PrescriptionTargets(
+            pace = com.meucoach.core.domain.prescription.PaceTarget(
+                fast = Pace.fromSecondsPerKm(364),
+                slow = Pace.fromSecondsPerKm(392),
+            ),
+            heartRate = com.meucoach.core.domain.prescription.HeartRateTarget(minBpm = 140, maxBpm = 155),
+            primary = TargetKind.HEART_RATE,
+        )
+        plans.value = CoachPlanContext(
+            sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 4), targets = targets),
+            "hash-s",
+        )
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 4))
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Hoje", body = "Comece soltinho e encaixe o ritmo. Topa?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("como corro hoje?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        val ready = state as FreeAnswerUiState.Ready
+        assertThat(ready.reference).containsExactly("Ritmo: entre 6:04 e 6:32 por km", "FC: até 155 bpm")
+        val answers = memory.observeTurns().first().filterIsInstance<ChatTurn.Coach>()
+            .filter { it.origin == ChatTurn.Origin.ANSWER }
+        assertThat(answers.single().bullets).contains("Ritmo: entre 6:04 e 6:32 por km")
     }
 
     @Test

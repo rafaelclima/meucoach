@@ -1357,6 +1357,38 @@ class CoachScreenTest {
     }
 
     @Test
+    fun `referencia do motor aparece junto da resposta`() {
+        setContent(
+            exchanges = listOf(
+                FreeExchange(
+                    "e1",
+                    "como corro hoje?",
+                    FreeAnswerUiState.Ready(
+                        listOf("Comece soltinho e encaixe o ritmo. Topa?"),
+                        listOf("Ritmo: entre 6:04 e 6:32 por km", "FC: até 155 bpm"),
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-reference").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Referência do motor", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Ritmo: entre 6:04 e 6:32 por km", substring = true).performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `sem referencia nao mostra o cartao do motor`() {
+        setContent(
+            exchanges = listOf(
+                FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Ready(listOf("Fechado.", "Bora?"))),
+            ),
+        )
+
+        compose.onNodeWithTag("coach-reference").assertDoesNotExist()
+    }
+
+    @Test
     fun `troca pergunta e resposta aparece adjacente no fluxo`() {
         setContent(
             exchanges = listOf(

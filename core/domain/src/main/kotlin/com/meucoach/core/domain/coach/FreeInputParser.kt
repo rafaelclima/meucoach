@@ -106,8 +106,11 @@ object FreeInputParser {
     private val howToPatterns = listOf(
         Regex("""\bcomo\s+(corro|correr|faco|fazer|devo|levar)\b"""),
         Regex("""\bcomo\s+e\b"""),
-        Regex("""\bdica\b.*(correr|corrida|treino|amanha|hoje|longao|rodagem)"""),
+        Regex("""\bdica\b.*(correr|corrida|treino|amanha|hoje|ontem|longao|rodagem)"""),
+        Regex("""\bdica\b.*(segunda|terca|quarta|quinta|sexta|sabado|domingo)"""),
         Regex("""(correr|corrida|treino|longao|rodagem).*\bdica\b"""),
+        Regex("""\b(hoje|amanha|ontem)\b.*\bdica\b"""),
+        Regex("""(segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom)\b.*\bdica\b"""),
         Regex("""\bestrategia\b.*(treino|corrida|prova|longao)"""),
         Regex("""\britmo\b.*(manter|levar|segurar)"""),
     )

@@ -132,7 +132,12 @@ para a próxima fatia.
     olhar pra trás?" saiu do feed; Semana passada/Evolução/Histórico viram
     chips no rodapé (echo efêmero nos dois primeiros, cards inline sob
     demanda como antes).~~
-11. Próxima: WHY/prontidão/método.
+11. ~~Parser cobre "dica" com dia antes + referência do motor (22/11/2026):
+    "e pra hoje, qual a dica?" caía em OUT_OF_SCOPE; agora dia/semana valem
+    dos dois lados da palavra. Ritmo médio e FC de referência vêm do motor
+    em cartão determinístico (`CoachSessionReference`); a LLM continua sem
+    escrever dígito de pace/bpm e o validador segue intacto.~~
+12. Próxima: WHY/prontidão/método.
 
 ## 5. Exchanges e persistência determinística (itens 2-base e 3)
 

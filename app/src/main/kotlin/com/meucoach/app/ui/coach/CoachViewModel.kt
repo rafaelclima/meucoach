@@ -27,6 +27,7 @@ import com.meucoach.core.domain.coach.CoachResponseValidator
 import com.meucoach.core.domain.coach.CoachReviewPrompt
 import com.meucoach.core.domain.coach.CoachReviewPromptBuilder
 import com.meucoach.core.domain.coach.CoachSessionAnswer
+import com.meucoach.core.domain.coach.CoachSessionReference
 import com.meucoach.core.domain.coach.CoachValidationResult
 import com.meucoach.core.domain.coach.FreeInputIntent
 import com.meucoach.core.domain.coach.FreeInputParse
@@ -178,7 +179,7 @@ sealed interface FreeAnswerUiState {
 
     data object Loading : FreeAnswerUiState
 
-    data class Ready(val texts: List<String>) : FreeAnswerUiState
+    data class Ready(val texts: List<String>, val reference: List<String> = emptyList()) : FreeAnswerUiState
 
     data class Fallback(val copy: String) : FreeAnswerUiState
 }
@@ -750,6 +751,7 @@ class CoachViewModel @Inject constructor(
                 allowedDistancesKm = answer.allowedDistancesKm,
                 forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
                 engineContext = answer.engineContext,
+                reference = CoachSessionReference.lines(session, prescribed),
             ),
         )
     }
@@ -768,6 +770,7 @@ class CoachViewModel @Inject constructor(
         val allowedDistancesKm: Set<Double>,
         val forbiddenCodes: Set<String>,
         val engineContext: String,
+        val reference: List<String> = emptyList(),
     )
 
     private suspend fun answerReview(parsed: FreeInputParse, exchangeId: String) {
@@ -824,17 +827,18 @@ class CoachViewModel @Inject constructor(
             when (validated) {
                 is CoachValidationResult.Valid -> {
                     val response = validated.response
+                    val historyBullets = (response.bullets + request.reference).take(5)
                     recordSafely {
                         memory.recordMessage(
                             kind = CoachMessageKind.ANSWER,
                             inputsHash = freeHash,
                             title = response.title,
                             body = response.body,
-                            bullets = response.bullets,
+                            bullets = historyBullets,
                         )
                     }
                     android.util.Log.d("Coach", "free answer ok hash=$freeHash")
-                    settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(response.body)))
+                    settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(response.body), request.reference))
                 }
 
                 is CoachValidationResult.Invalid -> {
