@@ -45,12 +45,14 @@ object CoachResponseValidator {
     private val percentPattern = Regex("""(\d{1,3})\s?%""")
     private val internalCodePattern = Regex("""\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b""")
     private val distancePattern = Regex("""(\d+(?:[.,]\d+)?)\s?km""", RegexOption.IGNORE_CASE)
-    private val digitPattern = Regex("""\d""")
+    private val bareNumberPattern = Regex("""\d+(?:[.,]\d+)?""")
 
     /**
      * Normalized (lowercase, no accents) tokens for the free-answer path.
-     * Prescription verbs only matter with a number or a structural change;
-     * plain rest-day rewording ("descanse bem") has neither and still passes.
+     * Prescription verbs only matter with an uncovered number or a
+     * structural change; citing a planned duration ("faça os 40 min") is
+     * guidance, inventing load ("faça 6 repetições") is prescription.
+     * Plain rest-day rewording ("descanse bem") has neither and still passes.
      */
     private val prescriptionVerbs =
         listOf(
@@ -138,11 +140,14 @@ object CoachResponseValidator {
     }
 
     /**
-     * Free-answer path of the validator (ADR 0056 §2.2): every base rule still
-     * applies, and the response may only cite durations, distances and shares
-     * already present in the current prescription. Prescription verbs with a
-     * number or a structural change, medical/scope lexicon and memory promises
-     * are `Invalid`. The legacy `validate` path is untouched.
+     * Free-answer path of the validator (ADR 0056 §2.2, refinado na ADR 0057):
+     * every base rule still applies, and the response may only cite
+     * durations, distances and shares already present in the current
+     * prescription. A prescription verb dies with an uncovered number
+     * ("faça 6 repetições") or a structural change ("troque por descanso"),
+     * never for citing a planned duration ("os 40 min"). Medical/scope
+     * lexicon and memory promises are `Invalid`. The legacy `validate`
+     * path is untouched.
      */
     fun validateFreeAnswer(
         raw: CoachRawResponse,
@@ -156,18 +161,23 @@ object CoachResponseValidator {
         val normalized = normalizedKeywordForm(
             (listOf(raw.title, raw.body) + raw.bullets + listOfNotNull(raw.suggestedAction)).joinToString("\n"),
         )
-        val reason = freeAnswerReason(normalized, allowedDistancesKm) ?: return base
+        val reason = freeAnswerReason(normalized, allowedMinutes, allowedPercents, allowedDistancesKm) ?: return base
         return CoachValidationResult.Invalid(reason)
     }
 
-    private fun freeAnswerReason(normalized: String, allowedDistancesKm: Set<Double>): String? {
+    private fun freeAnswerReason(
+        normalized: String,
+        allowedMinutes: Set<Int>,
+        allowedPercents: Set<Int>,
+        allowedDistancesKm: Set<Double>,
+    ): String? {
         val inventedDistance = distancePattern.findAll(normalized)
             .map { it.groupValues[1].replace(',', '.').toDouble() }
             .firstOrNull { candidate -> allowedDistancesKm.none { abs(it - candidate) < 1e-6 } }
         val prescribes = prescriptionVerbs.any { (_, pattern) -> pattern.containsMatchIn(normalized) } &&
             (
-                digitPattern.containsMatchIn(normalized) ||
-                    structuralTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
+                structuralTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) } ||
+                    hasUncoveredNumber(normalized, allowedMinutes, allowedPercents, allowedDistancesKm)
                 )
         val outOfScope = medicalTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
         val memoryPromise = memoryPromises.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
@@ -177,6 +187,35 @@ object CoachResponseValidator {
             outOfScope -> "Resposta fora do escopo do Coach"
             memoryPromise -> "Resposta promete memória que o Coach não tem"
             else -> null
+        }
+    }
+
+    /**
+     * Any digit the answer may not cite: numbers with a unit must be covered
+     * by the allowed sets, and bare digits next to a prescription verb never
+     * pass — the model must write the unit ("40 min"), and even then only
+     * when the motor planned it.
+     */
+    private fun hasUncoveredNumber(
+        normalized: String,
+        allowedMinutes: Set<Int>,
+        allowedPercents: Set<Int>,
+        allowedDistancesKm: Set<Double>,
+    ): Boolean {
+        val covered = buildList {
+            minutesPattern.findAll(normalized).forEach { match ->
+                if (match.groupValues[1].toInt() in allowedMinutes) add(match.range)
+            }
+            percentPattern.findAll(normalized).forEach { match ->
+                if (match.groupValues[1].toInt() in allowedPercents) add(match.range)
+            }
+            distancePattern.findAll(normalized).forEach { match ->
+                val value = match.groupValues[1].replace(',', '.').toDouble()
+                if (allowedDistancesKm.any { abs(it - value) < 1e-6 }) add(match.range)
+            }
+        }
+        return bareNumberPattern.findAll(normalized).any { match ->
+            covered.none { span -> match.range.first in span && match.range.last in span }
         }
     }
 

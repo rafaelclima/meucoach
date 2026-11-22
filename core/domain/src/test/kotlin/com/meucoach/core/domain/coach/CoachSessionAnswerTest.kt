@@ -69,6 +69,7 @@ class CoachSessionAnswerTest {
         )
         assertTrue(answer.engineContext.contains("Como executar"))
         assertTrue(answer.engineContext.contains("conversável"))
+        assertFalse(answer.engineContext.contains("reduza"))
         assertFalse(answer.engineContext.contains("bpm"))
     }
 

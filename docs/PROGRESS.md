@@ -1,6 +1,35 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 item 2 UI: Q&A adjacente no fluxo)
+**Atualizado:** 22/11/2026 (ADR 0057 porteira: verbo só morre com número fora do plano)
+
+## Sessão 2026-11-22 — Validador refinado após 2 rejeições reais no aparelho (TDD)
+
+**Diagnóstico (usuário 0, com adb):** "Qual a dica para a corrida de hoje?"
+voltou 2× sem resposta da IA — a segunda via "Tentar de novo" (sem `YOU`
+duplicado, como desenhado). Log: 2× `free answer rejected: Resposta sugere
+treino novo`. Transporte saudável: proxy `/health` 200, upstream respondeu,
+`YOU` gravado, `explain`/`review ok` minutos antes. A LLM ecoou comando +
+duração ("faça os 40 min") e a regra antiga (verbo + qualquer dígito) barrou
+— falso-positivo da porteira, não falha de comunicação.
+
+### Concluído
+
+- **Domínio:** `hasUncoveredNumber` — verbo de prescrição só é `Invalid`
+  com número fora do permitido (unidade conta: `40 min` coberto passa,
+  `50 min`/bare `40`/`6 repetições` morrem) ou mudança estrutural
+  (inalterada). `engineContext` do HOW_TO sem "reduza" ("diminua o ritmo")
+  e com steering ("fale como quem corre junto, nunca ordene com número").
+- **Testes:** validador 19/19 (3 novos: `40 min` passa, `50 min` e bare
+  morrem; os 3 antigos de prescrição continuam `Invalid`), builder 6/6.
+- **Gates:** `check` + `spotlessCheck` verdes. Sem proxy/schema/motor;
+  nenhum texto real do aparelho no diff.
+- **Docs:** item 8 no ADR 0057 + esta entrada.
+
+### Próximo
+
+1. `./install.sh` + repetir "Qual a dica para a corrida de hoje?" — esperar
+   `free answer ok` com `ASK_HOW_TO_RUN` e bolhas citando só o planejado.
+2. WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — ADR 0057 item 2 (UI): Q&A adjacente no fluxo (TDD)
 

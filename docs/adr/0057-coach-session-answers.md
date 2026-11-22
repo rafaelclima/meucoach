@@ -110,7 +110,15 @@ para a próxima fatia.
    auto-scroll), rodapé sem ecos/resposta, quick replies com `echoQuestion`
    efêmero, composer com `sendEnabled`; tela 201 + VM 67, `check` +
    `spotlessCheck` verdes. Validação no aparelho pendente.~~
-8. Próxima: WHY/prontidão/método.
+8. ~~Porteira refinada pós-falha real (22/11/2026): "Qual a dica para a
+   corrida de hoje?" voltou 2× com `free answer rejected: Resposta sugere
+   treino novo". Transporte saudável (proxy 200, upstream respondeu, YOU
+   gravado) — a LLM ecoou verbo de comando + duração ("faça os 40 min")
+   e a regra antiga (verbo + qualquer dígito) barrou. Agora verbo só morre
+   com número fora do permitido ou mudança estrutural; citar duração
+   planejada passa. O `engineContext` do HOW_TO não planta mais "reduza" e
+   orienta "fale como quem corre junto, nunca ordene com número".~~
+9. Próxima: WHY/prontidão/método.
 
 ## 5. Exchanges e persistência determinística (itens 2-base e 3)
 

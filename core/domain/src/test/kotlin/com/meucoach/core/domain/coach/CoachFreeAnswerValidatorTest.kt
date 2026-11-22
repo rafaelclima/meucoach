@@ -59,6 +59,24 @@ class CoachFreeAnswerValidatorTest {
     }
 
     @Test
+    fun `aceita verbo com duracao planejada`() {
+        val result = freeAnswer("Faça os 40 min leves de hoje")
+        assertTrue(result is CoachValidationResult.Valid)
+    }
+
+    @Test
+    fun `barra verbo com duracao fora do plano`() {
+        val result = freeAnswer("Faça os 50 min de hoje")
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
+    fun `barra verbo com numero sem unidade`() {
+        val result = freeAnswer("Faça os 40 de hoje")
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
     fun `barra verbo de prescricao com mudanca de estrutura`() {
         val result = freeAnswer("Troque o treino de hoje por descanso")
         assertTrue(result is CoachValidationResult.Invalid)

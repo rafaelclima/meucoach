@@ -174,7 +174,9 @@ object CoachSessionAnswer {
 
         SessionTask.HOW_TO ->
             "TAREFA: explicar como executar a sessão em linguagem de esforço e conversa, " +
-                "sem citar pace, FC ou números novos. Feche com pergunta ou ação."
+                "sem citar pace, FC ou números novos. Fale como quem corre junto " +
+                "('saia fácil', 'segure o esforço'), nunca ordene com número " +
+                "('faça X min'). Feche com pergunta ou ação."
     }
 
     private fun dayLine(input: EngineLines): String =
@@ -216,8 +218,8 @@ object CoachSessionAnswer {
         val session = input.session ?: return ""
         if (session.type == WorkoutType.REST) return " Como executar: descanso é treino — sem rodar para compensar."
         val structure = if (session.structure != null) "com blocos" else "contínuo"
-        return " Como executar: saia fácil e conversável, segure o esforço do início ao fim ($structure); " +
-            "se apertar, reduza e feche leve, sem trocar por outro treino."
+        return " Como executar: saia fácil e conversável, esforço contínuo do início ao fim ($structure); " +
+            "se apertar, diminua o ritmo e feche leve, sem trocar por outro treino."
     }
 
     private fun formatMinutes(totalMin: Int): String {
