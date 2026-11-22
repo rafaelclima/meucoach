@@ -295,7 +295,10 @@ private suspend fun tryModels(
                     target.userAgent?.let { header(HttpHeaders.UserAgent, it) }
                     setBody(buildOpenRouterBody(model, kind, payload))
                 }
-                if (res.status.value in 200..299) return res.bodyAsText() to res.status
+                if (res.status.value in 200..299) {
+                    println("coach upstream=${target.label} model=$model status=${res.status.value} (served)")
+                    return res.bodyAsText() to res.status
+                }
                 println("coach upstream=${target.label} model=$model status=${res.status.value} (trying next)")
                 // 400/401/402/422 são problema do pedido ou da conta naquele
                 // provedor: guarda o primeiro para diagnóstico e segue a cadeia.

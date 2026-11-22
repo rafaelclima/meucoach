@@ -1,6 +1,33 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 MiMo-V2.6-Flash primeiro no Go)
+**Atualizado:** 22/11/2026 (ADR 0057 todos os modelos com timeout; fallback gravado e ponto cego fechado)
+
+## Sessão 2026-11-22 — Quando todos os upstreams estouram (observabilidade)
+
+**Falha real no aparelho:** "e como anda minha evolução?" com os 5 modelos
+estourando 15 s (Go 3× com MiMo primeiro, OpenRouter 2× + gemma 429) —
+`review`/`explain ok` 30 s antes no mesmo chain. Não é o modelo: é a
+rota/gateway congestionado naquele minuto (ou throttling por rajada: 2
+chamadas na abertura da aba + 1 na pergunta). Prova de que a resiliência
+funcionou: `free answer io: timeout` no app e o `ANSWER` determinístico
+gravado no banco (`coach-free-v1|progress|…`, "Últimas 2 semanas: 6 de 6…").
+
+### Concluído
+
+- **Observabilidade:** o proxy agora loga qual modelo serviu
+  (`coach upstream=<label> model=<id> status=<code> (served)`) — antes só
+  falha aparecia, e era impossível saber quem atendeu `review`/`explain`.
+- **Docs:** esta entrada (sem mudança de comportamento; redeploy leva o
+  log novo junto).
+
+### Próximo (sem código, só Dokploy + aparelho)
+
+1. Teste empírico: 3 min parado, UMA pergunta — se o MiMo responder, era
+   throttling/rajada, não modelo nem rota.
+2. Se continuar estourando: `COACH_UPSTREAM_TIMEOUT_MS=8000` (fail fast;
+   resposta saudável vem em 2–4 s) e/ou enxugar a cadeia do Go para só o
+   MiMo.
+3. Validar no log `coach upstream=go model=mimo-v2.6-flash status=200 (served)`.
 
 ## Sessão 2026-11-22 — MiMo-V2.6-Flash primeiro na cadeia do Go (TDD)
 
