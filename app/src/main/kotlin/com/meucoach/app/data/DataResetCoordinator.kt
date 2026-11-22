@@ -17,6 +17,7 @@ import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.reminder.ReminderWorker
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.replan.ReplanSuggestionStore
+import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
 import com.meucoach.app.story.StoryIntroStore
@@ -74,6 +75,7 @@ class DataResetCoordinator @Inject constructor(
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
     private val storyRecipe: StoryRecipeStore,
+    private val artRecipe: ArtRecipeStore,
     private val healthSync: HealthSyncCoordinator,
     private val reminderNotifier: ReminderNotifier,
     private val importNotifier: ImportNotifier,
@@ -108,6 +110,7 @@ class DataResetCoordinator @Inject constructor(
             cleanup("falhas de story") { storyFailures.clearAll() }?.let(failures::add)
             cleanup("aviso de story") { storyIntro.reset() }?.let(failures::add)
             cleanup("receita de story") { storyRecipe.reset() }?.let(failures::add)
+            cleanup("receita de arte") { artRecipe.reset() }?.let(failures::add)
             healthSync.resetState()
             reminderNotifier.cancelAll()
             importNotifier.cancel()

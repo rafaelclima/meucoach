@@ -8,6 +8,7 @@ import androidx.work.WorkInfo
 import com.meucoach.app.application.GetSessionComparison
 import com.meucoach.app.story.ArtPngExport
 import com.meucoach.app.story.ArtPngExporter
+import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
@@ -62,6 +63,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
     private val storyRecipe: StoryRecipeStore,
+    private val artRecipeStore: ArtRecipeStore,
     private val artPngExporter: ArtPngExporter,
     private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
     private val timeProvider: TimeProvider,
@@ -100,6 +102,7 @@ class ActivityDetailViewModel @Inject constructor(
                 plan?.let { StoryMetricValuesResolver.from(it, stored.localDate) }
             }
             val comparison = activity?.let { comparisons.forActivity(it) }
+            val artRecipe = artRecipeStore.load()
             // update(), not a fresh state: the WorkManager observer may have
             // restored a Generating/Done story while this load was running.
             _uiState.update {
@@ -127,6 +130,7 @@ class ActivityDetailViewModel @Inject constructor(
                         recipe = recipe,
                         plan = plan,
                         extras = storyExtraOptions(values),
+                        artRecipe = artRecipe,
                     ),
                 )
             }
@@ -256,8 +260,9 @@ class ActivityDetailViewModel @Inject constructor(
         _uiState.update { it.copy(storyStudio = it.storyStudio.copy(artSaveAsDefault = save)) }
     }
 
-    /** Persistence lands with F7; today it resets only the in-memory recipe. */
+    /** Clears the saved default and returns the art to the documented recipe. */
     fun resetArtRecipe() {
+        artRecipeStore.reset()
         updateArtRecipe { ArtRecipe() }
     }
 
@@ -283,6 +288,9 @@ class ActivityDetailViewModel @Inject constructor(
         val plan = studio.plan ?: return
         if (plan.route.points.size < 2) return
         if (studio.artExport is ArtExportUiState.Exporting) return
+        // The documented switch persists the recipe on any successful intent
+        // (Salvar PNG or Compartilhar), mirroring the video Studio.
+        if (studio.artSaveAsDefault) artRecipeStore.save(studio.artRecipe)
         lastArtExport = forShare
         _uiState.update {
             it.copy(storyStudio = it.storyStudio.copy(artExport = ArtExportUiState.Exporting(forShare)))

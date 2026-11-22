@@ -11,6 +11,7 @@ import androidx.work.workDataOf
 import com.meucoach.app.application.GetSessionComparison
 import com.meucoach.app.story.ArtPngExport
 import com.meucoach.app.story.ArtPngExporter
+import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
@@ -96,6 +97,8 @@ class ActivityDetailViewModelTest {
         Dispatchers.setMain(dispatcher)
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.getSharedPreferences(StoryRecipeStore.PREFERENCES, Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        context.getSharedPreferences(ArtRecipeStore.PREFERENCES, Context.MODE_PRIVATE)
             .edit().clear().commit()
         database =
             Room
@@ -275,6 +278,7 @@ class ActivityDetailViewModelTest {
                 StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
                 StoryIntroStore(ApplicationProvider.getApplicationContext()),
                 StoryRecipeStore(ApplicationProvider.getApplicationContext()),
+                ArtRecipeStore(ApplicationProvider.getApplicationContext()),
                 FakeArtPngExporter(),
                 com.meucoach.app.profile.ProfilePhotoStore(
                     ApplicationProvider.getApplicationContext(),
@@ -295,6 +299,7 @@ class ActivityDetailViewModelTest {
         ),
         intro: StoryIntroStore = StoryIntroStore(ApplicationProvider.getApplicationContext()),
         artPngExporter: ArtPngExporter = FakeArtPngExporter(),
+        artStore: ArtRecipeStore = ArtRecipeStore(ApplicationProvider.getApplicationContext()),
     ) = ActivityDetailViewModel(
         savedStateHandle = SavedStateHandle(
             mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
@@ -307,6 +312,7 @@ class ActivityDetailViewModelTest {
         storyFailures = failures,
         storyIntro = intro,
         storyRecipe = StoryRecipeStore(ApplicationProvider.getApplicationContext()),
+        artRecipeStore = artStore,
         artPngExporter = artPngExporter,
         profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
             ApplicationProvider.getApplicationContext(),
@@ -537,6 +543,68 @@ class ActivityDetailViewModelTest {
             viewModel.selectArtFont(ArtFont.ANTON)
             viewModel.resetArtRecipe()
 
+            assertThat(viewModel.uiState.value.storyStudio.artRecipe).isEqualTo(ArtRecipe())
+        }
+    }
+
+    @Test
+    fun `loads the saved art recipe into the studio`() {
+        runBlocking {
+            ArtRecipeStore(ApplicationProvider.getApplicationContext()).save(
+                ArtRecipe(format = ArtFormat.SQUARE, font = ArtFont.ANTON),
+            )
+            repository.saveImportedActivity(gpsActivity(), "sha")
+
+            val studio = viewModel("activity-1").uiState.first { !it.isLoading }.storyStudio
+
+            assertThat(studio.artRecipe.format).isEqualTo(ArtFormat.SQUARE)
+            assertThat(studio.artRecipe.font).isEqualTo(ArtFont.ANTON)
+        }
+    }
+
+    @Test
+    fun `exporting the art persists the recipe when the switch is on`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val artStore = ArtRecipeStore(ApplicationProvider.getApplicationContext())
+            val viewModel = viewModel("activity-1", artStore = artStore)
+            viewModel.uiState.first { !it.isLoading }
+            viewModel.selectArtFont(ArtFont.ANTON)
+
+            viewModel.saveArtPng()
+
+            assertThat(artStore.load().font).isEqualTo(ArtFont.ANTON)
+        }
+    }
+
+    @Test
+    fun `exporting the art does not persist when the user declines`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val artStore = ArtRecipeStore(ApplicationProvider.getApplicationContext())
+            val viewModel = viewModel("activity-1", artStore = artStore)
+            viewModel.uiState.first { !it.isLoading }
+            viewModel.setArtSaveAsDefault(false)
+            viewModel.selectArtFont(ArtFont.ANTON)
+
+            viewModel.saveArtPng()
+
+            assertThat(artStore.load()).isEqualTo(ArtRecipe())
+        }
+    }
+
+    @Test
+    fun `resetting the art recipe clears the saved default`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val artStore = ArtRecipeStore(ApplicationProvider.getApplicationContext())
+            artStore.save(ArtRecipe(font = ArtFont.ANTON))
+            val viewModel = viewModel("activity-1", artStore = artStore)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.resetArtRecipe()
+
+            assertThat(artStore.load()).isEqualTo(ArtRecipe())
             assertThat(viewModel.uiState.value.storyStudio.artRecipe).isEqualTo(ArtRecipe())
         }
     }

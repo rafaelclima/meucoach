@@ -20,6 +20,7 @@ import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.replan.ReplanSuggestionStore
+import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryIntroStore
 import com.meucoach.app.story.StoryNotifier
@@ -92,6 +93,7 @@ class DataResetCoordinatorTest {
     private lateinit var storyFailures: StoryExportFailureStore
     private lateinit var storyIntro: StoryIntroStore
     private lateinit var storyRecipe: StoryRecipeStore
+    private lateinit var artRecipeStore: ArtRecipeStore
     private lateinit var importedRunPrompts: ImportedRunPromptStore
     private lateinit var raceAutoCompletions: RaceAutoCompletionStore
     private lateinit var replanSuggestions: ReplanSuggestionStore
@@ -131,6 +133,7 @@ class DataResetCoordinatorTest {
         storyFailures = StoryExportFailureStore(context)
         storyIntro = StoryIntroStore(context)
         storyRecipe = StoryRecipeStore(context)
+        artRecipeStore = ArtRecipeStore(context)
         importedRunPrompts = ImportedRunPromptStore(context, "reset-import-prompts-${System.nanoTime()}")
         raceAutoCompletions = RaceAutoCompletionStore(context, "reset-race-auto-${System.nanoTime()}")
         replanSuggestions = ReplanSuggestionStore(context, "reset-replan-${System.nanoTime()}")
@@ -174,6 +177,7 @@ class DataResetCoordinatorTest {
             storyFailures = storyFailures,
             storyIntro = storyIntro,
             storyRecipe = storyRecipe,
+            artRecipe = artRecipeStore,
             healthSync = healthSync,
             reminderNotifier = ReminderNotifier(context),
             importNotifier = ImportNotifier(context),
@@ -214,6 +218,7 @@ class DataResetCoordinatorTest {
         assertThat(levelGraduations.declinedInputsHash("athlete-1")).isNull()
         assertThat(storyIntro.seen()).isFalse()
         assertThat(storyRecipe.load()).isEqualTo(StoryRecipe())
+        assertThat(artRecipeStore.load()).isEqualTo(com.meucoach.core.domain.story.ArtRecipe())
         assertThat(storyFailures.messageFor("activity-1")).isNull()
         assertThat(healthStore.lastSyncedDate()).isNull()
         assertThat(healthSync.state.value.lastSyncedAt).isNull()
@@ -292,6 +297,9 @@ class DataResetCoordinatorTest {
         storyFailures.save("activity-1", "erro")
         storyIntro.markSeen()
         storyRecipe.save(StoryRecipe(extras = listOf(StoryExtra.DATE)))
+        artRecipeStore.save(
+            com.meucoach.core.domain.story.ArtRecipe(font = com.meucoach.core.domain.story.ArtFont.ANTON),
+        )
         healthStore.markSynced(Instant.parse("2026-11-06T10:00:00Z"), LocalDate.of(2026, 11, 6))
         healthSync.syncNow()
     }
