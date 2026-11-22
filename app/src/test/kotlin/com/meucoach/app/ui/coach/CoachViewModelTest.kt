@@ -40,6 +40,7 @@ import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.ChatTurn
+import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachRawResponse
@@ -58,10 +59,12 @@ import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.WeeklyAvailability
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -209,7 +212,7 @@ class CoachViewModelTest {
         database.close()
     }
 
-    private fun viewModel(api: FakeCoachApi, viewClock: Clock = clock): CoachViewModel {
+    private fun viewModel(api: com.meucoach.core.data.coach.CoachApi, viewClock: Clock = clock): CoachViewModel {
         val appScope = CoroutineScope(dispatcher)
         appScopes += appScope
         val vm = CoachViewModel(
@@ -1497,5 +1500,107 @@ class CoachViewModelTest {
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("já passou")
         assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `deterministic rest persists ANSWER next to the question`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem domingo?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isZero()
+        val turns = memory.observeTurns().first()
+        assertThat(turns.filterIsInstance<ChatTurn.You>()).hasSize(1)
+        val answers = turns.filterIsInstance<ChatTurn.Coach>()
+            .filter { it.origin == ChatTurn.Origin.ANSWER }
+        assertThat(answers).hasSize(1)
+        assertThat(answers.single().inputsHash).contains("local")
+        assertThat(answers.single().title).isNotBlank()
+        assertThat(answers.single().body).isNotBlank()
+    }
+
+    @Test
+    fun `clarify and capabilities persist ANSWER while refusal stays ephemeral`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("só tenho pouco tempo quinta")
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        vm.sendFreeText("o que você pode fazer?")
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        vm.sendFreeText("estou com dor no joelho")
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+
+        val turns = memory.observeTurns().first()
+        assertThat(turns.filterIsInstance<ChatTurn.You>()).hasSize(3)
+        val answers = turns.filterIsInstance<ChatTurn.Coach>()
+            .filter { it.origin == ChatTurn.Origin.ANSWER }
+        assertThat(answers).hasSize(2)
+    }
+
+    @Test
+    fun `second send while loading is ignored and retry reuses the exchange`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = GatedCoachApi()
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem?")
+        withTimeout(5_000) {
+            while (api.freeAnswerCalls < 1) {
+                delay(1)
+            }
+        }
+        vm.sendFreeText("como corro?")
+
+        assertThat(vm.exchanges.value).hasSize(1)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+        api.gate.complete(CoachRawResponse(title = "Amanhã", body = "Amanhã tem rodagem 40 min. Bora?"))
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(vm.exchanges.value).hasSize(1)
+        assertThat(vm.exchanges.value.single().answer).isEqualTo(state)
+    }
+
+    @Test
+    fun `retry on failure reuses the exchange without duplicating the question`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(error = IOException("down"))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que tem?")
+
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        vm.retryFreeAnswer()
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat(vm.exchanges.value).hasSize(1)
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    private class GatedCoachApi : com.meucoach.core.data.coach.CoachApi {
+        var freeAnswerCalls = 0
+        val gate = CompletableDeferred<CoachRawResponse>()
+        override suspend fun explain(
+            prompt: com.meucoach.core.domain.coach.CoachPrompt,
+            kind: com.meucoach.core.data.coach.CoachKind,
+        ): CoachRawResponse = throw IOException("unused")
+
+        override suspend fun review(prompt: com.meucoach.core.domain.coach.CoachReviewPrompt): CoachRawResponse =
+            throw IOException("unused")
+
+        override suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse {
+            freeAnswerCalls += 1
+            return gate.await()
+        }
     }
 }

@@ -24,11 +24,34 @@ lia o total planejado como executado — o `engineContext` agora declara
   verdes. Sem proxy/schema/motor.
 - **Docs:** addendum no ADR 0057 + esta entrada.
 
+## Sessão 2026-11-22 — ADR 0057 itens 2-base e 3: exchanges + determinísticas persistidas (TDD)
+
+**Decisão de desenho (validada na avaliação do aparelho):** cada pergunta
+vira um `FreeExchange` com resposta que assenta no lugar; envio trava com
+`Loading` (sem rajada); todo `Ready` determinístico é gravado como `ANSWER`
+com hash `coach-free-v1|local|…` (só `Fallback` segue efêmero). A tela ainda
+lê o espelho `freeAnswer` — migrar o rodapé para a lista inline é a próxima
+fatia de UI.
+
+### Concluído
+
+- **VM:** `exchanges: StateFlow<List<FreeExchange>>` (cap 30 em memória),
+  `route/settle/answerLocal/recordLocalAnswer/localHash` novos,
+  `freeAnswer` com `FreeAnswerRequest` (detekt), helpers de sessão viraram
+  funções de arquivo (`LargeClass`).
+- **Testes:** VM 66/66 (4 novos: descanso persiste `ANSWER`, clarify +
+  capacidades persistem e recusa não, envio duplo com gate, retry reusa o
+  exchange sem duplicar pergunta).
+- **Gates:** `check`, `spotlessCheck` verdes. Sem proxy/schema/motor; tela
+  intacta (comportamento visível idêntico).
+- **Docs:** §5 no ADR 0057 + esta entrada.
+
 ### Próximo
 
-1. `./install.sh` + confirmar no aparelho: "amanhã" → "outra semana".
-2. Desenhar itens 2–3 da avaliação (Q&A adjacente, determinísticas
-   persistidas).
+1. `./install.sh` + confirmar no aparelho que nada mudou no visível e que o
+   histórico passa a mostrar pergunta + resposta nas determinísticas.
+2. Fatia de UI: rodapé lê `exchanges` (Q&A adjacente, item 2).
+3. Depois: WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — ADR 0057: o Coach responde a sessão (TDD)
 

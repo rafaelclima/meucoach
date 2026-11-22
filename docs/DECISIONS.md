@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.73 · **Data:** 22/11/2026
+**Versão:** 1.74 · **Data:** 22/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -71,6 +71,7 @@
 > Revisão 1.71 (21/11/2026): ADR 0056 fatia 6 implementada — `Origin.ANSWER`, `FreeAnswerUiState` + `sendFreeText` na VM (determinísticas sem rede, semana/revisão via `free-answer` validado, ajuste via replan existente), `CoachComposer` 48 dp com TalkBack, bolhas/fallback/retry no rodapé, `YOU`/`ANSWER` no histórico (54+60+12+11 testes); `check` + `spotlessCheck` verdes. Restam redeploy do proxy e fatia 7 (aparelho).
 > Revisão 1.72 (22/11/2026): ADR 0057 aceito e implementado — respostas de sessão no Coach (`ASK_SESSION`/`ASK_HOW_TO_RUN`, `CoachSessionAnswer` puro, VM responde local primeiro e só chama `free-answer` com sessão `PLANNED`; parser 27 + builder 6 + VM 60 testes; `check`, `spotlessCheck`, `koverVerify`, detekt verdes; sem proxy/schema/motor).
 > Revisão 1.73 (22/11/2026): ADR 0057 fix validado no aparelho — dia relativo com offset exato (`FreeInputSlots.dayOffset`, só nomeado resolve na semana; "amanhã" no domingo = 23/11, fora da semana) e total rotulado "planejados" no `engineContext`; parser 30 + builder 6 + VM 62 testes, `check` + `spotlessCheck` verdes.
+> Revisão 1.74 (22/11/2026): ADR 0057 itens 2-base e 3 — `FreeExchange` na VM (pergunta + resposta que assenta no lugar, envio trava com `Loading`, espelho legado em `freeAnswer`, tela intacta) e todo `Ready` determinístico gravado como `ANSWER` (só `Fallback` efêmero); VM 66 testes, `check` + `spotlessCheck` verdes.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

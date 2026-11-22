@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import java.time.Clock
 import java.time.LocalDate
+import java.util.UUID
 import javax.inject.Inject
 
 sealed interface CoachExplanationState {
@@ -166,8 +167,10 @@ sealed interface CoachHistoryState {
  *
  * `Ready` carries validated or deterministic copy split into chat bubbles;
  * `Fallback` carries honest coach-voiced copy, never a technical reason.
- * The question itself is persisted as a `YOU` turn; the validated free
- * answer is persisted as an `ANSWER` turn.
+ * The question itself is persisted as a `YOU` turn; every `Ready` answer —
+ * model-validated or deterministic — is persisted as an `ANSWER` turn, so
+ * the archive never holds a question without its answer (ADR 0057 item 3).
+ * Only `Fallback` stays ephemeral (transient refusal or failure).
  */
 sealed interface FreeAnswerUiState {
     data object Idle : FreeAnswerUiState
@@ -178,6 +181,15 @@ sealed interface FreeAnswerUiState {
 
     data class Fallback(val copy: String) : FreeAnswerUiState
 }
+
+/**
+ * One free-text round trip in the session feed (ADR 0057 item 2).
+ *
+ * The screen will render each exchange as an adjacent Q&A pair in flow
+ * order; the legacy single-answer mirror (`freeAnswer`) stays until the
+ * screen migrates. `answer == Idle` means question only (no reply follows).
+ */
+data class FreeExchange(val id: String, val question: String, val answer: FreeAnswerUiState)
 
 @HiltViewModel
 class CoachViewModel @Inject constructor(
@@ -214,7 +226,14 @@ class CoachViewModel @Inject constructor(
     val history: StateFlow<CoachHistoryState> = _history
 
     private val _freeAnswer = MutableStateFlow<FreeAnswerUiState>(FreeAnswerUiState.Idle)
+
+    /** Legacy single-answer mirror of the latest exchange; the screen migrates to [exchanges]. */
     val freeAnswer: StateFlow<FreeAnswerUiState> = _freeAnswer
+
+    private val _exchanges = MutableStateFlow<List<FreeExchange>>(emptyList())
+
+    /** Free-text round trips in send order; answers settle in place, never overwrite each other. */
+    val exchanges: StateFlow<List<FreeExchange>> = _exchanges
     private var lastFreeText: String? = null
 
     private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Loading)
@@ -539,54 +558,112 @@ class CoachViewModel @Inject constructor(
      * `YOU` turn first. Deterministic intents answer without any network;
      * week/review questions call `free-answer` and only validated copy is
      * shown and persisted. Adjustments route to the existing replan machine
-     * and never apply anything alone.
+     * and never apply anything alone. One send at a time: while an exchange
+     * is loading, new sends are ignored so answers can never overwrite each
+     * other (ADR 0057 item 2).
      */
     fun sendFreeText(text: String, recordQuestion: Boolean = true) {
         if (!_consented.value) return
+        if (_exchanges.value.any { it.answer is FreeAnswerUiState.Loading }) return
+        val parsed = FreeInputParser.parse(text, LocalDate.now(clock).dayOfWeek)
         lastFreeText = text
+        val exchangeId = UUID.randomUUID().toString()
+        _exchanges.value =
+            (_exchanges.value + FreeExchange(exchangeId, parsed.sanitized, FreeAnswerUiState.Loading))
+                .takeLast(MAX_EXCHANGES)
+        _freeAnswer.value = FreeAnswerUiState.Loading
         viewModelScope.launch {
-            val parsed = FreeInputParser.parse(text, LocalDate.now(clock).dayOfWeek)
             if (recordQuestion) {
                 recordSafely { memory.recordYouTurn(parsed.sanitized) }
             }
-            when (parsed.intent) {
-                FreeInputIntent.OUT_OF_SCOPE ->
-                    _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.OUT_OF_SCOPE)
-
-                FreeInputIntent.ASK_CLARIFY ->
-                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.CLARIFY))
-
-                FreeInputIntent.ASK_CAPABILITIES ->
-                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.CAPABILITIES))
-
-                FreeInputIntent.REPORT_DONE ->
-                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.REPORT_ACK))
-
-                FreeInputIntent.REQUEST_ADJUST -> {
-                    if (parsed.slots.minutes != null) requestLessTime() else requestReplan()
-                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.ADJUST_ACK))
-                }
-
-                FreeInputIntent.ASK_WEEK -> answerWeek(parsed)
-
-                FreeInputIntent.ASK_SESSION -> answerSession(parsed, SessionTask.WHAT)
-
-                FreeInputIntent.ASK_HOW_TO_RUN -> answerSession(parsed, SessionTask.HOW_TO)
-
-                FreeInputIntent.ASK_REVIEW -> answerReview(parsed)
-            }
+            route(parsed, exchangeId)
         }
     }
 
-    /** Resends the last typed message without persisting the question twice. */
+    /** Retries the latest failed exchange in place, without persisting the question twice. */
     fun retryFreeAnswer() {
-        lastFreeText?.let { sendFreeText(it, recordQuestion = false) }
+        if (!_consented.value) return
+        val text = lastFreeText ?: return
+        val pending = _exchanges.value.lastOrNull { it.answer is FreeAnswerUiState.Fallback } ?: return
+        if (_exchanges.value.any { it.answer is FreeAnswerUiState.Loading }) return
+        viewModelScope.launch {
+            val parsed = FreeInputParser.parse(text, LocalDate.now(clock).dayOfWeek)
+            settle(pending.id, FreeAnswerUiState.Loading)
+            route(parsed, pending.id)
+        }
     }
 
-    private suspend fun answerWeek(parsed: FreeInputParse) {
+    private suspend fun route(parsed: FreeInputParse, exchangeId: String) {
+        when (parsed.intent) {
+            FreeInputIntent.OUT_OF_SCOPE ->
+                settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.OUT_OF_SCOPE))
+
+            FreeInputIntent.ASK_CLARIFY ->
+                answerLocal(exchangeId, FreeAnswerCopy.CLARIFY, localHash("STATIC", parsed))
+
+            FreeInputIntent.ASK_CAPABILITIES ->
+                answerLocal(exchangeId, FreeAnswerCopy.CAPABILITIES, localHash("STATIC", parsed))
+
+            FreeInputIntent.REPORT_DONE ->
+                answerLocal(exchangeId, FreeAnswerCopy.REPORT_ACK, localHash("STATIC", parsed))
+
+            FreeInputIntent.REQUEST_ADJUST -> {
+                if (parsed.slots.minutes != null) requestLessTime() else requestReplan()
+                answerLocal(exchangeId, FreeAnswerCopy.ADJUST_ACK, localHash("STATIC", parsed))
+            }
+
+            FreeInputIntent.ASK_WEEK -> answerWeek(parsed, exchangeId)
+
+            FreeInputIntent.ASK_SESSION -> answerSession(parsed, SessionTask.WHAT, exchangeId)
+
+            FreeInputIntent.ASK_HOW_TO_RUN -> answerSession(parsed, SessionTask.HOW_TO, exchangeId)
+
+            FreeInputIntent.ASK_REVIEW -> answerReview(parsed, exchangeId)
+        }
+    }
+
+    /** Terminal state of one exchange, mirrored to the legacy single-answer state. */
+    private fun settle(exchangeId: String, state: FreeAnswerUiState) {
+        _exchanges.value = _exchanges.value.map { exchange ->
+            if (exchange.id == exchangeId) exchange.copy(answer = state) else exchange
+        }
+        _freeAnswer.value = state
+    }
+
+    /**
+     * Deterministic `Ready` answer (ADR 0057 item 3): shown and persisted as
+     * an `ANSWER` turn with a stable local hash, so the archive never holds
+     * a question without its answer. `Fallback` stays ephemeral.
+     */
+    private suspend fun answerLocal(exchangeId: String, copy: String, inputsHash: String) {
+        recordLocalAnswer(inputsHash, copy)
+        settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(copy)))
+    }
+
+    private suspend fun recordLocalAnswer(inputsHash: String, copy: String) {
+        val bubbles = CoachBubbles.split(copy)
+        val title = bubbles.firstOrNull() ?: return
+        val body = bubbles.drop(1).joinToString(" ").takeIf { it.isNotBlank() } ?: title
+        recordSafely {
+            memory.recordMessage(
+                kind = CoachMessageKind.ANSWER,
+                inputsHash = inputsHash,
+                title = title,
+                body = body,
+                bullets = emptyList(),
+            )
+        }
+    }
+
+    private fun localHash(scope: String, parsed: FreeInputParse): String {
+        val today = LocalDate.now(clock)
+        return listOf("coach-free-v1", "local", scope, today.toString(), parsed.intent.name).joinToString("|")
+    }
+
+    private suspend fun answerWeek(parsed: FreeInputParse, exchangeId: String) {
         val context = sources.plans.observeCurrent().first()
         if (context == null) {
-            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN)
+            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN))
             return
         }
         val prompt = CoachPromptBuilder.build(context.plan, context.inputsHash)
@@ -594,13 +671,16 @@ class CoachViewModel @Inject constructor(
             prompt.weeklyMinutes +
             listOfNotNull(prompt.executedMinutes)
         freeAnswer(
-            parsed = parsed,
-            contextHash = context.inputsHash,
-            allowedMinutes = allowed,
-            allowedPercents = emptySet(),
-            allowedDistancesKm = emptySet(),
-            forbiddenCodes = prompt.ruleIds.toSet(),
-            engineContext = prompt.rationale,
+            FreeAnswerRequest(
+                parsed = parsed,
+                exchangeId = exchangeId,
+                contextHash = context.inputsHash,
+                allowedMinutes = allowed,
+                allowedPercents = emptySet(),
+                allowedDistancesKm = emptySet(),
+                forbiddenCodes = prompt.ruleIds.toSet(),
+                engineContext = prompt.rationale,
+            ),
         )
     }
 
@@ -612,10 +692,10 @@ class CoachViewModel @Inject constructor(
      * to `free-answer` with a session-scoped `engineContext`, so the reply
      * can only cite that session and the week total.
      */
-    private suspend fun answerSession(parsed: FreeInputParse, task: SessionTask) {
+    private suspend fun answerSession(parsed: FreeInputParse, task: SessionTask, exchangeId: String) {
         val planContext = sources.plans.observeCurrent().first()
         if (planContext == null) {
-            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN)
+            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN))
             return
         }
         val plan = planContext.plan
@@ -632,7 +712,7 @@ class CoachViewModel @Inject constructor(
         }
         val localCopy = localSessionCopy(plan, today, target, task)
         if (localCopy != null) {
-            _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(localCopy))
+            answerLocal(exchangeId, localCopy, localHash("SESSION", parsed) + "|$target")
             return
         }
         val session = plan.sessions.find { it.date == target } ?: return
@@ -648,13 +728,16 @@ class CoachViewModel @Inject constructor(
             hasCheckIn = target == today && nextContext.hasCheckIn,
         )
         freeAnswer(
-            parsed = parsed,
-            contextHash = "${planContext.inputsHash}|$target",
-            allowedMinutes = answer.allowedMinutes,
-            allowedPercents = emptySet(),
-            allowedDistancesKm = answer.allowedDistancesKm,
-            forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
-            engineContext = answer.engineContext,
+            FreeAnswerRequest(
+                parsed = parsed,
+                exchangeId = exchangeId,
+                contextHash = "${planContext.inputsHash}|$target",
+                allowedMinutes = answer.allowedMinutes,
+                allowedPercents = emptySet(),
+                allowedDistancesKm = answer.allowedDistancesKm,
+                forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
+                engineContext = answer.engineContext,
+            ),
         )
     }
 
@@ -663,63 +746,48 @@ class CoachViewModel @Inject constructor(
      * done. Returns the deterministic copy, or null when the question needs
      * the `free-answer` model path with the session context.
      */
-    private fun localSessionCopy(plan: WeeklyPlan, today: LocalDate, target: LocalDate, task: SessionTask): String? {
-        val weekStart = CoachSessionAnswer.weekStart(today)
-        val session = plan.sessions.find { it.date == target }
-        val doneToday = target == today && session != null &&
-            (session.status == SessionStatus.DONE || session.status == SessionStatus.CLOSED)
-        return when {
-            target.isBefore(weekStart) || target.isAfter(weekStart.plusDays(6)) -> FreeAnswerCopy.OUTSIDE_WEEK
+    private data class FreeAnswerRequest(
+        val parsed: FreeInputParse,
+        val exchangeId: String,
+        val contextHash: String,
+        val allowedMinutes: Set<Int>,
+        val allowedPercents: Set<Int>,
+        val allowedDistancesKm: Set<Double>,
+        val forbiddenCodes: Set<String>,
+        val engineContext: String,
+    )
 
-            target.isBefore(today) -> FreeAnswerCopy.SESSION_PAST
-
-            session == null -> if (task == SessionTask.HOW_TO) {
-                FreeAnswerCopy.dayRestHowTo(dayLabel(today, target))
-            } else {
-                FreeAnswerCopy.dayRest(dayLabel(today, target))
-            }
-
-            doneToday -> FreeAnswerCopy.SESSION_DONE
-
-            else -> null
-        }
-    }
-
-    private fun dayLabel(today: LocalDate, target: LocalDate): String = when (target) {
-        today -> "Hoje"
-        today.plusDays(1) -> "Amanhã"
-        else -> "Esse dia"
-    }
-
-    private suspend fun answerReview(parsed: FreeInputParse) {
+    private suspend fun answerReview(parsed: FreeInputParse, exchangeId: String) {
         val review = sources.reviews.observeLastClosedWeek().first()
         if (review == null) {
-            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_REVIEW)
+            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_REVIEW))
             return
         }
         val prompt = CoachReviewPromptBuilder.build(review)
         freeAnswer(
-            parsed = parsed,
-            contextHash = prompt.inputsHash,
-            allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
-            allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
-            allowedDistancesKm = emptySet(),
-            forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
-            engineContext = reviewLine(prompt),
+            FreeAnswerRequest(
+                parsed = parsed,
+                exchangeId = exchangeId,
+                contextHash = prompt.inputsHash,
+                allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
+                allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
+                allowedDistancesKm = emptySet(),
+                forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
+                engineContext = reviewLine(prompt),
+            ),
         )
     }
 
-    private suspend fun freeAnswer(
-        parsed: FreeInputParse,
-        contextHash: String,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>,
-        allowedDistancesKm: Set<Double>,
-        forbiddenCodes: Set<String>,
-        engineContext: String,
-    ) {
-        val freeHash = "coach-free-v1|$contextHash|${parsed.intent}|${parsed.slots.dayOfWeek}|${parsed.slots.minutes}"
-        _freeAnswer.value = FreeAnswerUiState.Loading
+    private suspend fun freeAnswer(request: FreeAnswerRequest) {
+        val parsed = request.parsed
+        val exchangeId = request.exchangeId
+        val freeHash =
+            "coach-free-v1|${request.contextHash}|${parsed.intent}|${parsed.slots.dayOfWeek}|${parsed.slots.minutes}"
+        val allowedMinutes = request.allowedMinutes
+        val allowedPercents = request.allowedPercents
+        val allowedDistancesKm = request.allowedDistancesKm
+        val forbiddenCodes = request.forbiddenCodes
+        val engineContext = request.engineContext
         try {
             val prompt = CoachFreeAnswerPrompt(
                 inputsHash = freeHash,
@@ -753,23 +821,25 @@ class CoachViewModel @Inject constructor(
                         )
                     }
                     android.util.Log.d("Coach", "free answer ok hash=$freeHash")
-                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(response.body))
+                    settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(response.body)))
                 }
 
                 is CoachValidationResult.Invalid -> {
                     android.util.Log.d("Coach", "free answer rejected: ${validated.reason}")
-                    _freeAnswer.value =
-                        FreeAnswerUiState.Fallback(CoachFallbackLabels.reasonCopy(validated.reason))
+                    settle(
+                        exchangeId,
+                        FreeAnswerUiState.Fallback(CoachFallbackLabels.reasonCopy(validated.reason)),
+                    )
                 }
             }
         } catch (e: IOException) {
             if (!_consented.value) return
             android.util.Log.d("Coach", "free answer io: ${e.message}")
-            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_CONNECTION)
+            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_CONNECTION))
         } catch (e: Exception) {
             if (!_consented.value) return
             android.util.Log.d("Coach", "free answer failed: ${e.message}")
-            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.GENERIC)
+            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.GENERIC))
         }
     }
 
@@ -844,9 +914,43 @@ class CoachViewModel @Inject constructor(
 }
 
 /**
+ * Days that never need a model call: out-of-week, past, rest or already
+ * done. Returns the deterministic copy, or null when the question needs
+ * the `free-answer` model path with the session context.
+ */
+private fun localSessionCopy(plan: WeeklyPlan, today: LocalDate, target: LocalDate, task: SessionTask): String? {
+    val weekStart = CoachSessionAnswer.weekStart(today)
+    val session = plan.sessions.find { it.date == target }
+    val doneToday = target == today && session != null &&
+        (session.status == SessionStatus.DONE || session.status == SessionStatus.CLOSED)
+    return when {
+        target.isBefore(weekStart) || target.isAfter(weekStart.plusDays(6)) -> FreeAnswerCopy.OUTSIDE_WEEK
+
+        target.isBefore(today) -> FreeAnswerCopy.SESSION_PAST
+
+        session == null -> if (task == SessionTask.HOW_TO) {
+            FreeAnswerCopy.dayRestHowTo(dayLabel(today, target))
+        } else {
+            FreeAnswerCopy.dayRest(dayLabel(today, target))
+        }
+
+        doneToday -> FreeAnswerCopy.SESSION_DONE
+
+        else -> null
+    }
+}
+
+private fun dayLabel(today: LocalDate, target: LocalDate): String = when (target) {
+    today -> "Hoje"
+    today.plusDays(1) -> "Amanhã"
+    else -> "Esse dia"
+}
+
+/**
  * Deterministic copy for the typed-message paths that need no model call
  * (ADR 0056). No numbers, no prescription, no diagnosis — just the next step.
  */
+private const val MAX_EXCHANGES = 30
 private object FreeAnswerCopy {
     const val OUT_OF_SCOPE =
         "Isso eu não faço por aqui — mas posso dizer o que tem amanhã, como correr cada treino e explicar a semana. " +

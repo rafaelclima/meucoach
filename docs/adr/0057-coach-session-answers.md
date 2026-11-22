@@ -104,5 +104,22 @@ para a próxima fatia.
    "amanhã" é segunda 23/11 (fora da semana), não a segunda 16/11 passada.
    Só dia nomeado usa `resolveDayInWeek`. O `engineContext` declara
    "min planejados" para a LLM não ler o total como executado.
-6. Próxima: WHY/prontidão/método no mesmo padrão; depois Q&A adjacente
-   (item 2 da avaliação) e determinísticas persistidas (item 3).
+6. Próxima: WHY/prontidão/método no mesmo padrão; depois a tela consome
+   `exchanges` (item 2 da avaliação) — a base (lista + serialização) já está
+   na VM desta fatia.
+
+## 5. Exchanges e persistência determinística (itens 2-base e 3)
+
+Desenho validado com o usuário 0 a partir da avaliação no aparelho (22/11):
+
+- **Item 2 (Q&A adjacente):** cada pergunta digitada vira um `FreeExchange`
+  (pergunta + resposta que assenta no lugar, sem sobrescrever as outras);
+  envio trava enquanto houver `Loading` (sem rajada, sem resposta trocada).
+  A VM já expõe `exchanges: StateFlow<List<FreeExchange>>` com espelho
+  legado em `freeAnswer`; a tela migrar o rodapé para a lista inline é a
+  próxima fatia de UI — sem ela, nada muda no visível.
+- **Item 3 (implementado aqui):** todo `Ready` determinístico
+  (sessão local, `CLARIFY`, `CAPABILITIES`, `REPORT`, `ADJUST_ACK`) é gravado
+  como `ANSWER` com hash estável `coach-free-v1|local|…`, então o histórico
+  nunca tem pergunta órfã. Só `Fallback` segue efêmero (recusa transitória
+  ou falha não vira arquivo).
