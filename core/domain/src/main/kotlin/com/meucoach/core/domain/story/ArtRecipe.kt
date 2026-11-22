@@ -94,3 +94,9 @@ data class ArtRecipe(
         )
     }
 }
+
+/**
+ * Identity of one exported art PNG (ADR 0058 §2.7): sharing reuses the last
+ * file only while activity, recipe and format stay unchanged.
+ */
+data class ArtExportKey(val activityId: String, val recipe: ArtRecipe, val format: ArtFormat)

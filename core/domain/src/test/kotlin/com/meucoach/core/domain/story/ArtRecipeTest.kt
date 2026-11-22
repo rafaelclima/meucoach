@@ -168,4 +168,18 @@ class ArtRecipeTest {
         assertThat(story.mapStyle).isEqualTo(StoryMapStyle.MEUCOACH_DARK)
         assertThat(story.quality).isEqualTo(StoryQuality.STANDARD_1080P30)
     }
+
+    @Test
+    fun `export keys change with activity recipe or format`() {
+        val recipe = ArtRecipe()
+
+        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
+            .isEqualTo(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("b", recipe, ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("a", recipe.copy(font = ArtFont.ANTON), ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("a", recipe, ArtFormat.SQUARE))
+    }
 }

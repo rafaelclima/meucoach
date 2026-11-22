@@ -9,6 +9,8 @@ import androidx.work.Data
 import androidx.work.WorkInfo
 import androidx.work.workDataOf
 import com.meucoach.app.application.GetSessionComparison
+import com.meucoach.app.story.ArtPngExport
+import com.meucoach.app.story.ArtPngExporter
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
@@ -273,6 +275,7 @@ class ActivityDetailViewModelTest {
                 StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
                 StoryIntroStore(ApplicationProvider.getApplicationContext()),
                 StoryRecipeStore(ApplicationProvider.getApplicationContext()),
+                FakeArtPngExporter(),
                 com.meucoach.app.profile.ProfilePhotoStore(
                     ApplicationProvider.getApplicationContext(),
                 ),
@@ -291,6 +294,7 @@ class ActivityDetailViewModelTest {
             ApplicationProvider.getApplicationContext(),
         ),
         intro: StoryIntroStore = StoryIntroStore(ApplicationProvider.getApplicationContext()),
+        artPngExporter: ArtPngExporter = FakeArtPngExporter(),
     ) = ActivityDetailViewModel(
         savedStateHandle = SavedStateHandle(
             mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
@@ -303,6 +307,7 @@ class ActivityDetailViewModelTest {
         storyFailures = failures,
         storyIntro = intro,
         storyRecipe = StoryRecipeStore(ApplicationProvider.getApplicationContext()),
+        artPngExporter = artPngExporter,
         profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
             ApplicationProvider.getApplicationContext(),
         ),
@@ -547,6 +552,68 @@ class ActivityDetailViewModelTest {
             viewModel.setArtSaveAsDefault(true)
 
             assertThat(viewModel.uiState.value.storyStudio.artSaveAsDefault).isTrue()
+        }
+    }
+
+    @Test
+    fun `sharing the art publishes for the share sheet`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeArtPngExporter()
+            val viewModel = viewModel("activity-1", artPngExporter = exporter)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.shareArt()
+
+            val export = viewModel.uiState.value.storyStudio.artExport
+            assertThat(export).isInstanceOf(ArtExportUiState.Done::class.java)
+            val done = export as ArtExportUiState.Done
+            assertThat(done.forShare).isTrue()
+            assertThat(done.savedToGallery).isTrue()
+            assertThat(exporter.exports.single().first).isTrue()
+        }
+    }
+
+    @Test
+    fun `saving the art publishes without the share sheet`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeArtPngExporter()
+            val viewModel = viewModel("activity-1", artPngExporter = exporter)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.saveArtPng()
+
+            val done = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Done
+            assertThat(done.forShare).isFalse()
+            assertThat(exporter.exports.single().first).isFalse()
+        }
+    }
+
+    @Test
+    fun `an art failure comes back inline and retry re-runs the same target`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeArtPngExporter()
+            val viewModel = viewModel("activity-1", artPngExporter = exporter)
+            viewModel.uiState.first { !it.isLoading }
+
+            exporter.result = ArtPngExport.Failure("Galeria indisponível.")
+            viewModel.saveArtPng()
+
+            val error = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Error
+            assertThat(error.message).isEqualTo("Galeria indisponível.")
+
+            exporter.result = ArtPngExport.Published(
+                uri = android.net.Uri.parse("content://media/external/images/2"),
+                savedToGallery = true,
+                reused = false,
+            )
+            viewModel.retryArtExport()
+
+            val done = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Done
+            assertThat(done.forShare).isFalse()
+            assertThat(exporter.exports).hasSize(2)
         }
     }
 
@@ -1084,6 +1151,26 @@ class ActivityDetailViewModelTest {
                 evidenceIds = listOf("EV-FRIEL-2018"),
             ),
         )
+    }
+
+    private class FakeArtPngExporter : ArtPngExporter {
+        var result: ArtPngExport = ArtPngExport.Published(
+            uri = android.net.Uri.parse("content://media/external/images/1"),
+            savedToGallery = true,
+            reused = false,
+        )
+        val exports = mutableListOf<Pair<Boolean, ArtRecipe>>()
+
+        override suspend fun export(
+            plan: com.meucoach.core.domain.story.StoryPlan,
+            localDate: java.time.LocalDate?,
+            recipe: ArtRecipe,
+            activityId: String,
+            forShare: Boolean,
+        ): ArtPngExport {
+            exports += forShare to recipe
+            return result
+        }
     }
 
     private fun gpsActivity() = ImportedActivity(

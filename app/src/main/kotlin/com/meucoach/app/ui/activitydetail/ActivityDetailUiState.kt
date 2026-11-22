@@ -26,6 +26,27 @@ sealed interface StoryExportUiState {
 }
 
 /**
+ * Sync export of the transparent art card (ADR 0058 §2.7): the Studio stays
+ * open, the CTA shows busy and the failure comes back inline with a retry.
+ */
+sealed interface ArtExportUiState {
+    data object Idle : ArtExportUiState
+
+    /** One render+publish in flight; the CTAs disable themselves. */
+    data class Exporting(val forShare: Boolean) : ArtExportUiState
+
+    data class Done(
+        val uri: Uri,
+        val savedToGallery: Boolean,
+        /** True when this export was requested by Compartilhar. */
+        val forShare: Boolean,
+        val reused: Boolean,
+    ) : ArtExportUiState
+
+    data class Error(val message: String) : ArtExportUiState
+}
+
+/**
  * One extra chip of the Story Studio. Availability is decided by
  * `StoryMetricCatalog` from the activity itself, never by the UI: an extra
  * without data is disabled with its reason and never becomes zero.
@@ -56,6 +77,8 @@ data class StoryStudioUiState(
     val artRecipe: ArtRecipe = ArtRecipe(),
     /** Whether the art recipe is written to `meucoach_art` when saved or shared. */
     val artSaveAsDefault: Boolean = true,
+    /** State of the last Compartilhar/Salvar PNG of the art tab. */
+    val artExport: ArtExportUiState = ArtExportUiState.Idle,
 )
 
 data class ActivityDetailUiState(

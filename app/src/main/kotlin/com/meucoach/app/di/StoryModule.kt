@@ -1,8 +1,12 @@
 package com.meucoach.app.di
 
+import com.meucoach.app.story.ArtPngExporter
+import com.meucoach.app.story.CanvasArtPngExporter
 import com.meucoach.app.story.CanvasStoryVideoExporter
+import com.meucoach.app.story.GalleryImagePublisher
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.MapLibreBackgroundRenderer
+import com.meucoach.app.story.MediaStoreGalleryImagePublisher
 import com.meucoach.app.story.OpenFreeMapTileSource
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryTileSource
@@ -29,6 +33,14 @@ abstract class StoryModule {
     @Binds
     @Singleton
     abstract fun bindStoryVideoExporter(exporter: CanvasStoryVideoExporter): StoryVideoExporter
+
+    @Binds
+    @Singleton
+    abstract fun bindGalleryImagePublisher(publisher: MediaStoreGalleryImagePublisher): GalleryImagePublisher
+
+    @Binds
+    @Singleton
+    abstract fun bindArtPngExporter(exporter: CanvasArtPngExporter): ArtPngExporter
 
     @Binds
     @Singleton

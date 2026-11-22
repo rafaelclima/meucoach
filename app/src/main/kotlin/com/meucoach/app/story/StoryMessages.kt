@@ -16,4 +16,7 @@ object StoryMessages {
     const val MAP_STAGE_FAILED = "Não foi possível preparar o story para gerar em segundo plano."
 
     const val EXPORT_FAILED = "Não foi possível gerar o vídeo."
+
+    /** The art CTAs are disabled without a route; this copy covers races. */
+    const val ART_NO_ROUTE = "Sem rota suficiente para a arte."
 }

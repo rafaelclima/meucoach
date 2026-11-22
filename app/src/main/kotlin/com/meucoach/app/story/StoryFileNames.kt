@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.StoryPlan
 import java.util.Locale
 
@@ -16,6 +17,9 @@ internal object StoryFileNames {
     fun cover(plan: StoryPlan, stamp: Long): String = "${base(plan, stamp)}-capa-9x16.png"
 
     fun poster(plan: StoryPlan, stamp: Long): String = "${base(plan, stamp)}-poster-4x5.png"
+
+    /** The transparent art card; `-arte-` keeps it apart from `-poster-`. */
+    fun art(plan: StoryPlan, format: ArtFormat, stamp: Long): String = "${base(plan, stamp)}-arte-${format.fileTag}.png"
 
     private fun base(plan: StoryPlan, stamp: Long): String {
         val date = plan.localDate?.toString() ?: "sem-data"

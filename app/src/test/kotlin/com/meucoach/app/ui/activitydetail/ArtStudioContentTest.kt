@@ -234,10 +234,81 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("art-save-default").performScrollTo().assertHeightIsAtLeast(48.dp)
     }
 
+    @Test
+    fun `exporting keeps the ctas busy and disabled`() {
+        setContent(artExport = ArtExportUiState.Exporting(forShare = true))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("Compartilhando…").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-share").assertIsNotEnabled()
+        compose.onNodeWithTag("art-save").assertIsNotEnabled()
+        compose.onNodeWithText("Compartilhar").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the saving state names the save target`() {
+        setContent(artExport = ArtExportUiState.Exporting(forShare = false))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("Salvando…").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-share").assertIsNotEnabled()
+        compose.onNodeWithText("Compartilhando…").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a saved png confirms the gallery path`() {
+        setContent(
+            artExport = ArtExportUiState.Done(
+                uri = android.net.Uri.parse("content://media/external/images/1"),
+                savedToGallery = true,
+                forShare = false,
+                reused = false,
+            ),
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("PNG salvo em Pictures/MeuCoach.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a done share export hands the uri to the share sheet`() {
+        val shared = mutableListOf<android.net.Uri>()
+        setContent(
+            artExport = ArtExportUiState.Done(
+                uri = android.net.Uri.parse("content://media/external/images/1"),
+                savedToGallery = true,
+                forShare = true,
+                reused = true,
+            ),
+            onShare = { shared.add(it) },
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.waitForIdle()
+
+        assertThat(shared).hasSize(1)
+    }
+
+    @Test
+    fun `an export error explains and retries`() {
+        var retried = false
+        setContent(
+            artExport = ArtExportUiState.Error("Galeria indisponível."),
+            onRetry = { retried = true },
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("Galeria indisponível.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-export-retry").performScrollTo().performClick()
+
+        assertThat(retried).isTrue()
+    }
+
     private fun setContent(
         artRecipe: ArtRecipe = ArtRecipe(),
         extraOptions: List<StoryExtraOption> = extraOptions(),
         plan: StoryPlan? = plan(),
+        artExport: ArtExportUiState = ArtExportUiState.Idle,
         onFormat: (ArtFormat) -> Unit = {},
         onToggleExtra: (StoryExtra) -> Unit = {},
         onTextColor: (ArtColor) -> Unit = {},
@@ -245,6 +316,8 @@ class ArtStudioContentTest {
         onFont: (ArtFont) -> Unit = {},
         onArtSaveAsDefault: (Boolean) -> Unit = {},
         onArtReset: () -> Unit = {},
+        onShare: (android.net.Uri) -> Unit = {},
+        onRetry: () -> Unit = {},
     ) {
         compose.setContent {
             McTheme(darkTheme = true) {
@@ -255,6 +328,7 @@ class ArtStudioContentTest {
                         extras = extraOptions,
                         saveAsDefault = true,
                         artRecipe = artRecipe,
+                        artExport = artExport,
                     ),
                     avatar = null,
                     introSeen = true,
@@ -275,6 +349,8 @@ class ArtStudioContentTest {
                         onFont = onFont,
                         onSaveAsDefault = onArtSaveAsDefault,
                         onReset = onArtReset,
+                        onShare = onShare,
+                        onRetry = onRetry,
                     ),
                 )
             }

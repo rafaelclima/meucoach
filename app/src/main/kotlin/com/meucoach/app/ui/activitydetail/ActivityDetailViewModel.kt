@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import com.meucoach.app.application.GetSessionComparison
+import com.meucoach.app.story.ArtPngExport
+import com.meucoach.app.story.ArtPngExporter
 import com.meucoach.app.story.MapBackgroundRenderer
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
@@ -60,6 +62,7 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
     private val storyRecipe: StoryRecipeStore,
+    private val artPngExporter: ArtPngExporter,
     private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
     private val timeProvider: TimeProvider,
     private val comparisons: GetSessionComparison,
@@ -79,6 +82,9 @@ class ActivityDetailViewModel @Inject constructor(
 
     /** Guards the studio plan/availability against out-of-order duration changes. */
     private var studioRevision = 0
+
+    /** Target of the last art export, so "Tentar novamente" re-runs it. */
+    private var lastArtExport: Boolean? = null
 
     init {
         viewModelScope.launch {
@@ -253,6 +259,63 @@ class ActivityDetailViewModel @Inject constructor(
     /** Persistence lands with F7; today it resets only the in-memory recipe. */
     fun resetArtRecipe() {
         updateArtRecipe { ArtRecipe() }
+    }
+
+    /** Compartilhar: render + publish, then the share sheet opens on Done. */
+    fun shareArt() {
+        exportArt(forShare = true)
+    }
+
+    /** Salvar PNG: render + publish without opening the share sheet. */
+    fun saveArtPng() {
+        exportArt(forShare = false)
+    }
+
+    /** Re-runs the last Compartilhar/Salvar after a failure. */
+    fun retryArtExport() {
+        lastArtExport?.let { exportArt(forShare = it) }
+    }
+
+    private fun exportArt(forShare: Boolean) {
+        val state = _uiState.value
+        val stored = state.activity ?: return
+        val studio = state.storyStudio
+        val plan = studio.plan ?: return
+        if (plan.route.points.size < 2) return
+        if (studio.artExport is ArtExportUiState.Exporting) return
+        lastArtExport = forShare
+        _uiState.update {
+            it.copy(storyStudio = it.storyStudio.copy(artExport = ArtExportUiState.Exporting(forShare)))
+        }
+        viewModelScope.launch {
+            val export = artPngExporter.export(
+                plan = plan,
+                localDate = stored.localDate,
+                recipe = studio.artRecipe,
+                activityId = activityId,
+                forShare = forShare,
+            )
+            // A stale response after leaving the screen must not resurrect it.
+            if (_uiState.value.storyStudio.artExport !is ArtExportUiState.Exporting) return@launch
+            _uiState.update {
+                it.copy(
+                    storyStudio = it.storyStudio.copy(
+                        artExport = when (export) {
+                            is ArtPngExport.Published -> ArtExportUiState.Done(
+                                uri = export.uri,
+                                savedToGallery = export.savedToGallery,
+                                forShare = forShare,
+                                reused = export.reused,
+                            )
+
+                            ArtPngExport.NoRoute -> ArtExportUiState.Error(StoryMessages.ART_NO_ROUTE)
+
+                            is ArtPngExport.Failure -> ArtExportUiState.Error(export.message)
+                        },
+                    ),
+                )
+            }
+        }
     }
 
     private fun updateArtRecipe(transform: (ArtRecipe) -> ArtRecipe) {

@@ -157,6 +157,7 @@ class CanvasStoryVideoExporter @Inject constructor(
     @ApplicationContext private val context: Context,
     private val profiles: com.meucoach.core.data.repository.ProfileRepository,
     private val photos: com.meucoach.app.profile.ProfilePhotoStore,
+    private val publisher: GalleryImagePublisher,
 ) : StoryVideoExporter {
     private val typeface: Typeface by lazy {
         ResourcesCompat.getFont(context, R.font.inter_variable) ?: Typeface.DEFAULT
@@ -616,8 +617,10 @@ class CanvasStoryVideoExporter @Inject constructor(
     }
 
     private fun publish(file: File, cover: File?, poster: File?): StoryExportResult {
-        val coverUri = cover?.let { image -> runCatching { publishImage(image) }.getOrNull() }
-        val posterUri = poster?.let { image -> runCatching { publishImage(image) }.getOrNull() }
+        // Cover and poster failures stay skippable: a video without them is
+        // still a finished export (ADR 0058 §2.7 preserves the contract).
+        val coverUri = cover?.let { image -> runCatching { publisher.publish(image).uri }.getOrNull() }
+        val posterUri = poster?.let { image -> runCatching { publisher.publish(image).uri }.getOrNull() }
         return StoryExportResult(
             uri = publishVideo(file),
             savedToGallery = true,
@@ -653,33 +656,7 @@ class CanvasStoryVideoExporter @Inject constructor(
         }
     }
 
-    /** Cover and poster share the Pictures/MeuCoach contract. */
-    private fun publishImage(file: File): Uri {
-        val resolver = context.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, file.name)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(
-                MediaStore.Images.Media.RELATIVE_PATH,
-                "${Environment.DIRECTORY_PICTURES}/MeuCoach",
-            )
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: error("Não foi possível reservar a imagem na galeria.")
-        try {
-            resolver.openOutputStream(uri)?.use { output ->
-                file.inputStream().use { input -> input.copyTo(output) }
-            } ?: error("Não foi possível gravar a imagem na galeria.")
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            return uri
-        } catch (error: Throwable) {
-            resolver.delete(uri, null, null)
-            throw error
-        }
-    }
+    /** Cover and poster share the Pictures/MeuCoach contract via [GalleryImagePublisher]. */
 
     companion object {
         private const val MIME = "video/avc"

@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -234,10 +235,16 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
         caption = "A próxima arte já abre com estas escolhas.",
     )
     Spacer(modifier = Modifier.height(16.dp))
+    val export = state.artExport
+    val exporting = export is ArtExportUiState.Exporting
+    LaunchedEffect(export) {
+        val done = export as? ArtExportUiState.Done
+        if (done != null && done.forShare) actions.onShare(done.uri)
+    }
     McPrimaryButton(
-        text = "Compartilhar",
-        onClick = actions.onShare,
-        enabled = hasRoute,
+        text = if (exporting && (export as ArtExportUiState.Exporting).forShare) "Compartilhando…" else "Compartilhar",
+        onClick = { actions.onShareClick() },
+        enabled = hasRoute && !exporting,
         modifier = Modifier
             .fillMaxWidth()
             .testTag("art-share"),
@@ -245,14 +252,48 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
     )
     Spacer(modifier = Modifier.height(10.dp))
     McSecondaryButton(
-        text = "Salvar PNG",
-        onClick = actions.onSave,
-        enabled = hasRoute,
+        text = if (exporting && !(export as ArtExportUiState.Exporting).forShare) "Salvando…" else "Salvar PNG",
+        onClick = { actions.onSave() },
+        enabled = hasRoute && !exporting,
         modifier = Modifier
             .fillMaxWidth()
             .testTag("art-save"),
         minHeight = 48.dp,
     )
+    when (export) {
+        is ArtExportUiState.Done -> {
+            if (!export.forShare) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "PNG salvo em Pictures/MeuCoach.",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("art-export-done"),
+                )
+            }
+        }
+
+        is ArtExportUiState.Error -> {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = export.message,
+                style = McTextStyles.caption,
+                color = colors.danger,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("art-export-error"),
+            )
+            McTextButton(
+                text = "Tentar novamente",
+                onClick = { actions.onRetry() },
+                modifier = Modifier.testTag("art-export-retry"),
+            )
+        }
+
+        else -> Unit
+    }
     if (!hasRoute) {
         Spacer(modifier = Modifier.height(6.dp))
         Text(

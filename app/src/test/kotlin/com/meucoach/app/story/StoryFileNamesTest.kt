@@ -1,5 +1,6 @@
 package com.meucoach.app.story
 
+import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.model.ActivitySample
@@ -34,6 +35,22 @@ class StoryFileNamesTest {
         assertThat(StoryFileNames.poster(plan, 9L))
             .startsWith("meucoach-story-sem-data-")
             .endsWith("-poster-4x5.png")
+    }
+
+    @Test
+    fun `names the art card by format without clashing with the poster`() {
+        val plan = plan()
+
+        assertThat(StoryFileNames.art(plan, ArtFormat.PORTRAIT_4_5, 123L))
+            .startsWith("meucoach-story-2026-10-24-")
+            .endsWith("-arte-4x5.png")
+        assertThat(StoryFileNames.art(plan, ArtFormat.SQUARE, 123L))
+            .startsWith("meucoach-story-2026-10-24-")
+            .endsWith("-arte-1x1.png")
+
+        val poster = StoryFileNames.poster(plan, 123L)
+        val art = StoryFileNames.art(plan, ArtFormat.PORTRAIT_4_5, 123L)
+        assertThat(art).isNotEqualTo(poster)
     }
 
     private fun plan(): StoryPlan {

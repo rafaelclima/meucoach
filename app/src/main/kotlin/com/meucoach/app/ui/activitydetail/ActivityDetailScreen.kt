@@ -123,6 +123,10 @@ fun ActivityDetailScreen(
                 onFont = viewModel::selectArtFont,
                 onSaveAsDefault = viewModel::setArtSaveAsDefault,
                 onReset = viewModel::resetArtRecipe,
+                onShareClick = viewModel::shareArt,
+                onShare = { uri -> shareMedia(context, uri, "image/png", "Compartilhar arte") },
+                onSave = viewModel::saveArtPng,
+                onRetry = viewModel::retryArtExport,
             ),
         ),
         modifier = modifier,
@@ -150,8 +154,8 @@ internal data class StoryStudioActions(
 )
 
 /**
- * Art tab callbacks (ADR 0058 §2.8). Share/save land with F6; the other
- * controls edit the in-memory art recipe.
+ * Art tab callbacks (ADR 0058 §2.8). The VM renders and publishes; the screen
+ * only opens the share sheet when the export finishes for Compartilhar.
  */
 internal data class ArtStudioActions(
     val onFormat: (ArtFormat) -> Unit = {},
@@ -161,8 +165,13 @@ internal data class ArtStudioActions(
     val onFont: (ArtFont) -> Unit = {},
     val onSaveAsDefault: (Boolean) -> Unit = {},
     val onReset: () -> Unit = {},
-    val onShare: () -> Unit = {},
+    /** Starts the render+publish of Compartilhar. */
+    val onShareClick: () -> Unit = {},
+    /** Opens the share sheet with the published URI when the export is Done. */
+    val onShare: (Uri) -> Unit = {},
+    /** Starts the render+publish of Salvar PNG. */
     val onSave: () -> Unit = {},
+    val onRetry: () -> Unit = {},
 )
 
 @Composable
