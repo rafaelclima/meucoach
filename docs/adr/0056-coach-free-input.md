@@ -168,8 +168,11 @@ falado, que **não** vira memória (paridade ADR 0052 §2.2).
    + `MigrationTest` dourado 21→22 + export/delete com turns `YOU`.~~
    (Implementado em 21/11/2026: `recordYouTurn`, `MIGRATION_21_22` por
    rebuild, schema `22.json`, cadeia 1→22, `check` + `spotlessCheck` verdes.)
-6. UI: composer habilitado, bolha `YOU` lima, quick-replies mantidos, typing,
-   fallback falado, TalkBack/200%/dark-light, apagar por item.
+6. ~~UI: composer habilitado, bolha `YOU` lima, quick-replies mantidos, typing,
+   fallback falado, TalkBack/200%/dark-light, apagar por item.~~
+   (Implementado em 21/11/2026: `FreeAnswerUiState` + `sendFreeText`,
+   `CoachComposer`, `YOU`/`ANSWER` no histórico, 54+60+12+11 testes
+   verdes.)
 7. Aparelho (usuário 0): pergunta sobre a semana, relato, ajuste com
    diff/confirm/undo, fora-escopo com fallback, revogar apaga, offline
    determinístico. Só então encerrar.

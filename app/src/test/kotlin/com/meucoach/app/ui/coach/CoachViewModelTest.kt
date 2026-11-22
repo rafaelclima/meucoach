@@ -43,6 +43,7 @@ import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachRawResponse
+import com.meucoach.core.domain.coach.FreeInputIntent
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -232,6 +233,7 @@ class CoachViewModelTest {
             ),
             api = api,
             memory = memory,
+            clock = clock,
             appScope = appScope,
             replanFactory = replanFactory,
         )
@@ -1107,5 +1109,190 @@ class CoachViewModelTest {
             }
             state
         }
+    }
+
+    private fun awaitFreeAnswer(vm: CoachViewModel): FreeAnswerUiState = runBlocking {
+        withTimeout(2_000) {
+            var state = vm.freeAnswer.value
+            while (state is FreeAnswerUiState.Idle || state is FreeAnswerUiState.Loading) {
+                kotlinx.coroutines.delay(1)
+                state = vm.freeAnswer.value
+            }
+            state
+        }
+    }
+
+    @Test
+    fun `out-of-scope records YOU and falls back without calling the model`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("estou com dor no joelho")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("não faço por aqui")
+        assertThat(api.freeAnswerCalls).isZero()
+        val turns = memory.observeTurns().first()
+        assertThat(turns.filterIsInstance<ChatTurn.You>().map { it.body })
+            .containsExactly("estou com dor no joelho")
+    }
+
+    @Test
+    fun `clarify answers without calling the model`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("só tenho pouco tempo quinta")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.single()).contains("o dia")
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `report answers without calling the model`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("fiz o longo de hoje")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.single()).contains("Marca lá no Hoje")
+        assertThat(api.freeAnswerCalls).isZero()
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    @Test
+    fun `capabilities answer without calling the model`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que você pode fazer?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.single()).contains("Posso explicar")
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `adjust with minutes routes to less-time and acknowledges`(): Unit = runBlocking {
+        seedReplan()
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("só tenho 30 min na quinta")
+
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        withTimeout(5_000) { vm.replan.first { !it.isLoading && it.lessTimeDays != null } }
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `adjust without minutes routes to generic replan`(): Unit = runBlocking {
+        seedReplan()
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("perdi o treino")
+
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isZero()
+        assertThat(vm.replan.value.lessTimeDays).isNull()
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    @Test
+    fun `week question calls free-answer and shows validated bubbles`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Entendido", body = "Semana leve e consistente. Bora?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("por que o treino de hoje é fácil?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts).contains("Bora?")
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        val prompt = api.lastFreeAnswerPrompt
+        assertThat(prompt?.intent).isEqualTo(FreeInputIntent.ASK_WEEK)
+        assertThat(prompt?.engineContext).isEqualTo("Semana base")
+        assertThat(prompt?.allowedMinutes).contains(30)
+        val turns = memory.observeTurns().first()
+        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin })
+            .contains(ChatTurn.Origin.ANSWER)
+    }
+
+    @Test
+    fun `invalid free answer falls back and is not recorded`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Corra a 6:10/km"))
+        val vm = viewModel(api)
+        vm.sendFreeText("por que o treino de hoje é fácil?")
+
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        val turns = memory.observeTurns().first()
+        assertThat(turns.filterIsInstance<ChatTurn.Coach>()).isEmpty()
+    }
+
+    @Test
+    fun `free-answer network failure falls back but keeps the question`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val api = FakeCoachApi(error = IOException("down"))
+        val vm = viewModel(api)
+        vm.sendFreeText("por que o treino de hoje é fácil?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("Sem conexão")
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    @Test
+    fun `review question without a closed week falls back`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("como foi semana passada?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("ainda não fechou")
+        assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `review question calls free-answer with review context`(): Unit = runBlocking {
+        consent.grant()
+        reviews.value = weeklyReview()
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Fechamos", body = "3 de 4. Boa semana, bora manter?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("como foi semana passada?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        assertThat(api.lastFreeAnswerPrompt?.intent).isEqualTo(FreeInputIntent.ASK_REVIEW)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("3 de 4")
+    }
+
+    @Test
+    fun `send is ignored without consent`(): Unit = runBlocking {
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("fiz o longo")
+
+        assertThat(vm.freeAnswer.value).isEqualTo(FreeAnswerUiState.Idle)
+        assertThat(api.freeAnswerCalls).isZero()
+        assertThat(memory.observeTurns().first()).isEmpty()
     }
 }

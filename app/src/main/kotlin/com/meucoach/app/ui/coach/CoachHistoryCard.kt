@@ -137,12 +137,21 @@ internal fun CoachHistoryCard(
                 var expanded by rememberSaveable { mutableStateOf(false) }
                 val totalItems = state.turns.size
                 val showTurns = if (expanded) state.turns else state.turns.take(3)
-                showTurns.filterIsInstance<ChatTurn.Coach>().forEachIndexed { index, turn ->
-                    if (index > 0) McDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    TurnRow(
-                        turn = turn,
-                        onDelete = { pendingDeleteTurn = turn },
-                    )
+                var firstRow = true
+                showTurns.forEach { turn ->
+                    if (!firstRow) McDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    firstRow = false
+                    when (turn) {
+                        is ChatTurn.Coach -> TurnRow(
+                            turn = turn,
+                            onDelete = { pendingDeleteTurn = turn },
+                        )
+
+                        is ChatTurn.You -> YouRow(
+                            turn = turn,
+                            onDelete = { pendingDeleteTurn = turn },
+                        )
+                    }
                 }
                 if (!expanded && totalItems > 3) {
                     McSecondaryButton(
@@ -251,6 +260,8 @@ private fun TurnRow(turn: ChatTurn.Coach, onDelete: () -> Unit) {
         ChatTurn.Origin.EXPLAIN -> "Explicação da semana · ${HISTORY_DATE.format(turn.dateInSystemZone())}"
 
         ChatTurn.Origin.REVIEW -> "Revisão da semana · ${HISTORY_DATE.format(turn.dateInSystemZone())}"
+
+        ChatTurn.Origin.ANSWER -> "Resposta do Coach · ${HISTORY_DATE.format(turn.dateInSystemZone())}"
     }
     HistoryRow(
         tag = "coach-history-turn-${turn.id}",
@@ -262,6 +273,46 @@ private fun TurnRow(turn: ChatTurn.Coach, onDelete: () -> Unit) {
         deleteDescription = "Apagar item: ${turn.title}",
         onDelete = onDelete,
     )
+}
+
+@Composable
+private fun YouRow(turn: ChatTurn.You, onDelete: () -> Unit) {
+    val colors = McTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("coach-history-you-${turn.id}"),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .semantics(mergeDescendants = true) {},
+        ) {
+            Text(
+                text = "Você · ${HISTORY_DATE.format(turn.dateInSystemZone())}",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+            UserBubble(
+                text = turn.body,
+                testTag = "coach-history-you-bubble-${turn.id}",
+            )
+        }
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier
+                .semantics { contentDescription = "Apagar sua mensagem" }
+                .testTag("coach-history-delete-you-${turn.id}"),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.DeleteOutline,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = colors.textTertiary,
+            )
+        }
+    }
 }
 
 @Composable

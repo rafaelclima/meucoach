@@ -144,6 +144,23 @@ class ChatTurnTest {
     }
 
     @Test
+    fun `resposta livre nunca e escondida pelo arquivo`() {
+        val answer = ChatTurn.Coach(
+            id = "message-a1",
+            title = "Entendido",
+            body = "Fechado, mexo só quinta e sexta.",
+            bullets = emptyList(),
+            createdAt = now,
+            origin = ChatTurn.Origin.ANSWER,
+            inputsHash = "coach-free-v1|hash",
+        )
+
+        val visible = ChatTurns.visibleTurns(listOf(answer))
+
+        assertThat(visible.map { it.id }).containsExactly("message-a1")
+    }
+
+    @Test
     fun `turno you nunca e escondido pelas regras do arquivo`() {
         val current = turn("message-cur", ChatTurn.Origin.EXPLAIN, "explain-current", now)
         val you = ChatTurn.You(id = "you-1", body = "só tenho 30 min quinta", createdAt = now)

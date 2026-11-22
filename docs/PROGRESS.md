@@ -1,6 +1,57 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 fatia 5 — `chat_turns` v22 com `YOU`, cadeia 1→22)
+**Atualizado:** 21/11/2026 (ADR 0056 fatia 6 — composer + free-answer na UI)
+
+## Sessão 2026-11-21 — ADR 0056 fatia 6: UI do input livre (TDD)
+
+**Objetivo:** implementar o passo 6 do rollout do ADR 0056 (composer
+habilitado, respostas por intent, bolha `YOU` no arquivo), sem mudar motor,
+proxy ou schema.
+
+### Concluído
+
+- **Domínio:** `ChatTurn.Origin.ANSWER` (resposta livre validada; nunca
+  escondida pelo `visibleTurns`, TTL 90 d via `messageTtl`) e
+  `CoachMessageKind.ANSWER`.
+- **ViewModel:** `FreeAnswerUiState` (`Idle/Loading/Ready/Fallback`) +
+  `sendFreeText` (sem consentimento ignora; parse com o dia do relógio;
+  pergunta sempre persistida como `YOU`): determinísticas sem rede
+  (fora-escopo, clarificar, capacidades, relato, ajuste via replan
+  existente — minutos → menos-tempo, resto → replanejamento genérico),
+  semana/revisão via `free-answer` com contexto do plano/semana fechada,
+  validação `validateFreeAnswer`, resposta válida gravada como `ANSWER`
+  e fallback falado + `reason` técnico só no log; `retryFreeAnswer` não
+  duplica a pergunta.
+- **UI:** `CoachComposer` (campo + enviar 48 dp, TalkBack, IME Send; dica
+  antiga mantida sem opt-in/sem plano), rodapé com typing da resposta
+  livre, bolhas da resposta, fallback + tentar de novo e ecos; histórico
+  mostra `YOU` (bolha lima + apagar com o mesmo diálogo) e `ANSWER` com
+  etiqueta própria ("Resposta do Coach").
+- **Testes:** VM 54/54 (11 novos: rota por intent, `ANSWER` gravado,
+  inválido não grava, sem rede cai em fallback, sem consentimento
+  ignora), tela 60/60 (5 novos: envio, acessibilidade, dica sem opt-in,
+  bolhas, retry), histórico 12/12 (1 novo: `YOU` com apagar), domínio
+  11/11 (1 novo: `ANSWER` visível). TDD com 2 falhas honestas no caminho
+  (helper que não esperava `Idle`; picker menos-tempo sem perfil
+  semeado) e 1 teste legado atualizado à nova verdade (composer com
+  opt-in mostra o campo, não mais a dica).
+- **Limitações conhecidas:** ajuste por texto abre os fluxos existentes
+  sem pré-preencher dia/minutos (fatia 7 pode refinar no aparelho);
+  atalho `5k` segue fora do validador (fatia 3).
+- **Docs:** `TESTING.md` (3 linhas ADR 0056) e passo 6 do ADR marcado.
+- **Gates:** `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`, inclui
+  `detekt`, `lint`, `koverVerify` e `spotlessCheck`). No caminho:
+  `property-naming` (const em objeto pede `SCREAMING_SNAKE`) e ordem de
+  imports, corrigidos.
+- Sem motor, proxy, schema ou dado real no diff.
+
+### Pendente
+
+1. **Redeploy do proxy no Dokploy** (fatia 4, ainda pendente).
+2. ADR 0056 fatia 7 — validação no aparelho com o usuário 0 (pergunta
+   sobre a semana, relato, ajuste com diff/confirm/undo, fora-escopo com
+   fallback, revogar apaga, offline determinístico).
+3. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 5: repository v22 (TDD)
 

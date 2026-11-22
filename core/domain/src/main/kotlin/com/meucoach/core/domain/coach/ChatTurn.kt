@@ -41,7 +41,7 @@ sealed interface ChatTurn {
      */
     data class You(override val id: String, val body: String, override val createdAt: Instant) : ChatTurn
 
-    enum class Origin { EXPLAIN, REVIEW, SUMMARY }
+    enum class Origin { EXPLAIN, REVIEW, SUMMARY, ANSWER }
 }
 
 /**
@@ -89,5 +89,7 @@ object ChatTurns {
 
         ChatTurn.Origin.SUMMARY ->
             currentReviewWeek != null && turn.weekStart == currentReviewWeek
+
+        ChatTurn.Origin.ANSWER -> false
     }
 }

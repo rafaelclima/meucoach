@@ -1,11 +1,13 @@
 package com.meucoach.app.ui.coach
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -1274,12 +1276,65 @@ class CoachScreenTest {
     }
 
     @Test
-    fun `composer indica input futuro sem fingir conversa livre`() {
+    fun `composer habilitado com opt-in mostra o campo`() {
         setContent()
 
-        compose.onNodeWithTag("coach-composer").assertIsDisplayed()
+        compose.onNodeWithTag("coach-composer-input").assertIsDisplayed()
+        compose.onNodeWithTag("coach-composer-send").assertHasClickAction()
         compose.onNodeWithText("Em breve você poderá digitar", substring = true)
-            .assertIsDisplayed()
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `composer envia a mensagem digitada como eco e callback`() {
+        var sent: String? = null
+        setContent(onSendFreeText = { sent = it })
+
+        compose.onNodeWithTag("coach-composer-input").performTextInput("só tenho 30 min")
+        compose.onNodeWithTag("coach-composer-send").performClick()
+
+        assertThat(sent).isEqualTo("só tenho 30 min")
+        compose.onNodeWithText("só tenho 30 min").assertIsDisplayed()
+    }
+
+    @Test
+    fun `composer expoe descricoes de acessibilidade`() {
+        setContent()
+
+        compose.onNodeWithContentDescription("Digite sua mensagem para o Coach").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Enviar mensagem").assertHasClickAction()
+    }
+
+    @Test
+    fun `composer some sem opt-in e mostra a dica`() {
+        setContent(consented = false)
+
+        compose.onNodeWithTag("coach-composer-input").assertDoesNotExist()
+        compose.onNodeWithTag("coach-composer-send").assertDoesNotExist()
+        compose.onNodeWithTag("coach-composer").assertIsDisplayed()
+        compose.onNodeWithText("Em breve você poderá digitar", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `resposta livre valida mostra as bolhas`() {
+        setContent(freeAnswer = FreeAnswerUiState.Ready(listOf("Fechado.", "Bora?")))
+
+        compose.onNodeWithText("Fechado.").assertIsDisplayed()
+        compose.onNodeWithText("Bora?").assertIsDisplayed()
+    }
+
+    @Test
+    fun `fallback livre mostra a fala com tentar de novo`() {
+        var retried = 0
+        setContent(
+            freeAnswer = FreeAnswerUiState.Fallback("Sem conexão com o Coach."),
+            onRetryFreeAnswer = { retried++ },
+        )
+
+        compose.onNodeWithTag("coach-free-fallback").assertIsDisplayed()
+        compose.onNodeWithTag("coach-free-retry").performClick()
+
+        assertThat(retried).isEqualTo(1)
     }
 
     private fun setContent(
@@ -1294,6 +1349,10 @@ class CoachScreenTest {
         review: WeeklyReview? = null,
         reviewState: CoachReviewState = CoachReviewState.Unavailable,
         replan: ReplanUiState = ReplanUiState(),
+        consented: Boolean = true,
+        freeAnswer: FreeAnswerUiState = FreeAnswerUiState.Idle,
+        onSendFreeText: (String) -> Unit = {},
+        onRetryFreeAnswer: () -> Unit = {},
         onReplanRequest: () -> Unit = {},
         onReplanRequestMissed: () -> Unit = {},
         onReplanRequestLessTime: () -> Unit = {},
@@ -1306,7 +1365,7 @@ class CoachScreenTest {
         compose.setContent {
             McTheme(darkTheme = true) {
                 CoachScreen(
-                    consented = true,
+                    consented = consented,
                     showConsent = false,
                     explanation = explanation,
                     onGrant = {},
@@ -1323,6 +1382,9 @@ class CoachScreenTest {
                     review = review,
                     reviewState = reviewState,
                     replan = replan,
+                    freeAnswer = freeAnswer,
+                    onSendFreeText = onSendFreeText,
+                    onRetryFreeAnswer = onRetryFreeAnswer,
                     onReplanRequest = onReplanRequest,
                     onReplanRequestMissed = onReplanRequestMissed,
                     onReplanRequestLessTime = onReplanRequestLessTime,

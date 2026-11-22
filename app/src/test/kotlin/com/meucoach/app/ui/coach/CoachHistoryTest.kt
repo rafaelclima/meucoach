@@ -203,6 +203,34 @@ class CoachHistoryTest {
         compose.onNodeWithText("Velha").assertDoesNotExist()
     }
 
+    @Test
+    fun `historico mostra sua mensagem com apagar`() {
+        var deleted: ChatTurn? = null
+        setContent(
+            history = CoachHistoryState.Ready(
+                turns = listOf(
+                    ChatTurn.You(id = "you-1", body = "só tenho 30 min quinta", createdAt = createdAt),
+                    turn(
+                        "message-message-1",
+                        ChatTurn.Origin.EXPLAIN,
+                        "Foco",
+                        body = "Mantivemos 30 min.",
+                    ),
+                ),
+            ),
+            onDeleteTurn = { deleted = it },
+        )
+        openHistory()
+
+        compose.onNodeWithTag("coach-history-you-you-1").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("só tenho 30 min quinta").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("coach-history-delete-you-you-1").performScrollTo().performClick()
+        compose.onNodeWithTag("coach-history-delete-dialog").assertIsDisplayed()
+        compose.onNodeWithTag("coach-history-delete-confirm").performClick()
+
+        assertThat((deleted as? ChatTurn.You)?.body).isEqualTo("só tenho 30 min quinta")
+    }
+
     private fun readyHistory() = CoachHistoryState.Ready(
         turns = listOf(
             turn(

@@ -17,13 +17,18 @@ import com.meucoach.core.data.coach.CoachKind
 import com.meucoach.core.data.coach.CoachMemoryRepository
 import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.ChatTurns
+import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachProgress
 import com.meucoach.core.domain.coach.CoachProgressSummary
 import com.meucoach.core.domain.coach.CoachPromptBuilder
 import com.meucoach.core.domain.coach.CoachResponseValidator
+import com.meucoach.core.domain.coach.CoachReviewPrompt
 import com.meucoach.core.domain.coach.CoachReviewPromptBuilder
 import com.meucoach.core.domain.coach.CoachValidationResult
+import com.meucoach.core.domain.coach.FreeInputIntent
+import com.meucoach.core.domain.coach.FreeInputParse
+import com.meucoach.core.domain.coach.FreeInputParser
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.model.AthleteProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,11 +39,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -149,12 +156,31 @@ sealed interface CoachHistoryState {
     data class Error(val reason: String) : CoachHistoryState
 }
 
+/**
+ * Answer to one typed message (ADR 0056).
+ *
+ * `Ready` carries validated or deterministic copy split into chat bubbles;
+ * `Fallback` carries honest coach-voiced copy, never a technical reason.
+ * The question itself is persisted as a `YOU` turn; the validated free
+ * answer is persisted as an `ANSWER` turn.
+ */
+sealed interface FreeAnswerUiState {
+    data object Idle : FreeAnswerUiState
+
+    data object Loading : FreeAnswerUiState
+
+    data class Ready(val texts: List<String>) : FreeAnswerUiState
+
+    data class Fallback(val copy: String) : FreeAnswerUiState
+}
+
 @HiltViewModel
 class CoachViewModel @Inject constructor(
     private val consent: CoachConsentStore,
     private val sources: CoachSources,
     private val api: CoachApi,
     private val memory: CoachMemoryRepository,
+    private val clock: Clock,
     @ApplicationScope private val appScope: CoroutineScope,
     replanFactory: ReplanControllerFactory,
 ) : ViewModel() {
@@ -181,6 +207,10 @@ class CoachViewModel @Inject constructor(
 
     private val _history = MutableStateFlow<CoachHistoryState>(CoachHistoryState.Hidden)
     val history: StateFlow<CoachHistoryState> = _history
+
+    private val _freeAnswer = MutableStateFlow<FreeAnswerUiState>(FreeAnswerUiState.Idle)
+    val freeAnswer: StateFlow<FreeAnswerUiState> = _freeAnswer
+    private var lastFreeText: String? = null
 
     private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Loading)
     val next: StateFlow<CoachNextUiState> = _next
@@ -497,6 +527,167 @@ class CoachViewModel @Inject constructor(
         memory.deleteTurn(turn.id)
     }
 
+    /**
+     * Typed message from the composer (ADR 0056).
+     *
+     * The parser decides locally; the question is always persisted as a
+     * `YOU` turn first. Deterministic intents answer without any network;
+     * week/review questions call `free-answer` and only validated copy is
+     * shown and persisted. Adjustments route to the existing replan machine
+     * and never apply anything alone.
+     */
+    fun sendFreeText(text: String, recordQuestion: Boolean = true) {
+        if (!_consented.value) return
+        lastFreeText = text
+        viewModelScope.launch {
+            val parsed = FreeInputParser.parse(text, LocalDate.now(clock).dayOfWeek)
+            if (recordQuestion) {
+                recordSafely { memory.recordYouTurn(parsed.sanitized) }
+            }
+            when (parsed.intent) {
+                FreeInputIntent.OUT_OF_SCOPE ->
+                    _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.OUT_OF_SCOPE)
+
+                FreeInputIntent.ASK_CLARIFY ->
+                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.CLARIFY))
+
+                FreeInputIntent.ASK_CAPABILITIES ->
+                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.CAPABILITIES))
+
+                FreeInputIntent.REPORT_DONE ->
+                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.REPORT_ACK))
+
+                FreeInputIntent.REQUEST_ADJUST -> {
+                    if (parsed.slots.minutes != null) requestLessTime() else requestReplan()
+                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(FreeAnswerCopy.ADJUST_ACK))
+                }
+
+                FreeInputIntent.ASK_WEEK -> answerWeek(parsed)
+
+                FreeInputIntent.ASK_REVIEW -> answerReview(parsed)
+            }
+        }
+    }
+
+    /** Resends the last typed message without persisting the question twice. */
+    fun retryFreeAnswer() {
+        lastFreeText?.let { sendFreeText(it, recordQuestion = false) }
+    }
+
+    private suspend fun answerWeek(parsed: FreeInputParse) {
+        val context = sources.plans.observeCurrent().first()
+        if (context == null) {
+            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN)
+            return
+        }
+        val prompt = CoachPromptBuilder.build(context.plan, context.inputsHash)
+        val allowed = prompt.sessions.mapNotNull { it.durationMin }.toSet() +
+            prompt.weeklyMinutes +
+            listOfNotNull(prompt.executedMinutes)
+        freeAnswer(
+            parsed = parsed,
+            contextHash = context.inputsHash,
+            allowedMinutes = allowed,
+            allowedPercents = emptySet(),
+            allowedDistancesKm = emptySet(),
+            forbiddenCodes = prompt.ruleIds.toSet(),
+            engineContext = prompt.rationale,
+        )
+    }
+
+    private suspend fun answerReview(parsed: FreeInputParse) {
+        val review = sources.reviews.observeLastClosedWeek().first()
+        if (review == null) {
+            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_REVIEW)
+            return
+        }
+        val prompt = CoachReviewPromptBuilder.build(review)
+        freeAnswer(
+            parsed = parsed,
+            contextHash = prompt.inputsHash,
+            allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
+            allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
+            allowedDistancesKm = emptySet(),
+            forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
+            engineContext = reviewLine(prompt),
+        )
+    }
+
+    private suspend fun freeAnswer(
+        parsed: FreeInputParse,
+        contextHash: String,
+        allowedMinutes: Set<Int>,
+        allowedPercents: Set<Int>,
+        allowedDistancesKm: Set<Double>,
+        forbiddenCodes: Set<String>,
+        engineContext: String,
+    ) {
+        val freeHash = "coach-free-v1|$contextHash|${parsed.intent}|${parsed.slots.dayOfWeek}|${parsed.slots.minutes}"
+        _freeAnswer.value = FreeAnswerUiState.Loading
+        try {
+            val prompt = CoachFreeAnswerPrompt(
+                inputsHash = freeHash,
+                intent = parsed.intent,
+                dayOfWeek = parsed.slots.dayOfWeek,
+                minutes = parsed.slots.minutes,
+                allowedMinutes = allowedMinutes,
+                allowedPercents = allowedPercents,
+                allowedDistancesKm = allowedDistancesKm,
+                engineContext = engineContext,
+            )
+            val raw = api.freeAnswer(prompt)
+            if (!_consented.value) return
+            val validated = CoachResponseValidator.validateFreeAnswer(
+                raw = raw,
+                allowedMinutes = allowedMinutes,
+                allowedPercents = allowedPercents,
+                allowedDistancesKm = allowedDistancesKm,
+                forbiddenCodes = forbiddenCodes,
+            )
+            when (validated) {
+                is CoachValidationResult.Valid -> {
+                    val response = validated.response
+                    recordSafely {
+                        memory.recordMessage(
+                            kind = CoachMessageKind.ANSWER,
+                            inputsHash = freeHash,
+                            title = response.title,
+                            body = response.body,
+                            bullets = response.bullets,
+                        )
+                    }
+                    android.util.Log.d("Coach", "free answer ok hash=$freeHash")
+                    _freeAnswer.value = FreeAnswerUiState.Ready(CoachBubbles.split(response.body))
+                }
+
+                is CoachValidationResult.Invalid -> {
+                    android.util.Log.d("Coach", "free answer rejected: ${validated.reason}")
+                    _freeAnswer.value =
+                        FreeAnswerUiState.Fallback(CoachFallbackLabels.reasonCopy(validated.reason))
+                }
+            }
+        } catch (e: IOException) {
+            if (!_consented.value) return
+            android.util.Log.d("Coach", "free answer io: ${e.message}")
+            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_CONNECTION)
+        } catch (e: Exception) {
+            if (!_consented.value) return
+            android.util.Log.d("Coach", "free answer failed: ${e.message}")
+            _freeAnswer.value = FreeAnswerUiState.Fallback(FreeAnswerCopy.GENERIC)
+        }
+    }
+
+    private fun reviewLine(prompt: CoachReviewPrompt): String {
+        val done = prompt.adherence?.done
+        val planned = prompt.adherence?.planned
+        val percent = prompt.volume?.percentOfPlan
+        return if (done != null && planned != null && percent != null) {
+            "Semana ${prompt.weekStart}: $done de $planned treinos, $percent% do volume."
+        } else {
+            "Semana ${prompt.weekStart} fechada."
+        }
+    }
+
     fun retryHistory() {
         historyRetryTick.value += 1
     }
@@ -554,4 +745,24 @@ class CoachViewModel @Inject constructor(
             android.util.Log.d("Coach", "memory write failed: ${it.message}")
         }
     }
+}
+
+/**
+ * Deterministic copy for the typed-message paths that need no model call
+ * (ADR 0056). No numbers, no prescription, no diagnosis — just the next step.
+ */
+private object FreeAnswerCopy {
+    const val OUT_OF_SCOPE =
+        "Isso eu não faço por aqui — mas posso explicar sua semana ou ajudar a ajustar um treino. " +
+            "Toca numa sugestão que eu organizo."
+    const val CLARIFY = "Não entendi direito — me diz o dia e quantos minutos você tem?"
+    const val CAPABILITIES =
+        "Posso explicar sua semana, contar como foi a passada e ajudar a ajustar um treino. " +
+            "É só me dizer — ou tocar numa sugestão."
+    const val REPORT_ACK = "Boa! Marca lá no Hoje pra entrar na conta — por aqui eu sigo o plano."
+    const val ADJUST_ACK = "Fechado, vamos ajustar. Confere as opções aqui embaixo."
+    const val NO_PLAN = "Ainda estou montando sua semana — assim que o plano sair eu explico."
+    const val NO_REVIEW = "A semana passada ainda não fechou por aqui — me pergunta de novo depois."
+    const val NO_CONNECTION = "Sem conexão com o Coach. O plano segue o mesmo — tá aqui embaixo."
+    const val GENERIC = "O Coach não respondeu. O plano segue o mesmo — tá aqui embaixo."
 }

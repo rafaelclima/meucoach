@@ -62,6 +62,7 @@ fun CoachRoute(
     val explanation by viewModel.explanation.collectAsStateWithLifecycle()
     val review by viewModel.review.collectAsStateWithLifecycle()
     val reviewState by viewModel.reviewState.collectAsStateWithLifecycle()
+    val freeAnswer by viewModel.freeAnswer.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val next by viewModel.next.collectAsStateWithLifecycle()
     val guards by viewModel.guards.collectAsStateWithLifecycle()
@@ -78,6 +79,11 @@ fun CoachRoute(
         guards = guards,
         progress = progress,
         replan = replan,
+        freeAnswer = freeAnswer,
+        onSendFreeText = {
+            viewModel.sendFreeText(it)
+        },
+        onRetryFreeAnswer = { viewModel.retryFreeAnswer() },
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
@@ -141,6 +147,9 @@ fun CoachScreen(
     onNextRetry: () -> Unit = {},
     onNextCheckIn: () -> Unit = {},
     onNextToday: () -> Unit = {},
+    onSendFreeText: (String) -> Unit = {},
+    onRetryFreeAnswer: () -> Unit = {},
+    freeAnswer: FreeAnswerUiState = FreeAnswerUiState.Idle,
     onOnboardingProfile: () -> Unit = {},
     onOnboardingCalibration: () -> Unit = {},
     onOnboardingImport: () -> Unit = {},
@@ -363,6 +372,14 @@ fun CoachScreen(
             }
         }
         if (!onboarding) {
+            var draft by rememberSaveable { mutableStateOf("") }
+            fun sendDraft() {
+                val text = draft.trim()
+                if (text.isEmpty()) return
+                addEcho(text)
+                onSendFreeText(text)
+                draft = ""
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -371,13 +388,35 @@ fun CoachScreen(
             ) {
                 val typing = explanation is CoachExplanationState.Loading ||
                     (showReview && reviewState is CoachReviewState.Loading) ||
-                    (showProgress && progress is CoachProgressUiState.Loading)
+                    (showProgress && progress is CoachProgressUiState.Loading) ||
+                    freeAnswer is FreeAnswerUiState.Loading
                 if (typing) CoachTyping()
                 userEchoes.takeLast(2).forEach { echo ->
                     UserBubble(
                         text = echo,
                         testTag = "coach-user-echo",
                     )
+                }
+                when (val answer = freeAnswer) {
+                    is FreeAnswerUiState.Ready -> CoachBubbleSequence(
+                        texts = answer.texts,
+                        testTag = "coach-free-answer",
+                    )
+
+                    is FreeAnswerUiState.Fallback -> {
+                        CoachBubble(
+                            text = answer.copy,
+                            testTag = "coach-free-fallback",
+                        )
+                        TextButton(
+                            onClick = onRetryFreeAnswer,
+                            modifier = Modifier.testTag("coach-free-retry"),
+                        ) {
+                            Text(text = "Tentar de novo", color = McTheme.colors.accentText)
+                        }
+                    }
+
+                    FreeAnswerUiState.Idle, FreeAnswerUiState.Loading -> Unit
                 }
                 CoachQuickReplies(
                     onExplain = {
@@ -399,7 +438,15 @@ fun CoachScreen(
                         onReplanRequest()
                     },
                 )
-                CoachComposerHint()
+                if (consented) {
+                    CoachComposer(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        onSend = ::sendDraft,
+                    )
+                } else {
+                    CoachComposerHint()
+                }
             }
         }
     }

@@ -50,6 +50,8 @@ class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOExceptio
         private set
     var freeAnswerCalls = 0
         private set
+    var lastFreeAnswerPrompt: CoachFreeAnswerPrompt? = null
+        private set
 
     override suspend fun explain(prompt: CoachPrompt, kind: CoachKind): CoachRawResponse {
         calls += 1
@@ -65,6 +67,7 @@ class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOExceptio
 
     override suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse {
         freeAnswerCalls += 1
+        lastFreeAnswerPrompt = prompt
         error?.let { throw it }
         return response ?: CoachRawResponse(title = "Coach", body = "Resposta de teste.")
     }

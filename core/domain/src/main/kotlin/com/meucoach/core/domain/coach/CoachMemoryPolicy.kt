@@ -3,8 +3,8 @@ package com.meucoach.core.domain.coach
 import java.time.Duration
 import java.time.Instant
 
-/** The MVP has no free-text user turn; a message is always a validated coach reply. */
-enum class CoachMessageKind { EXPLAIN, REVIEW }
+/** Kind of a persisted Coach turn: the two motor narratives plus free answers (ADR 0056). */
+enum class CoachMessageKind { EXPLAIN, REVIEW, ANSWER }
 
 /**
  * Retention policy of the local Coach memory (Room v19, ADR 0052).
@@ -44,11 +44,13 @@ object CoachMemoryPolicy {
     /**
      * When a turn leaves the device (Room v20, ADR 0054): explanation/review
      * turns live 90 d, summaries 180 d — the same TTL as the tables they unify.
+     * Free answers (ADR 0056) are Coach turns with their own hash and live
+     * 90 d like explanations.
      */
     fun turnExpiresAt(createdAt: Instant, origin: ChatTurn.Origin): Instant = createdAt.plus(
         when (origin) {
             ChatTurn.Origin.SUMMARY -> summaryTtl
-            ChatTurn.Origin.EXPLAIN, ChatTurn.Origin.REVIEW -> messageTtl
+            ChatTurn.Origin.EXPLAIN, ChatTurn.Origin.REVIEW, ChatTurn.Origin.ANSWER -> messageTtl
         },
     )
 }

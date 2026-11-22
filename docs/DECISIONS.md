@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.70 · **Data:** 21/11/2026
+**Versão:** 1.71 · **Data:** 21/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -68,6 +68,7 @@
 > Revisão 1.68 (21/11/2026): ADR 0055 implementado — Coach em tabela única (Room v21): `chat_turns` ganha `inputsHash` (preenchido das tabelas v19 na `MIGRATION_20_21`) + índice único `(origin, inputsHash)`; escrita só em `chat_turns`, tabelas/DAOs/entidades v19 removidos; `ChatTurns.visibleTurns` aplica as regras do arquivo direto nos turns e a VM observa `observeTurns()`; export perde `coachMessages`/`coachSummaries` (turn leva `inputsHash`) e a nota da tela Dados conta turnos. Vocabulário v19 (`CoachMemory*`, `fromMemory`) removido com a mesma cobertura sobre turns; sem motor, ciência ou contrato com o proxy.
 > Revisão 1.69 (21/11/2026): ADR 0056 proposto (sessão só desenho, sem código) — input livre digitado na aba Coach: parser determinístico local (7 intents, só `intent + slots` vai ao proxy, nunca texto cru), validador barra número/prescrição/diagnóstico, LLM nunca decide treino, turno `You` persistido em `chat_turns` v22 futura (TTL 90 d, opt-in, revogar apaga) e `System` segue efêmero; rollout em 7 fatias.
 > Revisão 1.70 (21/11/2026): ADR 0056 fatias 2–5 implementadas — `FreeInputParser` puro (20 testes), `validateFreeAnswer` (16 testes), proxy `free-answer` + contrato no app (`CoachFreeAnswerPrompt`, 18 + 9 testes; redeploy pendente) e repository v22 (`ChatTurn.You`, `recordYouTurn`, `MIGRATION_21_22`, schema `22.json`, export/delete com `YOU`, cadeia 1→22, 10+13+9+19 testes); `check` + `spotlessCheck` verdes. Restam UI (fatia 6) e aparelho (fatia 7).
+> Revisão 1.71 (21/11/2026): ADR 0056 fatia 6 implementada — `Origin.ANSWER`, `FreeAnswerUiState` + `sendFreeText` na VM (determinísticas sem rede, semana/revisão via `free-answer` validado, ajuste via replan existente), `CoachComposer` 48 dp com TalkBack, bolhas/fallback/retry no rodapé, `YOU`/`ANSWER` no histórico (54+60+12+11 testes); `check` + `spotlessCheck` verdes. Restam redeploy do proxy e fatia 7 (aparelho).
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

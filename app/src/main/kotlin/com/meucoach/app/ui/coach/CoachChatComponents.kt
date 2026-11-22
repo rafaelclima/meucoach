@@ -15,13 +15,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +39,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
@@ -466,4 +471,54 @@ internal fun CoachComposerHint(modifier: Modifier = Modifier) {
             .padding(horizontal = 4.dp, vertical = 4.dp)
             .testTag("coach-composer"),
     )
+}
+
+/**
+ * Typed input of the Coach tab (ADR 0056).
+ *
+ * Enabled only with opt-in and a plan context; otherwise the caller keeps
+ * the disabled hint. Send target is 48 dp and both nodes expose TalkBack
+ * descriptions; the message itself is parsed on-device and only `intent +
+ * slots` ever leave it.
+ */
+@Composable
+internal fun CoachComposer(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = McTheme.colors
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { contentDescription = "Digite sua mensagem para o Coach" }
+                .testTag("coach-composer-input"),
+            placeholder = { Text(text = "Digite sua mensagem…") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { onSend() }),
+            shape = MaterialTheme.shapes.medium,
+        )
+        IconButton(
+            onClick = onSend,
+            modifier = Modifier
+                .size(48.dp)
+                .semantics { contentDescription = "Enviar mensagem" }
+                .testTag("coach-composer-send"),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Send,
+                contentDescription = null,
+                tint = colors.accent,
+            )
+        }
+    }
 }
