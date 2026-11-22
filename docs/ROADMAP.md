@@ -752,7 +752,7 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/0058-art-png-route.md).
 
 - [x] F1 — bugfix `localDate` no plano do Studio + regressão (22/11/2026).
-- [ ] F0 — spikes: alpha no Instagram, fontes (`hasGlyph`/`tnum`/700) e preview 540/debounce; spec visual 4:5/1:1.
+- [ ] F0 — spikes: **alpha no Instagram: validado 22/11/2026, alpha preservado**; fontes (`hasGlyph`/`tnum`/700 medidos em Robolectric; no aparelho pendente) e preview 540/debounce (F5); spec visual 4:5/1:1 pendente.
 - [x] F2 — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor` (22/11/2026).
 - [x] F3 — 4 fontes novas + tokens/`McColors` + NOTICE + testes de glifo (22/11/2026).
 - [x] F4 — `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel (22/11/2026; posições finais aguardam a spec visual do F0).

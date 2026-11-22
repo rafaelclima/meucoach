@@ -1,6 +1,32 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (Arte PNG F4: `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel)
+**Atualizado:** 22/11/2026 (F0: spike de alpha no Instagram validado — alpha preservado)
+
+## Sessão 2026-11-22 — F0: spike de alpha no Instagram validado (usuário 0)
+
+**Bloqueio da F5 resolvido.** As 3 amostras transparentes do `StoryArtRenderer`
+(1080 px: 4:5 branco/lima, 4:5 preto/lima e 1:1, rota sintética sem dados
+reais) foram levadas ao S24 Ultra e testadas no Instagram: foto própria +
+figurinha de imagem com cada amostra por cima.
+
+### Resultado
+
+- **Alpha preservado nas 3 amostras** — o fundo transparente sobreviveu ao
+  caminho figurinha-sobre-foto, que é exatamente o caso de uso do produto.
+- Decisão: **fundo transparente por construção fica**; o toggle de fallback
+  "Fundo: transparente/claro/escuro" **não entra no MVP** (PRD §3/14, §11
+  e ADR 0058 atualizados).
+- Regressão de vídeo/pôster e glifos no aparelho: ainda a validar quando a
+  F5 colocar a arte no Studio.
+
+### Próximo
+
+1. **F5** — aba Arte PNG no Studio (agora desbloqueada): chrome/segmento,
+   estado, prévia 540 + debounce (~120 ms, um render em voo), a11y,
+   spike de preview embutido na fatia.
+2. Spec visual 4:5/1:1 com o usuário 0 sobre os goldens atuais antes de
+   regravar posições finais.
+3. Ou **F6** (`GalleryImagePublisher`) em paralelo, independente da UI.
 
 ## Sessão 2026-11-22 — Arte PNG F4: renderer transparente (TDD)
 

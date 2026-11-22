@@ -34,7 +34,7 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 | 11 | Data | Quando escolhida, **“24 out 2026”** (`d MMM uuuu`), com formatador próprio da arte. |
 | 12 | Fonte na UI | Nomes em **Inter** + **preview único da fonte selecionada**; sem 6 famílias na mesma tela. |
 | 13 | Marca | **Logo bitmap do pôster**, tintado com a cor do texto, no topo. |
-| 14 | Alpha | **Spike no Instagram antes de F5**; se o alpha for achatado, entra toggle “Fundo: transparente / claro / escuro”. |
+| 14 | Alpha | **Spike no Instagram antes de F5**; se o alpha for achatado, entra toggle “Fundo: transparente / claro / escuro”. **Validado 22/11/2026:** alpha preservado nas 3 amostras (4:5 e 1:1) sobre foto, via figurinha; sem fallback no MVP. |
 | 15 | Compartilhar | **Reaproveitar o último PNG** enquanto atividade + receita + formato não mudarem; se mudar, gera novo. |
 | 16 | CTA | **Compartilhar** primário (lima); **Salvar PNG** secundário. |
 | 17 | Dois PNGs | Copy/nomes: **“Pôster automático (opaco)”** vs **“Arte transparente (personalizada)”**. |
@@ -214,7 +214,7 @@ Cada fatia = 1 PR pequeno, Conventional Commits. F0/F1 podem ir em paralelo; F3 
 
 | Risco | Mitigação |
 |---|---|
-| Alpha achatado no Instagram | Spike antes de F5; fallback “Fundo: transparente/claro/escuro” só se falhar |
+| Alpha achatado no Instagram | Spike antes de F5; fallback “Fundo: transparente/claro/escuro” só se falhar — **fechado 22/11/2026: alpha preservado** |
 | Memória/tempo da prévia | 540 px, debounce ~120 ms, um render em voo, recycle seguro, budget no F5 |
 | Fontes display sem glifo/tnum/700 | `Paint.hasGlyph`, `FontFamily` com pesos, teste por fonte; cortar fonte problemática se necessário |
 | Layout 1:1 apertado | Spec visual própria; rota quadrada; sem coordenadas fixas do pôster |
@@ -225,7 +225,7 @@ Cada fatia = 1 PR pequeno, Conventional Commits. F0/F1 podem ir em paralelo; F3 
 | Escopo creep (9:16, crop, mapa) | §4 é lei; novas ideias viram pós-MVP |
 
 ### Pendências de validação (F0)
-- [ ] Spike de alpha no Instagram Story/Feed.
+- [x] Spike de alpha no Instagram Story/Feed — **validado 22/11/2026**: 3 amostras do `StoryArtRenderer` (1080 px, fundo transparente) sobre foto via figurinha; alpha preservado nas 3.
 - [ ] Spike de fontes: glifos, 700, tnum, tamanho de APK.
 - [ ] Spec visual 4:5/1:1: posições, tipografia, rota, casca/marcadores.
 - [ ] Decidir fallback de fundo sólido apenas se o alpha falhar.

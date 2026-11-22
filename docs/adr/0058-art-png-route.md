@@ -1,6 +1,6 @@
 # ADR 0058 — Arte PNG da rota: card transparente 4:5/1:1
 
-**Status:** Proposto — decisões de produto fechadas em 22/11/2026; spikes e implementação pendentes
+**Status:** Aceito — decisões de produto fechadas em 22/11/2026; F2–F4 implementadas; **spike de alpha validado no Instagram em 22/11/2026** (alpha preservado); spec visual 4:5/1:1 e F5–F8 pendentes
 **Data:** 2026-11-22
 **Responsável:** usuário 0 (decisões de produto) e implementação
 **Documentos de origem:** [`PRD_ARTE_PNG_ROTA.md`](../PRD_ARTE_PNG_ROTA.md), [`ADR 0059`](0059-min-sdk-31.md), `docs/DESIGN_SYSTEM.md`, `docs/SPORTS_SCIENCE.md`
@@ -139,8 +139,8 @@ interface GalleryImagePublisher {
 
 ### Ruins / riscos
 
-- **Alpha no Instagram:** premissa a validar; se falhar, entra toggle de fundo sólido.
-- **Preview:** bitmap full-res é caro; 540 px/debounce/recycle são obrigatórios.
+- **Alpha no Instagram:** premissa a validar; se falhar, entra toggle de fundo sólido. **Fechado 22/11/2026:** spike no aparelho — 3 amostras 1080 px do `StoryArtRenderer` sobre foto, via figurinha; **alpha preservado nas 3**. Fundo transparente por construção fica; o toggle de fallback não entra no MVP.
+- **Prévia: bitmap full-res é caro; 540 px/debounce/recycle são obrigatórios.** *(Spike de preview/540/debounce segue pendente para a F5.)*
 - **Fontes display:** glifos/tnum/700 precisam de teste; o APK cresce.
 - **1:1:** precisa de spec visual própria; não copiar o pôster.
 - **Contraste:** a arte é conteúdo do usuário; o aviso não garante legibilidade.
