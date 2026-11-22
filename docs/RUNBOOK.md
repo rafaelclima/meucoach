@@ -10,7 +10,7 @@
 | Android SDK Platform | **37** (`android-37.0`) | `core-ktx 1.19.1` exige compileSdk 37 |
 | Build Tools | **37.0.0** | |
 | Android Studio | versão atual | opcional; o build é CLI-first |
-| Dispositivo/emulador | API 26+ | Health Connect completo em Android 14+ |
+| Dispositivo/emulador | API 31+ | Health Connect completo em Android 14+ |
 | Docker | 24+ | apenas Fase 2 (backend) |
 
 ### 1.1 JDK

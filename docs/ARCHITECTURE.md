@@ -322,7 +322,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 - Monorepo Gradle, version catalog, wrapper 9.8.2.
 - JDK 17 (AGP exige mínimo 17; Gradle 9.8 suporta até 27).
-- `compileSdk 37`, `targetSdk 36`, `minSdk 26`.
+- `compileSdk 37`, `targetSdk 36`, `minSdk 31` (Android 12+).
 - Convenções: Spotless (ktlint). Detekt está no roadmap técnico (T-02), não configurado.
 - Kover aplicado a `core:domain` (linhas/branches/instruções) e gate próprio de branches do parser FIT (`verifyParserBranchCoverage`, ≥ 90%).
 - CI: `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` + parser golden tests; lint sem erros.

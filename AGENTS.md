@@ -18,7 +18,7 @@ Leia primeiro:
 ## 2. Stack e comandos
 
 - AGP 9.4.1, Gradle 9.8.2, Kotlin 2.4.21, KSP 2.3.12, JDK 17.
-- compileSdk 37, targetSdk 36, minSdk 26.
+- compileSdk 37, targetSdk 36, minSdk 31 (Android 12+).
 - Compose BOM 2026.09.00, Material 3, Hilt 2.60.1, Room 2.8.5.
 - Sempre use o wrapper: `./gradlew`, nunca um Gradle global.
 - Comandos:

@@ -1,6 +1,36 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 GLM de volta pra frente da fila)
+**Atualizado:** 22/11/2026 (bugfix da data no plano do Studio + PRD v0.2/ADR 0058 + minSdk 31)
+
+## Sessão 2026-11-22 — Story: data no plano do Studio (bugfix)
+
+**Achado da auditoria do PRD de Arte PNG:** o chip `DATE` ficava habilitado
+com `stored.localDate`, mas o plano do Studio era calculado sem `localDate`;
+`StoryRenderSpecResolver.fromPlan(plan, plan.localDate, ...)` recebia `null`
+e a data desaparecia da prévia. O worker já copiava a data (`StoryPlanLoader`),
+então pôster e preview divergiam.
+
+### Concluído
+
+- `ActivityDetailViewModel.calculateStoryPlan` agora aplica
+  `?.copy(localDate = stored.localDate)`, alinhando preview, pôster e worker.
+- Regressão: `story plan carries the activity local date` em
+  `ActivityDetailViewModelTest`; `:app:testDebugUnitTest` e `spotlessCheck`
+  verdes.
+- Sem mudança de golden: a receita padrão não inclui `DATE`.
+- **PRD v0.2** fechado com as 19 decisões de produto e **ADR 0058** criado
+  (card 4:5/1:1, 6 fontes, 8 swatches, 2 extras, persistência, Android 12+,
+  alpha spike e exceção de AA).
+- **ADR 0059:** `minSdk` 31 (Android 12+) no app e módulos Android; story sem
+  branch `<Q` e sem `WRITE_EXTERNAL_STORAGE`; `publishImage`/worker
+  simplificados para MediaStore sempre.
+
+### Próximo
+
+1. Rodar os spikes de F0: alpha no Instagram, fontes
+   (`hasGlyph`/`tnum`/700) e preview 540/debounce.
+2. Fechar a spec visual 4:5/1:1 e iniciar F2 (domínio) só depois do ADR
+   aceito.
 
 ## Sessão 2026-11-22 — Experimento MiMo-first refutado pelo log (TDD)
 

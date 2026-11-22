@@ -208,7 +208,7 @@ Pilares:
 |---|---|
 | Linguagem | Kotlin 2.4.21; JDK 17; Compose |
 | Build | AGP 9.4.1, Gradle 9.8.2, KSP 2.3.12, version catalog |
-| SDK | `compileSdk 37`, `targetSdk 36`, `minSdk 26` |
+| SDK | `compileSdk 37`, `targetSdk 36`, `minSdk 31` (Android 12+) |
 | UI | Jetpack Compose, Material 3, Navigation Compose, design system próprio |
 | Estado | ViewModels + `StateFlow`; sem MVI formal |
 | DI | Hilt 2.60.1; `@HiltViewModel`, `@HiltWorker` |
@@ -1048,8 +1048,8 @@ O app já tem tutorial, checklist, dicas contextuais e métricas locais de prime
 
 ### NFR-011 — Compatibilidade Android
 
-- `minSdk 26`, `targetSdk 36`; Health Connect degrada graciosamente; sem permissões de localização para mapas; APK com ABIs suportadas.
-- **Aceite:** instalação e fluxos principais em API 26, 33, 35 e 36; Health Connect indisponível não quebra o app.
+- `minSdk 31` (Android 12+), `targetSdk 36`; Health Connect degrada graciosamente; sem permissões de localização para mapas; APK com ABIs suportadas.
+- **Aceite:** instalação e fluxos principais em API 31, 33, 35 e 36; Health Connect indisponível não quebra o app.
 - **Justificativa:** base instalada e decisões já tomadas.
 
 ### NFR-012 — Testabilidade e gates

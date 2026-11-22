@@ -28,7 +28,7 @@ Coach de corrida pessoal, **local-first** e baseado em evidências.
 ## Stack verificada (out/2026)
 
 - AGP 9.4.1 · Gradle 9.8.2 · Kotlin 2.4.21 · KSP 2.3.12 · JDK 17 (`mise.toml` fixa a série 17; cada máquina usa o patch instalado)
-- compileSdk 37 · targetSdk 36 · minSdk 26
+- compileSdk 37 · targetSdk 36 · minSdk 31 (Android 12+)
 - Compose BOM 2026.09.00 · Material 3 · Activity 1.13.0 · Lifecycle 2.11.0
 - Room 2.8.5 · Hilt 2.60.1 · DataStore 1.3.0 · WorkManager 2.12.0
 - Health Connect 1.1.0 · Vico 3.3.1
@@ -39,7 +39,7 @@ Versões ficam em `gradle/libs.versions.toml`. Consulte a documentação oficial
 
 ## Quick start
 
-Pré-requisitos: JDK 17+, Android SDK com **platform 37** e **build-tools 37.0.0**, e um dispositivo/emulador API 26+.
+Pré-requisitos: JDK 17+, Android SDK com **platform 37** e **build-tools 37.0.0**, e um dispositivo/emulador API 31+.
 
 ```bash
 git clone https://github.com/rafaelclima/meucoach.git
