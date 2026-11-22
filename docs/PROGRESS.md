@@ -1,6 +1,61 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 fatia 6 — composer + free-answer na UI)
+**Atualizado:** 21/11/2026 (ADR 0056 fatia 7 — validação no aparelho, parcial)
+
+## Sessão 2026-11-21 — ADR 0056 fatia 7: validação no aparelho (usuário 0)
+
+**Objetivo:** validar o input livre no aparelho (build com token + proxy
+redeployado): pergunta sobre a semana, relato, ajuste com diff/confirm/undo,
+fora-escopo com fallback, revogar apaga, offline determinístico.
+
+### Validado no aparelho (~22:08–22:17 BRT, adb, build novo com token)
+
+- **Composer habilitado** (dica + seta lima) e envio via IME funcionam;
+  eco lima da pergunta aparece no rodapé.
+- **Determinísticas, sem rede:** fora-escopo ("dor no joelho") → fallback
+  honesto; pergunta fora do escopo com texto colado caiu no mesmo
+  fallback (parser recusou, sem crash).
+- **LLM ponta a ponta:** pergunta sobre a semana → `free answer ok`
+  (`ASK_WEEK`) com bolhas curtas e só números do plano; pergunta sobre a
+  semana passada → `free answer ok` (`ASK_REVIEW`) citando 113%/28 min/39%
+  do motor, sem culpa. Proxy redeployado confirmado (resposta específica
+  por intent + validador aprovando).
+- **Ajuste:** "só tenho 30 min na quinta" abriu o sheet "TENHO MENOS
+  TEMPO" (roteamento ao `ReplanController` ok). Fechado sem confirmar —
+  **nenhum plano/sessão foi alterado nesta sessão**.
+- **Offline (modo avião):** pergunta → "Sem conexão com o Coach..." +
+  "Tentar de novo", sem crash; avião desligado ao final.
+- **Banco (via `run-as`, WAL incluído, cópia descartada após leitura):**
+  `user_version = 22`; 12 turns — 5 `YOU` (`origin` NULL, `inputsHash`
+  NULL, TTL 90 d), 2 `ANSWER` (`origin` ANSWER, `inputsHash`
+  `coach-free-v1|…`, TTL 90 d), 5 legadas intactas. Nenhum texto
+  digitado saiu do aparelho (só `intent + slots` no payload).
+- **Histórico (sheet):** "Você · data" em lima + "Resposta do Coach ·
+  data" com título/corpo/bullets e lixeira por item, sem duplicação,
+  pergunta antes da resposta. Timeline validada visualmente.
+
+### Pendente de confirmação com o dedo (toques adb não registraram)
+
+- Toques `adb input tap` não registraram em `Explica a semana`,
+  `Tentar de novo` e `Ver conversa completa` (tleda/campo/nav/sheets
+  responderam normal). Lógica idêntica está coberta por testes de UI
+  verdes (`performClick` por semântica), então a hipótese é quirk do
+  harness, não bug — mas fica o pedido ao usuário 0, 2 min:
+  1. tocar "Explica a semana" (deve ecoar + rolar);
+  2. tocar "Tentar de novo" (deve responder sem duplicar a pergunta);
+  3. abrir "Ver conversa completa" e **apagar o turno-lixo
+     "a bpode%fazer?m"** (teste-CCS do input, sobra minha), conferindo
+     que o resto permanece;
+  4. dizer se testa **revogar** (apaga todo o histórico — destrutivo,
+     não fiz sem confirmação).
+- **Observação de voz (não bloqueante):** as respostas vieram sem a
+  pergunta final de fechamento que o prompt pede. Validador não exige;
+  possível polish de prompt (exige redeploy) após a confirmação.
+
+### Próximo
+
+1. Confirmações do usuário 0 acima (dedo) + decisão sobre revogar.
+2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 6: UI do input livre (TDD)
 
