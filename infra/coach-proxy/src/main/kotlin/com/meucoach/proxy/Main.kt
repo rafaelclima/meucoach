@@ -260,13 +260,15 @@ internal val DEFAULT_MODELS = listOf(
 )
 
 /**
- * Modelos padrão do Go, em ordem de tentativa. MiMo-V2.6-Flash primeiro por
- * ser um modelo "flash" sem variante de pensamento (resposta direta,
- * latência baixa); GLM e DeepSeek seguem como failover. A cota é a da
- * assinatura Go — a perna OpenRouter é free-only por política (sem créditos
- * naquela conta) e entra só se o Go falhar.
+ * Modelos padrão do Go, em ordem de tentativa. GLM-5.3-Flash primeiro por
+ * ser o mais estável em produção (22/11/2026: MiMo estourou 3 de 4 vezes e
+ * o GLM serviu todas, inclusive um free-answer em 16,4 s após o MiMo cair);
+ * MiMo-V2.6-Flash em segundo como alternativa rápida sem variante de
+ * pensamento, DeepSeek por último. A cota é a da assinatura Go — a perna
+ * OpenRouter é free-only por política (sem créditos naquela conta) e entra
+ * só se o Go falhar.
  */
-internal val DEFAULT_GO_MODELS = listOf("mimo-v2.6-flash", "glm-5.3-flash", "deepseek-v4.1-flash")
+internal val DEFAULT_GO_MODELS = listOf("glm-5.3-flash", "mimo-v2.6-flash", "deepseek-v4.1-flash")
 
 /**
  * Tenta os alvos em ordem (Go, depois OpenRouter) e dentro de cada alvo os

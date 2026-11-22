@@ -98,9 +98,8 @@ class OpenRouterBodyTest {
     }
 
     @Test
-    fun `default go chain tries mimo flash first`() {
-        assertEquals("mimo-v2.6-flash", DEFAULT_GO_MODELS.first())
-        assertTrue(DEFAULT_GO_MODELS.size >= 2, "chain needs fallbacks when the gateway stalls")
+    fun `default go chain tries the stable model first with mimo as backup`() {
+        assertEquals(listOf("glm-5.3-flash", "mimo-v2.6-flash", "deepseek-v4.1-flash"), DEFAULT_GO_MODELS)
     }
 
     @Test

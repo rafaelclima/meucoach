@@ -1,6 +1,26 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 MiMo servindo em produção, failover validado)
+**Atualizado:** 22/11/2026 (ADR 0057 GLM de volta pra frente da fila)
+
+## Sessão 2026-11-22 — Experimento MiMo-first refutado pelo log (TDD)
+
+**Evidência do usuário 0:** MiMo estourou de novo no `free-answer` e o GLM
+serviu em 16,4 s (15 s de timeout + 1,4 s de resposta). Placar do dia:
+MiMo 1 em 4, GLM 3 em 3. Hipótese "sem pensamento = sem timeout" refutada
+na prática — naquele gateway, naquele dia, o gargalo não era o modelo.
+
+### Concluído
+
+- **Proxy:** `DEFAULT_GO_MODELS = glm,mimo,deepseek` (estável primeiro,
+  rápido como backup); teste da ordem atualizado; OpenRouter segue
+  free-only.
+- **Testes:** proxy 20/20, `spotlessCheck` verde.
+- **Docs:** HANDOFF (default) + esta entrada.
+
+### Próximo
+
+1. Redeploy do proxy e seguir observando o placar no log (`(served)` por
+   modelo); se o MiMo estabilizar, a troca de volta é uma linha.
 
 ## Sessão 2026-11-22 — MiMo responde; failover validado no log real
 
