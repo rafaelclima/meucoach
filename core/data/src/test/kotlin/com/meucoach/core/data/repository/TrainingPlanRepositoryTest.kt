@@ -262,6 +262,39 @@ class TrainingPlanRepositoryTest {
     }
 
     @Test
+    fun `retitles legacy planned sessions without touching history`(): Unit = runBlocking {
+        fun easy(date: LocalDate, title: String, status: SessionStatus) = PlannedSession(
+            date = date,
+            type = WorkoutType.EASY,
+            title = title,
+            durationMin = 30,
+            rationale = "Base.",
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            status = status,
+            closureReason = SessionClosureReason.MISSED.takeIf { status == SessionStatus.CLOSED },
+        )
+        repository.saveWeek(
+            plan().copy(
+                sessions = listOf(
+                    easy(monday, "Fácil e conversável", SessionStatus.CLOSED),
+                    easy(monday.plusDays(1), "Fácil e conversável", SessionStatus.PLANNED),
+                    easy(monday.plusDays(3), "Rodagem", SessionStatus.PLANNED),
+                ),
+            ),
+        )
+
+        assertThat(repository.retitleLegacySessions(monday)).isEqualTo(1)
+
+        val titles = repository.getWeek(monday)!!.sessions.associate { it.date to it.title }
+        assertThat(titles[monday]).isEqualTo("Fácil e conversável")
+        assertThat(titles[monday.plusDays(1)]).isEqualTo("Rodagem")
+        assertThat(titles[monday.plusDays(3)]).isEqualTo("Rodagem")
+
+        assertThat(repository.retitleLegacySessions(monday)).isZero()
+    }
+
+    @Test
     fun `counts only consecutive weeks before the target week`(): Unit = runBlocking {
         repository.saveWeek(plan(monday.minusWeeks(1)))
         repository.saveWeek(plan(monday.minusWeeks(2)))

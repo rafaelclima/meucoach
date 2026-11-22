@@ -17,6 +17,7 @@ import com.meucoach.core.domain.prescription.PlanDecisionReason
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.QualityKind
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.SessionTitleUpgrades
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -168,6 +169,24 @@ class TrainingPlanRepository(private val database: MeuCoachDatabase, private val
                     )
                 }.all { it > 0 }
         }
+
+    /**
+     * One-shot display repair for plans stored before the runner-talk rename
+     * (21/11/2026, usuário 0): rewrites legacy titles on `PLANNED` sessions
+     * only, preserving status, evidence and timestamps via the row copy.
+     * `DONE`/`CLOSED` history keeps the title it trained with. Idempotent —
+     * returns how many rows changed, `0` when there is nothing to repair.
+     */
+    suspend fun retitleLegacySessions(weekStart: LocalDate): Int = database.withTransaction {
+        var retitled = 0
+        dao.getSessions(weekStart.toString())
+            .filter { it.status == SessionStatus.PLANNED && SessionTitleUpgrades.isLegacy(it.title) }
+            .forEach { row ->
+                dao.updateSession(row.copy(title = SessionTitleUpgrades.modernTitle(row.title)))
+                retitled += 1
+            }
+        retitled
+    }
 
     /**
      * Counts consecutive stored weeks immediately before [weekStart].

@@ -1,46 +1,59 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (voz única: títulos do motor em fala de corredor)
+**Atualizado:** 21/11/2026 (voz única na fonte + reparo dos títulos guardados)
 
-## Sessão 2026-11-21 — Voz única em todo o produto (TDD)
+## Sessão 2026-11-21 — Voz única na fonte + reparo do plano guardado (TDD)
 
-**Objetivo:** o mesmo "palavreado" de treinador em todas as telas —
-renomear na fonte do motor em vez de traduzir só no Coach.
+**Objetivo:** o mesmo palavreado em todas as telas — renomear na fonte do
+motor (decisão do usuário 0) e corrigir o que já estava guardado.
 
 ### Concluído
 
 - **Motor:** `Rodagem`, `Rodagem leve`, `Rodagem com estímulos`,
-  `Intervalado` (fundido), `Subidas`, `Acelerações curtas`, `dose
-  pequena`; mantidos `Ritmo forte`, `Fartlek`, `Longão`, `Pace de prova`,
-  `Descanso`, `Recuperação: fácil e curto` e `Corrida mais longa`.
-  `unlockHint`/`detail`/`blurb` sem `taper`/`micro-dose`. Títulos não
-  entram em nenhum hash/fingerprint — nenhum plano é invalidado.
-- **Revertido:** `CoachSpeechLabels` + teste (viravam código morto) e a
-  regra de tradução nos 3 prompts do proxy (agora "manter os nomes").
-- **Testes:** goldens de fixtures + READMEs, ~30 testes legados
-  atualizados, screenshots regravados e verificados (9 PNGs), proxy
-  19/19. TDD com 1 flake honesto no caminho
+  `Intervalado` (fundido), `Subidas`, `Acelerações curtas`,
+  `dose pequena`; mantidos `Ritmo forte`, `Fartlek`, `Longão`,
+  `Pace de prova`, `Descanso`, `Recuperação: fácil e curto` e
+  `Corrida mais longa`. `unlockHint`/`detail`/`blurb` sem
+  `taper`/`micro-dose`. Títulos não entram em hash/fingerprint —
+  nenhum plano é invalidado.
+- **Reparo do guardado (achado no aparelho):** o APK novo não bastava —
+  a sessão de amanhã estava guardada com o título antigo. Novo
+  `SessionTitleUpgrades` puro + `retitleLegacySessions` (só `PLANNED`,
+  `DONE`/histórico intactos, idempotente) com gatilho na abertura do
+  Hoje (o fluxo reemite e a segunda passada não encontra nada — sem
+  loop). `updateSessions` já preservava status/evidência.
+- **Revertido:** `CoachSpeechLabels` + teste (código morto no mesmo
+  dia) e a regra de tradução nos 3 prompts do proxy (agora "manter os
+  nomes").
+- **Testes:** goldens de fixtures + READMEs atualizados, ~35 testes
+  legados atualizados (`SessionTitleUpgradesTest` 2/2, retitle com
+  histórico intacto e idempotente), screenshots regravados e
+  verificados (9 PNGs), proxy 19/19. TDD com 1 flake honesto
   (`MetricsImportViewModelTest` com timeout sob carga; passa isolado,
-  área intocada — sem dado real no diff).
+  área intocada).
 - **Incluído e não planejado:** 2 arquivos com mudança alheia não
   commitada na árvore (`MeuCoachApp` esconde a bottom bar com o teclado
   aberto + `imePadding` e tag no rodapé do Coach) — mantidos no commit
   por resolverem o teclado cobrindo o composer visto na validação.
-- **Docs:** `COMMUNICATION.md` §3.1 (linha do `Fácil (conversável)`),
-  `DECISIONS.md`, `ROADMAP.md` (contagem do proxy) e `TESTING.md`.
+- **Docs:** `COMMUNICATION.md` §3.1 e §6.14, `DECISIONS.md`,
+  `ROADMAP.md` e `TESTING.md`.
 - **Gates:** `./gradlew check spotlessCheck` + `verifyRoborazziDebug`
-  (`BUILD SUCCESSFUL`). No caminho: detekt `ReturnCount` (resolvido
-  antes da reversão) e `MaxLineLength` no prompt.
+  (`BUILD SUCCESSFUL`).
 - Sem migração, sem regra de treino, sem dado real no diff.
   Vocabulário aprovado palavra por palavra pelo usuário 0.
 
 ### Próximo
 
 1. **Redeploy do proxy no Dokploy** (prompts com a regra "manter os
-   nomes") + confirmar a voz nova no aparelho.
+   nomes") + gerar/instalar APK e confirmar no aparelho: "Amanhã tem
+   rodagem" (o reparo atualiza a sessão guardada na abertura do Hoje).
 2. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — Voz do Coach: títulos do motor viram fala de corredor (TDD)
+
+> **Superada na sessão acima (mesmo dia):** a camada de tradução virou
+> código morto — o usuário 0 decidiu pelo vocabulário único na fonte.
+> Mantida aqui como registro; vale o que está na sessão atual.
 
 **Objetivo:** tirar o engessado da aba Coach ("Amanhã tem Fácil e
 conversável · 40 min") sem tocar no motor nem nas outras telas.

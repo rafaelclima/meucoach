@@ -335,7 +335,7 @@ a sessão tem, e a nota de redução só aparece quando a duração realmente ca
 | Onde | Texto | Intenção |
 |---|---|---|
 | Título (intermediário) | `Ritmo forte` | Substitui “Tempo”, que exige conhecer o termo de corrida. |
-| Título (avançado) | `Intervalos` | Mantém o nome conhecido; a descrição explica as repetições. |
+| Título (avançado) | `Intervalado` | Mantém o nome conhecido; a descrição explica as repetições. |
 | 25 min | `Aqueça 10 min em ritmo leve, corra 10 min em esforço moderado a forte e termine com 5 min em ritmo leve.` | Aquecimento + bloco + desaquecimento somam exatamente a duração. |
 | 45 min | `Aqueça 10 min em ritmo leve, corra 30 min em esforço moderado a forte e termine com 5 min em ritmo leve.` | O bloco cresce com o tempo disponível. |
 | Intervalos | `Aqueça 10 min em ritmo leve, faça 4 repetições de 3 min fortes com 2 min leves entre elas e complete o restante em ritmo leve.` | Repetições calculadas pela duração (3–5), sem “trote” nem “VO2max”. |

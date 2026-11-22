@@ -55,6 +55,7 @@ import com.meucoach.core.domain.prescription.SessionCompletionRules
 import com.meucoach.core.domain.prescription.SessionMatcher
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
+import com.meucoach.core.domain.prescription.SessionTitleUpgrades
 import com.meucoach.core.domain.prescription.SwapResult
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
@@ -326,6 +327,7 @@ class TodayViewModel @Inject constructor(
                 null
             }
             val effectivePlan = upgraded ?: plan
+            retitleLegacySessionsIfNeeded(effectivePlan)
             val readiness = readinessResult(context.checkIn, context.metrics, context.today)
             // Competition wins and prevents any prescription calculation/persist
             // for the race day; the resolver owns the single branch.
@@ -393,6 +395,24 @@ class TodayViewModel @Inject constructor(
                 completionMessage = null,
             ).copy(qualityRestored = qualityRestored)
         }
+
+    /**
+     * One-shot display repair for the runner-talk rename (21/11/2026):
+     * stored future sessions keep the title they were generated with, so the
+     * first opening rewrites legacy `PLANNED` titles in place. `DONE`/history
+     * is never touched and the resolved flow re-emits on the write — the
+     * second pass finds nothing to repair, so this terminates.
+     */
+    private fun retitleLegacySessionsIfNeeded(plan: WeeklyPlan?) {
+        val weekStart = plan?.weekStart ?: return
+        val stale = plan.sessions.any {
+            it.status == SessionStatus.PLANNED && SessionTitleUpgrades.isLegacy(it.title)
+        }
+        if (!stale) return
+        viewModelScope.launch {
+            runCatching { planRepository.retitleLegacySessions(weekStart) }
+        }
+    }
 
     val uiState: StateFlow<TodayUiState> = combine(dayState, completionMessage) { state, message ->
         state.copy(completionMessage = message)
