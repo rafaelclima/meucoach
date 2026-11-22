@@ -31,8 +31,9 @@ object CoachOpeningLabels {
             is CoachNextSubject.Training -> when {
                 !context.isToday -> {
                     val day = CoachNextLabels.dayLabel(context.today, subject.date, false)
-                    val duration = subject.session.durationMin?.let { " · $it min" }.orEmpty()
-                    "$hello $day tem ${subject.session.title}$duration. Dorme bem hoje que conta."
+                    val duration = subject.session.durationMin?.let { ", $it min" }.orEmpty()
+                    val workout = CoachSpeechLabels.speechInline(subject.session.title)
+                    "$hello $day tem $workout$duration. Dorme bem hoje que conta."
                 }
 
                 context.prescription == null && !context.hasCheckIn ->

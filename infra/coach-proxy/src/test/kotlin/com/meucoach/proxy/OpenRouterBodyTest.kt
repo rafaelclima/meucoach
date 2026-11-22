@@ -205,6 +205,19 @@ class OpenRouterBodyTest {
     }
 
     @Test
+    fun `system prompts translate workout names to runner talk`() {
+        for (kind in listOf("explain", "review", "free-answer")) {
+            val body = buildOpenRouterBody("some-model:free", kind, "{}")
+            val system = Json.parseToJsonElement(body)
+                .jsonObject["messages"]!!.jsonArray[0]
+                .jsonObject["content"]!!.jsonPrimitive.content
+
+            assertTrue(system.contains("rodagem"), "$kind must translate easy runs to rodagem")
+            assertTrue(system.contains("micro-dose"), "$kind must forbid micro-dose")
+        }
+    }
+
+    @Test
     fun `session id derives from the prompt hash`() {
         val id = sessionIdFor("explain", """{"inputsHash":"abc123","foo":1}""")
 

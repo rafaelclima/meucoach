@@ -39,7 +39,7 @@ object CoachNextLabels {
                 // Without a persisted decision the plan intent is labelled as
                 // such, never presented as if the engine had confirmed it.
                 val prefix = if (prescription == null) "Planejado: " else ""
-                val title = prescription?.title ?: subject.session.title
+                val title = CoachSpeechLabels.speechTitle(prescription?.title ?: subject.session.title)
                 // A prescription with no duration (rest) must never inherit the
                 // planned duration: the prescribed day is the truth.
                 val duration = (
@@ -59,7 +59,7 @@ object CoachNextLabels {
         val training = context.training ?: return null
         val prescription = context.prescription ?: return null
         if (!prescription.differsFromPlan) return null
-        val title = prescription.plannedTitle ?: training.session.title
+        val title = CoachSpeechLabels.speechTitle(prescription.plannedTitle ?: training.session.title)
         val duration = prescription.plannedDurationMin?.let { " · $it min" }.orEmpty()
         return "Planejado: $title$duration."
     }
@@ -122,11 +122,11 @@ object CoachNextLabels {
         QualityBlockReason.SHORT_SLEEP -> "Sono curto: sem treino forte hoje."
         QualityBlockReason.LOW_READINESS -> "Recuperação parcial: dia leve."
         QualityBlockReason.RECOVERY_WINDOW -> "Em recuperação pós-prova."
-        QualityBlockReason.TAPER_WINDOW -> "Semana de taper: volume reduzido."
-        QualityBlockReason.RACE_WEEK -> "Semana de prova: micro-dose mantida."
+        QualityBlockReason.TAPER_WINDOW -> "Semana de prova chegando: volume menor de propósito."
+        QualityBlockReason.RACE_WEEK -> "Semana de prova: dose pequena, só pra manter."
         QualityBlockReason.LOAD_STALE -> "Dados de carga desatualizados."
         QualityBlockReason.LOAD_INSUFFICIENT -> "Base de carga em calibração."
-        QualityBlockReason.MONOTONY_HIGH -> "Semana monótona: varie os estímulos."
+        QualityBlockReason.MONOTONY_HIGH -> "Semana repetitiva: varie os estímulos."
         QualityBlockReason.ACWR_HIGH -> "Carga alta: dia leve."
         QualityBlockReason.STRAIN_SPIKE -> "Pico de esforço: dia leve."
     }

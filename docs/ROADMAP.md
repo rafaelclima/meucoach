@@ -386,6 +386,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] ADR 0056 fatia 5 (21/11/2026): repository v22 (`ChatTurn.You`, `recordYouTurn`, `origin` nullable, `MIGRATION_21_22`, schema `22.json`, export/delete com `YOU`, cadeia 1→22, 10+13+9+19 testes verdes, `check` + `spotlessCheck` verdes).
 - [x] ADR 0056 fatia 6 (21/11/2026): UI do input livre (`Origin.ANSWER`, `FreeAnswerUiState` + `sendFreeText` na VM, composer 48 dp com TalkBack, bolhas/fallback/retry no rodapé, `YOU`/`ANSWER` no histórico, 54+60+12+11 testes verdes, `check` + `spotlessCheck` verdes).
 - [x] ADR 0056 fatia 7 (21/11/2026): **encerrado no aparelho** — composer/eco, determinísticas, `free-answer ok` (`ASK_WEEK`/`ASK_REVIEW`), ajuste abrindo menos-tempo (sem confirmar), offline com fallback, DB v22 íntegro (`YOU`/`ANSWER` com TTL 90 d), histórico com pergunta+resposta, dedo confirmou chips/retry (sem duplicados) e apagou o turno-lixo; revogar dispensado pelo usuário 0.
+- [x] Voz do Coach (21/11/2026): `CoachSpeechLabels` traduz títulos do motor só na aba Coach (rodagem, intervalado, subidas, acelerações curtas; sem taper/micro-dose; resto mantido), abertura/headline/travas atualizadas, prompts do proxy com a mesma regra (6+19 testes verdes, `check` + `spotlessCheck` verdes); exige redeploy no Dokploy.
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 

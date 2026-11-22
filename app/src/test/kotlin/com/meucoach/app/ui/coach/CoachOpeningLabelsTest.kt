@@ -52,7 +52,7 @@ class CoachOpeningLabelsTest {
     fun `vespera de treino mostra o planejado`() {
         val text = CoachOpeningLabels.opening(trainingContext(date = monday.plusDays(1)), 20)
 
-        assertThat(text).contains("Amanhã tem Fácil · 30 min")
+        assertThat(text).contains("Amanhã tem rodagem, 30 min")
     }
 
     @Test

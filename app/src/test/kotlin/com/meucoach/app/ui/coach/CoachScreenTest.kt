@@ -429,7 +429,7 @@ class CoachScreenTest {
 
         compose.onNodeWithTag("coach-next-card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-date-divider").assertIsDisplayed()
-        compose.onNodeWithText("Amanhã · Planejado: Fácil · 30 min").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Amanhã · Planejado: Rodagem · 30 min").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -456,7 +456,7 @@ class CoachScreenTest {
             ),
         )
 
-        compose.onNodeWithText("Hoje · Fácil · 25 min").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Hoje · Rodagem · 25 min").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Planejado: Ritmo forte · 35 min.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-next-planned").assertExists()
     }
@@ -1131,7 +1131,7 @@ class CoachScreenTest {
         setContent(next = CoachNextUiState.Ready(trainingContext(monday.plusDays(1))))
 
         compose.onAllNodesWithTag("coach-chat-opening").onFirst().performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Amanhã tem Fácil · 30 min", substring = true)
+        compose.onNodeWithText("Amanhã tem rodagem, 30 min", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
     }

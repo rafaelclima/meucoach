@@ -98,7 +98,7 @@ class CoachNextLabelsTest {
             ),
         )
 
-        assertThat(CoachNextLabels.headline(context)).isEqualTo("Hoje · Fácil · 25 min")
+        assertThat(CoachNextLabels.headline(context)).isEqualTo("Hoje · Rodagem · 25 min")
         assertThat(CoachNextLabels.plannedLine(context)).isEqualTo("Planejado: Ritmo forte · 35 min.")
         assertThat(CoachNextLabels.statusLine(context)).contains("Ajustado para fácil")
         assertThat(CoachNextLabels.actionLine(context))

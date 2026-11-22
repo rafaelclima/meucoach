@@ -1,6 +1,40 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 fatia 7 — validação no aparelho, parcial)
+**Atualizado:** 21/11/2026 (voz do Coach: `rodagem`, sem taper/micro-dose)
+
+## Sessão 2026-11-21 — Voz do Coach: títulos do motor viram fala de corredor (TDD)
+
+**Objetivo:** tirar o engessado da aba Coach ("Amanhã tem Fácil e
+conversável · 40 min") sem tocar no motor nem nas outras telas.
+
+### Concluído
+
+- **App:** `CoachSpeechLabels` (só a aba Coach traduz; Hoje/Tendências/
+  replan mantêm os nomes oficiais): Fácil* → Rodagem ("Fácil com
+  surtos" → "Rodagem com estímulos"), Intervalos → Intervalado,
+  Colinas → Subidas, Strides → Acelerações curtas; Ritmo forte,
+  Fartlek, Longão, Pace de prova, Descanso e Recuperação passam
+  direto; desconhecido nunca é inventado. Abertura usa a fala em
+  minúscula ("Amanhã tem rodagem, 40 min"), headline e linha de
+  plano usam título ("Amanhã · Planejado: Rodagem · 30 min").
+  Travas sem jargão: taper → "Semana de prova chegando: volume menor
+  de propósito", micro-dose → "dose pequena, só pra manter", monótona
+  → "repetitiva".
+- **Proxy:** SYSTEM_EXPLAIN/REVIEW/FREE_ANSWER com a mesma regra de
+  tradução (exige redeploy no Dokploy).
+- **Testes:** `CoachSpeechLabelsTest` 6/6; 5 testes legados atualizados
+  à nova voz (`Hoje · Rodagem`, abertura "tem rodagem,"); proxy 19/19.
+- **Gates:** `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`).
+  No caminho: detekt `ReturnCount` no `translate` (lista ordenada de
+  regras, padrão do validador).
+- Sem motor, schema ou dado real no diff. Cópias aprovadas pelo
+  usuário 0 (rodagem; taper/micro-dose/strides banidos).
+
+### Próximo
+
+1. **Redeploy do proxy no Dokploy** (prompts com a regra de tradução).
+2. Confirmar a nova voz no aparelho após o redeploy.
+3. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 7: validação no aparelho (usuário 0)
 

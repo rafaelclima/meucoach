@@ -222,6 +222,7 @@ Evidência atual (19/11/2026, Bloco B do Coach):
 - `ReplanViewModelTest`: sugestão automática, supressão do dia, recusa por proposta, aceite, stale, undo (restaura o futuro e limpa a oferta) e ausência de semana.
 - `ReplanSuggestionStoreTest`: recusa por semana/versão/hash, supressão por dia, clear e reset.
 - `CoachViewModelTest`/`CoachScreenTest` (3.3-A): ação rápida avalia T3, aceite/undo na aba Coach, ausência de semana, sheet de diff com selo de versão e “Desfazer” após aplicar.
+- `CoachSpeechLabelsTest` (voz do Coach): Fácil* → Rodagem, Intervalos → Intervalado, Colinas → Subidas, Strides → Acelerações curtas; oficiais mantidos; desconhecido passa direto e branco vira "Treino".
 - `CoachViewModelTest` (ADR 0056): mensagem digitada roteia por intent (determinísticas sem rede; semana/revisão via `free-answer` validado e gravado como `ANSWER`; ajuste via replan existente), fora-escopo cai em fallback honesto, sem consentimento ignora e retry não duplica a pergunta.
 - `CoachScreenTest` (ADR 0056): composer habilitado com opt-in (envia como eco + callback, descrições de TalkBack), dica sem opt-in, bolhas da resposta livre e fallback com tentar de novo.
 - `CoachHistoryTest` (ADR 0056): turno `YOU` aparece na timeline com apagar individual passando o próprio turn.

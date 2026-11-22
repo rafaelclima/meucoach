@@ -139,6 +139,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 - **Tema:** dark-first, light completo; sem dynamic color.
 - **Fonte:** Geist (display) + Inter (texto), OFL.
 - **Acentuação:** lima como única cor de ação; coral para fisiologia.
+- **Voz do Coach (só na aba Coach):** títulos do motor viram fala de corredor (`Rodagem`, `Intervalado`, `Subidas`, `Acelerações curtas`; `Ritmo forte`, `Fartlek`, `Longão`, `Pace de prova`, `Descanso` e `Recuperação` mantidos; `taper`/`micro-dose`/`monótona` banidos); Hoje/Tendências/replan mantêm os nomes oficiais (21/11/2026, usuário 0).
 - **Gráficos:** Vico 3.3.1 para line/bar; Canvas para gauge/zone bar/heatmap; eixos em pt-BR.
 - **Permissões:** notificação só no contexto (Perfil → Ajuda/checklist), nunca no launch; o app segue utilizável se o usuário recusar.
 - **Saúde:** 5ª aba principal (`Hoje · Corridas · Tendências · Saúde · Perfil`); o Hoje só linka “Ver recuperação” e o Perfil mantém link compacto + backup (ADR-0020).
