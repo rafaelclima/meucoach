@@ -29,6 +29,14 @@ internal fun storyTextPaint(color: Int, textSize: Float, typeface: Typeface, bol
         fontFeatureSettings = "tnum"
     }
 
+/** Shrinks the paint so [text] fits [maxWidth]; never grows past [preferred]. */
+internal fun fittedTextSize(paint: Paint, text: String, maxWidth: Float, preferred: Float): Float {
+    paint.textSize = preferred
+    val measured = paint.measureText(text)
+    if (measured <= maxWidth || measured <= 0f) return preferred
+    return (preferred * maxWidth / measured).coerceAtLeast(8f)
+}
+
 /**
  * Draws one 9:16 frame with a route, progress marker and the current km card.
  * Kept independent of MediaCodec so the same drawing can feed a preview later.
