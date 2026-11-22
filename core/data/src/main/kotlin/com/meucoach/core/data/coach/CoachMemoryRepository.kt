@@ -7,6 +7,7 @@ import com.meucoach.core.data.id.UuidV7
 import com.meucoach.core.domain.coach.ChatTurn
 import com.meucoach.core.domain.coach.CoachMemoryPolicy
 import com.meucoach.core.domain.coach.CoachMessageKind
+import com.meucoach.core.domain.coach.FreeInputParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
@@ -85,6 +86,39 @@ class CoachMemoryRepository(
         }
     }
 
+    /**
+     * Stores the athlete's typed turn next to the answers (Room v22, ADR 0056).
+     *
+     * The UI passes the parser-sanitized text; the repository trims and caps
+     * it again defensively and stores nothing when it is blank. `YOU` rows
+     * carry no origin or motor hash, live 90 days and are wiped by the same
+     * `clearAll`/revocation path as Coach turns. They never enter a prompt.
+     */
+    suspend fun recordYouTurn(body: String): Boolean = database.withTransaction {
+        val clean = body.trim().take(FreeInputParser.MAX_CHARS)
+        if (clean.isEmpty()) {
+            false
+        } else {
+            val now = clock.millis()
+            database.chatTurnDao().deleteOlderThan(now)
+            database.chatTurnDao().insert(
+                ChatTurnEntity(
+                    id = "you-${idGenerator()}",
+                    role = TURN_ROLE_YOU,
+                    title = "",
+                    body = clean,
+                    bulletsJson = "[]",
+                    origin = null,
+                    weekStart = null,
+                    createdAt = now,
+                    expiresAt = CoachMemoryPolicy.youExpiresAt(Instant.ofEpochMilli(now)).toEpochMilli(),
+                    inputsHash = null,
+                ),
+            )
+            true
+        }
+    }
+
     /** Revoking the opt-in erases the whole Coach memory; training data is untouched. */
     suspend fun clearAll() {
         database.withTransaction {
@@ -108,10 +142,25 @@ class CoachMemoryRepository(
         .observeAll()
         .map { rows -> rows.mapNotNull { it.toTurn() } }
 
-    private fun ChatTurnEntity.toTurn(): ChatTurn.Coach? {
-        if (role != TURN_ROLE_COACH) return null
+    private fun ChatTurnEntity.toTurn(): ChatTurn? = when (role) {
+        TURN_ROLE_YOU -> youTurn()
+        TURN_ROLE_COACH -> coachTurn()
+        else -> null
+    }
+
+    /**
+     * `YOU` rows need no origin; a `YOU` role with a Coach origin is a corrupt
+     * write and stays hidden like any other unknown row.
+     */
+    private fun ChatTurnEntity.youTurn(): ChatTurn.You? {
+        if (origin != null || body.isBlank()) return null
+        return ChatTurn.You(id = id, body = body, createdAt = Instant.ofEpochMilli(createdAt))
+    }
+
+    private fun ChatTurnEntity.coachTurn(): ChatTurn.Coach? {
         if (title.isBlank() || body.isBlank() || body.isLegacyJsonObject()) return null
-        val turnOrigin = ChatTurn.Origin.entries.firstOrNull { it.name == origin } ?: return null
+        val turnOrigin = origin?.let { ChatTurn.Origin.entries.firstOrNull { entry -> entry.name == it } }
+            ?: return null
         return ChatTurn.Coach(
             id = id,
             title = title,
@@ -152,6 +201,7 @@ class CoachMemoryRepository(
 
     private companion object {
         const val TURN_ROLE_COACH = "COACH"
+        const val TURN_ROLE_YOU = "YOU"
     }
 
     /**

@@ -164,8 +164,10 @@ falado, que **não** vira memória (paridade ADR 0052 §2.2).
    intent+slots (redeploy Dokploy manual). Sem log de payload.~~
    (Implementado em 21/11/2026: `SYSTEM_FREE_ANSWER` + `CoachKind.FREE_ANSWER` +
    `CoachFreeAnswerPrompt`/`HttpCoachApi`; redeploy pendente.)
-5. Repository: v22 aditiva (`role YOU`, `origin` nullable, índice mantido)
-   + `MigrationTest` dourado 21→22 + export/delete com turns `YOU`.
+5. ~~Repository: v22 aditiva (`role YOU`, `origin` nullable, índice mantido)
+   + `MigrationTest` dourado 21→22 + export/delete com turns `YOU`.~~
+   (Implementado em 21/11/2026: `recordYouTurn`, `MIGRATION_21_22` por
+   rebuild, schema `22.json`, cadeia 1→22, `check` + `spotlessCheck` verdes.)
 6. UI: composer habilitado, bolha `YOU` lima, quick-replies mantidos, typing,
    fallback falado, TalkBack/200%/dark-light, apagar por item.
 7. Aparelho (usuário 0): pergunta sobre a semana, relato, ajuste com

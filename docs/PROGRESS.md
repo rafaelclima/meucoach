@@ -1,6 +1,47 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 21/11/2026 (ADR 0056 fatia 4 — proxy `free-answer`, contrato no app)
+**Atualizado:** 21/11/2026 (ADR 0056 fatia 5 — `chat_turns` v22 com `YOU`, cadeia 1→22)
+
+## Sessão 2026-11-21 — ADR 0056 fatia 5: repository v22 (TDD)
+
+**Objetivo:** implementar o passo 5 do rollout do ADR 0056 (turno `YOU`
+persistido, migração 21→22, export/delete), sem chamar a IA nova e sem
+tocar em UI.
+
+### Concluído
+
+- **Domínio:** `ChatTurn.You(id, body, createdAt)` (pergunta intocável
+  pelo `visibleTurns`, que continua escondendo só `Coach`); `YOU_TTL_DAYS
+  = 90` + `youExpiresAt` no `CoachMemoryPolicy`.
+- **DB v22:** `ChatTurnEntity.origin` nullable; `MIGRATION_21_22`
+  reconstrói `chat_turns` (mesmas colunas e ordem, linhas copiadas
+  verbatim, 4 índices recriados) — Coach intacto, `YOU` com `origin`
+  nulo fora do dedupe; `VERSION = 22`, schema `22.json` exportado.
+- **Repository:** `recordYouTurn` (trim + teto 500 via parser, em
+  branco não grava, poda por `expiresAt` em toda escrita, id `you-{uuid}`,
+  TTL 90 d); `toTurn` por `role` (`YOU` sem `origin` mapea, `YOU` com
+  `origin` Coach continua oculto como corrupto); `deleteTurn`/`clearAll`/
+  poda já agnósticos a `role`.
+- **Export/delete:** turno `YOU` entra no export (`origin` nulo via
+  `putNullable`) e no `deleteAllData`; UI atual não muda (histórico
+  filtra só `Coach`, bolha `YOU` é fatia 6).
+- **Testes:** `ChatTurnTest` 10/10, repository 13/13, export/delete 9/9,
+  migração 19/19 (cadeia 1→22 atualizada + dourado 21→22: linhas
+  preservadas, `YOU` com `NULL`, índice único intacto). TDD: vermelho
+  (referências inexistentes) → verde; no caminho, a cadeia "→21" quebrou
+  (hash de identidade v22) e foi promovida a "→22", e 1 teste dourado
+  precisou do `MIGRATION_21_22` que o padrão de linha única tinha pulado.
+- **Docs:** `ARCHITECTURE` (v22), `DATA_MODEL` (§3.12 + §7) e passo 5 do
+  ADR 0056 marcado.
+- **Gates:** `./gradlew check spotlessCheck` (`BUILD SUCCESSFUL`, inclui
+  `detekt`, `lint`, `koverVerify` e `spotlessCheck`).
+- Sem UI/proxy/motor/ciência tocados; sem dado real no diff.
+
+### Pendente
+
+1. **Redeploy do proxy no Dokploy** (fatia 4, ainda pendente).
+2. ADR 0056 fatias 6–7 (UI → aparelho), uma fatia pequena por sessão.
+3. Demais itens do handoff §4 (unificar replan × quick replies, P1-12).
 
 ## Sessão 2026-11-21 — ADR 0056 fatia 4: proxy `free-answer` + contrato (TDD)
 

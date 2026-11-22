@@ -383,6 +383,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] ADR 0056 fatia 2 (21/11/2026): `FreeInputParser` puro em `core:domain` (7 intents, slots dia/minutos, escopo antes de slot, `ASK_CLARIFY` em ambíguo/sem-número, 20 testes verdes, `check` + `spotlessCheck` verdes).
 - [x] ADR 0056 fatia 3 (21/11/2026): `validateFreeAnswer` no `CoachResponseValidator` (distância fora do plano, prescrição nova, léxico médico/escopo, promessa de memória; legado intacto, 16 testes verdes, `check` + `spotlessCheck` verdes).
 - [x] ADR 0056 fatia 4 (21/11/2026): proxy `free-answer` (`SYSTEM_FREE_ANSWER`, contrato `intent + slots`, sem texto digitado, 18 testes verdes) + contrato no app (`CoachKind.FREE_ANSWER`, `CoachFreeAnswerPrompt`, `HttpCoachApi`, 9 testes verdes); exige redeploy no Dokploy.
+- [x] ADR 0056 fatia 5 (21/11/2026): repository v22 (`ChatTurn.You`, `recordYouTurn`, `origin` nullable, `MIGRATION_21_22`, schema `22.json`, export/delete com `YOU`, cadeia 1→22, 10+13+9+19 testes verdes, `check` + `spotlessCheck` verdes).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 

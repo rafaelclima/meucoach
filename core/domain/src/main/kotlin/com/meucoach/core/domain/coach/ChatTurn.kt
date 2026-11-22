@@ -6,10 +6,10 @@ import java.time.LocalDate
 /**
  * One persisted turn of the Coach conversation (ADR 0054, Room v20; single table since v21/ADR 0055).
  *
- * The memory table (`chat_turns`) only ever holds validated Coach prose, so
- * the timeline starts with Coach turns. `You` (free input) and `System`
- * (adjustment events) stay ephemeral until their own slices arrive; the feed
- * already renders those from live state.
+ * The table holds validated Coach prose plus the athlete's own typed turns
+ * (`You`, Room v22/ADR 0056): the question next to the answer keeps the file
+ * a conversation instead of an archive. `System` (adjustment events) stays
+ * ephemeral — those events already have canonical sources.
  */
 sealed interface ChatTurn {
     val id: String
@@ -31,6 +31,15 @@ sealed interface ChatTurn {
          */
         val inputsHash: String? = null,
     ) : ChatTurn
+
+    /**
+     * A typed question or report from the athlete (ADR 0056).
+     *
+     * The persisted body is the parser-sanitized text (trimmed, capped),
+     * never the raw keystrokes, and it never travels to the proxy: only
+     * `intent + slots` leave the device. Visibility rules never hide it.
+     */
+    data class You(override val id: String, val body: String, override val createdAt: Instant) : ChatTurn
 
     enum class Origin { EXPLAIN, REVIEW, SUMMARY }
 }

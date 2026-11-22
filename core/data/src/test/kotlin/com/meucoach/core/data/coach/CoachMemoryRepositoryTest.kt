@@ -194,6 +194,51 @@ class CoachMemoryRepositoryTest {
         assertThat(memory.deleteTurn("message-message-1")).isFalse()
     }
 
+    @Test
+    fun `records you turns with the you TTL and maps them back`(): Unit = runBlocking {
+        assertThat(memory.recordYouTurn("  só tenho 30 min quinta  ")).isTrue()
+
+        val rows = database.chatTurnDao().getAll()
+        assertThat(rows).hasSize(1)
+        val row = rows.single()
+        assertThat(row.id).startsWith("you-")
+        assertThat(row.role).isEqualTo("YOU")
+        assertThat(row.origin).isNull()
+        assertThat(row.inputsHash).isNull()
+        assertThat(row.body).isEqualTo("só tenho 30 min quinta")
+        assertThat(row.createdAt).isEqualTo(now.toEpochMilli())
+        assertThat(row.expiresAt).isEqualTo(now.plus(Duration.ofDays(90)).toEpochMilli())
+
+        val turns = memory.observeTurns().first()
+        val you = turns.single() as ChatTurn.You
+        assertThat(you.body).isEqualTo("só tenho 30 min quinta")
+        assertThat(you.createdAt).isEqualTo(now)
+    }
+
+    @Test
+    fun `blank you text stores nothing`(): Unit = runBlocking {
+        assertThat(memory.recordYouTurn("   ")).isFalse()
+
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
+    }
+
+    @Test
+    fun `caps you text at 500 chars`(): Unit = runBlocking {
+        assertThat(memory.recordYouTurn("x".repeat(600))).isTrue()
+
+        assertThat(database.chatTurnDao().getAll().single().body).hasSize(500)
+    }
+
+    @Test
+    fun `deletes a you turn by id`(): Unit = runBlocking {
+        memory.recordYouTurn("perdi o treino")
+        val id = database.chatTurnDao().getAll().single().id
+
+        assertThat(memory.deleteTurn(id)).isTrue()
+
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
+    }
+
     private fun turn(
         id: String,
         origin: String,

@@ -18,6 +18,13 @@ object CoachMemoryPolicy {
     const val MESSAGE_TTL_DAYS: Long = 90
     const val SUMMARY_TTL_DAYS: Long = 180
 
+    /**
+     * Retention of the athlete's own typed turns (Room v22, ADR 0056).
+     * Same 90 d as explanations: it covers the training cycle without
+     * turning health-adjacent free text into a dead archive.
+     */
+    const val YOU_TTL_DAYS: Long = 90
+
     private val messageTtl: Duration = Duration.ofDays(MESSAGE_TTL_DAYS)
     private val summaryTtl: Duration = Duration.ofDays(SUMMARY_TTL_DAYS)
 
@@ -30,6 +37,9 @@ object CoachMemoryPolicy {
 
     /** A row exactly at the cutoff is still valid; only older rows expire. */
     fun isSummaryExpired(createdAt: Instant, now: Instant): Boolean = createdAt.isBefore(summaryCutoff(now))
+
+    /** Typed turns expire like explanations: absence shortens the file, never the reading. */
+    fun youExpiresAt(createdAt: Instant): Instant = createdAt.plus(Duration.ofDays(YOU_TTL_DAYS))
 
     /**
      * When a turn leaves the device (Room v20, ADR 0054): explanation/review

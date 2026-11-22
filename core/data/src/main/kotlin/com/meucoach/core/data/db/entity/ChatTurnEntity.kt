@@ -9,13 +9,16 @@ import androidx.room.PrimaryKey
  *
  * Unifies `coach_messages` and `coach_summaries`: both only ever hold text
  * that already passed `CoachResponseValidator`, so a turn is copy context,
- * never a source of numbers, pace, heart rate or load. `role` is `COACH` in
- * v20; `YOU`/`SYSTEM` are reserved for their own slices.
+ * never a source of numbers, pace, heart rate or load. `role` is `COACH` for
+ * motor turns and `YOU` for the athlete's typed turns (Room v22, ADR 0056);
+ * `SYSTEM` stays ephemeral. `origin` is `NULL` on `YOU` rows, which never
+ * take part in the dedupe indexes.
  *
  * `expiresAt` carries the TTL by origin (90 d for EXPLAIN/REVIEW, 180 d for
- * SUMMARY, per `CoachMemoryPolicy`) computed at write time, so pruning is a
- * single `expiresAt < now` pass. IDs are derived and stable (`message-{id}`,
- * `summary-{weekStart}`) to keep the backfill idempotent.
+ * SUMMARY, 90 d for `YOU`, per `CoachMemoryPolicy`) computed at write time,
+ * so pruning is a single `expiresAt < now` pass. IDs are derived and stable
+ * (`message-{id}`, `summary-{weekStart}`, `you-{uuid}`) to keep the backfill
+ * idempotent.
  */
 @Entity(
     tableName = "chat_turns",
@@ -33,7 +36,8 @@ data class ChatTurnEntity(
     val body: String,
     /** JSON array of the validated bullets. */
     val bulletsJson: String,
-    val origin: String,
+    /** `NULL` on `YOU` rows, which never take part in the dedupe indexes. */
+    val origin: String?,
     /** Only set for `SUMMARY` turns. */
     val weekStart: String?,
     val createdAt: Long,

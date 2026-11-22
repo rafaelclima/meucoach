@@ -336,21 +336,24 @@ suficiente, pode não existir nunca.
 
 O job nasce em `PARSING` (uma única escrita) e só o pipeline o move para um estado terminal; `ImportJobGuard` fecha como `FAILED` qualquer erro inesperado depois da criação e a leitura da lista fecha `QUEUED`/`PARSING` com mais de 1 h (processo morto). `QUEUED` permanece no enum para linhas antigas.
 
-### 3.12 Memória do Coach (v21, ADR 0055)
+### 3.12 Memória do Coach (v22, ADR 0056)
 
 Tabela única, sem FK com treino e sem relação com o motor:
 
-`chat_turns`: `id` (`message-{id}`/`summary-{semana}`, PK), `role` (`COACH`),
-`title`, `body`, `bulletsJson`, `origin` (`EXPLAIN`/`REVIEW`/`SUMMARY`),
+`chat_turns`: `id` (`message-{id}`/`summary-{semana}`/`you-{uuid}`, PK),
+`role` (`COACH`/`YOU`), `title`, `body`, `bulletsJson`, `origin`
+(`EXPLAIN`/`REVIEW`/`SUMMARY`; `NULL` em `YOU`, que não participa do dedupe),
 `weekStart` (só em `SUMMARY`), `createdAt`, `expiresAt` (TTL por origem calculado
 na escrita), `inputsHash` (contexto do motor; `NULL` só em linha legada sem par
-na v19). Índice `createdAt`, índice `expiresAt` e índices únicos
+na v19 e sempre em `YOU`). Índice `createdAt`, índice `expiresAt` e índices únicos
 `(origin, weekStart)` — um resumo por semana — e `(origin, inputsHash)` — o
-mesmo contexto não duplica a conversa.
+mesmo contexto não duplica a conversa (`NULL` nunca conflita).
 
-Regras: só texto aprovado pelo `CoachResponseValidator` é gravado; revogar o
-opt-in apaga a tabela; export/delete a incluem; expiração preguiçosa por
-`expiresAt` (90 dias explicação/revisão, 180 resumos) em toda escrita. A memória
+Regras: só texto aprovado pelo `CoachResponseValidator` é gravado (`YOU` leva o
+texto sanitizado do parser, sem cruzar o proxy); revogar o
+opt-in apaga a tabela; export/delete a incluem (turno `YOU` leva `origin`
+nulo); expiração preguiçosa por `expiresAt` (90 dias explicação/revisão e
+`YOU`, 180 resumos) em toda escrita. A memória
 é contexto de copy, **nunca** fonte de carga, pace, FC, volume ou plano. O proxy
 continua stateless. Não há import de backup no produto (só export): exports
 antigos com `coachMessages`/`coachSummaries` seguem legíveis fora do app, mas o
@@ -388,7 +391,7 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v21**; migrações 1→2 até 20→21 testadas em Robolectric.
+- Estado atual: banco **v22**; migrações 1→2 até 21→22 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.

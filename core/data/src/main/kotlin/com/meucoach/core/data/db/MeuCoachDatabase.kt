@@ -87,7 +87,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun chatTurnDao(): ChatTurnDao
 
     companion object {
-        const val VERSION = 21
+        const val VERSION = 22
         const val NAME = "meucoach.db"
 
         /**
@@ -738,6 +738,63 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 22 persists the athlete's typed turns (ADR 0056 fatia 5).
+         *
+         * `origin` becomes nullable for `YOU` rows, which SQLite cannot do in
+         * place, so the table is rebuilt: same columns in the same order,
+         * rows copied verbatim, then the four indexes recreated. Coach rows
+         * are untouched and the unique `(origin, …)` indexes keep working
+         * (`NULL` never conflicts in SQLite).
+         */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE `chat_turns_new` (
+                        `id` TEXT NOT NULL,
+                        `role` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `body` TEXT NOT NULL,
+                        `bulletsJson` TEXT NOT NULL,
+                        `origin` TEXT,
+                        `weekStart` TEXT,
+                        `createdAt` INTEGER NOT NULL,
+                        `expiresAt` INTEGER NOT NULL,
+                        `inputsHash` TEXT,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "INSERT INTO `chat_turns_new` " +
+                        "(`id`, `role`, `title`, `body`, `bulletsJson`, `origin`, " +
+                        "`weekStart`, `createdAt`, `expiresAt`, `inputsHash`) " +
+                        "SELECT `id`, `role`, `title`, `body`, `bulletsJson`, `origin`, " +
+                        "`weekStart`, `createdAt`, `expiresAt`, `inputsHash` " +
+                        "FROM `chat_turns`",
+                )
+                db.execSQL("DROP TABLE `chat_turns`")
+                db.execSQL("ALTER TABLE `chat_turns_new` RENAME TO `chat_turns`")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_chat_turns_createdAt` " +
+                        "ON `chat_turns` (`createdAt`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_chat_turns_expiresAt` " +
+                        "ON `chat_turns` (`expiresAt`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_chat_turns_origin_weekStart` " +
+                        "ON `chat_turns` (`origin`, `weekStart`)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_chat_turns_origin_inputsHash` " +
+                        "ON `chat_turns` (`origin`, `inputsHash`)",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -761,6 +818,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_18_19,
                 MIGRATION_19_20,
                 MIGRATION_20_21,
+                MIGRATION_21_22,
             )
             .build()
     }

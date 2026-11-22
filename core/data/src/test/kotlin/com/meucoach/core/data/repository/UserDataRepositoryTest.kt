@@ -205,6 +205,54 @@ class UserDataRepositoryTest {
     }
 
     @Test
+    fun `export includes you turns with null origin`(): Unit = runBlocking {
+        database.chatTurnDao().insert(
+            ChatTurnEntity(
+                id = "you-1",
+                role = "YOU",
+                title = "",
+                body = "perdi o treino",
+                bulletsJson = "[]",
+                origin = null,
+                inputsHash = null,
+                weekStart = null,
+                createdAt = clock.millis(),
+                expiresAt = clock.millis() + 90L * 24 * 60 * 60 * 1000,
+            ),
+        )
+
+        val turn = JSONObject(userData.exportJson()).getJSONArray("coachTurns").getJSONObject(0)
+
+        assertThat(turn.getString("role")).isEqualTo("YOU")
+        assertThat(turn.getString("body")).isEqualTo("perdi o treino")
+        assertThat(turn.isNull("origin")).isTrue()
+        assertThat(turn.isNull("inputsHash")).isTrue()
+    }
+
+    @Test
+    fun `deleteAllData erases you turns`(): Unit = runBlocking {
+        database.chatTurnDao().insert(
+            ChatTurnEntity(
+                id = "you-1",
+                role = "YOU",
+                title = "",
+                body = "perdi o treino",
+                bulletsJson = "[]",
+                origin = null,
+                inputsHash = null,
+                weekStart = null,
+                createdAt = clock.millis(),
+                expiresAt = clock.millis() + 90L * 24 * 60 * 60 * 1000,
+            ),
+        )
+
+        val deletion = userData.deleteAllData()
+
+        assertThat(deletion.coachTurns).isEqualTo(1)
+        assertThat(database.chatTurnDao().getAll()).isEmpty()
+    }
+
+    @Test
     fun `deletes activities, profile, check-ins, metrics and plans`(): Unit = runBlocking {
         seedEverything()
 

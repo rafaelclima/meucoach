@@ -143,6 +143,29 @@ class ChatTurnTest {
         assertThat(ChatTurns.visibleTurns(emptyList())).isEmpty()
     }
 
+    @Test
+    fun `turno you nunca e escondido pelas regras do arquivo`() {
+        val current = turn("message-cur", ChatTurn.Origin.EXPLAIN, "explain-current", now)
+        val you = ChatTurn.You(id = "you-1", body = "só tenho 30 min quinta", createdAt = now)
+
+        val visible = ChatTurns.visibleTurns(
+            turns = listOf(current, you),
+            currentExplainHash = "explain-current",
+        )
+
+        assertThat(visible.map { it.id }).containsExactly("you-1")
+    }
+
+    @Test
+    fun `turno you ordena junto com os coach por createdAt`() {
+        val older = turn("message-old", ChatTurn.Origin.EXPLAIN, "explain-old", now.minusSeconds(60))
+        val you = ChatTurn.You(id = "you-1", body = "perdi o treino", createdAt = now)
+
+        val visible = ChatTurns.visibleTurns(listOf(older, you))
+
+        assertThat(visible.map { it.id }).containsExactly("you-1", "message-old")
+    }
+
     private fun turn(
         id: String,
         origin: ChatTurn.Origin,

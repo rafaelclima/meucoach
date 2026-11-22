@@ -277,10 +277,10 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 ## 7. Persistência
 
-- **Room/SQLite** como fonte de verdade local; versão atual **21** (`MeuCoachDatabase.VERSION`).
-- `:core:data` implementa `MeuCoachDatabase` v21 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity`, `RaceEventEntity` e `ChatTurnEntity`.
+- **Room/SQLite** como fonte de verdade local; versão atual **22** (`MeuCoachDatabase.VERSION`).
+- `:core:data` implementa `MeuCoachDatabase` v22 com `ActivityEntity`, `LapEntity`, `SampleBlobEntity`, `ImportJobEntity`, `ActivityAlternateEntity`, `AthleteProfileEntity`, `DailyCheckInEntity`, `DailyMetricsEntity`, `WeeklyPlanEntity`, `PlannedSessionEntity`, `WeeklyPlanRevisionEntity`, `DailyPrescriptionEntity`, `SessionExecutionEntity`, `RaceEventEntity` e `ChatTurnEntity`.
 - DAOs separados e repositórios como fronteiras: `ActivityRepository`, `ProfileRepository`, `CheckInRepository`, `DailyMetricsRepository`, `TrainingPlanRepository`, `DailyPrescriptionRepository`, `SessionExecutionRepository`, `RaceEventRepository`, `CoachMemoryRepository` e `UserDataRepository`.
-- **Memória do Coach (v21, ADR 0055):** `CoachViewModel` grava somente texto validado e apenas com opt-in; `CoachMemoryRepository` escreve só em `chat_turns` com TTL preguiçoso por `expiresAt` (90 dias para explicação/revisão, 180 para resumos), deduplica `(origin, inputsHash)` e apaga tudo na revogação (em escopo de aplicação). A memória não entra em prompt nesta fatia e nunca decide carga, pace ou plano; export/delete a incluem.
+- **Memória do Coach (v22, ADR 0056):** `CoachViewModel` grava somente texto validado e apenas com opt-in; `CoachMemoryRepository` escreve só em `chat_turns` (`COACH` via `recordMessage`/`recordSummary`, `YOU` via `recordYouTurn`) com TTL preguiçoso por `expiresAt` (90 dias para explicação/revisão e turnos `YOU`, 180 para resumos), deduplica `(origin, inputsHash)` e apaga tudo na revogação (em escopo de aplicação). `YOU` nunca entra em prompt (só `intent + slots`). A memória nunca decide carga, pace ou plano; export/delete a incluem.
 - `SampleBlobCodec` `gzip-columnar-v1` para séries temporais; samples decodificados sob demanda (não há série downsampled persistida).
 - UUID v7 gerado no cliente para IDs ordenáveis.
 - Importação por `ImportCoordinator`/`ImportService` + fila `WorkManager` (`ImportWorker`, `@HiltWorker`); arquivos passam por `ImportStaging` e são copiados para storage privado antes do processamento.

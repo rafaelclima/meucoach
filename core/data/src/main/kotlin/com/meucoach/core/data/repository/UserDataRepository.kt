@@ -195,7 +195,7 @@ private fun ChatTurnEntity.toJson(): JSONObject = JSONObject().apply {
     put("title", title)
     put("body", body)
     put("bullets", runCatching { JSONArray(bulletsJson) }.getOrElse { JSONArray() })
-    put("origin", origin)
+    putNullable("origin", origin)
     putNullable("weekStart", weekStart)
     putNullable("inputsHash", inputsHash)
     put("createdAt", Instant.ofEpochMilli(createdAt).toString())
