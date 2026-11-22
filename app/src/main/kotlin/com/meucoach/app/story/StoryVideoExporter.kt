@@ -12,11 +12,9 @@ import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.Surface
-import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import com.meucoach.core.designsystem.R
 import com.meucoach.core.domain.story.StoryPlan
@@ -620,22 +618,9 @@ class CanvasStoryVideoExporter @Inject constructor(
     private fun publish(file: File, cover: File?, poster: File?): StoryExportResult {
         val coverUri = cover?.let { image -> runCatching { publishImage(image) }.getOrNull() }
         val posterUri = poster?.let { image -> runCatching { publishImage(image) }.getOrNull() }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return StoryExportResult(
-                uri = publishVideo(file),
-                savedToGallery = true,
-                coverUri = coverUri,
-                posterUri = posterUri,
-            )
-        }
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file,
-        )
         return StoryExportResult(
-            uri = uri,
-            savedToGallery = false,
+            uri = publishVideo(file),
+            savedToGallery = true,
             coverUri = coverUri,
             posterUri = posterUri,
         )
@@ -670,9 +655,6 @@ class CanvasStoryVideoExporter @Inject constructor(
 
     /** Cover and poster share the Pictures/MeuCoach contract. */
     private fun publishImage(file: File): Uri {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        }
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, file.name)

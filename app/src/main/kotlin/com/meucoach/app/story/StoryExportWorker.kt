@@ -2,7 +2,6 @@ package com.meucoach.app.story
 
 import android.content.Context
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import androidx.hilt.work.HiltWorker
@@ -97,15 +96,11 @@ class StoryExportWorker @AssistedInject constructor(
 
     private fun foregroundInfo(activityId: String, progress: Float, etaSec: Int?): ForegroundInfo {
         val notification = notifier.buildProgress(activityId, progress, etaSec)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(
-                StoryNotification.PROGRESS_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
-        } else {
-            ForegroundInfo(StoryNotification.PROGRESS_ID, notification)
-        }
+        return ForegroundInfo(
+            StoryNotification.PROGRESS_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
     }
 
     /** Throttled coarse progress + notification; WorkManager persists each write. */
