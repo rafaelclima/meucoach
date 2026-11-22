@@ -9,7 +9,16 @@ package com.meucoach.core.domain.coach
  * and never cites VDOT, readiness scores or sleep minutes — the answer stays
  * a chatty rollup in runner talk, with the numbers living in the anexo.
  */
-data class ProgressAnswer(val engineContext: String, val allowedMinutes: Set<Int>, val allowedPercents: Set<Int>)
+data class ProgressAnswer(
+    val engineContext: String,
+    val allowedMinutes: Set<Int>,
+    val allowedPercents: Set<Int>,
+    /**
+     * Deterministic answer shown when the model is unreachable (ADR 0057):
+     * the rollup in plain words, no invention possible.
+     */
+    val fallback: String,
+)
 
 object CoachProgressAnswer {
     /**
@@ -49,6 +58,19 @@ object CoachProgressAnswer {
                 "QUADRO: $quadro",
             allowedMinutes = setOf(summary.plannedMinutes, summary.executedMinutes, summary.extraMinutes),
             allowedPercents = setOfNotNull(adherence, volume, easy, EASY_TARGET_PERCENT),
+            fallback = buildString {
+                if (summary.availableWeeks == 1) {
+                    append("Última semana: ")
+                } else {
+                    append("Últimas ${summary.availableWeeks} semanas: ")
+                }
+                append("${summary.doneSessions} de ${summary.plannedSessions} treinos")
+                if (adherence != null) append(" ($adherence%)")
+                append(", ${summary.executedMinutes} de ${summary.plannedMinutes} min feitos")
+                if (volume != null) append(" ($volume%)")
+                append(".")
+                if (easy != null) append(" Fácil em $easy% (alvo ~$EASY_TARGET_PERCENT%).")
+            },
         )
     }
 }

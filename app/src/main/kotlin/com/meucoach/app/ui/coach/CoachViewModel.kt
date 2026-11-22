@@ -652,21 +652,23 @@ class CoachViewModel @Inject constructor(
      * a question without its answer. `Fallback` stays ephemeral.
      */
     private suspend fun answerLocal(exchangeId: String, copy: String, inputsHash: String) {
-        recordLocalAnswer(inputsHash, copy)
-        settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(copy)))
+        answerLocalCopy(exchangeId, copy, inputsHash, ::settle, ::storeTurn)
     }
 
-    private suspend fun recordLocalAnswer(inputsHash: String, copy: String) {
-        val bubbles = CoachBubbles.split(copy)
-        val title = bubbles.firstOrNull() ?: return
-        val body = bubbles.drop(1).joinToString(" ").takeIf { it.isNotBlank() } ?: title
+    private suspend fun storeTurn(
+        kind: CoachMessageKind,
+        hash: String,
+        title: String,
+        body: String,
+        bullets: List<String>,
+    ) {
         recordSafely {
             memory.recordMessage(
-                kind = CoachMessageKind.ANSWER,
-                inputsHash = inputsHash,
+                kind = kind,
+                inputsHash = hash,
                 title = title,
                 body = body,
-                bullets = emptyList(),
+                bullets = bullets,
             )
         }
     }
@@ -709,54 +711,13 @@ class CoachViewModel @Inject constructor(
      * can only cite that session and the week total.
      */
     private suspend fun answerSession(parsed: FreeInputParse, task: SessionTask, exchangeId: String) {
-        val planContext = sources.plans.observeCurrent().first()
-        if (planContext == null) {
-            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN))
-            return
-        }
-        val plan = planContext.plan
-        val today = LocalDate.now(clock)
-        val nextContext = sources.next.observeNext().first()
-        val slotDay = parsed.slots.dayOfWeek
-        val dayOffset = parsed.slots.dayOffset
-        val target = if (dayOffset != null) {
-            today.plusDays(dayOffset.toLong())
-        } else if (slotDay != null) {
-            CoachSessionAnswer.resolveDayInWeek(today, slotDay)
-        } else {
-            (nextContext.subject as? CoachNextSubject.Training)?.session?.date ?: today
-        }
-        val localCopy = localSessionCopy(plan, today, target, task)
-        if (localCopy != null) {
-            answerLocal(exchangeId, localCopy, localHash("SESSION", parsed) + "|$target")
-            return
-        }
-        val session = plan.sessions.find { it.date == target } ?: return
-        val prescribed = if (target == today && nextContext.isToday) nextContext.prescription else null
-        val shortSleep = target == today &&
-            ReadinessFlag.SHORT_SLEEP in (nextContext.readiness?.flags ?: emptySet())
-        val answer = CoachSessionAnswer.build(
-            today = today,
-            target = target,
-            sessions = plan.sessions,
-            weeklyMinutes = plan.weeklyMinutes,
+        answerSessionContent(
+            parsed = parsed,
             task = task,
-            prescription = prescribed,
-            shortSleep = shortSleep,
-            hasCheckIn = target == today && nextContext.hasCheckIn,
-        )
-        freeAnswer(
-            FreeAnswerRequest(
-                parsed = parsed,
-                exchangeId = exchangeId,
-                contextHash = "${planContext.inputsHash}|$target",
-                allowedMinutes = answer.allowedMinutes,
-                allowedPercents = emptySet(),
-                allowedDistancesKm = answer.allowedDistancesKm,
-                forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
-                engineContext = answer.engineContext,
-                reference = CoachSessionReference.lines(session, prescribed),
-            ),
+            exchangeId = exchangeId,
+            today = LocalDate.now(clock),
+            sources = sources,
+            callbacks = AnswerCallbacks(::settle, ::answerLocal, ::localHash, ::freeAnswer),
         )
     }
 
@@ -839,11 +800,25 @@ class CoachViewModel @Inject constructor(
         } catch (e: IOException) {
             if (!_consented.value) return
             android.util.Log.d("Coach", "free answer io: ${e.message}")
-            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_CONNECTION))
+            settleFreeAnswerFailure(
+                exchangeId,
+                freeHash,
+                request.fallbackCopy,
+                FreeAnswerCopy.NO_CONNECTION,
+                ::settle,
+                ::storeTurn,
+            )
         } catch (e: Exception) {
             if (!_consented.value) return
             android.util.Log.d("Coach", "free answer failed: ${e.message}")
-            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.GENERIC))
+            settleFreeAnswerFailure(
+                exchangeId,
+                freeHash,
+                request.fallbackCopy,
+                FreeAnswerCopy.GENERIC,
+                ::settle,
+                ::storeTurn,
+            )
         }
     }
 
@@ -928,7 +903,79 @@ private data class FreeAnswerRequest(
     val forbiddenCodes: Set<String>,
     val engineContext: String,
     val reference: List<String> = emptyList(),
+    /**
+     * Deterministic content shown when the model is unreachable (ADR 0057):
+     * motor copy only. Null when there is nothing factual to show — then
+     * the honest connection fallback stays.
+     */
+    val fallbackCopy: String? = null,
 )
+
+private data class AnswerCallbacks(
+    val settle: (String, FreeAnswerUiState) -> Unit,
+    val answerLocal: suspend (String, String, String) -> Unit,
+    val localHash: (String, FreeInputParse) -> String,
+    val send: suspend (FreeAnswerRequest) -> Unit,
+)
+
+private suspend fun answerSessionContent(
+    parsed: FreeInputParse,
+    task: SessionTask,
+    exchangeId: String,
+    today: LocalDate,
+    sources: CoachSources,
+    callbacks: AnswerCallbacks,
+) {
+    val planContext = sources.plans.observeCurrent().first()
+    if (planContext == null) {
+        callbacks.settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN))
+        return
+    }
+    val plan = planContext.plan
+    val nextContext = sources.next.observeNext().first()
+    val slotDay = parsed.slots.dayOfWeek
+    val dayOffset = parsed.slots.dayOffset
+    val target = if (dayOffset != null) {
+        today.plusDays(dayOffset.toLong())
+    } else if (slotDay != null) {
+        CoachSessionAnswer.resolveDayInWeek(today, slotDay)
+    } else {
+        (nextContext.subject as? CoachNextSubject.Training)?.session?.date ?: today
+    }
+    val localCopy = localSessionCopy(plan, today, target, task)
+    if (localCopy != null) {
+        callbacks.answerLocal(exchangeId, localCopy, callbacks.localHash("SESSION", parsed) + "|$target")
+        return
+    }
+    val session = plan.sessions.find { it.date == target } ?: return
+    val prescribed = if (target == today && nextContext.isToday) nextContext.prescription else null
+    val shortSleep = target == today &&
+        ReadinessFlag.SHORT_SLEEP in (nextContext.readiness?.flags ?: emptySet())
+    val answer = CoachSessionAnswer.build(
+        today = today,
+        target = target,
+        sessions = plan.sessions,
+        weeklyMinutes = plan.weeklyMinutes,
+        task = task,
+        prescription = prescribed,
+        shortSleep = shortSleep,
+        hasCheckIn = target == today && nextContext.hasCheckIn,
+    )
+    callbacks.send(
+        FreeAnswerRequest(
+            parsed = parsed,
+            exchangeId = exchangeId,
+            contextHash = "${planContext.inputsHash}|$target",
+            allowedMinutes = answer.allowedMinutes,
+            allowedPercents = emptySet(),
+            allowedDistancesKm = answer.allowedDistancesKm,
+            forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
+            engineContext = answer.engineContext,
+            reference = CoachSessionReference.lines(session, prescribed),
+            fallbackCopy = answer.fallback.takeIf { it.isNotBlank() },
+        ),
+    )
+}
 
 private suspend fun answerProgressContent(
     parsed: FreeInputParse,
@@ -955,6 +1002,7 @@ private suspend fun answerProgressContent(
             allowedDistancesKm = emptySet(),
             forbiddenCodes = forbidden,
             engineContext = answer.engineContext,
+            fallbackCopy = answer.fallback,
         ),
     )
 }
@@ -968,6 +1016,55 @@ private fun reviewSummaryLine(prompt: CoachReviewPrompt): String {
     } else {
         "Semana ${prompt.weekStart} fechada."
     }
+}
+
+/**
+ * Upstream unreachable (ADR 0057): when the question already has motor
+ * copy, the athlete gets that answer instead of an empty "no
+ * connection" — recorded like any validated turn, since it can only
+ * cite decided numbers.
+ */
+private suspend fun settleFreeAnswerFailure(
+    exchangeId: String,
+    freeHash: String,
+    fallbackCopy: String?,
+    connectionCopy: String,
+    settle: (String, FreeAnswerUiState) -> Unit,
+    record: suspend (CoachMessageKind, String, String, String, List<String>) -> Unit,
+) {
+    if (fallbackCopy != null) {
+        storeAnswerCopy(freeHash, fallbackCopy, record)
+        settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(fallbackCopy)))
+    } else {
+        settle(exchangeId, FreeAnswerUiState.Fallback(connectionCopy))
+    }
+}
+
+/**
+ * Deterministic `Ready` answer shared by the local paths and the
+ * unreachable-upstream fallback: split for bubbles, title/body for the
+ * archive. `Fallback` stays ephemeral by design.
+ */
+private suspend fun answerLocalCopy(
+    exchangeId: String,
+    copy: String,
+    inputsHash: String,
+    settle: (String, FreeAnswerUiState) -> Unit,
+    record: suspend (CoachMessageKind, String, String, String, List<String>) -> Unit,
+) {
+    storeAnswerCopy(inputsHash, copy, record)
+    settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(copy)))
+}
+
+private suspend fun storeAnswerCopy(
+    inputsHash: String,
+    copy: String,
+    record: suspend (CoachMessageKind, String, String, String, List<String>) -> Unit,
+) {
+    val bubbles = CoachBubbles.split(copy)
+    val title = bubbles.firstOrNull() ?: return
+    val body = bubbles.drop(1).joinToString(" ").takeIf { it.isNotBlank() } ?: title
+    record(CoachMessageKind.ANSWER, inputsHash, title, body, emptyList())
 }
 
 /**

@@ -73,39 +73,49 @@ class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOExceptio
     }
 }
 
-class HttpCoachApi(private val baseUrl: String, private val token: String, private val timeoutMs: Int = 45_000) :
-    CoachApi {
+class HttpCoachApi(
+    private val baseUrl: String,
+    private val token: String,
+    private val timeoutMs: Int = 45_000,
+    /**
+     * A free answer is a rewrite of motor copy the app already holds: when the
+     * upstream chain is slow, the deterministic fallback answers sooner, so
+     * this caps at 25 s while explain/review keep the full budget.
+     */
+    private val freeAnswerTimeoutMs: Int = 25_000,
+) : CoachApi {
     override suspend fun explain(prompt: CoachPrompt, kind: CoachKind): CoachRawResponse =
-        post(kind.path, payload(prompt))
+        post(kind.path, payload(prompt), timeoutMs)
 
     override suspend fun review(prompt: CoachReviewPrompt): CoachRawResponse =
-        post(CoachKind.REVIEW.path, payload(prompt))
+        post(CoachKind.REVIEW.path, payload(prompt), timeoutMs)
 
     override suspend fun freeAnswer(prompt: CoachFreeAnswerPrompt): CoachRawResponse =
-        post(CoachKind.FREE_ANSWER.path, payload(prompt))
+        post(CoachKind.FREE_ANSWER.path, payload(prompt), freeAnswerTimeoutMs)
 
-    private suspend fun post(path: String, json: String): CoachRawResponse = withContext(Dispatchers.IO) {
-        require(baseUrl.isNotBlank()) { "Coach base URL must not be blank" }
-        val url = java.net.URL(baseUrl.trimEnd('/') + "/api/v1/coach/" + path)
-        val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = minOf(timeoutMs, 10_000)
-            readTimeout = timeoutMs
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("X-Coach-Token", token)
+    private suspend fun post(path: String, json: String, readTimeoutMs: Int): CoachRawResponse =
+        withContext(Dispatchers.IO) {
+            require(baseUrl.isNotBlank()) { "Coach base URL must not be blank" }
+            val url = java.net.URL(baseUrl.trimEnd('/') + "/api/v1/coach/" + path)
+            val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = minOf(readTimeoutMs, 10_000)
+                readTimeout = readTimeoutMs
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("X-Coach-Token", token)
+            }
+            try {
+                connection.outputStream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                val code = connection.responseCode
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                val body = stream?.bufferedReader(Charsets.UTF_8)?.readText().orEmpty()
+                if (code !in 200..299) throw IOException("coach upstream $code: ${body.take(200)}")
+                parse(body)
+            } finally {
+                connection.disconnect()
+            }
         }
-        try {
-            connection.outputStream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.bufferedReader(Charsets.UTF_8)?.readText().orEmpty()
-            if (code !in 200..299) throw IOException("coach upstream $code: ${body.take(200)}")
-            parse(body)
-        } finally {
-            connection.disconnect()
-        }
-    }
 
     private fun payload(prompt: CoachPrompt): String = JSONObject()
         .put("engineVersion", prompt.engineVersion)

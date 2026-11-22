@@ -36,6 +36,12 @@ data class SessionAnswer(
     val engineContext: String,
     val allowedMinutes: Set<Int>,
     val allowedDistancesKm: Set<Double>,
+    /**
+     * Deterministic answer shown when the model is unreachable (ADR 0057):
+     * motor copy only, no invention possible. Empty when there is no
+     * session to report (the caller answers those days locally).
+     */
+    val fallback: String = "",
 )
 
 object CoachSessionAnswer {
@@ -101,7 +107,40 @@ object CoachSessionAnswer {
             engineContext = engineContext,
             allowedMinutes = allowedMinutes,
             allowedDistancesKm = allowedDistancesKm,
+            fallback = fallbackCopy(dayLabel, isToday, isTomorrow, session, prescribed, isPlannedOnly, task),
         )
+    }
+
+    /**
+     * Motor-only answer for an unreachable model: what day, what workout,
+     * how long, planned or prescribed — plus the effort line for HOW_TO.
+     * No pace, no FC, no invention; the validator never sees it.
+     */
+    private fun fallbackCopy(
+        dayLabel: String,
+        isToday: Boolean,
+        isTomorrow: Boolean,
+        session: PlannedSession?,
+        prescribed: DailyPrescription?,
+        isPlannedOnly: Boolean,
+        task: SessionTask,
+    ): String {
+        if (session == null) return ""
+        if (session.type == WorkoutType.REST) return "$dayLabel é descanso — sem treino."
+        val title = prescribed?.title ?: session.title
+        val duration = prescribed?.prescribedDurationMin ?: session.durationMin
+        val head = when {
+            isToday -> "Hoje tem"
+            isTomorrow -> "Amanhã tem"
+            else -> "$dayLabel tem"
+        }
+        val planned = if (isPlannedOnly) " (planejado)" else ""
+        val base = "$head $title${duration?.let { " · $it min" }.orEmpty()}$planned. ${session.rationale}."
+        return if (task == SessionTask.HOW_TO) {
+            "$base Comece soltinho e feche leve."
+        } else {
+            base
+        }
     }
 
     private fun dayLabel(today: LocalDate, target: LocalDate): String = when (target) {

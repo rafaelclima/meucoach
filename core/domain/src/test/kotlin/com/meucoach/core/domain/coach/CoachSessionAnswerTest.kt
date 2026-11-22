@@ -161,6 +161,38 @@ class CoachSessionAnswerTest {
     }
 
     @Test
+    fun `fallback conta o dia sem inventar`() {
+        val what = CoachSessionAnswer.build(
+            today = monday,
+            target = tuesday,
+            sessions = listOf(easySession(tuesday)),
+            weeklyMinutes = 120,
+            task = SessionTask.WHAT,
+        )
+        assertTrue(what.fallback.contains("Amanhã tem Rodagem"))
+        assertTrue(what.fallback.contains("40 min"))
+        assertTrue(what.fallback.contains("planejado"))
+
+        val howTo = CoachSessionAnswer.build(
+            today = monday,
+            target = tuesday,
+            sessions = listOf(easySession(tuesday)),
+            weeklyMinutes = 120,
+            task = SessionTask.HOW_TO,
+        )
+        assertTrue(howTo.fallback.contains("Comece soltinho"))
+
+        val rest = CoachSessionAnswer.build(
+            today = monday,
+            target = tuesday,
+            sessions = listOf(easySession(tuesday).copy(type = WorkoutType.REST)),
+            weeklyMinutes = 120,
+            task = SessionTask.WHAT,
+        )
+        assertTrue(rest.fallback.contains("descanso"))
+    }
+
+    @Test
     fun `distancia do plano entra no permitido`() {
         val session = easySession(tuesday).copy(
             targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 4, distanceKm = 8.0),

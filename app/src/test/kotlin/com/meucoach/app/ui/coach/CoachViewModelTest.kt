@@ -1671,6 +1671,40 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `falha de rede na sessao responde com o motor e grava`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 4)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 4))
+        val api = FakeCoachApi(error = IOException("down"))
+        val vm = viewModel(api)
+        vm.sendFreeText("como corro hoje?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("Hoje tem Rodagem")
+        val answers = memory.observeTurns().first().filterIsInstance<ChatTurn.Coach>()
+            .filter { it.origin == ChatTurn.Origin.ANSWER }
+        assertThat(answers).hasSize(1)
+        assertThat(answers.single().inputsHash).contains("coach-free-v1")
+    }
+
+    @Test
+    fun `falha de rede no progresso responde com o quadro e grava`(): Unit = runBlocking {
+        consent.grant()
+        progress.value = progressContext()
+        val api = FakeCoachApi(error = IOException("down"))
+        val vm = viewModel(api)
+        vm.sendFreeText("e como anda minha evolução?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("Última semana")
+        val answers = memory.observeTurns().first().filterIsInstance<ChatTurn.Coach>()
+            .filter { it.origin == ChatTurn.Origin.ANSWER }
+        assertThat(answers).hasSize(1)
+    }
+
+    @Test
     fun `echoQuestion appends an idle exchange and dedupes repeats`() {
         consent.grant()
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
@@ -1692,7 +1726,7 @@ class CoachViewModelTest {
         next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
         val api = FakeCoachApi(error = IOException("down"))
         val vm = viewModel(api)
-        vm.sendFreeText("o que tem?")
+        vm.sendFreeText("por que o treino de hoje é fácil?")
 
         assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         vm.retryFreeAnswer()

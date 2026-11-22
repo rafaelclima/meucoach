@@ -142,7 +142,14 @@ para a próxima fatia.
     trajetória. Novo `ASK_PROGRESS` + `CoachProgressAnswer` puro (mesmo
     rollup do Tendências: treinos, volume, % fácil; alvo 80/20 estático),
     `NO_PROGRESS` determinístico sem semana fechada.~~
-13. Próxima: WHY/prontidão/método.
+13. ~~Resiliência a upstream degradado (22/11/2026, falha real no aparelho):
+    os 5 modelos estouraram 15 s (Go 2×, OpenRouter 2× + gemma 429) e a
+    pergunta morreu sem resposta — proxy 200, `explain`/`review ok` minutos
+    antes. Agora: fallback determinístico com conteúdo do motor
+    (`SessionAnswer.fallback` / `ProgressAnswer.fallback` via
+    `settleFreeAnswerFailure`, gravado como `ANSWER`) e teto de 25 s no
+    `free-answer` do app (explain/review mantêm 45 s).~~
+14. Próxima: WHY/prontidão/método.
 
 ## 5. Exchanges e persistência determinística (itens 2-base e 3)
 

@@ -34,6 +34,22 @@ class CoachProgressAnswerTest {
     }
 
     @Test
+    fun `fallback e o quadro em linguagem direta`() {
+        val answer = CoachProgressAnswer.build(summary())
+
+        assertTrue(answer.fallback.contains("Últimas 3 semanas"))
+        assertTrue(answer.fallback.contains("8 de 10"))
+        assertTrue(answer.fallback.contains("alvo ~80%"))
+    }
+
+    @Test
+    fun `fallback no singular quando ha uma semana`() {
+        val single = summary().copy(availableWeeks = 1)
+
+        assertTrue(CoachProgressAnswer.build(single).fallback.contains("Última semana:"))
+    }
+
+    @Test
     fun `sem facil medido diz que nao ha medicao`() {
         val answer = CoachProgressAnswer.build(summary().copy(easyPercent28d = null))
 

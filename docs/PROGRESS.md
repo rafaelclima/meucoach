@@ -1,6 +1,27 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (ADR 0057 evolução por pergunta)
+**Atualizado:** 22/11/2026 (ADR 0057 fallback com conteúdo + teto de 25 s)
+
+## Sessão 2026-11-22 — Upstream degradado: resposta determinística em vez de silêncio (TDD)
+
+**Falha real no aparelho:** "e como anda minha evolução?" morreu sem
+resposta — log do Dokploy mostra os 5 modelos estourando 15 s (Go 2×,
+OpenRouter free + super-vl, gemma 429). Proxy 200, `explain`/`review ok`
+minutos antes: degradação dos upstreams, não do nosso caminho.
+
+### Concluído
+
+- **Domínio:** `SessionAnswer.fallback` ("Amanhã tem Rodagem · 40 min…
+  Comece soltinho e feche leve") e `ProgressAnswer.fallback` ("Últimas N
+  semanas…", singular certo) — só motor, zero invenção.
+- **App:** `settleFreeAnswerFailure` (falha de rede/parse com fallback →
+  `Ready` gravado; sem fallback → `NO_CONNECTION`/`GENERIC` de antes) e
+  teto de 25 s no `free-answer` (explain/review seguem 45 s).
+  `LargeClass` exigiu extrair `answerSession`/`answerProgress`/helpers
+  (`AnswerCallbacks`, funções de arquivo).
+- **Testes:** builder 4/4 (fallback sessão/progresso), VM 73/73 (falha de
+  rede responde com o quadro e grava), `check` + `spotlessCheck` verdes.
+- **Docs:** item 13 no ADR 0057 + esta entrada.
 
 ## Sessão 2026-11-22 — Evolução por pergunta (TDD)
 
@@ -25,8 +46,9 @@ o dado existe (`CoachProgressSource`, o mesmo do Tendências).
 
 ### Próximo
 
-1. `./install.sh` + perguntar "e como anda minha evolução?" — esperar
-   resumo de rua com os números do Tendências, sem jargão.
+1. `./install.sh` + repetir "e como anda minha evolução?" com upstream
+   instável — esperar resposta determinística do quadro em ~25 s, gravada
+   no histórico.
 2. WHY/prontidão/método.
 
 ## Sessão 2026-11-22 — Parser cobre "dica" invertida + referência do motor (TDD)
