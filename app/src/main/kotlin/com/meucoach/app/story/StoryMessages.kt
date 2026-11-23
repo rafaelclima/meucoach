@@ -19,4 +19,7 @@ object StoryMessages {
 
     /** The art CTAs are disabled without a route; this copy covers races. */
     const val ART_NO_ROUTE = "Sem rota suficiente para a arte."
+
+    /** Render/publish failure of the art card; the technical detail stays in the log. */
+    const val ART_EXPORT_FAILED = "Não foi possível gerar o PNG da arte. Tente novamente."
 }

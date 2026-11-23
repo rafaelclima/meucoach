@@ -18,36 +18,37 @@ class ArtContrastTest {
     }
 
     @Test
-    fun `default recipe passes on the dark checker`() {
-        assertThat(ArtContrast.warning(ArtColor.WHITE, ArtColor.LIME, darkPreview = true)).isNull()
+    fun `every text swatch warns because none clears both checker extremes`() {
+        // White disappears on the light checker, black on the dark one. The
+        // transparent card can land on either, so the advisory is always on.
+        assertThat(ArtColor.entries).allSatisfy { color ->
+            assertThat(ArtContrast.textWarning(color))
+                .isEqualTo("Texto com pouco contraste — confira sobre a foto.")
+        }
     }
 
     @Test
-    fun `warns when the text fails the dark checker`() {
-        val warning = ArtContrast.warning(ArtColor.GRAY_DARK, ArtColor.LIME, darkPreview = true)
-
-        assertThat(warning).isEqualTo("Texto com pouco contraste no fundo escuro — confira sobre a foto.")
+    fun `black route warns even though it passes on the light checker`() {
+        // The route sits on the casing shell, not on the checkerboard: black
+        // over the shell composited on a black photo is ~1:1.
+        assertThat(ArtContrast.routeWarning(ArtColor.BLACK))
+            .isEqualTo("Traçado com pouco contraste — confira sobre a foto.")
     }
 
     @Test
-    fun `white text warns on the light checker by design`() {
-        // White over a light photo is exactly the case the warning exists for.
-        val warning = ArtContrast.warning(ArtColor.WHITE, ArtColor.LIME, darkPreview = false)
-
-        assertThat(warning).isEqualTo("Texto com pouco contraste no fundo claro — confira sobre a foto.")
+    fun `white route does not warn falsely against the casing`() {
+        assertThat(ArtContrast.routeWarning(ArtColor.WHITE)).isNull()
     }
 
     @Test
-    fun `warns when the route fails the light checker`() {
-        val warning = ArtContrast.warning(ArtColor.BLACK, ArtColor.LIME, darkPreview = false)
-
-        assertThat(warning).isEqualTo("Traçado com pouco contraste no fundo claro — confira sobre a foto.")
+    fun `a black route with a white text lists both failures`() {
+        assertThat(ArtContrast.warning(ArtColor.WHITE, ArtColor.BLACK))
+            .isEqualTo("Texto e traçado com pouco contraste — confira sobre a foto.")
     }
 
     @Test
-    fun `text failure takes precedence over the route`() {
-        val warning = ArtContrast.warning(ArtColor.GRAY_DARK, ArtColor.GRAY_DARK, darkPreview = true)
-
-        assertThat(warning).startsWith("Texto")
+    fun `the casing extremes keep the documented contrast`() {
+        assertThat(ArtContrast.ratio(ArtColor.BLACK.argb, ArtContrast.CASING_ON_BLACK)).isLessThan(3.0)
+        assertThat(ArtContrast.ratio(ArtColor.WHITE.argb, ArtContrast.CASING_ON_WHITE)).isGreaterThan(3.0)
     }
 }

@@ -1,6 +1,11 @@
 package com.meucoach.app.ui.activitydetail
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -8,12 +13,16 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.story.ArtColor
@@ -175,7 +184,8 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("story-tab-art").performClick()
         compose.onNodeWithTag("art-share").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("art-save").assertIsNotEnabled()
-        compose.onNodeWithText("Sem rota suficiente para a arte.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-preview-empty").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-no-route").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -271,8 +281,9 @@ class ArtStudioContentTest {
     }
 
     @Test
-    fun `a done share export hands the uri to the share sheet`() {
+    fun `a done share export hands the uri to the share sheet once`() {
         val shared = mutableListOf<android.net.Uri>()
+        var consumed = 0
         setContent(
             artExport = ArtExportUiState.Done(
                 uri = android.net.Uri.parse("content://media/external/images/1"),
@@ -281,8 +292,37 @@ class ArtStudioContentTest {
                 reused = true,
             ),
             onShare = { shared.add(it) },
+            onShareConsumed = { consumed += 1 },
         )
 
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.waitForIdle()
+
+        assertThat(shared).hasSize(1)
+        assertThat(consumed).isEqualTo(1)
+    }
+
+    @Test
+    fun `returning to the art tab does not replay a consumed share`() {
+        val exportState = mutableStateOf<ArtExportUiState>(ArtExportUiState.Idle)
+        val shared = mutableListOf<android.net.Uri>()
+        setContent(
+            exportState = exportState,
+            onShare = { shared.add(it) },
+            onShareConsumed = { exportState.value = ArtExportUiState.Idle },
+        )
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        exportState.value = ArtExportUiState.Done(
+            uri = android.net.Uri.parse("content://media/external/images/1"),
+            savedToGallery = true,
+            forShare = true,
+            reused = false,
+        )
+        compose.waitForIdle()
+        assertThat(shared).hasSize(1)
+
+        compose.onNodeWithTag("story-tab-video").performClick()
         compose.onNodeWithTag("story-tab-art").performClick()
         compose.waitForIdle()
 
@@ -290,15 +330,196 @@ class ArtStudioContentTest {
     }
 
     @Test
+    fun `a stale export asks for a new render`() {
+        setContent(artExport = ArtExportUiState.Stale)
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithText("Receita alterada — gere de novo.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `switching the font re-renders the preview with the new family`() {
+        val recipeState = mutableStateOf(ArtRecipe(font = ArtFont.INTER))
+        setContent(recipeState = recipeState)
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("art-preview-ready-inter").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        recipeState.value = recipeState.value.copy(font = ArtFont.ANTON)
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("art-preview-ready-anton").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun `the art tab explains the poster and the transparent art`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-poster-vs-art").assertIsDisplayed()
+        compose.onNodeWithText(
+            "Pôster automático: opaco, nasce com o vídeo. " +
+                "Arte PNG: transparente, para colar sobre uma foto.",
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the format badge names both dimensions`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-format-badge").assertIsDisplayed()
+        compose.onNodeWithText("1080×1350").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the preview anchor returns to the top`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-scroll-preview").performScrollTo().performClick()
+
+        compose.onNodeWithTag("art-preview").assertIsDisplayed()
+    }
+
+    @Test
+    fun `switching tabs resets the scroll to the preview`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-scroll-preview").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("story-tab-video").performScrollTo().performClick()
+        compose.onNodeWithTag("story-tab-art").performScrollTo().performClick()
+
+        compose.onNodeWithTag("art-preview").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the selected swatch label names the color`() {
+        setContent(artRecipe = ArtRecipe(textColor = ArtColor.CYAN, routeColor = ArtColor.CORAL))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-text-color-selected").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Selecionada: ciano").assertExists()
+        compose.onNodeWithTag("art-route-color-selected").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Selecionada: coral").assertExists()
+    }
+
+    @Test
+    fun `swatches expose the radio role`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        val node = compose.onNodeWithTag("art-text-color-lime").performScrollTo().fetchSemanticsNode()
+
+        assertThat(node.config.getOrElse(SemanticsProperties.Role) { androidx.compose.ui.semantics.Role.Button })
+            .isEqualTo(androidx.compose.ui.semantics.Role.RadioButton)
+    }
+
+    @Test
+    fun `swatch group titles are headings`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        val node = compose.onNodeWithText("Cor do texto").performScrollTo().fetchSemanticsNode()
+
+        assertThat(node.config.contains(SemanticsProperties.Heading)).isTrue()
+    }
+
+    @Test
+    fun `a check tint always wins the contrast against the swatch`() {
+        ArtColor.entries.forEach { color ->
+            val tint = checkTint(color)
+            val tintArgb = if (tint == androidx.compose.ui.graphics.Color.White) {
+                0xFFFFFFFF.toInt()
+            } else {
+                0xFF000000.toInt()
+            }
+            assertThat(com.meucoach.app.story.ArtContrast.ratio(tintArgb, color.argb)).isGreaterThanOrEqualTo(3.0)
+        }
+    }
+
+    @Test
+    fun `the third extra tile explains the limit instead of the missing data`() {
+        setContent(artRecipe = ArtRecipe(extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR)))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-extra-cadence").performScrollTo()
+
+        compose.onNode(
+            hasTestTag("art-extra-cadence") and
+                hasText("Limite de 2 — desmarque uma para incluir", substring = true),
+        ).assertExists()
+        compose.onNode(hasContentDescription("Cadência, limite de 2 atingido")).assertExists()
+    }
+
+    @Test
+    fun `exporting shows a spinner inside the busy cta`() {
+        setContent(artExport = ArtExportUiState.Exporting(forShare = true))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-share-progress").performScrollTo().assertExists()
+        compose.onNodeWithTag("art-share").assertIsNotEnabled()
+        compose.onAllNodesWithTag("art-save-progress").assertCountEquals(0)
+    }
+
+    @Test
+    fun `saving shows the spinner on the secondary cta only`() {
+        setContent(artExport = ArtExportUiState.Exporting(forShare = false))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-save-progress").performScrollTo().assertExists()
+        compose.onAllNodesWithTag("art-share-progress").assertCountEquals(0)
+    }
+
+    @Test
+    fun `the preview description names the selected extras`() {
+        setContent(artRecipe = ArtRecipe(extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR)))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNode(
+            hasContentDescription(
+                "Prévia da arte 4:5, texto branco, traçado lima, fonte Inter, " +
+                    "extras data e fc média, fundo transparente",
+            ),
+        ).assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun `the art tab remains usable at a 200 percent font scale on a narrow screen`() {
+        setContent(
+            artRecipe = ArtRecipe(extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR)),
+            fontScale = 2f,
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-preview").assertIsDisplayed()
+        compose.onNodeWithTag("art-checker-light").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("art-share").performScrollTo().assertIsEnabled()
+        compose.onNodeWithTag("art-scroll-preview").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun `an export error explains and retries`() {
         var retried = false
         setContent(
-            artExport = ArtExportUiState.Error("Galeria indisponível."),
+            artExport = ArtExportUiState.Error(com.meucoach.app.story.StoryMessages.ART_EXPORT_FAILED),
             onRetry = { retried = true },
         )
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithText("Galeria indisponível.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Não foi possível gerar o PNG da arte. Tente novamente.")
+            .performScrollTo()
+            .assertIsDisplayed()
         compose.onNodeWithTag("art-export-retry").performScrollTo().performClick()
 
         assertThat(retried).isTrue()
@@ -309,6 +530,9 @@ class ArtStudioContentTest {
         extraOptions: List<StoryExtraOption> = extraOptions(),
         plan: StoryPlan? = plan(),
         artExport: ArtExportUiState = ArtExportUiState.Idle,
+        recipeState: State<ArtRecipe>? = null,
+        exportState: State<ArtExportUiState>? = null,
+        fontScale: Float = 1f,
         onFormat: (ArtFormat) -> Unit = {},
         onToggleExtra: (StoryExtra) -> Unit = {},
         onTextColor: (ArtColor) -> Unit = {},
@@ -317,42 +541,47 @@ class ArtStudioContentTest {
         onArtSaveAsDefault: (Boolean) -> Unit = {},
         onArtReset: () -> Unit = {},
         onShare: (android.net.Uri) -> Unit = {},
+        onShareConsumed: () -> Unit = {},
         onRetry: () -> Unit = {},
     ) {
         compose.setContent {
-            McTheme(darkTheme = true) {
-                StoryStudioContent(
-                    state = StoryStudioUiState(
-                        recipe = StoryRecipe(),
-                        plan = plan,
-                        extras = extraOptions,
-                        saveAsDefault = true,
-                        artRecipe = artRecipe,
-                        artExport = artExport,
-                    ),
-                    avatar = null,
-                    introSeen = true,
-                    onClose = {},
-                    onDismissIntro = {},
-                    onPreset = {},
-                    onToggleExtra = {},
-                    onDuration = {},
-                    onMapStyle = {},
-                    onSaveAsDefault = {},
-                    onReset = {},
-                    onGenerate = {},
-                    artActions = ArtStudioActions(
-                        onFormat = onFormat,
-                        onToggleExtra = onToggleExtra,
-                        onTextColor = onTextColor,
-                        onRouteColor = onRouteColor,
-                        onFont = onFont,
-                        onSaveAsDefault = onArtSaveAsDefault,
-                        onReset = onArtReset,
-                        onShare = onShare,
-                        onRetry = onRetry,
-                    ),
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = fontScale)) {
+                McTheme(darkTheme = true) {
+                    StoryStudioContent(
+                        state = StoryStudioUiState(
+                            recipe = StoryRecipe(),
+                            plan = plan,
+                            extras = extraOptions,
+                            saveAsDefault = true,
+                            artRecipe = recipeState?.value ?: artRecipe,
+                            artExport = exportState?.value ?: artExport,
+                        ),
+                        avatar = null,
+                        introSeen = true,
+                        onClose = {},
+                        onDismissIntro = {},
+                        onPreset = {},
+                        onToggleExtra = {},
+                        onDuration = {},
+                        onMapStyle = {},
+                        onSaveAsDefault = {},
+                        onReset = {},
+                        onGenerate = {},
+                        artActions = ArtStudioActions(
+                            onFormat = onFormat,
+                            onToggleExtra = onToggleExtra,
+                            onTextColor = onTextColor,
+                            onRouteColor = onRouteColor,
+                            onFont = onFont,
+                            onSaveAsDefault = onArtSaveAsDefault,
+                            onReset = onArtReset,
+                            onShare = onShare,
+                            onShareConsumed = onShareConsumed,
+                            onRetry = onRetry,
+                        ),
+                    )
+                }
             }
         }
     }

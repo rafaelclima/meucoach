@@ -43,6 +43,12 @@ sealed interface ArtExportUiState {
         val reused: Boolean,
     ) : ArtExportUiState
 
+    /**
+     * The recipe changed while the render was in flight. The PNG no longer
+     * matches what the screen shows, so it was discarded instead of shared.
+     */
+    data object Stale : ArtExportUiState
+
     data class Error(val message: String) : ArtExportUiState
 }
 

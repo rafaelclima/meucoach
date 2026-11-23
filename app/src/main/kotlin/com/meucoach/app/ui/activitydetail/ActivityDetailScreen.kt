@@ -125,6 +125,7 @@ fun ActivityDetailScreen(
                 onReset = viewModel::resetArtRecipe,
                 onShareClick = viewModel::shareArt,
                 onShare = { uri -> shareMedia(context, uri, "image/png", "Compartilhar arte") },
+                onShareConsumed = viewModel::consumeArtShare,
                 onSave = viewModel::saveArtPng,
                 onRetry = viewModel::retryArtExport,
             ),
@@ -169,6 +170,8 @@ internal data class ArtStudioActions(
     val onShareClick: () -> Unit = {},
     /** Opens the share sheet with the published URI when the export is Done. */
     val onShare: (Uri) -> Unit = {},
+    /** Marks the share handoff as delivered so it never replays (P0-2). */
+    val onShareConsumed: () -> Unit = {},
     /** Starts the render+publish of Salvar PNG. */
     val onSave: () -> Unit = {},
     val onRetry: () -> Unit = {},

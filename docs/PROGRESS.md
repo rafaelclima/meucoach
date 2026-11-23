@@ -1,6 +1,79 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 22/11/2026 (Arte PNG F8: feature fechada — DoD verdes e validada no aparelho)
+**Atualizado:** 23/11/2026 (Arte PNG: remediação da auditoria UI/UX P0–P2)
+
+## Sessão 2026-11-23 — Arte PNG: remediação da auditoria UI/UX (P0–P2)
+
+**Fonte:** `docs/AUDITORIA_ARTE_PNG_UI_UX.md` (v2). Implementação dos 12
+itens P0–P2 e dos itens de P3 (T1/T2/T4/T6, M5/M6); validação no aparelho
+continua pendente com o usuário 0.
+
+### Concluído
+
+- **P0-1 (C1):** o typeface da prévia é resolvido dentro do `produceState`,
+  com a receita capturada; `Ready` guarda a fonte realmente renderizada e a
+  tag `art-preview-ready-<font>` prova a troca Inter→Anton no teste.
+- **P0-2 (C2):** `onShareConsumed`/`consumeArtShare` fecham o evento na VM;
+  voltar à aba, girar ou reabrir não reabre o share sheet. Teste com estado
+  mutável cobre a reentrada.
+- **P0-3 (race):** receita capturada no início do export; se mudar durante
+  o render, o resultado vira `ArtExportUiState.Stale` ("Receita alterada —
+  gere de novo.") e nunca abre o sheet. Fake com `CompletableDeferred`
+  cobre o caminho e o caso feliz.
+- **P1-4 (C3):** `updateArtRecipe` ignora toque no mesmo valor e zera
+  `Done`/`Error`/`Stale` em edição real; `Exporting` fica para o completion
+  decidir.
+- **P1-5 (A1):** linha "Pôster automático: opaco... Arte PNG:
+  transparente..." no topo da aba.
+- **P1-6 (A4):** `McPrimaryButton`/`McSecondaryButton` ganham
+  `loading`/`loadingTag` (spinner 18 dp com `LocalContentColor`); os CTAs
+  expõem `art-share-progress`/`art-save-progress` mantendo o label.
+- **P1-7 (M4):** `ArtContrast` separa `textWarning` (dois checkers) e
+  `routeWarning` (casca composta sobre preto/branco). Rota preta deixa de
+  passar silenciosamente no checker claro; `CASING_ON_BLACK/WHITE` derivam
+  do alpha do renderer (constante agora `internal`).
+- **P2-8 (M3):** `checkTint` por contraste (ciano/azul → preto; preto/cinza
+  escuro → branco), borda `textSecondary` quando o swatch fica <3:1 da
+  surface, `selectableGroup` + `Role.RadioButton`, label "Selecionada: X" e
+  heading no título do grupo.
+- **P2-9 (T3):** teste em `w360dp-h800dp` + `fontScale = 2`; pills do
+  checker viraram `FlowRow`; o golden novo revelou o header espremido
+  ("transpare/nte") e o título/badge agora quebram via `FlowRow`. Novo
+  golden `art-studio-tab-narrow-200-dark.png`.
+- **P2-10 (M2):** tile bloqueado mostra "Limite de 2 — desmarque uma para
+  incluir" e TalkBack "limite de 2 atingido"; sem dado continua com o
+  motivo.
+- **P2-11 (A2):** badge "1080×1350"; âncora "Ver prévia"; o scroll zera na
+  troca de aba (estado hoisted em `StoryStudioContent`).
+- **P2-12 (A4):** `StoryMessages.ART_EXPORT_FAILED` na UI; detalhe técnico
+  só no `Log.w`; cache de arte poda para 8 PNGs e preserva o reusável.
+- **P3:** extras no `contentDescription` da prévia (T1); spinner no
+  primeiro load (T2); heading nos grupos de cor (T4); "Recarregar prévia"
+  vs "Tentar de novo" (T6); copy do switch (M5); sem caption duplicado no
+  vazio (M6). A3/A4 mantidos por decisão.
+- **Testes/goldens:** `ArtStudioContentTest`, VM, `ArtPngExportTest` e
+  `ArtContrastTest` ampliados; `art-studio-tab-dark` regravado e novos
+  `art-studio-tab-light`, `art-studio-colors-light` e
+  `art-studio-tab-narrow-200-dark`.
+
+### Gates
+
+- `./gradlew check spotlessCheck koverVerify :app:assembleDebug` verde
+  (2m32), sem lint/detekt novos.
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` e
+  `"*StoryStudio*"` verdes.
+- Nenhum dado real no diff; nenhuma migração.
+
+### Pendente / decisões abertas
+
+- **Aviso de texto permanente:** nenhuma das 8 cores passa 4,5:1 nos dois
+  checkers; a regra da auditoria ("não depender do toggle") torna o aviso
+  de texto sempre visível. Validar copy/estratégia com o usuário 0.
+- **Aparelho (usuário 0):** C1/C2/P0-3, 360 dp + 200% + TalkBack e swatch
+  branco no tema claro.
+- **Undo do "Restaurar padrão":** segue sem snackbar (exige `SnackbarHost`
+  no Activity Detail).
+- **Spec visual F0/`hasGlyph` no aparelho:** já era pendente do P3-06.
 
 ## Sessão 2026-11-22 — Arte PNG F8: fechamento da feature
 

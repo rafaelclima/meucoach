@@ -5,8 +5,9 @@ import com.meucoach.core.domain.story.ArtColor
 /**
  * WCAG contrast ratio between two opaque sRGB colors. The preview cannot
  * promise legibility over an unknown photo (ADR 0058 §2.4), but it must warn
- * when the current recipe already fails against the checkerboard it is shown
- * on: text needs 4.5:1 (AA), the route stroke needs 3:1 (AA graphics).
+ * when the current recipe already fails against the two extremes it may land
+ * on: text clears 4.5:1 on both checkerboards, the route clears 3:1 over the
+ * casing composited on a black and a white photo.
  */
 object ArtContrast {
     /** Lighter cell of the dark checkerboard — the worst case against it. */
@@ -17,6 +18,13 @@ object ArtContrast {
     const val LIGHT_CHECKER_WORST = 0xFFE3E6E9.toInt()
     const val LIGHT_CHECKER = 0xFFF1F3F5.toInt()
 
+    /**
+     * The route is drawn over the casing shell (70% black), never directly on
+     * the checkerboard. These are the shell pixels at the two photo extremes.
+     */
+    val CASING_ON_BLACK: Int = composite(StoryArtRenderer.ROUTE_CASING, 0xFF000000.toInt())
+    val CASING_ON_WHITE: Int = composite(StoryArtRenderer.ROUTE_CASING, 0xFFFFFFFF.toInt())
+
     fun ratio(foreground: Int, background: Int): Double {
         val luminanceA = relativeLuminance(foreground)
         val luminanceB = relativeLuminance(background)
@@ -25,21 +33,64 @@ object ArtContrast {
         return (lighter + 0.05) / (darker + 0.05)
     }
 
-    /** Why the preview warns, or null when both colors pass on this checker. */
-    fun warning(text: ArtColor, route: ArtColor, darkPreview: Boolean): String? {
-        val background = if (darkPreview) DARK_CHECKER_WORST else LIGHT_CHECKER_WORST
-        val backgroundName = if (darkPreview) "escuro" else "claro"
-        if (ratio(text.argb, background) < TEXT_THRESHOLD) {
-            return "Texto com pouco contraste no fundo $backgroundName — confira sobre a foto."
+    /**
+     * Why the preview warns, or null when text and route pass on both photo
+     * extremes. The checkerboard toggle no longer changes the verdict: the art
+     * is composed over an unknown photo, so both extremes must pass.
+     */
+    fun warning(text: ArtColor, route: ArtColor): String? {
+        val textMessage = textWarning(text)
+        val routeMessage = routeWarning(route)
+        return when {
+            textMessage != null && routeMessage != null ->
+                "Texto e traçado com pouco contraste — confira sobre a foto."
+
+            else -> textMessage ?: routeMessage
         }
-        if (ratio(route.argb, background) < ROUTE_THRESHOLD) {
-            return "Traçado com pouco contraste no fundo $backgroundName — confira sobre a foto."
-        }
-        return null
+    }
+
+    /**
+     * The text is drawn straight on the transparent canvas, so it must clear
+     * AA on both checker extremes. No palette color does; the warning is
+     * consultative and tells the user to check the actual photo.
+     */
+    fun textWarning(text: ArtColor): String? = if (minOf(
+            ratio(text.argb, DARK_CHECKER_WORST),
+            ratio(text.argb, LIGHT_CHECKER_WORST),
+        ) < TEXT_THRESHOLD
+    ) {
+        "Texto com pouco contraste — confira sobre a foto."
+    } else {
+        null
+    }
+
+    /** The route sits on the casing, never on the checker; check both photo shells. */
+    fun routeWarning(route: ArtColor): String? = if (minOf(
+            ratio(route.argb, CASING_ON_BLACK),
+            ratio(route.argb, CASING_ON_WHITE),
+        ) < ROUTE_THRESHOLD
+    ) {
+        "Traçado com pouco contraste — confira sobre a foto."
+    } else {
+        null
     }
 
     private const val TEXT_THRESHOLD = 4.5
     private const val ROUTE_THRESHOLD = 3.0
+
+    /** Source-over blend of the casing on an opaque background. */
+    private fun composite(foreground: Int, background: Int): Int {
+        val alpha = StoryArtRenderer.ROUTE_CASING_ALPHA / 255.0
+        fun channel(color: Int, shift: Int): Int =
+            (((color shr shift) and 0xFF) * alpha + ((background shr shift) and 0xFF) * (1 - alpha))
+                .toInt()
+                .coerceIn(0, 255)
+
+        return (0xFF shl 24) or
+            (channel(foreground, 16) shl 16) or
+            (channel(foreground, 8) shl 8) or
+            channel(foreground, 0)
+    }
 
     private fun relativeLuminance(argb: Int): Double {
         fun channel(value: Int): Double {

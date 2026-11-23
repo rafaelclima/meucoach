@@ -46,10 +46,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,6 +86,7 @@ import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.domain.story.StorySegmentType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -187,9 +190,14 @@ internal fun StoryStudioContent(
 ) {
     val colors = McTheme.colors
     var tab by rememberSaveable { mutableStateOf(StoryStudioTab.VIDEO) }
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    // Switching tabs starts at the top: the video tab can be much taller than
+    // the art tab, and inheriting its offset would hide the art preview (A2).
+    LaunchedEffect(tab) { scrollState.scrollTo(0) }
     Column(
         modifier = modifier
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(start = 20.dp, end = 20.dp, bottom = 24.dp)
             .testTag("story-studio-content"),
     ) {
@@ -250,7 +258,11 @@ internal fun StoryStudioContent(
                 onGenerate = onGenerate,
             )
         } else {
-            ArtStudioContent(state = state, actions = artActions)
+            ArtStudioContent(
+                state = state,
+                actions = artActions,
+                onScrollToPreview = { scope.launch { scrollState.animateScrollTo(0) } },
+            )
         }
     }
 }

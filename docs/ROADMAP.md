@@ -747,9 +747,9 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 
 ### P3-06 · Arte PNG da rota (card transparente 4:5/1:1)
 
-**Status:** concluída em 22/11/2026 (F2–F8 implementadas; spike de alpha e validação básica no aparelho feitos; ajustes finos de layout ficam para a spec visual final).
+**Status:** concluída em 22/11/2026 (F2–F8 implementadas; spike de alpha e validação básica no aparelho feitos; ajustes finos de layout ficam para a spec visual final). Remediação da auditoria UI/UX em 23/11/2026 (P0–P2); validação no aparelho pendente.
 
-Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/0058-art-png-route.md).
+Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`AUDITORIA_ARTE_PNG_UI_UX.md`](AUDITORIA_ARTE_PNG_UI_UX.md).
 
 - [x] F1 — bugfix `localDate` no plano do Studio + regressão (22/11/2026).
 - [ ] F0 — spikes: **alpha no Instagram: validado 22/11/2026, alpha preservado**; fontes (`hasGlyph`/`tnum`/700 medidos em Robolectric; no aparelho pendente) e preview 540/debounce (F5); spec visual 4:5/1:1 pendente.
@@ -760,6 +760,10 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md) e [`ADR 0058`](adr/00
 - [x] F6 — `GalleryImagePublisher` + salvar/compartilhar + reuso (22/11/2026; validação no aparelho pendente).
 - [x] F7 — `ArtRecipeCodec` + `ArtRecipeStore` integrados + polimento (22/11/2026).
 - [x] F8 — docs/DoD (22/11/2026; validação básica no aparelho pelo usuário 0).
+- [x] P3-06.1 — remediação da auditoria UI/UX (23/11/2026): C1/C2/race do
+  export, copy pôster × arte, spinner no CTA, contraste via casca, swatches
+  a11y, 360 dp/200%, limite de extras, prévia/scroll, erro amigável + cache;
+  goldens dark/light/200%. Validação no aparelho pendente.
 
 ---
 

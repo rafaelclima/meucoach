@@ -281,6 +281,22 @@ class ActivityDetailViewModel @Inject constructor(
         lastArtExport?.let { exportArt(forShare = it) }
     }
 
+    /**
+     * Marks the share handoff as delivered (P0-2): the sheet opens once per
+     * Done; rotating, switching tabs or reopening the Studio must not replay
+     * the same Uri from the state that lives in the view model.
+     */
+    fun consumeArtShare() {
+        _uiState.update { state ->
+            val export = state.storyStudio.artExport
+            if (export is ArtExportUiState.Done && export.forShare) {
+                state.copy(storyStudio = state.storyStudio.copy(artExport = ArtExportUiState.Idle))
+            } else {
+                state
+            }
+        }
+    }
+
     private fun exportArt(forShare: Boolean) {
         val state = _uiState.value
         val stored = state.activity ?: return
@@ -288,9 +304,10 @@ class ActivityDetailViewModel @Inject constructor(
         val plan = studio.plan ?: return
         if (plan.route.points.size < 2) return
         if (studio.artExport is ArtExportUiState.Exporting) return
+        val recipe = studio.artRecipe
         // The documented switch persists the recipe on any successful intent
         // (Salvar PNG or Compartilhar), mirroring the video Studio.
-        if (studio.artSaveAsDefault) artRecipeStore.save(studio.artRecipe)
+        if (studio.artSaveAsDefault) artRecipeStore.save(recipe)
         lastArtExport = forShare
         _uiState.update {
             it.copy(storyStudio = it.storyStudio.copy(artExport = ArtExportUiState.Exporting(forShare)))
@@ -299,35 +316,57 @@ class ActivityDetailViewModel @Inject constructor(
             val export = artPngExporter.export(
                 plan = plan,
                 localDate = stored.localDate,
-                recipe = studio.artRecipe,
+                recipe = recipe,
                 activityId = activityId,
                 forShare = forShare,
             )
-            // A stale response after leaving the screen must not resurrect it.
-            if (_uiState.value.storyStudio.artExport !is ArtExportUiState.Exporting) return@launch
-            _uiState.update {
-                it.copy(
-                    storyStudio = it.storyStudio.copy(
-                        artExport = when (export) {
-                            is ArtPngExport.Published -> ArtExportUiState.Done(
-                                uri = export.uri,
-                                savedToGallery = export.savedToGallery,
-                                forShare = forShare,
-                                reused = export.reused,
-                            )
+            _uiState.update { current ->
+                val inFlight = current.storyStudio.artExport as? ArtExportUiState.Exporting ?: return@update current
+                // Only the request that is still on screen may publish its
+                // outcome; a stale response after leaving must not resurrect it.
+                if (inFlight.forShare != forShare) return@update current
+                // P0-3: the control changed while rendering, so the PNG on disk
+                // no longer matches the recipe the user sees. Discard it.
+                val next = if (current.storyStudio.artRecipe != recipe) {
+                    ArtExportUiState.Stale
+                } else {
+                    when (export) {
+                        is ArtPngExport.Published -> ArtExportUiState.Done(
+                            uri = export.uri,
+                            savedToGallery = export.savedToGallery,
+                            forShare = forShare,
+                            reused = export.reused,
+                        )
 
-                            ArtPngExport.NoRoute -> ArtExportUiState.Error(StoryMessages.ART_NO_ROUTE)
+                        ArtPngExport.NoRoute -> ArtExportUiState.Error(StoryMessages.ART_NO_ROUTE)
 
-                            is ArtPngExport.Failure -> ArtExportUiState.Error(export.message)
-                        },
-                    ),
-                )
+                        // The technical detail belongs in the log, never on screen.
+                        is ArtPngExport.Failure -> ArtExportUiState.Error(StoryMessages.ART_EXPORT_FAILED)
+                    }
+                }
+                current.copy(storyStudio = current.storyStudio.copy(artExport = next))
             }
         }
     }
 
+    /**
+     * Every real edit invalidates a previous confirmation or error (P1-4).
+     * An export in flight is not cancelled: its completion compares the
+     * captured recipe and discards itself if the art changed (P0-3).
+     */
     private fun updateArtRecipe(transform: (ArtRecipe) -> ArtRecipe) {
-        _uiState.update { it.copy(storyStudio = it.storyStudio.copy(artRecipe = transform(it.storyStudio.artRecipe))) }
+        _uiState.update { state ->
+            val current = state.storyStudio.artRecipe
+            val next = transform(current)
+            if (next == current) return@update state
+            val export = state.storyStudio.artExport
+            state.copy(
+                storyStudio = state.storyStudio.copy(
+                    artRecipe = next,
+                    artExport = if (export is ArtExportUiState.Exporting) export else ArtExportUiState.Idle,
+                ),
+            )
+        }
     }
 
     /**

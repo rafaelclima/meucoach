@@ -10,7 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McPillShape
@@ -33,6 +36,8 @@ fun McPrimaryButton(
     leadingIcon: ImageVector? = null,
     minHeight: Dp = 56.dp,
     horizontalPadding: Dp = 24.dp,
+    loading: Boolean = false,
+    loadingTag: String? = null,
 ) {
     val colors = McTheme.colors
     Button(
@@ -52,13 +57,7 @@ fun McPrimaryButton(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (leadingIcon != null) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
+            ButtonProgressOrIcon(loading = loading, leadingIcon = leadingIcon, loadingTag = loadingTag)
             Text(text = text)
         }
     }
@@ -73,6 +72,8 @@ fun McSecondaryButton(
     leadingIcon: ImageVector? = null,
     minHeight: Dp = 56.dp,
     horizontalPadding: Dp = 24.dp,
+    loading: Boolean = false,
+    loadingTag: String? = null,
 ) {
     val colors = McTheme.colors
     OutlinedButton(
@@ -91,15 +92,29 @@ fun McSecondaryButton(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (leadingIcon != null) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
+            ButtonProgressOrIcon(loading = loading, leadingIcon = leadingIcon, loadingTag = loadingTag)
             Text(text = text)
         }
+    }
+}
+
+/** Spinner or leading icon of a button; keeps the label stable while loading. */
+@Composable
+private fun ButtonProgressOrIcon(loading: Boolean, leadingIcon: ImageVector?, loadingTag: String?) {
+    when {
+        loading -> CircularProgressIndicator(
+            color = LocalContentColor.current,
+            strokeWidth = 2.dp,
+            modifier = Modifier
+                .size(18.dp)
+                .then(if (loadingTag != null) Modifier.testTag(loadingTag) else Modifier),
+        )
+
+        leadingIcon != null -> Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 

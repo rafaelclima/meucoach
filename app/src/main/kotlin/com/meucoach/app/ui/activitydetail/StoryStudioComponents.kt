@@ -181,6 +181,7 @@ internal fun ExtraTile(
     modifier: Modifier = Modifier,
     tagPrefix: String = "story-extra",
     selectionHint: String = "No vídeo",
+    limitReached: Boolean = false,
 ) {
     val colors = McTheme.colors
     val border = when {
@@ -197,9 +198,15 @@ internal fun ExtraTile(
         else -> option.extra.uiLabel()
     }
     val hint = when {
+        !selected && limitReached -> "Limite de 2 — desmarque uma para incluir"
         !option.isAvailable -> option.reason
         selected -> selectionHint
         else -> extraHint(option.extra)
+    }
+    val description = when {
+        selected -> "$status, selecionado"
+        !selected && limitReached -> "$status, limite de 2 atingido"
+        else -> status
     }
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -211,7 +218,7 @@ internal fun ExtraTile(
             .clickable(enabled = enabled || selected, onClick = onClick)
             .semantics {
                 this.selected = selected
-                contentDescription = if (selected) "$status, selecionado" else status
+                contentDescription = description
             }
             .testTag("$tagPrefix-${option.extra.name.lowercase(Locale.ROOT)}"),
     ) {

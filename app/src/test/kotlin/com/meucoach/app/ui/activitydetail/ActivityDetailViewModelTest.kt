@@ -55,6 +55,7 @@ import com.meucoach.core.model.ImportedActivity
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.Sex
 import com.meucoach.core.model.Sport
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -659,18 +660,18 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
-    fun `an art failure comes back inline and retry re-runs the same target`() {
+    fun `an art failure comes back with the friendly copy and retry re-runs the same target`() {
         runBlocking {
             repository.saveImportedActivity(gpsActivity(), "sha")
             val exporter = FakeArtPngExporter()
             val viewModel = viewModel("activity-1", artPngExporter = exporter)
             viewModel.uiState.first { !it.isLoading }
 
-            exporter.result = ArtPngExport.Failure("Galeria indisponível.")
+            exporter.result = ArtPngExport.Failure("Permission denied")
             viewModel.saveArtPng()
 
             val error = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Error
-            assertThat(error.message).isEqualTo("Galeria indisponível.")
+            assertThat(error.message).isEqualTo(com.meucoach.app.story.StoryMessages.ART_EXPORT_FAILED)
 
             exporter.result = ArtPngExport.Published(
                 uri = android.net.Uri.parse("content://media/external/images/2"),
@@ -682,6 +683,110 @@ class ActivityDetailViewModelTest {
             val done = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Done
             assertThat(done.forShare).isFalse()
             assertThat(exporter.exports).hasSize(2)
+        }
+    }
+
+    @Test
+    fun `a consumed art share does not stay in the state`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.shareArt()
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isInstanceOf(ArtExportUiState.Done::class.java)
+
+            viewModel.consumeArtShare()
+
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Idle)
+        }
+    }
+
+    @Test
+    fun `an export whose recipe changed is discarded instead of shared`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeArtPngExporter()
+            val gate = CompletableDeferred<Unit>()
+            exporter.gate = gate
+            val viewModel = viewModel("activity-1", artPngExporter = exporter)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.shareArt()
+            assertThat(viewModel.uiState.value.storyStudio.artExport)
+                .isEqualTo(ArtExportUiState.Exporting(forShare = true))
+
+            viewModel.selectArtTextColor(ArtColor.CYAN)
+            gate.complete(Unit)
+
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Stale)
+        }
+    }
+
+    @Test
+    fun `an unchanged export still completes normally`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeArtPngExporter()
+            val gate = CompletableDeferred<Unit>()
+            exporter.gate = gate
+            val viewModel = viewModel("activity-1", artPngExporter = exporter)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.shareArt()
+            gate.complete(Unit)
+
+            val done = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Done
+            assertThat(done.forShare).isTrue()
+            assertThat(exporter.exports.single().second).isEqualTo(ArtRecipe())
+        }
+    }
+
+    @Test
+    fun `editing the art clears a previous confirmation`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.saveArtPng()
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isInstanceOf(ArtExportUiState.Done::class.java)
+
+            viewModel.selectArtFont(ArtFont.ANTON)
+
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Idle)
+        }
+    }
+
+    @Test
+    fun `editing the art clears a previous error`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val exporter = FakeArtPngExporter()
+            exporter.result = ArtPngExport.Failure("qualquer coisa")
+            val viewModel = viewModel("activity-1", artPngExporter = exporter)
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.saveArtPng()
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isInstanceOf(ArtExportUiState.Error::class.java)
+
+            viewModel.selectArtTextColor(ArtColor.CYAN)
+
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Idle)
+        }
+    }
+
+    @Test
+    fun `tapping the same art value does not clear the confirmation`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.saveArtPng()
+            viewModel.selectArtTextColor(ArtColor.WHITE)
+
+            assertThat(viewModel.uiState.value.storyStudio.artExport).isInstanceOf(ArtExportUiState.Done::class.java)
         }
     }
 
@@ -1227,6 +1332,7 @@ class ActivityDetailViewModelTest {
             savedToGallery = true,
             reused = false,
         )
+        var gate: CompletableDeferred<Unit>? = null
         val exports = mutableListOf<Pair<Boolean, ArtRecipe>>()
 
         override suspend fun export(
@@ -1237,6 +1343,7 @@ class ActivityDetailViewModelTest {
             forShare: Boolean,
         ): ArtPngExport {
             exports += forShare to recipe
+            gate?.await()
             return result
         }
     }

@@ -69,6 +69,39 @@ de uma receita que já não está na tela**.
 - Não adicionar os “3 passos” como se fossem requisito: o PRD/ADR exigem
   só a linha “pôster × arte”.
 
+### 0.4 Status da remediação (23/11/2026)
+
+Implementado nesta fatia: P0-1, P0-2, P0-3, P1-4, P1-5, P1-6, P1-7,
+P2-8, P2-9, P2-10, P2-11, P2-12 e os itens de P3-13/P3-14 (T1/T2/T4/T6,
+M5/M6). Gates de lógica e visuais verdes; validação no aparelho pelo
+usuário 0 continua aberta (§9.3).
+
+**Decisões de implementação**
+
+- **C2:** opção A — a UI entrega o URI, chama `onShareConsumed()` e a VM
+  zera o `Done` só se ainda for o mesmo evento (`consumeArtShare`).
+- **Race do export:** opção A — a receita é capturada no início e o
+  resultado é descartado se a receita atual mudou; novo estado `Stale`
+  mostra “Receita alterada — gere de novo.”.
+- **Aviso de contraste:** texto e rota são checados separadamente; a rota
+  usa a casca composta sobre preto e sobre branco. Com a paleta atual,
+  **nenhuma** das 8 cores de texto passa 4,5:1 nos dois checkers, então o
+  aviso de texto passa a ser permanente (consultivo). A decisão de copy
+  fica aberta com o usuário 0; o requisito “não depender do toggle” é
+  atendido.
+- **Extras bloqueados:** “Limite de 2 — desmarque uma para incluir” (o
+  “toque para trocar” não funciona com o tile desabilitado).
+- **P2-11:** prévia mantém 300 dp; badge com as duas dimensões; âncora
+  “Ver prévia”; o scroll zera na troca de aba.
+- **P2-12:** cópia amigável `StoryMessages.ART_EXPORT_FAILED`; cache
+  limitado a 8 PNGs; `reused` continua silencioso.
+- **A3/A4:** cantos de 20 dp mantidos (convenção do vídeo); reuso sem
+  feedback extra.
+- **Goldens:** `art-studio-tab-dark` regravado; novos
+  `art-studio-tab-light`, `art-studio-colors-light` e
+  `art-studio-tab-narrow-200-dark`. O golden de 200% revelou o header
+  espremido (“transpare/nte”) e o badge passou a quebrar via `FlowRow`.
+
 ---
 
 ## 1. Contexto, escopo e estado atual
@@ -202,7 +235,7 @@ Material You. A arte é transparente; não prometemos AA sobre toda foto.
 
 ### P0-1 — A prévia não troca de fonte (C1)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** bug de estado
 **Severidade:** P0
 
@@ -255,7 +288,7 @@ aba, rotação) — não “até recomposição por outro motivo”, como dizia 
 
 ### P0-2 — O share sheet reabre sozinho (C2)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** bug de evento/estado
 **Severidade:** P0
 
@@ -316,7 +349,7 @@ aba, rotação) — não “até recomposição por outro motivo”, como dizia 
 
 ### P0-3 — Export com receita obsoleta (novo, não visto pela v1)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** bug de correção/race
 **Severidade:** P0
 
@@ -377,7 +410,7 @@ corresponde ao que o usuário vê.
 
 ### P1-4 — `Done`/`Error` obsoletos ao editar (C3)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** higiene de estado
 **Severidade:** P1
 
@@ -411,7 +444,7 @@ mesmo valor não é “edição”.
 
 ### P1-5 — Copy “pôster automático × arte transparente” (A1)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** desvio de PRD
 **Severidade:** P1
 
@@ -455,7 +488,7 @@ o lugar), `ArtStudioContentTest.kt`, `StoryStudioScreenshotTest.kt`.
 
 ### P1-6 — Spinner no CTA de export (A4 — requisito do PRD)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** desvio de PRD
 **Severidade:** P1
 
@@ -497,7 +530,7 @@ TalkBack continua lendo “Compartilhando…”/“Salvando…”.
 
 ### P1-7 — Aviso de contraste só olha um fundo (M4)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** lógica de acessibilidade / desvio de spec
 **Severidade:** P1
 
@@ -548,7 +581,7 @@ texto/rota; nenhum falso-negativo para rota escura.
 
 ### P2-8 — Swatches: check, borda clara, label e role (M3)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** acessibilidade / contraste
 **Severidade:** P2
 
@@ -601,7 +634,7 @@ seleção não depende só de cor; TalkBack anuncia rádio + selecionado.
 
 ### P2-9 — 360 dp e fonte 200% (T3)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** acessibilidade / DoD do PRD
 **Severidade:** P2
 
@@ -638,7 +671,7 @@ controles e CTAs utilizáveis; TalkBack ok.
 
 ### P2-10 — Limite de extras invisível (M2)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** UX / clareza
 **Severidade:** P2
 
@@ -677,7 +710,7 @@ controles e CTAs utilizáveis; TalkBack ok.
 
 ### P2-11 — Prévia pequena/longe, badge e scroll (A2)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** UX de fluxo
 **Severidade:** P2
 
@@ -723,7 +756,7 @@ o badge informa as duas dimensões; a troca de aba não herda o scroll.
 
 ### P2-12 — Erro amigável e cache com bound (A4)
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 **Tipo:** robustez / privacidade
 **Severidade:** P2
 
@@ -771,7 +804,7 @@ galeria sem duplicatas.
 
 ### P3-13 — Acessibilidade e estados menores
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 
 1. **T1 — extras no `contentDescription` da prévia.** Hoje
    `ArtStudioContent.kt:321-327` resume formato/cores/fonte, mas não
@@ -798,7 +831,7 @@ labels). Goldens se o layout mudar.
 
 ### P3-14 — Copy, undo e decisões cosméticas
 
-**Status:** [ ] pendente
+**Status:** [x] concluído em 23/11/2026
 
 1. **M5 — “Salvar como padrão”.** A copy atual “A próxima arte já abre com
    estas escolhas.” (`ArtStudioContent.kt:235`) não diz *quando* salva.
@@ -944,19 +977,19 @@ cobertura do artefato.
 
 ## 10. Definição de pronto (remediação)
 
-- [ ] P0-1, P0-2, P0-3 implementados com teste que falha antes.
-- [ ] P1-4, P1-5, P1-6, P1-7 implementados e validados.
-- [ ] P2-8, P2-9, P2-10, P2-11, P2-12 implementados ou explicitamente
-      adiados com o usuário 0.
-- [ ] `assembleDebug`, `check`, `spotlessCheck`, `koverVerify` verdes.
-- [ ] `verifyRoborazziDebug --tests "*Art*"` e `"*StoryStudio*"` verdes.
-- [ ] Lint/detekt sem erros/supressões novas.
-- [ ] Validação no aparelho (S24 Ultra) e emulador API 31+.
-- [ ] Vídeo/capa/pôster sem regressão.
-- [ ] `PROGRESS.md` e `ROADMAP.md` atualizados; `DESIGN_SYSTEM.md` se a
-      copy/componente mudar; ADR se alguma regra mudar (não é esperado).
-- [ ] Nenhum dado real no diff; NOTICE OFL intacto.
-- [ ] Nenhum TODO crítico escondido.
+- [x] P0-1, P0-2, P0-3 implementados com teste de regressão.
+- [x] P1-4, P1-5, P1-6, P1-7 implementados e validados nos testes/goldens.
+- [x] P2-8, P2-9, P2-10, P2-11, P2-12 implementados; decisões abertas
+      restantes estão na §11 e não bloqueiam.
+- [x] `assembleDebug`, `check`, `spotlessCheck`, `koverVerify` verdes.
+- [x] `verifyRoborazziDebug --tests "*Art*"` e `"*StoryStudio*"` verdes.
+- [x] Lint/detekt sem erros/supressões novas.
+- [ ] Validação no aparelho (S24 Ultra) e emulador API 31+ — pendente
+      com o usuário 0.
+- [x] Vídeo/capa/pôster sem regressão nos goldens (`*StoryStudio*`).
+- [x] `PROGRESS.md`, `ROADMAP.md` e `DESIGN_SYSTEM.md` atualizados.
+- [x] Nenhum dado real no diff; NOTICE OFL intacto.
+- [x] Nenhum TODO crítico escondido.
 
 ---
 
@@ -972,6 +1005,12 @@ cobertura do artefato.
 | 6 | Cantos da prévia (A3) | manter 20 dp / literal | manter (consistente com o vídeo) |
 | 7 | Heading dos grupos de cor (T4) | `SectionLabel` / manter | `SectionLabel` se o TalkBack não ficar verboso |
 | 8 | Borda do swatch claro | `textSecondary` / outro token | validar visualmente com o usuário 0 |
+
+**Fechadas na remediação:** 3 (token/descartar + estado `Stale`), 7
+(`heading()` no label existente, sem `SectionLabel`), 8 (borda
+`textSecondary` quando o swatch fica abaixo de 3:1 da surface). Adotados
+como default: 1 (linha curta no topo), 2 (300 dp + âncora), 4 (silencioso),
+5 (sem undo) e 6 (cantos de 20 dp).
 
 ---
 

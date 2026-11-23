@@ -5,7 +5,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +13,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,11 +43,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.meucoach.app.story.ArtContrast
@@ -79,18 +80,35 @@ private const val ART_PREVIEW_WIDTH = 540
 /** Debounce of the art preview render: one render in flight, at most 540 px. */
 private const val ART_PREVIEW_DEBOUNCE_MS = 120L
 
+/** Minimum contrast of a swatch border against the Studio surface. */
+private const val SWATCH_BORDER_CONTRAST = 3.0
+
 /**
  * Art tab of the Story Studio (ADR 0058 §2.8): preview over a checkerboard,
  * format, extras, text/route swatches, font and the share/save CTAs. The
- * recipe lives in the view model; persistence lands with F7 and the export
- * pipeline with F6, so both CTAs stay wired but inert until then.
+ * recipe lives in the view model; export and persistence live in the VM too.
  */
 @Composable
-internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActions) {
+internal fun ArtStudioContent(
+    state: StoryStudioUiState,
+    actions: ArtStudioActions,
+    onScrollToPreview: () -> Unit = {},
+) {
     val colors = McTheme.colors
     val hasRoute = state.plan != null && state.plan.route.points.size >= 2
     val artOptions = state.extras.filter { it.extra in ArtRecipe.EXTRA_CHOICES }
 
+    // A1: the Studio now explains why two 4:5 PNGs exist before the preview.
+    Text(
+        text = "Pôster automático: opaco, nasce com o vídeo. " +
+            "Arte PNG: transparente, para colar sobre uma foto.",
+        style = McTextStyles.caption,
+        color = colors.textSecondary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("art-poster-vs-art"),
+    )
+    Spacer(modifier = Modifier.height(16.dp))
     ArtPreviewCard(state = state)
     Spacer(modifier = Modifier.height(16.dp))
     McCard(variant = McCardVariant.DEFAULT) {
@@ -142,6 +160,7 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
                             modifier = Modifier.weight(1f),
                             tagPrefix = "art-extra",
                             selectionHint = "Na arte",
+                            limitReached = blocked,
                         )
                     }
                     if (row.size == 1) {
@@ -158,7 +177,10 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
         )
     }
     Spacer(modifier = Modifier.height(16.dp))
-    McCard(variant = McCardVariant.DEFAULT) {
+    McCard(
+        modifier = Modifier.testTag("art-colors"),
+        variant = McCardVariant.DEFAULT,
+    ) {
         StudioCardHeader(
             overline = "CORES",
             title = "Texto e traçado",
@@ -232,14 +254,19 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
         onReset = actions.onReset,
         saveTag = "art-save-default",
         resetTag = "art-reset-recipe",
-        caption = "A próxima arte já abre com estas escolhas.",
+        caption = "Salva ao compartilhar ou salvar.",
     )
     Spacer(modifier = Modifier.height(16.dp))
     val export = state.artExport
     val exporting = export is ArtExportUiState.Exporting
     LaunchedEffect(export) {
         val done = export as? ArtExportUiState.Done
-        if (done != null && done.forShare) actions.onShare(done.uri)
+        if (done != null && done.forShare) {
+            actions.onShare(done.uri)
+            // P0-2: the event belongs to the view model; consuming it keeps
+            // rotation, tab switches and reopen from replaying the same sheet.
+            actions.onShareConsumed()
+        }
     }
     McPrimaryButton(
         text = if (exporting && (export as ArtExportUiState.Exporting).forShare) "Compartilhando…" else "Compartilhar",
@@ -249,6 +276,8 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
             .fillMaxWidth()
             .testTag("art-share"),
         minHeight = 56.dp,
+        loading = exporting && (export as ArtExportUiState.Exporting).forShare,
+        loadingTag = "art-share-progress",
     )
     Spacer(modifier = Modifier.height(10.dp))
     McSecondaryButton(
@@ -259,6 +288,8 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
             .fillMaxWidth()
             .testTag("art-save"),
         minHeight = 48.dp,
+        loading = exporting && !(export as ArtExportUiState.Exporting).forShare,
+        loadingTag = "art-save-progress",
     )
     when (export) {
         is ArtExportUiState.Done -> {
@@ -286,20 +317,39 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
                     .testTag("art-export-error"),
             )
             McTextButton(
-                text = "Tentar novamente",
+                text = "Tentar de novo",
                 onClick = { actions.onRetry() },
                 modifier = Modifier.testTag("art-export-retry"),
             )
         }
 
+        ArtExportUiState.Stale -> {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Receita alterada — gere de novo.",
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("art-export-stale"),
+            )
+        }
+
         else -> Unit
     }
+    Spacer(modifier = Modifier.height(4.dp))
+    McTextButton(
+        text = "Ver prévia",
+        onClick = onScrollToPreview,
+        modifier = Modifier.testTag("art-scroll-preview"),
+    )
     if (!hasRoute) {
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Sem rota suficiente para a arte.",
+            text = "Esta atividade não tem rota GPS; a arte precisa de pelo menos 2 pontos.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
+            modifier = Modifier.testTag("art-no-route"),
         )
     }
 }
@@ -311,25 +361,26 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
     var darkPreview by rememberSaveable { mutableStateOf(true) }
     var retry by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
-    val typeface = remember(context) { state.artRecipe.font.typeface(context) }
     val logo = remember(context) { StoryBranding.logo(context) }
     val recipe = state.artRecipe
     val plan = state.plan
     val format = recipe.format
     val previewHeight = (ART_PREVIEW_WIDTH * format.height / format.width)
-    val warning = ArtContrast.warning(recipe.textColor, recipe.routeColor, darkPreview)
+    val warning = ArtContrast.warning(recipe.textColor, recipe.routeColor)
     val previewDescription = buildString {
         append("Prévia da arte ${formatLabel(format)}")
         append(", texto ${swatchLabel(recipe.textColor)}")
         append(", traçado ${swatchLabel(recipe.routeColor)}")
         append(", fonte ${fontLabel(recipe.font)}")
+        if (recipe.extras.isNotEmpty()) {
+            append(", extras ${recipe.extras.joinToString(" e ") { it.uiLabel().lowercase(Locale.ROOT) }}")
+        }
         append(", fundo transparente")
     }
     val preview by produceState<ArtPreviewState>(
         initialValue = ArtPreviewState.Loading,
         plan,
         recipe,
-        darkPreview,
         retry,
     ) {
         when {
@@ -340,9 +391,18 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
                 delay(ART_PREVIEW_DEBOUNCE_MS)
                 value = withContext(Dispatchers.Default) {
                     try {
+                        // P0-1: the typeface is resolved inside the producer, so
+                        // it always belongs to the captured recipe. A remembered
+                        // value without the font as key kept the first family
+                        // forever and made the preview drift from the export.
+                        val typeface = recipe.font.typeface(context)
                         val bitmap = StoryArtRenderer(recipe, typeface, logo)
                             .render(plan, plan.localDate, ART_PREVIEW_WIDTH, previewHeight)
-                        if (bitmap != null) ArtPreviewState.Ready(bitmap) else ArtPreviewState.Empty
+                        if (bitmap != null) {
+                            ArtPreviewState.Ready(bitmap, recipe.font)
+                        } else {
+                            ArtPreviewState.Empty
+                        }
                     } catch (error: Throwable) {
                         // The preview degrades to a retry affordance instead of
                         // crashing the Studio; the export path is the one that
@@ -354,8 +414,13 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
         }
     }
     McCard(variant = McCardVariant.ELEVATED) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
+        // FlowRow: the badge wraps below the title at 200% instead of
+        // squeezing "Arte transparente" into a mid-word break.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column {
                 Text(
                     text = "PRÉVIA",
                     style = McTextStyles.overline,
@@ -373,10 +438,12 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
                 border = BorderStroke(1.dp, colors.borderSubtle),
             ) {
                 Text(
-                    text = "${formatLabel(format)} · 1080 px",
+                    text = "${format.width}×${format.height}",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .testTag("art-format-badge"),
                 )
             }
         }
@@ -422,7 +489,7 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
                         contentDescription = null,
                         modifier = Modifier
                             .matchParentSize()
-                            .testTag("art-preview-ready"),
+                            .testTag("art-preview-ready-${preview.font.name.lowercase(Locale.ROOT)}"),
                         contentScale = ContentScale.Fit,
                     )
 
@@ -447,13 +514,21 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
                             color = colors.textSecondary,
                         )
                         McTextButton(
-                            text = "Tentar novamente",
+                            text = "Recarregar prévia",
                             onClick = { retry++ },
                             modifier = Modifier.testTag("art-retry"),
                         )
                     }
 
-                    ArtPreviewState.Loading -> Unit
+                    // Only the first render reaches Loading; a re-render keeps
+                    // the previous bitmap until the new one is ready.
+                    ArtPreviewState.Loading -> CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .testTag("art-preview-loading"),
+                        strokeWidth = 2.dp,
+                        color = colors.textTertiary,
+                    )
                 }
             }
         }
@@ -467,7 +542,10 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
                 .testTag("art-transparent-label"),
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             StudioPill(
                 text = "Fundo escuro",
                 selected = darkPreview,
@@ -498,33 +576,45 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
 @Composable
 private fun SwatchRow(title: String, selected: ArtColor, onSelected: (ArtColor) -> Unit, tagPrefix: String) {
     val colors = McTheme.colors
+    val surfaceArgb = colors.surface.toArgb()
     Text(
         text = title,
         style = McTextStyles.caption,
         color = colors.textTertiary,
-        modifier = Modifier.semantics(mergeDescendants = true) {},
+        modifier = Modifier
+            .semantics(mergeDescendants = true) {
+                heading()
+            },
     )
     Spacer(modifier = Modifier.height(8.dp))
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.selectableGroup(),
     ) {
         ArtColor.entries.forEach { color ->
             val isSelected = color == selected
+            // A white swatch on the light surface (1.08:1) and a black one on
+            // the dark surface need a border that is visible by itself; the
+            // swatch fill (the art value) never changes.
+            val needsContrastBorder = ArtContrast.ratio(color.argb, surfaceArgb) < SWATCH_BORDER_CONTRAST
             Surface(
                 shape = CircleShape,
                 color = Color(color.argb),
-                border = if (isSelected) {
-                    BorderStroke(2.dp, colors.textPrimary)
-                } else {
-                    BorderStroke(1.dp, colors.borderSubtle)
+                border = when {
+                    isSelected -> BorderStroke(2.dp, colors.textPrimary)
+                    needsContrastBorder -> BorderStroke(1.5.dp, colors.textSecondary)
+                    else -> BorderStroke(1.dp, colors.borderSubtle)
                 },
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .clickable { onSelected(color) }
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.RadioButton,
+                        onClick = { onSelected(color) },
+                    )
                     .semantics {
-                        this.selected = isSelected
                         contentDescription = if (isSelected) {
                             "$title: ${swatchLabel(color)}, selecionada"
                         } else {
@@ -538,7 +628,7 @@ private fun SwatchRow(title: String, selected: ArtColor, onSelected: (ArtColor) 
                         Icon(
                             imageVector = Icons.Outlined.Check,
                             contentDescription = null,
-                            tint = if (isDarkSwatch(color)) Color.White else Color.Black,
+                            tint = checkTint(color),
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -546,6 +636,13 @@ private fun SwatchRow(title: String, selected: ArtColor, onSelected: (ArtColor) 
             }
         }
     }
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = "Selecionada: ${swatchLabel(selected)}",
+        style = McTextStyles.caption,
+        color = colors.textTertiary,
+        modifier = Modifier.testTag("$tagPrefix-selected"),
+    )
 }
 
 private sealed interface ArtPreviewState {
@@ -555,7 +652,8 @@ private sealed interface ArtPreviewState {
 
     data object Error : ArtPreviewState
 
-    data class Ready(val bitmap: Bitmap) : ArtPreviewState
+    /** [font] is the family actually used by the renderer, not just the request. */
+    data class Ready(val bitmap: Bitmap, val font: ArtFont) : ArtPreviewState
 }
 
 private fun ceilOf(value: Float): Int = Math.ceil(value.toDouble()).toInt().coerceAtLeast(1)
@@ -585,9 +683,15 @@ internal fun swatchLabel(color: ArtColor): String = when (color) {
     ArtColor.BLUE -> "azul"
 }
 
-internal fun isDarkSwatch(color: ArtColor): Boolean = when (color) {
-    ArtColor.BLACK, ArtColor.GRAY_DARK, ArtColor.CYAN, ArtColor.BLUE -> true
-    else -> false
+/** Check tint that wins the WCAG ratio against the swatch fill (≥3:1 for the 8 colors). */
+internal fun checkTint(color: ArtColor): Color {
+    val white = 0xFFFFFFFF.toInt()
+    val black = 0xFF000000.toInt()
+    return if (ArtContrast.ratio(white, color.argb) >= ArtContrast.ratio(black, color.argb)) {
+        Color.White
+    } else {
+        Color.Black
+    }
 }
 
 internal fun ArtRecipe.summaryLine(): String = "${formatLabel(

@@ -135,6 +135,49 @@ class ArtPngExportTest {
         assertThat(export).isEqualTo(ArtPngExport.NoRoute)
     }
 
+    @Test
+    fun `a publish failure returns the friendly copy`() {
+        val failing = CanvasArtPngExporter(
+            context,
+            object : GalleryImagePublisher {
+                override fun publish(file: File): ImagePublishResult = error("Permission denied")
+            },
+        )
+        var result: ArtPngExport? = null
+        kotlinx.coroutines.runBlocking {
+            result = failing.export(
+                plan = plan(),
+                localDate = plan().localDate,
+                recipe = ArtRecipe(),
+                activityId = "activity-1",
+                forShare = false,
+            )
+        }
+
+        assertThat(result).isEqualTo(ArtPngExport.Failure(StoryMessages.ART_EXPORT_FAILED))
+    }
+
+    @Test
+    fun `the cache keeps at most eight pngs and preserves the reusable one`() {
+        val plan = plan()
+        val dir = File(context.cacheDir, "art").apply { mkdirs() }
+        repeat(10) { index ->
+            val stale = File(dir, "old-$index.png")
+            stale.writeBytes(byteArrayOf(1))
+            stale.setLastModified(1_000_000L + index * 1_000L)
+        }
+
+        val first = runBlockingExport(plan, ArtRecipe(), forShare = true) as ArtPngExport.Published
+        val remaining = dir.listFiles { file -> file.extension.equals("png", ignoreCase = true) }
+            .orEmpty()
+            .size
+
+        assertThat(remaining).isLessThanOrEqualTo(8)
+        val second = runBlockingExport(plan, ArtRecipe(), forShare = true) as ArtPngExport.Published
+        assertThat(second.reused).isTrue()
+        assertThat(second.uri).isEqualTo(first.uri)
+    }
+
     private fun runBlockingExport(plan: StoryPlan, recipe: ArtRecipe, forShare: Boolean = true): ArtPngExport {
         var result: ArtPngExport? = null
         kotlinx.coroutines.runBlocking {

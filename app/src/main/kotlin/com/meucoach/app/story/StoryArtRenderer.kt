@@ -298,7 +298,7 @@ class StoryArtRenderer(
 
         /** Fixed dark shell under the route so it reads on any photo (ADR 0058 §5.2). */
         const val ROUTE_CASING = 0xFF08090B.toInt()
-        private const val ROUTE_CASING_ALPHA = 178
+        internal const val ROUTE_CASING_ALPHA = 178
         private const val LABEL_ALPHA = 178
         private const val MARGIN = 88f
         private const val FOOTER_RESERVE = 140f

@@ -197,8 +197,8 @@ Regras:
 | `McSectionHeader` | título 22/28 + ação textual opcional |
 | `McCard` | superfície, raio 28, borda 1 dp, padding 20; variantes `default`, `accent`, `inset` |
 | `McHeroCard` | raio 36, gradiente sutil, número display/xl |
-| `McPrimaryButton` | altura 56, pill, lima, texto ink, ícone opcional; estado pressed `lime-pressed` |
-| `McSecondaryButton` | borda 1 dp, fundo transparente, texto primary |
+| `McPrimaryButton` | altura 56, pill, lima, texto ink, ícone opcional; estado pressed `lime-pressed`; `loading` troca o ícone por spinner 18 dp |
+| `McSecondaryButton` | borda 1 dp, fundo transparente, texto primary; `loading` troca o ícone por spinner 18 dp |
 | `McDangerButton` | borda 1 dp `danger`, texto `danger`, só para ação destrutiva confirmada |
 | `McChip` | pill, 36 dp, selecionado lima/ink |
 | `McStat` | label/sm + valor display/md + unidade body/md + delta opcional |

@@ -2,6 +2,7 @@ package com.meucoach.app.story
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.meucoach.core.domain.story.ArtExportKey
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryPlan
@@ -11,6 +12,11 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 import javax.inject.Inject
+
+/** Number of rendered PNGs kept in the art cache; older ones are pruned. */
+private const val ART_CACHE_FILE_LIMIT = 8
+
+private const val TAG = "ArtPngExporter"
 
 /** Outcome of one art export for the Studio CTAs (ADR 0058 §2.7). */
 sealed interface ArtPngExport {
@@ -76,10 +82,27 @@ constructor(
             lastKey = key
             lastUri = published.uri
             lastFile = file
+            pruneCache(keep = file)
             ArtPngExport.Published(published.uri, published.savedToGallery, reused = false)
         } catch (error: Throwable) {
-            ArtPngExport.Failure(error.message ?: "Não foi possível gerar o PNG da arte.")
+            // The technical detail is useful in the log; the UI gets the copy.
+            Log.w(TAG, "Falha ao renderizar/publicar a arte", error)
+            ArtPngExport.Failure(StoryMessages.ART_EXPORT_FAILED)
         }
+    }
+
+    /**
+     * Keeps the cache bounded after a successful publish. The freshly
+     * published file is always kept — it becomes `lastFile`, the reuse source.
+     */
+    private fun pruneCache(keep: File) {
+        val files = keep.parentFile?.listFiles { file ->
+            file.isFile && file.extension.equals("png", ignoreCase = true)
+        } ?: return
+        files.sortedByDescending { it.lastModified() }
+            .drop(ART_CACHE_FILE_LIMIT)
+            .filter { it != keep && it != lastFile }
+            .forEach { stale -> stale.delete() }
     }
 
     private fun render(plan: StoryPlan, localDate: LocalDate?, recipe: ArtRecipe): File {
