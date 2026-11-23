@@ -1,6 +1,6 @@
 # ADR 0060 — Arte PNG 9:16, layout de métricas e prévia fixa
 
-**Status:** Aceito — implementação em andamento
+**Status:** Aceito — implementação em andamento. **Emendado pelo [ADR 0061](0061-art-photo-studio.md)** em 23/11/2026: a proibição de 9:16 full-bleed opaco vale para overlay de mapa/tiles; a imagem final com foto do modo Foto é permitida (com safe area de story).
 **Data:** 2026-11-23
 **Responsável:** usuário 0 (decisão de produto) e implementação
 **Documentos de origem:** [`PRD_ARTE_PNG_ROTA.md`](../PRD_ARTE_PNG_ROTA.md),

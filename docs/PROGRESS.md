@@ -1,6 +1,38 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (Arte PNG: 9:16, novo layout e prévia fixa — ADR 0060)
+**Atualizado:** 23/11/2026 (PRD Arte com Foto v0.3 — correções da auditoria; sem código)
+
+## Sessão 2026-11-23 — PRD Arte com Foto v0.3 (correções da auditoria)
+
+**Sem código.** Revisão documental para deixar a feature pronta para o início da
+implementação após a auditoria independente do PRD v0.2.
+
+### Concluído
+
+- **PRD v0.3:** `docs/PRD_ARTE_FOTO_EDITOR.md` reescrito com as correções —
+  foto **por atividade** separada do estilo global; import atômico com EXIF e
+  source ≤3072; crop por **foco + zoom** (troca de formato preserva o ponto
+  focal); `textScalePercent` 80–130% com reflow medido; scrim **58%**
+  com aviso calculado sobre o composto; **9:16 Photo full-bleed permitido**
+  (mapa/tiles seguem proibidos); codecs separados (estilo v2 + foto v1);
+  `ArtExportKey` com fingerprint do plano; cache PNG+JPG; acessibilidade do
+  crop; fatias F0–F8 com codec antes da UI que salva.
+- **ADR 0061:** revisado e aceito para implementação; alternativas rejeitadas
+  e consequências atualizadas. A emenda ao ADR 0058/0060 registra que a
+  proibição de 9:16 full-bleed opaco vale para overlay de mapa, não para a
+  imagem final com foto.
+- **DESIGN_SYSTEM:** padrão da scrim (58%, raio 48, padding 36 em design px),
+  safe area 9:16 Photo (250/340), escala de texto, crop acessível e copy por
+  modo.
+- **DECISIONS/ROADMAP:** ADR 0061 marcado como aceito; P3-07 criada para a
+  implementação da Arte com foto.
+
+### Próximo
+
+1. **F1** — domínio (`ArtPhotoCrop.resolve`, `ArtLayoutSpec`,
+   `ArtPlanFingerprint`, validações) + testes.
+2. **F2/F3** — codec de estilo v2 e foto/import/store em paralelo depois de F1.
+3. **F4** — renderer com layout medido, scrim e goldens.
 
 ## Sessão 2026-11-23 — Arte PNG 9:16, layout e prévia fixa (ADR 0060)
 

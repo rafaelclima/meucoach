@@ -1,6 +1,6 @@
 # ADR 0058 — Arte PNG da rota: card transparente 4:5/1:1
 
-**Status:** Aceito — decisões de produto fechadas em 22/11/2026; F2–F8 implementadas; **spike de alpha validado no Instagram em 22/11/2026** (alpha preservado); **estendido pelo [ADR 0060](0060-art-png-9x16-layout.md)** em 23/11/2026 (9:16 + novo layout + prévia fixa).
+**Status:** Aceito — decisões de produto fechadas em 22/11/2026; F2–F8 implementadas; **spike de alpha validado no Instagram em 22/11/2026** (alpha preservado); **estendido pelo [ADR 0060](0060-art-png-9x16-layout.md)** em 23/11/2026 (9:16 + novo layout + prévia fixa). **Emendado pelo [ADR 0061](0061-art-photo-studio.md)** em 23/11/2026: a imagem final com foto em 9:16 full-bleed é permitida; a proibição de overlay 9:16 opaco continua valendo para mapa/tiles.
 **Data:** 2026-11-22
 **Responsável:** usuário 0 (decisões de produto) e implementação
 **Documentos de origem:** [`PRD_ARTE_PNG_ROTA.md`](../PRD_ARTE_PNG_ROTA.md), [`ADR 0059`](0059-min-sdk-31.md), `docs/DESIGN_SYSTEM.md`, `docs/SPORTS_SCIENCE.md`

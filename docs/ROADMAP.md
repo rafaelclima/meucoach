@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.64 · **Data:** 19/11/2026 · **Mudança:** ADR 0053 rampa de entrada do cold-start (`R-COLD-01`) — intermediário com VDOT recente mantém 1 qualidade ≤30min sem 8 dias, com sugestão de nível na calibração; sem migração.
+**Versão:** 1.65 · **Data:** 23/11/2026 · **Mudança:** PRD v0.3 da Arte com foto e ADR 0061 aceitos para implementação — foto por atividade, crop por foco/zoom, escala de texto com reflow, scrim 58%, 9:16 Photo full-bleed e fatias F0–F8. Sem código nesta revisão.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -768,6 +768,22 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
   comum (distância ~10% menor, ritmo/tempo à direita, extras abaixo, sem
   rodapé) e prévia fixa com controles rolando; goldens 4:5/1:1/9:16 e
   200% (23/11/2026; gates verdes, validação no aparelho pendente).
+
+### P3-07 · Arte com foto (Story Studio)
+
+**Status:** PRD v0.3 e ADR 0061 prontos para implementação em 23/11/2026 (auditoria independente incorporada; nenhum código da feature escrito). Validação visual/memória no aparelho é gate de release.
+
+Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 0061`](adr/0061-art-photo-studio.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`ADR 0060`](adr/0060-art-png-9x16-layout.md).
+
+- [x] F0 — PRD v0.3 + ADR 0061 + spec de layout/ownership/crop/scrim/9:16 (23/11/2026).
+- [ ] F1 — domínio: `ArtPhotoCrop.resolve`, `ArtLayoutSpec`, `ArtPlanFingerprint`, validações.
+- [ ] F2 — codec de estilo v2 + `ArtRecipeStore` style-only + migração v1→v2.
+- [ ] F3 — foto: EXIF, 3072/q90, import atômico, store por atividade, loader no alvo e órfãos.
+- [ ] F4 — renderer: layout medido, templates, `textScalePercent`, scrim 58%, JPG e goldens.
+- [ ] F5 — UI: toggle, cards, crop acessível, copy por modo, estados e 200%/360 dp.
+- [ ] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG.
+- [ ] F7 — ciclo de vida: reset, deleteActivity, toggle/remover, órfãos e invalidação do exporter.
+- [ ] F8 — docs/DoD e validação no S24 Ultra + API 31 + low-RAM.
 
 ---
 

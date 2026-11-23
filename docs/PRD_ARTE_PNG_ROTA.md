@@ -17,6 +17,8 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 
 **Não é objetivo:** overlay 9:16 full-bleed opaco, mapa no fundo, animação, edição livre (arrastar texto), color picker livre, export em lote, publicação automática. O 9:16 da arte é um card transparente, não um overlay opaco (ADR 0060).
 
+> **Emenda (ADR 0061, 23/11/2026):** o modo Foto pode gerar uma **imagem final 9:16 full-bleed com foto**; a proibição de overlay 9:16 opaco continua valendo para **mapa/tiles**. O card transparente 9:16 segue igual.
+
 ## 3. Decisões de produto (fechadas em 22/11/2026)
 
 | # | Tema | Decisão |
