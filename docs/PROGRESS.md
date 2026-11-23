@@ -1,6 +1,56 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (Arte com Foto — F1 de domínio concluída; sem F2+)
+**Atualizado:** 23/11/2026 (Arte com Foto — F2 de persistência de estilo concluída; sem F3+)
+
+## Sessão 2026-11-23 — Arte com Foto F2 (codec de estilo v2 + store style-only)
+
+**Escopo:** somente a fatia F2 do PRD v0.3/ADR 0061. Sem foto/import/store
+(F3), renderer (F4), UI (F5) ou export (F6).
+
+### Concluído
+
+- **`ArtRecipeCodec` v2 (estilo):** JSON versionado com `format`, `extras`,
+  `font`, `textColor`, `routeColor`, `template`, `offsets`
+  (`distance`/`paceTime`/`extras`/`route` com `dx`/`dy`) e
+  `textScalePercent`. `background` e `photo` não entram no estilo.
+- **Migração v1→v2:** formato, extras, fonte e cores preservados; template
+  `TOP`, offsets zero e escala 100. Payload v1 sem os campos novos continua
+  válido.
+- **Fallback por campo:** enum desconhecido volta ao default daquele campo;
+  offset inválido/ausente volta a `(0,0)` só naquele bloco; escala inválida
+  volta a 100 preservando template/offsets; JSON corrompido ou versão
+  desconhecida volta a `ArtRecipe()`. Nada lança para a UI.
+- **`ArtRecipeStore` style-only:** `save(recipe)` normaliza
+  `background=TRANSPARENT` e `photo=null`; `load()` devolve só estilo;
+  `reset()` continua limpando apenas `meucoach_art`.
+- **Testes:** `ArtRecipeCodecTest` reescrito para v2 (round-trip completo,
+  JSON documentado, migração v1, enums, offsets por bloco, escala, foto
+  descartada, corrupção) e `ArtRecipeStoreTest` ampliado (estilo, normalização
+  de background/foto, migração v1 e reset).
+
+### Gates
+
+- `./gradlew :app:testDebugUnitTest --tests "com.meucoach.app.story.ArtRecipeCodecTest" --tests "com.meucoach.app.story.ArtRecipeStoreTest"` verde.
+- `./gradlew :app:testDebugUnitTest --tests "*Art*"` verde.
+- `./gradlew :core:domain:test :core:domain:koverVerify` verde (1.311
+  testes de domínio; linhas 96,77%; FIT 93,01%).
+- `./gradlew spotlessCheck`, `./gradlew :app:detekt` e
+  `./gradlew :app:assembleDebug` verdes.
+- `./gradlew :app:koverVerify` verde: a suíte completa do app rodou novamente
+  com 1.345 testes e 0 falhas. O flake conhecido
+  `TodayViewModelPersistTest.upgrades a stale stored week on opening` apareceu
+  uma vez sob carga paralela e passou na reexecução; todos os `*Art*` passaram
+  nas duas rodadas.
+- Sem foto real, migração de banco, dependência nova ou mudança de stack.
+
+### Próximo
+
+1. **F3** — `ArtPhotoCodec` v1, importer EXIF/3072/q90 atômico, store por
+   atividade, loader no alvo e varredura de órfãos. É a próxima fatia e não
+   depende de UI.
+2. **F4** — renderer com layout medido, templates, `textScalePercent`, scrim
+   58% e goldens, depois de F3.
+3. **F5/F6** — UI do Studio e export/share por modo.
 
 ## Sessão 2026-11-23 — Arte com Foto F1 (domínio puro)
 
