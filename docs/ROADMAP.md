@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.65 · **Data:** 23/11/2026 · **Mudança:** PRD v0.3 da Arte com foto e ADR 0061 aceitos para implementação — foto por atividade, crop por foco/zoom, escala de texto com reflow, scrim 58%, 9:16 Photo full-bleed e fatias F0–F8. Sem código nesta revisão.
+**Versão:** 1.66 · **Data:** 23/11/2026 · **Mudança:** F1 da Arte com foto concluída — modelo puro, crop por foco/zoom, `ArtLayoutSpec`, fingerprint do plano e validações em `core:domain`, com testes e gates verdes. Próxima fatia: F2/F3.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -771,12 +771,12 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
 
 ### P3-07 · Arte com foto (Story Studio)
 
-**Status:** PRD v0.3 e ADR 0061 prontos para implementação em 23/11/2026 (auditoria independente incorporada; nenhum código da feature escrito). Validação visual/memória no aparelho é gate de release.
+**Status:** F0–F1 concluídas em 23/11/2026; F2/F3 são as próximas fatias. Validação visual/memória no aparelho é gate de release.
 
 Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 0061`](adr/0061-art-photo-studio.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`ADR 0060`](adr/0060-art-png-9x16-layout.md).
 
 - [x] F0 — PRD v0.3 + ADR 0061 + spec de layout/ownership/crop/scrim/9:16 (23/11/2026).
-- [ ] F1 — domínio: `ArtPhotoCrop.resolve`, `ArtLayoutSpec`, `ArtPlanFingerprint`, validações.
+- [x] F1 — domínio: `ArtPhotoCrop.resolve`, `ArtLayoutSpec`, `ArtPlanFingerprint`, validações e key com fingerprint (23/11/2026; 1.311 testes de domínio, Kover 96,77% de linhas, `assembleDebug`/`spotlessCheck`/detekt verdes).
 - [ ] F2 — codec de estilo v2 + `ArtRecipeStore` style-only + migração v1→v2.
 - [ ] F3 — foto: EXIF, 3072/q90, import atômico, store por atividade, loader no alvo e órfãos.
 - [ ] F4 — renderer: layout medido, templates, `textScalePercent`, scrim 58%, JPG e goldens.

@@ -47,6 +47,12 @@ enum class ArtColor(val argb: Int) {
  * at most two extras are allowed. Text and route colors are chosen
  * independently. Same recipe feeds preview and export, so they cannot drift
  * (ADR 0058 §2.6).
+ *
+ * The photo studio extends the recipe additively (ADR 0061 §2.1): the default
+ * remains transparent, with the TOP layout, 100% text and no photo. A PHOTO
+ * recipe may temporarily omit [photo] while the picker/import is in flight;
+ * persistence requires the file, but the in-memory recipe must never crash the
+ * screen.
  */
 data class ArtRecipe(
     val format: ArtFormat = ArtFormat.PORTRAIT_4_5,
@@ -54,6 +60,9 @@ data class ArtRecipe(
     val font: ArtFont = ArtFont.INTER,
     val textColor: ArtColor = ArtColor.WHITE,
     val routeColor: ArtColor = ArtColor.LIME,
+    val background: ArtBackgroundMode = ArtBackgroundMode.TRANSPARENT,
+    val layout: ArtLayout = ArtLayout(),
+    val photo: ArtPhotoRef? = null,
 ) {
     init {
         require(extras.size <= MAX_EXTRAS) { "A arte aceita no máximo 2 extras." }
@@ -99,7 +108,13 @@ data class ArtRecipe(
 }
 
 /**
- * Identity of one exported art PNG (ADR 0058 §2.7): sharing reuses the last
- * file only while activity, recipe and format stay unchanged.
+ * Identity of one exported art image (ADR 0058 §2.7, extended by ADR 0061
+ * §2.6): sharing reuses the last file only while activity, plan fingerprint,
+ * recipe and format stay unchanged.
  */
-data class ArtExportKey(val activityId: String, val recipe: ArtRecipe, val format: ArtFormat)
+data class ArtExportKey(
+    val activityId: String,
+    val planFingerprint: ArtPlanFingerprint,
+    val recipe: ArtRecipe,
+    val format: ArtFormat,
+)

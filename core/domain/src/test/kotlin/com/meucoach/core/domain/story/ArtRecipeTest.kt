@@ -14,6 +14,49 @@ class ArtRecipeTest {
         assertThat(recipe.font).isEqualTo(ArtFont.INTER)
         assertThat(recipe.textColor).isEqualTo(ArtColor.WHITE)
         assertThat(recipe.routeColor).isEqualTo(ArtColor.LIME)
+        assertThat(recipe.background).isEqualTo(ArtBackgroundMode.TRANSPARENT)
+        assertThat(recipe.layout).isEqualTo(ArtLayout())
+        assertThat(recipe.photo).isNull()
+    }
+
+    @Test
+    fun `photo background carries the photo layout and text scale`() {
+        val photo = ArtPhotoRef(
+            photoId = "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+            activityId = "activity-1",
+            crop = ArtPhotoCrop(focusX = 0.25f, focusY = 0.75f, zoom = 2f),
+        )
+        val recipe = ArtRecipe(
+            background = ArtBackgroundMode.PHOTO,
+            layout = ArtLayout(template = ArtTemplate.BOTTOM, textScalePercent = 130),
+            photo = photo,
+        )
+
+        assertThat(recipe.background).isEqualTo(ArtBackgroundMode.PHOTO)
+        assertThat(recipe.layout.template).isEqualTo(ArtTemplate.BOTTOM)
+        assertThat(recipe.layout.textScalePercent).isEqualTo(130)
+        assertThat(recipe.photo).isEqualTo(photo)
+    }
+
+    @Test
+    fun `photo background may omit the photo while the UI waits for the picker`() {
+        val recipe = ArtRecipe(background = ArtBackgroundMode.PHOTO)
+
+        assertThat(recipe.background).isEqualTo(ArtBackgroundMode.PHOTO)
+        assertThat(recipe.photo).isNull()
+    }
+
+    @Test
+    fun `transparent background can keep a waiting photo while the toggle is off`() {
+        val photo = ArtPhotoRef(
+            photoId = "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+            activityId = "activity-1",
+        )
+
+        val recipe = ArtRecipe(background = ArtBackgroundMode.TRANSPARENT, photo = photo)
+
+        assertThat(recipe.background).isEqualTo(ArtBackgroundMode.TRANSPARENT)
+        assertThat(recipe.photo).isEqualTo(photo)
     }
 
     @Test
@@ -177,16 +220,28 @@ class ArtRecipeTest {
     }
 
     @Test
-    fun `export keys change with activity recipe or format`() {
+    fun `export keys change with activity plan fingerprint recipe or format`() {
         val recipe = ArtRecipe()
+        val fingerprint = ArtPlanFingerprint("art-plan-fingerprint")
 
-        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
-            .isEqualTo(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
-        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
-            .isNotEqualTo(ArtExportKey("b", recipe, ArtFormat.PORTRAIT_4_5))
-        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
-            .isNotEqualTo(ArtExportKey("a", recipe.copy(font = ArtFont.ANTON), ArtFormat.PORTRAIT_4_5))
-        assertThat(ArtExportKey("a", recipe, ArtFormat.PORTRAIT_4_5))
-            .isNotEqualTo(ArtExportKey("a", recipe, ArtFormat.SQUARE))
+        assertThat(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+            .isEqualTo(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("b", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("a", ArtPlanFingerprint("other"), recipe, ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("a", fingerprint, recipe.copy(font = ArtFont.ANTON), ArtFormat.PORTRAIT_4_5))
+        assertThat(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(
+                ArtExportKey(
+                    "a",
+                    fingerprint,
+                    recipe.copy(layout = ArtLayout(textScalePercent = 130)),
+                    ArtFormat.PORTRAIT_4_5,
+                ),
+            )
+        assertThat(ArtExportKey("a", fingerprint, recipe, ArtFormat.PORTRAIT_4_5))
+            .isNotEqualTo(ArtExportKey("a", fingerprint, recipe, ArtFormat.SQUARE))
     }
 }

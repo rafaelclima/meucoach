@@ -1,6 +1,55 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (PRD Arte com Foto v0.3 — correções da auditoria; sem código)
+**Atualizado:** 23/11/2026 (Arte com Foto — F1 de domínio concluída; sem F2+)
+
+## Sessão 2026-11-23 — Arte com Foto F1 (domínio puro)
+
+**Escopo:** somente a fatia F1 do PRD v0.3/ADR 0061. Nenhum código de F2–F8
+(codec de estilo, foto/import/store, renderer, UI, export ou ciclo de vida).
+
+### Concluído
+
+- **Modelo puro em `core:domain/story`:**
+  - `ArtBackgroundMode`, `ArtBlock`, `ArtTemplate`, `ArtOffset` (±0,5),
+    `ArtLayout` (4 offsets explícitos + `textScalePercent` 80–130,
+    `offset()`/`withOffset()`) e `ArtLayoutSpec` com as constantes de design
+    1080 (margem 88, marca 84/44/56, gaps 32/56, rota 24/280, safe area
+    9:16 Foto 250/340 e tamanhos 135/117/24/22/52/34; marca textual 30).
+  - `ArtPhotoCrop` (foco 0..1 + zoom 1..4), `ArtCropRect` normalizado e
+    `ArtPhotoRef` (UUID + dono). `resolve(format, sourceWidth, sourceHeight)`
+    é puro/determinístico: maior retângulo do aspecto no source, foco
+    clampado, zoom dividindo os lados; source inválido retorna `null`.
+  - `ArtPlanFingerprint`/`ArtPlanFingerprints.of(plan)`: SHA-256 de data,
+    distância, duração total, pace médio e pontos da rota normalizados com 5
+    casas; muda com qualquer campo e é estável para o mesmo plano.
+  - `ArtRecipe` ganhou `background`, `layout` e `photo` no fim, com defaults
+    que preservam Transparente/Topo/100%/sem foto. `ArtExportKey` passou a
+    carregar `planFingerprint`; o call site de `CanvasArtPngExporter` foi
+    atualizado só para compilar.
+- **Testes (TDD):** novos `ArtPhotoCropTest` (4:5/1:1/9:16, source
+  landscape/portrait, foco nas bordas, zoom 1/2/4, source inválido),
+  `ArtLayoutSpecTest`, `ArtLayoutTest` e `ArtPlanFingerprintTest`;
+  `ArtRecipeTest` atualizado para defaults, foto transitória, layout e key.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (1.311 testes, 0 falhas).
+- `./gradlew :core:domain:koverVerify` verde (linhas 96,77%; branches 80,62%;
+  FIT 93,01%).
+- `./gradlew :core:domain:detekt spotlessCheck :app:assembleDebug` verde.
+- `./gradlew :app:testDebugUnitTest --tests "*Art*"` verde.
+- Nenhum dado real no diff; sem migração, dependência nova ou mudança de
+  stack.
+
+### Próximo
+
+1. **F2** — `ArtRecipeCodec` v2 (estilo) + migração v1→v2 + store style-only,
+   com fallback por campo.
+2. **F3** — foto: `ArtPhotoCodec` v1, importer EXIF/3072/q90 atômico, store por
+   atividade, loader no alvo e varredura de órfãos. F2 e F3 podem andar em
+   paralelo.
+3. **F4** — renderer com layout medido, templates, `textScalePercent`, scrim
+   58% e goldens. Não iniciar antes de F2/F3.
 
 ## Sessão 2026-11-23 — PRD Arte com Foto v0.3 (correções da auditoria)
 

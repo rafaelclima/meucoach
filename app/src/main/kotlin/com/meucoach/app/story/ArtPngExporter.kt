@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.meucoach.core.domain.story.ArtExportKey
+import com.meucoach.core.domain.story.ArtPlanFingerprints
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryPlan
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -68,7 +69,7 @@ constructor(
         forShare: Boolean,
     ): ArtPngExport = withContext(Dispatchers.Default) {
         if (plan.route.points.size < 2) return@withContext ArtPngExport.NoRoute
-        val key = ArtExportKey(activityId, recipe, recipe.format)
+        val key = ArtExportKey(activityId, ArtPlanFingerprints.of(plan), recipe, recipe.format)
         if (forShare) {
             val file = lastFile
             val uri = lastUri
