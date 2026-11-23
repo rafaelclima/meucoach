@@ -22,14 +22,14 @@ import java.io.OutputStream
 import java.time.LocalDate
 
 /**
- * Transparent route card (ADR 0058 §2.2). Unlike [StoryPosterRenderer] the
- * canvas starts empty — no `drawColor` — so the background is transparent by
- * construction and only text, route and markers are opaque. The layout is
- * computed per format from scaled design units (1080 wide): the 4:5 card is
- * poster-like with pace/time columns and a tagline footer, the 1:1 is compact
- * with pace and time on a single line and no tagline. Nothing here copies the
- * poster's fixed coordinates, and the route always maps into a square area so
- * the normalized projection is never stretched.
+ * Transparent route card (ADR 0058, extended by ADR 0060). Unlike
+ * [StoryPosterRenderer] the canvas starts empty — no `drawColor` — so the
+ * background is transparent by construction and only text, route and markers
+ * are opaque. The layout is computed per format from scaled design units
+ * (1080 wide): the brand sits on top, the distance on the left, pace/time
+ * stacked against the right margin, extras right below, and the route fills
+ * the remaining square. There is no footer/tagline; the 9:16 card reuses the
+ * top block and centers a larger square route in the extra height.
  */
 class StoryArtRenderer(
     private val recipe: ArtRecipe,
@@ -70,23 +70,27 @@ class StoryArtRenderer(
         val style =
             ArtStyle(text = recipe.textColor.argb, label = withAlpha(recipe.textColor.argb, LABEL_ALPHA), scale = scale)
         val margin = MARGIN * scale
+        val square = recipe.format == ArtFormat.SQUARE
+        val distanceBaseline = (if (square) 400f else 460f) * scale
+        val labelBaseline = distanceBaseline - (if (square) 135f else 153f) * scale
 
         drawBrand(canvas, margin, style)
 
         val distance = metric(spec, StoryEssential.DISTANCE)
-        drawLabel(canvas, distance.label, margin, 250f * scale, style)
-        drawDistance(canvas, distance, margin, style)
+        drawLabel(canvas, distance.label, margin, labelBaseline, style)
+        drawDistance(canvas, distance, margin, distanceBaseline, style)
 
-        val lastMetricBaseline = if (recipe.format == ArtFormat.SQUARE) {
-            drawPaceTimeLine(canvas, spec, margin, style)
-        } else {
-            drawPaceTimeColumns(canvas, spec, width, style)
-        }
-        val extrasBaseline = drawExtras(canvas, spec, localDate, margin, lastMetricBaseline, style)
+        val lastMetricBaseline = drawPaceTimeBlock(canvas, spec, width, labelBaseline, style)
+        val extrasBaseline = drawExtras(
+            canvas,
+            spec,
+            localDate,
+            margin,
+            maxOf(distanceBaseline, lastMetricBaseline),
+            style,
+        )
 
         drawRoute(canvas, spec.plan, width, designHeight, extrasBaseline, style, recipe.routeColor.argb)
-
-        if (recipe.format != ArtFormat.SQUARE) drawFooter(canvas, width, designHeight, style)
     }
 
     /** Colors and scale of one card draw; labels use the text color at 70%. */
@@ -118,81 +122,64 @@ class StoryArtRenderer(
         canvas.drawText(text, x, baseline, paint)
     }
 
-    private fun drawDistance(canvas: Canvas, distance: ResolvedMetric, margin: Float, style: ArtStyle) {
+    private fun drawDistance(
+        canvas: Canvas,
+        distance: ResolvedMetric,
+        margin: Float,
+        baseline: Float,
+        style: ArtStyle,
+    ) {
         val scale = style.scale
         val value = distance.value
         val number = value.substringBeforeLast(" ").ifBlank { value }
         val unit = value.substringAfterLast(" ", "").takeIf { it.isNotBlank() && number != value }
-        val numberPaint = storyTextPaint(style.text, preferredNumberSize(scale), typeface, bold = true)
-        val unitPaint = storyTextPaint(style.text, 52f * scale, typeface, bold = true)
+        val size = (if (recipe.format == ArtFormat.SQUARE) SQUARE_DISTANCE_SIZE else DISTANCE_SIZE) * scale
+        val numberPaint = storyTextPaint(style.text, size, typeface, bold = true)
+        val unitPaint = storyTextPaint(style.text, 48f * scale, typeface, bold = true)
         val unitWidth = unit?.let { unitPaint.measureText(it) + 14f * scale } ?: 0f
+        // Reserve the right column so a long distance never collides with
+        // pace/time; the number shrinks before it invades the other margin.
         numberPaint.textSize = fittedTextSize(
             numberPaint,
             number,
-            DESIGN_WIDTH * scale - 2f * margin - unitWidth,
-            preferredNumberSize(scale),
+            DESIGN_WIDTH * scale - 2f * margin - unitWidth - PACE_TIME_RESERVE * scale,
+            size,
         )
-        val baseline = (if (recipe.format == ArtFormat.SQUARE) 400f else 460f) * scale
         canvas.drawText(number, margin, baseline, numberPaint)
         unit?.let {
             canvas.drawText(it, margin + numberPaint.measureText(number) + 14f * scale, baseline, unitPaint)
         }
     }
 
-    /** One aligned metric column of the 4:5 card. */
-    private data class MetricSlot(
-        val x: Float,
-        val align: Paint.Align,
-        val maxWidth: Float,
-        val labelBaseline: Float,
-        val valueBaseline: Float,
-    )
-
-    /** 4:5: the two values in aligned columns, like the poster. */
-    private fun drawPaceTimeColumns(canvas: Canvas, spec: StoryRenderSpec, width: Float, style: ArtStyle): Float {
+    /**
+     * Pace and time stacked against the right margin, one block below the
+     * other (ADR 0060). Labels sit close to their values; both are right
+     * aligned so the column shares the card's right edge.
+     */
+    private fun drawPaceTimeBlock(
+        canvas: Canvas,
+        spec: StoryRenderSpec,
+        width: Float,
+        labelBaseline: Float,
+        style: ArtStyle,
+    ): Float {
         val scale = style.scale
-        val columnWidth = (DESIGN_WIDTH - 2f * MARGIN) / 2f * scale
-        val slot = MetricSlot(
-            x = width - MARGIN * scale,
-            align = Paint.Align.RIGHT,
-            maxWidth = columnWidth,
-            labelBaseline = 585f * scale,
-            valueBaseline = 665f * scale,
-        )
-        drawMetricColumn(
-            canvas,
-            metric(spec, StoryEssential.AVG_PACE),
-            slot.copy(x = MARGIN * scale, align = Paint.Align.LEFT),
-            style,
-        )
-        drawMetricColumn(canvas, metric(spec, StoryEssential.TOTAL_TIME), slot, style)
-        return slot.valueBaseline
-    }
-
-    private fun drawMetricColumn(canvas: Canvas, metric: ResolvedMetric, slot: MetricSlot, style: ArtStyle) {
-        val label = storyTextPaint(style.label, 22f * style.scale, typeface, bold = true).apply {
-            textAlign = slot.align
+        val x = width - MARGIN * scale
+        val labelPaint = storyTextPaint(style.label, 22f * scale, typeface, bold = true).apply {
+            textAlign = Paint.Align.RIGHT
         }
-        canvas.drawText(metric.label, slot.x, slot.labelBaseline, label)
-        val value = storyTextPaint(style.text, 56f * style.scale, typeface, bold = true).apply {
-            textAlign = slot.align
+        val valuePaint = storyTextPaint(style.text, 52f * scale, typeface, bold = true).apply {
+            textAlign = Paint.Align.RIGHT
         }
-        value.textSize = fittedTextSize(value, metric.value, slot.maxWidth, 56f * style.scale)
-        canvas.drawText(metric.value, slot.x, slot.valueBaseline, value)
-    }
+        val pace = metric(spec, StoryEssential.AVG_PACE)
+        val time = metric(spec, StoryEssential.TOTAL_TIME)
 
-    /** 1:1: pace and time share one fitted line, no labels (compact card). */
-    private fun drawPaceTimeLine(canvas: Canvas, spec: StoryRenderSpec, margin: Float, style: ArtStyle): Float {
-        val scale = style.scale
-        val line = listOf(
-            metric(spec, StoryEssential.AVG_PACE).value,
-            metric(spec, StoryEssential.TOTAL_TIME).value,
-        ).joinToString(" · ")
-        val paint = storyTextPaint(style.text, 52f * scale, typeface, bold = true)
-        paint.textSize = fittedTextSize(paint, line, DESIGN_WIDTH * scale - 2f * margin, 52f * scale)
-        val baseline = 510f * scale
-        canvas.drawText(line, margin, baseline, paint)
-        return baseline
+        canvas.drawText(pace.label, x, labelBaseline, labelPaint)
+        canvas.drawText(pace.value, x, labelBaseline + 46f * scale, valuePaint)
+        canvas.drawText(time.label, x, labelBaseline + 98f * scale, labelPaint)
+        val timeBaseline = labelBaseline + 144f * scale
+        canvas.drawText(time.value, x, timeBaseline, valuePaint)
+        return timeBaseline
     }
 
     /** Up to two extras as a value-only row; unavailable extras are omitted. */
@@ -207,7 +194,8 @@ class StoryArtRenderer(
         val values = recipe.extras.mapNotNull { extra -> extraValue(spec, extra, localDate) }
         if (values.isEmpty()) return lastMetricBaseline
         val scale = style.scale
-        val baseline = lastMetricBaseline + 95f * scale
+        // Immediately below the distance/pace-time block (ADR 0060).
+        val baseline = lastMetricBaseline + 65f * scale
         val line = values.joinToString(" · ")
         val paint = storyTextPaint(style.label, 34f * scale, typeface)
         paint.textSize = fittedTextSize(paint, line, DESIGN_WIDTH * scale - 2f * margin, 34f * scale)
@@ -232,9 +220,8 @@ class StoryArtRenderer(
     ) {
         val scale = style.scale
         val margin = MARGIN * scale
-        val footerReserve = if (recipe.format == ArtFormat.SQUARE) MARGIN else FOOTER_RESERVE
         val top = contentBaseline + 70f * scale
-        val bottom = designHeight * scale - footerReserve * scale
+        val bottom = designHeight * scale - margin
         val side = minOf(width - 2f * margin, bottom - top)
         val left = width / 2f - side / 2f
         val areaTop = top + ((bottom - top - side).coerceAtLeast(0f) / 2f)
@@ -267,16 +254,6 @@ class StoryArtRenderer(
         canvas.drawCircle(point[0], point[1], 13f * scale, paint)
     }
 
-    private fun drawFooter(canvas: Canvas, width: Float, designHeight: Float, style: ArtStyle) {
-        val scale = style.scale
-        val baseline = (designHeight - 58f) * scale
-        val label = storyTextPaint(style.label, 18f * scale, typeface, bold = true)
-        canvas.drawText("CORRIDA", MARGIN * scale, baseline, label)
-        val tagline = storyTextPaint(style.label, 18f * scale, typeface)
-        val line = "Seu treino, com contexto."
-        canvas.drawText(line, width - MARGIN * scale - tagline.measureText(line), baseline, tagline)
-    }
-
     private fun routePaint(color: Int, strokeWidth: Float): Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         this.strokeWidth = strokeWidth
@@ -285,11 +262,10 @@ class StoryArtRenderer(
         this.color = color
     }
 
-    private fun metric(spec: StoryRenderSpec, essential: StoryEssential): ResolvedMetric =
-        spec.closing.first { it.id == essential.name }
-
-    private fun preferredNumberSize(scale: Float): Float =
-        (if (recipe.format == ArtFormat.SQUARE) 130f else 150f) * scale
+    private fun metric(spec: StoryRenderSpec, essential: StoryEssential): ResolvedMetric = spec.closing.first {
+        it.id ==
+            essential.name
+    }
 
     private fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
 
@@ -301,6 +277,12 @@ class StoryArtRenderer(
         internal const val ROUTE_CASING_ALPHA = 178
         private const val LABEL_ALPHA = 178
         private const val MARGIN = 88f
-        private const val FOOTER_RESERVE = 140f
+
+        /** Distance size in design units (~10% below the original 150/130). */
+        private const val DISTANCE_SIZE = 135f
+        private const val SQUARE_DISTANCE_SIZE = 117f
+
+        /** Right column kept free for the pace/time block so the distance never collides. */
+        private const val PACE_TIME_RESERVE = 300f
     }
 }

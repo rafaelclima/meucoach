@@ -47,6 +47,9 @@ class StoryFileNamesTest {
         assertThat(StoryFileNames.art(plan, ArtFormat.SQUARE, 123L))
             .startsWith("meucoach-story-2026-10-24-")
             .endsWith("-arte-1x1.png")
+        assertThat(StoryFileNames.art(plan, ArtFormat.PORTRAIT_9_16, 123L))
+            .startsWith("meucoach-story-2026-10-24-")
+            .endsWith("-arte-9x16.png")
 
         val poster = StoryFileNames.poster(plan, 123L)
         val art = StoryFileNames.art(plan, ArtFormat.PORTRAIT_4_5, 123L)

@@ -1,6 +1,6 @@
 # ADR 0058 — Arte PNG da rota: card transparente 4:5/1:1
 
-**Status:** Aceito — decisões de produto fechadas em 22/11/2026; F2–F4 implementadas; **spike de alpha validado no Instagram em 22/11/2026** (alpha preservado); spec visual 4:5/1:1 e F5–F8 pendentes
+**Status:** Aceito — decisões de produto fechadas em 22/11/2026; F2–F8 implementadas; **spike de alpha validado no Instagram em 22/11/2026** (alpha preservado); **estendido pelo [ADR 0060](0060-art-png-9x16-layout.md)** em 23/11/2026 (9:16 + novo layout + prévia fixa).
 **Data:** 2026-11-22
 **Responsável:** usuário 0 (decisões de produto) e implementação
 **Documentos de origem:** [`PRD_ARTE_PNG_ROTA.md`](../PRD_ARTE_PNG_ROTA.md), [`ADR 0059`](0059-min-sdk-31.md), `docs/DESIGN_SYSTEM.md`, `docs/SPORTS_SCIENCE.md`
@@ -11,14 +11,14 @@
 
 O Story Studio já entrega vídeo 9:16, capa 9:16 e pôster 4:5, todos opacos e com composição fixa. O usuário quer um artefato leve, offline e **transparente** para colar sobre uma foto no feed ou no story — um card com o traçado da rota e métricas, não um overlay full-bleed.
 
-O pôster existente é uma composição própria 4:5; a arte é uma segunda composição 4:5/1:1, com personalização de formato, cores, fonte e extras. O renderer não pode copiar as coordenadas fixas do pôster: 1:1 e 4:5 exigem layouts diferentes.
+O pôster existente é uma composição própria 4:5; a arte é uma composição própria 4:5/1:1/9:16, com personalização de formato, cores, fonte e extras. O renderer não pode copiar as coordenadas fixas do pôster: cada formato exige posições próprias.
 
 ## 2. Decisão
 
-### 2.1 Produto: card, não overlay 9:16
+### 2.1 Produto: card, não overlay 9:16 opaco
 
-- A arte é um **card 4:5 (default) ou 1:1** para sobrepor a uma foto/story.
-- **9:16 full-bleed** fica pós-MVP.
+- A arte é um **card 4:5 (default), 1:1 ou 9:16** para sobrepor a uma foto/story.
+- **9:16 full-bleed opaco** fica pós-MVP. O 9:16 **transparente** foi adicionado pelo [ADR 0060](0060-art-png-9x16-layout.md).
 - **`ROUTE_CROP`** (bbox do traçado) fica pós-MVP, com spec própria; o MVP não lida com aspect variável nem rota degenerada.
 - **Plataforma:** Android 12+ (API 31+), conforme ADR 0059; sem caminho `<Q` e sem permissão de armazenamento.
 - Acesso pelo **Story Studio**, em segmento “Vídeo | Arte PNG”.
@@ -27,9 +27,11 @@ O pôster existente é uma composição própria 4:5; a arte é uma segunda comp
 
 | Formato | Tamanho | Layout |
 |---|---|---|
-| `PORTRAIT_4_5` | 1080×1350 | Marca no topo, distância gigante, ritmo/tempo, rota quadrada, rodapé com tagline |
-| `SQUARE` | 1080×1080 | Marca no topo, distância, ritmo/tempo em linha, rota quadrada no restante; sem tagline |
+| `PORTRAIT_4_5` | 1080×1350 | Marca no topo, distância + ritmo/tempo à direita, extras abaixo, rota quadrada; sem rodapé |
+| `SQUARE` | 1080×1080 | Mesmo bloco, com posições compactas; rota quadrada no restante |
+| `PORTRAIT_9_16` | 1080×1920 | Mesmo bloco de topo do 4:5; rota quadrada centralizada na altura extra |
 
+- O layout comum e a remoção do rodapé estão no [ADR 0060](0060-art-png-9x16-layout.md).
 - Sem backdrop (gradiente/glow/vignette); fundo transparente por construção (`ARGB_8888` sem `drawColor`).
 - Rota sempre em área quadrada para preservar o aspecto da projeção normalizada; não esticar em retângulo.
 - Não reutilizar as constantes fixas `WIDTH/HEIGHT`/y do `StoryPosterRenderer`; o layout é por blocos e format-aware.
@@ -101,7 +103,7 @@ interface GalleryImagePublisher {
 - `plan == null`/rota insuficiente → “Sem rota suficiente para a arte”; controles visíveis, Salvar/Compartilhar desabilitados.
 - Erro de render/salvar → inline + “Tentar novamente”; sem fechar o Studio.
 - Controles com 48 dp, 200% de fonte, 360 dp; swatches/fontes em `FlowRow`/`LazyRow`.
-- TalkBack por grupo, `selected`, borda + check; prévia com `contentDescription` resumindo formato/cores/fonte.
+- TalkBack por grupo, `selected`, borda + check; prévia com `contentDescription` resumindo formato/cores/fonte. A prévia é **fixa no topo da aba Arte** e o restante rola, conforme o [ADR 0060](0060-art-png-9x16-layout.md).
 - Aviso de contraste quando texto/traço não passar no claro ou escuro; não usar só cor.
 
 ### 2.9 Dois PNGs no mesmo Studio
@@ -114,7 +116,7 @@ interface GalleryImagePublisher {
 
 | Alternativa | Motivo |
 |---|---|
-| 9:16 full-bleed no MVP | O caso escolhido é card; evita novo layout e promessa de “qualquer story”. |
+| 9:16 full-bleed opaco no MVP | O caso escolhido é card; evita novo layout e promessa de “qualquer story”. O 9:16 transparente entrou pelo ADR 0060. |
 | `ROUTE_CROP` no MVP | Aspect variável, bbox degenerado e clamp sem spec; não é necessário para o card. |
 | 7 fontes (com Barlow) | Contradiz o pacote de 6 e a regra de 2 famílias no picker; mais APK/testes. |
 | `lime-pressed` como swatch | É estado pressionado, não cor de paleta; dois verdes próximos. |
@@ -142,7 +144,7 @@ interface GalleryImagePublisher {
 - **Alpha no Instagram:** premissa a validar; se falhar, entra toggle de fundo sólido. **Fechado 22/11/2026:** spike no aparelho — 3 amostras 1080 px do `StoryArtRenderer` sobre foto, via figurinha; **alpha preservado nas 3**. Fundo transparente por construção fica; o toggle de fallback não entra no MVP.
 - **Prévia: bitmap full-res é caro; 540 px/debounce/recycle são obrigatórios.** *(Spike de preview/540/debounce segue pendente para a F5.)*
 - **Fontes display:** glifos/tnum/700 precisam de teste; o APK cresce.
-- **1:1:** precisa de spec visual própria; não copiar o pôster.
+- **1:1/9:16:** precisam de spec visual própria; não copiar o pôster. O 9:16 segue o ADR 0060.
 - **Contraste:** a arte é conteúdo do usuário; o aviso não garante legibilidade.
 - **Extração do publisher:** mexe no fluxo de capa/pôster; exige regressão.
 - **Duas imagens 4:5:** a copy precisa ser clara ou o usuário confunde.
@@ -151,11 +153,11 @@ interface GalleryImagePublisher {
 
 Ordem:
 
-1. **F0** — PRD v0.2, este ADR/ADR 0059, spec visual 4:5/1:1 e spikes (alpha/Instagram, fontes, preview).
+1. **F0** — PRD v0.3, este ADR/ADR 0059/0060, spec visual 4:5/1:1/9:16 e spikes (alpha/Instagram, fontes, preview).
 2. **F1** — bugfix `localDate` (feito em 22/11/2026; teste de regressão).
 3. **F2** — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor` + testes.
 4. **F3** — 4 fontes novas + tokens/`McColors` + NOTICE + testes de glifo.
-5. **F4** — `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel.
+5. **F4** — `StoryArtRenderer` + goldens 4:5/1:1/9:16 + alpha por pixel.
 6. **F5** — chrome/segmento do Studio + estado + prévia + a11y.
 7. **F6** — `GalleryImagePublisher` + salvar/compartilhar + reuso.
 8. **F7** — `ArtRecipeCodec` + `ArtRecipeStore` integrados + polimento.
@@ -166,7 +168,7 @@ Aceite:
 - `assembleDebug`, `check`, `spotlessCheck`, `koverVerify`, lint/detekt verdes.
 - `:app:verifyRoborazziDebug --tests "*Art*"` verde; alpha de fundo = 0 por pixel.
 - `Paint.hasGlyph`/`tnum` nas 6 fontes; data “24 out 2026”.
-- 4:5/1:1 sem distorção; sem rota → `null`; preview 540/export 1080.
+- 4:5/1:1/9:16 sem distorção; sem rota → `null`; preview 540/export 1080.
 - 360 dp/200%, TalkBack, checkerboard, aviso de contraste.
 - Android 12+ (API 31+): MediaStore `Pictures/MeuCoach`; sem permissão de armazenamento.
 - Vídeo/capa/pôster sem regressão; S24 Ultra + emulador API 31+.

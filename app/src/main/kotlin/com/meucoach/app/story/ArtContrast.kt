@@ -81,10 +81,12 @@ object ArtContrast {
     /** Source-over blend of the casing on an opaque background. */
     private fun composite(foreground: Int, background: Int): Int {
         val alpha = StoryArtRenderer.ROUTE_CASING_ALPHA / 255.0
-        fun channel(color: Int, shift: Int): Int =
-            (((color shr shift) and 0xFF) * alpha + ((background shr shift) and 0xFF) * (1 - alpha))
-                .toInt()
-                .coerceIn(0, 255)
+        fun channel(color: Int, shift: Int): Int = (
+            ((color shr shift) and 0xFF) * alpha +
+                ((background shr shift) and 0xFF) * (1 - alpha)
+            )
+            .toInt()
+            .coerceIn(0, 255)
 
         return (0xFF shl 24) or
             (channel(foreground, 16) shl 16) or

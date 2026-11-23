@@ -1,4 +1,4 @@
-# PRD — Arte PNG da rota (card transparente 4:5/1:1)
+# PRD — Arte PNG da rota (card transparente 4:5/1:1/9:16)
 
 **Versão:** 0.2 · **Data:** 22/11/2026 · **Status:** Decisões de produto fechadas; ADR 0058 e spikes pendentes
 **Visão base:** ideia do Rafael (22/11/2026) — card de rota estilo Strava para sobrepor a uma foto
@@ -7,34 +7,34 @@
 
 ## 1. Contexto e problema
 
-O app já gera vídeo 9:16, capa 9:16 e pôster 4:5 no **Story Studio** (`app/src/main/kotlin/com/meucoach/app/ui/activitydetail/StoryStudioSheet.kt`), mas todos os outputs têm fundo opaco e visual fixo. Falta um **card** leve, rápido de gerar e **sobre fundo transparente**, que o usuário possa colar sobre uma foto no feed ou no story. Não é um overlay full-bleed 9:16: o card tem formato próprio (4:5 ou 1:1) e o usuário o posiciona sobre a imagem.
+O app já gera vídeo 9:16, capa 9:16 e pôster 4:5 no **Story Studio** (`app/src/main/kotlin/com/meucoach/app/ui/activitydetail/StoryStudioSheet.kt`), mas todos os outputs têm fundo opaco e visual fixo. Falta um **card** leve, rápido de gerar e **sobre fundo transparente**, que o usuário possa colar sobre uma foto no feed ou no story. Não é um overlay 9:16 opaco: o card tem formato próprio (4:5, 1:1 ou 9:16) e o usuário o posiciona sobre a imagem.
 
 Diferente do vídeo, um PNG com rota desenhada localmente é barato: sem tiles, sem rede, sem encode de vídeo. Por isso a geração é **síncrona no Studio**, sem WorkManager.
 
 ## 2. Objetivo
 
-Gerar um **card PNG** com fundo transparente contendo o traçado da rota e informações do treino, com o usuário escolhendo: formato (4:5 default ou 1:1), quais extras aparecem, cores de texto e do traçado (independentes) e a fonte. Acesso pelo mesmo local do vídeo (Story Studio).
+Gerar um **card PNG** com fundo transparente contendo o traçado da rota e informações do treino, com o usuário escolhendo: formato (4:5 default, 1:1 ou 9:16), quais extras aparecem, cores de texto e do traçado (independentes) e a fonte. Acesso pelo mesmo local do vídeo (Story Studio).
 
-**Não é objetivo:** overlay full-bleed 9:16, mapa no fundo, animação, edição livre (arrastar texto), color picker livre, export em lote, publicação automática.
+**Não é objetivo:** overlay 9:16 full-bleed opaco, mapa no fundo, animação, edição livre (arrastar texto), color picker livre, export em lote, publicação automática. O 9:16 da arte é um card transparente, não um overlay opaco (ADR 0060).
 
 ## 3. Decisões de produto (fechadas em 22/11/2026)
 
 | # | Tema | Decisão |
 |---|---|---|
-| 1 | Formato/uso | **Card para sobrepor**, 4:5/1:1. Sem 9:16 full-bleed no MVP. |
-| 2 | Formatos | **4:5 default + 1:1**. `ROUTE_CROP` fica pós-MVP, com spec própria de bbox/aspect. |
+| 1 | Formato/uso | **Card para sobrepor**, 4:5/1:1/9:16 transparente. Sem overlay 9:16 full-bleed opaco (ADR 0060). |
+| 2 | Formatos | **4:5 default + 1:1 + 9:16** (1080×1920). `ROUTE_CROP` fica pós-MVP, com spec própria de bbox/aspect. |
 | 3 | Fontes | **6 famílias**: Inter, Geist, Bebas Neue, Anton, Oswald, Archivo Black. Barlow Condensed fica fora. |
 | 4 | Persistência | Switch **“Salvar como padrão”** ligado por default; grava a receita em `meucoach_art` ao **Salvar PNG** ou **Compartilhar**. **Restaurar padrão** volta aos defaults. |
 | 5 | Plataforma | **Android 12+ (API 31+)**; salvar sempre via MediaStore em `Pictures/MeuCoach`, sem permissão e sem share-only. |
 | 6 | Contraste | Controles em **AA**; a arte não promete AA sobre fundo desconhecido. A UI mostra **aviso de contraste** quando texto/traço ficar baixo na prévia clara ou escura. Exceção registrada no ADR. |
 | 7 | Extras | **Máx. 2**: data, FC média, elevação, calorias e cadência. |
 | 8 | Cores | **8 swatches**: lima, coral, branco, preto, cinza claro, cinza escuro, ciano e azul. Sem `lime-pressed`; reutilizar `data/cyan`/`data/blue`. |
-| 9 | Layout | **4:5 pôster-like + 1:1 compacto**, com a marca no topo nos dois. |
+| 9 | Layout | **Comum aos três formatos**: marca no topo, distância um pouco menor, ritmo/tempo empilhados à direita, extras abaixo, rota quadrada e **sem rodapé** (ADR 0060). |
 | 10 | Defaults | **4:5, Inter, sem extras, texto branco, traço lima, prévia escura**. |
 | 11 | Data | Quando escolhida, **“24 out 2026”** (`d MMM uuuu`), com formatador próprio da arte. |
 | 12 | Fonte na UI | Nomes em **Inter** + **preview único da fonte selecionada**; sem 6 famílias na mesma tela. |
 | 13 | Marca | **Logo bitmap do pôster**, tintado com a cor do texto, no topo. |
-| 14 | Alpha | **Spike no Instagram antes de F5**; se o alpha for achatado, entra toggle “Fundo: transparente / claro / escuro”. **Validado 22/11/2026:** alpha preservado nas 3 amostras (4:5 e 1:1) sobre foto, via figurinha; sem fallback no MVP. |
+| 14 | Alpha | **Spike no Instagram antes de F5**; se o alpha for achatado, entra toggle “Fundo: transparente / claro / escuro”. **Validado 22/11/2026:** alpha preservado nas 3 amostras (4:5 e 1:1) sobre foto, via figurinha; sem fallback no MVP. O 9:16 usa o mesmo caminho de alpha (ADR 0060). |
 | 15 | Compartilhar | **Reaproveitar o último PNG** enquanto atividade + receita + formato não mudarem; se mudar, gera novo. |
 | 16 | CTA | **Compartilhar** primário (lima); **Salvar PNG** secundário. |
 | 17 | Dois PNGs | Copy/nomes: **“Pôster automático (opaco)”** vs **“Arte transparente (personalizada)”**. |
@@ -45,8 +45,8 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 
 ### Dentro do MVP
 - Aba “Arte PNG” no Story Studio, com chrome compartilhado com o vídeo.
-- Prévia 4:5/1:1 em checkerboard, com toggle claro/escuro e label de transparência.
-- Dois formatos: 4:5 (1080×1350, default) e 1:1 (1080×1080).
+- Prévia fixa no topo da aba Arte (o restante rola), em checkerboard, com toggle claro/escuro e label de transparência.
+- Três formatos: 4:5 (1080×1350, default), 1:1 (1080×1080) e 9:16 (1080×1920).
 - Métricas fixas + até 2 extras.
 - 8 swatches para texto e 8 para traçado, independentes.
 - 6 fontes, com preview único da selecionada.
@@ -56,7 +56,7 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 
 ### Fora do MVP (pós-MVP)
 - `ROUTE_CROP`/recorte por bbox.
-- 9:16 full-bleed com arte.
+- 9:16 full-bleed **opaco** com arte/mapa.
 - Localidade do treino (exige campo novo no modelo ou geocoding).
 - Color picker HSV livre.
 - Mapa/tiles no fundo da arte.
@@ -72,6 +72,7 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 |---|---|---|
 | `PORTRAIT_4_5` | 1080×1350 | Default; feed e card 4:5 |
 | `SQUARE` | 1080×1080 | Card quadrado/feed |
+| `PORTRAIT_9_16` | 1080×1920 | Story/Reels; card transparente, não overlay opaco (ADR 0060) |
 
 `ROUTE_CROP` não entra no MVP. O canvas inicial é `ARGB_8888` **sem `drawColor`**: o fundo fica transparente por construção.
 
@@ -84,9 +85,11 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 - **Sem** mapa, tiles ou atribuição OSM.
 
 ### 5.3 Layout
-**4:5 (pôster-like):** marca no topo → distância gigante → linha ritmo/tempo → rota quadrada → rodapé com tagline. A área da rota é quadrada e preserva o aspecto; não usar as coordenadas fixas do `StoryPosterRenderer`.
+**Comum aos três formatos (ADR 0060):** marca no topo → rótulo `DISTÂNCIA` próximo do número → distância à esquerda (fonte ~10% menor) e, na margem direita, `RITMO MÉDIO` sobre `6:00 /km` e `TEMPO TOTAL` sobre `30:00`, um bloco abaixo do outro → extras imediatamente abaixo → rota quadrada no restante. **Sem rodapé/tagline.**
 
-**1:1 (compacto):** marca no topo → distância → ritmo/tempo em uma linha → rota quadrada ocupando o restante. Sem tagline de rodapé.
+- 4:5 e 9:16 compartilham as posições do bloco de topo; o 9:16 usa a altura extra na rota.
+- A distância é ajustada por `fittedSize` para não invadir a coluna da direita; a rota usa `min(largura, altura disponível)` e nunca estica.
+- Rótulos e valores ficam mais próximos entre si; os rótulos usam a cor do texto com alpha 70%.
 
 Regras comuns:
 - Sem backdrop (gradiente/glow/vignette); só o que é opaco recebe alpha 255.
@@ -144,8 +147,8 @@ Implementação:
 
 O `StoryStudioSheet` ganha um **segmento no topo: “Vídeo” | “Arte PNG”**. O chrome (header, fechar, tab bar) é compartilhado; o conteúdo de vídeo deixa de duplicar header/fechar. O conteúdo da aba Arte:
 
-1. **Prévia** 4:5 ou 1:1 sobre checkerboard escuro; toggle claro/escuro; label “Fundo transparente”; aviso de contraste quando necessário.
-2. **Formato:** 2 chips (4:5 · 1:1), 4:5 default.
+1. **Prévia fixa** 4:5/1:1/9:16 sobre checkerboard escuro; o restante da aba rola abaixo dela; toggle claro/escuro; label “Fundo transparente”; aviso de contraste quando necessário.
+2. **Formato:** 3 chips (4:5 · 1:1 · 9:16), 4:5 default.
 3. **Extras:** 5 chips (data/FC/elevação/calorias/cadência), máx. 2; indisponível → desabilitado com motivo. Reutilizar o padrão `ExtrasCounter`.
 4. **Cor do texto:** 8 swatches, com nome e estado selecionado.
 5. **Cor do traçado:** 8 swatches, independente.
@@ -172,7 +175,7 @@ Acessibilidade:
 ## 9. Arquitetura e técnica
 
 ### 9.1 Camadas
-- **`core:domain` (puro):** `ArtRecipe` (formato, extras ≤2, fonte, `ArtColor` de texto e traçado), `ArtFormat` (`PORTRAIT_4_5`, `SQUARE`), `ArtFont` (6), `ArtColor` (8). Sem `android.*`; `require` para máx. 2/sem duplicado; `toggleExtra` **ignora** o terceiro toque (não derruba a tela). `ArtRecipe.toStoryRecipe()` mapeia os extras para `StoryRecipe(extras = ...)`; reutilizar `StoryMetricValuesResolver`/`StoryRenderSpecResolver.fromPlan`; não criar `ArtMetricValues`.
+- **`core:domain` (puro):** `ArtRecipe` (formato, extras ≤2, fonte, `ArtColor` de texto e traçado), `ArtFormat` (`PORTRAIT_4_5`, `SQUARE`, `PORTRAIT_9_16`), `ArtFont` (6), `ArtColor` (8). Sem `android.*`; `require` para máx. 2/sem duplicado; `toggleExtra` **ignora** o terceiro toque (não derruba a tela). `ArtRecipe.toStoryRecipe()` mapeia os extras para `StoryRecipe(extras = ...)`; reutilizar `StoryMetricValuesResolver`/`StoryRenderSpecResolver.fromPlan`; não criar `ArtMetricValues`.
 - **`app/story`:** `StoryArtRenderer` recebe `plan`, `localDate`, `ArtRecipe`, `Typeface`/`FontFamily`, `logoBitmap`, `width`, `height`; devolve `Bitmap?` ou escreve PNG. Preview em ~540 px; export em 1080. Síncrono, sem Compose, testável.
 - **Data:** `ArtDateFormatter` com `d MMM uuuu` (24 out 2026), separado do `StoryMetricCatalog`.
 - **Persistência:** `ArtRecipeCodec` (JSON versionado, fallback para enum desconhecido) + `ArtRecipeStore` em `SharedPreferences` **`meucoach_art`** (não DataStore). Save-as-default; reset separado do `meucoach_story`.
@@ -189,8 +192,8 @@ Sem Worker, sem notificação, sem mapa. Render no `Dispatchers.Default`, com um
 
 ### 9.3 Testes (TDD)
 - `core:domain`: `ArtRecipe` (limite 2, duplicados, toggle ignora terceiro, defaults), `ArtColor`/`ArtFont` estáveis, codec (versão/unknown).
-- `StoryArtRenderer`: goldens 4:5 e 1:1; alpha de fundo = 0 por pixel (não só golden); caso sem rota → `null`; sem distorção da rota; `Paint.hasGlyph` nas 6 fontes; preview 540 vs export 1080.
-- UI: aba, loading/empty/error, limite de 2, TalkBack, 200%/360 dp, checkerboard, aviso de contraste, CTA, share/save.
+- `StoryArtRenderer`: goldens 4:5, 1:1 e 9:16; alpha de fundo = 0 por pixel (não só golden); caso sem rota → `null`; sem distorção da rota; `Paint.hasGlyph` nas 6 fontes; preview 540 vs export 1080.
+- UI: aba, prévia fixa, 3 formatos, loading/empty/error, limite de 2, TalkBack, 200%/360 dp, checkerboard, aviso de contraste, CTA, share/save.
 - Export: nome, MediaStore, share intent, reuso do último PNG, falha de save, sem permissão de armazenamento.
 - Regressão: vídeo/capa/pôster e `StoryStudioContentTest`/goldens existentes sem mudança de comportamento.
 
@@ -198,12 +201,12 @@ Sem Worker, sem notificação, sem mapa. Render no `Dispatchers.Default`, com um
 
 | # | Fatia | Entregável verificável |
 |---|---|---|
-| F0 | **PRD v0.2 + ADR 0058/0059 + spec visual + spikes** (alpha/Instagram, fontes, preview) | ADR aceito; decisões dos spikes registradas; spec 4:5/1:1 aprovada |
+| F0 | **PRD + ADR 0058/0059/0060 + spec visual + spikes** (alpha/Instagram, fontes, preview) | ADR aceito; decisões dos spikes registradas; spec 4:5/1:1/9:16 aprovada |
 | F1 | **Bugfix `localDate`** (feito em 22/11/2026) | `ActivityDetailViewModelTest` verde; preview/pôster com data |
 | F2 | Domínio: `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor` + testes | `:core:domain:test` verde |
 | F3 | Fontes (4 novas) + tokens/`McColors` + NOTICE + testes de glifo | fontes carregam; `Paint.hasGlyph`/`tnum` verdes |
-| F4 | `StoryArtRenderer` + goldens 4:5/1:1 + alpha por pixel | renderer sem rota = null; alpha 0; sem distorção |
-| F5 | UI: chrome/segmento + estado da arte + prévia 540/debounce + a11y (extrair `ExtrasCounter`) | testes de composição e goldens da aba |
+| F4 | `StoryArtRenderer` + goldens 4:5/1:1/9:16 + alpha por pixel | renderer sem rota = null; alpha 0; sem distorção |
+| F5 | UI: chrome/segmento + estado da arte + prévia fixa/debounce + a11y (extrair `ExtrasCounter`) | testes de composição e goldens da aba |
 | F6 | `GalleryImagePublisher` + salvar/compartilhar + reuso | testes de export/share; validação no aparelho |
 | F7 | `ArtRecipeCodec` + `ArtRecipeStore` integrados + polimento | receita sobrevive a restart/update; reset |
 | F8 | Docs, `PROGRESS`, `ROADMAP`, `DESIGN_SYSTEM`, DoD | `check` + `spotlessCheck` + `verifyRoborazziDebug` verdes |
@@ -217,28 +220,28 @@ Cada fatia = 1 PR pequeno, Conventional Commits. F0/F1 podem ir em paralelo; F3 
 | Alpha achatado no Instagram | Spike antes de F5; fallback “Fundo: transparente/claro/escuro” só se falhar — **fechado 22/11/2026: alpha preservado** |
 | Memória/tempo da prévia | 540 px, debounce ~120 ms, um render em voo, recycle seguro, budget no F5 |
 | Fontes display sem glifo/tnum/700 | `Paint.hasGlyph`, `FontFamily` com pesos, teste por fonte; cortar fonte problemática se necessário |
-| Layout 1:1 apertado | Spec visual própria; rota quadrada; sem coordenadas fixas do pôster |
+| Layout 1:1/9:16 apertado | Spec visual própria; rota quadrada; sem coordenadas fixas do pôster; prévia fixa com altura adaptativa |
 | Plataforma Android 12+ | ADR 0059; sem branch `<Q`; testar API 31+ |
 | Contraste sobre foto | Aviso na prévia clara/escura; ADR de exceção; controles AA |
 | Dois PNGs 4:5 | Copy “Pôster automático” vs “Arte transparente”; nomes de arquivo distintos |
 | Duplicar PNG a cada share | `ArtExportKey` + reuso do último URI; regenerar se mudou/apagou |
-| Escopo creep (9:16, crop, mapa) | §4 é lei; novas ideias viram pós-MVP |
+| Escopo creep (overlay 9:16 opaco, crop, mapa) | §4 é lei; novas ideias viram pós-MVP. Card 9:16 transparente está no escopo pelo ADR 0060 |
 
 ### Pendências de validação (F0)
 - [x] Spike de alpha no Instagram Story/Feed — **validado 22/11/2026**: 3 amostras do `StoryArtRenderer` (1080 px, fundo transparente) sobre foto via figurinha; alpha preservado nas 3.
 - [ ] Spike de fontes: glifos, 700, tnum, tamanho de APK.
-- [ ] Spec visual 4:5/1:1: posições, tipografia, rota, casca/marcadores.
+- [ ] Spec visual 4:5/1:1/9:16: posições, tipografia, rota, casca/marcadores (ADR 0060 em implementação).
 - [ ] Decidir fallback de fundo sólido apenas se o alpha falhar.
 
 ## 12. Definition of Done (feature completa)
 
 - [ ] `./gradlew :app:assembleDebug`, `check`, `spotlessCheck`, `koverVerify` e lint/detekt verdes.
 - [ ] `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde (o `check` não roda goldens).
-- [ ] Goldens 4:5 e 1:1; alpha de fundo = 0 por pixel; caso sem rota = `null`.
+- [ ] Goldens 4:5, 1:1 e 9:16; alpha de fundo = 0 por pixel; caso sem rota = `null`.
 - [ ] `Paint.hasGlyph` e `tnum` testados nas 6 fontes; data “24 out 2026”.
-- [ ] UI: 360 dp, 200%, TalkBack, checkerboard, aviso de contraste, CTA, share/save, reuso.
+- [ ] UI: prévia fixa, 360 dp, 200%, TalkBack, checkerboard, aviso de contraste, CTA, share/save, reuso.
 - [ ] Android 12+ (API 31+): salvar via MediaStore; sem permissão de armazenamento.
 - [ ] Vídeo, capa e pôster existentes sem regressão.
 - [ ] Validado no aparelho (S24 Ultra) e em emulador API 31+.
-- [ ] `PROGRESS.md`, `ROADMAP.md`, `DESIGN_SYSTEM.md` e `DECISIONS.md` atualizados; ADR 0058 publicado.
+- [ ] `PROGRESS.md`, `ROADMAP.md`, `DESIGN_SYSTEM.md` e `DECISIONS.md` atualizados; ADR 0058/0060 publicados.
 - [ ] Nenhum dado real no diff; NOTICE OFL no APK e no repositório.

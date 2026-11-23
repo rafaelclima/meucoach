@@ -86,6 +86,36 @@ class StoryArtRendererTest {
     }
 
     @Test
+    fun `renders the 9x16 card at 1080x1920`() {
+        val story = StoryArtRenderer(
+            recipe = ArtRecipe(format = ArtFormat.PORTRAIT_9_16),
+            typeface = ArtFont.INTER.typeface(context),
+            logoBitmap = StoryBranding.logo(context),
+        )
+        val bitmap = checkNotNull(story.render(plan(), plan().localDate, 1080, 1920))
+
+        assertThat(bitmap.width).isEqualTo(1080)
+        assertThat(bitmap.height).isEqualTo(1920)
+        assertThat(bitmap.getPixel(0, 0) and 0xFF000000.toInt()).isEqualTo(0)
+        bitmap.recycle()
+    }
+
+    @Test
+    fun `stale footer tagline is gone from the 4x5 card`() {
+        val bitmap = checkNotNull(renderer.render(plan(), plan().localDate, 1080, 1350))
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        bitmap.recycle()
+
+        // The old footer baseline was y≈1292; the new route ends above this
+        // band, so any opaque pixel here means the tagline came back.
+        val bottomBand = (1_310 until 1_350).flatMap { y ->
+            (0 until 1_080).map { x -> pixels[y * 1_080 + x] }
+        }
+        assertThat(bottomBand.filter { it and 0xFF000000.toInt() != 0 }).isEmpty()
+    }
+
+    @Test
     fun `preview renders at half resolution with the same transparent background`() {
         val bitmap = checkNotNull(renderer.render(plan(), plan().localDate, 540, 675))
 
@@ -97,16 +127,16 @@ class StoryArtRendererTest {
     }
 
     @Test
-    fun `pace and time columns stay inside the margins`() {
+    fun `pace and time block stays inside the margins`() {
         val bitmap = checkNotNull(renderer.render(plan(), plan().localDate, 1080, 1350))
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
         bitmap.recycle()
 
-        // Band of the pace/time columns (design y 560..690); nothing may spill
-        // past the horizontal margins by more than the glyph antialiasing.
-        val top = 560
-        val bottom = 690
+        // Band of the new pace/time block (design y 290..470); nothing may
+        // spill past the horizontal margins by more than the glyph antialiasing.
+        val top = 290
+        val bottom = 470
         val leftEdge = 88 - 8
         val rightEdge = 1080 - 88 + 8
         val spills = (top until bottom).flatMap { y ->
@@ -196,7 +226,7 @@ class StoryArtRendererTest {
     }
 
     @Test
-    fun `square card renders with one line of pace and time`() {
+    fun `square card renders the distance and the stacked metric block`() {
         val square = StoryArtRenderer(
             recipe = ArtRecipe(format = ArtFormat.SQUARE, font = ArtFont.OSWALD),
             typeface = ArtFont.OSWALD.typeface(context),

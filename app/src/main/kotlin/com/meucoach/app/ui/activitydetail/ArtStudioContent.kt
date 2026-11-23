@@ -7,19 +7,23 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +55,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.meucoach.app.story.ArtContrast
 import com.meucoach.app.story.StoryArtRenderer
@@ -84,281 +89,334 @@ private const val ART_PREVIEW_DEBOUNCE_MS = 120L
 private const val SWATCH_BORDER_CONTRAST = 3.0
 
 /**
- * Art tab of the Story Studio (ADR 0058 §2.8): preview over a checkerboard,
- * format, extras, text/route swatches, font and the share/save CTAs. The
- * recipe lives in the view model; export and persistence live in the VM too.
+ * Art tab of the Story Studio (ADR 0058 §2.8, ADR 0060): the preview stays
+ * fixed at the top and the controls scroll below it, so a color or font
+ * change is visible immediately. The recipe lives in the view model; export
+ * and persistence live in the VM too.
  */
 @Composable
-internal fun ArtStudioContent(
-    state: StoryStudioUiState,
-    actions: ArtStudioActions,
-    onScrollToPreview: () -> Unit = {},
-) {
+internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActions, modifier: Modifier = Modifier) {
     val colors = McTheme.colors
     val hasRoute = state.plan != null && state.plan.route.points.size >= 2
     val artOptions = state.extras.filter { it.extra in ArtRecipe.EXTRA_CHOICES }
+    var darkPreview by rememberSaveable { mutableStateOf(true) }
+    val warning = ArtContrast.warning(state.artRecipe.textColor, state.artRecipe.routeColor)
 
-    // A1: the Studio now explains why two 4:5 PNGs exist before the preview.
-    Text(
-        text = "Pôster automático: opaco, nasce com o vídeo. " +
-            "Arte PNG: transparente, para colar sobre uma foto.",
-        style = McTextStyles.caption,
-        color = colors.textSecondary,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("art-poster-vs-art"),
-    )
-    Spacer(modifier = Modifier.height(16.dp))
-    ArtPreviewCard(state = state)
-    Spacer(modifier = Modifier.height(16.dp))
-    McCard(variant = McCardVariant.DEFAULT) {
-        StudioCardHeader(
-            overline = "FORMATO",
-            title = "Formato do card",
-            subtitle = "4:5 é o padrão do feed; 1:1 é mais compacto.",
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ArtFormat.entries.forEach { format ->
-                StudioPill(
-                    text = formatLabel(format),
-                    selected = state.artRecipe.format == format,
-                    onClick = { actions.onFormat(format) },
-                    modifier = Modifier.testTag("art-format-${format.name.lowercase(Locale.ROOT)}"),
-                )
-            }
-        }
-    }
-    Spacer(modifier = Modifier.height(16.dp))
-    McCard(variant = McCardVariant.DEFAULT) {
-        StudioCardHeader(
-            overline = "EXTRAS (${state.artRecipe.extras.size}/${ArtRecipe.MAX_EXTRAS})",
-            title = "Destaques da arte",
-            subtitle = "Até 2 métricas extras além de distância, ritmo e tempo.",
-            trailing = {
-                ExtrasCounter(
-                    selected = state.artRecipe.extras.size,
-                    max = ArtRecipe.MAX_EXTRAS,
-                )
-            },
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            artOptions.chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    row.forEach { option ->
-                        val selected = option.extra in state.artRecipe.extras
-                        val blocked = !selected && state.artRecipe.extras.size >= ArtRecipe.MAX_EXTRAS
-                        ExtraTile(
-                            option = option,
-                            selected = selected,
-                            enabled = (option.isAvailable && !blocked) || selected,
-                            onClick = { actions.onToggleExtra(option.extra) },
-                            modifier = Modifier.weight(1f),
-                            tagPrefix = "art-extra",
-                            selectionHint = "Na arte",
-                            limitReached = blocked,
-                        )
-                    }
-                    if (row.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Sem dado, a métrica fica de fora — nunca vira zero.",
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-        )
-    }
-    Spacer(modifier = Modifier.height(16.dp))
-    McCard(
-        modifier = Modifier.testTag("art-colors"),
-        variant = McCardVariant.DEFAULT,
-    ) {
-        StudioCardHeader(
-            overline = "CORES",
-            title = "Texto e traçado",
-            subtitle = "Escolhidos de forma independente; a arte é transparente.",
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        SwatchRow(
-            title = "Cor do texto",
-            selected = state.artRecipe.textColor,
-            onSelected = actions.onTextColor,
-            tagPrefix = "art-text-color",
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        SwatchRow(
-            title = "Cor do traçado",
-            selected = state.artRecipe.routeColor,
-            onSelected = actions.onRouteColor,
-            tagPrefix = "art-route-color",
-        )
-    }
-    Spacer(modifier = Modifier.height(16.dp))
-    McCard(variant = McCardVariant.DEFAULT) {
-        StudioCardHeader(
-            overline = "FONTE",
-            title = "Família da arte",
-            subtitle = "Os nomes seguem em Inter; a prévia usa a selecionada.",
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ArtFont.entries.forEach { font ->
-                StudioPill(
-                    text = fontLabel(font),
-                    selected = state.artRecipe.font == font,
-                    onClick = { actions.onFont(font) },
-                    modifier = Modifier.testTag("art-font-${font.name.lowercase(Locale.ROOT)}"),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = colors.surfaceInset,
-            border = BorderStroke(1.dp, colors.borderSubtle),
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("art-font-preview"),
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+    // Give the controls the larger share; on 200% or short screens the
+    // preview image shrinks first instead of squeezing the scroll area.
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val artHeight = (maxHeight * 0.40f).coerceIn(120.dp, 300.dp)
+        Column(modifier = Modifier.fillMaxSize()) {
+            ArtPreviewCard(
+                state = state,
+                darkPreview = darkPreview,
+                artHeight = artHeight,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 Text(
-                    text = fontLabel(state.artRecipe.font),
-                    style = McTextStyles.caption,
-                    color = colors.textTertiary,
+                    text = state.artRecipe.summaryLine(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("art-summary"),
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                // A1: the Studio explains why two 4:5 PNGs exist.
                 Text(
-                    text = "5,12 km · 30:00 · çãá",
-                    fontFamily = state.artRecipe.font.family,
-                    fontSize = MaterialTheme.typography.headlineSmall.fontSize,
-                    color = colors.textPrimary,
-                )
-            }
-        }
-    }
-    Spacer(modifier = Modifier.height(16.dp))
-    StudioSaveDefaultCard(
-        save = state.artSaveAsDefault,
-        onSave = actions.onSaveAsDefault,
-        onReset = actions.onReset,
-        saveTag = "art-save-default",
-        resetTag = "art-reset-recipe",
-        caption = "Salva ao compartilhar ou salvar.",
-    )
-    Spacer(modifier = Modifier.height(16.dp))
-    val export = state.artExport
-    val exporting = export is ArtExportUiState.Exporting
-    LaunchedEffect(export) {
-        val done = export as? ArtExportUiState.Done
-        if (done != null && done.forShare) {
-            actions.onShare(done.uri)
-            // P0-2: the event belongs to the view model; consuming it keeps
-            // rotation, tab switches and reopen from replaying the same sheet.
-            actions.onShareConsumed()
-        }
-    }
-    McPrimaryButton(
-        text = if (exporting && (export as ArtExportUiState.Exporting).forShare) "Compartilhando…" else "Compartilhar",
-        onClick = { actions.onShareClick() },
-        enabled = hasRoute && !exporting,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("art-share"),
-        minHeight = 56.dp,
-        loading = exporting && (export as ArtExportUiState.Exporting).forShare,
-        loadingTag = "art-share-progress",
-    )
-    Spacer(modifier = Modifier.height(10.dp))
-    McSecondaryButton(
-        text = if (exporting && !(export as ArtExportUiState.Exporting).forShare) "Salvando…" else "Salvar PNG",
-        onClick = { actions.onSave() },
-        enabled = hasRoute && !exporting,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("art-save"),
-        minHeight = 48.dp,
-        loading = exporting && !(export as ArtExportUiState.Exporting).forShare,
-        loadingTag = "art-save-progress",
-    )
-    when (export) {
-        is ArtExportUiState.Done -> {
-            if (!export.forShare) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "PNG salvo em Pictures/MeuCoach.",
+                    text = "Pôster automático: opaco, nasce com o vídeo. " +
+                        "Arte PNG: transparente, para colar sobre uma foto.",
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("art-export-done"),
+                        .testTag("art-poster-vs-art"),
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Fundo transparente",
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.testTag("art-transparent-label"),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    StudioPill(
+                        text = "Fundo escuro",
+                        selected = darkPreview,
+                        onClick = { darkPreview = true },
+                        modifier = Modifier.testTag("art-checker-dark"),
+                    )
+                    StudioPill(
+                        text = "Fundo claro",
+                        selected = !darkPreview,
+                        onClick = { darkPreview = false },
+                        modifier = Modifier.testTag("art-checker-light"),
+                    )
+                }
+                warning?.let { message ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = message,
+                        style = McTextStyles.caption,
+                        color = colors.warning,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("art-contrast-warning"),
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                McCard(variant = McCardVariant.DEFAULT) {
+                    StudioCardHeader(
+                        overline = "FORMATO",
+                        title = "Formato do card",
+                        subtitle = "4:5 é o padrão do feed; 1:1 é compacto; 9:16 é para story.",
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        ArtFormat.entries.forEach { format ->
+                            StudioPill(
+                                text = formatLabel(format),
+                                selected = state.artRecipe.format == format,
+                                onClick = { actions.onFormat(format) },
+                                modifier = Modifier.testTag("art-format-${format.name.lowercase(Locale.ROOT)}"),
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                McCard(variant = McCardVariant.DEFAULT) {
+                    StudioCardHeader(
+                        overline = "EXTRAS (${state.artRecipe.extras.size}/${ArtRecipe.MAX_EXTRAS})",
+                        title = "Destaques da arte",
+                        subtitle = "Até 2 métricas extras além de distância, ritmo e tempo.",
+                        trailing = {
+                            ExtrasCounter(
+                                selected = state.artRecipe.extras.size,
+                                max = ArtRecipe.MAX_EXTRAS,
+                            )
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        artOptions.chunked(2).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                row.forEach { option ->
+                                    val selected = option.extra in state.artRecipe.extras
+                                    val blocked = !selected && state.artRecipe.extras.size >= ArtRecipe.MAX_EXTRAS
+                                    ExtraTile(
+                                        option = option,
+                                        selected = selected,
+                                        enabled = (option.isAvailable && !blocked) || selected,
+                                        onClick = { actions.onToggleExtra(option.extra) },
+                                        modifier = Modifier.weight(1f),
+                                        tagPrefix = "art-extra",
+                                        selectionHint = "Na arte",
+                                        limitReached = blocked,
+                                    )
+                                }
+                                if (row.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Sem dado, a métrica fica de fora — nunca vira zero.",
+                        style = McTextStyles.caption,
+                        color = colors.textTertiary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                McCard(
+                    modifier = Modifier.testTag("art-colors"),
+                    variant = McCardVariant.DEFAULT,
+                ) {
+                    StudioCardHeader(
+                        overline = "CORES",
+                        title = "Texto e traçado",
+                        subtitle = "Escolhidos de forma independente; a arte é transparente.",
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SwatchRow(
+                        title = "Cor do texto",
+                        selected = state.artRecipe.textColor,
+                        onSelected = actions.onTextColor,
+                        tagPrefix = "art-text-color",
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SwatchRow(
+                        title = "Cor do traçado",
+                        selected = state.artRecipe.routeColor,
+                        onSelected = actions.onRouteColor,
+                        tagPrefix = "art-route-color",
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                McCard(variant = McCardVariant.DEFAULT) {
+                    StudioCardHeader(
+                        overline = "FONTE",
+                        title = "Família da arte",
+                        subtitle = "Os nomes seguem em Inter; a prévia usa a selecionada.",
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        ArtFont.entries.forEach { font ->
+                            StudioPill(
+                                text = fontLabel(font),
+                                selected = state.artRecipe.font == font,
+                                onClick = { actions.onFont(font) },
+                                modifier = Modifier.testTag("art-font-${font.name.lowercase(Locale.ROOT)}"),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = colors.surfaceInset,
+                        border = BorderStroke(1.dp, colors.borderSubtle),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("art-font-preview"),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = fontLabel(state.artRecipe.font),
+                                style = McTextStyles.caption,
+                                color = colors.textTertiary,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "5,12 km · 30:00 · çãá",
+                                fontFamily = state.artRecipe.font.family,
+                                fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                                color = colors.textPrimary,
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                StudioSaveDefaultCard(
+                    save = state.artSaveAsDefault,
+                    onSave = actions.onSaveAsDefault,
+                    onReset = actions.onReset,
+                    saveTag = "art-save-default",
+                    resetTag = "art-reset-recipe",
+                    caption = "Salva ao compartilhar ou salvar.",
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                val export = state.artExport
+                val inFlight = export as? ArtExportUiState.Exporting
+                val exporting = inFlight != null
+                LaunchedEffect(export) {
+                    val done = export as? ArtExportUiState.Done
+                    if (done != null && done.forShare) {
+                        actions.onShare(done.uri)
+                        // P0-2: the event belongs to the view model; consuming it keeps
+                        // rotation, tab switches and reopen from replaying the same sheet.
+                        actions.onShareConsumed()
+                    }
+                }
+                McPrimaryButton(
+                    text = if (inFlight?.forShare == true) "Compartilhando…" else "Compartilhar",
+                    onClick = { actions.onShareClick() },
+                    enabled = hasRoute && !exporting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("art-share"),
+                    minHeight = 56.dp,
+                    loading = inFlight?.forShare == true,
+                    loadingTag = "art-share-progress",
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                McSecondaryButton(
+                    text = if (inFlight != null && !inFlight.forShare) "Salvando…" else "Salvar PNG",
+                    onClick = { actions.onSave() },
+                    enabled = hasRoute && !exporting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("art-save"),
+                    minHeight = 48.dp,
+                    loading = inFlight != null && !inFlight.forShare,
+                    loadingTag = "art-save-progress",
+                )
+                when (export) {
+                    is ArtExportUiState.Done -> {
+                        if (!export.forShare) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "PNG salvo em Pictures/MeuCoach.",
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("art-export-done"),
+                            )
+                        }
+                    }
+
+                    is ArtExportUiState.Error -> {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = export.message,
+                            style = McTextStyles.caption,
+                            color = colors.danger,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("art-export-error"),
+                        )
+                        McTextButton(
+                            text = "Tentar de novo",
+                            onClick = { actions.onRetry() },
+                            modifier = Modifier.testTag("art-export-retry"),
+                        )
+                    }
+
+                    ArtExportUiState.Stale -> {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Receita alterada — gere de novo.",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("art-export-stale"),
+                        )
+                    }
+
+                    else -> Unit
+                }
+                if (!hasRoute) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Esta atividade não tem rota GPS; a arte precisa de pelo menos 2 pontos.",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                        modifier = Modifier.testTag("art-no-route"),
+                    )
+                }
             }
         }
-
-        is ArtExportUiState.Error -> {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = export.message,
-                style = McTextStyles.caption,
-                color = colors.danger,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("art-export-error"),
-            )
-            McTextButton(
-                text = "Tentar de novo",
-                onClick = { actions.onRetry() },
-                modifier = Modifier.testTag("art-export-retry"),
-            )
-        }
-
-        ArtExportUiState.Stale -> {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Receita alterada — gere de novo.",
-                style = McTextStyles.caption,
-                color = colors.textSecondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("art-export-stale"),
-            )
-        }
-
-        else -> Unit
-    }
-    Spacer(modifier = Modifier.height(4.dp))
-    McTextButton(
-        text = "Ver prévia",
-        onClick = onScrollToPreview,
-        modifier = Modifier.testTag("art-scroll-preview"),
-    )
-    if (!hasRoute) {
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "Esta atividade não tem rota GPS; a arte precisa de pelo menos 2 pontos.",
-            style = McTextStyles.caption,
-            color = colors.textSecondary,
-            modifier = Modifier.testTag("art-no-route"),
-        )
     }
 }
 
 @Suppress("SwallowedException")
 @Composable
-private fun ArtPreviewCard(state: StoryStudioUiState) {
+private fun ArtPreviewCard(state: StoryStudioUiState, darkPreview: Boolean, artHeight: Dp) {
     val colors = McTheme.colors
-    var darkPreview by rememberSaveable { mutableStateOf(true) }
     var retry by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val logo = remember(context) { StoryBranding.logo(context) }
@@ -366,7 +424,6 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
     val plan = state.plan
     val format = recipe.format
     val previewHeight = (ART_PREVIEW_WIDTH * format.height / format.width)
-    val warning = ArtContrast.warning(recipe.textColor, recipe.routeColor)
     val previewDescription = buildString {
         append("Prévia da arte ${formatLabel(format)}")
         append(", texto ${swatchLabel(recipe.textColor)}")
@@ -413,162 +470,123 @@ private fun ArtPreviewCard(state: StoryStudioUiState) {
             }
         }
     }
-    McCard(variant = McCardVariant.ELEVATED) {
-        // FlowRow: the badge wraps below the title at 200% instead of
-        // squeezing "Arte transparente" into a mid-word break.
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Column {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = colors.surfaceElevated,
+        border = BorderStroke(1.dp, colors.borderSubtle),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Compact chrome: the fixed preview keeps only the overline and
+            // the size badge so the controls retain height at 200%.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
                     text = "PRÉVIA",
                     style = McTextStyles.overline,
                     color = colors.textTertiary,
                 )
-                Text(
-                    text = "Arte transparente",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.textPrimary,
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = colors.surfaceInset,
-                border = BorderStroke(1.dp, colors.borderSubtle),
-            ) {
-                Text(
-                    text = "${format.width}×${format.height}",
-                    style = McTextStyles.caption,
-                    color = colors.textSecondary,
-                    modifier = Modifier
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                        .testTag("art-format-badge"),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("art-preview"),
-            contentAlignment = Alignment.Center,
-        ) {
-            val checker = if (darkPreview) {
-                ArtContrast.DARK_CHECKER to ArtContrast.DARK_CHECKER_WORST
-            } else {
-                ArtContrast.LIGHT_CHECKER to ArtContrast.LIGHT_CHECKER_WORST
-            }
-            val previewWidth = 300.dp * format.width.toFloat() / format.height.toFloat()
-            Box(
-                modifier = Modifier
-                    .height(300.dp)
-                    .width(previewWidth)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(checker.first))
-                    .semantics { contentDescription = previewDescription },
-                contentAlignment = Alignment.Center,
-            ) {
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    val cell = 20.dp.toPx()
-                    val columns = ceilOf(size.width / cell)
-                    val rows = ceilOf(size.height / cell)
-                    for (row in 0 until rows) {
-                        for (column in 0 until columns) {
-                            drawRect(
-                                color = Color(if ((row + column) % 2 == 0) checker.first else checker.second),
-                                topLeft = Offset(column * cell, row * cell),
-                                size = Size(cell, cell),
-                            )
-                        }
-                    }
-                }
-                when (val preview = preview) {
-                    is ArtPreviewState.Ready -> Image(
-                        bitmap = preview.bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .testTag("art-preview-ready-${preview.font.name.lowercase(Locale.ROOT)}"),
-                        contentScale = ContentScale.Fit,
-                    )
-
-                    ArtPreviewState.Empty -> Text(
-                        text = "Sem rota suficiente para a arte",
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = colors.surfaceInset,
+                    border = BorderStroke(1.dp, colors.borderSubtle),
+                ) {
+                    Text(
+                        text = "${format.width}×${format.height}",
                         style = McTextStyles.caption,
                         color = colors.textSecondary,
                         modifier = Modifier
-                            .padding(16.dp)
-                            .testTag("art-preview-empty"),
-                    )
-
-                    ArtPreviewState.Error -> Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .testTag("art-preview-error"),
-                    ) {
-                        Text(
-                            text = "A prévia falhou.",
-                            style = McTextStyles.caption,
-                            color = colors.textSecondary,
-                        )
-                        McTextButton(
-                            text = "Recarregar prévia",
-                            onClick = { retry++ },
-                            modifier = Modifier.testTag("art-retry"),
-                        )
-                    }
-
-                    // Only the first render reaches Loading; a re-render keeps
-                    // the previous bitmap until the new one is ready.
-                    ArtPreviewState.Loading -> CircularProgressIndicator(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .testTag("art-preview-loading"),
-                        strokeWidth = 2.dp,
-                        color = colors.textTertiary,
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .testTag("art-format-badge"),
                     )
                 }
             }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Fundo transparente",
-            style = McTextStyles.caption,
-            color = colors.textTertiary,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("art-transparent-label"),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            StudioPill(
-                text = "Fundo escuro",
-                selected = darkPreview,
-                onClick = { darkPreview = true },
-                modifier = Modifier.testTag("art-checker-dark"),
-            )
-            StudioPill(
-                text = "Fundo claro",
-                selected = !darkPreview,
-                onClick = { darkPreview = false },
-                modifier = Modifier.testTag("art-checker-light"),
-            )
-        }
-        warning?.let { message ->
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = message,
-                style = McTextStyles.caption,
-                color = colors.warning,
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("art-contrast-warning"),
-            )
+                    .testTag("art-preview"),
+                contentAlignment = Alignment.Center,
+            ) {
+                val checker = if (darkPreview) {
+                    ArtContrast.DARK_CHECKER to ArtContrast.DARK_CHECKER_WORST
+                } else {
+                    ArtContrast.LIGHT_CHECKER to ArtContrast.LIGHT_CHECKER_WORST
+                }
+                val previewWidth = artHeight * format.width.toFloat() / format.height.toFloat()
+                Box(
+                    modifier = Modifier
+                        .height(artHeight)
+                        .width(previewWidth)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(checker.first))
+                        .semantics { contentDescription = previewDescription },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        val cell = 20.dp.toPx()
+                        val columns = ceilOf(size.width / cell)
+                        val rows = ceilOf(size.height / cell)
+                        for (row in 0 until rows) {
+                            for (column in 0 until columns) {
+                                drawRect(
+                                    color = Color(if ((row + column) % 2 == 0) checker.first else checker.second),
+                                    topLeft = Offset(column * cell, row * cell),
+                                    size = Size(cell, cell),
+                                )
+                            }
+                        }
+                    }
+                    when (val preview = preview) {
+                        is ArtPreviewState.Ready -> Image(
+                            bitmap = preview.bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .testTag("art-preview-ready-${preview.font.name.lowercase(Locale.ROOT)}"),
+                            contentScale = ContentScale.Fit,
+                        )
+
+                        ArtPreviewState.Empty -> Text(
+                            text = "Sem rota suficiente para a arte",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .testTag("art-preview-empty"),
+                        )
+
+                        ArtPreviewState.Error -> Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .testTag("art-preview-error"),
+                        ) {
+                            Text(
+                                text = "A prévia falhou.",
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                            )
+                            McTextButton(
+                                text = "Recarregar prévia",
+                                onClick = { retry++ },
+                                modifier = Modifier.testTag("art-retry"),
+                            )
+                        }
+
+                        // Only the first render reaches Loading; a re-render keeps
+                        // the previous bitmap until the new one is ready.
+                        ArtPreviewState.Loading -> CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .testTag("art-preview-loading"),
+                            strokeWidth = 2.dp,
+                            color = colors.textTertiary,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -661,6 +679,7 @@ private fun ceilOf(value: Float): Int = Math.ceil(value.toDouble()).toInt().coer
 internal fun formatLabel(format: ArtFormat): String = when (format) {
     ArtFormat.PORTRAIT_4_5 -> "4:5"
     ArtFormat.SQUARE -> "1:1"
+    ArtFormat.PORTRAIT_9_16 -> "9:16"
 }
 
 internal fun fontLabel(font: ArtFont): String = when (font) {

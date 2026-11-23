@@ -97,6 +97,8 @@ usuário 0 continua aberta (§9.3).
   limitado a 8 PNGs; `reused` continua silencioso.
 - **A3/A4:** cantos de 20 dp mantidos (convenção do vídeo); reuso sem
   feedback extra.
+- **P2-11 substituído:** o ADR 0060 troca a âncora “Ver prévia” por uma
+  prévia fixa no topo da aba Arte, com os controles rolando abaixo.
 - **Goldens:** `art-studio-tab-dark` regravado; novos
   `art-studio-tab-light`, `art-studio-colors-light` e
   `art-studio-tab-narrow-200-dark`. O golden de 200% revelou o header

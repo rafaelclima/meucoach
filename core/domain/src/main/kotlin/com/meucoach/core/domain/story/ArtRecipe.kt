@@ -1,14 +1,17 @@
 package com.meucoach.core.domain.story
 
 /**
- * Card format of the transparent route art (ADR 0058 §2.2). Export is always
- * 1080 px wide; preview renders the same aspect at ~540 px. `ROUTE_CROP` and a
- * 9:16 full-bleed are out of the MVP, so no other entry may be added without a
- * new ADR.
+ * Card format of the transparent route art (ADR 0058 §2.2, extended by ADR
+ * 0060). Export is always 1080 px wide; preview renders the same aspect at
+ * ~540 px. `ROUTE_CROP` and an opaque 9:16 full-bleed are out of the MVP, so
+ * no other entry may be added without a new ADR.
  */
 enum class ArtFormat(val width: Int, val height: Int, val fileTag: String) {
     PORTRAIT_4_5(width = 1080, height = 1350, fileTag = "4x5"),
     SQUARE(width = 1080, height = 1080, fileTag = "1x1"),
+
+    /** Transparent story card (ADR 0060); not an opaque full-bleed overlay. */
+    PORTRAIT_9_16(width = 1080, height = 1920, fileTag = "9x16"),
 }
 
 /** Font families offered by the art picker; resolution to `Typeface` happens in the app. */

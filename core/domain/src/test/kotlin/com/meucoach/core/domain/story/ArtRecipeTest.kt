@@ -17,22 +17,29 @@ class ArtRecipeTest {
     }
 
     @Test
-    fun `portrait is 1080x1350 and square is 1080x1080`() {
+    fun `portrait is 1080x1350, square is 1080x1080 and story is 1080x1920`() {
         assertThat(ArtFormat.PORTRAIT_4_5.width).isEqualTo(1080)
         assertThat(ArtFormat.PORTRAIT_4_5.height).isEqualTo(1350)
         assertThat(ArtFormat.SQUARE.width).isEqualTo(1080)
         assertThat(ArtFormat.SQUARE.height).isEqualTo(1080)
+        assertThat(ArtFormat.PORTRAIT_9_16.width).isEqualTo(1080)
+        assertThat(ArtFormat.PORTRAIT_9_16.height).isEqualTo(1920)
     }
 
     @Test
     fun `formats expose the file tag used by artifact names`() {
         assertThat(ArtFormat.PORTRAIT_4_5.fileTag).isEqualTo("4x5")
         assertThat(ArtFormat.SQUARE.fileTag).isEqualTo("1x1")
+        assertThat(ArtFormat.PORTRAIT_9_16.fileTag).isEqualTo("9x16")
     }
 
     @Test
-    fun `formats are limited to the two documented cards`() {
-        assertThat(ArtFormat.entries).containsExactly(ArtFormat.PORTRAIT_4_5, ArtFormat.SQUARE)
+    fun `formats are limited to the three documented cards`() {
+        assertThat(ArtFormat.entries).containsExactly(
+            ArtFormat.PORTRAIT_4_5,
+            ArtFormat.SQUARE,
+            ArtFormat.PORTRAIT_9_16,
+        )
     }
 
     @Test

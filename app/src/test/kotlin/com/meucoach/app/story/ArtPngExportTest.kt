@@ -117,6 +117,20 @@ class ArtPngExportTest {
     }
 
     @Test
+    fun `a changed format regenerates instead of reusing`() {
+        val plan = plan()
+
+        val first = runBlockingExport(plan, ArtRecipe()) as ArtPngExport.Published
+        val second = runBlockingExport(
+            plan,
+            ArtRecipe(format = ArtFormat.PORTRAIT_9_16),
+        ) as ArtPngExport.Published
+
+        assertThat(second.uri).isNotEqualTo(first.uri)
+        assertThat(second.reused).isFalse()
+    }
+
+    @Test
     fun `saving always publishes a new copy instead of reusing`() {
         val plan = plan()
 

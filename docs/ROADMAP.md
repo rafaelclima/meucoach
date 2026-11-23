@@ -747,7 +747,7 @@ Antes de implementar qualquer linha de código ou decidir arquitetura, faremos u
 
 ### P3-06 · Arte PNG da rota (card transparente 4:5/1:1)
 
-**Status:** concluída em 22/11/2026 (F2–F8 implementadas; spike de alpha e validação básica no aparelho feitos; ajustes finos de layout ficam para a spec visual final). Remediação da auditoria UI/UX em 23/11/2026 (P0–P2); validação no aparelho pendente.
+**Status:** concluída em 22/11/2026 (F2–F8 implementadas; spike de alpha e validação básica no aparelho feitos; ajustes finos de layout ficam para a spec visual final). Remediação da auditoria UI/UX em 23/11/2026 (P0–P2) e ADR 0060 (9:16 + layout + prévia fixa) implementados em 23/11/2026; validação no aparelho pendente.
 
 Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`AUDITORIA_ARTE_PNG_UI_UX.md`](AUDITORIA_ARTE_PNG_UI_UX.md).
 
@@ -764,6 +764,10 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
   export, copy pôster × arte, spinner no CTA, contraste via casca, swatches
   a11y, 360 dp/200%, limite de extras, prévia/scroll, erro amigável + cache;
   goldens dark/light/200%. Validação no aparelho pendente.
+- [x] P3-06.2 — ADR 0060: 9:16 transparente aditivo (1080×1920), layout
+  comum (distância ~10% menor, ritmo/tempo à direita, extras abaixo, sem
+  rodapé) e prévia fixa com controles rolando; goldens 4:5/1:1/9:16 e
+  200% (23/11/2026; gates verdes, validação no aparelho pendente).
 
 ---
 

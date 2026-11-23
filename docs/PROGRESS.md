@@ -1,6 +1,44 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (Arte PNG: remediação da auditoria UI/UX P0–P2)
+**Atualizado:** 23/11/2026 (Arte PNG: 9:16, novo layout e prévia fixa — ADR 0060)
+
+## Sessão 2026-11-23 — Arte PNG 9:16, layout e prévia fixa (ADR 0060)
+
+**Decisão do usuário 0:** adicionar 9:16 (sem trocar 4:5/1:1), manter os
+rótulos de ritmo/tempo próximos dos valores, distância na margem esquerda
+com a mesma posição e bloco ritmo/tempo na margem direita, distância ~10%
+menor, layout nos três formatos e **prévia fixa** com o restante rolando.
+
+### Concluído
+
+- **ADR 0060 + PRD v0.3/ADR 0058:** 9:16 transparente (1080×1920) é card,
+  não overlay opaco; layout comum e prévia fixa documentados.
+- **Domínio:** `ArtFormat.PORTRAIT_9_16` (fileTag `9x16`) + testes de
+  dimensões/ordem; codec round-trip e filename `…-arte-9x16.png`.
+- **Renderer:** novo bloco de topo — distância 135/117 (design units),
+  `DISTÂNCIA` mais perto do número, ritmo/tempo empilhados e alinhados à
+  direita, extras logo abaixo, **rodapé removido**; a rota ganha a área do
+  rodapé e o 9:16 centraliza a área quadrada na altura extra. Testes de
+  alpha, margens e ausência do rodapé.
+- **UI:** 3º chip 9:16, badge `1080×1920`, prévia fixa compacta (até 300 dp;
+  encolhe em 200%/telas curtas), header/segmento do Studio fixos e conteúdo
+  de vídeo em rolagem interna. Resumo e label “Fundo transparente” ficam no
+  topo da área rolável, com o checker e o aviso de contraste.
+- **Testes:** `ArtStudioContentTest` cobre 9:16, prévia fixa enquanto rola
+  até cores/fonte, 200% e os estados; renderer cobre 9:16 e o rodapé
+  removido; export cobre mudança de formato (sem reuso indevido).
+- **Goldens:** `art-png-4x5/1x1` atualizados; novo `art-png-9x16-default`;
+  `art-studio-tab-*` atualizados e novo `art-studio-tab-9x16-dark`.
+
+### Gates
+
+- `./gradlew check spotlessCheck koverVerify :app:assembleDebug` verde
+  (1.338 testes; um timeout isolado de `TodayViewModelPersistTest` sob
+  carga passou sozinho e na reexecução — flake pré-existente, não tocado).
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` e
+  `"*StoryStudio*"` verdes.
+- Nenhum dado real no diff; nenhuma migração; ADR 0058 estendido e ADR 0060
+  criado.
 
 ## Sessão 2026-11-23 — Arte PNG: remediação da auditoria UI/UX (P0–P2)
 

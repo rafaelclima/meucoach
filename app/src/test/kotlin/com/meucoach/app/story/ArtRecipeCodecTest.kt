@@ -31,6 +31,13 @@ class ArtRecipeCodecTest {
     }
 
     @Test
+    fun `round-trips the 9x16 story format`() {
+        val recipe = ArtRecipe(format = ArtFormat.PORTRAIT_9_16)
+
+        assertThat(ArtRecipeCodec.decode(ArtRecipeCodec.encode(recipe))).isEqualTo(recipe)
+    }
+
+    @Test
     fun `writes versioned json with the documented keys`() {
         val json = JSONObject(ArtRecipeCodec.encode(ArtRecipe()))
 

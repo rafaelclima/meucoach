@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -51,7 +52,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,7 +86,6 @@ import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.domain.story.StorySegmentType
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -190,14 +189,13 @@ internal fun StoryStudioContent(
 ) {
     val colors = McTheme.colors
     var tab by rememberSaveable { mutableStateOf(StoryStudioTab.VIDEO) }
-    val scrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
-    // Switching tabs starts at the top: the video tab can be much taller than
-    // the art tab, and inheriting its offset would hide the art preview (A2).
-    LaunchedEffect(tab) { scrollState.scrollTo(0) }
+    val videoScroll = rememberScrollState()
+    // The video tab scrolls under the fixed chrome; the art tab has its own
+    // fixed preview and an internal scroll for the controls (ADR 0060).
+    LaunchedEffect(tab) { videoScroll.scrollTo(0) }
     Column(
         modifier = modifier
-            .verticalScroll(scrollState)
+            .fillMaxSize()
             .padding(start = 20.dp, end = 20.dp, bottom = 24.dp)
             .testTag("story-studio-content"),
     ) {
@@ -214,18 +212,14 @@ internal fun StoryStudioContent(
                     style = MaterialTheme.typography.headlineSmall,
                     color = colors.textPrimary,
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = if (tab ==
-                        StoryStudioTab.VIDEO
-                    ) {
-                        state.recipe.summaryLine()
-                    } else {
-                        state.artRecipe.summaryLine()
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                )
+                if (tab == StoryStudioTab.VIDEO) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = state.recipe.summaryLine(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                }
             }
             IconButton(
                 onClick = onClose,
@@ -244,24 +238,30 @@ internal fun StoryStudioContent(
         StudioTabSegment(selected = tab, onSelect = { tab = it })
         Spacer(modifier = Modifier.height(16.dp))
         if (tab == StoryStudioTab.VIDEO) {
-            StoryVideoContent(
-                state = state,
-                avatar = avatar,
-                introSeen = introSeen,
-                onDismissIntro = onDismissIntro,
-                onPreset = onPreset,
-                onToggleExtra = onToggleExtra,
-                onDuration = onDuration,
-                onMapStyle = onMapStyle,
-                onSaveAsDefault = onSaveAsDefault,
-                onReset = onReset,
-                onGenerate = onGenerate,
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(videoScroll),
+            ) {
+                StoryVideoContent(
+                    state = state,
+                    avatar = avatar,
+                    introSeen = introSeen,
+                    onDismissIntro = onDismissIntro,
+                    onPreset = onPreset,
+                    onToggleExtra = onToggleExtra,
+                    onDuration = onDuration,
+                    onMapStyle = onMapStyle,
+                    onSaveAsDefault = onSaveAsDefault,
+                    onReset = onReset,
+                    onGenerate = onGenerate,
+                )
+            }
         } else {
             ArtStudioContent(
                 state = state,
                 actions = artActions,
-                onScrollToPreview = { scope.launch { scrollState.animateScrollTo(0) } },
+                modifier = Modifier.weight(1f),
             )
         }
     }

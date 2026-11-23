@@ -44,7 +44,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ArtStudioContentTest {
     @get:Rule
@@ -83,6 +83,26 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("art-format-square").performScrollTo().performClick()
 
         assertThat(format).isEqualTo(ArtFormat.SQUARE)
+    }
+
+    @Test
+    fun `selects the 9x16 story format`() {
+        var format: ArtFormat? = null
+        setContent(onFormat = { format = it })
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-format-portrait_9_16").performScrollTo().performClick()
+
+        assertThat(format).isEqualTo(ArtFormat.PORTRAIT_9_16)
+    }
+
+    @Test
+    fun `the summary line follows the 9x16 format`() {
+        setContent(artRecipe = ArtRecipe(format = ArtFormat.PORTRAIT_9_16, font = ArtFont.ANTON))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithText("9:16 · Anton · texto branco · traçado lima.").assertIsDisplayed()
     }
 
     @Test
@@ -184,7 +204,7 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("story-tab-art").performClick()
         compose.onNodeWithTag("art-share").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithTag("art-save").assertIsNotEnabled()
-        compose.onNodeWithTag("art-preview-empty").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-preview-empty").assertIsDisplayed()
         compose.onNodeWithTag("art-no-route").performScrollTo().assertIsDisplayed()
     }
 
@@ -202,7 +222,7 @@ class ArtStudioContentTest {
         setContent()
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithText("Fundo transparente").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Fundo transparente").assertIsDisplayed()
         compose.onNodeWithTag("art-checker-light").performScrollTo().performClick()
         compose.onNodeWithTag("art-checker-dark").assertIsDisplayed()
     }
@@ -378,24 +398,13 @@ class ArtStudioContentTest {
     }
 
     @Test
-    fun `the preview anchor returns to the top`() {
+    fun `the fixed preview remains visible while editing colors and fonts`() {
         setContent()
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithTag("art-scroll-preview").performScrollTo().performClick()
-
+        compose.onNodeWithTag("art-text-color-cyan").performScrollTo()
         compose.onNodeWithTag("art-preview").assertIsDisplayed()
-    }
-
-    @Test
-    fun `switching tabs resets the scroll to the preview`() {
-        setContent()
-
-        compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithTag("art-scroll-preview").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("story-tab-video").performScrollTo().performClick()
-        compose.onNodeWithTag("story-tab-art").performScrollTo().performClick()
-
+        compose.onNodeWithTag("art-font-anton").performScrollTo()
         compose.onNodeWithTag("art-preview").assertIsDisplayed()
     }
 
@@ -505,7 +514,6 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("art-preview").assertIsDisplayed()
         compose.onNodeWithTag("art-checker-light").performScrollTo().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithTag("art-share").performScrollTo().assertIsEnabled()
-        compose.onNodeWithTag("art-scroll-preview").performScrollTo().assertIsDisplayed()
     }
 
     @Test

@@ -18,6 +18,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
+import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMetricCatalog
@@ -72,6 +73,16 @@ class StoryStudioScreenshotTest {
     }
 
     @Test
+    fun artStudioTab9x16Dark() {
+        captureArtTab(
+            name = "art-studio-tab-9x16-dark.png",
+            fontScale = 1f,
+            darkTheme = true,
+            format = ArtFormat.PORTRAIT_9_16,
+        )
+    }
+
+    @Test
     fun artStudioTabLight() {
         captureArtTab(name = "art-studio-tab-light.png", fontScale = 1f, darkTheme = false)
     }
@@ -92,7 +103,13 @@ class StoryStudioScreenshotTest {
         captureArtTab(name = "art-studio-tab-narrow-200-dark.png", fontScale = 2f, darkTheme = true)
     }
 
-    private fun captureArtTab(name: String, fontScale: Float, darkTheme: Boolean, sectionTag: String? = null) {
+    private fun captureArtTab(
+        name: String,
+        fontScale: Float,
+        darkTheme: Boolean,
+        sectionTag: String? = null,
+        format: ArtFormat = ArtFormat.PORTRAIT_4_5,
+    ) {
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(
@@ -111,6 +128,7 @@ class StoryStudioScreenshotTest {
                                     .copy(localDate = java.time.LocalDate.parse("2026-10-24")),
                                 extras = options(),
                                 artRecipe = ArtRecipe(
+                                    format = format,
                                     extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR),
                                     font = ArtFont.ANTON,
                                     routeColor = ArtColor.CORAL,

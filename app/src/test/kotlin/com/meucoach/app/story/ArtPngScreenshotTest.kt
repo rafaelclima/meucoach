@@ -59,6 +59,11 @@ class ArtPngScreenshotTest {
     }
 
     @Test
+    fun artPng9x16Default() {
+        capture(recipe = ArtRecipe(format = ArtFormat.PORTRAIT_9_16), name = "art-png-9x16-default.png")
+    }
+
+    @Test
     fun artPng4x5Customized() {
         val recipe = ArtRecipe(
             extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR),
