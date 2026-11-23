@@ -1,6 +1,61 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (Arte com Foto — F2 de persistência de estilo concluída; sem F3+)
+**Atualizado:** 23/11/2026 (Arte com Foto — F3 de foto concluída; sem F4+)
+
+## Sessão 2026-11-23 — Arte com Foto F3 (codec, import, store e loader)
+
+**Escopo:** somente a fatia F3 do PRD v0.3/ADR 0061. Sem renderer (F4), UI
+(F5), export/share (F6) ou reset/deleteActivity (F7).
+
+### Concluído
+
+- **`ArtPhotoCodec` v1 + modelos:** `ArtPhotoRecord`, `ArtPhotoMetadata` e
+  `ArtPhotoSnapshot`; JSON com `v`, `activityId`, `background`, `photoId`,
+  `focusX`, `focusY` e `zoom`. O dono é validado, foco/zoom inválidos são
+  clampados/defaultados por campo, foto inválida cai para Transparente e
+  `PHOTO` exige referência. Metadados corrompidos/versão futura retornam
+  `null`.
+- **`ArtPhotoStore`:** `files/art_photo/<photoId>.jpg` +
+  `<sha256(activityId)>.json`, mutex único, leitura/escrita atômica de
+  metadata, `load`/`save`/`remove`/`sweepOrphans` e normalização de
+  `save` para Transparente quando o arquivo sumiu. `loadSnapshot` sinaliza a
+  foto perdida para o aviso único da UI. 1 foto por atividade; foto em espera
+  no modo Transparente é preservada; varredura de órfãos > 24 h nunca apaga
+  foto referenciada.
+- **`ArtPhotoImporter`:** URI do PhotoPicker, EXIF das 8 orientações
+  (`androidx.exifinterface`), bounds + `inSampleSize` até 3072, JPEG q90,
+  orientação aplicada antes de gravar, `.jpg.tmp` validado e renomeado,
+  metadata `.json.tmp` renomeada, e só então a foto anterior é apagada. Falha
+  de URI/decode/IO mantém a foto e o metadata antigos.
+- **`ArtPhotoLoader`:** `BitmapRegionDecoder` na região derivada de
+  `ArtPhotoCrop.resolve`, preview 540/export 1080, aspecto do formato,
+  downscale por potência de 2; bitmap de propriedade do chamador, `null` para
+  arquivo ausente/corrompido.
+- **Dependência:** `androidx.exifinterface:exifinterface:1.4.2` (EXIF das 8
+  orientações, AndroidX estável e sem transitivas pesadas).
+- **Testes:** novos `ArtPhotoCodecTest`, `ArtPhotoStoreTest`,
+  `ArtPhotoImporterTest`, `ArtPhotoLoaderTest` e `ExifOrientationTest`, com URI
+  fake via `ShadowContentResolver`, 8 orientações, troca/falha atômica,
+  isolamento por atividade, órfãos e decode 540/1080.
+
+### Gates
+
+- `./gradlew :app:testDebugUnitTest --rerun-tasks` verde: **1.397 testes,
+  0 falhas**.
+- `./gradlew :app:koverVerify` verde; linhas do app em **81,44%**.
+- `./gradlew :core:domain:test` verde (1.311 testes).
+- `./gradlew :app:assembleDebug`, `./gradlew :app:detekt` e
+  `./gradlew spotlessCheck` verdes.
+- Nenhuma foto ou dado real no diff; sem migração de banco.
+- `DataResetCoordinator`, deleteActivity e a varredura no startup continuam
+  para **F7**, conforme as fatias do PRD.
+
+### Próximo
+
+1. **F4** — `ArtLayoutEngine` + `StoryArtRenderer` PHOTO + scrim 58% + templates
+   + `textScalePercent` + `writeJpg` + goldens; transparente sem regressão.
+2. **F5** — UI do Studio (toggle, cards, picker real, crop acessível, avisos).
+3. **F6/F7** — export/share e ciclo de vida/reset/órfãos no startup.
 
 ## Sessão 2026-11-23 — Arte com Foto F2 (codec de estilo v2 + store style-only)
 

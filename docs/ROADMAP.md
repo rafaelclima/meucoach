@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.67 · **Data:** 23/11/2026 · **Mudança:** F2 da Arte com foto concluída — codec de estilo v2 com migração v1→v2, fallback por campo e `ArtRecipeStore` style-only. Próxima fatia: F3 (foto/import/store).
+**Versão:** 1.68 · **Data:** 23/11/2026 · **Mudança:** F3 da Arte com foto concluída — codec de foto v1, store por atividade, importer EXIF/3072/q90 atômico, loader por região e varredura de órfãos. Próxima fatia: F4 (renderer).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -771,14 +771,14 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
 
 ### P3-07 · Arte com foto (Story Studio)
 
-**Status:** F0–F2 concluídas em 23/11/2026; F3 (foto/import/store) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
+**Status:** F0–F3 concluídas em 23/11/2026; F4 (renderer) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
 
 Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 0061`](adr/0061-art-photo-studio.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`ADR 0060`](adr/0060-art-png-9x16-layout.md).
 
 - [x] F0 — PRD v0.3 + ADR 0061 + spec de layout/ownership/crop/scrim/9:16 (23/11/2026).
 - [x] F1 — domínio: `ArtPhotoCrop.resolve`, `ArtLayoutSpec`, `ArtPlanFingerprint`, validações e key com fingerprint (23/11/2026; 1.311 testes de domínio, Kover 96,77% de linhas, `assembleDebug`/`spotlessCheck`/detekt verdes).
 - [x] F2 — codec de estilo v2 + migração v1→v2 + `ArtRecipeStore` style-only + fallback por campo (23/11/2026; codec/store e `*Art*` verdes; `:app:koverVerify` com 1.345 testes e 0 falhas após reexecução do flake conhecido).
-- [ ] F3 — foto: EXIF, 3072/q90, import atômico, store por atividade, loader no alvo e órfãos.
+- [x] F3 — foto: `ArtPhotoCodec` v1, importer EXIF/3072/q90 atômico, store por atividade, loader 540/1080 por região e órfãos (23/11/2026; 1.397 testes do app, 0 falhas, Kover 81,44%; `androidx.exifinterface` 1.4.2).
 - [ ] F4 — renderer: layout medido, templates, `textScalePercent`, scrim 58%, JPG e goldens.
 - [ ] F5 — UI: toggle, cards, crop acessível, copy por modo, estados e 200%/360 dp.
 - [ ] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG.
