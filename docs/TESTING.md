@@ -473,12 +473,13 @@ inteira pode disputar frames com o Compose/Roborazzi.
 
 ### 10.1 Flakes conhecidos (C4-56, 18/11/2026)
 
-Dois testes caem de forma intermitente sob paralelismo/carga e passam isolados; nenhum é da área alterada quando aparece. A suíte completa do app é validada com `--rerun-tasks --no-parallel`.
+Três testes caem de forma intermitente sob paralelismo/carga e passam isolados; nenhum é da área alterada quando aparece. A suíte completa do app é validada com `--rerun-tasks --no-parallel`.
 
 | Teste | Sintoma | Contexto |
 |---|---|---|
 | `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução |
 | `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado. Em 3.3-B a origem foi corrigida: `TodayViewModelPersistTest` cancela os `viewModelScope` antes de fechar o banco; 2 execuções completas verdes depois disso (com e sem `--no-parallel`). |
+| `TodayViewModelPersistTest` | `TimeoutCancellationException` de 5 s (`withTimeout`) na suíte cheia | Caso “upgrades a stale stored week on opening”; verde 5× isolado e na reexecução da suíte completa |
 
 - **18/11/2026 (apagar individual):** `TodayViewModelPersistTest`
   (“upgrades a stale stored week on opening”) falhou uma vez na suíte cheia por
@@ -490,6 +491,12 @@ Dois testes caem de forma intermitente sob paralelismo/carga e passam isolados; 
   coletor do histórico ainda usava o Main ao resetar o dispatcher. O teste agora
   cancela os `viewModelScope` e drena o looper antes de fechar o banco/resetar o
   `Main` (mesmo padrão do `TodayViewModelPersistTest`), sem reduzir assert.
+- **23/11/2026 (timeout pós-pull):** `TodayViewModelPersistTest`
+  (“upgrades a stale stored week on opening”) estourou o `withTimeout(5_000)`
+  na primeira execução após atualizar 75 commits, com `assembleDebug` + `check`
+  e compilação dos módulos em paralelo (`org.gradle.parallel=true`, 8m59s).
+  Verde 5× isolado e na suíte completa reexecutada (1.304 testes, 1m18s); o gate
+  final (`assembleDebug check spotlessCheck koverVerify`) passou.
 
 Política: flake não se ignora (`@Ignore` proibido) nem se "conserta" reduzindo assert; registra-se aqui com sintoma, contexto e o comando que fica verde.
 
