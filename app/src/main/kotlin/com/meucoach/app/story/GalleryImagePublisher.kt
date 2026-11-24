@@ -19,18 +19,26 @@ data class ImagePublishResult(val uri: Uri, val savedToGallery: Boolean)
  * failures as skippable.
  */
 interface GalleryImagePublisher {
+    /** Publishes the transparent art PNG (`image/png`). */
     fun publish(file: File): ImagePublishResult
+
+    /** Publishes the photo art JPEG (`image/jpeg`, ADR 0061 §2.6). */
+    fun publishJpg(file: File): ImagePublishResult
 }
 
 class MediaStoreGalleryImagePublisher
 @Inject
 constructor(@ApplicationContext private val context: Context) :
     GalleryImagePublisher {
-    override fun publish(file: File): ImagePublishResult {
+    override fun publish(file: File): ImagePublishResult = publish(file, MIME_PNG)
+
+    override fun publishJpg(file: File): ImagePublishResult = publish(file, MIME_JPEG)
+
+    private fun publish(file: File, mimeType: String): ImagePublishResult {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, file.name)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
             put(
                 MediaStore.Images.Media.RELATIVE_PATH,
                 "${Environment.DIRECTORY_PICTURES}/MeuCoach",
@@ -51,5 +59,10 @@ constructor(@ApplicationContext private val context: Context) :
             resolver.delete(uri, null, null)
             throw error
         }
+    }
+
+    private companion object {
+        const val MIME_PNG = "image/png"
+        const val MIME_JPEG = "image/jpeg"
     }
 }

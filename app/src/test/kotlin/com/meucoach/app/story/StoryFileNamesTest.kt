@@ -56,6 +56,21 @@ class StoryFileNamesTest {
         assertThat(art).isNotEqualTo(poster)
     }
 
+    @Test
+    fun `names the photo art as jpg by format`() {
+        val plan = plan()
+
+        assertThat(StoryFileNames.artPhoto(plan, ArtFormat.PORTRAIT_4_5, 123L))
+            .startsWith("meucoach-story-2026-10-24-")
+            .endsWith("-arte-foto-4x5.jpg")
+        assertThat(StoryFileNames.artPhoto(plan, ArtFormat.SQUARE, 123L))
+            .endsWith("-arte-foto-1x1.jpg")
+        assertThat(StoryFileNames.artPhoto(plan, ArtFormat.PORTRAIT_9_16, 123L))
+            .endsWith("-arte-foto-9x16.jpg")
+        assertThat(StoryFileNames.artPhoto(plan, ArtFormat.PORTRAIT_4_5, 123L))
+            .isNotEqualTo(StoryFileNames.art(plan, ArtFormat.PORTRAIT_4_5, 123L))
+    }
+
     private fun plan(): StoryPlan {
         val activity = ImportedActivity(
             source = ActivitySource.GPX,

@@ -21,6 +21,10 @@ internal object StoryFileNames {
     /** The transparent art card; `-arte-` keeps it apart from `-poster-`. */
     fun art(plan: StoryPlan, format: ArtFormat, stamp: Long): String = "${base(plan, stamp)}-arte-${format.fileTag}.png"
 
+    /** The photo art JPEG (ADR 0061 §2.6); `-arte-foto-` keeps both modes apart. */
+    fun artPhoto(plan: StoryPlan, format: ArtFormat, stamp: Long): String =
+        "${base(plan, stamp)}-arte-foto-${format.fileTag}.jpg"
+
     private fun base(plan: StoryPlan, stamp: Long): String {
         val date = plan.localDate?.toString() ?: "sem-data"
         val distance = String.format(Locale.US, "%.2f", plan.distanceKm)

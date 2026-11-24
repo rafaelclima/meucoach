@@ -40,7 +40,6 @@ import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
-import com.meucoach.core.domain.story.ArtBackgroundMode
 import com.meucoach.core.domain.story.ArtBlock
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
@@ -411,25 +410,9 @@ class ActivityDetailViewModel @Inject constructor(
             studio.artExport !is ArtExportUiState.Exporting && !studio.artPhotoBusy
         if (!ready) return
         val recipe = studio.artRecipe
-        // F6 owns the photo publish (publishJpg/cache/reuse). F5 keeps the
-        // conditional JPG labels and the neutral error, but never publishes a
-        // JPG here: photo export short-circuits to the neutral error.
-        if (recipe.background == ArtBackgroundMode.PHOTO) {
-            lastArtExport = forShare
-            _uiState.update {
-                it.copy(storyStudio = it.storyStudio.copy(artExport = ArtExportUiState.Exporting(forShare)))
-            }
-            _uiState.update {
-                it.copy(
-                    storyStudio = it.storyStudio.copy(
-                        artExport = ArtExportUiState.Error(StoryMessages.ART_EXPORT_FAILED),
-                    ),
-                )
-            }
-            return
-        }
         // The documented switch persists only the style (format, extras, font,
-        // colors, template, offsets, scale); the photo lives per activity.
+        // colors, template, offsets, scale); the photo lives per activity and
+        // ArtRecipeStore normalizes it out.
         if (studio.artSaveAsDefault) artRecipeStore.save(recipe)
         lastArtExport = forShare
         _uiState.update {
@@ -442,14 +425,15 @@ class ActivityDetailViewModel @Inject constructor(
                 recipe = recipe,
                 activityId = activityId,
                 forShare = forShare,
+                currentRecipe = { currentActivityState().storyStudio.artRecipe },
             )
             _uiState.update { current ->
                 val inFlight = current.storyStudio.artExport as? ArtExportUiState.Exporting ?: return@update current
                 // Only the request that is still on screen may publish its
                 // outcome; a stale response after leaving must not resurrect it.
                 if (inFlight.forShare != forShare) return@update current
-                // P0-3: the control changed while rendering, so the PNG on disk
-                // no longer matches the recipe the user sees. Discard it.
+                // P0-3: the control changed while rendering, so the image on
+                // disk no longer matches the recipe the user sees. Discard it.
                 val next = if (current.storyStudio.artRecipe != recipe) {
                     ArtExportUiState.Stale
                 } else {
@@ -462,6 +446,8 @@ class ActivityDetailViewModel @Inject constructor(
                         )
 
                         ArtPngExport.NoRoute -> ArtExportUiState.Error(StoryMessages.ART_NO_ROUTE)
+
+                        ArtPngExport.Stale -> ArtExportUiState.Stale
 
                         // The technical detail belongs in the log, never on screen.
                         is ArtPngExport.Failure -> ArtExportUiState.Error(StoryMessages.ART_EXPORT_FAILED)

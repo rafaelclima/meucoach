@@ -32,6 +32,7 @@ import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.story.ArtBackgroundMode
 import com.meucoach.core.domain.story.ArtBlock
+import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.ArtLayout
 import com.meucoach.core.domain.story.ArtRecipe
@@ -328,9 +329,12 @@ class ActivityDetailViewModelArtPhotoTest {
     }
 
     @Test
-    fun `photo export short-circuits to the neutral error until F6`() = runBlocking<Unit> {
+    fun `photo save publishes a jpg and keeps the style store photo-free`() = runBlocking<Unit> {
         repository.saveImportedActivity(gpsActivity(), "sha")
-        val viewModel = viewModel("activity-1")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val artStore = ArtRecipeStore(context)
+        val exporter = FakeArtExporter()
+        val viewModel = viewModel("activity-1", artStore = artStore, exporter = exporter)
         viewModel.uiState.first { !it.isLoading }
         viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
         viewModel.uiState.first {
@@ -340,9 +344,80 @@ class ActivityDetailViewModelArtPhotoTest {
         viewModel.saveArtPng()
 
         val export = viewModel.uiState.value.storyStudio.artExport
-        assertThat(export).isInstanceOf(ArtExportUiState.Error::class.java)
-        assertThat((export as ArtExportUiState.Error).message)
-            .isEqualTo("Não foi possível gerar a imagem da arte. Tente novamente.")
+        assertThat(export).isInstanceOf(ArtExportUiState.Done::class.java)
+        val done = export as ArtExportUiState.Done
+        assertThat(done.forShare).isFalse()
+        assertThat(done.savedToGallery).isTrue()
+        val exported = exporter.exports.single().second
+        assertThat(exported.background).isEqualTo(ArtBackgroundMode.PHOTO)
+        assertThat(exported.photo).isNotNull()
+        assertThat(artStore.load().background).isEqualTo(ArtBackgroundMode.TRANSPARENT)
+        assertThat(artStore.load().photo).isNull()
+    }
+
+    @Test
+    fun `photo share is consumed once and retry keeps the share target`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val exporter = FakeArtExporter()
+        val viewModel = viewModel("activity-1", exporter = exporter)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
+        viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo != null && !it.storyStudio.artPhotoBusy
+        }
+
+        exporter.result = ArtPngExport.Failure("Permission denied")
+        viewModel.shareArt()
+        assertThat(viewModel.uiState.value.storyStudio.artExport)
+            .isEqualTo(ArtExportUiState.Error("Não foi possível gerar a imagem da arte. Tente novamente."))
+
+        exporter.result = ArtPngExport.Published(
+            uri = Uri.parse("content://media/external/images/9"),
+            savedToGallery = true,
+            reused = false,
+        )
+        viewModel.retryArtExport()
+
+        val done = viewModel.uiState.value.storyStudio.artExport as ArtExportUiState.Done
+        assertThat(done.forShare).isTrue()
+        assertThat(exporter.exports).hasSize(2)
+        assertThat(exporter.exports.map { it.first }).containsExactly(true, true)
+
+        viewModel.consumeArtShare()
+        assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Idle)
+    }
+
+    @Test
+    fun `photo export changed during rendering is stale`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val exporter = FakeArtExporter()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        exporter.gate = gate
+        val viewModel = viewModel("activity-1", exporter = exporter)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
+        viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo != null && !it.storyStudio.artPhotoBusy
+        }
+
+        viewModel.shareArt()
+        viewModel.selectArtTextColor(ArtColor.CYAN)
+        gate.complete(Unit)
+
+        assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Stale)
+    }
+
+    @Test
+    fun `an exporter stale result maps to the stale state`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val exporter = FakeArtExporter()
+        exporter.result = ArtPngExport.Stale
+        val viewModel = viewModel("activity-1", exporter = exporter)
+        viewModel.uiState.first { !it.isLoading }
+
+        viewModel.saveArtPng()
+
+        assertThat(viewModel.uiState.value.storyStudio.artExport).isEqualTo(ArtExportUiState.Stale)
     }
 
     @Test
@@ -374,6 +449,7 @@ class ActivityDetailViewModelArtPhotoTest {
         activityId: String,
         artStore: ArtRecipeStore = ArtRecipeStore(ApplicationProvider.getApplicationContext()),
         photoStore: ArtPhotoStore? = null,
+        exporter: ArtPngExporter = FakeArtExporter(),
     ): ActivityDetailViewModel {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val resolvedPhotoStore = photoStore ?: ArtPhotoStore(context)
@@ -394,7 +470,7 @@ class ActivityDetailViewModelArtPhotoTest {
             artPhotoImporter = ArtPhotoImporter(context, resolvedPhotoStore),
             artPhotoLoader = ArtPhotoLoader(resolvedPhotoStore),
             appContext = context,
-            artPngExporter = FakeArtExporter(),
+            artPngExporter = exporter,
             profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(context),
             timeProvider = FakeTimeProvider(),
             comparisons = GetSessionComparison(repository, executions, prescriptions, plans),
@@ -474,16 +550,24 @@ class ActivityDetailViewModelArtPhotoTest {
     }
 
     private class FakeArtExporter : ArtPngExporter {
+        var result: ArtPngExport = ArtPngExport.Published(
+            uri = Uri.parse("content://media/external/images/1"),
+            savedToGallery = true,
+            reused = false,
+        )
+        var gate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+        val exports = mutableListOf<Pair<Boolean, ArtRecipe>>()
+
         override suspend fun export(
             plan: com.meucoach.core.domain.story.StoryPlan,
             localDate: java.time.LocalDate?,
             recipe: ArtRecipe,
             activityId: String,
             forShare: Boolean,
-        ): ArtPngExport = ArtPngExport.Published(
-            uri = Uri.parse("content://media/external/images/1"),
-            savedToGallery = true,
-            reused = false,
-        )
+        ): ArtPngExport {
+            exports += forShare to recipe
+            gate?.await()
+            return result
+        }
     }
 }

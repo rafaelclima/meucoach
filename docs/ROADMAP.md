@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.69 · **Data:** 24/11/2026 · **Mudança:** F5 da Arte com foto concluída — UI Studio (toggle, foto, crop, posição, escala, prévia composta, copy por modo, a11y). Próxima fatia: F6 (export/share JPG).
+**Versão:** 1.70 · **Data:** 24/11/2026 · **Mudança:** F6 da Arte com foto concluída — export/share JPG (`publishJpg`, `artPhoto`, reuso com fingerprint/cache/foto e poda PNG+JPG). Próxima fatia: F7 (ciclo de vida e limpeza).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -771,7 +771,7 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
 
 ### P3-07 · Arte com foto (Story Studio)
 
-**Status:** F0–F5 concluídas em 24/11/2026; F6 (export/share) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
+**Status:** F0–F6 concluídas em 24/11/2026; F7 (ciclo de vida e limpeza) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
 
 Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 0061`](adr/0061-art-photo-studio.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`ADR 0060`](adr/0060-art-png-9x16-layout.md).
 
@@ -781,7 +781,7 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 - [x] F3 — foto: `ArtPhotoCodec` v1, importer EXIF/3072/q90 atômico, store por atividade, loader 540/1080 por região e órfãos (23/11/2026; 1.397 testes do app, 0 falhas, Kover 81,44%; `androidx.exifinterface` 1.4.2).
 - [x] F4 — renderer: `ArtLayoutEngine` medido, templates TOP/CENTER/BOTTOM, `textScalePercent` 80–130, offsets/clamp por bloco, safe area 9:16 Photo, scrim 58%, JPG q92 e goldens (23/11/2026; transparente do ADR 0060 intacto, 1.423 testes do app, Kover 81,67%).
 - [x] F5 — UI Studio: toggle, cards, crop acessível, copy por modo, estados e 200%/360 dp (24/11/2026; ViewModel + UI + `effectiveOffset` + photo warnings + goldens `art-studio-tab-photo-*`; export PHOTO stub neutro, JPG real em F6).
-- [ ] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG.
+- [x] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG (24/11/2026; JPG q92 1080, `Stale` pré-publicação, salvar sempre novo, poda PNG+JPG em 8; 1.481 testes do app, Kover 79,38%, goldens intactos).
 - [ ] F7 — ciclo de vida: reset, deleteActivity, toggle/remover, órfãos e invalidação do exporter.
 - [ ] F8 — docs/DoD e validação no S24 Ultra + API 31 + low-RAM.
 

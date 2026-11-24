@@ -1,6 +1,72 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Arte com Foto — F5 UI Studio concluída; F6 é a próxima)
+**Atualizado:** 24/11/2026 (Arte com Foto — F6 export/share JPG concluída; F7 é a próxima)
+
+## Sessão 2026-11-24 — Arte com Foto F6 (export/share JPG)
+
+**Escopo:** somente a fatia F6 do PRD v0.3/ADR 0061. Sem
+`DataResetCoordinator`, `deleteActivity`, varredura de órfãos ou invalidação do
+exporter (F7); sem mudanças no renderer transparente, codecs F2/F3 ou UI.
+
+### Concluído
+
+- **`GalleryImagePublisher`:** novo `publishJpg` (`image/jpeg`) ao lado de
+  `publish` (`image/png`), com `publish(file, mime)` compartilhado:
+  `Pictures/MeuCoach`, `IS_PENDING` e remoção da linha pendente em falha, sem
+  permissão (API 31+).
+- **`StoryFileNames.artPhoto`:** `…-arte-foto-4x5.jpg` (e 1x1/9x16), sem
+  colidir com `art` transparente nem com o pôster.
+- **`CanvasArtPngExporter` (PNG/JPG):** em PHOTO carrega o crop no alvo 1080 via
+  `ArtPhotoLoader`, renderiza com `StoryArtRenderer.writeJpg` (q92) e recicla o
+  bitmap da foto no `finally`; o renderer continua sem reciclar bitmaps. Em
+  TRANSPARENTE o `writePng`/`StoryFileNames.art` permanecem inalterados.
+  `ArtExportKey` normaliza `photo=null` quando `background=TRANSPARENT`, então
+  foto em espera não invalida o PNG. Reuso de Compartilhar só com key igual,
+  arquivo de cache existente, URI MediaStore abrindo e foto referenciada
+  existente; qualquer falha regenera. O exporter recebe a receita corrente da
+  VM e, se ela mudou durante o render, descarta o arquivo e retorna
+  `ArtPngExport.Stale` antes de criar linha no MediaStore. Salvar ignora o
+  reuso e publica nova cópia. Cache `cache/art` poda PNG+JPG em 8 arquivos,
+  ignora `.tmp` e preserva o arquivo reutilizável.
+- **ViewModel:** o stub PHOTO da F5 foi substituído pelo export real; a VM passa
+  `currentRecipe` para a checagem pré-publicação, mantém
+  `Exporting/Done/Error/Stale`, `lastArtExport`/retry e `consumeArtShare` uma
+  vez, e `artSaveAsDefault` continua salvando apenas o estilo (o
+  `ArtRecipeStore` normaliza foto/background).
+- **Testes (TDD):** `ArtPngExportTest` ampliado (publishJpg MIME/galeria,
+  limpeza de pendente em PNG/JPG, JPG 1080, reuso JPG, regeneração por
+  foto/layout/escala/formato/plano, cache/URI/foto ausentes, stale antes de
+  publicar, foto em espera no PNG, Salvar sempre novo, poda PNG+JPG em 8),
+  `StoryFileNamesTest` com `artPhoto` e
+  `ActivityDetailViewModelArtPhotoTest` com save/share/retry/stale em PHOTO e
+  estilo somente. Transparente continua coberto por
+  `ActivityDetailViewModelTest`.
+- **Goldens:** nenhum golden do renderer ou da UI foi alterado/regravado;
+  `art-photo-*`, `art-studio-tab-photo-*` e transparentes do ADR 0060
+  permanecem intactos.
+- **Nota de escopo:** “reset limpa cache/art” permanece na F7
+  (`DataResetCoordinator` + invalidação do exporter); a F6 entrega apenas a
+  poda do cache depois de publicar, conforme a ordem das fatias do PRD.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (1.311 testes, 0 falhas).
+- `./gradlew :app:testDebugUnitTest` verde (1.481 testes, 0 falhas;
+  `TodayViewModelPersistTest` e `StoryStudioContentTest.describes the preview`
+  não falharam nesta sessão).
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde e
+  `... --tests "*StoryStudioScreenshotTest"` verde em execução separada.
+- `./gradlew :app:assembleDebug`, `./gradlew :app:detekt` e
+  `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes.
+- `./gradlew :app:koverVerify` verde (app 79,38% de linhas, gate ≥78%).
+- Nenhuma foto ou dado real no diff; só bitmaps sintéticos.
+
+### Próximo
+
+1. **F7** — ciclo de vida: `DataResetCoordinator` limpa `files/art_photo/`,
+   `cache/art` e invalida o exporter; `deleteActivity` apaga metadata/foto;
+   toggle/remover; órfãos no startup; testes de privacidade.
+2. **F8** — docs/DoD e validação no S24 Ultra + API 31 + low-RAM.
 
 ## Sessão 2026-11-24 — Arte com Foto F5 (UI Studio)
 
