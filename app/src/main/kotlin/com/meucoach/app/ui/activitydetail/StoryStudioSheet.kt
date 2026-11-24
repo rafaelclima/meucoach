@@ -2,6 +2,11 @@ package com.meucoach.app.ui.activitydetail
 
 import android.graphics.Bitmap
 import android.graphics.Typeface
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -190,9 +195,21 @@ internal fun StoryStudioContent(
     val colors = McTheme.colors
     var tab by rememberSaveable { mutableStateOf(StoryStudioTab.VIDEO) }
     val videoScroll = rememberScrollState()
+    val artScroll = rememberScrollState()
     // The video tab scrolls under the fixed chrome; the art tab has its own
     // fixed preview and an internal scroll for the controls (ADR 0060).
-    LaunchedEffect(tab) { videoScroll.scrollTo(0) }
+    // Both reset on tab switch so no tab reopens mid-scroll.
+    LaunchedEffect(tab) {
+        videoScroll.scrollTo(0)
+        artScroll.scrollTo(0)
+    }
+    // The segment collapses once the content scrolls up, giving the preview
+    // and the controls the full height; scrolling back to the top restores it.
+    val segmentVisible = if (tab == StoryStudioTab.VIDEO) {
+        !videoScroll.canScrollBackward
+    } else {
+        !artScroll.canScrollBackward
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -235,13 +252,22 @@ internal fun StoryStudioContent(
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
-        StudioTabSegment(selected = tab, onSelect = { tab = it })
-        Spacer(modifier = Modifier.height(16.dp))
+        AnimatedVisibility(
+            visible = segmentVisible,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column {
+                StudioTabSegment(selected = tab, onSelect = { tab = it })
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
         if (tab == StoryStudioTab.VIDEO) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(videoScroll),
+                    .verticalScroll(videoScroll)
+                    .testTag("story-video-scroll"),
             ) {
                 StoryVideoContent(
                     state = state,
@@ -262,6 +288,7 @@ internal fun StoryStudioContent(
                 state = state,
                 actions = artActions,
                 modifier = Modifier.weight(1f),
+                scrollState = artScroll,
             )
         }
     }
@@ -492,6 +519,7 @@ private fun StudioTabSegment(selected: StoryStudioTab, onSelect: (StoryStudioTab
         shape = RoundedCornerShape(999.dp),
         color = colors.surfaceInset,
         border = BorderStroke(1.dp, colors.borderSubtle),
+        modifier = Modifier.testTag("story-tab-segment"),
     ) {
         Row(
             modifier = Modifier

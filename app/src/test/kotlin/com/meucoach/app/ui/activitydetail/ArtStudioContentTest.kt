@@ -305,7 +305,7 @@ class ArtStudioContentTest {
         )
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithText("PNG salvo em Pictures/MeuCoach.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-export-done").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -363,7 +363,7 @@ class ArtStudioContentTest {
 
         compose.onNodeWithTag("story-tab-art").performClick()
 
-        compose.onNodeWithText("Receita alterada — gere de novo.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-export-stale").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -533,12 +533,81 @@ class ArtStudioContentTest {
         )
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithText("Não foi possível gerar a imagem da arte. Tente novamente.")
-            .performScrollTo()
-            .assertIsDisplayed()
+        compose.onNodeWithTag("art-export-error").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("art-export-retry").performScrollTo().performClick()
 
         assertThat(retried).isTrue()
+    }
+
+    @Test
+    fun `hides the tab segment while scrolled and restores it at the top`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("story-tab-segment").assertIsDisplayed()
+
+        compose.onNodeWithTag("art-save").performScrollTo()
+        compose.waitForIdle()
+        compose.onNodeWithTag("story-tab-segment").assertDoesNotExist()
+
+        compose.onNodeWithTag("art-summary").performScrollTo()
+        compose.waitForIdle()
+        compose.onNodeWithTag("story-tab-segment").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a saved jpg confirms the gallery path in a snackbar`() {
+        setContent(
+            artRecipe = ArtRecipe(
+                background = ArtBackgroundMode.PHOTO,
+                photo = ArtPhotoRef(
+                    photoId = "123e4567-e89b-12d3-a456-426614174000",
+                    activityId = "activity-1",
+                ),
+            ),
+            artExport = ArtExportUiState.Done(
+                uri = android.net.Uri.parse("content://media/external/images/1"),
+                savedToGallery = true,
+                forShare = false,
+                reused = false,
+            ),
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        // Inline confirmation below the CTAs plus the snackbar on top.
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithText("JPG salvo em Pictures/MeuCoach.").fetchSemanticsNodes().size == 2
+        }
+    }
+
+    @Test
+    fun `a saved png confirms the gallery path in a snackbar`() {
+        setContent(
+            artExport = ArtExportUiState.Done(
+                uri = android.net.Uri.parse("content://media/external/images/1"),
+                savedToGallery = true,
+                forShare = false,
+                reused = false,
+            ),
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithText("PNG salvo em Pictures/MeuCoach.").fetchSemanticsNodes().size == 2
+        }
+    }
+
+    @Test
+    fun `a save failure surfaces in a snackbar`() {
+        setContent(
+            artExport = ArtExportUiState.Error(com.meucoach.app.story.StoryMessages.ART_EXPORT_FAILED),
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithText("Não foi possível gerar a imagem da arte. Tente novamente.")
+                .fetchSemanticsNodes().size == 2
+        }
     }
 
     private fun setContent(
@@ -747,7 +816,7 @@ class ArtStudioContentTest {
         )
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithText("JPG salvo em Pictures/MeuCoach.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-export-done").performScrollTo().assertIsDisplayed()
     }
 
     @Test

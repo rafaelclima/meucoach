@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -101,6 +104,13 @@ import java.util.Locale
 /** Preview bitmap size of the art tab: half of the 1080 export width. */
 private const val ART_PREVIEW_WIDTH = 540
 
+/** Confirmation of a gallery save, inline and in the snackbar. */
+private const val ART_SAVED_JPG = "JPG salvo em Pictures/MeuCoach."
+private const val ART_SAVED_PNG = "PNG salvo em Pictures/MeuCoach."
+
+/** Stale-export copy, inline and in the snackbar. */
+private const val ART_STALE_COPY = "Receita alterada — gere de novo."
+
 /** Debounce of the art preview render: one render in flight, at most 540 px. */
 private const val ART_PREVIEW_DEBOUNCE_MS = 120L
 
@@ -114,7 +124,12 @@ private const val SWATCH_BORDER_CONTRAST = 3.0
  * crop step takes over the tab full-screen while editing.
  */
 @Composable
-internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActions, modifier: Modifier = Modifier) {
+internal fun ArtStudioContent(
+    state: StoryStudioUiState,
+    actions: ArtStudioActions,
+    modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
+) {
     if (state.artCropEditing) {
         ArtCropEditor(
             state = state,
@@ -141,6 +156,23 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
     val controlsEnabled = !busy && !exporting
     val photo = state.artRecipe.photo
     val canExport = hasRoute && !exporting && !busy && (!isPhoto || photo != null)
+    // The save confirmation used to live only below the CTAs, off-screen on
+    // small displays: the snackbar repeats it where the user is looking.
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(export) {
+        when (export) {
+            is ArtExportUiState.Done ->
+                if (!export.forShare) {
+                    snackbar.showSnackbar(if (isPhoto) ART_SAVED_JPG else ART_SAVED_PNG)
+                }
+
+            is ArtExportUiState.Error -> snackbar.showSnackbar(export.message)
+
+            ArtExportUiState.Stale -> snackbar.showSnackbar(ART_STALE_COPY)
+
+            else -> Unit
+        }
+    }
 
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -158,411 +190,419 @@ internal fun ArtStudioContent(state: StoryStudioUiState, actions: ArtStudioActio
                 onLoadPhoto = actions.onLoadPhoto,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                Text(
-                    text = state.artRecipe.summaryLine(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                    modifier = Modifier.testTag("art-summary"),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Pôster automático: opaco, nasce com o vídeo. " +
-                        "Arte: transparente (PNG) ou com sua foto (JPG).",
-                    style = McTextStyles.caption,
-                    color = colors.textSecondary,
+            Box(modifier = Modifier.weight(1f)) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("art-poster-vs-art"),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Fundo: toggle Transparente | Foto + checker or photo card.
-                SectionLabel("FUNDO")
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.selectableGroup(),
+                        .fillMaxSize()
+                        .verticalScroll(scrollState),
                 ) {
-                    StudioPill(
-                        text = "Transparente",
-                        selected = !isPhoto,
-                        enabled = controlsEnabled,
-                        onClick = { actions.onBackground(ArtBackgroundMode.TRANSPARENT) },
-                        modifier = Modifier.testTag("art-background-transparent"),
-                    )
-                    StudioPill(
-                        text = "Foto",
-                        selected = isPhoto,
-                        enabled = controlsEnabled,
-                        onClick = { actions.onBackground(ArtBackgroundMode.PHOTO) },
-                        modifier = Modifier.testTag("art-background-photo"),
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                if (isPhoto) {
                     Text(
-                        text = "Foto de fundo",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                        modifier = Modifier.testTag("art-photo-label"),
+                        text = state.artRecipe.summaryLine(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                        modifier = Modifier.testTag("art-summary"),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    ArtPhotoCard(
+                    Text(
+                        text = "Pôster automático: opaco, nasce com o vídeo. " +
+                            "Arte: transparente (PNG) ou com sua foto (JPG).",
+                        style = McTextStyles.caption,
+                        color = colors.textSecondary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("art-poster-vs-art"),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Fundo: toggle Transparente | Foto + checker or photo card.
+                    SectionLabel("FUNDO")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.selectableGroup(),
+                    ) {
+                        StudioPill(
+                            text = "Transparente",
+                            selected = !isPhoto,
+                            enabled = controlsEnabled,
+                            onClick = { actions.onBackground(ArtBackgroundMode.TRANSPARENT) },
+                            modifier = Modifier.testTag("art-background-transparent"),
+                        )
+                        StudioPill(
+                            text = "Foto",
+                            selected = isPhoto,
+                            enabled = controlsEnabled,
+                            onClick = { actions.onBackground(ArtBackgroundMode.PHOTO) },
+                            modifier = Modifier.testTag("art-background-photo"),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (isPhoto) {
+                        Text(
+                            text = "Foto de fundo",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                            modifier = Modifier.testTag("art-photo-label"),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ArtPhotoCard(
+                            state = state,
+                            actions = actions,
+                            enabled = controlsEnabled,
+                            onPick = {
+                                pickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = "Fundo transparente",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                            modifier = Modifier.testTag("art-transparent-label"),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StudioPill(
+                                text = "Fundo escuro",
+                                selected = darkPreview,
+                                onClick = { darkPreview = true },
+                                modifier = Modifier.testTag("art-checker-dark"),
+                            )
+                            StudioPill(
+                                text = "Fundo claro",
+                                selected = !darkPreview,
+                                onClick = { darkPreview = false },
+                                modifier = Modifier.testTag("art-checker-light"),
+                            )
+                        }
+                    }
+                    if (state.artMissingPhotoWarning) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = ActivityDetailViewModel.PHOTO_MISSING_WARNING,
+                            style = McTextStyles.caption,
+                            color = colors.warning,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("art-photo-missing"),
+                        )
+                        McTextButton(
+                            text = "Entendi",
+                            onClick = { actions.onDismissMissingPhoto() },
+                            modifier = Modifier.testTag("art-photo-missing-dismiss"),
+                        )
+                    }
+                    warning?.let { message ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = message,
+                            style = McTextStyles.caption,
+                            color = colors.warning,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("art-contrast-warning"),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    McCard(variant = McCardVariant.DEFAULT) {
+                        StudioCardHeader(
+                            overline = "FORMATO",
+                            title = "Formato do card",
+                            subtitle = "4:5 é o padrão do feed; 1:1 é compacto; 9:16 é para story.",
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ArtFormat.entries.forEach { format ->
+                                StudioPill(
+                                    text = formatLabel(format),
+                                    selected = state.artRecipe.format == format,
+                                    enabled = controlsEnabled,
+                                    onClick = { actions.onFormat(format) },
+                                    modifier = Modifier.testTag("art-format-${format.name.lowercase(Locale.ROOT)}"),
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ArtPositionCard(
                         state = state,
                         actions = actions,
                         enabled = controlsEnabled,
-                        onPick = {
-                            pickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                            )
-                        },
                     )
-                } else {
-                    Text(
-                        text = "Fundo transparente",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                        modifier = Modifier.testTag("art-transparent-label"),
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ArtTextScaleCard(
+                        state = state,
+                        actions = actions,
+                        enabled = controlsEnabled,
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        StudioPill(
-                            text = "Fundo escuro",
-                            selected = darkPreview,
-                            onClick = { darkPreview = true },
-                            modifier = Modifier.testTag("art-checker-dark"),
+                    Spacer(modifier = Modifier.height(16.dp))
+                    McCard(variant = McCardVariant.DEFAULT) {
+                        StudioCardHeader(
+                            overline = "EXTRAS (${state.artRecipe.extras.size}/${ArtRecipe.MAX_EXTRAS})",
+                            title = "Destaques da arte",
+                            subtitle = "Até 2 métricas extras além de distância, ritmo e tempo.",
+                            trailing = {
+                                ExtrasCounter(
+                                    selected = state.artRecipe.extras.size,
+                                    max = ArtRecipe.MAX_EXTRAS,
+                                )
+                            },
                         )
-                        StudioPill(
-                            text = "Fundo claro",
-                            selected = !darkPreview,
-                            onClick = { darkPreview = false },
-                            modifier = Modifier.testTag("art-checker-light"),
-                        )
-                    }
-                }
-                if (state.artMissingPhotoWarning) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = ActivityDetailViewModel.PHOTO_MISSING_WARNING,
-                        style = McTextStyles.caption,
-                        color = colors.warning,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("art-photo-missing"),
-                    )
-                    McTextButton(
-                        text = "Entendi",
-                        onClick = { actions.onDismissMissingPhoto() },
-                        modifier = Modifier.testTag("art-photo-missing-dismiss"),
-                    )
-                }
-                warning?.let { message ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = message,
-                        style = McTextStyles.caption,
-                        color = colors.warning,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("art-contrast-warning"),
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                McCard(variant = McCardVariant.DEFAULT) {
-                    StudioCardHeader(
-                        overline = "FORMATO",
-                        title = "Formato do card",
-                        subtitle = "4:5 é o padrão do feed; 1:1 é compacto; 9:16 é para story.",
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ArtFormat.entries.forEach { format ->
-                            StudioPill(
-                                text = formatLabel(format),
-                                selected = state.artRecipe.format == format,
-                                enabled = controlsEnabled,
-                                onClick = { actions.onFormat(format) },
-                                modifier = Modifier.testTag("art-format-${format.name.lowercase(Locale.ROOT)}"),
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                ArtPositionCard(
-                    state = state,
-                    actions = actions,
-                    enabled = controlsEnabled,
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                ArtTextScaleCard(
-                    state = state,
-                    actions = actions,
-                    enabled = controlsEnabled,
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                McCard(variant = McCardVariant.DEFAULT) {
-                    StudioCardHeader(
-                        overline = "EXTRAS (${state.artRecipe.extras.size}/${ArtRecipe.MAX_EXTRAS})",
-                        title = "Destaques da arte",
-                        subtitle = "Até 2 métricas extras além de distância, ritmo e tempo.",
-                        trailing = {
-                            ExtrasCounter(
-                                selected = state.artRecipe.extras.size,
-                                max = ArtRecipe.MAX_EXTRAS,
-                            )
-                        },
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        artOptions.chunked(2).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                row.forEach { option ->
-                                    val selected = option.extra in state.artRecipe.extras
-                                    val blocked = !selected && state.artRecipe.extras.size >= ArtRecipe.MAX_EXTRAS
-                                    ExtraTile(
-                                        option = option,
-                                        selected = selected,
-                                        enabled = (option.isAvailable && !blocked && controlsEnabled) || selected,
-                                        onClick = { actions.onToggleExtra(option.extra) },
-                                        modifier = Modifier.weight(1f),
-                                        tagPrefix = "art-extra",
-                                        selectionHint = "Na arte",
-                                        limitReached = blocked,
-                                    )
-                                }
-                                if (row.size == 1) {
-                                    Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            artOptions.chunked(2).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    row.forEach { option ->
+                                        val selected = option.extra in state.artRecipe.extras
+                                        val blocked = !selected && state.artRecipe.extras.size >= ArtRecipe.MAX_EXTRAS
+                                        ExtraTile(
+                                            option = option,
+                                            selected = selected,
+                                            enabled = (option.isAvailable && !blocked && controlsEnabled) || selected,
+                                            onClick = { actions.onToggleExtra(option.extra) },
+                                            modifier = Modifier.weight(1f),
+                                            tagPrefix = "art-extra",
+                                            selectionHint = "Na arte",
+                                            limitReached = blocked,
+                                        )
+                                    }
+                                    if (row.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Sem dado, a métrica fica de fora — nunca vira zero.",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    McCard(
+                        modifier = Modifier.testTag("art-colors"),
+                        variant = McCardVariant.DEFAULT,
+                    ) {
+                        StudioCardHeader(
+                            overline = "CORES",
+                            title = "Texto e traçado",
+                            subtitle = "Escolhidos de forma independente; a arte é transparente.",
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SwatchRow(
+                            title = "Cor do texto",
+                            selected = state.artRecipe.textColor,
+                            onSelected = actions.onTextColor,
+                            tagPrefix = "art-text-color",
+                            enabled = controlsEnabled,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SwatchRow(
+                            title = "Cor do traçado",
+                            selected = state.artRecipe.routeColor,
+                            onSelected = actions.onRouteColor,
+                            tagPrefix = "art-route-color",
+                            enabled = controlsEnabled,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    McCard(variant = McCardVariant.DEFAULT) {
+                        StudioCardHeader(
+                            overline = "FONTE",
+                            title = "Família da arte",
+                            subtitle = "Os nomes seguem em Inter; a prévia usa a selecionada.",
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ArtFont.entries.forEach { font ->
+                                StudioPill(
+                                    text = fontLabel(font),
+                                    selected = state.artRecipe.font == font,
+                                    enabled = controlsEnabled,
+                                    onClick = { actions.onFont(font) },
+                                    modifier = Modifier.testTag("art-font-${font.name.lowercase(Locale.ROOT)}"),
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = colors.surfaceInset,
+                            border = BorderStroke(1.dp, colors.borderSubtle),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("art-font-preview"),
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = fontLabel(state.artRecipe.font),
+                                    style = McTextStyles.caption,
+                                    color = colors.textTertiary,
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "5,12 km · 30:00 · çãá",
+                                    fontFamily = state.artRecipe.font.family,
+                                    fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                                    color = colors.textPrimary,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StudioSaveDefaultCard(
+                        save = state.artSaveAsDefault,
+                        onSave = actions.onSaveAsDefault,
+                        onReset = actions.onReset,
+                        saveTag = "art-save-default",
+                        resetTag = "art-reset-recipe",
+                        caption = "Salva o estilo ao compartilhar ou salvar. A foto fica salva na atividade.",
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LaunchedEffect(export) {
+                        val done = export as? ArtExportUiState.Done
+                        if (done != null && done.forShare) {
+                            actions.onShare(done.uri)
+                            // P0-2: the event belongs to the view model; consuming it keeps
+                            // rotation, tab switches and reopen from replaying the same sheet.
+                            actions.onShareConsumed()
+                        }
+                    }
+                    McPrimaryButton(
+                        text = if (inFlight?.forShare == true) "Compartilhando…" else "Compartilhar",
+                        onClick = { actions.onShareClick() },
+                        enabled = canExport,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("art-share"),
+                        minHeight = 56.dp,
+                        loading = inFlight?.forShare == true,
+                        loadingTag = "art-share-progress",
+                    )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Sem dado, a métrica fica de fora — nunca vira zero.",
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                McCard(
-                    modifier = Modifier.testTag("art-colors"),
-                    variant = McCardVariant.DEFAULT,
-                ) {
-                    StudioCardHeader(
-                        overline = "CORES",
-                        title = "Texto e traçado",
-                        subtitle = "Escolhidos de forma independente; a arte é transparente.",
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SwatchRow(
-                        title = "Cor do texto",
-                        selected = state.artRecipe.textColor,
-                        onSelected = actions.onTextColor,
-                        tagPrefix = "art-text-color",
-                        enabled = controlsEnabled,
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SwatchRow(
-                        title = "Cor do traçado",
-                        selected = state.artRecipe.routeColor,
-                        onSelected = actions.onRouteColor,
-                        tagPrefix = "art-route-color",
-                        enabled = controlsEnabled,
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                McCard(variant = McCardVariant.DEFAULT) {
-                    StudioCardHeader(
-                        overline = "FONTE",
-                        title = "Família da arte",
-                        subtitle = "Os nomes seguem em Inter; a prévia usa a selecionada.",
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ArtFont.entries.forEach { font ->
-                            StudioPill(
-                                text = fontLabel(font),
-                                selected = state.artRecipe.font == font,
-                                enabled = controlsEnabled,
-                                onClick = { actions.onFont(font) },
-                                modifier = Modifier.testTag("art-font-${font.name.lowercase(Locale.ROOT)}"),
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = colors.surfaceInset,
-                        border = BorderStroke(1.dp, colors.borderSubtle),
+                    val saveLabel = if (isPhoto) "Salvar JPG" else "Salvar PNG"
+                    McSecondaryButton(
+                        text = if (inFlight != null && !inFlight.forShare) "Salvando…" else saveLabel,
+                        onClick = { actions.onSave() },
+                        enabled = canExport,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("art-font-preview"),
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = fontLabel(state.artRecipe.font),
-                                style = McTextStyles.caption,
-                                color = colors.textTertiary,
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "5,12 km · 30:00 · çãá",
-                                fontFamily = state.artRecipe.font.family,
-                                fontSize = MaterialTheme.typography.headlineSmall.fontSize,
-                                color = colors.textPrimary,
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                StudioSaveDefaultCard(
-                    save = state.artSaveAsDefault,
-                    onSave = actions.onSaveAsDefault,
-                    onReset = actions.onReset,
-                    saveTag = "art-save-default",
-                    resetTag = "art-reset-recipe",
-                    caption = "Salva o estilo ao compartilhar ou salvar. A foto fica salva na atividade.",
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                LaunchedEffect(export) {
-                    val done = export as? ArtExportUiState.Done
-                    if (done != null && done.forShare) {
-                        actions.onShare(done.uri)
-                        // P0-2: the event belongs to the view model; consuming it keeps
-                        // rotation, tab switches and reopen from replaying the same sheet.
-                        actions.onShareConsumed()
-                    }
-                }
-                McPrimaryButton(
-                    text = if (inFlight?.forShare == true) "Compartilhando…" else "Compartilhar",
-                    onClick = { actions.onShareClick() },
-                    enabled = canExport,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("art-share"),
-                    minHeight = 56.dp,
-                    loading = inFlight?.forShare == true,
-                    loadingTag = "art-share-progress",
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                val saveLabel = if (isPhoto) "Salvar JPG" else "Salvar PNG"
-                McSecondaryButton(
-                    text = if (inFlight != null && !inFlight.forShare) "Salvando…" else saveLabel,
-                    onClick = { actions.onSave() },
-                    enabled = canExport,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("art-save"),
-                    minHeight = 48.dp,
-                    loading = inFlight != null && !inFlight.forShare,
-                    loadingTag = "art-save-progress",
-                )
-                if (busy) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Processando foto…",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
-                        modifier = Modifier.testTag("art-photo-busy"),
+                            .testTag("art-save"),
+                        minHeight = 48.dp,
+                        loading = inFlight != null && !inFlight.forShare,
+                        loadingTag = "art-save-progress",
                     )
-                }
-                state.artPhotoError?.let { message ->
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = message,
-                        style = McTextStyles.caption,
-                        color = colors.danger,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("art-photo-error"),
-                    )
-                    McTextButton(
-                        text = "Tentar de novo",
-                        onClick = { actions.onRetryPhoto() },
-                        modifier = Modifier.testTag("art-photo-retry"),
-                    )
-                }
-                when (export) {
-                    is ArtExportUiState.Done -> {
-                        if (!export.forShare) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            val confirmation = if (state.artRecipe.background == ArtBackgroundMode.PHOTO) {
-                                "JPG salvo em Pictures/MeuCoach."
-                            } else {
-                                "PNG salvo em Pictures/MeuCoach."
-                            }
-                            Text(
-                                text = confirmation,
-                                style = McTextStyles.caption,
-                                color = colors.textSecondary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("art-export-done"),
-                            )
-                        }
-                    }
-
-                    is ArtExportUiState.Error -> {
+                    if (busy) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = export.message,
+                            text = "Processando foto…",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                            modifier = Modifier.testTag("art-photo-busy"),
+                        )
+                    }
+                    state.artPhotoError?.let { message ->
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = message,
                             style = McTextStyles.caption,
                             color = colors.danger,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("art-export-error"),
+                                .testTag("art-photo-error"),
                         )
                         McTextButton(
                             text = "Tentar de novo",
-                            onClick = { actions.onRetry() },
-                            modifier = Modifier.testTag("art-export-retry"),
+                            onClick = { actions.onRetryPhoto() },
+                            modifier = Modifier.testTag("art-photo-retry"),
                         )
                     }
+                    when (export) {
+                        is ArtExportUiState.Done -> {
+                            if (!export.forShare) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                val confirmation = if (state.artRecipe.background == ArtBackgroundMode.PHOTO) {
+                                    ART_SAVED_JPG
+                                } else {
+                                    ART_SAVED_PNG
+                                }
+                                Text(
+                                    text = confirmation,
+                                    style = McTextStyles.caption,
+                                    color = colors.textSecondary,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("art-export-done"),
+                                )
+                            }
+                        }
 
-                    ArtExportUiState.Stale -> {
+                        is ArtExportUiState.Error -> {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = export.message,
+                                style = McTextStyles.caption,
+                                color = colors.danger,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("art-export-error"),
+                            )
+                            McTextButton(
+                                text = "Tentar de novo",
+                                onClick = { actions.onRetry() },
+                                modifier = Modifier.testTag("art-export-retry"),
+                            )
+                        }
+
+                        ArtExportUiState.Stale -> {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = ART_STALE_COPY,
+                                style = McTextStyles.caption,
+                                color = colors.textSecondary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("art-export-stale"),
+                            )
+                        }
+
+                        else -> Unit
+                    }
+                    if (!hasRoute) {
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Receita alterada — gere de novo.",
+                            text = "Esta atividade não tem rota GPS; a arte precisa de pelo menos 2 pontos.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("art-export-stale"),
+                            modifier = Modifier.testTag("art-no-route"),
+                        )
+                    } else if (isPhoto && photo == null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Escolha uma foto para o fundo",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                            modifier = Modifier.testTag("art-photo-required"),
                         )
                     }
-
-                    else -> Unit
                 }
-                if (!hasRoute) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Esta atividade não tem rota GPS; a arte precisa de pelo menos 2 pontos.",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
-                        modifier = Modifier.testTag("art-no-route"),
-                    )
-                } else if (isPhoto && photo == null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "Escolha uma foto para o fundo",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
-                        modifier = Modifier.testTag("art-photo-required"),
-                    )
-                }
+                SnackbarHost(
+                    hostState = snackbar,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
+                )
             }
         }
     }

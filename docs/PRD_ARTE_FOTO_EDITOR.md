@@ -265,12 +265,15 @@ data class ArtPhotoRecord(
 | `ROUTE_GAP` | 56 | texto → rota |
 | `ROUTE_INSET` | 24 | inset da área quadrada |
 | `MIN_ROUTE_SIDE` | 280 | rota mínima no MVP |
+| `MAX_ROUTE_SIDE` | 640 | teto da rota em Topo/Base nos cards altos (P3-08; 1:1 segue limitado pela altura) |
+| `BOTTOM_MARGIN` | 150 | respiro inferior do transparente (P3-08; 9:16 Photo mantém 340 da UI) |
+| `NUDGE_MARGIN` | 32 | inset da região livre do nudge a partir do canvas (P3-08) |
 | `PHOTO_9X16_SAFE_TOP` | 250 | UI do story no topo |
 | `PHOTO_9X16_SAFE_BOTTOM` | 340 | UI do story na base |
 
 Tamanhos de texto base em 100% (design px): distância **135** em 4:5/9:16 e **117** em 1:1; rótulo de distância 24; rótulo de ritmo/tempo 22; valor de ritmo/tempo 52; extras 34; marca textual 30. O logo tem altura 44. `textScalePercent` multiplica os textos dos blocos; o logo/marca não escala.
 
-- **Safe area:** 4:5/1:1 e 9:16 transparente usam margem 88; **9:16 Photo** usa topo 250 + base 340 + laterais 88 para não ficar sob a UI nativa do story.
+- **Safe area:** 4:5/1:1 e 9:16 transparente usam margem 88 nas laterais/topo e 150 na base (P3-08); **9:16 Photo** usa topo 250 + base 340 + laterais 88 para não ficar sob a UI nativa do story.
 - **Marca:** no 9:16 Photo, `BRAND_TOP = safeTop`; nos demais, 84. O logo é tintado pela cor do texto e tem altura fixa; não escala com `textScalePercent`.
 
 #### Templates
@@ -291,8 +294,8 @@ Tamanhos de texto base em 100% (design px): distância **135** em 4:5/9:16 e **1
 #### Nudge e clamp
 
 - O bloco selecionado é movido por 4 botões (48 dp) com `contentDescription` (“Mover distância para cima”); segurar pode repetir, mas o toque simples sempre funciona.
-- O clamp é **por caixa do bloco + safe area**, usando o `ArtLayoutEngine` atual; o offset armazenado é o offset efetivo (não um valor que o renderer depois corrige em silêncio).
-- A rota é clampada pelo quadrado + margem + raio dos marcadores; nunca sai do canvas.
+- O clamp é **por caixa do bloco + região livre** (canvas menos 32 design px; P3-08), usando o `ArtLayoutEngine` atual; os templates posicionam dentro da safe area, mas o usuário pode empurrar qualquer bloco até a região livre. O offset armazenado é o offset efetivo (não um valor que o renderer depois corrige em silêncio).
+- A rota é clampada pelo quadrado + região livre + raio dos marcadores; nunca sai do canvas.
 - Sobreposição entre blocos é permitida no MVP (o usuário é o diretor de arte); os presets não se sobrepõem por default.
 
 ### 5.4 Texto e contraste sobre foto
@@ -322,7 +325,7 @@ Tamanhos de texto base em 100% (design px): distância **135** em 4:5/9:16 e **1
 4. Card `Posição`: **sempre visível** — templates (Topo/Centro/Base), seletor de bloco (4 chips) e nudges.
 5. Card `Tamanho do texto`: stepper 80–130% com valor falado.
 6. Prévia fixa compõe foto quando em PHOTO (mesma altura adaptativa); `contentDescription` ganha “, fundo foto, layout Topo, texto 100%”.
-7. CTAs: `Compartilhar`/`Salvar` mantidos; labels condicionais **“Salvar JPG”** / **“Salvar PNG”**; confirmação “JPG salvo em Pictures/MeuCoach.” vs “PNG salvo…”. Erro de export é neutro: “Não foi possível gerar a imagem da arte. Tente novamente.”
+7. CTAs: `Compartilhar`/`Salvar` mantidos; labels condicionais **“Salvar JPG”** / **“Salvar PNG”**; confirmação “JPG salvo em Pictures/MeuCoach.” vs “PNG salvo…” inline **e** em snackbar (P3-08: o inline ficava abaixo da dobra). Erro de export é neutro: “Não foi possível gerar a imagem da arte. Tente novamente.”
 8. Nomes: `…-arte-4x5.png` (transparente) vs `…-arte-foto-4x5.jpg` (foto). Copy: “Pôster automático: opaco, nasce com o vídeo. Arte: transparente (PNG) ou com sua foto (JPG).”
 9. **Checker:** visível/ativo só em TRANSPARENTE; em PHOTO o label é “Foto de fundo” e o checker some.
 10. **Remover:** confirmação; a arte volta a Transparente e a foto é apagada. **Trocar:** novo import; a antiga só é apagada no commit. **Toggle Transparente:** mantém a foto em espera; não exporta.

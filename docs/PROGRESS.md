@@ -1,8 +1,62 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Arte com Foto — F7 ciclo de vida e limpeza concluída; F8 docs/DoD concluída; P3-07 concluída)
+**Atualizado:** 24/11/2026 (Arte com foto — ajustes pós-aparelho P3-08 concluídos; validação no aparelho pendente)
 
-**Atualizado:** 24/11/2026 (Arte com Foto — F8 docs/DoD concluída; P3-07 concluída; validação física no aparelho pendente)
+## Sessão 2026-11-24 — Arte com foto: ajustes pós-aparelho (P3-08)
+
+**Escopo:** 5 ajustes pedidos pelo usuário 0 após teste no celular. Sem
+mudança de ciência, persistência, export ou ciclo de vida.
+
+### Concluído
+
+- **Segmento Vídeo|Arte esconde ao rolar:** `StoryStudioContent` hoista
+  `videoScroll`/`artScroll` (reset na troca de aba, como antes), envolve o
+  `StudioTabSegment` em `AnimatedVisibility` (expand/shrink + fade) visível
+  só no topo (`!canScrollBackward`) e passa o scroll para o
+  `ArtStudioContent`. Tag `story-tab-segment` + `story-video-scroll`.
+- **Rota menor no Topo/Base (4:5 e 9:16):** `ArtLayoutSpec.MAX_ROUTE_SIDE`
+  = 640 design px; o quadrado passa a `min(largura, livre, 640)`. 1:1 segue
+  limitado pela altura (~370–450) e não muda. Frames congelados
+  atualizados + teste do cap por formato.
+- **Margem inferior maior:** `ArtLayoutSpec.BOTTOM_MARGIN` = 150 (era a
+  `MARGIN` 88 embaixo); 9:16 Photo mantém 340 da UI do story. Safe area e
+  testes atualizados.
+- **Clamp livre para posicionar:** nudge/effectiveOffset passam a usar a
+  região livre (`NUDGE_MARGIN` = 32 do canvas), não mais a safe area; os
+  templates continuam dentro da safe area. Teste do clamp reescrito (bloco
+  passa da antiga borda 992; rota encosta em 1048/1318).
+- **Salvar JPG/PNG com confirmação:** `SnackbarHost` na aba Arte repete o
+  `Done` (“JPG/PNG salvo em Pictures/MeuCoach.”), o `Error` e o `Stale`
+  onde o usuário está olhando — o texto inline existia, mas ficava abaixo
+  da dobra. Inline mantido (tags) + 3 testes de snackbar.
+- **Testes (TDD):** spec (3), engine (frames + clamp + cap + margens),
+  VM nudge intacto, UI (segmento nas 2 abas + 3 snackbars + ajustes nos
+  asserts por tag). Goldens regravados e revisados: `art-png-*`,
+  `art-photo-*`, `art-studio-tab-*` (foto some o segmento por scroll
+  determinístico do teste de captura).
+- **Detalhe de teste:** `swipeDown()` sem args começa no topo do nó — no
+  root cai no chrome fixo e não rola; gesticular na coluna rolável
+  (`story-video-scroll`) resolveu. Registrado no teste via loop até o
+  segmento voltar (com teto).
+
+### Gates (isolados, sem combinar sob carga)
+
+- `./gradlew :core:domain:test` verde (1.314 testes, 0 falhas).
+- `./gradlew :app:testDebugUnitTest` verde (1.498 testes, 0 falhas).
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde (goldens
+  regravados) e `... --tests "*StoryStudioScreenshotTest"` verde separado.
+- `./gradlew :app:assembleDebug`, `./gradlew :app:detekt`,
+  `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes.
+- `./gradlew :app:koverVerify --rerun-tasks` verde (app **81,82%** de
+  linhas, gate ≥78%; subiu de 81,44%).
+- Nenhum dado real no diff; NOTICE OFL intacto.
+
+### Próximo
+
+1. Validação no aparelho pelo usuário 0 (S24 Ultra): segmento, rota
+   Topo/Base 4:5/9:16, margens, posicionamento livre, snackbar do Salvar.
+2. Ajustar os valores (640/150/32) se o aparelho pedir — é uma constante
+   por item.
 
 ## Sessão 2026-11-24 — Arte com Foto F8 (docs/DoD e validação)
 

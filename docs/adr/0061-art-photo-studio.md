@@ -53,7 +53,7 @@ A auditoria independente de 23/11/2026 encontrou problemas de engenharia no PRD 
   - `BOTTOM`: rota no topo; grupo de texto alinhado à base.
   - Em 100%/offset 0/transparente, `TOP` preserva os goldens atuais; `CENTER`/`BOTTOM` têm goldens próprios.
 - `textScalePercent` multiplica tamanhos, altura de linha e paddings internos dos blocos; `fittedSize` e reserva da coluna direita são medidos. Marca/logo, rota, marcadores e casca não escalam. O layout é recalculado por inteiro (sem baselines fixos soltos).
-- Safe area: 4:5/1:1 e 9:16 transparente = margem 88; **9:16 Photo = topo 250, base 340, laterais 88** (UI do story), em design px. O clamp é por caixa do bloco + safe area; a rota é sempre quadrada e nunca sai do canvas.
+- Safe area: 4:5/1:1 e 9:16 transparente = margem 88 nas laterais/topo e 150 na base (P3-08); **9:16 Photo = topo 250, base 340, laterais 88** (UI do story), em design px. O clamp do nudge é pela caixa do bloco + região livre do canvas (32 px, P3-08); os templates posicionam dentro da safe area. A rota é sempre quadrada (lado máximo 640, P3-08) e nunca sai do canvas.
 - Defaults/templates não sobrepõem em 80/100/130 nos três formatos (gate de teste). Sobreposição por offset do usuário é permitida; o preview mostra o resultado real.
 
 ### 2.5 Contraste: scrim 58% + aviso sobre o composto

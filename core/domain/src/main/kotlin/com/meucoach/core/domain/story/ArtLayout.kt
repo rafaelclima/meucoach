@@ -89,6 +89,28 @@ object ArtLayoutSpec {
     const val ROUTE_INSET = 24
     const val MIN_ROUTE_SIDE = 280
 
+    /**
+     * Route square cap in design pixels. The square still fills the free space
+     * of short cards (1:1 stays height-bound); on tall cards (4:5, 9:16) the
+     * cap keeps the route from dominating the card, and the leftover space
+     * becomes breathing room around it.
+     */
+    const val MAX_ROUTE_SIDE = 640
+
+    /**
+     * Bottom inset of the template safe area on transparent cards. Larger than
+     * [MARGIN] so the text group and the route never hug the bottom edge.
+     * The 9:16 photo mode keeps [PHOTO_9X16_SAFE_BOTTOM] for the native UI.
+     */
+    const val BOTTOM_MARGIN = 150
+
+    /**
+     * Inset of the free nudge region from the canvas edges. Templates place
+     * the blocks inside the safe area, but the user may push any block out to
+     * this region — positioning freedom, not a silent correction.
+     */
+    const val NUDGE_MARGIN = 32
+
     /** Native story UI reserved at the top and bottom of the 9:16 photo mode. */
     const val PHOTO_9X16_SAFE_TOP = 250
     const val PHOTO_9X16_SAFE_BOTTOM = 340

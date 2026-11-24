@@ -22,6 +22,25 @@ class ArtLayoutSpecTest {
     }
 
     @Test
+    fun `route square stays between the min side and the cap`() {
+        assertThat(ArtLayoutSpec.MIN_ROUTE_SIDE).isEqualTo(280)
+        assertThat(ArtLayoutSpec.MAX_ROUTE_SIDE).isEqualTo(640)
+        assertThat(ArtLayoutSpec.MIN_ROUTE_SIDE).isLessThan(ArtLayoutSpec.MAX_ROUTE_SIDE)
+    }
+
+    @Test
+    fun `transparent cards keep a larger bottom margin than the side margin`() {
+        assertThat(ArtLayoutSpec.BOTTOM_MARGIN).isEqualTo(150)
+        assertThat(ArtLayoutSpec.BOTTOM_MARGIN).isGreaterThan(ArtLayoutSpec.MARGIN)
+    }
+
+    @Test
+    fun `the free nudge region stays a small inset from the canvas edges`() {
+        assertThat(ArtLayoutSpec.NUDGE_MARGIN).isEqualTo(32)
+        assertThat(ArtLayoutSpec.NUDGE_MARGIN).isLessThan(ArtLayoutSpec.MARGIN)
+    }
+
+    @Test
     fun `photo story safe area keeps the native story UI clear`() {
         assertThat(ArtLayoutSpec.PHOTO_9X16_SAFE_TOP).isEqualTo(250)
         assertThat(ArtLayoutSpec.PHOTO_9X16_SAFE_BOTTOM).isEqualTo(340)

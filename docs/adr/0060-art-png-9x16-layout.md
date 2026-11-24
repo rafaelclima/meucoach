@@ -65,6 +65,9 @@ motor: o renderer continua determinístico e o export síncrono.
   refletindo o toggle em tempo real.
 - A altura da arte na prévia é adaptativa para preservar uma área mínima
   de controles em 360 dp/200%.
+- O segmento Vídeo|Arte recolhe ao rolar o conteúdo e volta no topo
+  (P3-08, pedido do usuário 0): mais altura para a prévia e os controles;
+  header e fechar continuam fixos.
 - Isso substitui a âncora “Ver prévia” da auditoria (P2-11) e a ideia de
   mini prévia flutuante: a prévia fixa resolve o mesmo problema sem
   sobrepor controles.

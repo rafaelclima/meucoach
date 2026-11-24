@@ -10,10 +10,13 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.story.StoryDuration
@@ -45,6 +48,33 @@ class StoryStudioContentTest {
         compose.onNodeWithText("OBRIGATÓRIAS").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Distância · Ritmo médio · Tempo total").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("EXTRAS (0/2)").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `hides the tab segment while scrolled and restores it at the top`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-segment").assertIsDisplayed()
+
+        compose.onNodeWithTag("story-generate").performScrollTo()
+        compose.waitForIdle()
+        compose.onNodeWithTag("story-tab-segment").assertDoesNotExist()
+
+        // Back to the very top with overscroll-safe gestures on the scrollable
+        // column itself: a no-arg swipe starts at the node top, which must be
+        // inside the scrollable content (the root top is the fixed chrome).
+        // The loop stops as soon as the segment is back instead of guessing
+        // the distance.
+        var attempts = 0
+        while (
+            compose.onAllNodesWithTag("story-tab-segment").fetchSemanticsNodes().isEmpty() &&
+            attempts < 30
+        ) {
+            compose.onNodeWithTag("story-video-scroll").performTouchInput { swipeDown() }
+            compose.waitForIdle()
+            attempts++
+        }
+        compose.onNodeWithTag("story-tab-segment").assertIsDisplayed()
     }
 
     @Test

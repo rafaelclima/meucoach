@@ -130,7 +130,7 @@ Ambas são embarcadas como fontes variáveis. Sem fontes proprietárias (Satoshi
 **Arte com foto** (ADR 0061; valores em unidades de design de 1080 px, não em dp de tela):
 
 - **Scrim `art/photo-scrim`:** preto `#000000` a **58% (alpha 148)**, raio 48, padding 36. Só no modo Foto, atrás da marca e dos blocos de texto; a rota mantém a casca a 70%. O aviso de contraste é calculado sobre o composto, não sobre o checker.
-- **Safe area:** 4:5/1:1 e 9:16 transparente usam margem 88; 9:16 Foto usa topo 250, base 340 e laterais 88 (UI do story). A rota é sempre quadrada.
+- **Safe area:** 4:5/1:1 e 9:16 transparente usam margem 88 nas laterais/topo e 150 na base; 9:16 Foto usa topo 250, base 340 e laterais 88 (UI do story). A rota é sempre quadrada, com lado máximo de 640.
 - **Escala de texto:** 80–130% em passos de 5%; multiplica tamanho, altura de linha e padding internos dos blocos; não escala marca/logo, rota, marcadores ou casca.
 - **Crop:** foco normalizado + zoom (1–4), com setas, `−/+`, `Centralizar` e `Enquadrar` em 48 dp; o gesto pan/zoom é acelerador, não o único caminho.
 - **Copy:** aba “Arte”; “Salvar JPG”/“Salvar PNG” e confirmações por modo; checker só no transparente; “Salvar como padrão” salva apenas o estilo, a foto fica na atividade.

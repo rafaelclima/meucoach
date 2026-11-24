@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.72 · **Data:** 24/11/2026 · **Mudança:** F8 da Arte com foto concluída — docs/DoD fechados (gates isolados verdes, DoD §9 conferido, aparelho como checklist do usuário 0). P3-07 concluída.
+**Versão:** 1.73 · **Data:** 24/11/2026 · **Mudança:** P3-08 ajustes pós-aparelho da Arte com foto (segmento esconde ao rolar, rota ≤640, margem inferior 150, clamp livre 32, snackbar de save; gates verdes, cobertura 81,82%).
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -784,6 +784,16 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 - [x] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG (24/11/2026; JPG q92 1080, `Stale` pré-publicação, salvar sempre novo, poda PNG+JPG em 8; 1.481 testes do app, Kover 79,38%, goldens intactos).
 - [x] F7 — ciclo de vida: reset (`DataResetCoordinator` + `clear()` + `invalidate()`), deleteActivity (foto + invalidação best-effort), órfãos no startup (`ArtPhotoStartupSweeper`), toggle/remover/reset com privacidade (24/11/2026; 1.492 testes do app, 0 falhas; goldens intactos).
 - [x] F8 — docs/DoD e validação (24/11/2026; gates isolados verdes, DoD §9 conferido, aparelho como checklist do usuário 0).
+
+### P3-08 · Ajustes pós-aparelho da Arte com foto
+
+**Status:** concluída em 24/11/2026 (pedidos do usuário 0 após teste no celular; validação dos novos valores no aparelho pendente).
+
+- [x] Segmento Vídeo|Arte esconde ao rolar e volta no topo (AnimatedVisibility, scroll hoistado, reset na troca de aba).
+- [x] Rota Topo/Base menor em 4:5 e 9:16 (`MAX_ROUTE_SIDE` = 640; 1:1 inalterada).
+- [x] Margem inferior maior no transparente (`BOTTOM_MARGIN` = 150; 9:16 Photo mantém 340).
+- [x] Posicionamento livre: clamp do nudge na região livre (`NUDGE_MARGIN` = 32), templates na safe area.
+- [x] Snackbar de confirmação/erro no Salvar JPG/PNG (inline existia abaixo da dobra).
 
 ---
 

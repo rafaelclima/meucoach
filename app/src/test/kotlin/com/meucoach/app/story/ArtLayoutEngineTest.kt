@@ -33,7 +33,7 @@ class ArtLayoutEngineTest {
         assertThat(layout.paceTime.paceValue.baseline).isEqualTo(353f)
         assertThat(layout.paceTime.timeLabel.baseline).isEqualTo(405f)
         assertThat(layout.paceTime.timeValue.baseline).isEqualTo(451f)
-        assertThat(layout.route.path).isEqualTo(ArtRect(198f, 554f, 882f, 1238f))
+        assertThat(layout.route.path).isEqualTo(ArtRect(244f, 569f, 836f, 1161f))
         assertThat(layout.route.square.width).isCloseTo(layout.route.square.height, within(0.001f))
     }
 
@@ -44,7 +44,7 @@ class ArtLayoutEngineTest {
         assertThat(layout.distance.label.baseline).isEqualTo(265f)
         assertThat(layout.distance.number.baseline).isEqualTo(400f)
         assertThat(layout.paceTime.timeValue.baseline).isEqualTo(409f)
-        assertThat(layout.route.path).isEqualTo(ArtRect(307.5f, 503f, 772.5f, 968f))
+        assertThat(layout.route.path).isEqualTo(ArtRect(338.5f, 503f, 741.5f, 906f))
         assertThat(layout.route.square.width).isCloseTo(layout.route.square.height, within(0.001f))
     }
 
@@ -52,7 +52,7 @@ class ArtLayoutEngineTest {
     fun `top template preserves the legacy 9x16 route frame`() {
         val layout = layout(format = ArtFormat.PORTRAIT_9_16, includeExtras = false)
 
-        assertThat(layout.route.path).isEqualTo(ArtRect(112f, 753f, 968f, 1609f))
+        assertThat(layout.route.path).isEqualTo(ArtRect(244f, 854f, 836f, 1446f))
         assertThat(layout.route.square.width).isCloseTo(layout.route.square.height, within(0.001f))
     }
 
@@ -76,13 +76,27 @@ class ArtLayoutEngineTest {
     }
 
     @Test
-    fun `photo margin stays at 88 for 4x5 and 1x1`() {
+    fun `transparent and photo margins keep 88 sides with a larger bottom`() {
         listOf(ArtFormat.PORTRAIT_4_5, ArtFormat.SQUARE).forEach { format ->
             val layout = layout(format = format, background = ArtBackgroundMode.PHOTO)
             assertThat(layout.safeArea.top).isEqualTo(88f)
-            assertThat(layout.safeArea.bottom).isEqualTo(format.height - 88f)
+            assertThat(layout.safeArea.bottom).isEqualTo(format.height - 150f)
             assertThat(layout.brand.bounds.top).isEqualTo(84f)
         }
+        val transparent = layout(format = ArtFormat.PORTRAIT_4_5)
+        assertThat(transparent.safeArea.bottom).isEqualTo(ArtFormat.PORTRAIT_4_5.height - 150f)
+    }
+
+    @Test
+    fun `the route square never exceeds the cap on tall cards`() {
+        val fourFive = layout(format = ArtFormat.PORTRAIT_4_5)
+        val nineSixteen = layout(format = ArtFormat.PORTRAIT_9_16)
+        val square = layout(format = ArtFormat.SQUARE)
+
+        assertThat(nineSixteen.route.square.width).isCloseTo(640f, within(0.01f))
+        assertThat(fourFive.route.square.width).isLessThanOrEqualTo(640f)
+        assertThat(fourFive.route.square.width).isGreaterThan(0f)
+        assertThat(square.route.square.width).isLessThan(640f)
     }
 
     @Test
@@ -158,7 +172,7 @@ class ArtLayoutEngineTest {
     }
 
     @Test
-    fun `offsets are clamped by the block box and the safe area`() {
+    fun `offsets are clamped by the block box and the free region`() {
         val base = layout(format = ArtFormat.PORTRAIT_4_5)
         val clamped = engine.layout(
             format = ArtFormat.PORTRAIT_4_5,
@@ -171,14 +185,18 @@ class ArtLayoutEngineTest {
             canvasHeight = 1350f,
             logoAspectRatio = LOGO_ASPECT,
         )
+        val free = ArtRect(32f, 32f, 1048f, 1318f)
 
-        assertThat(clamped.distance.bounds.right).isCloseTo(clamped.safeArea.right, within(0.01f))
+        // The text block now travels past the old safe area (right 992):
+        // the free region only stops it at the canvas edge.
+        assertThat(clamped.distance.bounds.right).isGreaterThan(clamped.safeArea.right)
         assertThat(clamped.distance.bounds.top).isGreaterThan(base.distance.bounds.top)
-        assertInside(clamped.distance.bounds, clamped.safeArea)
-        assertThat(clamped.route.square.right).isCloseTo(clamped.safeArea.right, within(0.01f))
-        assertThat(clamped.route.square.bottom).isCloseTo(clamped.safeArea.bottom, within(0.01f))
-        assertInside(clamped.route.square, clamped.safeArea)
+        assertInside(clamped.distance.bounds, free)
+        assertThat(clamped.route.square.right).isCloseTo(free.right, within(0.01f))
+        assertThat(clamped.route.square.bottom).isCloseTo(free.bottom, within(0.01f))
+        assertInside(clamped.route.square, free)
         assertThat(clamped.route.square.width).isCloseTo(clamped.route.square.height, within(0.001f))
+        assertThat(clamped.route.square.width).isLessThanOrEqualTo(640f)
     }
 
     @Test
@@ -309,7 +327,7 @@ class ArtLayoutEngineTest {
     }
 
     @Test
-    fun `effective offset clamps a far nudge into the safe area`() {
+    fun `effective offset clamps a far nudge into the free region`() {
         val text = ArtLayoutText(
             distanceLabel = "DISTÂNCIA",
             distanceValue = "5,00",

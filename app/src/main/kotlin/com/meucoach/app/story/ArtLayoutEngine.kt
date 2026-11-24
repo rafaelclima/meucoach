@@ -184,6 +184,7 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         val width = ArtLayoutSpec.DESIGN_WIDTH.toFloat()
         val textScale = layout.textScalePercent / 100f
         val safe = safeArea(format, background, canvasHeight)
+        val free = freeClamp(canvasHeight)
         val brandTop = brandTop(format, background)
         val brand = brand(brandTop, logoAspectRatio)
         val paceWidth = paceWidth(text, textScale)
@@ -192,10 +193,10 @@ class ArtLayoutEngine(private val typeface: Typeface) {
             ArtTemplate.CENTER -> centerTemplate(format, text, paceWidth, safe, textScale)
             ArtTemplate.BOTTOM -> bottomTemplate(format, text, paceWidth, safe, textScale, brand)
         }
-        val distance = placed.distance.shiftedBy(layout.distanceOffset, width, canvasHeight, safe)
-        val paceTime = placed.paceTime.shiftedBy(layout.paceTimeOffset, width, canvasHeight, safe)
-        val extras = placed.extras?.shiftedBy(layout.extrasOffset, width, canvasHeight, safe)
-        val route = placed.route.shiftedBy(layout.routeOffset, width, canvasHeight, safe)
+        val distance = placed.distance.shiftedBy(layout.distanceOffset, width, canvasHeight, free)
+        val paceTime = placed.paceTime.shiftedBy(layout.paceTimeOffset, width, canvasHeight, free)
+        val extras = placed.extras?.shiftedBy(layout.extrasOffset, width, canvasHeight, free)
+        val route = placed.route.shiftedBy(layout.routeOffset, width, canvasHeight, free)
         val scrims = scrims(background, brand, distance, paceTime, extras)
         return ArtCardLayout(
             width = width,
@@ -212,8 +213,9 @@ class ArtLayoutEngine(private val typeface: Typeface) {
 
     /**
      * Effective offset of one block after the box-aware clamp (PRD §5.3). The
-     * renderer applies the same clamp silently; the Studio persists the
-     * effective value so a stored recipe never relies on a silent correction.
+     * renderer applies the same clamp silently against the free region
+     * ([ArtLayoutSpec.NUDGE_MARGIN]); the Studio persists the effective value
+     * so a stored recipe never relies on a silent correction.
      *
      * The comparison uses two measured layouts: the base (zero offset for the
      * block) and the candidate with [desired]. Both share the template, the
@@ -491,7 +493,7 @@ class ArtLayoutEngine(private val typeface: Typeface) {
 
     private fun route(safe: ArtRect, top: Float, bottom: Float, centerVertically: Boolean): ArtRouteLayout {
         val available = (bottom - top).coerceAtLeast(0f)
-        val side = minOf(safe.width, available)
+        val side = minOf(safe.width, available, ArtLayoutSpec.MAX_ROUTE_SIDE.toFloat())
         val left = safe.centerX - side / 2f
         val areaTop = if (centerVertically) top + (available - side) / 2f else top
         val square = ArtRect(left, areaTop, left + side, areaTop + side)
@@ -505,7 +507,7 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         val bottom = if (photoStory) {
             height - ArtLayoutSpec.PHOTO_9X16_SAFE_BOTTOM
         } else {
-            height - side
+            height - ArtLayoutSpec.BOTTOM_MARGIN.toFloat()
         }
         return ArtRect(side, top, ArtLayoutSpec.DESIGN_WIDTH - side, bottom)
     }
@@ -516,6 +518,16 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         } else {
             ArtLayoutSpec.BRAND_TOP.toFloat()
         }
+
+    /**
+     * Free nudge region: the whole canvas inset by [ArtLayoutSpec.NUDGE_MARGIN].
+     * Templates place the blocks inside the safe area, but an explicit offset
+     * may push any block out to this region before it is clamped.
+     */
+    private fun freeClamp(canvasHeight: Float): ArtRect {
+        val edge = ArtLayoutSpec.NUDGE_MARGIN.toFloat()
+        return ArtRect(edge, edge, ArtLayoutSpec.DESIGN_WIDTH - edge, canvasHeight - edge)
+    }
 
     private fun brand(top: Float, logoAspectRatio: Float?): ArtBrandLayout {
         val margin = ArtLayoutSpec.MARGIN.toFloat()
@@ -618,9 +630,9 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         offset: ArtOffset,
         width: Float,
         height: Float,
-        safe: ArtRect,
+        region: ArtRect,
     ): ArtDistanceLayout {
-        val (dx, dy) = clampShift(bounds, safe, offset.dx * width, offset.dy * height)
+        val (dx, dy) = clampShift(bounds, region, offset.dx * width, offset.dy * height)
         return shifted(dx, dy)
     }
 
@@ -628,9 +640,9 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         offset: ArtOffset,
         width: Float,
         height: Float,
-        safe: ArtRect,
+        region: ArtRect,
     ): ArtPaceTimeLayout {
-        val (dx, dy) = clampShift(bounds, safe, offset.dx * width, offset.dy * height)
+        val (dx, dy) = clampShift(bounds, region, offset.dx * width, offset.dy * height)
         return shifted(dx, dy)
     }
 
@@ -638,9 +650,9 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         offset: ArtOffset,
         width: Float,
         height: Float,
-        safe: ArtRect,
+        region: ArtRect,
     ): ArtExtrasLayout {
-        val (dx, dy) = clampShift(bounds, safe, offset.dx * width, offset.dy * height)
+        val (dx, dy) = clampShift(bounds, region, offset.dx * width, offset.dy * height)
         return shifted(dx, dy)
     }
 
@@ -648,37 +660,37 @@ class ArtLayoutEngine(private val typeface: Typeface) {
         offset: ArtOffset,
         width: Float,
         height: Float,
-        safe: ArtRect,
+        region: ArtRect,
     ): ArtRouteLayout {
         val side = square.width
-        val minLeft = safe.left
-        val maxLeft = safe.right - side
-        val minTop = safe.top
-        val maxTop = safe.bottom - side
+        val minLeft = region.left
+        val maxLeft = region.right - side
+        val minTop = region.top
+        val maxTop = region.bottom - side
         val left = if (minLeft <= maxLeft) {
             (square.left + offset.dx * width).coerceIn(minLeft, maxLeft)
         } else {
-            safe.centerX - side / 2f
+            region.centerX - side / 2f
         }
         val top = if (minTop <= maxTop) {
             (square.top + offset.dy * height).coerceIn(minTop, maxTop)
         } else {
-            safe.top + (safe.height - side) / 2f
+            region.top + (region.height - side) / 2f
         }
         val shifted = ArtRect(left, top, left + side, top + side)
         return ArtRouteLayout(shifted, shifted.inset(ArtLayoutSpec.ROUTE_INSET.toFloat()))
     }
 
-    private fun clampShift(bounds: ArtRect, safe: ArtRect, dx: Float, dy: Float): Pair<Float, Float> {
-        val minDx = safe.left - bounds.left
-        val maxDx = safe.right - bounds.right
-        val minDy = safe.top - bounds.top
-        val maxDy = safe.bottom - bounds.bottom
-        val effectiveDx = if (minDx <= maxDx) dx.coerceIn(minDx, maxDx) else safe.centerX - bounds.centerX
+    private fun clampShift(bounds: ArtRect, region: ArtRect, dx: Float, dy: Float): Pair<Float, Float> {
+        val minDx = region.left - bounds.left
+        val maxDx = region.right - bounds.right
+        val minDy = region.top - bounds.top
+        val maxDy = region.bottom - bounds.bottom
+        val effectiveDx = if (minDx <= maxDx) dx.coerceIn(minDx, maxDx) else region.centerX - bounds.centerX
         val effectiveDy = if (minDy <= maxDy) {
             dy.coerceIn(minDy, maxDy)
         } else {
-            (safe.top + safe.bottom) / 2f - (bounds.top + bounds.bottom) / 2f
+            (region.top + region.bottom) / 2f - (bounds.top + bounds.bottom) / 2f
         }
         return effectiveDx to effectiveDy
     }
