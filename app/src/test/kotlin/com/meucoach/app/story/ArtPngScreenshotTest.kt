@@ -3,6 +3,7 @@ package com.meucoach.app.story
 import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -19,10 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.story.ArtBackgroundMode
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
 import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtLayout
 import com.meucoach.core.domain.story.ArtRecipe
+import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
@@ -74,6 +78,39 @@ class ArtPngScreenshotTest {
         capture(recipe = recipe, name = "art-png-4x5-customized.png")
     }
 
+    @Test
+    fun artPng4x5Center() {
+        val recipe = ArtRecipe(layout = ArtLayout(template = ArtTemplate.CENTER))
+        capture(recipe = recipe, name = "art-png-4x5-center.png")
+    }
+
+    @Test
+    fun artPng4x5Bottom() {
+        val recipe = ArtRecipe(layout = ArtLayout(template = ArtTemplate.BOTTOM))
+        capture(recipe = recipe, name = "art-png-4x5-bottom.png")
+    }
+
+    @Test
+    fun artPhoto4x5() {
+        capturePhoto(recipe = ArtRecipe(background = ArtBackgroundMode.PHOTO), name = "art-photo-4x5.png")
+    }
+
+    @Test
+    fun artPhoto1x1() {
+        capturePhoto(
+            recipe = ArtRecipe(format = ArtFormat.SQUARE, background = ArtBackgroundMode.PHOTO),
+            name = "art-photo-1x1.png",
+        )
+    }
+
+    @Test
+    fun artPhoto9x16() {
+        capturePhoto(
+            recipe = ArtRecipe(format = ArtFormat.PORTRAIT_9_16, background = ArtBackgroundMode.PHOTO),
+            name = "art-photo-9x16.png",
+        )
+    }
+
     /** The card floats over the dark checkerboard, the same preview the Studio shows. */
     private fun capture(recipe: ArtRecipe, name: String) {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -100,6 +137,35 @@ class ArtPngScreenshotTest {
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("src/test/screenshots/$name")
         bitmap.recycle()
+    }
+
+    /** Photo mode is opaque: the composed image fills the card, no checkerboard. */
+    private fun capturePhoto(recipe: ArtRecipe, name: String) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val plan = fiveKPlan()
+        val photo = SyntheticArtPhoto.landscape(recipe.format.width, recipe.format.height)
+        val bitmap = checkNotNull(
+            StoryArtRenderer(recipe, recipe.font.typeface(context), StoryBranding.logo(context))
+                .render(plan, plan.localDate, recipe.format.width, recipe.format.height, photo),
+        )
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Arte com foto da rota",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/$name")
+        bitmap.recycle()
+        photo.recycle()
     }
 
     @Composable

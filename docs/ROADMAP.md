@@ -771,7 +771,7 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
 
 ### P3-07 · Arte com foto (Story Studio)
 
-**Status:** F0–F3 concluídas em 23/11/2026; F4 (renderer) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
+**Status:** F0–F4 concluídas em 23/11/2026; F5 (UI) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
 
 Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 0061`](adr/0061-art-photo-studio.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`ADR 0060`](adr/0060-art-png-9x16-layout.md).
 
@@ -779,7 +779,7 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 - [x] F1 — domínio: `ArtPhotoCrop.resolve`, `ArtLayoutSpec`, `ArtPlanFingerprint`, validações e key com fingerprint (23/11/2026; 1.311 testes de domínio, Kover 96,77% de linhas, `assembleDebug`/`spotlessCheck`/detekt verdes).
 - [x] F2 — codec de estilo v2 + migração v1→v2 + `ArtRecipeStore` style-only + fallback por campo (23/11/2026; codec/store e `*Art*` verdes; `:app:koverVerify` com 1.345 testes e 0 falhas após reexecução do flake conhecido).
 - [x] F3 — foto: `ArtPhotoCodec` v1, importer EXIF/3072/q90 atômico, store por atividade, loader 540/1080 por região e órfãos (23/11/2026; 1.397 testes do app, 0 falhas, Kover 81,44%; `androidx.exifinterface` 1.4.2).
-- [ ] F4 — renderer: layout medido, templates, `textScalePercent`, scrim 58%, JPG e goldens.
+- [x] F4 — renderer: `ArtLayoutEngine` medido, templates TOP/CENTER/BOTTOM, `textScalePercent` 80–130, offsets/clamp por bloco, safe area 9:16 Photo, scrim 58%, JPG q92 e goldens (23/11/2026; transparente do ADR 0060 intacto, 1.423 testes do app, Kover 81,67%).
 - [ ] F5 — UI: toggle, cards, crop acessível, copy por modo, estados e 200%/360 dp.
 - [ ] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG.
 - [ ] F7 — ciclo de vida: reset, deleteActivity, toggle/remover, órfãos e invalidação do exporter.

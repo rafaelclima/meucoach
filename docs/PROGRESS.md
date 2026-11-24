@@ -1,6 +1,72 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (Arte com Foto — F3 de foto concluída; sem F4+)
+**Atualizado:** 23/11/2026 (Arte com Foto — F4 renderer concluída; F5 é a próxima)
+
+## Sessão 2026-11-23 — Arte com Foto F4 (layout medido, templates e scrim)
+
+**Escopo:** somente a fatia F4 do PRD v0.3/ADR 0061. Sem UI do Studio
+(F5), export/share (F6) ou reset/deleteActivity (F7).
+
+### Concluído
+
+- **`ArtLayoutEngine`:** mede o texto real com `Paint`/`Typeface` e devolve
+  caixas, baselines e a área quadrada da rota em unidades de design (1080).
+  O renderer não calcula coordenadas: usa `ArtCardLayout`/`ArtRect`, então
+  preview, export e o clamp futuro compartilham a mesma origem.
+- **Templates `TOP`, `CENTER` e `BOTTOM`:** TOP preserva o layout do ADR 0060
+  (marca no topo, distância/ritmo/tempo, extras e rota). CENTER centraliza o
+  grupo de texto na área segura com a rota compacta abaixo; BOTTOM coloca a
+  rota abaixo da marca e alinha o grupo à base.
+- **Escala de texto:** `textScalePercent` 80–130 multiplica tamanhos, altura de
+  linha, offsets internos e a reserva medida da coluna de ritmo/tempo. Marca,
+  logo, rota, marcadores e casca não escalam. O layout é recalculado inteiro.
+- **Offsets:** aplicados depois do template, nunca multiplicados pela escala;
+  cada bloco é clampado pela própria caixa + safe area. A rota é transladada
+  como quadrado e clampada na safe area, sem distorcer.
+- **Safe area:** 88 nos três formatos transparentes e em 4:5/1:1 Photo; no
+  9:16 Photo, topo 250, base 340 e laterais 88. A marca do 9:16 Photo nasce
+  em 250.
+- **Scrim:** `ArtScrim` (preto, alpha 148, raio 48, padding 36 em design px)
+  atrás da marca e de cada bloco de texto presente, só em PHOTO. A casca da
+  rota continua a 70% nos dois modos.
+- **`StoryArtRenderer`:** em PHOTO recebe o bitmap já recortado/orientado pelo
+  `ArtPhotoLoader`, desenha full-bleed (cover), scrim, blocos e rota; bitmap
+  nulo retorna `null`. `writeJpg` novo (JPEG q92, 1080 de largura); `writePng`
+  transparente permanece inalterado. O renderer não recicla o bitmap recebido.
+- **`ArtContrast.photoBackdrop`:** cálculo do composto “scrim sobre foto” para
+  os testes; o aviso/UI de contraste continua para F5.
+- **Testes:** `ArtLayoutEngineTest` (frames legados, 3 formatos × 3 templates ×
+  80/100/130, offsets/clamp, safe area Photo, scrims, fonte textual) e
+  `StoryArtPhotoRendererTest` (PHOTO nulo, transparente ignorando foto,
+  full-bleed, scrim, 9:16, JPEG sem alpha, `writeJpg` recusando transparente).
+  `ArtContrastTest` ganhou os extremos do composto.
+- **Goldens:** novos `art-png-4x5-center`, `art-png-4x5-bottom`,
+  `art-photo-4x5`, `art-photo-1x1` e `art-photo-9x16`, com foto sintética.
+  Os goldens existentes do ADR 0060 (4:5, 1:1, 9:16, customizado e abas do
+  Studio) continuam byte a byte iguais.
+
+### Gates
+
+- `./gradlew :app:testDebugUnitTest`: **1.423 testes, 0 falhas**.
+- `./gradlew :core:domain:test`: **1.311 testes, 0 falhas**.
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde (163 testes de
+  arte, transparentes intactos + novos goldens).
+- `./gradlew :app:koverVerify --rerun-tasks` verde; linhas do app em
+  **81,67%** (gate ≥78%, acima do 81,44% da F3).
+- `./gradlew :app:assembleDebug`, `./gradlew :app:detekt`,
+  `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes.
+- `TodayViewModelPersistTest` não falhou nesta sessão.
+- Nenhuma foto ou dado real no diff; bitmaps dos goldens são sintéticos.
+
+### Próximo
+
+1. **F5** — UI do Studio: toggle Transparente/Foto, card da foto, picker real,
+   crop acessível, cards de posição/escala, prévia composta, copy por modo,
+   aviso de contraste e 200%/360 dp.
+2. **F6** — export/share: `publishJpg`, `StoryFileNames.artPhoto`, key com
+   fingerprint, reuso/URI e cache PNG+JPG.
+3. **F7** — reset, deleteActivity, toggle/remover, órfãos no startup e
+   invalidação do exporter.
 
 ## Sessão 2026-11-23 — Arte com Foto F3 (codec, import, store e loader)
 

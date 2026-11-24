@@ -51,4 +51,18 @@ class ArtContrastTest {
         assertThat(ArtContrast.ratio(ArtColor.BLACK.argb, ArtContrast.CASING_ON_BLACK)).isLessThan(3.0)
         assertThat(ArtContrast.ratio(ArtColor.WHITE.argb, ArtContrast.CASING_ON_WHITE)).isGreaterThan(3.0)
     }
+
+    @Test
+    fun `white text clears AA on the 58 percent scrim over a white photo`() {
+        val backdrop = ArtContrast.photoBackdrop(0xFFFFFFFF.toInt())
+
+        assertThat(ArtContrast.ratio(ArtColor.WHITE.argb, backdrop)).isGreaterThan(4.5)
+    }
+
+    @Test
+    fun `black text still fails on the scrim over a dark photo`() {
+        val backdrop = ArtContrast.photoBackdrop(0xFF000000.toInt())
+
+        assertThat(ArtContrast.ratio(ArtColor.BLACK.argb, backdrop)).isLessThan(4.5)
+    }
 }

@@ -7,10 +7,12 @@ import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import com.meucoach.core.domain.story.ArtBackgroundMode
 import com.meucoach.core.domain.story.ArtColor
-import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtLayoutSpec
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.ResolvedMetric
 import com.meucoach.core.domain.story.StoryEssential
@@ -20,16 +22,16 @@ import com.meucoach.core.domain.story.StoryRenderSpec
 import com.meucoach.core.domain.story.StoryRenderSpecResolver
 import java.io.OutputStream
 import java.time.LocalDate
+import kotlin.math.max
 
 /**
- * Transparent route card (ADR 0058, extended by ADR 0060). Unlike
- * [StoryPosterRenderer] the canvas starts empty — no `drawColor` — so the
- * background is transparent by construction and only text, route and markers
- * are opaque. The layout is computed per format from scaled design units
- * (1080 wide): the brand sits on top, the distance on the left, pace/time
- * stacked against the right margin, extras right below, and the route fills
- * the remaining square. There is no footer/tagline; the 9:16 card reuses the
- * top block and centers a larger square route in the extra height.
+ * Route card renderer (ADR 0058/0060), extended by the photo studio (ADR
+ * 0061). A transparent card starts on an empty canvas — no `drawColor` — so
+ * only text, route and markers are opaque. In photo mode the caller passes a
+ * bitmap already cropped, upright and sized by [ArtPhotoLoader]; the renderer
+ * only draws it full-bleed and never re-crops. Layout, baselines, offsets,
+ * clamping and scrims come from [ArtLayoutEngine], so preview, export and the
+ * Studio share one source of coordinates.
  */
 class StoryArtRenderer(
     private val recipe: ArtRecipe,
@@ -38,15 +40,16 @@ class StoryArtRenderer(
 ) {
     /**
      * Renders the card at the requested size — preview uses ~540 px, export
-     * 1080. Returns `null` when there is no route to draw; the caller owns the
-     * returned bitmap.
+     * 1080. Returns `null` without a route or when photo mode lacks a bitmap;
+     * the caller owns the returned bitmap.
      */
-    fun render(plan: StoryPlan, localDate: LocalDate?, width: Int, height: Int): Bitmap? {
+    fun render(plan: StoryPlan, localDate: LocalDate?, width: Int, height: Int, photoBitmap: Bitmap? = null): Bitmap? {
         if (plan.route.points.size < 2) return null
+        if (recipe.background == ArtBackgroundMode.PHOTO && photoBitmap == null) return null
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         try {
             val spec = StoryRenderSpecResolver.fromPlan(plan, localDate, recipe.toStoryRecipe())
-            draw(Canvas(bitmap), spec, localDate, width.toFloat(), height.toFloat())
+            draw(Canvas(bitmap), spec, localDate, width.toFloat(), height.toFloat(), photoBitmap)
         } catch (error: Throwable) {
             bitmap.recycle()
             throw error
@@ -54,7 +57,7 @@ class StoryArtRenderer(
         return bitmap
     }
 
-    /** Writes the card as PNG, recycling the render bitmap either way. */
+    /** Writes the transparent card as PNG, recycling the render bitmap either way. */
     fun writePng(plan: StoryPlan, localDate: LocalDate?, width: Int, height: Int, output: OutputStream): Boolean {
         val bitmap = render(plan, localDate, width, height) ?: return false
         return try {
@@ -64,143 +67,120 @@ class StoryArtRenderer(
         }
     }
 
-    private fun draw(canvas: Canvas, spec: StoryRenderSpec, localDate: LocalDate?, width: Float, height: Float) {
-        val scale = width / DESIGN_WIDTH
-        val designHeight = height / scale
-        val style =
-            ArtStyle(text = recipe.textColor.argb, label = withAlpha(recipe.textColor.argb, LABEL_ALPHA), scale = scale)
-        val margin = MARGIN * scale
-        val square = recipe.format == ArtFormat.SQUARE
-        val distanceBaseline = (if (square) 400f else 460f) * scale
-        val labelBaseline = distanceBaseline - (if (square) 135f else 153f) * scale
-
-        drawBrand(canvas, margin, style)
-
-        val distance = metric(spec, StoryEssential.DISTANCE)
-        drawLabel(canvas, distance.label, margin, labelBaseline, style)
-        drawDistance(canvas, distance, margin, distanceBaseline, style)
-
-        val lastMetricBaseline = drawPaceTimeBlock(canvas, spec, width, labelBaseline, style)
-        val extrasBaseline = drawExtras(
-            canvas,
-            spec,
-            localDate,
-            margin,
-            maxOf(distanceBaseline, lastMetricBaseline),
-            style,
-        )
-
-        drawRoute(canvas, spec.plan, width, designHeight, extrasBaseline, style, recipe.routeColor.argb)
-    }
-
-    /** Colors and scale of one card draw; labels use the text color at 70%. */
-    private data class ArtStyle(val text: Int, val label: Int, val scale: Float)
-
-    private fun drawBrand(canvas: Canvas, margin: Float, style: ArtStyle) {
-        val scale = style.scale
-        val logo = logoBitmap
-        if (logo != null) {
-            val logoHeight = 44f * scale
-            val logoWidth = logoHeight * logo.width / logo.height
-            val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
-                colorFilter = PorterDuffColorFilter(style.text, PorterDuff.Mode.SRC_IN)
-            }
-            canvas.drawBitmap(
-                logo,
-                null,
-                RectF(margin, 84f * scale, margin + logoWidth, 84f * scale + logoHeight),
-                paint,
-            )
-        } else {
-            val text = storyTextPaint(style.text, 30f * scale, typeface, bold = true)
-            canvas.drawText("MEUCOACH", margin, 120f * scale, text)
-        }
-    }
-
-    private fun drawLabel(canvas: Canvas, text: String, x: Float, baseline: Float, style: ArtStyle) {
-        val paint = storyTextPaint(style.label, 24f * style.scale, typeface, bold = true)
-        canvas.drawText(text, x, baseline, paint)
-    }
-
-    private fun drawDistance(
-        canvas: Canvas,
-        distance: ResolvedMetric,
-        margin: Float,
-        baseline: Float,
-        style: ArtStyle,
-    ) {
-        val scale = style.scale
-        val value = distance.value
-        val number = value.substringBeforeLast(" ").ifBlank { value }
-        val unit = value.substringAfterLast(" ", "").takeIf { it.isNotBlank() && number != value }
-        val size = (if (recipe.format == ArtFormat.SQUARE) SQUARE_DISTANCE_SIZE else DISTANCE_SIZE) * scale
-        val numberPaint = storyTextPaint(style.text, size, typeface, bold = true)
-        val unitPaint = storyTextPaint(style.text, 48f * scale, typeface, bold = true)
-        val unitWidth = unit?.let { unitPaint.measureText(it) + 14f * scale } ?: 0f
-        // Reserve the right column so a long distance never collides with
-        // pace/time; the number shrinks before it invades the other margin.
-        numberPaint.textSize = fittedTextSize(
-            numberPaint,
-            number,
-            DESIGN_WIDTH * scale - 2f * margin - unitWidth - PACE_TIME_RESERVE * scale,
-            size,
-        )
-        canvas.drawText(number, margin, baseline, numberPaint)
-        unit?.let {
-            canvas.drawText(it, margin + numberPaint.measureText(number) + 14f * scale, baseline, unitPaint)
-        }
-    }
-
     /**
-     * Pace and time stacked against the right margin, one block below the
-     * other (ADR 0060). Labels sit close to their values; both are right
-     * aligned so the column shares the card's right edge.
+     * Writes a photo card as JPEG at the recipe format's full width (1080) and
+     * quality 92. Only photo mode is valid here; the transparent path keeps
+     * using [writePng].
      */
-    private fun drawPaceTimeBlock(
-        canvas: Canvas,
-        spec: StoryRenderSpec,
-        width: Float,
-        labelBaseline: Float,
-        style: ArtStyle,
-    ): Float {
-        val scale = style.scale
-        val x = width - MARGIN * scale
-        val labelPaint = storyTextPaint(style.label, 22f * scale, typeface, bold = true).apply {
-            textAlign = Paint.Align.RIGHT
+    fun writeJpg(plan: StoryPlan, localDate: LocalDate?, photoBitmap: Bitmap?, output: OutputStream): Boolean {
+        if (recipe.background != ArtBackgroundMode.PHOTO) return false
+        val bitmap = render(
+            plan = plan,
+            localDate = localDate,
+            width = recipe.format.width,
+            height = recipe.format.height,
+            photoBitmap = photoBitmap,
+        ) ?: return false
+        return try {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, JPG_QUALITY, output)
+        } finally {
+            bitmap.recycle()
         }
-        val valuePaint = storyTextPaint(style.text, 52f * scale, typeface, bold = true).apply {
-            textAlign = Paint.Align.RIGHT
-        }
-        val pace = metric(spec, StoryEssential.AVG_PACE)
-        val time = metric(spec, StoryEssential.TOTAL_TIME)
-
-        canvas.drawText(pace.label, x, labelBaseline, labelPaint)
-        canvas.drawText(pace.value, x, labelBaseline + 46f * scale, valuePaint)
-        canvas.drawText(time.label, x, labelBaseline + 98f * scale, labelPaint)
-        val timeBaseline = labelBaseline + 144f * scale
-        canvas.drawText(time.value, x, timeBaseline, valuePaint)
-        return timeBaseline
     }
 
-    /** Up to two extras as a value-only row; unavailable extras are omitted. */
-    private fun drawExtras(
+    private fun draw(
         canvas: Canvas,
         spec: StoryRenderSpec,
         localDate: LocalDate?,
-        margin: Float,
-        lastMetricBaseline: Float,
-        style: ArtStyle,
-    ): Float {
+        width: Float,
+        height: Float,
+        photoBitmap: Bitmap?,
+    ) {
+        val scale = width / ArtLayoutSpec.DESIGN_WIDTH
+        val layout = ArtLayoutEngine(typeface).layout(
+            format = recipe.format,
+            background = recipe.background,
+            layout = recipe.layout,
+            text = layoutText(spec, localDate),
+            canvasHeight = height / scale,
+            logoAspectRatio = logoBitmap?.let { it.width.toFloat() / it.height },
+        )
+        if (recipe.background == ArtBackgroundMode.PHOTO) {
+            photoBitmap?.let { drawPhoto(canvas, it, width, height) }
+            layout.scrims.forEach { drawScrim(canvas, it, scale) }
+        }
+        drawBrand(canvas, layout.brand, scale)
+        drawText(canvas, layout.distance.label, withAlpha(recipe.textColor.argb, LABEL_ALPHA), scale)
+        drawText(canvas, layout.distance.number, recipe.textColor.argb, scale)
+        layout.distance.unit?.let { drawText(canvas, it, recipe.textColor.argb, scale) }
+        drawText(canvas, layout.paceTime.paceLabel, withAlpha(recipe.textColor.argb, LABEL_ALPHA), scale)
+        drawText(canvas, layout.paceTime.paceValue, recipe.textColor.argb, scale)
+        drawText(canvas, layout.paceTime.timeLabel, withAlpha(recipe.textColor.argb, LABEL_ALPHA), scale)
+        drawText(canvas, layout.paceTime.timeValue, recipe.textColor.argb, scale)
+        layout.extras?.let { drawText(canvas, it.line, withAlpha(recipe.textColor.argb, LABEL_ALPHA), scale) }
+        drawRoute(canvas, spec.plan, layout.route, recipe.routeColor.argb, scale)
+    }
+
+    private fun layoutText(spec: StoryRenderSpec, localDate: LocalDate?): ArtLayoutText {
+        val distance = metric(spec, StoryEssential.DISTANCE)
+        val pace = metric(spec, StoryEssential.AVG_PACE)
+        val time = metric(spec, StoryEssential.TOTAL_TIME)
         val values = recipe.extras.mapNotNull { extra -> extraValue(spec, extra, localDate) }
-        if (values.isEmpty()) return lastMetricBaseline
-        val scale = style.scale
-        // Immediately below the distance/pace-time block (ADR 0060).
-        val baseline = lastMetricBaseline + 65f * scale
-        val line = values.joinToString(" · ")
-        val paint = storyTextPaint(style.label, 34f * scale, typeface)
-        paint.textSize = fittedTextSize(paint, line, DESIGN_WIDTH * scale - 2f * margin, 34f * scale)
-        canvas.drawText(line, margin, baseline, paint)
-        return baseline
+        return ArtLayoutText(
+            distanceLabel = distance.label,
+            distanceValue = distance.value,
+            paceLabel = pace.label,
+            paceValue = pace.value,
+            timeLabel = time.label,
+            timeValue = time.value,
+            extras = values.takeIf { it.isNotEmpty() }?.joinToString(" · "),
+        )
+    }
+
+    private fun drawBrand(canvas: Canvas, brand: ArtBrandLayout, scale: Float) {
+        val logo = logoBitmap
+        val logoBounds = brand.logoBounds
+        if (logo != null && logoBounds != null) {
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = PorterDuffColorFilter(recipe.textColor.argb, PorterDuff.Mode.SRC_IN)
+            }
+            canvas.drawBitmap(logo, null, logoBounds.toRectF(scale), paint)
+        } else {
+            brand.text?.let { drawText(canvas, it, recipe.textColor.argb, scale) }
+        }
+    }
+
+    private fun drawText(canvas: Canvas, layout: ArtTextLayout, color: Int, scale: Float) {
+        val paint = storyTextPaint(color, layout.size * scale, typeface, layout.bold).apply {
+            textAlign = when (layout.align) {
+                ArtTextAlign.LEFT -> Paint.Align.LEFT
+                ArtTextAlign.RIGHT -> Paint.Align.RIGHT
+            }
+        }
+        canvas.drawText(layout.text, layout.x * scale, layout.baseline * scale, paint)
+    }
+
+    /** Full-bleed cover: the loader already cropped to the format, this only guards rounding. */
+    private fun drawPhoto(canvas: Canvas, bitmap: Bitmap, width: Float, height: Float) {
+        val cover = max(width / bitmap.width, height / bitmap.height)
+        val sourceWidth = width / cover
+        val sourceHeight = height / cover
+        val sourceLeft = (bitmap.width - sourceWidth) / 2f
+        val sourceTop = (bitmap.height - sourceHeight) / 2f
+        val source = Rect(
+            sourceLeft.toInt(),
+            sourceTop.toInt(),
+            (sourceLeft + sourceWidth).toInt(),
+            (sourceTop + sourceHeight).toInt(),
+        )
+        val destination = RectF(0f, 0f, width, height)
+        canvas.drawBitmap(bitmap, source, destination, Paint(Paint.FILTER_BITMAP_FLAG))
+    }
+
+    private fun drawScrim(canvas: Canvas, scrim: ArtRect, scale: Float) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ArtScrim.argb }
+        val radius = ArtScrim.RADIUS * scale
+        canvas.drawRoundRect(scrim.toRectF(scale), radius, radius, paint)
     }
 
     private fun extraValue(spec: StoryRenderSpec, extra: StoryExtra, localDate: LocalDate?): String? {
@@ -209,29 +189,8 @@ class StoryArtRenderer(
         return if (extra == StoryExtra.DATE) ArtDateFormatter.format(localDate) else resolved.value
     }
 
-    private fun drawRoute(
-        canvas: Canvas,
-        plan: StoryPlan,
-        width: Float,
-        designHeight: Float,
-        contentBaseline: Float,
-        style: ArtStyle,
-        routeColor: Int,
-    ) {
-        val scale = style.scale
-        val margin = MARGIN * scale
-        val top = contentBaseline + 70f * scale
-        val bottom = designHeight * scale - margin
-        val side = minOf(width - 2f * margin, bottom - top)
-        val left = width / 2f - side / 2f
-        val areaTop = top + ((bottom - top - side).coerceAtLeast(0f) / 2f)
-        val inset = 24f * scale
-        val area = RectF(
-            left + inset,
-            areaTop + inset,
-            left + side - inset,
-            areaTop + side - inset,
-        )
+    private fun drawRoute(canvas: Canvas, plan: StoryPlan, route: ArtRouteLayout, routeColor: Int, scale: Float) {
+        val area = route.path.toRectF(scale)
         val path = Path()
         plan.route.points.forEachIndexed { index, point ->
             val x = area.left + point.x * area.width()
@@ -241,7 +200,7 @@ class StoryArtRenderer(
 
         canvas.drawPath(path, routePaint(withAlpha(ROUTE_CASING, ROUTE_CASING_ALPHA), 30f * scale))
         canvas.drawPath(path, routePaint(routeColor, 14f * scale))
-        drawMarker(canvas, path, atStart = true, color = style.text, scale = scale)
+        drawMarker(canvas, path, atStart = true, color = recipe.textColor.argb, scale = scale)
         drawMarker(canvas, path, atStart = false, color = ArtColor.CORAL.argb, scale = scale)
     }
 
@@ -263,26 +222,23 @@ class StoryArtRenderer(
     }
 
     private fun metric(spec: StoryRenderSpec, essential: StoryEssential): ResolvedMetric = spec.closing.first {
-        it.id ==
-            essential.name
+        it.id == essential.name
     }
 
     private fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
 
-    companion object {
-        const val DESIGN_WIDTH = 1080f
+    private fun ArtRect.toRectF(scale: Float): RectF = RectF(
+        left * scale,
+        top * scale,
+        right * scale,
+        bottom * scale,
+    )
 
+    companion object {
         /** Fixed dark shell under the route so it reads on any photo (ADR 0058 §5.2). */
         const val ROUTE_CASING = 0xFF08090B.toInt()
         internal const val ROUTE_CASING_ALPHA = 178
         private const val LABEL_ALPHA = 178
-        private const val MARGIN = 88f
-
-        /** Distance size in design units (~10% below the original 150/130). */
-        private const val DISTANCE_SIZE = 135f
-        private const val SQUARE_DISTANCE_SIZE = 117f
-
-        /** Right column kept free for the pace/time block so the distance never collides. */
-        private const val PACE_TIME_RESERVE = 300f
+        private const val JPG_QUALITY = 92
     }
 }
