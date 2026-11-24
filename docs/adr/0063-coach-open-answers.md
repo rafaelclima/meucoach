@@ -67,6 +67,11 @@ respostas de sessão/como correr ou respostas abertas que citem o treino de
 hoje/alvos; uma definição conceitual ("o que é intervalado?") não leva o
 cartão, para não sugerir que o pace do dia é o pace do conceito.
 
+O fallback determinístico de sessão segue a mesma regra: num dia ajustado, usa
+o rationale da prescrição (`Hoje: fácil, 28 min. Motivo: ...`), nunca a
+estrutura do plano original (ex.: 5 × 3 min), e não duplica prefixos como
+"Hoje tem Hoje é fácil".
+
 ### 2.3 O validador continua sendo a autoridade final
 
 `CoachResponseValidator.validateFreeAnswer` ganhou `allowedCounts`. Além das

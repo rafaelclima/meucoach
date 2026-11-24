@@ -261,6 +261,10 @@ Memória local do Coach **sem** transformar memória em decisão:
 - **Referência do motor:** o cartão só acompanha sessão/como correr ou uma
   resposta aberta que cite pace/ritmo/FC/zona/esforço/treino de hoje.
   Definição genérica ("o que é intervalado?") não mostra mais o pace/FC do dia.
+- **Fallback de sessão:** em dia ajustado, o texto determinístico usa o
+  rationale da prescrição (fácil 28 min, motivo da prontidão), não a estrutura
+  planejada (5 × 3 min), e não duplica "Hoje tem Hoje é fácil". O fallback é a
+  rede de segurança quando o proxy falha; ele também precisa respeitar o dia.
 - **Consentimento:** `CoachConsentStore.CONSENT_VERSION = 2`; um grant antigo
   (só resumo) exige novo aceite. A copy diz que a IA responde as perguntas
   digitadas e envia um resumo do treino, da prontidão e o texto, sem nome e sem mapa.

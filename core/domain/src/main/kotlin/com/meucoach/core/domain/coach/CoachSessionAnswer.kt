@@ -127,15 +127,24 @@ object CoachSessionAnswer {
     ): String {
         if (session == null) return ""
         if (session.type == WorkoutType.REST) return "$dayLabel é descanso — sem treino."
-        val title = prescribed?.title ?: session.title
+        val title = (prescribed?.title ?: session.title).trim()
         val duration = prescribed?.prescribedDurationMin ?: session.durationMin
         val head = when {
-            isToday -> "Hoje tem"
-            isTomorrow -> "Amanhã tem"
-            else -> "$dayLabel tem"
+            isToday && title.startsWith("Hoje", ignoreCase = true) -> ""
+            isTomorrow && title.startsWith("Amanhã", ignoreCase = true) -> ""
+            isToday -> "Hoje tem "
+            isTomorrow -> "Amanhã tem "
+            else -> "$dayLabel tem "
         }
         val planned = if (isPlannedOnly) " (planejado)" else ""
-        val base = "$head $title${duration?.let { " · $it min" }.orEmpty()}$planned. ${session.rationale}."
+        // On an adjusted day the planned structure (e.g. 5 x 3 min) no longer
+        // describes the session; use the prescription rationale instead.
+        val rationale = if (prescribed != null && prescribed.differsFromPlan) {
+            prescribed.rationale
+        } else {
+            session.rationale
+        }
+        val base = "$head$title${duration?.let { " · $it min" }.orEmpty()}$planned. $rationale."
         return if (task == SessionTask.HOW_TO) {
             "$base Comece soltinho e feche leve."
         } else {

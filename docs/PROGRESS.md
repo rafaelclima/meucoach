@@ -54,6 +54,10 @@ dependência nova.
   sessão/como correr (`ASK_SESSION`/`ASK_HOW_TO_RUN`) ou respostas abertas que
   realmente citem pace/ritmo/FC/zona/esforço/treino de hoje. Definições
   genéricas ("o que é intervalado?") não carregam mais o pace/FC do dia.
+- **Fallback de sessão:** quando o modelo falha, o texto determinístico de um
+  dia ajustado usa o rationale da **prescrição** (`Hoje: fácil, 28 min.
+  Motivo: ...`), não a estrutura do plano original; e evita "Hoje tem Hoje é
+  fácil". Assim o fallback não prescreve 5 × 3 min num dia que virou fácil.
 - **Consentimento v2:** a copy agora diz que a IA responde as perguntas
   digitadas e envia um resumo do treino, da prontidão e o texto; um
   consentimento antigo (só resumo) exige novo aceite. Proxy continua stateless
@@ -65,7 +69,9 @@ dependência nova.
   `CoachConsentStore` (v1→v2), VM (aberta com pergunta/fatos, contagem
   inventada cai sem gravar, falha de rede, referência condicional) e
   `CoachScreenTest` (copy). `CoachReferencePolicyTest` cobre a decisão de
-  anexar ou não o cartão do motor.
+  anexar ou não o cartão do motor; `CoachSessionAnswerTest` cobre o fallback
+  de dia ajustado (sem a estrutura planejada) e o de dia mantido (com a
+  estrutura).
 
 ### Gates
 

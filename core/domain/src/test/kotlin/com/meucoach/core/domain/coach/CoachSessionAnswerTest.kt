@@ -193,6 +193,87 @@ class CoachSessionAnswerTest {
     }
 
     @Test
+    fun `fallback de dia ajustado usa o motivo da prescricao, nao a estrutura planejada`() {
+        val qualitySession = easySession(monday).copy(
+            type = WorkoutType.QUALITY,
+            title = "Intervalado",
+            durationMin = 40,
+            rationale = "Aquecimento 10 min. Faça 5 × 3 min em ritmo forte. Volta à calma.",
+        )
+        val prescription = DailyPrescription(
+            date = monday,
+            plannedSessionId = "session-1",
+            plannedType = WorkoutType.QUALITY,
+            plannedTitle = "Intervalado",
+            plannedDurationMin = 40,
+            prescribedType = WorkoutType.EASY,
+            title = "Hoje é fácil",
+            prescribedDurationMin = 28,
+            targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 4),
+            adjustment = PrescriptionAdjustment.DOWNGRADE,
+            rationale = "Planejado: Intervalado (40 min). Hoje: fácil, 28 min. Motivo: prontidão moderada.",
+            ruleIds = listOf("R-PRESC-02"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v6",
+            inputsHash = "hash",
+        )
+        val answer = CoachSessionAnswer.build(
+            today = monday,
+            target = monday,
+            sessions = listOf(qualitySession),
+            weeklyMinutes = 120,
+            task = SessionTask.HOW_TO,
+            prescription = prescription,
+        )
+
+        assertTrue(answer.fallback.contains("Hoje é fácil"))
+        assertTrue(answer.fallback.contains("Motivo: prontidão moderada"))
+        assertFalse(answer.fallback.contains("5 × 3"))
+        assertFalse(answer.fallback.contains("Aquecimento 10 min"))
+        assertFalse(answer.fallback.contains("Hoje tem Hoje"))
+    }
+
+    @Test
+    fun `fallback de dia mantido preserva a estrutura planejada`() {
+        val qualitySession = easySession(monday).copy(
+            type = WorkoutType.QUALITY,
+            title = "Intervalado",
+            durationMin = 40,
+            rationale = "Aquecimento 10 min. Faça 5 × 3 min em ritmo forte. Volta à calma.",
+        )
+        val prescription = DailyPrescription(
+            date = monday,
+            plannedSessionId = "session-1",
+            plannedType = WorkoutType.QUALITY,
+            plannedTitle = "Intervalado",
+            plannedDurationMin = 40,
+            prescribedType = WorkoutType.QUALITY,
+            title = "Intervalado",
+            prescribedDurationMin = 40,
+            targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 8),
+            adjustment = PrescriptionAdjustment.KEEP,
+            rationale = "Plano mantido: Intervalado, 40 min.",
+            ruleIds = listOf("R-PRESC-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v6",
+            inputsHash = "hash",
+        )
+        val answer = CoachSessionAnswer.build(
+            today = monday,
+            target = monday,
+            sessions = listOf(qualitySession),
+            weeklyMinutes = 120,
+            task = SessionTask.WHAT,
+            prescription = prescription,
+        )
+
+        assertTrue(answer.fallback.contains("5 × 3 min"))
+        assertTrue(answer.fallback.contains("Aquecimento 10 min"))
+    }
+
+    @Test
     fun `distancia do plano entra no permitido`() {
         val session = easySession(tuesday).copy(
             targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 4, distanceKm = 8.0),
