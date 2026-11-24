@@ -1,6 +1,152 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Prévia fixa na aba Vídeo, paridade com a Arte; validação no aparelho pendente)
+**Atualizado:** 24/11/2026 (lembrete fiel à prescrição do dia + conversa aberta do Coach com fatos fechados)
+
+## Sessão 2026-11-24 — Lembrete fiel ao dia + Coach com conversa aberta
+
+**Escopo:** 2 pedidos do usuário 0: (1) notificação não pode divergir do
+treino ajustado por prontidão; (2) dar mais liberdade ao Coach sem inventar
+número, treino ou diagnóstico. ADRs 0063/0064. Sem schema, ciência, motor ou
+dependência nova.
+
+### Concluído — notificação = autoridade do dia
+
+- **Causa:** o worker das 07:00 lia `WeeklyPlan.sessions`; o Hoje altera o dia
+  em `DailyPrescription`. O usuário recebeu "40 min intervalado" e o app abriu
+  um treino fácil.
+- **Worker:** `ReminderWorker` → `WorkoutReminderResolver` →
+  `RefreshTodayPrescription`/`GetTodayDecision` com perfil, prontidão, carga,
+  calor e recuperação. A notificação usa `DailyPrescription.title`,
+  `prescribedDurationMin` e `rationale`; quando difere do plano, o corpo diz
+  "Ajustado para hoje". Prova vence e cancela o lembrete de treino.
+- **App inteiro:** `TodayPrescriptionSync` observa check-in, métricas,
+  atividades, execuções, perfil, semana e provas no escopo do app e reavalia o
+  dia append-only; Hoje/Coach/notificação leem a mesma decisão sem esperar uma
+  tela específica. `WorkoutReminderSync` reescreve a notificação ativa em
+  silêncio (`setOnlyAlertOnce` + `setSilent`) ou cancela em descanso/prova/
+  `DONE`/`CLOSED`; notificação dispensada não volta.
+- **Copy do check-in:** o lembrete das 18:00 não promete mais "ajustar o
+  treino de amanhã" (a prontidão é do dia); agora diz que o check-in ajusta a
+  leitura da prontidão. O worker de check-in também não cancela mais o
+  lembrete de treino quando não há check-in pendente.
+- **Testes:** `ReminderContentTest` (prescrição ajustada, REST, copy sem
+  plano), `ReminderNotifierTest` (update ativo, não recria dispensada, cancel),
+  `ReminderWorkerTest` (07:00 usa o dia ajustado e o worker de check-in não
+  cancela o lembrete de treino), `WorkoutReminderSyncTest` (reescrita e
+  cancelamento) e `TodayPrescriptionSyncTest` (check-in novo gera versão sem
+  abrir o Hoje).
+
+### Concluído — Coach: fatos fechados, conversa aberta (ADR 0063)
+
+- **Parser:** `ASK_COACHING` para dúvidas de corrida fora das intents fixas;
+  perguntas sobre pace/FC/ritmo deixam de cair em `OUT_OF_SCOPE` (a resposta
+  continua sem dígitos de pace/FC); diagnóstico, nutrição, musculação e pedido
+  de plano novo seguem bloqueados localmente antes da rede.
+- **Payload:** `free-answer` passa a levar a pergunta sanitizada (`question`) e
+  um dossiê do motor (semana, prescrição do dia, prontidão/sono/check-in,
+  última semana fechada e rollup de 4 semanas). `CoachOpenAnswer` monta os
+  fatos e os allow-lists de minutos, percentuais, distâncias e contagens.
+- **Validador:** `allowedCounts` barra contagem sem unidade fora dos fatos
+  ("9 treinos"); seguem barrados pace/bpm, número/percentual/distância fora do
+  contexto, verbo de prescrição com número/estrutura, código interno, léxico
+  médico e promessa de memória. Inválido → fallback falado, não persiste.
+- **Consentimento v2:** a copy agora diz que a IA responde as perguntas
+  digitadas e envia um resumo do treino, da prontidão e o texto; um
+  consentimento antigo (só resumo) exige novo aceite. Proxy continua stateless
+  e sem log de payload.
+- **Proxy:** `SYSTEM_FREE_ANSWER` responde à `question` usando só o dossiê e
+  proíbe número/diagnóstico/prescrição. **Redeploy do Dokploy pendente.**
+- **Testes:** parser (pace/dia, dúvidas abertas, afirmação fora do tema),
+  validador (`allowedCounts`), `CoachOpenAnswer`, `CoachApi`/payload,
+  `CoachConsentStore` (v1→v2), VM (aberta com pergunta/fatos, contagem
+  inventada cai sem gravar, falha de rede) e `CoachScreenTest` (copy).
+
+### Gates
+
+- `./gradlew check` verde (domain + data + app; inclui detekt, lint, testes e
+  `koverVerify`).
+- `./gradlew :core:domain:test` / `:app:testDebugUnitTest` /
+  `:core:data:testDebugUnitTest` verdes.
+- `./gradlew -p infra/coach-proxy test` verde.
+- `./gradlew :app:assembleDebug` + `spotlessCheck` verdes.
+- `TodayViewModelPersistTest` (flake conhecido sob carga) teve o timeout dos
+  awaits elevado de 5 s para 10 s e a espera do upgrade para 30 s. Ele passou
+  isolado e em execuções completas do `check`; em uma reexecução sob carga
+  ainda estourou o timeout, sem tocar nos arquivos desta sessão.
+- Sem dado real no diff; sem migração; sem dependência nova.
+
+### Próximo
+
+1. Redeploy do proxy no Dokploy com o `SYSTEM_FREE_ANSWER` novo e validar no
+   S24 Ultra: pergunta aberta ("o que é fartlek?"), pergunta de pace/FC pelo
+   cartão, contagem inventada caindo no fallback e recusa médica local.
+2. Testar no aparelho o lembrete das 07:00 com treino ajustado, a atualização
+   silenciosa depois do check-in e o cancelamento ao concluir/pular/descansar.
+3. Revalidar consentimento v2: usuário antigo vê o convite de novo; revogar
+   apaga a memória e não chama o proxy.
+
+## Sessão 2026-11-24 — Quatro traçados da rota (P3-11, ADR 0062)
+
+**Escopo:** pedido do usuário 0 — escolher entre estilos de traçado no
+Story Studio, no vídeo, na arte transparente, na foto e no pôster. Sem
+mudança de ciência, timeline, métricas, export ou permissões.
+
+### Concluído
+
+- **Domínio:** `StoryRouteStroke` (`SOLID`, `NEON`, `DASHED`, `DOTTED`)
+  em `core:domain`; `StoryRecipe.routeStroke` e `ArtRecipe.routeStroke`
+  com default `SOLID`; `ArtRecipe.toStoryRecipe()` repassa o valor.
+- **Persistência:** `StoryRecipeCodec` v2 e `ArtRecipeCodec` v3,
+  tolerantes; v1/v2 decodificam como `SOLID`, enum desconhecido cai em
+  `SOLID` e o payload do worker continua abaixo de 2 KB.
+- **Vídeo:** `StoryRoutePainter` aplica o padrão na casca, base e trecho
+  percorrido; tracejado/pontilhado não deixam casca contínua; neon
+  ilumina só o trecho percorrido; a fase continua entre runs de zona.
+- **Arte/foto:** `StoryArtRenderer` aplica o mesmo padrão na casca e na
+  linha; neon ganha halo mais largo; marcadores e início/fim intactos.
+- **Prévia/offline:** sem mapa, a base da rota passou de `border` para
+  `textTertiary` (alpha 220), então o estilo escolhido aparece na prévia
+  fixa e no fallback offline; com mapa, a base continua `mapBaseRoute`.
+- **Pôster:** `StoryPosterRenderer` mantém a composição sólida; neon
+  ganha halo extra; tracejado/pontilhado desenham casca + linha com o
+  mesmo `PathEffect`, sem halo contínuo.
+- **UI:** card “ROTA · Traçado” na aba Vídeo e seção “ESTILO DO
+  TRAÇADO” na Arte, 4 pills de 48 dp, tags `story-route-stroke-*` e
+  `art-route-stroke-*`, TalkBack com estado selecionado.
+- **Correção pós-teste:** o callback `onRouteStroke` não era repassado do
+  `StoryStudioActions` para o `StoryStudioSheet`; os chips do vídeo
+  ficavam inertes enquanto a Arte funcionava. O repasse foi corrigido e
+  ganhou teste de regressão no `ActivityDetailScreenTest`.
+- **Docs:** ADR 0062, `DECISIONS` (1,93), `PRD_ARTE_PNG_ROTA` (emenda),
+  `DESIGN_SYSTEM`, `ROADMAP` (P3-11) e esta sessão.
+- **Testes/goldens:** domínio, codecs/stores, ViewModel, UI e renderers;
+  `Bitmap.sameAs` prova que os quatro estilos desenham pixels distintos.
+  Novos goldens: `art-png-4x5-{neon,dashed,dotted}.png`,
+  `art-photo-4x5-dashed.png`, `story-map-dashed-dark.png` e
+  `story-studio-route-strokes-dark.png`; `story-studio-*` e
+  `story-frame-*` sem mapa regravados com a base mais clara.
+
+### Gates (isolados, sem combinar sob carga)
+
+- `./gradlew :core:domain:test` verde (1.317 testes, 0 falhas).
+- `./gradlew :app:testDebugUnitTest` verde (1.518 testes, 0 falhas).
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde;
+  `... "*StoryStudioScreenshotTest"` e `... "*StoryFrameScreenshotTest"`
+  verdes em execuções separadas.
+- `./gradlew :app:assembleDebug`, `:app:detekt` e `:core:domain:detekt`
+  verdes; `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes.
+- `./gradlew :app:koverVerify --rerun-tasks` verde (app **81,83%** de
+  linhas; sem queda).
+- Nenhum dado real no diff; nenhuma dependência nova; nenhuma migração.
+
+### Próximo
+
+1. Validar no S24 Ultra: quatro estilos no vídeo sobre mapa, na arte
+   transparente, na foto e no pôster; legibilidade de tracejado/pontilhado
+   e sutileza do neon após reencode do Instagram.
+2. Se o neon ficar apagado no reencode, ajustar alpha/largura do halo em
+   uma constante e revalidar o golden.
+3. Seguir o checklist de aparelho pendente da P3-08/P3-10.
 
 ## Sessão 2026-11-24 — Prévia fixa na aba Vídeo (P3-10)
 

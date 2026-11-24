@@ -1,8 +1,8 @@
 # HANDOFF — IA Coach
 
-**Atualizado:** 18/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho
-**Próxima fatia:** validar o estado Ready com build que tem token e retomar P1-12/Ciclo 4 (§5.4)
+**Atualizado:** 24/11/2026
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064)
+**Próxima fatia:** redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo e validação no aparelho; retomar P1-12/Ciclo 4 (§5.4)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão auditoria da aba Coach), `docs/PRD_IA_COACH.md`, `docs/HANDOFF_IA_COACH.md` e `docs/adr/0052-ia-coach-memory-schema-v19.md`. A feature está encerrada no MVP e passou por uma auditoria de utilidade no aparelho; falta validar o card Ready/histórico real com o build que tem `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Lembrete fiel ao dia + Coach com conversa aberta"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; falta o redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo e a validação no aparelho com `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 
@@ -245,6 +245,46 @@ Memória local do Coach **sem** transformar memória em decisão:
   `-PcoachProxyToken=...`. O overlay de fotos visto nas capturas era de outro
   app e não foi tratado como bug.
 
+### 4.10 Conversa aberta + consentimento v2 (ADR 0063) — 24/11/2026
+
+- **Problema:** `intent + slots` deixava perguntas legítimas em `OUT_OF_SCOPE`
+  (ex.: "o que é fartlek?", "posso correr na chuva?", pace/FC bloqueado no
+  parser). A conversa era um formulário com respostas fixas.
+- **Decisão:** manter a porteira local para diagnóstico/nutrição/musculação/
+  plano novo e abrir o resto como `ASK_COACHING`. A pergunta sanitizada vai no
+  campo `question`; o `engineContext` leva um dossiê (semana, prescrição do
+  dia, prontidão/sono/check-in, última semana e rollup de 4 semanas).
+- **Validador:** `allowedCounts` barra contagem sem unidade fora dos fatos;
+  seguem barrados pace/bpm, número/percentual/distância fora do contexto,
+  verbo de prescrição com número/estrutura, código interno, léxico médico e
+  promessa de memória. Inválido → fallback falado, não persiste.
+- **Consentimento:** `CoachConsentStore.CONSENT_VERSION = 2`; um grant antigo
+  (só resumo) exige novo aceite. A copy diz que a IA responde as perguntas
+  digitadas e envia um resumo do treino, da prontidão e o texto, sem nome e sem mapa.
+- **Proxy:** `SYSTEM_FREE_ANSWER` responde à `question` usando só o dossiê;
+  **redeploy manual no Dokploy pendente**. O app já manda os campos novos e a
+  pergunta também no `engineContext`, então um proxy antigo não quebra.
+- **Testes:** parser (pace/dia, dúvidas abertas, afirmação fora do tema),
+  validador (`allowedCounts`), `CoachOpenAnswer`, `CoachApi`/payload,
+  consentimento v1→v2, VM (pergunta/fatos, contagem inventada cai sem gravar,
+  falha de rede) e tela (copy do hint/convite).
+
+### 4.11 Lembrete fiel ao dia (ADR 0064) — 24/11/2026
+
+- **Problema:** o lembrete das 07:00 lia `WeeklyPlan` e dizia "40 min
+  intervalado" mesmo depois de o Hoje rebaixar o treino por prontidão.
+- **Decisão:** `ReminderWorker` resolve o dia via `GetTodayDecision`/
+  `DailyPrescription` (prontidão, carga, calor, recuperação, prova). O corpo
+  mostra o título/duração prescritos e, quando difere do plano, começa com
+  "Ajustado para hoje".
+- **App inteiro:** `TodayPrescriptionSync` observa check-in/métricas/
+  atividades/execuções/perfil/semana/provas no escopo de aplicação e reavalia
+  o dia append-only. `WorkoutReminderSync` reescreve a notificação ativa em
+  silêncio ou cancela em descanso/prova/`DONE`/`CLOSED`; não ressuscita uma
+  notificação dispensada.
+- **Sem regra nova:** nenhuma duração, pace, FC ou plano nasce do lembrete; ele
+  só lê a decisão. Sem schema, sem canal/permissão nova.
+
 ---
 
 ## 5. Pendências restantes
@@ -270,10 +310,18 @@ Memória local do Coach **sem** transformar memória em decisão:
 
 ### 5.4 Encerramento
 
-- A IA Coach está concluída no MVP e passou por auditoria de utilidade no aparelho; não há pendência funcional sem token.
-- Validação restante: gerar o APK com `-PcoachProxyToken=...`, abrir o Coach e conferir o card Ready recolhido/expandido e o histórico real (explicação/revisão não duplicadas).
-- Reimplantar o proxy no Dokploy para os prompts com `title`/`body` strings (a correção do app já bloqueia body objeto mesmo sem redeploy).
-- Pós-MVP: input livre de conversa, memória como contexto de copy em prompt e “quero mais tempo” na disponibilidade temporária.
+- A IA Coach está concluída no MVP, recebeu input livre (0056/0057) e conversa
+  aberta com fatos fechados (0063); não há pendência funcional sem token.
+- Validação restante: gerar o APK com `-PcoachProxyToken=...`, abrir o Coach e
+  conferir o card Ready recolhido/expandido, o histórico real, uma pergunta
+  aberta ("o que é fartlek?"), a recusa médica local e o consentimento v2.
+- Reimplantar o proxy no Dokploy para o `SYSTEM_FREE_ANSWER` novo (pergunta +
+  dossiê) e para os prompts com `title`/`body` strings.
+- O lembrete de treino já segue a prescrição do dia (ADR 0064); validar no
+  aparelho a reescrita silenciosa depois do check-in e o cancelamento em
+  descanso/prova/conclusão.
+- Pós-MVP: memória como contexto de copy em prompt e “quero mais tempo” na
+  disponibilidade temporária.
 - Próxima prioridade: P1-12 (4 semanas de uso real) / Ciclo 4.
 
 ---
@@ -292,6 +340,7 @@ Comandos:
 ./gradlew :app:assembleDebug
 ./gradlew check -x :app:testDebugUnitTest
 ./gradlew spotlessApply
+./gradlew -p infra/coach-proxy test
 ./gradlew :app:recordRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'
 ./gradlew :app:verifyRoborazziDebug --tests 'com.meucoach.app.ui.navigation.BottomBarScreenshotTest'
 ```

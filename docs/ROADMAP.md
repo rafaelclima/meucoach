@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.75 · **Data:** 24/11/2026 · **Mudança:** P3-10 prévia fixa na aba Vídeo (paridade com a Arte; imagem adaptativa 120–300 dp; goldens regravados). Gates verdes, cobertura 81,83%.
+**Versão:** 1.77 · **Data:** 24/11/2026 · **Mudança:** lembrete de treino fiel à prescrição do dia (ADR 0064) + conversa aberta do Coach com fatos fechados e consentimento v2 (ADR 0063). Gates verdes.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -388,6 +388,8 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] ADR 0056 fatia 7 (21/11/2026): **encerrado no aparelho** — composer/eco, determinísticas, `free-answer ok` (`ASK_WEEK`/`ASK_REVIEW`), ajuste abrindo menos-tempo (sem confirmar), offline com fallback, DB v22 íntegro (`YOU`/`ANSWER` com TTL 90 d), histórico com pergunta+resposta, dedo confirmou chips/retry (sem duplicados) e apagou o turno-lixo; revogar dispensado pelo usuário 0.
 - [x] Voz única na fonte (21/11/2026): títulos do motor já nascem em fala de corredor + reparo dos guardados (`SessionTitleUpgrades`, `retitleLegacySessions` só em `PLANNED`, gatilho na abertura do Hoje), `CoachSpeechLabels` revertido, prompts do proxy com "manter os nomes", goldens + screenshots regravados (`check` + `spotlessCheck` + `verifyRoborazzi` verdes); exige redeploy + novo APK, confirmar "rodagem" no aparelho.
 - [x] ADR 0057 (22/11/2026): respostas de sessão no Coach (`ASK_SESSION`/`ASK_HOW_TO_RUN` com precedência ajuste > sessão e `como` > `o quê`, `CoachSessionAnswer` puro com futuro planejado e sinais só hoje, VM local-first para passado/descanso/fora/dia feito + `free-answer` com sessão `PLANNED`; parser 27 + builder 6 + VM 60 testes, `check` + `spotlessCheck` + `koverVerify` + detekt verdes, sem proxy/schema/motor; [ADR 0057](adr/0057-coach-session-answers.md)).
+- [x] ADR 0063 (24/11/2026): conversa aberta com fatos fechados — `ASK_COACHING`, pergunta sanitizada no `free-answer`, dossiê do motor + `allowedCounts`, consentimento v2 e validador como porteira; proxy novo pendente de redeploy ([ADR 0063](adr/0063-coach-open-answers.md)).
+- [x] ADR 0064 (24/11/2026): lembrete das 07:00 segue `GetTodayDecision` e a notificação ativa é reescrita/cancelada com o dia (`TodayPrescriptionSync` + `WorkoutReminderSync`), sem divergir do Hoje ([ADR 0064](adr/0064-workout-reminder-day-authority.md)).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 
@@ -807,6 +809,16 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 **Status:** concluída em 24/11/2026 (pedido do usuário 0; validação no aparelho pendente).
 
 - [x] Prévia do vídeo fixa no topo, controles rolando abaixo (mesmo modelo da arte; imagem adaptativa 120–300 dp).
+
+### P3-11 · Quatro traçados da rota no Studio
+
+**Status:** concluída em 24/11/2026 (pedido do usuário 0; validação visual no aparelho pendente).
+
+- [x] `StoryRouteStroke` (`SOLID`, `NEON`, `DASHED`, `DOTTED`) em `StoryRecipe`/`ArtRecipe`, compartilhado por vídeo, capa, pôster, arte transparente e foto (ADR 0062).
+- [x] Renderers: casca + base com o mesmo padrão; neon só no trecho percorrido do vídeo; fase contínua nos runs de zona; pôster sem halo contínuo no tracejado.
+- [x] UI: card “Traçado” na aba Vídeo e seção “Estilo do traçado” na Arte, com TalkBack e 48 dp.
+- [x] Persistência: `StoryRecipeCodec` v2 e `ArtRecipeCodec` v3 tolerantes; `SOLID` em receitas antigas.
+- [x] Goldens: `art-png-4x5-{neon,dashed,dotted}.png`, `art-photo-4x5-dashed.png`, `story-map-dashed-dark.png`, `story-studio-route-strokes-dark.png`; `story-studio-*`/`story-frame-*` sem mapa regravados com a base `textTertiary` (prévia/offline legível).
 
 ---
 

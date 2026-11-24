@@ -77,7 +77,7 @@ E você não fala: sem input livre (fora do MVP por decisão), sem quick-reply q
 3. **Sem migração, sem dependência nova.** Reuso de `TrainingPlanRepository`, `DailyPrescription`, `WeeklyReviewAssembler`, `PlanCompletionCalculator`, `ReplanController`, `coach_messages/coach_summaries` (v19). Sem `fallbackToDestructiveMigration`.
 4. **Dado ausente é `null`, nunca `0`.** Ausência reduz confiança, não vira cobrança.
 5. **Sem culpa, sem diagnóstico, sem prescrição fora do escopo.** Sem musculação/nutrição/emagrecimento/diagnóstico. Exceção única: hidratação estática do ADR 0029, sem números.
-6. **Privacidade.** Opt-in explícito, payload minimizado (sem nome/GPS/timestamps/texto livre), TTL 90/180, revogar apaga, sem payload em log/teste/repo.
+6. **Privacidade.** Opt-in explícito, payload minimizado (sem nome/GPS/timestamps), TTL 90/180, revogar apaga, sem payload em log/repo. Desde o ADR 0063, a pergunta digitada pode ir ao modelo **somente** após a porteira local e com consentimento v2; o dossiê continua sem dado de saúde bruto.
 7. **Design system.** Dark-first + light completo, lima `#D8FF3E` só para ação sua/CTA, tokens de `core:designsystem`, sem hex solto, números tabulares, contraste AA, alvos 48dp, TalkBack, fonte 200%.
 
 ---

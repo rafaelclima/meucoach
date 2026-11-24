@@ -67,7 +67,7 @@ Fora do MVP (pós-MVP):
 ## 4. UX aba Coach (MVP)
 
 - Bottom bar: Hoje · Corridas · **Coach** (centro) · Tendências · Saúde; Perfil sai da bar → destino via avatar/config no topo (a definir com melhores práticas, sem quebrar deep links `meucoach://profile`).
-- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + ações rápidas ("Explicar semana", "Perdi treino", "Menos tempo"). A explicação começa recolhida (5 linhas) e expande sob demanda; a lista de histórico é somente leitura, aparece só com opt-in e funciona como arquivo do que não está no card atual (sem repetir explicação/revisão correntes), com apagar em bloco ou item a item. O input livre continua fora do MVP.
+- Tela Coach: resumo da semana (IA ou fallback) + revisão anterior + lista de conversas + ações rápidas ("Explicar semana", "Perdi treino", "Menos tempo"). A explicação começa recolhida (5 linhas) e expande sob demanda; a lista de histórico é somente leitura, aparece só com opt-in e funciona como arquivo do que não está no card atual (sem repetir explicação/revisão correntes), com apagar em bloco ou item a item. O input livre foi entregue no pós-MVP (ADRs 0056/0057/0063).
 - Replanejo: bottom-sheet diff (antes/depois) + Confirmar/Desfazer; reusa copy e selo `v{n}` do replanejamento.
 
 ## 5. Guardrails / segurança
@@ -75,7 +75,7 @@ Fora do MVP (pós-MVP):
 - System prompt + pós-validação: bloqueia diagnóstico, prescrição de musculação/nutrição (exceto hidratação estática), dor ≥3/lesão/doença → interrompe + sugere avaliação + registra `ILLNESS_OR_INJURY`.
 - Números: qualquer pace/FC/carga/volume/VDOT na resposta que não exista no input → resposta descartada, fallback determinístico.
 - Estimativa permitida: só texto qualitativo ("parece que a rotina apertou") com marcador `estimativa`; números nunca estimados.
-- Privacidade: opt-in explícito; payload minimizado (sem GPS/nome); revogar apaga `coach_*`; export inclui `coach_*`; risco retenção/região registrado como aceito.
+- Privacidade: opt-in explícito; payload minimizado (sem GPS/nome); revogar apaga `coach_*`; export inclui `coach_*`; risco retenção/região registrado como aceito. Desde o consentimento v2 (ADR 0063), a pergunta digitada é enviada ao proxy somente após a porteira local e com um dossiê de fatos do motor; nome, GPS e timestamps exatos **do app** continuam fora.
 - Retenção local: mensagens do Coach expiram em 90 dias e resumos em 180 dias; a limpeza é preguiçosa (abertura/escrita), sem worker novo e sem alterar treino.
 
 ## 6. Estratégia lean de testes (acordo 18/11/2026)
@@ -104,7 +104,7 @@ Gates mantidos: `assembleDebug`, `spotlessCheck`, `koverVerify` (domain/data/app
 
 ## 8. Próximo passo
 
-O MVP está implementado: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo, F6 opt-in/docs/ADR, a lista visual de histórico (decisões 17/25, com apagar individual), a 3.3-C (dia inteiro/múltiplos dias) e os goldens da bar. Evoluções pós-MVP: input livre, memória como contexto de copy em prompt e “quero mais tempo”.
+O MVP está implementado: F1 proxy/contrato, F2 prompt/validator, F3 Room v19 (memória), F4 aba Coach/ViewModel, F5 replanejo com diff/undo, F6 opt-in/docs/ADR, a lista visual de histórico (decisões 17/25, com apagar individual), a 3.3-C (dia inteiro/múltiplos dias) e os goldens da bar. Evoluções pós-MVP entregues: input livre (ADRs 0056/0057), conversa aberta com fatos fechados e consentimento v2 (ADR 0063) e lembrete fiel ao dia (ADR 0064). Continuam fora: memória como contexto de copy em prompt e “quero mais tempo”.
 
 ## 9. Adendos implementados (18/11/2026)
 
