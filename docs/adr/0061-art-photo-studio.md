@@ -45,7 +45,7 @@ A auditoria independente de 23/11/2026 encontrou problemas de engenharia no PRD 
 ### 2.4 Layout: templates, escala de texto e offsets
 
 - `ArtLayout` tem quatro offsets explícitos (`distance`, `paceTime`, `extras`, `route`) e `textScalePercent: Int` (80..130, passo 5). Sem `Map` mutável e sem float de porcentagem.
-- `ArtOffset` é fração do canvas: `dx` sobre a largura, `dy` sobre a altura, ±0,5; nudge de 0,02 por eixo. Offsets são aplicados depois do template e não são multiplicados pela escala.
+- `ArtOffset` é fração do canvas: `dx` sobre a largura, `dy` sobre a altura, ±1; nudge de 0,02 por eixo. O clamp box-aware contra a região livre mantém tudo visível; o valor persistido é o efetivo. Offsets são aplicados depois do template e não são multiplicados pela escala.
 - `ArtLayoutSpec` (puro, design 1080) define margens, marca, gaps, safe areas e mínimos. `ArtLayoutEngine` (app/story) mede o texto e calcula as caixas reais; preview, export e clamp compartilham o mesmo motor.
 - Templates:
   - `TOP`: layout atual do ADR 0060 (marca, distância, ritmo/tempo, extras, rota).

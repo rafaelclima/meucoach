@@ -1,6 +1,51 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Arte com foto — ajustes pós-aparelho P3-08 concluídos; validação no aparelho pendente)
+**Atualizado:** 24/11/2026 (Crash da prévia corrigido + nudge até ±1; validação no aparelho pendente)
+
+## Sessão 2026-11-24 — Crash da prévia + alcance do nudge (P3-09)
+
+**Escopo:** 2 achados do teste no aparelho (S24 Ultra): crash ao ajustar
+os extras + extras sem alcançar a borda direita. Sem mudança de ciência,
+persistência, export ou ciclo de vida.
+
+### Concluído
+
+- **Crash pego no aparelho via adb** (`dumpsys dropbox`, 2 quedas 08:40 e
+  09:30, mesmo stack): `Canvas: trying to use a recycled bitmap` no
+  `BitmapPainter` — o `produceState` da prévia reciclava o bitmap
+  `Ready` em exibição na thread Default enquanto o Compose ainda o
+  desenhava. Toque rápido nos nudges (para levar os extras à direita)
+  reiniciava a prévia e acertava a corrida. Auditoria de todos os
+  `recycle()` do app: só aquele ponto entregava bitmap ao Compose; os
+  demais são locais (render, loader, importer, export) e seguros.
+- **Fix:** removido o `recycle()` do bitmap em exibição (GC recolhe os
+  ~1,5 MB da prévia 540); mantido o `recycle()` da foto local, consumida
+  de forma síncrona pelo render. Teste de cenário (15 nudges com foto →
+  prévia `Ready`, sem crash); a JVM não reproduz a corrida da GPU, então
+  a prova real é no aparelho.
+- **Nudge até ±1:** o teto ±0,5 travava blocos estreitos ~130 px antes da
+  borda (extras precisavam de ~0,59). `ArtOffset` MIN/MAX agora ±1; o
+  clamp box-aware contra a região livre continua garantindo on-screen e
+  o valor persistido segue sendo o efetivo. Testes atualizados
+  (`ArtLayoutTest`, fallback do codec 0.9→1.5) + teste do extras
+  encostando em 1048.
+- **Gates (isolados, sem combinar sob carga):**
+  - `./gradlew :core:domain:test` verde (1.314 testes, 0 falhas).
+  - `./gradlew :app:testDebugUnitTest` verde (1.500 testes, 0 falhas).
+  - `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde e
+    `... --tests "*StoryStudioScreenshotTest"` verde em separado.
+  - `./gradlew :app:assembleDebug`, `./gradlew :app:detekt`,
+    `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes.
+  - `./gradlew :app:koverVerify --rerun-tasks` verde (app **81,82%** de
+    linhas, gate ≥78%; sem queda).
+- Nenhum golden regravado (geometria inalterada); nenhum dado real no
+  diff; NOTICE OFL intacto.
+
+### Próximo
+
+1. Reinstalar no S24 Ultra e repetir o gesto que crashava (ajuste rápido
+   dos extras com foto) + levar extras/HR/data até a borda direita.
+2. Seguir o checklist de aparelho pendente da P3-08.
 
 ## Sessão 2026-11-24 — Arte com foto: ajustes pós-aparelho (P3-08)
 

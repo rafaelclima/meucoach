@@ -12,20 +12,22 @@ enum class ArtTemplate { TOP, CENTER, BOTTOM }
 /**
  * Offset of one block as a fraction of the canvas: [dx] of the width and [dy]
  * of the height. Zero means the template position; offsets are applied after
- * the template and are never multiplied by the text scale. Kept within half a
- * canvas so a stored value can never push a block entirely off-screen.
+ * the template and are never multiplied by the text scale. The range reaches
+ * a full canvas so narrow blocks can still touch the free-region edges; the
+ * box-aware clamp in the layout engine keeps every block on-screen, and the
+ * Studio persists the effective value.
  */
 data class ArtOffset(val dx: Float = 0f, val dy: Float = 0f) {
     init {
         require(dx.isFinite() && dy.isFinite()) { "Art offset must be finite (dx=$dx, dy=$dy)." }
         require(dx in MIN..MAX && dy in MIN..MAX) {
-            "Art offset must stay within ±0.5 of the canvas (dx=$dx, dy=$dy)."
+            "Art offset must stay within a full canvas (dx=$dx, dy=$dy)."
         }
     }
 
     companion object {
-        const val MIN = -0.5f
-        const val MAX = 0.5f
+        const val MIN = -1f
+        const val MAX = 1f
     }
 }
 

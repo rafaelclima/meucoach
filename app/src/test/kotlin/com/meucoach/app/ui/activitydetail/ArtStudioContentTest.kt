@@ -31,6 +31,7 @@ import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
 import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.ArtLayout
+import com.meucoach.core.domain.story.ArtOffset
 import com.meucoach.core.domain.story.ArtPhotoCrop
 import com.meucoach.core.domain.story.ArtPhotoRef
 import com.meucoach.core.domain.story.ArtRecipe
@@ -607,6 +608,51 @@ class ArtStudioContentTest {
         compose.waitUntil(timeoutMillis = 10_000) {
             compose.onAllNodesWithText("Não foi possível gerar a imagem da arte. Tente novamente.")
                 .fetchSemanticsNodes().size == 2
+        }
+    }
+
+    @Test
+    fun `rapid nudges on the extras block settle on a ready preview`() {
+        // Device crash 2× (24/11/2026): the producer recycled the displayed
+        // preview bitmap while Compose still drew it ("Canvas: trying to use
+        // a recycled bitmap"). The JVM cannot reproduce the GPU race; this
+        // test pins the scenario (rapid recipe churn with a photo) and the
+        // fix is verified on device.
+        val photo = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        val recipe = mutableStateOf(
+            ArtRecipe(
+                background = ArtBackgroundMode.PHOTO,
+                photo = photo,
+                extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR),
+            ),
+        )
+        setContent(
+            recipeState = recipe,
+            onNudge = { block, dx, dy ->
+                val current = recipe.value.layout.offset(block)
+                val desired = ArtOffset(
+                    dx = (current.dx + dx).coerceIn(ArtOffset.MIN, ArtOffset.MAX),
+                    dy = (current.dy + dy).coerceIn(ArtOffset.MIN, ArtOffset.MAX),
+                )
+                recipe.value = recipe.value.copy(
+                    layout = recipe.value.layout.withOffset(block, desired),
+                )
+            },
+            onLoadPhoto = { _, _, _ ->
+                android.graphics.Bitmap.createBitmap(64, 48, android.graphics.Bitmap.Config.ARGB_8888)
+            },
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-block-extras").performScrollTo().performClick()
+        repeat(15) {
+            compose.onNodeWithTag("art-nudge-right").performClick()
+        }
+        compose.waitUntil(timeoutMillis = 15_000) {
+            compose.onAllNodesWithTag("art-preview-ready-inter").fetchSemanticsNodes().isNotEmpty()
         }
     }
 

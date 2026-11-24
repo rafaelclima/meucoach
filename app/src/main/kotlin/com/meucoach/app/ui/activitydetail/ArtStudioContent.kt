@@ -699,9 +699,16 @@ private fun ArtPreviewCard(
                         } else {
                             val bitmap = StoryArtRenderer(recipe, typeface, logo)
                                 .render(plan, plan.localDate, ART_PREVIEW_WIDTH, previewHeight, photoBitmap)
+                            // The photo decode is local to this run: the
+                            // renderer drew it synchronously, so recycling is
+                            // safe. The previous preview bitmap is NEVER
+                            // recycled here: Compose may still draw it after
+                            // the new frame is published, and recycling it
+                            // crashed the app twice on device
+                            // ("Canvas: trying to use a recycled bitmap").
+                            // GC reclaims the unreachable ~1.5 MB bitmaps.
                             photoBitmap?.recycle()
                             if (bitmap != null) {
-                                (value as? ArtPreviewState.Ready)?.bitmap?.recycle()
                                 ArtPreviewState.Ready(bitmap, recipe.font)
                             } else {
                                 ArtPreviewState.Empty

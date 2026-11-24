@@ -139,7 +139,7 @@ class ArtRecipeCodecTest {
         )
         val json = JSONObject(ArtRecipeCodec.encode(recipe))
         val offsets = json.getJSONObject("offsets")
-        offsets.put("paceTime", JSONObject().put("dx", 0.9).put("dy", 0.0))
+        offsets.put("paceTime", JSONObject().put("dx", 1.5).put("dy", 0.0))
         offsets.put("extras", "corrupt")
         offsets.put("route", JSONObject().put("dx", "NaN").put("dy", 0.0))
 

@@ -110,7 +110,7 @@ enum class ArtTemplate { TOP, CENTER, BOTTOM } // Topo, Centro, Base
 
 /** Offset em fração do canvas: dx sobre a largura, dy sobre a altura; 0 = template. */
 data class ArtOffset(val dx: Float = 0f, val dy: Float = 0f) {
-    init { require(dx.isFinite() && dy.isFinite()); require(dx in -0.5f..0.5f && dy in -0.5f..0.5f) }
+    init { require(dx.isFinite() && dy.isFinite()); require(dx in -1f..1f && dy in -1f..1f) }
 }
 
 data class ArtLayout(
@@ -412,7 +412,7 @@ Studio (Foto) → recipe(background, photo, layout, textScale)
 ### 6.3 Testes (TDD)
 
 **Domínio**
-- `textScalePercent` fora de 80..130; offsets não finitos/fora de ±0,5; foco/zoom inválidos.
+- `textScalePercent` fora de 80..130; offsets não finitos/fora de ±1; foco/zoom inválidos.
 - `ArtPhotoCrop.resolve` para 4:5/1:1/9:16, source landscape/portrait, foco nas bordas, zoom 1/2/4; nunca fora do source; aspecto correto.
 - `ArtLayoutSpec` por template/formato; `ArtPlanFingerprint` determinístico.
 - `ArtRecipeCodec` v1→v2, v2 round-trip, campo inválido preserva os demais, JSON corrompido.

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.73 · **Data:** 24/11/2026 · **Mudança:** P3-08 ajustes pós-aparelho da Arte com foto (segmento esconde ao rolar, rota ≤640, margem inferior 150, clamp livre 32, snackbar de save; gates verdes, cobertura 81,82%).
+**Versão:** 1.74 · **Data:** 24/11/2026 · **Mudança:** P3-09 crash da prévia corrigido (recycle do bitmap em exibição removido; causa pega via adb) + nudge até ±1 (extras alcançam a borda; clamp garante on-screen). Gates verdes, cobertura 81,82%.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -794,6 +794,13 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 - [x] Margem inferior maior no transparente (`BOTTOM_MARGIN` = 150; 9:16 Photo mantém 340).
 - [x] Posicionamento livre: clamp do nudge na região livre (`NUDGE_MARGIN` = 32), templates na safe area.
 - [x] Snackbar de confirmação/erro no Salvar JPG/PNG (inline existia abaixo da dobra).
+
+### P3-09 · Crash da prévia + alcance do nudge (aparelho)
+
+**Status:** concluída em 24/11/2026 (2 quedas pegas via adb no S24 Ultra; re-teste do gesto no aparelho pendente).
+
+- [x] Crash `Canvas: trying to use a recycled bitmap` corrigido (prévia não recicla bitmap em exibição; GC recolhe).
+- [x] `ArtOffset` até ±1 com clamp box-aware (extras/ritmo alcançam a borda direita; on-screen garantido).
 
 ---
 

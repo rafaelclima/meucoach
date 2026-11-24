@@ -72,27 +72,27 @@ class ArtLayoutTest {
     }
 
     @Test
-    fun `offset accepts values up to half the canvas`() {
-        assertThat(ArtOffset(dx = 0.5f, dy = -0.5f).dx).isEqualTo(0.5f)
-        assertThat(ArtOffset(dx = -0.5f, dy = 0.5f).dy).isEqualTo(0.5f)
+    fun `offset accepts values up to a full canvas`() {
+        assertThat(ArtOffset(dx = 1f, dy = -1f).dx).isEqualTo(1f)
+        assertThat(ArtOffset(dx = -1f, dy = 1f).dy).isEqualTo(1f)
     }
 
     @Test
-    fun `offset rejects non finite values and values beyond half the canvas`() {
+    fun `offset rejects non finite values and values beyond a full canvas`() {
         assertThatThrownBy { ArtOffset(dx = Float.NaN) }
             .isInstanceOf(IllegalArgumentException::class.java)
         assertThatThrownBy { ArtOffset(dy = Float.POSITIVE_INFINITY) }
             .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { ArtOffset(dx = 0.5001f) }
+        assertThatThrownBy { ArtOffset(dx = 1.0001f) }
             .isInstanceOf(IllegalArgumentException::class.java)
-        assertThatThrownBy { ArtOffset(dy = -0.5001f) }
+        assertThatThrownBy { ArtOffset(dy = -1.0001f) }
             .isInstanceOf(IllegalArgumentException::class.java)
     }
 
     @Test
     fun `withOffset rejects an invalid offset`() {
         assertThatThrownBy {
-            ArtLayout().withOffset(ArtBlock.DISTANCE, ArtOffset(dx = 0.6f))
+            ArtLayout().withOffset(ArtBlock.DISTANCE, ArtOffset(dx = 1.1f))
         }.isInstanceOf(IllegalArgumentException::class.java)
     }
 

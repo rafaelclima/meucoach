@@ -172,6 +172,25 @@ class ArtLayoutEngineTest {
     }
 
     @Test
+    fun `a narrow block can reach the right edge of the free region`() {
+        val moved = engine.layout(
+            format = ArtFormat.PORTRAIT_4_5,
+            background = ArtBackgroundMode.TRANSPARENT,
+            layout = ArtLayout(extrasOffset = ArtOffset(1f, 0f)),
+            text = text(),
+            canvasHeight = 1350f,
+            logoAspectRatio = LOGO_ASPECT,
+        )
+        val extras = checkNotNull(moved.extras)
+
+        // A full-canvas offset used to stop at ±0.5, stranding narrow blocks
+        // ~130 px before the edge; the box-aware clamp is what keeps the
+        // block on-screen.
+        assertThat(extras.bounds.right).isCloseTo(1048f, within(0.01f))
+        assertThat(extras.bounds.left).isGreaterThan(88f)
+    }
+
+    @Test
     fun `offsets are clamped by the block box and the free region`() {
         val base = layout(format = ArtFormat.PORTRAIT_4_5)
         val clamped = engine.layout(
