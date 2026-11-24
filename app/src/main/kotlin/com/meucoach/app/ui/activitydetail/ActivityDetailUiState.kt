@@ -6,6 +6,8 @@ import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.feedback.SessionComparison
 import com.meucoach.core.domain.insights.ActivityInsight
+import com.meucoach.core.domain.story.ArtBlock
+import com.meucoach.core.domain.story.ArtPhotoCrop
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
@@ -71,6 +73,11 @@ data class StoryExtraOption(
 /**
  * Recipe being edited in the Story Studio. The plan is resolved in the view
  * model for the current activity, so the three-frame preview only draws.
+ *
+ * The art recipe is the effective combination of the shared style
+ * (`meucoach_art`) and the per-activity photo record (`files/art_photo/`).
+ * The style store never persists the photo; the photo store owns
+ * `background` and `photo` (ADR 0061 §2.3).
  */
 data class StoryStudioUiState(
     val isOpen: Boolean = false,
@@ -79,12 +86,31 @@ data class StoryStudioUiState(
     val extras: List<StoryExtraOption> = emptyList(),
     /** Whether the recipe is written to `meucoach_story` when the video is generated. */
     val saveAsDefault: Boolean = true,
-    /** Recipe of the transparent route card tab; persistence lands with F7. */
+    /** Effective art recipe: shared style plus the activity photo (background/photo). */
     val artRecipe: ArtRecipe = ArtRecipe(),
     /** Whether the art recipe is written to `meucoach_art` when saved or shared. */
     val artSaveAsDefault: Boolean = true,
-    /** State of the last Compartilhar/Salvar PNG of the art tab. */
+    /** State of the last Compartilhar/Salvar of the art tab. */
     val artExport: ArtExportUiState = ArtExportUiState.Idle,
+    /** Block selected for the accessible nudge controls. */
+    val artSelectedBlock: ArtBlock = ArtBlock.DISTANCE,
+    /** True while an import/crop/remove/toggle touches the photo store. */
+    val artPhotoBusy: Boolean = false,
+    /** User-facing photo failure with retry; never carries URIs or paths. */
+    val artPhotoError: String? = null,
+    /** One-time warning when the stored photo file is gone (fallback to transparent). */
+    val artMissingPhotoWarning: Boolean = false,
+    /** True while the full-screen crop step is open inside the Studio. */
+    val artCropEditing: Boolean = false,
+    /** Draft focus/zoom edited in the crop step; applied on Confirm. */
+    val artCropDraft: ArtPhotoCrop = ArtPhotoCrop(),
+    /** Source dimensions of the stored photo, when known (for zoom limits/warnings). */
+    val artPhotoSourceWidth: Int? = null,
+    val artPhotoSourceHeight: Int? = null,
+    /** Low-resolution warning for the current crop (<1080 soft, <540 strong). */
+    val artPhotoQualityWarning: String? = null,
+    /** True while the remove-photo confirmation is shown. */
+    val artShowRemoveConfirm: Boolean = false,
 )
 
 data class ActivityDetailUiState(

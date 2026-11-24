@@ -25,10 +25,16 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.story.ArtBackgroundMode
+import com.meucoach.core.domain.story.ArtBlock
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
 import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtLayout
+import com.meucoach.core.domain.story.ArtPhotoCrop
+import com.meucoach.core.domain.story.ArtPhotoRef
 import com.meucoach.core.domain.story.ArtRecipe
+import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.RouteData
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMetricCatalog
@@ -234,7 +240,9 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("story-tab-art").performClick()
 
         compose.onNode(
-            hasContentDescription("Prévia da arte 4:5, texto branco, traçado lima, fonte Inter, fundo transparente"),
+            hasContentDescription(
+                "Prévia da arte 4:5, texto branco, traçado lima, fonte Inter, fundo transparente, layout Topo, texto 100%",
+            ),
         ).assertExists()
     }
 
@@ -383,7 +391,7 @@ class ArtStudioContentTest {
         compose.onNodeWithTag("art-poster-vs-art").assertIsDisplayed()
         compose.onNodeWithText(
             "Pôster automático: opaco, nasce com o vídeo. " +
-                "Arte PNG: transparente, para colar sobre uma foto.",
+                "Arte: transparente (PNG) ou com sua foto (JPG).",
         ).assertIsDisplayed()
     }
 
@@ -497,7 +505,7 @@ class ArtStudioContentTest {
         compose.onNode(
             hasContentDescription(
                 "Prévia da arte 4:5, texto branco, traçado lima, fonte Inter, " +
-                    "extras data e fc média, fundo transparente",
+                    "extras data e fc média, fundo transparente, layout Topo, texto 100%",
             ),
         ).assertExists()
     }
@@ -525,7 +533,7 @@ class ArtStudioContentTest {
         )
 
         compose.onNodeWithTag("story-tab-art").performClick()
-        compose.onNodeWithText("Não foi possível gerar o PNG da arte. Tente novamente.")
+        compose.onNodeWithText("Não foi possível gerar a imagem da arte. Tente novamente.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithTag("art-export-retry").performScrollTo().performClick()
@@ -541,6 +549,14 @@ class ArtStudioContentTest {
         recipeState: State<ArtRecipe>? = null,
         exportState: State<ArtExportUiState>? = null,
         fontScale: Float = 1f,
+        artSelectedBlock: ArtBlock = ArtBlock.DISTANCE,
+        artPhotoBusy: Boolean = false,
+        artPhotoError: String? = null,
+        artMissingPhotoWarning: Boolean = false,
+        artCropEditing: Boolean = false,
+        artCropDraft: ArtPhotoCrop = ArtPhotoCrop(),
+        artPhotoQualityWarning: String? = null,
+        artShowRemoveConfirm: Boolean = false,
         onFormat: (ArtFormat) -> Unit = {},
         onToggleExtra: (StoryExtra) -> Unit = {},
         onTextColor: (ArtColor) -> Unit = {},
@@ -551,6 +567,25 @@ class ArtStudioContentTest {
         onShare: (android.net.Uri) -> Unit = {},
         onShareConsumed: () -> Unit = {},
         onRetry: () -> Unit = {},
+        onBackground: (ArtBackgroundMode) -> Unit = {},
+        onTemplate: (ArtTemplate) -> Unit = {},
+        onBlock: (ArtBlock) -> Unit = {},
+        onNudge: (ArtBlock, Float, Float) -> Unit = { _, _, _ -> },
+        onTextScale: (Int) -> Unit = {},
+        onPickPhoto: (android.net.Uri?) -> Unit = {},
+        onRetryPhoto: () -> Unit = {},
+        onDismissPhotoError: () -> Unit = {},
+        onDismissMissingPhoto: () -> Unit = {},
+        onOpenCrop: () -> Unit = {},
+        onCropChange: (Float, Float, Float) -> Unit = { _, _, _ -> },
+        onCenterCrop: () -> Unit = {},
+        onFrameCrop: () -> Unit = {},
+        onApplyCrop: () -> Unit = {},
+        onCancelCrop: () -> Unit = {},
+        onRequestRemove: () -> Unit = {},
+        onCancelRemove: () -> Unit = {},
+        onRemovePhoto: () -> Unit = {},
+        onLoadPhoto: (suspend (ArtPhotoRef, ArtFormat, Int) -> android.graphics.Bitmap?) = { _, _, _ -> null },
     ) {
         compose.setContent {
             val density = LocalDensity.current
@@ -564,6 +599,14 @@ class ArtStudioContentTest {
                             saveAsDefault = true,
                             artRecipe = recipeState?.value ?: artRecipe,
                             artExport = exportState?.value ?: artExport,
+                            artSelectedBlock = artSelectedBlock,
+                            artPhotoBusy = artPhotoBusy,
+                            artPhotoError = artPhotoError,
+                            artMissingPhotoWarning = artMissingPhotoWarning,
+                            artCropEditing = artCropEditing,
+                            artCropDraft = artCropDraft,
+                            artPhotoQualityWarning = artPhotoQualityWarning,
+                            artShowRemoveConfirm = artShowRemoveConfirm,
                         ),
                         avatar = null,
                         introSeen = true,
@@ -587,11 +630,272 @@ class ArtStudioContentTest {
                             onShare = onShare,
                             onShareConsumed = onShareConsumed,
                             onRetry = onRetry,
+                            onBackground = onBackground,
+                            onTemplate = onTemplate,
+                            onBlock = onBlock,
+                            onNudge = onNudge,
+                            onTextScale = onTextScale,
+                            onPickPhoto = onPickPhoto,
+                            onRetryPhoto = onRetryPhoto,
+                            onDismissPhotoError = onDismissPhotoError,
+                            onDismissMissingPhoto = onDismissMissingPhoto,
+                            onOpenCrop = onOpenCrop,
+                            onCropChange = onCropChange,
+                            onCenterCrop = onCenterCrop,
+                            onFrameCrop = onFrameCrop,
+                            onApplyCrop = onApplyCrop,
+                            onCancelCrop = onCancelCrop,
+                            onRequestRemove = onRequestRemove,
+                            onCancelRemove = onCancelRemove,
+                            onRemovePhoto = onRemovePhoto,
+                            onLoadPhoto = onLoadPhoto,
                         ),
                     )
                 }
             }
         }
+    }
+
+    @Test
+    fun `the background toggle switches between transparent and photo`() {
+        var background: ArtBackgroundMode? = null
+        setContent(onBackground = { background = it })
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-background-photo").performScrollTo().performClick()
+
+        assertThat(background).isEqualTo(ArtBackgroundMode.PHOTO)
+    }
+
+    @Test
+    fun `transparent mode hides the photo card`() {
+        setContent(artRecipe = ArtRecipe(background = ArtBackgroundMode.TRANSPARENT))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-photo-pick").assertDoesNotExist()
+        compose.onNodeWithText("Fundo transparente").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the photo card appears in photo mode`() {
+        setContent(artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-photo-label").assertIsDisplayed()
+        compose.onNodeWithTag("art-photo-empty").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-photo-pick").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `photo mode hides the checker and shows the photo label`() {
+        setContent(artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-photo-label").assertIsDisplayed()
+        compose.onNodeWithTag("art-checker-dark").assertDoesNotExist()
+    }
+
+    @Test
+    fun `photo mode without a photo disables the ctas with a reason`() {
+        setContent(artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, photo = null))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-share").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("art-save").assertIsNotEnabled()
+        compose.onNodeWithTag("art-photo-required").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `photo mode ctas say salvar jpg`() {
+        val photo = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        setContent(artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, photo = photo))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithText("Salvar JPG").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Salvar PNG").assertDoesNotExist()
+    }
+
+    @Test
+    fun `transparent ctas keep salvar png`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithText("Salvar PNG").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a done photo export confirms the jpg gallery path`() {
+        val photo = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        setContent(
+            artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, photo = photo),
+            artExport = ArtExportUiState.Done(
+                uri = android.net.Uri.parse("content://media/external/images/1"),
+                savedToGallery = true,
+                forShare = false,
+                reused = false,
+            ),
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("JPG salvo em Pictures/MeuCoach.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `the position card is always visible with templates and blocks`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-position-card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-template-top").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-template-center").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-template-bottom").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-block-distance").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-nudge-up").performScrollTo().assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun `templates expose the radio role`() {
+        setContent(artRecipe = ArtRecipe(layout = ArtLayout(template = ArtTemplate.CENTER)))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        val node = compose.onNodeWithTag("art-template-center").performScrollTo().fetchSemanticsNode()
+
+        assertThat(node.config.getOrElse(SemanticsProperties.Selected) { false }).isTrue()
+    }
+
+    @Test
+    fun `nudge buttons name the block and direction`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNode(hasContentDescription("Mover distância para cima")).assertExists()
+        compose.onNodeWithTag("art-nudge-up").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("art-nudge-down").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("art-nudge-left").performScrollTo().assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("art-nudge-right").performScrollTo().assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun `a far nudge persists the clamped offset`() {
+        var nudged: Triple<ArtBlock, Float, Float>? = null
+        setContent(onNudge = { block, dx, dy -> nudged = Triple(block, dx, dy) })
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-nudge-right").performScrollTo().performClick()
+
+        assertThat(nudged?.first).isEqualTo(ArtBlock.DISTANCE)
+        assertThat(nudged?.second ?: 0f).isCloseTo(0.02f, org.assertj.core.api.Assertions.within(0.001f))
+    }
+
+    @Test
+    fun `the text scale stepper labels the value and steps by five`() {
+        var scale: Int? = null
+        setContent(
+            artRecipe = ArtRecipe(layout = ArtLayout(textScalePercent = 100)),
+            onTextScale = { scale = it },
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("Tamanho do texto: 100%").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-text-scale-plus").performScrollTo().performClick()
+
+        assertThat(scale).isEqualTo(105)
+    }
+
+    @Test
+    fun `the preview description names mode template and scale`() {
+        val photo = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        setContent(
+            artRecipe = ArtRecipe(
+                background = ArtBackgroundMode.PHOTO,
+                photo = photo,
+                layout = ArtLayout(template = ArtTemplate.CENTER, textScalePercent = 100),
+            ),
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNode(
+            hasContentDescription(
+                "Prévia da arte 4:5, texto branco, traçado lima, fonte Inter, " +
+                    "fundo foto, layout Centro, texto 100%",
+            ),
+        ).assertExists()
+    }
+
+    @Test
+    fun `photo mode without a photo shows the empty preview`() {
+        setContent(artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, photo = null))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-preview-photo-empty").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the crop editor exposes accessible controls`() {
+        val photo = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        setContent(
+            artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, photo = photo),
+            artCropEditing = true,
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-crop-preview").assertIsDisplayed()
+        compose.onNodeWithTag("art-crop-up").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("art-crop-zoom-in").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithTag("art-crop-center").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-crop-frame").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-crop-cancel").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-crop-apply").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `the remove confirmation names the fallback`() {
+        val photo = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        var removed = false
+        setContent(
+            artRecipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, photo = photo),
+            artShowRemoveConfirm = true,
+            onRemovePhoto = { removed = true },
+        )
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithText("Remover a foto? A arte volta ao fundo transparente.").assertIsDisplayed()
+        compose.onNodeWithTag("art-photo-confirm-remove").performClick()
+
+        assertThat(removed).isTrue()
+    }
+
+    @Test
+    fun `a photo error shows a retry without technical detail`() {
+        setContent(artPhotoError = "Não foi possível ler a foto. Tente outra imagem.")
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+
+        compose.onNodeWithTag("art-photo-error").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("art-photo-retry").performScrollTo().assertIsDisplayed()
     }
 
     private fun extraOptions(unavailable: Set<StoryExtra> = emptySet()): List<StoryExtraOption> =

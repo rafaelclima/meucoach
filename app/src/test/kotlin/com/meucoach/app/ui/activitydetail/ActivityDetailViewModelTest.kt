@@ -101,6 +101,7 @@ class ActivityDetailViewModelTest {
             .edit().clear().commit()
         context.getSharedPreferences(ArtRecipeStore.PREFERENCES, Context.MODE_PRIVATE)
             .edit().clear().commit()
+        java.io.File(context.filesDir, com.meucoach.app.story.ArtPhotoStore.DIRECTORY).deleteRecursively()
         database =
             Room
                 .inMemoryDatabaseBuilder(context, MeuCoachDatabase::class.java)
@@ -268,6 +269,7 @@ class ActivityDetailViewModelTest {
 
     @Test
     fun `requires an activity id`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         assertThatThrownBy {
             ActivityDetailViewModel(
                 SavedStateHandle(),
@@ -276,13 +278,17 @@ class ActivityDetailViewModelTest {
                 StorySessionResolver(plans),
                 FakeMapBackgroundRenderer(),
                 FakeStoryExportCoordinator(),
-                StoryExportFailureStore(ApplicationProvider.getApplicationContext()),
-                StoryIntroStore(ApplicationProvider.getApplicationContext()),
-                StoryRecipeStore(ApplicationProvider.getApplicationContext()),
-                ArtRecipeStore(ApplicationProvider.getApplicationContext()),
+                StoryExportFailureStore(context),
+                StoryIntroStore(context),
+                StoryRecipeStore(context),
+                ArtRecipeStore(context),
+                com.meucoach.app.story.ArtPhotoStore(context),
+                com.meucoach.app.story.ArtPhotoImporter(context, com.meucoach.app.story.ArtPhotoStore(context)),
+                com.meucoach.app.story.ArtPhotoLoader(com.meucoach.app.story.ArtPhotoStore(context)),
+                context,
                 FakeArtPngExporter(),
                 com.meucoach.app.profile.ProfilePhotoStore(
-                    ApplicationProvider.getApplicationContext(),
+                    context,
                 ),
                 FakeTimeProvider(),
                 GetSessionComparison(repository, executions, prescriptions, plans),
@@ -301,26 +307,41 @@ class ActivityDetailViewModelTest {
         intro: StoryIntroStore = StoryIntroStore(ApplicationProvider.getApplicationContext()),
         artPngExporter: ArtPngExporter = FakeArtPngExporter(),
         artStore: ArtRecipeStore = ArtRecipeStore(ApplicationProvider.getApplicationContext()),
-    ) = ActivityDetailViewModel(
-        savedStateHandle = SavedStateHandle(
-            mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
-        ),
-        repository = repository,
-        profileRepository = profiles,
-        sessions = StorySessionResolver(plans),
-        mapRenderer = mapRenderer,
-        storyCoordinator = coordinator,
-        storyFailures = failures,
-        storyIntro = intro,
-        storyRecipe = StoryRecipeStore(ApplicationProvider.getApplicationContext()),
-        artRecipeStore = artStore,
-        artPngExporter = artPngExporter,
-        profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
-            ApplicationProvider.getApplicationContext(),
-        ),
-        timeProvider = FakeTimeProvider(),
-        comparisons = GetSessionComparison(repository, executions, prescriptions, plans),
-    )
+        photoStore: com.meucoach.app.story.ArtPhotoStore? = null,
+        photoImporter: com.meucoach.app.story.ArtPhotoImporter? = null,
+        photoLoader: com.meucoach.app.story.ArtPhotoLoader? = null,
+    ): ActivityDetailViewModel {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        // One store per test so photo state never leaks between cases; the files
+        // directory is cleared in setUp only for the default store, so tests that
+        // pass their own store clear it explicitly.
+        val resolvedPhotoStore = photoStore ?: com.meucoach.app.story.ArtPhotoStore(context)
+        return ActivityDetailViewModel(
+            savedStateHandle = SavedStateHandle(
+                mapOf(ActivityDetailViewModel.ARG_ACTIVITY_ID to activityId),
+            ),
+            repository = repository,
+            profileRepository = profiles,
+            sessions = StorySessionResolver(plans),
+            mapRenderer = mapRenderer,
+            storyCoordinator = coordinator,
+            storyFailures = failures,
+            storyIntro = intro,
+            storyRecipe = StoryRecipeStore(context),
+            artRecipeStore = artStore,
+            artPhotoStore = resolvedPhotoStore,
+            artPhotoImporter = photoImporter
+                ?: com.meucoach.app.story.ArtPhotoImporter(context, resolvedPhotoStore),
+            artPhotoLoader = photoLoader ?: com.meucoach.app.story.ArtPhotoLoader(resolvedPhotoStore),
+            appContext = context,
+            artPngExporter = artPngExporter,
+            profilePhotos = com.meucoach.app.profile.ProfilePhotoStore(
+                context,
+            ),
+            timeProvider = FakeTimeProvider(),
+            comparisons = GetSessionComparison(repository, executions, prescriptions, plans),
+        )
+    }
 
     @Test
     fun `forwards the selected map style to the renderer`() {

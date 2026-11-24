@@ -189,6 +189,12 @@ class StoryStudioContentTest {
     fun `describes the preview frame to TalkBack`() {
         setContent()
 
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose
+                .onAllNodes(hasContentDescription("Prévia do story — Abertura"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
         compose.onNode(hasContentDescription("Prévia do story — Abertura")).assertIsDisplayed()
     }
 

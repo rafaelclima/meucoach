@@ -2,6 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -67,9 +68,14 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
+import com.meucoach.core.domain.story.ArtBackgroundMode
+import com.meucoach.core.domain.story.ArtBlock
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
 import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtPhotoCrop
+import com.meucoach.core.domain.story.ArtPhotoRef
+import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
@@ -124,10 +130,29 @@ fun ActivityDetailScreen(
                 onSaveAsDefault = viewModel::setArtSaveAsDefault,
                 onReset = viewModel::resetArtRecipe,
                 onShareClick = viewModel::shareArt,
-                onShare = { uri -> shareMedia(context, uri, "image/png", "Compartilhar arte") },
+                onShare = { uri -> shareMedia(context, uri, "image/*", "Compartilhar arte") },
                 onShareConsumed = viewModel::consumeArtShare,
                 onSave = viewModel::saveArtPng,
                 onRetry = viewModel::retryArtExport,
+                onBackground = viewModel::selectBackground,
+                onTemplate = viewModel::selectTemplate,
+                onBlock = viewModel::selectBlock,
+                onNudge = viewModel::nudgeBlock,
+                onTextScale = viewModel::setTextScale,
+                onPickPhoto = viewModel::pickPhoto,
+                onRetryPhoto = viewModel::retryPhotoImport,
+                onDismissPhotoError = viewModel::dismissPhotoError,
+                onDismissMissingPhoto = viewModel::dismissMissingPhotoWarning,
+                onOpenCrop = viewModel::openCrop,
+                onCropChange = viewModel::updateCrop,
+                onCenterCrop = viewModel::centerCropFocus,
+                onFrameCrop = viewModel::frameCrop,
+                onApplyCrop = viewModel::applyCrop,
+                onCancelCrop = viewModel::cancelCrop,
+                onRequestRemove = viewModel::requestRemovePhoto,
+                onCancelRemove = viewModel::cancelRemovePhoto,
+                onRemovePhoto = viewModel::removePhoto,
+                onLoadPhoto = viewModel::loadPhotoBitmap,
             ),
         ),
         modifier = modifier,
@@ -155,8 +180,10 @@ internal data class StoryStudioActions(
 )
 
 /**
- * Art tab callbacks (ADR 0058 §2.8). The VM renders and publishes; the screen
- * only opens the share sheet when the export finishes for Compartilhar.
+ * Art tab callbacks (ADR 0058 §2.8, photo studio ADR 0061). The VM renders and
+ * publishes; the screen only opens the share sheet when the export finishes
+ * for Compartilhar. Photo loading goes through the VM so Hilt owns the store;
+ * the Studio keeps the returned bitmap and recycles it on change.
  */
 internal data class ArtStudioActions(
     val onFormat: (ArtFormat) -> Unit = {},
@@ -172,9 +199,30 @@ internal data class ArtStudioActions(
     val onShare: (Uri) -> Unit = {},
     /** Marks the share handoff as delivered so it never replays (P0-2). */
     val onShareConsumed: () -> Unit = {},
-    /** Starts the render+publish of Salvar PNG. */
+    /** Starts the render+publish of Salvar (PNG transparent, JPG photo). */
     val onSave: () -> Unit = {},
     val onRetry: () -> Unit = {},
+    val onBackground: (ArtBackgroundMode) -> Unit = {},
+    val onTemplate: (ArtTemplate) -> Unit = {},
+    val onBlock: (ArtBlock) -> Unit = {},
+    val onNudge: (ArtBlock, Float, Float) -> Unit = { _, _, _ -> },
+    val onTextScale: (Int) -> Unit = {},
+    /** PhotoPicker result; null is a cancel and stays a no-op. */
+    val onPickPhoto: (Uri?) -> Unit = {},
+    val onRetryPhoto: () -> Unit = {},
+    val onDismissPhotoError: () -> Unit = {},
+    val onDismissMissingPhoto: () -> Unit = {},
+    val onOpenCrop: () -> Unit = {},
+    val onCropChange: (Float, Float, Float) -> Unit = { _, _, _ -> },
+    val onCenterCrop: () -> Unit = {},
+    val onFrameCrop: () -> Unit = {},
+    val onApplyCrop: () -> Unit = {},
+    val onCancelCrop: () -> Unit = {},
+    val onRequestRemove: () -> Unit = {},
+    val onCancelRemove: () -> Unit = {},
+    val onRemovePhoto: () -> Unit = {},
+    /** Loads the cropped photo at [targetWidth]; the caller owns the bitmap. */
+    val onLoadPhoto: (suspend (ArtPhotoRef, ArtFormat, Int) -> Bitmap?) = { _, _, _ -> null },
 )
 
 @Composable

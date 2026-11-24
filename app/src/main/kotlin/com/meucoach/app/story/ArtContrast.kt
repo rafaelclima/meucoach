@@ -61,6 +61,26 @@ object ArtContrast {
     }
 
     /**
+     * Photo-mode verdict (ADR 0061 §2.5): the text sits on the 58% scrim, so it
+     * is compared to the scrim composited over black and over white. The route
+     * keeps the casing check. The copy suggests moving the block or changing
+     * the color.
+     */
+    fun photoWarning(text: ArtColor, route: ArtColor): String? {
+        val textMessage = photoTextWarning(text)
+        val routeMessage = routeWarning(route)
+        return when {
+            textMessage != null && routeMessage != null ->
+                "Texto e traçado com pouco contraste — troque a cor do texto ou mova o bloco."
+
+            textMessage != null ->
+                "Texto com pouco contraste — troque a cor do texto ou mova o bloco."
+
+            else -> routeMessage
+        }
+    }
+
+    /**
      * The text is drawn straight on the transparent canvas, so it must clear
      * AA on both checker extremes. No palette color does; the warning is
      * consultative and tells the user to check the actual photo.
@@ -82,6 +102,17 @@ object ArtContrast {
         ) < ROUTE_THRESHOLD
     ) {
         "Traçado com pouco contraste — confira sobre a foto."
+    } else {
+        null
+    }
+
+    /** Photo-mode text: 58% scrim composited over the dark and light extremes. */
+    fun photoTextWarning(text: ArtColor): String? = if (minOf(
+            ratio(text.argb, photoBackdrop(0xFF000000.toInt())),
+            ratio(text.argb, photoBackdrop(0xFFFFFFFF.toInt())),
+        ) < TEXT_THRESHOLD
+    ) {
+        "Texto com pouco contraste — troque a cor do texto ou mova o bloco."
     } else {
         null
     }

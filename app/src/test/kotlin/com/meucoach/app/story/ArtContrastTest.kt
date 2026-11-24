@@ -65,4 +65,18 @@ class ArtContrastTest {
 
         assertThat(ArtContrast.ratio(ArtColor.BLACK.argb, backdrop)).isLessThan(4.5)
     }
+
+    @Test
+    fun `white text passes the photo scrim check while black text warns`() {
+        assertThat(ArtContrast.photoTextWarning(ArtColor.WHITE)).isNull()
+        assertThat(ArtContrast.photoTextWarning(ArtColor.BLACK))
+            .isEqualTo("Texto com pouco contraste — troque a cor do texto ou mova o bloco.")
+    }
+
+    @Test
+    fun `photo warning suggests moving the block`() {
+        assertThat(ArtContrast.photoWarning(ArtColor.BLACK, ArtColor.LIME))
+            .isEqualTo("Texto com pouco contraste — troque a cor do texto ou mova o bloco.")
+        assertThat(ArtContrast.photoWarning(ArtColor.WHITE, ArtColor.LIME)).isNull()
+    }
 }

@@ -1,6 +1,78 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 23/11/2026 (Arte com Foto — F4 renderer concluída; F5 é a próxima)
+**Atualizado:** 24/11/2026 (Arte com Foto — F5 UI Studio concluída; F6 é a próxima)
+
+## Sessão 2026-11-24 — Arte com Foto F5 (UI Studio)
+
+**Escopo:** somente a fatia F5 do PRD v0.3/ADR 0061. Sem publishJpg/cache/reuso JPG (F6),
+sem DataResetCoordinator/deleteActivity/sweep (F7) e sem mudanças no renderer transparente.
+
+### Concluído
+
+- **ViewModel (`ActivityDetailViewModel` + `ActivityDetailViewModelArtPhoto.kt`):**
+  `selectBackground`, `selectTemplate`, `selectBlock`, `nudgeBlock` (passo 2% com
+  clamp efetivo via `ArtLayoutEngine.effectiveOffset`), `setTextScale` (80–130 passo 5),
+  `pickPhoto` (PhotoPicker, cancel no-op, import atômico via `ArtPhotoImporter`),
+  `openCrop`/`updateCrop`/`applyCrop`/`cancelCrop`/`centerCropFocus`/`frameCrop`,
+  `requestRemovePhoto`/`cancelRemovePhoto`/`removePhoto` (confirmação) e
+  `resetArtRecipe` (limpa estilo + foto da atividade). Estilo (`ArtRecipeStore`) e foto
+  (`ArtPhotoStore`) combinados em `artRecipe` efetiva; foto nunca salva no store de estilo.
+  Snapshot carregado ao abrir; `missingPhoto` cai para transparente com aviso único, sem crash.
+  Import/crop/remoção com `artPhotoBusy`/`artPhotoError`/retry, serializados pelo mutex do store.
+  Zoom limitado para crop ≥540 px; avisos <1080 (suave) e <540 (forte). Toggle Transparente
+  mantém a foto em espera; PHOTO sem foto fica transitório (não persiste) com CTA desabilitado.
+- **Export F5 (interino):** `exportArt` em PHOTO curto-circuita para o erro neutro
+  ("Não foi possível gerar a imagem da arte. Tente novamente."); o publish JPG real,
+  cache/reuso e `StoryFileNames.artPhoto` ficam para F6. Labels/confirmations já condicionais
+  ("Salvar JPG"/"Salvar PNG", "JPG salvo..."/"PNG salvo..."). Sem contradição bloqueante:
+  a UI F5 não exige publish JPG para passar nos gates.
+- **Motor:** `ArtLayoutEngine.effectiveOffset` (base vs candidato, clamp box-aware + safe area;
+  offset persistido já é efetivo) e `ArtLayoutTextFactory.fromPlan` (mesmas linhas do renderer).
+  `ArtContrast.photoWarning`/`photoTextWarning` sobre o composto scrim 58% (copy orienta
+  trocar cor/mover bloco). `StoryMessages.ART_EXPORT_FAILED` neutro. Aba "Arte" (tag Mantida).
+- **UI (`ArtStudioContent`):** toggle Transparente|Foto (48 dp, selectableGroup), card Foto
+  (thumbnail via `ArtPhotoLoader` 540, Escolher/Trocar/Remover/Ajustar, vazio
+  "Escolha uma foto para o fundo", confirmação "Remover a foto? A arte volta ao fundo
+  transparente.", busy/error/retry, missing + quality warnings), card Posição sempre visível
+  (3 templates RadioButton, 4 chips, 4 nudges "Mover distância para cima" etc. 48 dp),
+  card Tamanho do texto (stepper − 100% + 80–130 passo 5, label falado), crop em tela cheia
+  (prévia 540, setas 2%, zoom ±0,1, Centralizar/Enquadrar, Cancelar/Aplicar 48 dp TalkBack),
+  prévia fixa com foto (loader 540 + `StoryArtRenderer`, checker só em transparente,
+  contentDescription com modo/template/escala), copy "Arte: transparente (PNG) ou com sua
+  foto (JPG).", "Salvar como padrão salva só o estilo; a foto fica na atividade.",
+  CTAs desabilitados sem rota, em busy/export ou PHOTO sem foto; controles de receita
+  desabilitados em busy/export. Picker `PickVisualMedia` sem permissão.
+- **Testes (TDD):** `ActivityDetailViewModelArtPhotoTest` (13: import/troca/remove, toggle com
+  espera, PHOTO sem foto transitório, estilo×foto, missingPhoto+aviso único, crop open/update/apply,
+  nudge clamp efetivo, escala, export PHOTO neutro), `ArtStudioContentTest` +17 (toggle,
+  cards por modo, empty/error, confirmação, nudge clamp, stepper, crop, JPG/PNG,
+  contentDescription, 48 dp), `ArtLayoutEngineTest` +2 (effective clamp), `ArtContrastTest` +2
+  (photo scrim). `StoryStudioContentTest.describes the preview` com `waitUntil` (flake sob carga).
+- **Goldens:** transparentes do renderer intactos (`art-png-*`, `art-photo-*`). Abas regravadas
+  intencionalmente (`art-studio-tab-*`, `art-studio-colors-light`, `story-studio-*-extras`)
+  pelo novo chrome (toggle/cards + "Arte"). Novos `art-studio-tab-photo-*`
+  (dark/light/9x16/narrow-200) com foto sintética. Revisados no record (sem foto real).
+
+### Gates
+
+- `./gradlew :core:domain:test` verde.
+- `./gradlew :app:testDebugUnitTest` verde (1.458+ testes; flake `StoryStudioContentTest.describes
+  the preview` sob carga corrigido com `waitUntil`; `TodayViewModelPersistTest` não falhou).
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde; `...StoryStudioScreenshotTest`
+  verde separado (combinado sob carga flaka; gates rodados isolados).
+- `./gradlew :app:assembleDebug`, `./gradlew :app:detekt`, `./gradlew spotlessApply &&
+  ./gradlew spotlessCheck` verdes (`LongParameterList` suprimido na VM com split planejado;
+  `LargeClass` resolvido via `ActivityDetailViewModelArtPhoto.kt`).
+- `./gradlew :app:koverVerify` verde (app ~78,7% linhas, gate ≥78%).
+- Nenhuma foto ou dado real no diff; só bitmaps sintéticos.
+
+### Próximo
+
+1. **F6** — export/share: `publishJpg`, `StoryFileNames.artPhoto`, key com fingerprint, reuso/URI
+   e cache PNG+JPG.
+2. **F7** — ciclo de vida: reset (`DataResetCoordinator`), deleteActivity, toggle/remover,
+   órfãos no startup e invalidação do exporter.
+3. **F8** — docs/DoD e validação no S24 Ultra + API 31 + low-RAM.
 
 ## Sessão 2026-11-23 — Arte com Foto F4 (layout medido, templates e scrim)
 

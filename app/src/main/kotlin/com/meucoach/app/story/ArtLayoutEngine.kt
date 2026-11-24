@@ -3,6 +3,7 @@ package com.meucoach.app.story
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.meucoach.core.domain.story.ArtBackgroundMode
+import com.meucoach.core.domain.story.ArtBlock
 import com.meucoach.core.domain.story.ArtFormat
 import com.meucoach.core.domain.story.ArtLayout
 import com.meucoach.core.domain.story.ArtLayoutSpec
@@ -207,6 +208,64 @@ class ArtLayoutEngine(private val typeface: Typeface) {
             route = route,
             scrims = scrims,
         )
+    }
+
+    /**
+     * Effective offset of one block after the box-aware clamp (PRD §5.3). The
+     * renderer applies the same clamp silently; the Studio persists the
+     * effective value so a stored recipe never relies on a silent correction.
+     *
+     * The comparison uses two measured layouts: the base (zero offset for the
+     * block) and the candidate with [desired]. Both share the template, the
+     * text scale and the other blocks, so only the clamp of this block moves
+     * the box.
+     */
+    fun effectiveOffset(
+        format: ArtFormat,
+        background: ArtBackgroundMode,
+        layout: ArtLayout,
+        block: ArtBlock,
+        desired: ArtOffset,
+        text: ArtLayoutText,
+        canvasHeight: Float,
+        logoAspectRatio: Float? = null,
+    ): ArtOffset {
+        require(canvasHeight > 0f) { "Canvas height must be positive." }
+        val safeDesired = ArtOffset(
+            dx = desired.dx.coerceIn(ArtOffset.MIN, ArtOffset.MAX),
+            dy = desired.dy.coerceIn(ArtOffset.MIN, ArtOffset.MAX),
+        )
+        val width = ArtLayoutSpec.DESIGN_WIDTH.toFloat()
+        val base = layout(
+            format = format,
+            background = background,
+            layout = layout.withOffset(block, ArtOffset()),
+            text = text,
+            canvasHeight = canvasHeight,
+            logoAspectRatio = logoAspectRatio,
+        )
+        val candidate = layout(
+            format = format,
+            background = background,
+            layout = layout.withOffset(block, safeDesired),
+            text = text,
+            canvasHeight = canvasHeight,
+            logoAspectRatio = logoAspectRatio,
+        )
+        val baseBounds = boundsOf(base, block) ?: return safeDesired
+        val candidateBounds = boundsOf(candidate, block) ?: return safeDesired
+        val effectiveDx = ((candidateBounds.left - baseBounds.left) / width)
+            .coerceIn(ArtOffset.MIN, ArtOffset.MAX)
+        val effectiveDy = ((candidateBounds.top - baseBounds.top) / canvasHeight)
+            .coerceIn(ArtOffset.MIN, ArtOffset.MAX)
+        return ArtOffset(effectiveDx, effectiveDy)
+    }
+
+    private fun boundsOf(card: ArtCardLayout, block: ArtBlock): ArtRect? = when (block) {
+        ArtBlock.DISTANCE -> card.distance.bounds
+        ArtBlock.PACE_TIME -> card.paceTime.bounds
+        ArtBlock.EXTRAS -> card.extras?.bounds
+        ArtBlock.ROUTE -> card.route.square
     }
 
     private fun topTemplate(

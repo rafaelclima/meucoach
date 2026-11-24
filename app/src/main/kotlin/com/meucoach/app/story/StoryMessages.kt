@@ -21,5 +21,5 @@ object StoryMessages {
     const val ART_NO_ROUTE = "Sem rota suficiente para a arte."
 
     /** Render/publish failure of the art card; the technical detail stays in the log. */
-    const val ART_EXPORT_FAILED = "Não foi possível gerar o PNG da arte. Tente novamente."
+    const val ART_EXPORT_FAILED = "Não foi possível gerar a imagem da arte. Tente novamente."
 }

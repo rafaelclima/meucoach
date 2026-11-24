@@ -116,7 +116,7 @@ internal enum class StoryPreviewFrame(val label: String) {
 /** Tabs of the Studio chrome; both share header, close and the segment. */
 internal enum class StoryStudioTab(val label: String) {
     VIDEO("Vídeo"),
-    ART("Arte PNG"),
+    ART("Arte"),
 }
 
 /**

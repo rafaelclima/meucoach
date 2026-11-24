@@ -307,4 +307,67 @@ class ArtLayoutEngineTest {
     private companion object {
         const val LOGO_ASPECT = 3.8f
     }
+
+    @Test
+    fun `effective offset clamps a far nudge into the safe area`() {
+        val text = ArtLayoutText(
+            distanceLabel = "DISTÂNCIA",
+            distanceValue = "5,00",
+            paceLabel = "RITMO MÉDIO",
+            paceValue = "6:00 /km",
+            timeLabel = "TEMPO TOTAL",
+            timeValue = "30:00",
+            extras = null,
+        )
+        // The pace/time column already hugs the right margin: pushing it half
+        // a canvas right cannot survive the box-aware clamp.
+        val desired = ArtOffset(dx = 0.5f, dy = 0f)
+        val effective = engine.effectiveOffset(
+            format = ArtFormat.PORTRAIT_4_5,
+            background = ArtBackgroundMode.TRANSPARENT,
+            layout = ArtLayout(),
+            block = com.meucoach.core.domain.story.ArtBlock.PACE_TIME,
+            desired = desired,
+            text = text,
+            canvasHeight = ArtFormat.PORTRAIT_4_5.height.toFloat(),
+        )
+        assertThat(effective.dx).isLessThan(0.5f)
+        assertThat(effective.dx).isGreaterThanOrEqualTo(-0.5f)
+        // The effective value round-trips: clamping it again is a no-op.
+        val second = engine.effectiveOffset(
+            format = ArtFormat.PORTRAIT_4_5,
+            background = ArtBackgroundMode.TRANSPARENT,
+            layout = ArtLayout(paceTimeOffset = effective),
+            block = com.meucoach.core.domain.story.ArtBlock.PACE_TIME,
+            desired = effective,
+            text = text,
+            canvasHeight = ArtFormat.PORTRAIT_4_5.height.toFloat(),
+        )
+        assertThat(second.dx).isCloseTo(effective.dx, org.assertj.core.api.Assertions.within(0.001f))
+    }
+
+    @Test
+    fun `effective offset keeps a small nudge untouched`() {
+        val text = ArtLayoutText(
+            distanceLabel = "DISTÂNCIA",
+            distanceValue = "5,00",
+            paceLabel = "RITMO MÉDIO",
+            paceValue = "6:00 /km",
+            timeLabel = "TEMPO TOTAL",
+            timeValue = "30:00",
+            extras = null,
+        )
+        val desired = ArtOffset(dx = 0.02f, dy = -0.02f)
+        val effective = engine.effectiveOffset(
+            format = ArtFormat.PORTRAIT_4_5,
+            background = ArtBackgroundMode.TRANSPARENT,
+            layout = ArtLayout(),
+            block = com.meucoach.core.domain.story.ArtBlock.DISTANCE,
+            desired = desired,
+            text = text,
+            canvasHeight = ArtFormat.PORTRAIT_4_5.height.toFloat(),
+        )
+        assertThat(effective.dx).isCloseTo(0.02f, org.assertj.core.api.Assertions.within(0.001f))
+        assertThat(effective.dy).isCloseTo(-0.02f, org.assertj.core.api.Assertions.within(0.001f))
+    }
 }

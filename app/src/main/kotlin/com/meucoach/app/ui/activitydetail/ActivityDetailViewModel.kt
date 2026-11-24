@@ -1,15 +1,29 @@
 package com.meucoach.app.ui.activitydetail
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Typeface
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import com.meucoach.app.application.GetSessionComparison
+import com.meucoach.app.story.ArtLayoutEngine
+import com.meucoach.app.story.ArtLayoutTextFactory
+import com.meucoach.app.story.ArtPhotoImportError
+import com.meucoach.app.story.ArtPhotoImportResult
+import com.meucoach.app.story.ArtPhotoImporter
+import com.meucoach.app.story.ArtPhotoLoader
+import com.meucoach.app.story.ArtPhotoRecord
+import com.meucoach.app.story.ArtPhotoStore
 import com.meucoach.app.story.ArtPngExport
 import com.meucoach.app.story.ArtPngExporter
 import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.MapBackgroundRenderer
+import com.meucoach.app.story.StoryBranding
 import com.meucoach.app.story.StoryExportCoordinator
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
@@ -19,16 +33,24 @@ import com.meucoach.app.story.StoryPalette
 import com.meucoach.app.story.StoryRecipeStore
 import com.meucoach.app.story.StorySessionResolver
 import com.meucoach.app.story.StoryVideoExporter
+import com.meucoach.app.story.typeface
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ActivityRepository
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.StoredActivity
 import com.meucoach.core.domain.calibration.CalibrationCandidateDetector
 import com.meucoach.core.domain.insights.ActivityInsightsCalculator
+import com.meucoach.core.domain.story.ArtBackgroundMode
+import com.meucoach.core.domain.story.ArtBlock
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
 import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtLayout
+import com.meucoach.core.domain.story.ArtOffset
+import com.meucoach.core.domain.story.ArtPhotoCrop
+import com.meucoach.core.domain.story.ArtPhotoRef
 import com.meucoach.core.domain.story.ArtRecipe
+import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
@@ -41,6 +63,7 @@ import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +76,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
+@Suppress("LongParameterList")
 class ActivityDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: ActivityRepository,
@@ -63,17 +87,27 @@ class ActivityDetailViewModel @Inject constructor(
     private val storyFailures: StoryExportFailureStore,
     private val storyIntro: StoryIntroStore,
     private val storyRecipe: StoryRecipeStore,
-    private val artRecipeStore: ArtRecipeStore,
+    internal val artRecipeStore: ArtRecipeStore,
+    internal val artPhotoStore: ArtPhotoStore,
+    internal val artPhotoImporter: ArtPhotoImporter,
+    internal val artPhotoLoader: ArtPhotoLoader,
+    @ApplicationContext internal val appContext: Context,
     private val artPngExporter: ArtPngExporter,
     private val profilePhotos: com.meucoach.app.profile.ProfilePhotoStore,
     private val timeProvider: TimeProvider,
     private val comparisons: GetSessionComparison,
 ) : ViewModel() {
-    private val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
+    internal val activityId: String = checkNotNull(savedStateHandle[ARG_ACTIVITY_ID]) {
         "Activity detail requires an activityId"
     }
     private val _uiState = MutableStateFlow(ActivityDetailUiState())
     val uiState: StateFlow<ActivityDetailUiState> = _uiState.asStateFlow()
+
+    internal fun currentActivityState(): ActivityDetailUiState = _uiState.value
+
+    internal fun updateActivityState(transform: (ActivityDetailUiState) -> ActivityDetailUiState) {
+        _uiState.update(transform)
+    }
     private val insightsCalculator = ActivityInsightsCalculator()
 
     /** Identifies the export currently allowed to enqueue; null after a cancel. */
@@ -87,6 +121,9 @@ class ActivityDetailViewModel @Inject constructor(
 
     /** Target of the last art export, so "Tentar novamente" re-runs it. */
     private var lastArtExport: Boolean? = null
+
+    /** Last picker URI, so an import failure can retry without reopening the picker. */
+    internal var lastPhotoUri: Uri? = null
 
     init {
         viewModelScope.launch {
@@ -102,7 +139,16 @@ class ActivityDetailViewModel @Inject constructor(
                 plan?.let { StoryMetricValuesResolver.from(it, stored.localDate) }
             }
             val comparison = activity?.let { comparisons.forActivity(it) }
-            val artRecipe = artRecipeStore.load()
+            val artStyle = artRecipeStore.load()
+            val photoSnapshot = artPhotoStore.loadSnapshot(activityId)
+            val artEffective = effectiveRecipe(artStyle, photoSnapshot.record)
+            val photoSize = photoSnapshot.record.photo?.let { photoSourceSize(it.photoId) }
+            val qualityWarning = qualityWarningFor(
+                sourceWidth = photoSize?.first,
+                sourceHeight = photoSize?.second,
+                format = artEffective.format,
+                crop = photoSnapshot.record.photo?.crop,
+            )
             // update(), not a fresh state: the WorkManager observer may have
             // restored a Generating/Done story while this load was running.
             _uiState.update {
@@ -130,7 +176,12 @@ class ActivityDetailViewModel @Inject constructor(
                         recipe = recipe,
                         plan = plan,
                         extras = storyExtraOptions(values),
-                        artRecipe = artRecipe,
+                        artRecipe = artEffective,
+                        artMissingPhotoWarning = photoSnapshot.missingPhoto,
+                        artPhotoSourceWidth = photoSize?.first,
+                        artPhotoSourceHeight = photoSize?.second,
+                        artPhotoQualityWarning = qualityWarning,
+                        artCropDraft = photoSnapshot.record.photo?.crop ?: ArtPhotoCrop(),
                     ),
                 )
             }
@@ -140,6 +191,26 @@ class ActivityDetailViewModel @Inject constructor(
 
     companion object {
         const val ARG_ACTIVITY_ID = "activityId"
+        private const val TAG = "ActivityDetailVM"
+
+        /** Accessible nudge step: 2% of the canvas per tap (PRD §5.3). */
+        const val NUDGE_STEP = 0.02f
+
+        /** Crop focus step for the accessible arrows: 2% of the source. */
+        const val CROP_FOCUS_STEP = 0.02f
+
+        /** Crop zoom step for the accessible −/+ controls. */
+        const val CROP_ZOOM_STEP = 0.1f
+
+        /** Crop side below this allows upscale with a strong warning. */
+        const val MIN_CROP_SIDE = 540
+
+        /** Crop side below this shows the soft low-resolution warning. */
+        const val LOW_RES_SIDE = 1080
+
+        const val PHOTO_LOW_SOFT = "Foto em baixa — o JPG pode ficar suave"
+        const val PHOTO_LOW_STRONG = "Foto em baixa resolução — o JPG pode ficar bem suave"
+        const val PHOTO_MISSING_WARNING = "A foto anterior não foi encontrada; a arte voltou ao fundo transparente."
     }
 
     // ---------------------------------------------------------------------
@@ -233,6 +304,7 @@ class ActivityDetailViewModel @Inject constructor(
 
     fun selectArtFormat(format: ArtFormat) {
         updateArtRecipe { it.copy(format = format) }
+        refreshPhotoQualityWarning()
     }
 
     fun toggleArtExtra(extra: StoryExtra) {
@@ -262,8 +334,41 @@ class ActivityDetailViewModel @Inject constructor(
 
     /** Clears the saved default and returns the art to the documented recipe. */
     fun resetArtRecipe() {
+        if (_uiState.value.storyStudio.artPhotoBusy) return
         artRecipeStore.reset()
-        updateArtRecipe { ArtRecipe() }
+        _uiState.update { state ->
+            state.copy(
+                storyStudio = state.storyStudio.copy(
+                    artRecipe = ArtRecipe(),
+                    artPhotoError = null,
+                    artMissingPhotoWarning = false,
+                    artCropEditing = false,
+                    artCropDraft = ArtPhotoCrop(),
+                    artPhotoSourceWidth = null,
+                    artPhotoSourceHeight = null,
+                    artPhotoQualityWarning = null,
+                    artShowRemoveConfirm = false,
+                    artSelectedBlock = ArtBlock.DISTANCE,
+                    artExport = ArtExportUiState.Idle,
+                ),
+            )
+        }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { artPhotoStore.remove(activityId) }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                Log.w(TAG, "Art photo reset failed", error)
+                _uiState.update {
+                    it.copy(
+                        storyStudio = it.storyStudio.copy(
+                            artPhotoError = photoErrorMessage(ArtPhotoImportError.STORAGE),
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     /** Compartilhar: render + publish, then the share sheet opens on Done. */
@@ -271,7 +376,7 @@ class ActivityDetailViewModel @Inject constructor(
         exportArt(forShare = true)
     }
 
-    /** Salvar PNG: render + publish without opening the share sheet. */
+    /** Salvar: render + publish without opening the share sheet (JPG in photo, PNG transparent). */
     fun saveArtPng() {
         exportArt(forShare = false)
     }
@@ -302,11 +407,29 @@ class ActivityDetailViewModel @Inject constructor(
         val stored = state.activity ?: return
         val studio = state.storyStudio
         val plan = studio.plan ?: return
-        if (plan.route.points.size < 2) return
-        if (studio.artExport is ArtExportUiState.Exporting) return
+        val ready = plan.route.points.size >= 2 &&
+            studio.artExport !is ArtExportUiState.Exporting && !studio.artPhotoBusy
+        if (!ready) return
         val recipe = studio.artRecipe
-        // The documented switch persists the recipe on any successful intent
-        // (Salvar PNG or Compartilhar), mirroring the video Studio.
+        // F6 owns the photo publish (publishJpg/cache/reuse). F5 keeps the
+        // conditional JPG labels and the neutral error, but never publishes a
+        // JPG here: photo export short-circuits to the neutral error.
+        if (recipe.background == ArtBackgroundMode.PHOTO) {
+            lastArtExport = forShare
+            _uiState.update {
+                it.copy(storyStudio = it.storyStudio.copy(artExport = ArtExportUiState.Exporting(forShare)))
+            }
+            _uiState.update {
+                it.copy(
+                    storyStudio = it.storyStudio.copy(
+                        artExport = ArtExportUiState.Error(StoryMessages.ART_EXPORT_FAILED),
+                    ),
+                )
+            }
+            return
+        }
+        // The documented switch persists only the style (format, extras, font,
+        // colors, template, offsets, scale); the photo lives per activity.
         if (studio.artSaveAsDefault) artRecipeStore.save(recipe)
         lastArtExport = forShare
         _uiState.update {
@@ -354,7 +477,7 @@ class ActivityDetailViewModel @Inject constructor(
      * An export in flight is not cancelled: its completion compares the
      * captured recipe and discards itself if the art changed (P0-3).
      */
-    private fun updateArtRecipe(transform: (ArtRecipe) -> ArtRecipe) {
+    internal fun updateArtRecipe(transform: (ArtRecipe) -> ArtRecipe) {
         _uiState.update { state ->
             val current = state.storyStudio.artRecipe
             val next = transform(current)

@@ -15,10 +15,13 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.meucoach.app.story.SyntheticArtPhoto
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.story.ArtBackgroundMode
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtFont
 import com.meucoach.core.domain.story.ArtFormat
+import com.meucoach.core.domain.story.ArtPhotoRef
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMetricCatalog
@@ -103,6 +106,36 @@ class StoryStudioScreenshotTest {
         captureArtTab(name = "art-studio-tab-narrow-200-dark.png", fontScale = 2f, darkTheme = true)
     }
 
+    @Test
+    fun artStudioTabPhotoDark() {
+        captureArtTabPhoto(name = "art-studio-tab-photo-dark.png", fontScale = 1f, darkTheme = true)
+    }
+
+    @Test
+    fun artStudioTabPhotoLight() {
+        captureArtTabPhoto(name = "art-studio-tab-photo-light.png", fontScale = 1f, darkTheme = false)
+    }
+
+    @Test
+    fun artStudioTabPhoto9x16Dark() {
+        captureArtTabPhoto(
+            name = "art-studio-tab-photo-9x16-dark.png",
+            fontScale = 1f,
+            darkTheme = true,
+            format = ArtFormat.PORTRAIT_9_16,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun artStudioTabPhotoNarrow200Dark() {
+        captureArtTabPhoto(
+            name = "art-studio-tab-photo-narrow-200-dark.png",
+            fontScale = 2f,
+            darkTheme = true,
+        )
+    }
+
     private fun captureArtTab(
         name: String,
         fontScale: Float,
@@ -158,6 +191,74 @@ class StoryStudioScreenshotTest {
         if (sectionTag != null) {
             compose.onNodeWithTag(sectionTag).performScrollTo()
         }
+        compose.onRoot().captureRoboImage("src/test/screenshots/$name")
+    }
+
+    private fun captureArtTabPhoto(
+        name: String,
+        fontScale: Float,
+        darkTheme: Boolean,
+        format: ArtFormat = ArtFormat.PORTRAIT_4_5,
+    ) {
+        val photoRef = ArtPhotoRef(
+            photoId = "123e4567-e89b-12d3-a456-426614174000",
+            activityId = "activity-1",
+        )
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density = density.density, fontScale = fontScale),
+            ) {
+                McTheme(darkTheme = darkTheme) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(McTheme.colors.background),
+                    ) {
+                        StoryStudioContent(
+                            state = StoryStudioUiState(
+                                recipe = StoryRecipe(),
+                                plan = checkNotNull(plan())
+                                    .copy(localDate = java.time.LocalDate.parse("2026-10-24")),
+                                extras = options(),
+                                artRecipe = ArtRecipe(
+                                    format = format,
+                                    extras = listOf(StoryExtra.DATE, StoryExtra.AVG_HR),
+                                    font = ArtFont.ANTON,
+                                    routeColor = ArtColor.CORAL,
+                                    background = ArtBackgroundMode.PHOTO,
+                                    photo = photoRef,
+                                ),
+                            ),
+                            avatar = null,
+                            introSeen = true,
+                            onClose = {},
+                            onDismissIntro = {},
+                            onPreset = {},
+                            onToggleExtra = {},
+                            onDuration = {},
+                            onMapStyle = {},
+                            onSaveAsDefault = {},
+                            onReset = {},
+                            onGenerate = {},
+                            artActions = ArtStudioActions(
+                                onLoadPhoto = { _, requestFormat, _ ->
+                                    SyntheticArtPhoto.landscape(
+                                        requestFormat.width,
+                                        requestFormat.height,
+                                    )
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("art-preview-ready-anton").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("art-photo-thumbnail").performScrollTo()
         compose.onRoot().captureRoboImage("src/test/screenshots/$name")
     }
 
