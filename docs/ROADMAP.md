@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.71 · **Data:** 24/11/2026 · **Mudança:** F7 da Arte com foto concluída — ciclo de vida e limpeza (`ArtPhotoStore.clear`, `DataResetCoordinator` com foto/cache/exporter, `deleteActivity` com foto+invalidação, `ArtPhotoStartupSweeper`, `invalidate()`). Próxima fatia: F8 (docs/DoD + aparelho).
+**Versão:** 1.72 · **Data:** 24/11/2026 · **Mudança:** F8 da Arte com foto concluída — docs/DoD fechados (gates isolados verdes, DoD §9 conferido, aparelho como checklist do usuário 0). P3-07 concluída.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -771,7 +771,7 @@ Documentos: [`PRD_ARTE_PNG_ROTA.md`](PRD_ARTE_PNG_ROTA.md), [`ADR 0058`](adr/005
 
 ### P3-07 · Arte com foto (Story Studio)
 
-**Status:** F0–F7 concluídas em 24/11/2026; F8 (docs/DoD + aparelho) é a próxima fatia. Validação visual/memória no aparelho é gate de release.
+**Status:** F0–F8 concluídas em 24/11/2026. Validação física/memória no aparelho pendente com o usuário 0.
 
 Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 0061`](adr/0061-art-photo-studio.md), [`ADR 0058`](adr/0058-art-png-route.md) e [`ADR 0060`](adr/0060-art-png-9x16-layout.md).
 
@@ -783,7 +783,7 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 - [x] F5 — UI Studio: toggle, cards, crop acessível, copy por modo, estados e 200%/360 dp (24/11/2026; ViewModel + UI + `effectiveOffset` + photo warnings + goldens `art-studio-tab-photo-*`; export PHOTO stub neutro, JPG real em F6).
 - [x] F6 — export/share: `publishJpg`, `artPhoto`, key com fingerprint, reuso/URI e cache PNG+JPG (24/11/2026; JPG q92 1080, `Stale` pré-publicação, salvar sempre novo, poda PNG+JPG em 8; 1.481 testes do app, Kover 79,38%, goldens intactos).
 - [x] F7 — ciclo de vida: reset (`DataResetCoordinator` + `clear()` + `invalidate()`), deleteActivity (foto + invalidação best-effort), órfãos no startup (`ArtPhotoStartupSweeper`), toggle/remover/reset com privacidade (24/11/2026; 1.492 testes do app, 0 falhas; goldens intactos).
-- [ ] F8 — docs/DoD e validação no S24 Ultra + API 31 + low-RAM.
+- [x] F8 — docs/DoD e validação (24/11/2026; gates isolados verdes, DoD §9 conferido, aparelho como checklist do usuário 0).
 
 ---
 

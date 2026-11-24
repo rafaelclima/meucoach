@@ -1,6 +1,100 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Arte com Foto — F7 ciclo de vida e limpeza concluída; F8 é a próxima)
+**Atualizado:** 24/11/2026 (Arte com Foto — F7 ciclo de vida e limpeza concluída; F8 docs/DoD concluída; P3-07 concluída)
+
+**Atualizado:** 24/11/2026 (Arte com Foto — F8 docs/DoD concluída; P3-07 concluída; validação física no aparelho pendente)
+
+## Sessão 2026-11-24 — Arte com Foto F8 (docs/DoD e validação)
+
+**Escopo:** somente a fatia F8 do PRD v0.3/ADR 0061. Sem mudança de
+comportamento, renderer, UI, codecs, cache/reuso ou lifecycle. Nenhum
+código de produção ou teste foi alterado; nenhum golden foi regravado.
+
+### Concluído
+
+- **Docs revisados e fechados:** `PROGRESS` (esta sessão), `ROADMAP`
+  (P3-07 concluída, v1.72), `DECISIONS` (revisão 1.89, ADR 0061 como
+  implementado). `DESIGN_SYSTEM` §4.1 já normatiza scrim 58%
+  (alpha 148, raio 48, padding 36), safe area 9:16 Photo (250/340/88),
+  escala 80–130% e crop acessível — conferido contra o PRD §5.3–§5.4 e
+  o ADR 0061 §2.4–§2.5, sem divergência real; nenhum edit necessário.
+- **DoD do PRD §9 conferido item a item** (estado abaixo). Todos os
+  itens de código/teste verdes; só a validação física no aparelho fica
+  como checklist explícito para o usuário 0 — nenhuma validação física
+  foi simulada.
+- **Gates finais rodados isolados, sem combinar sob carga** (cada
+  invocação separada):
+  - `./gradlew :core:domain:test` verde (1.311 testes, 0 falhas).
+  - `./gradlew :app:testDebugUnitTest` verde (1.492 testes, 0 falhas).
+  - `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde e
+    `... --tests "*StoryStudioScreenshotTest"` verde em execução
+    separada.
+  - `./gradlew :app:assembleDebug`, `./gradlew :app:detekt` e
+    `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes
+    (spotless sem alterações).
+  - `./gradlew :app:koverVerify` verde (app 81,44% de linhas, gate
+    ≥78%; sem queda nesta sessão, que não tocou em código).
+- **Goldens:** nenhum golden do renderer ou da UI foi alterado ou
+  regravado. Goldens da feature (intactos): `art-photo-4x5`,
+  `art-photo-1x1`, `art-photo-9x16`, `art-png-4x5-center`,
+  `art-png-4x5-bottom`, `art-png-4x5/1x1/9x16-default`,
+  `art-png-4x5-customized`, `art-studio-tab-photo-*` (dark, light,
+  9x16, narrow-200).
+
+### DoD do PRD §9 — estado
+
+- [x] `assembleDebug`, `check` (unit + Roborazzi isolados),
+  `spotlessCheck`, `koverVerify` e lint/detekt verdes.
+- [x] `verifyRoborazziDebug --tests "*Art*"` verde: transparentes do
+  ADR 0060 intactos + `art-photo-4x5/1x1/9x16` + templates + 80/100/130
+  + `art-studio-tab-photo-*`; `*StoryStudioScreenshotTest*` verde em
+  separado.
+- [x] F1–F8 concluídas; ADR 0061 aceito e implementado; `DESIGN_SYSTEM`
+  com scrim/safe area (sem divergência).
+- [x] PHOTO exporta JPG 1080 (`JPG_QUALITY = 92`, `writeJpg`, MIME
+  `image/jpeg` via `publishJpg`) com foto + scrim + blocos; TRANSPARENT
+  sem regressão (alpha 0 por pixel, `writePng` inalterado).
+- [x] TOP/100/offset 0/TRANSPARENT preserva os goldens do ADR 0060;
+  CENTER/BOTTOM sem sobreposição em 80/100/130 (`ArtLayoutEngineTest`:
+  3 formatos × 3 templates × 80/100/130).
+- [x] `Paint.hasGlyph`/`tnum` intactos nas 6 fontes; data “24 out 2026”
+  inalterada.
+- [x] UI: prévia fixa, 360 dp, 200%, TalkBack, crop acessível
+  (setas/zoom/48 dp), aviso de contraste sobre o composto, copy
+  JPG/PNG, CTA share/save por modo, 48 dp (`ArtStudioContentTest` +
+  goldens `art-studio-tab-photo-*`).
+- [x] Foto: EXIF 8 orientações (`ExifOrientationTest`), 1 por atividade,
+  import atômico (tmp → valida → rename → apaga antiga), troca/remoção
+  com confirmação, toggle Transparente mantém em espera, reset
+  (`DataResetCoordinator` + `clear()` + `invalidate()`), deleteActivity
+  (foto + invalidação, best-effort), órfãos no startup
+  (`ArtPhotoStartupSweeper`, >24 h, nunca apaga referenciada), cache
+  PNG+JPG podado em 8.
+- [x] Android 12+ (API 31+): PhotoPicker sem permissão; MediaStore
+  `Pictures/MeuCoach`; sem `WRITE_EXTERNAL_STORAGE` no código;
+  `allowBackup="false"`.
+- [x] Vídeo, capa, pôster e arte transparente sem regressão (suíte do
+  app + goldens intactos).
+- [ ] Validado no S24 Ultra + emulador API 31 + low-RAM — **pendente**,
+  checklist abaixo para o usuário 0.
+- [x] `PROGRESS`, `ROADMAP` e `DECISIONS` atualizados; `DESIGN_SYSTEM`
+  conferido sem divergência; nenhum dado/foto real no diff; NOTICE OFL
+  intacto (`notice_art_fonts.txt` no APK e no repo).
+
+### Pendências de aparelho (usuário 0 — não simuladas)
+
+- [ ] Picker real do sistema numa corrida (S24 Ultra + emulador API 31).
+- [ ] Import de foto 12 MP: tempo, memória e downsample ≤3072.
+- [ ] Preview 540 e export JPG 1080 no aparelho.
+- [ ] Reset total limpando `files/art_photo/` + `cache/art` + exporter.
+- [ ] `deleteActivity` apagando metadata + foto da atividade.
+- [ ] 200% de fonte / largura 360 dp na aba Arte com foto.
+- [ ] Scrim 58% sobre céu claro e safe area 9:16 Photo no Instagram.
+
+### Próximo
+
+1. Validação física no aparelho pelo usuário 0 (checklist acima).
+2. Próxima feature fora de P3-07 a definir (P3-07 encerrada).
 
 ## Sessão 2026-11-24 — Arte com Foto F7 (limpeza e ciclo de vida)
 

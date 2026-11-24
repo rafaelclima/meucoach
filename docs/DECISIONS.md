@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.87 · **Data:** 23/11/2026
+**Versão:** 1.89 · **Data:** 24/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -85,7 +85,7 @@
 > Revisão 1.85 (22/11/2026): ADR 0058 aceito e implementado (F2–F8) — domínio `ArtRecipe`/`ArtFormat`/`ArtFont`/`ArtColor`, 4 famílias de fonte OFL + NOTICE, `StoryArtRenderer` transparente com alpha por pixel e goldens, aba "Arte PNG" no Studio com prévia checkerboard/debounce/swatches/fonte, `GalleryImagePublisher` extraído do vídeo + export síncrono com reuso por `ArtExportKey`, persistência `meucoach_art` (codec versionado com decode tolerante) e limpeza no reset de dados. Spike de alpha validado no Instagram (alpha preservado via figurinha). Básico validado no aparelho pelo usuário 0 em 22/11/2026.
 > Revisão 1.86 (23/11/2026): remediação da auditoria UI/UX da Arte PNG (P0–P2) e ADR 0060 — 9:16 transparente aditivo (1080×1920), layout comum com distância menor, ritmo/tempo à direita, extras abaixo e sem rodapé, e prévia fixa com controles rolando; PRD v0.3, ADR 0058 estendido, goldens dark/light/200%.
 > Revisão 1.87 (23/11/2026): PRD v0.2 da Arte com foto + ADR 0061 proposto — modo Foto aditivo (JPG q92) + Transparente intacto, templates TOP/CENTER/BOTTOM, 4 blocos independentes com nudge, crop manual, escala 80–130% + scrim 32%, 1 foto só local, codec v2 tolerante; implementação F1–F7 pendente.
-> Revisão 1.88 (23/11/2026): PRD v0.3 + ADR 0061 aceito para implementação após auditoria independente — foto **por atividade** separada do estilo global, import atômico com EXIF e source ≤3072, crop por foco+zoom, `textScalePercent` 80–130% com reflow medido, scrim 58% com aviso sobre o composto, 9:16 Photo full-bleed permitido (mapa/tiles seguem proibidos), codecs de estilo v2 + foto v1, `ArtExportKey` com fingerprint do plano, cache PNG+JPG e fatias F0–F8. Sem código nesta revisão.
+> Revisão 1.89 (24/11/2026): Arte com foto concluída (F0–F8) — modo Foto aditivo com JPG q92 1080, 1 foto por atividade, crop por foco/zoom, templates TOP/CENTER/BOTTOM, escala 80–130% com reflow medido, scrim 58% com aviso sobre o composto, codecs estilo v2 + foto v1, key com fingerprint do plano, cache PNG+JPG, ciclo de vida (reset/deleteActivity/órfãos/invalidate) e DoD §9 conferido com gates isolados verdes; nenhuma validação física simulada, checklist de aparelho com o usuário 0. ADR 0061 passa a implementado; `DESIGN_SYSTEM` §4.1 conferido sem divergência; P3-07 encerrada.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 
@@ -149,7 +149,7 @@ Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decis�
 | [0058](adr/0058-art-png-route.md) | Arte PNG da rota: card transparente 4:5/1:1 no Story Studio, 6 fontes, 8 swatches, 2 extras, `SharedPreferences` `meucoach_art`, Android 12+ / MediaStore, alpha spike e exceção de AA | Aceito e implementado em 22/11/2026 (F2–F7 + spike de alpha validado; básico validado no aparelho pelo usuário 0); estendido pelo ADR 0060 em 23/11/2026 e emendado pelo ADR 0061 (foto 9:16 full-bleed) | 22/11/2026 |
 | [0059](adr/0059-min-sdk-31.md) | Plataforma mínima Android 12 (API 31): app e módulos Android, story sem branch `<Q`, sem `WRITE_EXTERNAL_STORAGE`; alvo real do usuário 0 | Aceito e implementado em 22/11/2026 (`minSdk 31`, `StoryVideoExporter`/worker simplificados, docs de plataforma atualizados) | 22/11/2026 |
 | [0060](adr/0060-art-png-9x16-layout.md) | Arte PNG 9:16 transparente aditivo, layout comum das métricas (distância menor, ritmo/tempo à direita, extras abaixo, sem rodapé) e prévia fixa com controles rolando | Aceito e em implementação em 23/11/2026; emendado pelo ADR 0061 (foto 9:16 full-bleed permitida, overlay de mapa segue proibido) | 23/11/2026 |
-| [0061](adr/0061-art-photo-studio.md) | Arte com foto: modo Foto aditivo (JPG) + blocos independentes, templates, crop por foco/zoom, escala de texto + scrim 58%, 1 foto por atividade, codecs estilo v2 + foto v1 | Aceito para implementação em 23/11/2026 (PRD v0.3 pós-auditoria; F0–F8 pendentes; validação visual/memória no aparelho é gate de release) | 23/11/2026 |
+| [0061](adr/0061-art-photo-studio.md) | Arte com foto: modo Foto aditivo (JPG) + blocos independentes, templates, crop por foco/zoom, escala de texto + scrim 58%, 1 foto por atividade, codecs estilo v2 + foto v1 | Aceito e implementado em 24/11/2026 (F0–F8; PRD v0.3; validação física no aparelho pendente com o usuário 0) | 23/11/2026 |
 
 > ADR 0029 foi redigido e aceito em 10/11/2026 (C3-G2): F4 liberado apenas como copy educativa estática de hidratação, sem números; alimentação vira encaminhamento. Implementado na UI em 10/11/2026 (seções de hidratação/alimentação no sheet de briefing).
 
