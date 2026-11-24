@@ -8,25 +8,29 @@ import com.meucoach.core.domain.story.ArtOffset
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Versioned JSON for the art style (ADR 0058 §2.6, extended by ADR 0061 §2.3).
+ * Versioned JSON for the art style (ADR 0058 §2.6, extended by ADR 0061 §2.3
+ * and ADR 0062).
  *
- * v2 adds the template, the four per-block offsets and `textScalePercent`; v1
- * payloads keep their existing style and receive the new layout defaults. The
- * codec is deliberately forgiving: unknown enum values, invalid offsets and an
- * invalid text scale fall back per field, and a corrupt payload or an unknown
- * version falls back to [ArtRecipe] instead of throwing to the Studio.
+ * v2 adds the template, the four per-block offsets and `textScalePercent`; v3
+ * adds the route stroke. Older payloads keep their existing style and receive
+ * [StoryRouteStroke.SOLID]. The codec is deliberately forgiving: unknown enum
+ * values, invalid offsets and an invalid text scale fall back per field, and a
+ * corrupt payload or an unknown version falls back to [ArtRecipe] instead of
+ * throwing to the Studio.
  *
  * The style codec never persists the activity photo: `background` and `photo`
  * are owned by the per-activity photo store, so encoding drops both and decode
  * always returns the transparent default for them.
  */
 object ArtRecipeCodec {
-    const val VERSION = 2
+    const val VERSION = 3
 
+    private const val LAYOUT_VERSION = 2
     private const val LEGACY_VERSION = 1
 
     private const val KEY_VERSION = "v"
@@ -35,6 +39,7 @@ object ArtRecipeCodec {
     private const val KEY_FONT = "font"
     private const val KEY_TEXT_COLOR = "textColor"
     private const val KEY_ROUTE_COLOR = "routeColor"
+    private const val KEY_ROUTE_STROKE = "routeStroke"
     private const val KEY_TEMPLATE = "template"
     private const val KEY_OFFSETS = "offsets"
     private const val KEY_TEXT_SCALE = "textScalePercent"
@@ -53,6 +58,7 @@ object ArtRecipeCodec {
         put(KEY_FONT, recipe.font.name)
         put(KEY_TEXT_COLOR, recipe.textColor.name)
         put(KEY_ROUTE_COLOR, recipe.routeColor.name)
+        put(KEY_ROUTE_STROKE, recipe.routeStroke.name)
         put(KEY_TEMPLATE, recipe.layout.template.name)
         put(
             KEY_OFFSETS,
@@ -71,7 +77,7 @@ object ArtRecipeCodec {
         return runCatching {
             val root = JSONObject(json)
             val version = root.optInt(KEY_VERSION, 0)
-            require(version == VERSION || version == LEGACY_VERSION) {
+            require(version == VERSION || version == LAYOUT_VERSION || version == LEGACY_VERSION) {
                 "Unsupported art recipe version"
             }
             ArtRecipe(
@@ -80,7 +86,8 @@ object ArtRecipeCodec {
                 font = enumOr(root.optString(KEY_FONT), ArtFont.INTER),
                 textColor = enumOr(root.optString(KEY_TEXT_COLOR), ArtColor.WHITE),
                 routeColor = enumOr(root.optString(KEY_ROUTE_COLOR), ArtColor.LIME),
-                layout = if (version == VERSION) decodeLayout(root) else ArtLayout(),
+                routeStroke = enumOr(root.optString(KEY_ROUTE_STROKE), StoryRouteStroke.SOLID),
+                layout = if (version >= LAYOUT_VERSION) decodeLayout(root) else ArtLayout(),
             )
         }.getOrElse { ArtRecipe() }
     }

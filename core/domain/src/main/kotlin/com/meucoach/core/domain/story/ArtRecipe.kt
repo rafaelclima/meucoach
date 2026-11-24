@@ -60,6 +60,7 @@ data class ArtRecipe(
     val font: ArtFont = ArtFont.INTER,
     val textColor: ArtColor = ArtColor.WHITE,
     val routeColor: ArtColor = ArtColor.LIME,
+    val routeStroke: StoryRouteStroke = StoryRouteStroke.SOLID,
     val background: ArtBackgroundMode = ArtBackgroundMode.TRANSPARENT,
     val layout: ArtLayout = ArtLayout(),
     val photo: ArtPhotoRef? = null,
@@ -87,7 +88,11 @@ data class ArtRecipe(
      * [StoryRenderSpecResolver.fromPlan] — the art never reformats a metric by
      * itself; it only picks which extras appear.
      */
-    fun toStoryRecipe(): StoryRecipe = StoryRecipe(preset = StoryPreset.CUSTOM, extras = extras)
+    fun toStoryRecipe(): StoryRecipe = StoryRecipe(
+        preset = StoryPreset.CUSTOM,
+        extras = extras,
+        routeStroke = routeStroke,
+    )
 
     companion object {
         const val MAX_EXTRAS = 2

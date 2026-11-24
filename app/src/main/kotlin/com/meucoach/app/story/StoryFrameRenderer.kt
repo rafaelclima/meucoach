@@ -66,7 +66,7 @@ class StoryFrameRenderer(
     private val header = StoryHeaderRenderer(scope)
     private val cards = StoryCardRenderer(scope)
     private val closing = StoryFinalRenderer(scope)
-    private val route = StoryRouteRenderer(scope, avatarBitmap, mapBackground)
+    private val route = StoryRouteRenderer(scope, avatarBitmap, mapBackground, recipe.routeStroke)
     private val backdrop = StoryBackdropRenderer(scope)
 
     private var cachedSpec: StoryRenderSpec? = null

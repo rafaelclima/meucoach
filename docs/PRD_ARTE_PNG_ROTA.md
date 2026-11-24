@@ -18,6 +18,8 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 **Não é objetivo:** overlay 9:16 full-bleed opaco, mapa no fundo, animação, edição livre (arrastar texto), color picker livre, export em lote, publicação automática. O 9:16 da arte é um card transparente, não um overlay opaco (ADR 0060).
 
 > **Emenda (ADR 0061, 23/11/2026):** o modo Foto pode gerar uma **imagem final 9:16 full-bleed com foto**; a proibição de overlay 9:16 opaco continua valendo para **mapa/tiles**. O card transparente 9:16 segue igual.
+>
+> **Emenda (ADR 0062, 24/11/2026):** o traçado da rota deixa de ser fixo. A arte (transparente e foto) oferece **quatro estilos** — sólido, neon, tracejado e pontilhado —, com a mesma cor de swatch; o vídeo e o pôster usam o mesmo valor da receita. A cor do vídeo continua fixa à marca/zonas.
 
 ## 3. Decisões de produto (fechadas em 22/11/2026)
 
@@ -30,7 +32,7 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 | 5 | Plataforma | **Android 12+ (API 31+)**; salvar sempre via MediaStore em `Pictures/MeuCoach`, sem permissão e sem share-only. |
 | 6 | Contraste | Controles em **AA**; a arte não promete AA sobre fundo desconhecido. A UI mostra **aviso de contraste** quando texto/traço ficar baixo na prévia clara ou escura. Exceção registrada no ADR. |
 | 7 | Extras | **Máx. 2**: data, FC média, elevação, calorias e cadência. |
-| 8 | Cores | **8 swatches**: lima, coral, branco, preto, cinza claro, cinza escuro, ciano e azul. Sem `lime-pressed`; reutilizar `data/cyan`/`data/blue`. |
+| 8 | Cores | **8 swatches** (lima, coral, branco, preto, cinza claro, cinza escuro, ciano e azul), independentes para texto e traçado; **estilo do traçado** sólido/neon/tracejado/pontilhado (ADR 0062). Sem `lime-pressed`; reutilizar `data/cyan`/`data/blue`. |
 | 9 | Layout | **Comum aos três formatos**: marca no topo, distância um pouco menor, ritmo/tempo empilhados à direita, extras abaixo, rota quadrada e **sem rodapé** (ADR 0060). |
 | 10 | Defaults | **4:5, Inter, sem extras, texto branco, traço lima, prévia escura**. |
 | 11 | Data | Quando escolhida, **“24 out 2026”** (`d MMM uuuu`), com formatador próprio da arte. |
@@ -83,7 +85,7 @@ Gerar um **card PNG** com fundo transparente contendo o traçado da rota e infor
 - **Extras (máx. 2):** data, FC média, elevação (VD+), calorias e cadência. Extra sem dado é omitido; o chip fica desabilitado com motivo. Métrica fixa sem dado mostra `—` (nunca `0`).
 - **Data:** formatador próprio da arte, `d MMM uuuu` pt-BR, sem ponto final: **“24 out 2026”**. O `StoryMetricCatalog` do vídeo continua em “24 out”.
 - **Marca:** logo bitmap do pôster, tintado com a cor do texto, no **topo**.
-- **Traçado:** path normalizado do `StoryPlan.route`, com casca escura fixa (`#08090B` a 70%), cor principal escolhida e marcadores de início/fim. Início na cor do texto; fim no coral. Sem ticks de splits (ticks são do pôster).
+- **Traçado:** path normalizado do `StoryPlan.route`, com casca escura fixa (`#08090B` a 70%), cor principal escolhida e marcadores de início/fim. O estilo pode ser sólido (default), neon (halo), tracejado ou pontilhado (ADR 0062). Início na cor do texto; fim no coral. Sem ticks de splits (ticks são do pôster).
 - **Sem** mapa, tiles ou atribuição OSM.
 
 ### 5.3 Layout
@@ -154,8 +156,9 @@ O `StoryStudioSheet` ganha um **segmento no topo: “Vídeo” | “Arte PNG”*
 3. **Extras:** 5 chips (data/FC/elevação/calorias/cadência), máx. 2; indisponível → desabilitado com motivo. Reutilizar o padrão `ExtrasCounter`.
 4. **Cor do texto:** 8 swatches, com nome e estado selecionado.
 5. **Cor do traçado:** 8 swatches, independente.
-6. **Fonte:** nomes em Inter + preview único da selecionada.
-7. **Botões:** `Compartilhar` (primário, lima) e `Salvar PNG` (secundário). Sem permissão de armazenamento: os dois usam MediaStore.
+6. **Estilo do traçado:** 4 pills (sólido, neon, tracejado, pontilhado), default sólido.
+7. **Fonte:** nomes em Inter + preview único da selecionada.
+8. **Botões:** `Compartilhar` (primário, lima) e `Salvar PNG` (secundário). Sem permissão de armazenamento: os dois usam MediaStore.
 
 Copy:
 - “Pôster automático (opaco)” vs “Arte transparente (personalizada)” no Studio/card; uma linha explica que o pôster nasce com o vídeo e a arte é para sobrepor.
@@ -177,7 +180,7 @@ Acessibilidade:
 ## 9. Arquitetura e técnica
 
 ### 9.1 Camadas
-- **`core:domain` (puro):** `ArtRecipe` (formato, extras ≤2, fonte, `ArtColor` de texto e traçado), `ArtFormat` (`PORTRAIT_4_5`, `SQUARE`, `PORTRAIT_9_16`), `ArtFont` (6), `ArtColor` (8). Sem `android.*`; `require` para máx. 2/sem duplicado; `toggleExtra` **ignora** o terceiro toque (não derruba a tela). `ArtRecipe.toStoryRecipe()` mapeia os extras para `StoryRecipe(extras = ...)`; reutilizar `StoryMetricValuesResolver`/`StoryRenderSpecResolver.fromPlan`; não criar `ArtMetricValues`.
+- **`core:domain` (puro):** `ArtRecipe` (formato, extras ≤2, fonte, `ArtColor` de texto e traçado, `StoryRouteStroke`), `ArtFormat` (`PORTRAIT_4_5`, `SQUARE`, `PORTRAIT_9_16`), `ArtFont` (6), `ArtColor` (8), `StoryRouteStroke` (4). Sem `android.*`; `require` para máx. 2/sem duplicado; `toggleExtra` **ignora** o terceiro toque (não derruba a tela). `ArtRecipe.toStoryRecipe()` mapeia os extras e o traçado para `StoryRecipe(...)`; reutilizar `StoryMetricValuesResolver`/`StoryRenderSpecResolver.fromPlan`; não criar `ArtMetricValues`.
 - **`app/story`:** `StoryArtRenderer` recebe `plan`, `localDate`, `ArtRecipe`, `Typeface`/`FontFamily`, `logoBitmap`, `width`, `height`; devolve `Bitmap?` ou escreve PNG. Preview em ~540 px; export em 1080. Síncrono, sem Compose, testável.
 - **Data:** `ArtDateFormatter` com `d MMM uuuu` (24 out 2026), separado do `StoryMetricCatalog`.
 - **Persistência:** `ArtRecipeCodec` (JSON versionado, fallback para enum desconhecido) + `ArtRecipeStore` em `SharedPreferences` **`meucoach_art`** (não DataStore). Save-as-default; reset separado do `meucoach_story`.
@@ -194,7 +197,7 @@ Sem Worker, sem notificação, sem mapa. Render no `Dispatchers.Default`, com um
 
 ### 9.3 Testes (TDD)
 - `core:domain`: `ArtRecipe` (limite 2, duplicados, toggle ignora terceiro, defaults), `ArtColor`/`ArtFont` estáveis, codec (versão/unknown).
-- `StoryArtRenderer`: goldens 4:5, 1:1 e 9:16; alpha de fundo = 0 por pixel (não só golden); caso sem rota → `null`; sem distorção da rota; `Paint.hasGlyph` nas 6 fontes; preview 540 vs export 1080.
+- `StoryArtRenderer`: goldens 4:5, 1:1 e 9:16; alpha de fundo = 0 por pixel (não só golden); caso sem rota → `null`; sem distorção da rota; `Paint.hasGlyph` nas 6 fontes; preview 540 vs export 1080; quatro estilos de traçado desenham pixels distintos (ADR 0062).
 - UI: aba, prévia fixa, 3 formatos, loading/empty/error, limite de 2, TalkBack, 200%/360 dp, checkerboard, aviso de contraste, CTA, share/save.
 - Export: nome, MediaStore, share intent, reuso do último PNG, falha de save, sem permissão de armazenamento.
 - Regressão: vídeo/capa/pôster e `StoryStudioContentTest`/goldens existentes sem mudança de comportamento.

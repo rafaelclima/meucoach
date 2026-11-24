@@ -100,6 +100,7 @@ data class StoryRecipe(
     val duration: StoryDuration = StoryDuration.AUTO,
     val mapStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
     val quality: StoryQuality = StoryQuality.STANDARD_1080P30,
+    val routeStroke: StoryRouteStroke = StoryRouteStroke.SOLID,
 ) {
     init {
         require(extras.size <= MAX_EXTRAS) { "O story aceita no máximo 2 extras." }
@@ -142,6 +143,7 @@ data class StoryRecipe(
             duration: StoryDuration = StoryDuration.AUTO,
             mapStyle: StoryMapStyle = StoryMapStyle.MEUCOACH_DARK,
             quality: StoryQuality = StoryQuality.STANDARD_1080P30,
+            routeStroke: StoryRouteStroke = StoryRouteStroke.SOLID,
         ): StoryRecipe {
             val extras = preset.requestedExtras()
                 .filter { StoryMetricCatalog.isAvailable(it, values) }
@@ -153,6 +155,7 @@ data class StoryRecipe(
                 duration = duration,
                 mapStyle = mapStyle,
                 quality = quality,
+                routeStroke = routeStroke,
             )
         }
     }

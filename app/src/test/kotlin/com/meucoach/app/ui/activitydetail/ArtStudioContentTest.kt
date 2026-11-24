@@ -42,6 +42,7 @@ import com.meucoach.core.domain.story.StoryMetricCatalog
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -160,6 +161,28 @@ class ArtStudioContentTest {
 
         assertThat(text).isEqualTo(ArtColor.CYAN)
         assertThat(route).isEqualTo(ArtColor.CORAL)
+    }
+
+    @Test
+    fun `selects the route stroke`() {
+        var stroke: StoryRouteStroke? = null
+        setContent(onRouteStroke = { stroke = it })
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        compose.onNodeWithTag("art-route-stroke-dashed").performScrollTo().performClick()
+
+        assertThat(stroke).isEqualTo(StoryRouteStroke.DASHED)
+    }
+
+    @Test
+    fun `exposes the selected route stroke to talkback`() {
+        setContent(artRecipe = ArtRecipe(routeStroke = StoryRouteStroke.NEON))
+
+        compose.onNodeWithTag("story-tab-art").performClick()
+        val node = compose.onNodeWithTag("art-route-stroke-neon").performScrollTo().fetchSemanticsNode()
+
+        assertThat(node.config.getOrElse(SemanticsProperties.Selected) { false }).isTrue()
+        compose.onNode(hasContentDescription("Neon, selecionado")).assertExists()
     }
 
     @Test
@@ -676,6 +699,7 @@ class ArtStudioContentTest {
         onToggleExtra: (StoryExtra) -> Unit = {},
         onTextColor: (ArtColor) -> Unit = {},
         onRouteColor: (ArtColor) -> Unit = {},
+        onRouteStroke: (StoryRouteStroke) -> Unit = {},
         onFont: (ArtFont) -> Unit = {},
         onArtSaveAsDefault: (Boolean) -> Unit = {},
         onArtReset: () -> Unit = {},
@@ -739,6 +763,7 @@ class ArtStudioContentTest {
                             onToggleExtra = onToggleExtra,
                             onTextColor = onTextColor,
                             onRouteColor = onRouteColor,
+                            onRouteStroke = onRouteStroke,
                             onFont = onFont,
                             onSaveAsDefault = onArtSaveAsDefault,
                             onReset = onArtReset,

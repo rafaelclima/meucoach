@@ -91,6 +91,7 @@ import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.domain.story.StorySegmentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -143,6 +144,7 @@ internal fun StoryStudioSheet(
     onToggleExtra: (StoryExtra) -> Unit,
     onDuration: (StoryDuration) -> Unit,
     onMapStyle: (StoryMapStyle) -> Unit,
+    onRouteStroke: (StoryRouteStroke) -> Unit = {},
     onSaveAsDefault: (Boolean) -> Unit,
     onReset: () -> Unit,
     onGenerate: () -> Unit,
@@ -166,6 +168,7 @@ internal fun StoryStudioSheet(
             onToggleExtra = onToggleExtra,
             onDuration = onDuration,
             onMapStyle = onMapStyle,
+            onRouteStroke = onRouteStroke,
             onSaveAsDefault = onSaveAsDefault,
             onReset = onReset,
             onGenerate = onGenerate,
@@ -188,6 +191,7 @@ internal fun StoryStudioContent(
     onToggleExtra: (StoryExtra) -> Unit,
     onDuration: (StoryDuration) -> Unit,
     onMapStyle: (StoryMapStyle) -> Unit,
+    onRouteStroke: (StoryRouteStroke) -> Unit = {},
     onSaveAsDefault: (Boolean) -> Unit,
     onReset: () -> Unit,
     onGenerate: () -> Unit,
@@ -291,6 +295,7 @@ internal fun StoryStudioContent(
                             onToggleExtra = onToggleExtra,
                             onDuration = onDuration,
                             onMapStyle = onMapStyle,
+                            onRouteStroke = onRouteStroke,
                             onSaveAsDefault = onSaveAsDefault,
                             onReset = onReset,
                             onGenerate = onGenerate,
@@ -319,6 +324,7 @@ private fun StoryVideoContent(
     onToggleExtra: (StoryExtra) -> Unit,
     onDuration: (StoryDuration) -> Unit,
     onMapStyle: (StoryMapStyle) -> Unit,
+    onRouteStroke: (StoryRouteStroke) -> Unit,
     onSaveAsDefault: (Boolean) -> Unit,
     onReset: () -> Unit,
     onGenerate: () -> Unit,
@@ -459,6 +465,37 @@ private fun StoryVideoContent(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "A prévia desenha a rota; o mapa escolhido entra no vídeo.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+        )
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+    McCard(
+        variant = McCardVariant.DEFAULT,
+        modifier = Modifier.testTag("story-route-card"),
+    ) {
+        StudioCardHeader(
+            overline = "ROTA",
+            title = "Traçado",
+            subtitle = "O mesmo estilo vale para a prévia, o vídeo e o pôster.",
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            StoryRouteStroke.entries.forEach { stroke ->
+                StudioPill(
+                    text = routeStrokeLabel(stroke),
+                    selected = state.recipe.routeStroke == stroke,
+                    onClick = { onRouteStroke(stroke) },
+                    modifier = Modifier.testTag("story-route-stroke-${stroke.name.lowercase(Locale.ROOT)}"),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = routeStrokeHint(state.recipe.routeStroke),
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )

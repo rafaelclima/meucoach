@@ -46,6 +46,7 @@ import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.model.ActivityLap
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -360,6 +361,35 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `selects the story route stroke`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+
+            viewModel.selectStoryRouteStroke(StoryRouteStroke.DASHED)
+
+            assertThat(viewModel.uiState.value.storyStudio.recipe.routeStroke)
+                .isEqualTo(StoryRouteStroke.DASHED)
+        }
+    }
+
+    @Test
+    fun `preset selection keeps the story route stroke`() {
+        runBlocking {
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            val viewModel = viewModel("activity-1")
+            viewModel.uiState.first { !it.isLoading }
+            viewModel.selectStoryRouteStroke(StoryRouteStroke.NEON)
+
+            viewModel.selectStoryPreset(StoryPreset.PERFORMANCE)
+
+            assertThat(viewModel.uiState.value.storyStudio.recipe.routeStroke)
+                .isEqualTo(StoryRouteStroke.NEON)
+        }
+    }
+
+    @Test
     fun `dismisses the one-time map notice`() {
         runBlocking {
             val context = ApplicationProvider.getApplicationContext<Context>()
@@ -512,12 +542,14 @@ class ActivityDetailViewModelTest {
             viewModel.selectArtFormat(ArtFormat.SQUARE)
             viewModel.selectArtTextColor(ArtColor.CYAN)
             viewModel.selectArtRouteColor(ArtColor.CORAL)
+            viewModel.selectArtRouteStroke(StoryRouteStroke.DOTTED)
             viewModel.selectArtFont(ArtFont.ANTON)
 
             val recipe = viewModel.uiState.value.storyStudio.artRecipe
             assertThat(recipe.format).isEqualTo(ArtFormat.SQUARE)
             assertThat(recipe.textColor).isEqualTo(ArtColor.CYAN)
             assertThat(recipe.routeColor).isEqualTo(ArtColor.CORAL)
+            assertThat(recipe.routeStroke).isEqualTo(StoryRouteStroke.DOTTED)
             assertThat(recipe.font).isEqualTo(ArtFont.ANTON)
             assertThat(recipe.extras).isEmpty()
         }

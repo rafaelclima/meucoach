@@ -5,6 +5,8 @@ import android.graphics.PointF
 import android.graphics.Typeface
 import com.meucoach.app.ui.activitydetail.ActivityDetailTestData
 import com.meucoach.core.domain.story.StoryPlanCalculator
+import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.domain.story.StorySegmentType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
@@ -120,6 +122,54 @@ class StoryFrameRendererTest {
         assertThat(finalFrame.sameAs(followFrame)).isFalse()
         assertThat(shiftedFinalFrame.sameAs(finalFrame)).isFalse()
         assertThat(sameFollowFrame.sameAs(followFrame)).isTrue()
+    }
+
+    @Test
+    fun `route stroke changes the drawn frame`() {
+        val activity = ActivityDetailTestData.state().activity!!.imported
+        val plan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
+        val bitmap = Bitmap.createBitmap(720, 1280, Bitmap.Config.ARGB_8888)
+        val palette = StoryPalette(
+            background = 0xFF0B0C0F.toInt(),
+            surface = 0xFF16181D.toInt(),
+            surfaceInset = 0xFF1F2229.toInt(),
+            border = 0xFF2A2E36.toInt(),
+            textPrimary = 0xFFF4F5F7.toInt(),
+            textSecondary = 0xFFB7BBC4.toInt(),
+            textTertiary = 0xFF8B909A.toInt(),
+            accent = 0xFFD8FF3E.toInt(),
+            coral = 0xFFFF7A6B.toInt(),
+            onAccent = 0xFF0B0C0F.toInt(),
+            mapCasing = 0xFF08090B.toInt(),
+            mapBaseRoute = 0xFF4A545F.toInt(),
+            zone1 = 0xFF4C7DFF.toInt(),
+            zone2 = 0xFF38C6A5.toInt(),
+            zone3 = 0xFFD8FF3E.toInt(),
+            zone4 = 0xFFFFB020.toInt(),
+            zone5 = 0xFFFF7A6B.toInt(),
+        )
+        val snapshot = StoryMapSnapshot(
+            bitmap = bitmap,
+            routePixels = listOf(PointF(180f, 260f), PointF(700f, 1180f)),
+        )
+
+        fun frame(stroke: StoryRouteStroke): Bitmap = StoryFrameRenderer(
+            palette = palette,
+            typeface = Typeface.DEFAULT,
+            mapBackground = snapshot,
+            recipe = StoryRecipe(routeStroke = stroke),
+        ).render(plan, timeSec = 8f, width = 720, height = 1280)
+
+        val solid = frame(StoryRouteStroke.SOLID)
+        val neon = frame(StoryRouteStroke.NEON)
+        val dashed = frame(StoryRouteStroke.DASHED)
+        val dotted = frame(StoryRouteStroke.DOTTED)
+
+        assertThat(neon.sameAs(solid)).isFalse()
+        assertThat(dashed.sameAs(solid)).isFalse()
+        assertThat(dotted.sameAs(solid)).isFalse()
+        assertThat(dotted.sameAs(dashed)).isFalse()
+        listOf(solid, neon, dashed, dotted).forEach { it.recycle() }
     }
 
     @Test

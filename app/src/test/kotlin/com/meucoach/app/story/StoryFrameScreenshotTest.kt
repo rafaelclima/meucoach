@@ -27,6 +27,7 @@ import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.domain.story.StorySegmentType
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
@@ -165,6 +166,41 @@ class StoryFrameScreenshotTest {
         }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("src/test/screenshots/story-map-dark.png")
+    }
+
+    @Test
+    fun storyFrameDashedOverMapDark() {
+        val activity = ActivityDetailTestData.state().activity!!.imported
+        val storyPlan = checkNotNull(StoryPlanCalculator.calculate(activity, targetDurationSec = 30))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val logo = checkNotNull(StoryBranding.logo(context)) { "The MeuCoach wordmark must ship with the app" }
+        val map = fakeMapSnapshot(storyPlan)
+        var frame by mutableStateOf<Bitmap?>(null)
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                val colors = McTheme.colors
+                val palette = remember(colors) { colors.toStoryPalette() }
+                LaunchedEffect(Unit) {
+                    frame = StoryFrameRenderer(
+                        palette = palette,
+                        typeface = Typeface.DEFAULT,
+                        logoBitmap = logo,
+                        mapBackground = map,
+                        recipe = StoryRecipe(routeStroke = StoryRouteStroke.DASHED),
+                    ).render(storyPlan, timeSec = 8f, width = 720, height = 1280)
+                }
+                frame?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Quadro do story com traçado tracejado",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-map-dashed-dark.png")
     }
 
     @Test

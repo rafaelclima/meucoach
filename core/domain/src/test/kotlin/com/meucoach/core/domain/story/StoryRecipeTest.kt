@@ -28,6 +28,7 @@ class StoryRecipeTest {
         assertThat(recipe.duration).isEqualTo(StoryDuration.AUTO)
         assertThat(recipe.mapStyle).isEqualTo(StoryMapStyle.MEUCOACH_DARK)
         assertThat(recipe.quality).isEqualTo(StoryQuality.STANDARD_1080P30)
+        assertThat(recipe.routeStroke).isEqualTo(StoryRouteStroke.SOLID)
     }
 
     @Test
@@ -181,11 +182,12 @@ class StoryRecipeTest {
     }
 
     @Test
-    fun `toggling preserves duration map and quality`() {
+    fun `toggling preserves duration map quality and route stroke`() {
         val base = StoryRecipe(
             duration = StoryDuration.SEC_45,
             mapStyle = StoryMapStyle.TERRAIN,
             quality = StoryQuality.STANDARD_1080P30,
+            routeStroke = StoryRouteStroke.DOTTED,
         )
 
         val toggled = base.toggleExtra(StoryExtra.DATE)
@@ -193,6 +195,28 @@ class StoryRecipeTest {
         assertThat(toggled.duration).isEqualTo(StoryDuration.SEC_45)
         assertThat(toggled.mapStyle).isEqualTo(StoryMapStyle.TERRAIN)
         assertThat(toggled.quality).isEqualTo(StoryQuality.STANDARD_1080P30)
+        assertThat(toggled.routeStroke).isEqualTo(StoryRouteStroke.DOTTED)
+    }
+
+    @Test
+    fun `preset selection keeps the chosen route stroke`() {
+        val recipe = StoryRecipe.fromPreset(
+            preset = StoryPreset.PERFORMANCE,
+            values = allValues(),
+            routeStroke = StoryRouteStroke.NEON,
+        )
+
+        assertThat(recipe.routeStroke).isEqualTo(StoryRouteStroke.NEON)
+    }
+
+    @Test
+    fun `route strokes are the four documented styles`() {
+        assertThat(StoryRouteStroke.entries).containsExactly(
+            StoryRouteStroke.SOLID,
+            StoryRouteStroke.NEON,
+            StoryRouteStroke.DASHED,
+            StoryRouteStroke.DOTTED,
+        )
     }
 
     private fun allValues() = StoryMetricValues(

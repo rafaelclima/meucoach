@@ -17,6 +17,7 @@ class ArtRecipeTest {
         assertThat(recipe.background).isEqualTo(ArtBackgroundMode.TRANSPARENT)
         assertThat(recipe.layout).isEqualTo(ArtLayout())
         assertThat(recipe.photo).isNull()
+        assertThat(recipe.routeStroke).isEqualTo(StoryRouteStroke.SOLID)
     }
 
     @Test
@@ -217,6 +218,14 @@ class ArtRecipeTest {
         assertThat(story.duration).isEqualTo(StoryDuration.AUTO)
         assertThat(story.mapStyle).isEqualTo(StoryMapStyle.MEUCOACH_DARK)
         assertThat(story.quality).isEqualTo(StoryQuality.STANDARD_1080P30)
+        assertThat(story.routeStroke).isEqualTo(StoryRouteStroke.SOLID)
+    }
+
+    @Test
+    fun `toStoryRecipe maps the chosen route stroke`() {
+        val recipe = ArtRecipe(routeStroke = StoryRouteStroke.DASHED)
+
+        assertThat(recipe.toStoryRecipe().routeStroke).isEqualTo(StoryRouteStroke.DASHED)
     }
 
     @Test

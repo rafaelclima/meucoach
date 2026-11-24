@@ -48,6 +48,7 @@ import com.meucoach.core.designsystem.component.McTextButton
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryRouteStroke
 import java.util.Locale
 
 /** Cards and chips shared by the video and the art tab of the Story Studio. */
@@ -351,4 +352,18 @@ internal fun StoryExtra.uiLabel(): String = when (this) {
     StoryExtra.CADENCE -> "Cadência"
     StoryExtra.FASTEST_KM -> "Km mais rápido"
     StoryExtra.DATE -> "Data"
+}
+
+internal fun routeStrokeLabel(stroke: StoryRouteStroke): String = when (stroke) {
+    StoryRouteStroke.SOLID -> "Sólido"
+    StoryRouteStroke.NEON -> "Neon"
+    StoryRouteStroke.DASHED -> "Tracejado"
+    StoryRouteStroke.DOTTED -> "Pontilhado"
+}
+
+internal fun routeStrokeHint(stroke: StoryRouteStroke): String = when (stroke) {
+    StoryRouteStroke.SOLID -> "Linha contínua. Melhor leitura sobre o mapa."
+    StoryRouteStroke.NEON -> "Halo suave na linha. Brilha no escuro e na foto."
+    StoryRouteStroke.DASHED -> "Linha tracejada. Mais leve na arte e na foto."
+    StoryRouteStroke.DOTTED -> "Pontos espaçados. Visual minimalista."
 }

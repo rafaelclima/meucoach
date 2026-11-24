@@ -134,6 +134,7 @@ Ambas são embarcadas como fontes variáveis. Sem fontes proprietárias (Satoshi
 - **Escala de texto:** 80–130% em passos de 5%; multiplica tamanho, altura de linha e padding internos dos blocos; não escala marca/logo, rota, marcadores ou casca.
 - **Crop:** foco normalizado + zoom (1–4), com setas, `−/+`, `Centralizar` e `Enquadrar` em 48 dp; o gesto pan/zoom é acelerador, não o único caminho.
 - **Copy:** aba “Arte”; “Salvar JPG”/“Salvar PNG” e confirmações por modo; checker só no transparente; “Salvar como padrão” salva apenas o estilo, a foto fica na atividade.
+- **Traçado da rota (ADR 0062):** quatro estilos fechados — **sólido** (default), **neon** (halo mais largo atrás da casca), **tracejado** e **pontilhado** (casca + linha com o mesmo `PathEffect`). A cor do traçado é escolhida à parte; a casca `#08090B` a 70% não muda. No vídeo, a cor continua fixa à marca/zonas e o neon ilumina só o trecho percorrido.
 - **Imagem:** JPG q92 1080 no modo Foto; PNG transparente preservado no modo Transparente.
 
 ### 4.2 Escala

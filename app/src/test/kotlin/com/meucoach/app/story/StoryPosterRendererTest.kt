@@ -7,6 +7,7 @@ import com.meucoach.core.domain.story.RouteData
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
@@ -69,6 +70,23 @@ class StoryPosterRendererTest {
         assertThat(renderer.render(plan)).isNull()
         assertThat(renderer.writePng(plan, StoryRecipe(), output)).isFalse()
         assertThat(output.size()).isZero()
+    }
+
+    @Test
+    fun `route strokes render distinct posters`() {
+        fun poster(stroke: StoryRouteStroke): Bitmap = checkNotNull(
+            renderer.render(plan(), StoryRecipe(routeStroke = stroke)),
+        )
+
+        val solid = poster(StoryRouteStroke.SOLID)
+        val neon = poster(StoryRouteStroke.NEON)
+        val dashed = poster(StoryRouteStroke.DASHED)
+        val dotted = poster(StoryRouteStroke.DOTTED)
+
+        assertThat(neon.sameAs(solid)).isFalse()
+        assertThat(dashed.sameAs(solid)).isFalse()
+        assertThat(dotted.sameAs(solid)).isFalse()
+        listOf(solid, neon, dashed, dotted).forEach { it.recycle() }
     }
 
     @Test

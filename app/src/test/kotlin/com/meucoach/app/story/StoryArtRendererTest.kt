@@ -13,6 +13,7 @@ import com.meucoach.core.domain.story.RoutePoint
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
@@ -223,6 +224,27 @@ class StoryArtRendererTest {
         assertThat(pixels.count { it == ArtColor.LIME.argb }).isGreaterThan(0)
         assertThat(pixels.count { it == ArtColor.CORAL.argb }).isGreaterThan(0)
         assertThat(pixels.count { it == ArtColor.WHITE.argb }).isGreaterThan(0)
+    }
+
+    @Test
+    fun `route strokes render distinct cards`() {
+        fun card(stroke: StoryRouteStroke): android.graphics.Bitmap = checkNotNull(
+            StoryArtRenderer(
+                recipe = ArtRecipe(routeStroke = stroke),
+                typeface = ArtFont.INTER.typeface(context),
+            ).render(plan(), plan().localDate, 540, 675),
+        )
+
+        val solid = card(StoryRouteStroke.SOLID)
+        val neon = card(StoryRouteStroke.NEON)
+        val dashed = card(StoryRouteStroke.DASHED)
+        val dotted = card(StoryRouteStroke.DOTTED)
+
+        assertThat(neon.sameAs(solid)).isFalse()
+        assertThat(dashed.sameAs(solid)).isFalse()
+        assertThat(dotted.sameAs(solid)).isFalse()
+        assertThat(dotted.sameAs(dashed)).isFalse()
+        listOf(solid, neon, dashed, dotted).forEach { it.recycle() }
     }
 
     @Test

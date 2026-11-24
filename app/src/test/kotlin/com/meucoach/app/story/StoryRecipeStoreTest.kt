@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Before
 import org.junit.Test
@@ -32,6 +33,7 @@ class StoryRecipeStoreTest {
         val recipe = StoryRecipe(
             extras = listOf(StoryExtra.AVG_HR, StoryExtra.CADENCE),
             duration = StoryDuration.SEC_30,
+            routeStroke = StoryRouteStroke.DASHED,
         )
 
         StoryRecipeStore(context).save(recipe)

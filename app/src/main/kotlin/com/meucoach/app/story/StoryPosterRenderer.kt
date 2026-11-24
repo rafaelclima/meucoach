@@ -12,12 +12,14 @@ import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import com.meucoach.app.story.render.applyRouteStroke
 import com.meucoach.core.domain.story.ResolvedMetric
 import com.meucoach.core.domain.story.StoryEssential
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.domain.story.StoryRenderSpec
 import com.meucoach.core.domain.story.StoryRenderSpecResolver
+import com.meucoach.core.domain.story.StoryRouteStroke
 import java.io.OutputStream
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -77,7 +79,7 @@ class StoryPosterRenderer(
         drawBackdrop(canvas, width, height)
         drawHeader(canvas, spec.plan, width)
         drawMetrics(canvas, spec, width)
-        drawRoute(canvas, spec.plan, width, height)
+        drawRoute(canvas, spec, width, height)
         drawFooter(canvas, width)
     }
 
@@ -212,7 +214,8 @@ class StoryPosterRenderer(
         canvas.drawText(metric.value, x, 642f, value)
     }
 
-    private fun drawRoute(canvas: Canvas, plan: StoryPlan, width: Float, height: Float) {
+    private fun drawRoute(canvas: Canvas, spec: StoryRenderSpec, width: Float, height: Float) {
+        val plan = spec.plan
         val top = 690f
         val bottom = height - 120f
         val side = minOf(width - 2f * MARGIN, bottom - top)
@@ -227,9 +230,26 @@ class StoryPosterRenderer(
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
 
-        canvas.drawPath(path, routePaint(palette.accent, 38f, 22))
-        canvas.drawPath(path, routePaint(palette.border, 20f, 170))
-        canvas.drawPath(path, routePaint(palette.accent, 12f, 255))
+        val stroke = spec.recipe.routeStroke
+        when (stroke) {
+            StoryRouteStroke.SOLID -> {
+                canvas.drawPath(path, routePaint(palette.accent, 38f, 22))
+                canvas.drawPath(path, routePaint(palette.border, 20f, 170))
+                canvas.drawPath(path, routePaint(palette.accent, 12f, 255))
+            }
+
+            StoryRouteStroke.NEON -> {
+                canvas.drawPath(path, routePaint(palette.accent, 46f, 45))
+                canvas.drawPath(path, routePaint(palette.accent, 38f, 22))
+                canvas.drawPath(path, routePaint(palette.border, 20f, 170))
+                canvas.drawPath(path, routePaint(palette.accent, 12f, 255))
+            }
+
+            StoryRouteStroke.DASHED, StoryRouteStroke.DOTTED -> {
+                canvas.drawPath(path, routePaint(palette.border, 20f, 170).applyRouteStroke(stroke, 1f))
+                canvas.drawPath(path, routePaint(palette.accent, 12f, 255).applyRouteStroke(stroke, 1f))
+            }
+        }
         drawTicks(canvas, plan, path)
         drawEndpoint(canvas, path, atStart = true)
         drawEndpoint(canvas, path, atStart = false)

@@ -80,6 +80,7 @@ import com.meucoach.core.domain.story.StoryDuration
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPreset
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.domain.story.StoryVerdict
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -116,6 +117,7 @@ fun ActivityDetailScreen(
             onToggleExtra = viewModel::toggleStoryExtra,
             onDuration = viewModel::selectStoryDuration,
             onMapStyle = viewModel::selectStoryMapStyle,
+            onRouteStroke = viewModel::selectStoryRouteStroke,
             onSaveAsDefault = viewModel::setStorySaveAsDefault,
             onReset = viewModel::resetStoryRecipe,
             onGenerate = { viewModel.generateStory(palette) },
@@ -126,6 +128,7 @@ fun ActivityDetailScreen(
                 onToggleExtra = viewModel::toggleArtExtra,
                 onTextColor = viewModel::selectArtTextColor,
                 onRouteColor = viewModel::selectArtRouteColor,
+                onRouteStroke = viewModel::selectArtRouteStroke,
                 onFont = viewModel::selectArtFont,
                 onSaveAsDefault = viewModel::setArtSaveAsDefault,
                 onReset = viewModel::resetArtRecipe,
@@ -170,6 +173,7 @@ internal data class StoryStudioActions(
     val onToggleExtra: (StoryExtra) -> Unit = {},
     val onDuration: (StoryDuration) -> Unit = {},
     val onMapStyle: (StoryMapStyle) -> Unit = {},
+    val onRouteStroke: (StoryRouteStroke) -> Unit = {},
     val onSaveAsDefault: (Boolean) -> Unit = {},
     val onReset: () -> Unit = {},
     val onGenerate: () -> Unit = {},
@@ -190,6 +194,7 @@ internal data class ArtStudioActions(
     val onToggleExtra: (StoryExtra) -> Unit = {},
     val onTextColor: (ArtColor) -> Unit = {},
     val onRouteColor: (ArtColor) -> Unit = {},
+    val onRouteStroke: (StoryRouteStroke) -> Unit = {},
     val onFont: (ArtFont) -> Unit = {},
     val onSaveAsDefault: (Boolean) -> Unit = {},
     val onReset: () -> Unit = {},
@@ -340,6 +345,7 @@ internal fun ActivityDetailContent(
             onToggleExtra = storyActions.onToggleExtra,
             onDuration = storyActions.onDuration,
             onMapStyle = storyActions.onMapStyle,
+            onRouteStroke = storyActions.onRouteStroke,
             onSaveAsDefault = storyActions.onSaveAsDefault,
             onReset = storyActions.onReset,
             onGenerate = storyActions.onGenerate,

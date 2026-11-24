@@ -11,6 +11,7 @@ import android.graphics.Shader
 import com.meucoach.app.story.StoryMapSnapshot
 import com.meucoach.app.story.StoryMotion
 import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StoryRouteStroke
 
 /**
  * Stroke styling of the story route: casing, base, traveled zones, km ticks,
@@ -28,6 +29,7 @@ internal class StoryRoutePainter(
         timeSec: Float,
         frame: StoryCameraFrame,
         route: StoryRouteSource,
+        stroke: StoryRouteStroke,
     ): FloatArray? {
         val palette = scope.palette
         val overlayScale = frame.overlayScale
@@ -52,6 +54,7 @@ internal class StoryRoutePainter(
                 strokeJoin = Paint.Join.ROUND
                 color = palette.mapCasing
                 alpha = 210
+                applyRouteStroke(stroke, overlayScale)
             }
             canvas.drawPath(routePath, casing)
         }
@@ -60,12 +63,13 @@ internal class StoryRoutePainter(
             strokeWidth = 10f * overlayScale
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
-            color = if (route.hasMap) palette.mapBaseRoute else palette.border
-            alpha = if (route.hasMap) 240 else 255
+            color = if (route.hasMap) palette.mapBaseRoute else palette.textTertiary
+            alpha = if (route.hasMap) 240 else 220
+            applyRouteStroke(stroke, overlayScale)
         }
         canvas.drawPath(routePath, base)
 
-        drawTraveledRoute(canvas, plan, measure, progress, overlayScale)
+        drawTraveledRoute(canvas, plan, measure, progress, overlayScale, stroke)
         drawKmTicks(canvas, plan, measure, overlayScale)
 
         if (avatarBitmap == null) {
@@ -164,16 +168,19 @@ internal class StoryRoutePainter(
         measure: PathMeasure,
         progress: Float,
         overlayScale: Float,
+        stroke: StoryRouteStroke,
     ) {
         if (measure.length <= 0f || progress <= 0f) return
         if (plan.zoneRuns.isEmpty()) {
             val traveled = Path()
             measure.getSegment(0f, measure.length * progress, traveled, true)
-            canvas.drawPath(traveled, routePaint(scope.palette.accent, overlayScale))
+            val paint = routePaint(scope.palette.accent, overlayScale)
+                .applyRouteStroke(stroke, overlayScale)
+            drawTraveledGlow(canvas, traveled, scope.palette.accent, overlayScale, stroke)
+            canvas.drawPath(traveled, paint)
             return
         }
         val segment = Path()
-        val paint = routePaint(scope.palette.accent, overlayScale)
         plan.zoneRuns.forEach { run ->
             val endProgress = minOf(run.endProgress, progress)
             if (endProgress <= run.startProgress) return@forEach
@@ -184,9 +191,32 @@ internal class StoryRoutePainter(
                 segment,
                 true,
             )
-            paint.color = scope.palette.zoneColor(run.zone)
+            val color = scope.palette.zoneColor(run.zone)
+            val phase = routeStrokePhase(stroke, overlayScale, measure.length * run.startProgress)
+            val paint = routePaint(color, overlayScale).applyRouteStroke(stroke, overlayScale, phase)
+            drawTraveledGlow(canvas, segment, color, overlayScale, stroke)
             canvas.drawPath(segment, paint)
         }
+    }
+
+    /** Soft halo behind the traveled line; only [StoryRouteStroke.NEON] asks for it. */
+    private fun drawTraveledGlow(
+        canvas: Canvas,
+        path: Path,
+        color: Int,
+        overlayScale: Float,
+        stroke: StoryRouteStroke,
+    ) {
+        if (stroke != StoryRouteStroke.NEON) return
+        val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 24f * overlayScale
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            this.color = color
+            alpha = 70
+        }
+        canvas.drawPath(path, glow)
     }
 
     /**

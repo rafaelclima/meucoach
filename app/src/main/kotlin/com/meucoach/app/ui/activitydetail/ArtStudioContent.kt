@@ -96,6 +96,7 @@ import com.meucoach.core.domain.story.ArtPhotoRef
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryRouteStroke
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -411,6 +412,31 @@ internal fun ArtStudioContent(
                             onSelected = actions.onRouteColor,
                             tagPrefix = "art-route-color",
                             enabled = controlsEnabled,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SectionLabel("ESTILO DO TRAÇADO")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StoryRouteStroke.entries.forEach { stroke ->
+                                StudioPill(
+                                    text = routeStrokeLabel(stroke),
+                                    selected = state.artRecipe.routeStroke == stroke,
+                                    enabled = controlsEnabled,
+                                    onClick = { actions.onRouteStroke(stroke) },
+                                    modifier = Modifier.testTag(
+                                        "art-route-stroke-${stroke.name.lowercase(Locale.ROOT)}",
+                                    ),
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = routeStrokeHint(state.artRecipe.routeStroke),
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))

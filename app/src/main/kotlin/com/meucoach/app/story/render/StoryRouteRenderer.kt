@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import com.meucoach.app.story.StoryMapSnapshot
 import com.meucoach.core.domain.story.StoryPlan
+import com.meucoach.core.domain.story.StoryRouteStroke
 
 /**
  * Map snapshots and the animated route. One active keyframe per frame; the
@@ -20,6 +21,7 @@ internal class StoryRouteRenderer(
     scope: StoryDrawScope,
     avatarBitmap: Bitmap?,
     private val follow: StoryMapSnapshot?,
+    private val stroke: StoryRouteStroke,
 ) {
     private val painter = StoryRoutePainter(scope, avatarBitmap, follow)
 
@@ -39,7 +41,7 @@ internal class StoryRouteRenderer(
         withCamera(frame.cameraMatrix, canvas) {
             drawMapLayer(canvas, frame, active?.bitmap)
             val activeRoute = StoryRouteSource.of(plan, active, frame, active != null)
-            marker = painter.drawRoute(canvas, plan, timeSec, frame, activeRoute)
+            marker = painter.drawRoute(canvas, plan, timeSec, frame, activeRoute, stroke)
         }
         return marker
     }
@@ -61,7 +63,7 @@ internal class StoryRouteRenderer(
         var marker: FloatArray? = null
         withCamera(frame.cameraMatrix, canvas) {
             drawMapLayer(canvas, frame, opening.bitmap)
-            marker = painter.drawRoute(canvas, plan, timeSec, frame, openingRoute)
+            marker = painter.drawRoute(canvas, plan, timeSec, frame, openingRoute, stroke)
         }
         if (followBlend <= 0f) {
             // First frames while the blend is still zero: opening only, drawn
@@ -69,7 +71,7 @@ internal class StoryRouteRenderer(
             // stroked route keeps its exact opacity.
             withCamera(frame.cameraMatrix, canvas) {
                 drawMapLayer(canvas, frame, opening.bitmap)
-                marker = painter.drawRoute(canvas, plan, timeSec, frame, openingRoute)
+                marker = painter.drawRoute(canvas, plan, timeSec, frame, openingRoute, stroke)
             }
             return marker
         }
@@ -79,7 +81,7 @@ internal class StoryRouteRenderer(
         var followPosition: FloatArray? = null
         withCamera(frame.cameraMatrix, canvas) {
             drawMapLayer(canvas, frame, follow?.bitmap)
-            followPosition = painter.drawRoute(canvas, plan, timeSec, frame, followRoute)
+            followPosition = painter.drawRoute(canvas, plan, timeSec, frame, followRoute, stroke)
         }
         val center = followPosition?.copyOf() ?: floatArrayOf(frame.width / 2f, frame.height / 2f)
         frame.cameraMatrix.mapPoints(center)

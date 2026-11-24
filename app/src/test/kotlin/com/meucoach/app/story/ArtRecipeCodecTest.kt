@@ -11,6 +11,7 @@ import com.meucoach.core.domain.story.ArtPhotoRef
 import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryExtra
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.assertj.core.api.Assertions.assertThat
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,6 +31,7 @@ class ArtRecipeCodecTest {
             font = ArtFont.ANTON,
             textColor = ArtColor.CYAN,
             routeColor = ArtColor.CORAL,
+            routeStroke = StoryRouteStroke.DASHED,
             layout = ArtLayout(
                 template = ArtTemplate.CENTER,
                 distanceOffset = ArtOffset(0.25f, -0.5f),
@@ -53,16 +55,17 @@ class ArtRecipeCodecTest {
     }
 
     @Test
-    fun `writes version 2 json with the documented style keys`() {
+    fun `writes version 3 json with the documented style keys`() {
         val json = JSONObject(ArtRecipeCodec.encode(ArtRecipe()))
 
-        assertThat(ArtRecipeCodec.VERSION).isEqualTo(2)
-        assertThat(json.getInt("v")).isEqualTo(2)
+        assertThat(ArtRecipeCodec.VERSION).isEqualTo(3)
+        assertThat(json.getInt("v")).isEqualTo(3)
         assertThat(json.getString("format")).isEqualTo("PORTRAIT_4_5")
         assertThat(json.getJSONArray("extras").length()).isZero()
         assertThat(json.getString("font")).isEqualTo("INTER")
         assertThat(json.getString("textColor")).isEqualTo("WHITE")
         assertThat(json.getString("routeColor")).isEqualTo("LIME")
+        assertThat(json.getString("routeStroke")).isEqualTo("SOLID")
         assertThat(json.getString("template")).isEqualTo("TOP")
         assertThat(json.getInt("textScalePercent")).isEqualTo(100)
 
@@ -95,9 +98,34 @@ class ArtRecipeCodecTest {
         assertThat(decoded.font).isEqualTo(ArtFont.OSWALD)
         assertThat(decoded.textColor).isEqualTo(ArtColor.BLACK)
         assertThat(decoded.routeColor).isEqualTo(ArtColor.CYAN)
+        assertThat(decoded.routeStroke).isEqualTo(StoryRouteStroke.SOLID)
         assertThat(decoded.layout).isEqualTo(ArtLayout())
         assertThat(decoded.background).isEqualTo(ArtBackgroundMode.TRANSPARENT)
         assertThat(decoded.photo).isNull()
+    }
+
+    @Test
+    fun `migrates a version 2 payload preserving layout and adding the solid stroke`() {
+        val v2 = JSONObject().apply {
+            put("v", 2)
+            put("format", "SQUARE")
+            put("extras", JSONArray(listOf("DATE")))
+            put("font", "ANTON")
+            put("textColor", "BLACK")
+            put("routeColor", "BLUE")
+            put("template", "CENTER")
+            put("textScalePercent", 115)
+            put("offsets", JSONObject())
+        }
+
+        val decoded = ArtRecipeCodec.decode(v2.toString())
+
+        assertThat(decoded.format).isEqualTo(ArtFormat.SQUARE)
+        assertThat(decoded.font).isEqualTo(ArtFont.ANTON)
+        assertThat(decoded.routeColor).isEqualTo(ArtColor.BLUE)
+        assertThat(decoded.routeStroke).isEqualTo(StoryRouteStroke.SOLID)
+        assertThat(decoded.layout.template).isEqualTo(ArtTemplate.CENTER)
+        assertThat(decoded.layout.textScalePercent).isEqualTo(115)
     }
 
     @Test
@@ -114,6 +142,7 @@ class ArtRecipeCodecTest {
             .put("font", "BARLOW")
             .put("textColor", "LIME_PRESSED")
             .put("routeColor", "NEON")
+            .put("routeStroke", "ZIGZAG")
             .put("template", "SIDEWAYS")
             .toString()
 
@@ -124,6 +153,7 @@ class ArtRecipeCodecTest {
         assertThat(decoded.font).isEqualTo(ArtFont.INTER)
         assertThat(decoded.textColor).isEqualTo(ArtColor.WHITE)
         assertThat(decoded.routeColor).isEqualTo(ArtColor.LIME)
+        assertThat(decoded.routeStroke).isEqualTo(StoryRouteStroke.SOLID)
         assertThat(decoded.layout.template).isEqualTo(ArtTemplate.TOP)
         assertThat(decoded.layout.textScalePercent).isEqualTo(115)
     }

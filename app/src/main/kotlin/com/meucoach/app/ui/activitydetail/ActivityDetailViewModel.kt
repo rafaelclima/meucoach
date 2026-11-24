@@ -60,6 +60,7 @@ import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.domain.zones.HrZoneDistributionCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -259,6 +260,7 @@ class ActivityDetailViewModel @Inject constructor(
             duration = studio.recipe.duration,
             mapStyle = studio.recipe.mapStyle,
             quality = studio.recipe.quality,
+            routeStroke = studio.recipe.routeStroke,
         )
         updateStoryRecipe(recipe)
     }
@@ -288,6 +290,14 @@ class ActivityDetailViewModel @Inject constructor(
         if (studio.recipe.mapStyle == style) return
         _uiState.update {
             it.copy(storyStudio = it.storyStudio.copy(recipe = it.storyStudio.recipe.copy(mapStyle = style)))
+        }
+    }
+
+    fun selectStoryRouteStroke(stroke: StoryRouteStroke) {
+        val studio = _uiState.value.storyStudio
+        if (studio.recipe.routeStroke == stroke) return
+        _uiState.update {
+            it.copy(storyStudio = it.storyStudio.copy(recipe = it.storyStudio.recipe.copy(routeStroke = stroke)))
         }
     }
 
@@ -321,6 +331,10 @@ class ActivityDetailViewModel @Inject constructor(
 
     fun selectArtRouteColor(color: ArtColor) {
         updateArtRecipe { it.copy(routeColor = color) }
+    }
+
+    fun selectArtRouteStroke(stroke: StoryRouteStroke) {
+        updateArtRecipe { it.copy(routeStroke = stroke) }
     }
 
     fun selectArtFont(font: ArtFont) {

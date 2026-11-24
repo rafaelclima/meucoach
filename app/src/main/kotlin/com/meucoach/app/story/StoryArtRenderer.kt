@@ -10,6 +10,7 @@ import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import com.meucoach.app.story.render.applyRouteStroke
 import com.meucoach.core.domain.story.ArtBackgroundMode
 import com.meucoach.core.domain.story.ArtColor
 import com.meucoach.core.domain.story.ArtLayoutSpec
@@ -20,6 +21,7 @@ import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryRenderSpec
 import com.meucoach.core.domain.story.StoryRenderSpecResolver
+import com.meucoach.core.domain.story.StoryRouteStroke
 import java.io.OutputStream
 import java.time.LocalDate
 import kotlin.math.max
@@ -198,8 +200,22 @@ class StoryArtRenderer(
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
 
-        canvas.drawPath(path, routePaint(withAlpha(ROUTE_CASING, ROUTE_CASING_ALPHA), 30f * scale))
-        canvas.drawPath(path, routePaint(routeColor, 14f * scale))
+        val stroke = recipe.routeStroke
+        if (stroke == StoryRouteStroke.NEON) {
+            canvas.drawPath(
+                path,
+                routePaint(withAlpha(routeColor, NEON_GLOW_ALPHA), NEON_GLOW_WIDTH * scale),
+            )
+        }
+        canvas.drawPath(
+            path,
+            routePaint(withAlpha(ROUTE_CASING, ROUTE_CASING_ALPHA), CASING_WIDTH * scale)
+                .applyRouteStroke(stroke, scale),
+        )
+        canvas.drawPath(
+            path,
+            routePaint(routeColor, ROUTE_WIDTH * scale).applyRouteStroke(stroke, scale),
+        )
         drawMarker(canvas, path, atStart = true, color = recipe.textColor.argb, scale = scale)
         drawMarker(canvas, path, atStart = false, color = ArtColor.CORAL.argb, scale = scale)
     }
@@ -238,6 +254,12 @@ class StoryArtRenderer(
         /** Fixed dark shell under the route so it reads on any photo (ADR 0058 §5.2). */
         const val ROUTE_CASING = 0xFF08090B.toInt()
         internal const val ROUTE_CASING_ALPHA = 178
+
+        /** Halo of the neon stroke: wider than the shell so it stays visible around it. */
+        private const val NEON_GLOW_ALPHA = 70
+        private const val NEON_GLOW_WIDTH = 44f
+        private const val CASING_WIDTH = 30f
+        private const val ROUTE_WIDTH = 14f
         private const val LABEL_ALPHA = 178
         private const val JPG_QUALITY = 92
     }

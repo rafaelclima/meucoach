@@ -28,6 +28,7 @@ import com.meucoach.core.domain.story.StoryMetricCatalog
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,6 +69,43 @@ class StoryStudioScreenshotTest {
         capture(darkTheme = false) {
             StoryStudioUiState(recipe = StoryRecipe(), plan = plan(), extras = options())
         }
+    }
+
+    @Test
+    fun storyStudioRouteStrokesDark() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(McTheme.colors.background),
+                ) {
+                    StoryStudioContent(
+                        state = StoryStudioUiState(
+                            recipe = StoryRecipe(routeStroke = StoryRouteStroke.DASHED),
+                            plan = plan(),
+                            extras = options(),
+                        ),
+                        avatar = null,
+                        introSeen = true,
+                        onClose = {},
+                        onDismissIntro = {},
+                        onPreset = {},
+                        onToggleExtra = {},
+                        onDuration = {},
+                        onMapStyle = {},
+                        onSaveAsDefault = {},
+                        onReset = {},
+                        onGenerate = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithTag("story-route-stroke-dotted").performScrollTo()
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("story-preview-loading").fetchSemanticsNodes().isEmpty()
+        }
+        compose.onRoot().captureRoboImage("src/test/screenshots/story-studio-route-strokes-dark.png")
     }
 
     @Test
@@ -290,6 +328,9 @@ class StoryStudioScreenshotTest {
 
         val name = if (darkTheme) "dark" else "light"
         val extras = state().recipe.extras.size
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("story-preview-loading").fetchSemanticsNodes().isEmpty()
+        }
         compose.onRoot().captureRoboImage("src/test/screenshots/story-studio-$extras-extras-$name.png")
     }
 

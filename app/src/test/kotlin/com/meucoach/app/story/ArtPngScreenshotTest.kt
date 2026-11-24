@@ -30,6 +30,7 @@ import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryPlan
 import com.meucoach.core.domain.story.StoryPlanCalculator
+import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.model.ActivitySample
 import com.meucoach.core.model.ActivitySource
 import com.meucoach.core.model.ImportedActivity
@@ -91,6 +92,30 @@ class ArtPngScreenshotTest {
     }
 
     @Test
+    fun artPng4x5Neon() {
+        capture(
+            recipe = ArtRecipe(routeStroke = StoryRouteStroke.NEON),
+            name = "art-png-4x5-neon.png",
+        )
+    }
+
+    @Test
+    fun artPng4x5Dashed() {
+        capture(
+            recipe = ArtRecipe(routeStroke = StoryRouteStroke.DASHED),
+            name = "art-png-4x5-dashed.png",
+        )
+    }
+
+    @Test
+    fun artPng4x5Dotted() {
+        capture(
+            recipe = ArtRecipe(routeStroke = StoryRouteStroke.DOTTED),
+            name = "art-png-4x5-dotted.png",
+        )
+    }
+
+    @Test
     fun artPhoto4x5() {
         capturePhoto(recipe = ArtRecipe(background = ArtBackgroundMode.PHOTO), name = "art-photo-4x5.png")
     }
@@ -108,6 +133,14 @@ class ArtPngScreenshotTest {
         capturePhoto(
             recipe = ArtRecipe(format = ArtFormat.PORTRAIT_9_16, background = ArtBackgroundMode.PHOTO),
             name = "art-photo-9x16.png",
+        )
+    }
+
+    @Test
+    fun artPhoto4x5Dashed() {
+        capturePhoto(
+            recipe = ArtRecipe(background = ArtBackgroundMode.PHOTO, routeStroke = StoryRouteStroke.DASHED),
+            name = "art-photo-4x5-dashed.png",
         )
     }
 

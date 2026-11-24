@@ -26,6 +26,7 @@ import com.meucoach.core.domain.story.StoryMetricCatalog
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -145,16 +146,32 @@ class StoryStudioContentTest {
     }
 
     @Test
-    fun `selects duration and map style`() {
+    fun `selects duration map style and route stroke`() {
         var duration: StoryDuration? = null
         var style: StoryMapStyle? = null
-        setContent(onDuration = { duration = it }, onMapStyle = { style = it })
+        var stroke: StoryRouteStroke? = null
+        setContent(
+            onDuration = { duration = it },
+            onMapStyle = { style = it },
+            onRouteStroke = { stroke = it },
+        )
 
         compose.onNodeWithTag("story-duration-sec_45").performScrollTo().performClick()
         compose.onNodeWithTag("story-map-meucoach_light").performScrollTo().performClick()
+        compose.onNodeWithTag("story-route-stroke-dotted").performScrollTo().performClick()
 
         assertThat(duration).isEqualTo(StoryDuration.SEC_45)
         assertThat(style).isEqualTo(StoryMapStyle.MEUCOACH_LIGHT)
+        assertThat(stroke).isEqualTo(StoryRouteStroke.DOTTED)
+    }
+
+    @Test
+    fun `exposes the selected route stroke to talkback`() {
+        setContent(recipe = StoryRecipe(routeStroke = StoryRouteStroke.DASHED))
+
+        compose.onNodeWithTag("story-route-stroke-dashed").performScrollTo()
+        compose.onNodeWithTag("story-route-stroke-dashed").assertIsSelected()
+        compose.onNode(hasContentDescription("Tracejado, selecionado")).assertExists()
     }
 
     @Test
@@ -273,6 +290,7 @@ class StoryStudioContentTest {
         onToggleExtra: (StoryExtra) -> Unit = {},
         onDuration: (StoryDuration) -> Unit = {},
         onMapStyle: (StoryMapStyle) -> Unit = {},
+        onRouteStroke: (StoryRouteStroke) -> Unit = {},
         onSaveAsDefault: (Boolean) -> Unit = {},
         onReset: () -> Unit = {},
         onGenerate: () -> Unit = {},
@@ -294,6 +312,7 @@ class StoryStudioContentTest {
                     onToggleExtra = onToggleExtra,
                     onDuration = onDuration,
                     onMapStyle = onMapStyle,
+                    onRouteStroke = onRouteStroke,
                     onSaveAsDefault = onSaveAsDefault,
                     onReset = onReset,
                     onGenerate = onGenerate,

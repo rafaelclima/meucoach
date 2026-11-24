@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
@@ -19,6 +20,7 @@ import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPlanCalculator
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -195,6 +197,24 @@ class ActivityDetailScreenTest {
         compose.onNodeWithTag("story-studio-open").performClick()
 
         assertThat(opened).isTrue()
+    }
+
+    @Test
+    fun `forwards the route stroke selected in the video studio`() {
+        var selected: StoryRouteStroke? = null
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    storyStudio = StoryStudioUiState(isOpen = true),
+                ),
+                onBack = {},
+                storyActions = StoryStudioActions(onRouteStroke = { selected = it }),
+            )
+        }
+
+        compose.onNodeWithTag("story-route-stroke-dashed").performScrollTo().performClick()
+
+        assertThat(selected).isEqualTo(StoryRouteStroke.DASHED)
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.meucoach.core.domain.story.StoryMapStyle
 import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryQuality
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,7 +20,11 @@ import org.json.JSONObject
  * (ADR 0040 §4.5).
  */
 object StoryRecipeCodec {
-    const val VERSION = 1
+    const val VERSION = 2
+
+    /** v1 has no route stroke; it decodes as [StoryRouteStroke.SOLID]. */
+    private const val LEGACY_VERSION = 1
+
     const val MAX_PAYLOAD_BYTES = 2_048
 
     private const val KEY_VERSION = "v"
@@ -28,6 +33,7 @@ object StoryRecipeCodec {
     private const val KEY_DURATION = "duration"
     private const val KEY_MAP_STYLE = "mapStyle"
     private const val KEY_QUALITY = "quality"
+    private const val KEY_ROUTE_STROKE = "routeStroke"
 
     fun encode(recipe: StoryRecipe): String = JSONObject().apply {
         put(KEY_VERSION, VERSION)
@@ -36,13 +42,17 @@ object StoryRecipeCodec {
         put(KEY_DURATION, recipe.duration.name)
         put(KEY_MAP_STYLE, recipe.mapStyle.name)
         put(KEY_QUALITY, recipe.quality.name)
+        put(KEY_ROUTE_STROKE, recipe.routeStroke.name)
     }.toString()
 
     fun decode(json: String?): StoryRecipe {
         if (json.isNullOrBlank()) return StoryRecipe()
         return runCatching {
             val root = JSONObject(json)
-            require(root.optInt(KEY_VERSION, 0) == VERSION) { "Unsupported story recipe version" }
+            val version = root.optInt(KEY_VERSION, 0)
+            require(version == VERSION || version == LEGACY_VERSION) {
+                "Unsupported story recipe version"
+            }
             val extras = decodeExtras(root)
             StoryRecipe(
                 preset = enumOr(root.optString(KEY_PRESET), StoryPreset.ESSENTIAL),
@@ -50,6 +60,7 @@ object StoryRecipeCodec {
                 duration = enumOr(root.optString(KEY_DURATION), StoryDuration.AUTO),
                 mapStyle = enumOr(root.optString(KEY_MAP_STYLE), StoryMapStyle.MEUCOACH_DARK),
                 quality = enumOr(root.optString(KEY_QUALITY), StoryQuality.STANDARD_1080P30),
+                routeStroke = enumOr(root.optString(KEY_ROUTE_STROKE), StoryRouteStroke.SOLID),
             )
         }.getOrElse { StoryRecipe() }
     }

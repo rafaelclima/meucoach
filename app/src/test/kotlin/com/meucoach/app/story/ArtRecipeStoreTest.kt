@@ -14,6 +14,7 @@ import com.meucoach.core.domain.story.ArtRecipe
 import com.meucoach.core.domain.story.ArtTemplate
 import com.meucoach.core.domain.story.StoryExtra
 import com.meucoach.core.domain.story.StoryRecipe
+import com.meucoach.core.domain.story.StoryRouteStroke
 import org.assertj.core.api.Assertions.assertThat
 import org.json.JSONArray
 import org.json.JSONObject
@@ -47,6 +48,7 @@ class ArtRecipeStoreTest {
             font = ArtFont.OSWALD,
             textColor = ArtColor.BLACK,
             routeColor = ArtColor.CYAN,
+            routeStroke = StoryRouteStroke.NEON,
             layout = ArtLayout(
                 template = ArtTemplate.CENTER,
                 distanceOffset = ArtOffset(0.25f, -0.5f),
