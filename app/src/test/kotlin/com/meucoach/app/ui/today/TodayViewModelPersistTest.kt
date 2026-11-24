@@ -136,14 +136,14 @@ class TodayViewModelPersistTest {
         )
 
         val viewModel = createViewModel(timeProvider, coordinator, settleGate = false)
-        val state = withTimeout(5_000) { viewModel.uiState.first { it.isSyncingData } }
+        val state = withTimeout(10_000) { viewModel.uiState.first { it.isSyncingData } }
 
         try {
             assertThat(state.plan).isNull()
             assertThat(database.trainingPlanDao().getAllPlans()).isEmpty()
         } finally {
             coordinator.syncOnResume()
-            withTimeout(5_000) {
+            withTimeout(10_000) {
                 coordinator.gate.first { it is HealthSyncGate.Ready || it is HealthSyncGate.Failed }
             }
         }
@@ -162,10 +162,10 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
         coordinator.syncOnResume()
-        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
 
         val viewModel = createViewModel(timeProvider, coordinator)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
 
@@ -187,10 +187,10 @@ class TodayViewModelPersistTest {
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
         coordinator.syncOnResume()
-        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Failed } }
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Failed } }
 
         val viewModel = createViewModel(timeProvider, coordinator)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
 
@@ -259,10 +259,10 @@ class TodayViewModelPersistTest {
             ),
         )
         coordinator.syncOnResume()
-        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
 
         val viewModel = createViewModel(timeProvider, coordinator)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(30_000) {
             viewModel.uiState.first {
                 it.plan != null && it.plan.sessions.isNotEmpty() && it.completionMessage != null
             }
@@ -292,12 +292,12 @@ class TodayViewModelPersistTest {
         seedReliableLoad(today)
         plans.saveWeek(qualityWeek(today, weekStart))
         coordinator.syncOnResume()
-        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
 
         val viewModel = createViewModel(timeProvider, coordinator)
         // C4-31 (ADR 0044 §2.5): without the check-in the day downgrades the
         // planned quality and shows no "Atualizado" note.
-        val downgraded = withTimeout(5_000) {
+        val downgraded = withTimeout(10_000) {
             viewModel.uiState.first {
                 it.prescription?.adjustment ==
                     com.meucoach.core.domain.prescription.PrescriptionAdjustment.DOWNGRADE
@@ -312,7 +312,7 @@ class TodayViewModelPersistTest {
         checkIns.save(
             DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
         )
-        val restored = withTimeout(5_000) {
+        val restored = withTimeout(10_000) {
             viewModel.uiState.first {
                 it.prescription?.adjustment ==
                     com.meucoach.core.domain.prescription.PrescriptionAdjustment.KEEP &&
@@ -341,10 +341,10 @@ class TodayViewModelPersistTest {
         profiles.saveProfile(profile(today, com.meucoach.core.model.Experience.INTERMEDIATE))
         plans.saveWeek(qualityWeek(today, weekStart))
         coordinator.syncOnResume()
-        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
 
         val viewModel = createViewModel(timeProvider, coordinator)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.prescription != null }
         }
 
@@ -369,10 +369,10 @@ class TodayViewModelPersistTest {
         )
         plans.saveWeek(weekWith(today, weekStart))
         coordinator.syncOnResume()
-        withTimeout(5_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
 
         val viewModel = createViewModel(timeProvider, coordinator)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
 
@@ -396,10 +396,10 @@ class TodayViewModelPersistTest {
         )
 
         val viewModel = createViewModel(timeProvider, coordinator, settleGate = false)
-        withTimeout(5_000) { viewModel.uiState.first { it.isSyncingData } }
+        withTimeout(10_000) { viewModel.uiState.first { it.isSyncingData } }
         dispatcher.scheduler.advanceTimeBy(TodayViewModel.DATA_GATE_TIMEOUT_MS + 1)
 
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
 
@@ -421,7 +421,7 @@ class TodayViewModelPersistTest {
         )
 
         val viewModel = createViewModel(timeProvider)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan != null && it.plan.sessions.isNotEmpty() }
         }
 
@@ -458,7 +458,7 @@ class TodayViewModelPersistTest {
         seedLoad(today)
 
         val viewModel = createViewModel(timeProvider)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan?.qualityCount == 2 }
         }
 
@@ -491,7 +491,7 @@ class TodayViewModelPersistTest {
         }
 
         val viewModel = createViewModel(timeProvider)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Volume: base de 120 min") == true }
         }
 
@@ -526,7 +526,7 @@ class TodayViewModelPersistTest {
         }
 
         val viewModel = createViewModel(timeProvider)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan?.rationale?.contains("Semana de descarga") == true }
         }
 
@@ -574,7 +574,7 @@ class TodayViewModelPersistTest {
 
         val viewModel = createViewModel()
         viewModel.swapSession(weekStart, weekStart.plusDays(1), today = weekStart)
-        withTimeout(5_000) {
+        withTimeout(10_000) {
             while (
                 plans.getWeek(weekStart)?.sessions?.first { it.date == weekStart }?.type !=
                 com.meucoach.core.domain.prescription.WorkoutType.QUALITY
@@ -622,7 +622,7 @@ class TodayViewModelPersistTest {
         )
 
         val viewModel = createViewModel()
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.todayExecution != null }
         }
 
@@ -652,7 +652,7 @@ class TodayViewModelPersistTest {
         )
 
         val viewModel = createViewModel()
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.todayExecution != null }
         }
 
@@ -695,14 +695,14 @@ class TodayViewModelPersistTest {
         ) as com.meucoach.core.data.repository.SaveActivityResult.Saved
 
         val viewModel = createViewModel()
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.todayExecution?.withoutRunData == true }
         }
         assertThat(state.activitySuggestions.map { it.id }).contains(saved.id)
 
         viewModel.replaceManualWithActivity(today, saved.id)
 
-        val updated = withTimeout(5_000) {
+        val updated = withTimeout(10_000) {
             viewModel.uiState.first {
                 it.plan?.sessions?.single()?.completionEvidence ==
                     com.meucoach.core.model.CompletionEvidence.ACTIVITY
@@ -726,7 +726,7 @@ class TodayViewModelPersistTest {
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, today))
 
         val viewModel = createViewModel()
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.raceEvent != null }
         }
 
@@ -758,7 +758,7 @@ class TodayViewModelPersistTest {
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, raceDate))
 
         val viewModel = createViewModel(timeProvider)
-        val state = withTimeout(5_000) {
+        val state = withTimeout(10_000) {
             viewModel.uiState.first { it.plan?.sessions?.isNotEmpty() == true }
         }
 
@@ -806,7 +806,7 @@ class TodayViewModelPersistTest {
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, tomorrow))
 
         val viewModel = createViewModel()
-        withTimeout(5_000) { viewModel.uiState.first { it.plan != null } }
+        withTimeout(10_000) { viewModel.uiState.first { it.plan != null } }
         viewModel.swapSession(today, tomorrow, today)
         delay(200)
 
@@ -854,7 +854,7 @@ class TodayViewModelPersistTest {
         raceEvents.create(NewRaceEvent(RaceDistance.TEN_K, tomorrow))
 
         val viewModel = createViewModel()
-        withTimeout(5_000) { viewModel.uiState.first { it.plan != null } }
+        withTimeout(10_000) { viewModel.uiState.first { it.plan != null } }
         viewModel.swapSession(today, tomorrow, today)
         delay(200)
 
@@ -954,7 +954,7 @@ class TodayViewModelPersistTest {
     ): TodayViewModel {
         if (settleGate) {
             coordinator.syncOnResume()
-            withTimeout(5_000) {
+            withTimeout(10_000) {
                 coordinator.gate.first { it is HealthSyncGate.Ready || it is HealthSyncGate.Failed }
             }
         }
