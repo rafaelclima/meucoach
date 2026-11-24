@@ -1,6 +1,6 @@
 # DECISIONS.md — Índice de decisões
 
-**Versão:** 1.91 · **Data:** 24/11/2026
+**Versão:** 1.92 · **Data:** 24/11/2026
 
 > Revisão 1.2 (06/11/2026): status de implementação dos ADRs 0022–0026 reconciliado com o ciclo 1; nenhuma decisão foi reescrita.
 > Revisão 1.3 (08/11/2026): registro resumido do replanejamento implementado (R-01..R-03).
@@ -88,6 +88,7 @@
 > Revisão 1.89 (24/11/2026): Arte com foto concluída (F0–F8) — modo Foto aditivo com JPG q92 1080, 1 foto por atividade, crop por foco/zoom, templates TOP/CENTER/BOTTOM, escala 80–130% com reflow medido, scrim 58% com aviso sobre o composto, codecs estilo v2 + foto v1, key com fingerprint do plano, cache PNG+JPG, ciclo de vida (reset/deleteActivity/órfãos/invalidate) e DoD §9 conferido com gates isolados verdes; nenhuma validação física simulada, checklist de aparelho com o usuário 0. ADR 0061 passa a implementado; `DESIGN_SYSTEM` §4.1 conferido sem divergência; P3-07 encerrada.
 > Revisão 1.90 (24/11/2026): P3-08 ajustes pós-aparelho da Arte com foto (pedidos do usuário 0) — segmento Vídeo|Arte esconde ao rolar e volta no topo; rota Topo/Base limitada a 640 design px (1:1 inalterada); margem inferior do transparente 150 (9:16 Photo mantém 340); clamp do nudge na região livre de 32 (templates na safe area); snackbar de confirmação/erro no Salvar JPG/PNG (o inline existia abaixo da dobra). Gates isolados verdes, cobertura do app 81,82%, goldens regravados e revisados; valores sujeitos a novo ajuste no aparelho.
 > Revisão 1.91 (24/11/2026): P3-09 crash + alcance do nudge (achados do aparelho) — 2 quedas `Canvas: trying to use a recycled bitmap` pegas via adb ao ajustar os extras; causa: a prévia reciclava o bitmap em exibição durante churn de nudges; fix remove o recycle do bitmap exibido (GC recolhe; foto local mantém recycle); `ArtOffset` até ±1 com clamp box-aware (blocos estreitos alcançam a borda, on-screen garantido). Gates isolados verdes, cobertura 81,82%, sem regolden; re-teste do gesto no aparelho pendente.
+> Revisão 1.92 (24/11/2026): P3-10 prévia fixa na aba Vídeo (pedido do usuário 0, paridade com a Arte) — `StoryPreviewCard` fixo no topo e controles rolando abaixo, com a mesma altura adaptativa da arte (40%, 120–300 dp); `StoryVideoContent` passa a ter só cards + CTA; teste de viewport realista e goldens do Studio regravados. Gates isolados verdes, cobertura 81,83%, validação no aparelho pendente.
 
 Uma decisão arquitetural relevante vira um ADR. O ADR registra contexto, decisão, alternativas e consequências. Não reescrevemos o passado; se a decisão mudar, criamos outro ADR que a substitui.
 

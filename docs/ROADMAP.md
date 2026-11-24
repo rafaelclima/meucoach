@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.74 · **Data:** 24/11/2026 · **Mudança:** P3-09 crash da prévia corrigido (recycle do bitmap em exibição removido; causa pega via adb) + nudge até ±1 (extras alcançam a borda; clamp garante on-screen). Gates verdes, cobertura 81,82%.
+**Versão:** 1.75 · **Data:** 24/11/2026 · **Mudança:** P3-10 prévia fixa na aba Vídeo (paridade com a Arte; imagem adaptativa 120–300 dp; goldens regravados). Gates verdes, cobertura 81,83%.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -801,6 +801,12 @@ Documentos: [`PRD_ARTE_FOTO_EDITOR.md`](PRD_ARTE_FOTO_EDITOR.md) v0.3, [`ADR 006
 
 - [x] Crash `Canvas: trying to use a recycled bitmap` corrigido (prévia não recicla bitmap em exibição; GC recolhe).
 - [x] `ArtOffset` até ±1 com clamp box-aware (extras/ritmo alcançam a borda direita; on-screen garantido).
+
+### P3-10 · Prévia fixa na aba Vídeo (paridade com a Arte)
+
+**Status:** concluída em 24/11/2026 (pedido do usuário 0; validação no aparelho pendente).
+
+- [x] Prévia do vídeo fixa no topo, controles rolando abaixo (mesmo modelo da arte; imagem adaptativa 120–300 dp).
 
 ---
 

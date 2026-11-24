@@ -35,7 +35,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class StoryStudioContentTest {
     @get:Rule
@@ -48,6 +48,18 @@ class StoryStudioContentTest {
         compose.onNodeWithText("OBRIGATÓRIAS").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Distância · Ritmo médio · Tempo total").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("EXTRAS (0/2)").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `the fixed preview remains visible while editing the recipe`() {
+        setContent()
+
+        compose.onNodeWithTag("story-preview").assertIsDisplayed()
+        compose.onNodeWithTag("story-generate").performScrollTo()
+        compose.waitForIdle()
+        compose.onNodeWithTag("story-preview").assertIsDisplayed()
+        compose.onNodeWithTag("story-map-meucoach_dark").performScrollTo()
+        compose.onNodeWithTag("story-preview").assertIsDisplayed()
     }
 
     @Test

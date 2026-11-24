@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -71,6 +72,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.res.ResourcesCompat
 import com.meucoach.app.story.StoryBranding
@@ -263,25 +265,38 @@ internal fun StoryStudioContent(
             }
         }
         if (tab == StoryStudioTab.VIDEO) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(videoScroll)
-                    .testTag("story-video-scroll"),
-            ) {
-                StoryVideoContent(
-                    state = state,
-                    avatar = avatar,
-                    introSeen = introSeen,
-                    onDismissIntro = onDismissIntro,
-                    onPreset = onPreset,
-                    onToggleExtra = onToggleExtra,
-                    onDuration = onDuration,
-                    onMapStyle = onMapStyle,
-                    onSaveAsDefault = onSaveAsDefault,
-                    onReset = onReset,
-                    onGenerate = onGenerate,
-                )
+            // Same model as the art tab (ADR 0060): the preview stays fixed
+            // on top and only the controls scroll below it.
+            BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                val videoHeight = (maxHeight * 0.40f).coerceIn(120.dp, 300.dp)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    StoryPreviewCard(
+                        plan = state.plan,
+                        recipe = state.recipe,
+                        avatar = avatar,
+                        imageHeight = videoHeight,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(videoScroll)
+                            .testTag("story-video-scroll"),
+                    ) {
+                        StoryVideoContent(
+                            state = state,
+                            introSeen = introSeen,
+                            onDismissIntro = onDismissIntro,
+                            onPreset = onPreset,
+                            onToggleExtra = onToggleExtra,
+                            onDuration = onDuration,
+                            onMapStyle = onMapStyle,
+                            onSaveAsDefault = onSaveAsDefault,
+                            onReset = onReset,
+                            onGenerate = onGenerate,
+                        )
+                    }
+                }
             }
         } else {
             ArtStudioContent(
@@ -294,11 +309,10 @@ internal fun StoryStudioContent(
     }
 }
 
-/** The video tab: preview, recipe cards and the generate CTA. */
+/** The video tab: recipe cards and the generate CTA (the preview is fixed above). */
 @Composable
 private fun StoryVideoContent(
     state: StoryStudioUiState,
-    avatar: Bitmap?,
     introSeen: Boolean,
     onDismissIntro: () -> Unit,
     onPreset: (StoryPreset) -> Unit,
@@ -310,12 +324,6 @@ private fun StoryVideoContent(
     onGenerate: () -> Unit,
 ) {
     val colors = McTheme.colors
-    StoryPreviewCard(
-        plan = state.plan,
-        recipe = state.recipe,
-        avatar = avatar,
-    )
-    Spacer(modifier = Modifier.height(16.dp))
     McCard(variant = McCardVariant.DEFAULT) {
         StudioCardHeader(
             overline = "ESTILO",
@@ -561,7 +569,12 @@ private fun StudioTabSegment(selected: StoryStudioTab, onSelect: (StoryStudioTab
 }
 
 @Composable
-private fun StoryPreviewCard(plan: StoryPlan?, recipe: StoryRecipe, avatar: Bitmap?) {
+private fun StoryPreviewCard(
+    plan: StoryPlan?,
+    recipe: StoryRecipe,
+    avatar: Bitmap?,
+    imageHeight: Dp = PREVIEW_HEIGHT_DP,
+) {
     val colors = McTheme.colors
     var frame by rememberSaveable { mutableStateOf(StoryPreviewFrame.OPENING) }
     val context = LocalContext.current
@@ -630,8 +643,8 @@ private fun StoryPreviewCard(plan: StoryPlan?, recipe: StoryRecipe, avatar: Bitm
             if (preview == null) {
                 Box(
                     modifier = Modifier
-                        .height(PREVIEW_HEIGHT_DP)
-                        .width(PREVIEW_HEIGHT_DP * 9f / 16f)
+                        .height(imageHeight)
+                        .width(imageHeight * 9f / 16f)
                         .clip(RoundedCornerShape(20.dp))
                         .background(colors.surfaceInset)
                         .testTag("story-preview-loading"),
@@ -654,8 +667,8 @@ private fun StoryPreviewCard(plan: StoryPlan?, recipe: StoryRecipe, avatar: Bitm
                         bitmap = preview.asImageBitmap(),
                         contentDescription = "Prévia do story — ${frame.label}",
                         modifier = Modifier
-                            .height(PREVIEW_HEIGHT_DP)
-                            .width(PREVIEW_HEIGHT_DP * 9f / 16f)
+                            .height(imageHeight)
+                            .width(imageHeight * 9f / 16f)
                             .clip(RoundedCornerShape(20.dp)),
                         contentScale = ContentScale.Fit,
                     )

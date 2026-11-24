@@ -1,6 +1,44 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Crash da prévia corrigido + nudge até ±1; validação no aparelho pendente)
+**Atualizado:** 24/11/2026 (Prévia fixa na aba Vídeo, paridade com a Arte; validação no aparelho pendente)
+
+## Sessão 2026-11-24 — Prévia fixa na aba Vídeo (P3-10)
+
+**Escopo:** pedido do usuário 0 — a prévia do vídeo segue o modelo da
+prévia da arte (fixa no topo, controles rolando). Sem mudança de receita,
+render, export ou comportamento.
+
+### Concluído
+
+- **`StoryStudioSheet`:** aba Vídeo reestruturada como a Arte —
+  `StoryPreviewCard` fixo no topo + coluna de controles com
+  `videoScroll` (`story-video-scroll`); `StoryVideoContent` passa a ter
+  só os cards e o CTA. Altura da imagem adaptativa
+  (40% da área, 120–300 dp), mesmo modelo da arte, para telas curtas e
+  fonte 200%.
+- **Detalhe de teste:** `StoryStudioContentTest` passa a rodar em
+  `w393dp-h852dp` (viewport realista; o default minúsculo deixava a
+  coluna de scroll sem altura e o gesto de retorno não andava).
+- **Testes:** prévia fixa visível após scroll (espelho do teste da
+  arte); segmento e suíte do vídeo intactos. Goldens
+  `story-studio-*-extras-*` regravados e revisados (prévia fixa +
+  início dos controles).
+- **Gates (isolados, sem combinar sob carga):**
+  - `./gradlew :core:domain:test` + `:app:testDebugUnitTest` verdes
+    (app 1.501 testes, 0 falhas).
+  - `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde e
+    `... --tests "*StoryStudioScreenshotTest"` verde em separado.
+  - `./gradlew :app:assembleDebug`, `./gradlew :app:detekt`,
+    `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes.
+  - `./gradlew :app:koverVerify --rerun-tasks` verde (app **81,83%** de
+    linhas, gate ≥78%; sem queda).
+- Nenhum dado real no diff; NOTICE OFL intacto.
+
+### Próximo
+
+1. Validação no aparelho (S24 Ultra): prévia do vídeo fixa ao rolar,
+   segmento some/volta, controles 200%/360 dp.
+2. Checklists de aparelho pendentes da P3-08/P3-09.
 
 ## Sessão 2026-11-24 — Crash da prévia + alcance do nudge (P3-09)
 
