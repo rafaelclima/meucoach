@@ -1,6 +1,7 @@
 package com.meucoach.app.reminder
 
 import com.meucoach.app.ui.common.raceDistanceLabel
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -39,21 +40,60 @@ object ReminderContent {
             id = CHECK_IN_ID,
             kind = ReminderKind.CHECK_IN,
             title = "Check-in de hoje",
-            body = "15 s para registrar sono, energia e dor. Isso ajusta o treino de amanhã.",
+            body = "15 s para registrar sono, energia e dor. Isso ajusta a leitura da sua prontidão.",
             deepLink = DEEP_LINK_CHECK_IN,
         )
     }
 
-    fun workout(today: LocalDate, plan: WeeklyPlan?): ReminderMessage? {
+    /**
+     * Workout reminder for [today].
+     *
+     * The weekly plan is the intent, never the day authority: when the day
+     * already has a persisted [DailyPrescription] (readiness downgrade, load
+     * cap, heat, rest), the reminder must say exactly what the Hoje screen
+     * will show. Without a prescription the plan copy is the honest fallback.
+     */
+    fun workout(today: LocalDate, plan: WeeklyPlan?, prescription: DailyPrescription? = null): ReminderMessage? {
         val session = plan?.sessions?.firstOrNull { it.date == today } ?: return null
         if (session.status != SessionStatus.PLANNED) return null
         if (session.type == WorkoutType.REST) return null
-        val duration = session.durationMin?.let { " · $it min" } ?: ""
-        return ReminderMessage(
+        val effective = prescription
+            ?.takeIf { it.date == today }
+            ?.takeIf { it.isRest || it.plannedType == null || it.plannedType == session.type }
+        if (effective?.isRest == true) return null
+        return effective?.let(::workoutForPrescription) ?: ReminderMessage(
             id = WORKOUT_ID,
             kind = ReminderKind.WORKOUT,
             title = "Treino de hoje: ${session.title}",
-            body = "$duration${if (duration.isEmpty()) "" else " · "}${session.rationale}",
+            body = session.durationMin
+                ?.let { "$it min · ${session.rationale}" }
+                ?: session.rationale,
+            deepLink = DEEP_LINK_TODAY,
+        )
+    }
+
+    /**
+     * Copy for a persisted prescription without reading the plan again.
+     *
+     * Used when the day is re-evaluated after the 07:00 reminder: updating an
+     * active notification must show the current day, not the old plan.
+     */
+    fun workoutForPrescription(prescription: DailyPrescription): ReminderMessage? {
+        if (prescription.isRest) return null
+        if (prescription.plannedType == null) return null
+        val adjusted = prescription.differsFromPlan
+        val body = if (adjusted) {
+            "Ajustado para hoje. ${prescription.rationale}"
+        } else {
+            prescription.prescribedDurationMin
+                ?.let { "$it min · ${prescription.rationale}" }
+                ?: prescription.rationale
+        }
+        return ReminderMessage(
+            id = WORKOUT_ID,
+            kind = ReminderKind.WORKOUT,
+            title = "Treino de hoje: ${prescription.title}",
+            body = body,
             deepLink = DEEP_LINK_TODAY,
         )
     }

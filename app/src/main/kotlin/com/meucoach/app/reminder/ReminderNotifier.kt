@@ -35,6 +35,27 @@ class ReminderNotifier @Inject constructor(@ApplicationContext context: Context)
     }
 
     fun notify(message: ReminderMessage) {
+        post(message, silentUpdate = false)
+    }
+
+    /**
+     * Rewrites an already-posted reminder without alerting again. The day can
+     * change after the 07:00 notification (readiness check-in, load update),
+     * and the notification shade must show the same day authority as Hoje.
+     * A notification the user already dismissed is never recreated.
+     */
+    fun updateIfActive(message: ReminderMessage) {
+        if (!isActive(message.id)) return
+        post(message, silentUpdate = true)
+    }
+
+    fun isActive(id: Int): Boolean = NotificationManagerCompat.from(appContext).activeNotifications.any { it.id == id }
+
+    fun cancelWorkout() {
+        NotificationManagerCompat.from(appContext).cancel(ReminderContent.WORKOUT_ID)
+    }
+
+    private fun post(message: ReminderMessage, silentUpdate: Boolean) {
         ensureChannel()
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -62,6 +83,8 @@ class ReminderNotifier @Inject constructor(@ApplicationContext context: Context)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setOnlyAlertOnce(silentUpdate)
+            .setSilent(silentUpdate)
             .build()
         NotificationManagerCompat.from(appContext).notify(message.id, notification)
     }

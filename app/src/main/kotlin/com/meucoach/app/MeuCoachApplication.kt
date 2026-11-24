@@ -3,10 +3,12 @@ package com.meucoach.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.meucoach.app.application.TodayPrescriptionSync
 import com.meucoach.app.data.TrashPurgeScheduler
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.health.HealthSyncScheduler
 import com.meucoach.app.reminder.ReminderScheduler
+import com.meucoach.app.reminder.WorkoutReminderSync
 import com.meucoach.app.story.ArtPhotoStartupSweeper
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ProfileRepository
@@ -27,6 +29,12 @@ class MeuCoachApplication :
 
     @Inject
     lateinit var reminderScheduler: ReminderScheduler
+
+    @Inject
+    lateinit var workoutReminderSync: WorkoutReminderSync
+
+    @Inject
+    lateinit var todayPrescriptionSync: TodayPrescriptionSync
 
     @Inject
     lateinit var healthSyncScheduler: HealthSyncScheduler
@@ -60,6 +68,10 @@ class MeuCoachApplication :
         applicationScope.launch {
             runCatching { artPhotoStartupSweeper.sweep() }
         }
+        // A workout reminder already in the shade is rewritten when the day
+        // authority changes (check-in/readiness/load), never re-alerted.
+        todayPrescriptionSync.start(applicationScope)
+        workoutReminderSync.start(applicationScope)
         // Schedule only while a profile exists. After a full reset the app must
         // stay silent until onboarding creates a new profile (ADR 0025).
         applicationScope.launch {

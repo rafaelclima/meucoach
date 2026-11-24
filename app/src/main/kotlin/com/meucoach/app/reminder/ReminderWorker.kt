@@ -6,8 +6,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.CheckInRepository
-import com.meucoach.core.data.repository.RaceEventRepository
-import com.meucoach.core.data.repository.TrainingPlanRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -16,8 +14,7 @@ class ReminderWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val checkIns: CheckInRepository,
-    private val plans: TrainingPlanRepository,
-    private val raceEvents: RaceEventRepository,
+    private val workoutResolver: WorkoutReminderResolver,
     private val timeProvider: TimeProvider,
     private val notifier: ReminderNotifier,
 ) : CoroutineWorker(appContext, params) {
@@ -27,20 +24,19 @@ class ReminderWorker @AssistedInject constructor(
             val today = timeProvider.currentDate()
             val message = when (kind) {
                 ReminderKind.CHECK_IN.name -> ReminderContent.checkIn(today, checkIns.get(today))
-
-                ReminderKind.WORKOUT.name -> {
-                    val event = raceEvents.getForDate(today)
-                    if (event != null) {
-                        ReminderContent.race(event)
-                    } else {
-                        val weekStart = timeProvider.currentWeekStart()
-                        ReminderContent.workout(today, plans.getWeek(weekStart))
-                    }
-                }
-
+                ReminderKind.WORKOUT.name -> workoutResolver.message(today)
                 else -> null
             }
-            message?.let(notifier::notify)
+            if (kind == ReminderKind.WORKOUT.name) {
+                if (message == null) {
+                    notifier.cancelWorkout()
+                } else {
+                    if (message.kind == ReminderKind.RACE) notifier.cancelWorkout()
+                    notifier.notify(message)
+                }
+            } else {
+                message?.let(notifier::notify)
+            }
         }.fold(
             onSuccess = { Result.success() },
             onFailure = { Result.retry() },

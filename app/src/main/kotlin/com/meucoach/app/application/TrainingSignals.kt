@@ -20,6 +20,9 @@ import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DailyMetrics
 import com.meucoach.core.model.SessionExecution
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.Instant
 import java.time.LocalDate
 import javax.inject.Inject
@@ -110,6 +113,27 @@ class TrainingSignalSource @Inject constructor(
     private val activities: ActivityRepository,
     private val executions: SessionExecutionRepository,
 ) {
+    /**
+     * Reactive read of the same persisted signals used by [snapshot]. The
+     * app-wide day authority and the Coach cards consume this instead of each
+     * one assembling its own combination.
+     */
+    fun observeSignals(): Flow<PersistedTrainingSignals> = combine(
+        checkIns.observeAll(),
+        metrics.observeAll(),
+        activities.observeActivitySummaries(),
+        activities.observeLastImportedAt(),
+        executions.observeAll(),
+    ) { checkIns, metrics, summaries, lastImportedAt, executions ->
+        PersistedTrainingSignals(
+            checkIns = checkIns,
+            metrics = metrics,
+            activities = summaries,
+            lastImportedAt = lastImportedAt,
+            executions = executions,
+        )
+    }.distinctUntilChanged()
+
     suspend fun snapshot(profile: AthleteProfile, today: LocalDate, checkedAt: Instant): TrainingSignals {
         val persisted = PersistedTrainingSignals(
             checkIns = checkIns.getAll(),
