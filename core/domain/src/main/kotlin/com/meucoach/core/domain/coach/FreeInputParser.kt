@@ -17,6 +17,9 @@ enum class FreeInputIntent {
     ASK_HOW_TO_RUN,
     ASK_REVIEW,
     ASK_PROGRESS,
+
+    /** Open running/training question: answered with facts, never new numbers. */
+    ASK_COACHING,
     REPORT_DONE,
     REQUEST_ADJUST,
     ASK_CAPABILITIES,
@@ -66,11 +69,11 @@ object FreeInputParser {
     private val negation = Regex("""\b(nao|nem|nunca)\b""")
 
     private val scopePatterns = listOf(
-        Regex("""\b(dor|doi|doendo|lesao|machuc|medico|diagnostico|remedio|suplemento)\b"""),
-        Regex("""\b(dieta|emagrec|muscula|academia|fisioter|tendinite|canelite|inflam)\b"""),
-        Regex("""\b(torcao|entorse|fratura|cirurgia|batimento)\b"""),
-        Regex("""\b(pace|vdot|vo2|bpm)\b"""),
-        Regex("""\bfc\b"""),
+        Regex("""\b(dor|doi|doeu|doendo|lesao|medico|diagnostico|remedio|suplemento|dieta|academia)\b"""),
+        Regex("""\b(tendinite|canelite|torcao|entorse|fratura|cirurgia|batimento|inchaco|febre|tontura)\b"""),
+        Regex("""\b(gripe|covid)\b"""),
+        Regex("""\b(machuc|emagrec|muscula|fisioter|inflam|sangr|formig|gripad|resfriado|antibiotic|medicament)"""),
+        Regex("""anti-inflamat"""),
         Regex("""(monta|monte|cria|crie|prescrev|planeja|planeje).*(treino|plano|planilha)"""),
     )
 
@@ -93,7 +96,8 @@ object FreeInputParser {
     private val reviewPatterns = listOf(
         Regex("""semana passada"""),
         Regex("""ultima semana"""),
-        Regex("""\b(revisao|resumo da semana|como foi)\b"""),
+        Regex("""\b(revisao|resumo da semana)\b"""),
+        Regex("""como (foi|ta|esta) (a |minha )?semana\b"""),
     )
 
     private val progressPatterns = listOf(
@@ -103,10 +107,7 @@ object FreeInputParser {
         Regex("""\bcomo (estou|anda)\b"""),
     )
 
-    private val becausePattern = Regex("""(porque|por que).*(hoje|treino|facil|forte|descanso)""")
-
     private val weekPatterns = listOf(
-        becausePattern,
         Regex("""\b(explica|explicacao|minha semana)\b"""),
         Regex("""\bvolume\b.*\bsemana\b|\bsemana\b.*\bvolume\b"""),
     )
@@ -121,6 +122,47 @@ object FreeInputParser {
         Regex("""(segunda|terca|quarta|quinta|sexta|sabado|domingo|seg|ter|qua|qui|sex|sab|dom)\b.*\bdica\b"""),
         Regex("""\bestrategia\b.*(treino|corrida|prova|longao)"""),
         Regex("""\britmo\b.*(manter|levar|segurar)"""),
+        Regex(
+            """\b(pace|ritmo|fc|bpm|frequencia cardiaca)\b""" +
+                """.*\b(hoje|amanha|ontem|treino|corrida|sessao|prova|longao)\b""",
+        ),
+        Regex(
+            """\b(treino|corrida|sessao|prova|longao)\b""" +
+                """.*\b(pace|ritmo|fc|bpm|frequencia cardiaca)\b""",
+        ),
+    )
+
+    private fun takesSlots(intent: FreeInputIntent): Boolean = when (intent) {
+        FreeInputIntent.REQUEST_ADJUST,
+        FreeInputIntent.ASK_SESSION,
+        FreeInputIntent.ASK_HOW_TO_RUN,
+        FreeInputIntent.ASK_COACHING,
+        -> true
+
+        else -> false
+    }
+
+    /**
+     * Free-text safety is local: diagnosis, nutrition and "create a plan" stay
+     * out. Pace/FC/readiness *questions* are allowed to reach the model, but
+     * the answer can only cite the deterministic facts (validator).
+     */
+    private val questionCues = listOf(
+        Regex("""\?"""),
+        Regex("""^(como|o que|por que|porque|qual|quais|quando|onde|posso|devo|vale|e melhor)\b"""),
+        Regex("""\b(me explica|me conta|me ajuda|queria saber|quero saber|tira uma duvida)\b"""),
+    )
+
+    /**
+     * A statement without a question mark only becomes an open answer when it
+     * is clearly about running or the app's training context. This keeps
+     * nonsense out of the model while leaving real questions free.
+     */
+    private val runningTopics = listOf(
+        Regex("""\b(corr|treino|plano|semana|sessao|prova|longao|rodagem|interval|fartlek|tiro)\b"""),
+        Regex("""\b(pace|ritmo|fc|bpm|frequencia|cardio|aerobi|aquec|along|esteira|subida|ladeira)\b"""),
+        Regex("""\b(descanso|recuper|prontidao|sono|fadiga|cansaco|carga|volume|hidrat|calor|vento|chuva)\b"""),
+        Regex("""\b(postura|respir|passada|cadencia|tenis|meta|objetivo|evolu|melhor)\b"""),
     )
 
     private val sessionPatterns = listOf(
@@ -149,11 +191,7 @@ object FreeInputParser {
         val sanitized = whitespace.replace(text.trim(), " ").take(MAX_CHARS)
         val normalized = normalizedKeywordForm(sanitized)
         val intent = resolveIntent(normalized)
-        val slots = if (
-            intent == FreeInputIntent.REQUEST_ADJUST ||
-            intent == FreeInputIntent.ASK_SESSION ||
-            intent == FreeInputIntent.ASK_HOW_TO_RUN
-        ) {
+        val slots = if (takesSlots(intent)) {
             extractSlots(normalized, today)
         } else {
             FreeInputSlots()
@@ -167,7 +205,13 @@ object FreeInputParser {
         val flags = matchFlags(normalized)
         if (flags.matches >= 2) return FreeInputIntent.ASK_CLARIFY
         if (flags.adjust && needsClarification(normalized)) return FreeInputIntent.ASK_CLARIFY
-        return decideIntent(flags)
+        val decided = decideIntent(flags)
+        if (decided != FreeInputIntent.OUT_OF_SCOPE) return decided
+        return if (looksLikeQuestion(normalized) || runningTopics.any { it.containsMatchIn(normalized) }) {
+            FreeInputIntent.ASK_COACHING
+        } else {
+            FreeInputIntent.OUT_OF_SCOPE
+        }
     }
 
     private data class MatchFlags(
@@ -186,12 +230,13 @@ object FreeInputParser {
 
     private fun matchFlags(normalized: String): MatchFlags {
         val explicitAdjust = adjustExplicit.any { it.containsMatchIn(normalized) }
-        val because = becausePattern.containsMatchIn(normalized)
         val howTo = !explicitAdjust && howToPatterns.any { it.containsMatchIn(normalized) }
-        val session = !because && !explicitAdjust && sessionPatterns.any { it.containsMatchIn(normalized) }
+        val session = !explicitAdjust && sessionPatterns.any { it.containsMatchIn(normalized) }
         return MatchFlags(
             adjust = explicitAdjust || timeShortage.containsMatchIn(normalized),
-            report = !negation.containsMatchIn(normalized) && reportPatterns.any { it.containsMatchIn(normalized) },
+            report = !looksLikeQuestion(normalized) &&
+                !negation.containsMatchIn(normalized) &&
+                reportPatterns.any { it.containsMatchIn(normalized) },
             review = reviewPatterns.any { it.containsMatchIn(normalized) },
             progress = progressPatterns.any { it.containsMatchIn(normalized) },
             training = howTo || session,
@@ -201,6 +246,8 @@ object FreeInputParser {
             capabilities = capabilitiesPatterns.any { it.containsMatchIn(normalized) },
         )
     }
+
+    private fun looksLikeQuestion(normalized: String): Boolean = questionCues.any { it.containsMatchIn(normalized) }
 
     private fun decideIntent(flags: MatchFlags): FreeInputIntent = when {
         flags.adjust -> FreeInputIntent.REQUEST_ADJUST

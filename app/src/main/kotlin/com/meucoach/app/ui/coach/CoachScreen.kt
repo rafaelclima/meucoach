@@ -517,7 +517,8 @@ private fun CoachAiInviteCard(
         CoachBubble(
             text = if (expanded) {
                 "A IA é opcional: seu treino, as travas e a evolução já funcionam no aparelho. " +
-                    "Quer que eu escreva a explicação e a revisão? Envio só um resumo, sem nome e sem mapa."
+                    "Quer que eu escreva a explicação, a revisão e responda suas perguntas? " +
+                    "Envio um resumo do treino, da prontidão e o que você digitar, sem nome e sem mapa."
             } else {
                 "A explicação em texto está desligada. Quer ligar a IA?"
             },

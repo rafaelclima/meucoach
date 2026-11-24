@@ -168,14 +168,16 @@ class OpenRouterBodyTest {
     }
 
     @Test
-    fun `free-answer has its own system prompt driven by intent`() {
+    fun `free-answer has its own system prompt driven by intent and question`() {
         val free = buildOpenRouterBody("some-model:free", "free-answer", "{}")
         val explain = buildOpenRouterBody("some-model:free", "explain", "{}")
         fun system(body: String) = Json.parseToJsonElement(body)
             .jsonObject["messages"]!!.jsonArray[0]
             .jsonObject["content"]!!.jsonPrimitive.content
 
-        assertTrue(system(free).contains("intent"), "free-answer must read intent + slots, never raw text")
+        assertTrue(system(free).contains("intent"), "free-answer must read intent + slots")
+        assertTrue(system(free).contains("`question`"), "free-answer must answer the typed question")
+        assertTrue(system(free).contains("dossiê"), "free-answer must answer only from engine facts")
         assertTrue(system(free) != system(explain), "free-answer must not reuse the explain prompt")
     }
 

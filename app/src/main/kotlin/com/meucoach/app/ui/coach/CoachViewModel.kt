@@ -37,6 +37,7 @@ import com.meucoach.core.domain.coach.FreeInputParser
 import com.meucoach.core.domain.coach.SessionTask
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.model.AthleteProfile
@@ -635,6 +636,9 @@ class CoachViewModel @Inject constructor(
             FreeInputIntent.ASK_REVIEW -> answerReview(parsed, exchangeId)
 
             FreeInputIntent.ASK_PROGRESS -> answerProgress(parsed, exchangeId)
+
+            FreeInputIntent.ASK_COACHING ->
+                answerOpenContent(parsed, exchangeId, LocalDate.now(clock), sources, ::freeAnswer)
         }
     }
 
@@ -695,7 +699,8 @@ class CoachViewModel @Inject constructor(
                 contextHash = context.inputsHash,
                 allowedMinutes = allowed,
                 allowedPercents = emptySet(),
-                allowedDistancesKm = emptySet(),
+                allowedCounts = planCounts(context.plan),
+                allowedDistancesKm = context.plan.sessions.mapNotNull { it.targets.distanceKm }.toSet(),
                 forbiddenCodes = prompt.ruleIds.toSet(),
                 engineContext = prompt.rationale,
             ),
@@ -735,6 +740,7 @@ class CoachViewModel @Inject constructor(
                 contextHash = prompt.inputsHash,
                 allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
                 allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
+                allowedCounts = reviewCounts(prompt),
                 allowedDistancesKm = emptySet(),
                 forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
                 engineContext = reviewLine(prompt),
@@ -746,9 +752,11 @@ class CoachViewModel @Inject constructor(
         val parsed = request.parsed
         val exchangeId = request.exchangeId
         val freeHash =
-            "coach-free-v1|${request.contextHash}|${parsed.intent}|${parsed.slots.dayOfWeek}|${parsed.slots.minutes}"
+            "coach-free-v1|${request.contextHash}|${parsed.intent}|${parsed.slots.dayOfWeek}|" +
+                "${parsed.slots.minutes}|${parsed.sanitized.hashCode()}"
         val allowedMinutes = request.allowedMinutes
         val allowedPercents = request.allowedPercents
+        val allowedCounts = request.allowedCounts
         val allowedDistancesKm = request.allowedDistancesKm
         val forbiddenCodes = request.forbiddenCodes
         val engineContext = request.engineContext
@@ -760,7 +768,9 @@ class CoachViewModel @Inject constructor(
                 minutes = parsed.slots.minutes,
                 allowedMinutes = allowedMinutes,
                 allowedPercents = allowedPercents,
+                allowedCounts = allowedCounts,
                 allowedDistancesKm = allowedDistancesKm,
+                question = parsed.sanitized,
                 engineContext = engineContext,
             )
             val raw = api.freeAnswer(prompt)
@@ -770,6 +780,7 @@ class CoachViewModel @Inject constructor(
                 allowedMinutes = allowedMinutes,
                 allowedPercents = allowedPercents,
                 allowedDistancesKm = allowedDistancesKm,
+                allowedCounts = allowedCounts,
                 forbiddenCodes = forbiddenCodes,
             )
             when (validated) {
@@ -893,12 +904,13 @@ class CoachViewModel @Inject constructor(
     }
 }
 
-private data class FreeAnswerRequest(
+internal data class FreeAnswerRequest(
     val parsed: FreeInputParse,
     val exchangeId: String,
     val contextHash: String,
     val allowedMinutes: Set<Int>,
     val allowedPercents: Set<Int>,
+    val allowedCounts: Set<Int> = emptySet(),
     val allowedDistancesKm: Set<Double>,
     val forbiddenCodes: Set<String>,
     val engineContext: String,
@@ -968,6 +980,7 @@ private suspend fun answerSessionContent(
             contextHash = "${planContext.inputsHash}|$target",
             allowedMinutes = answer.allowedMinutes,
             allowedPercents = emptySet(),
+            allowedCounts = sessionCounts(plan),
             allowedDistancesKm = answer.allowedDistancesKm,
             forbiddenCodes = (plan.ruleIds + plan.evidenceIds + session.ruleIds + session.evidenceIds).toSet(),
             engineContext = answer.engineContext,
@@ -999,6 +1012,7 @@ private suspend fun answerProgressContent(
             contextHash = "progress|${context.today}",
             allowedMinutes = answer.allowedMinutes,
             allowedPercents = answer.allowedPercents,
+            allowedCounts = progressCounts(summary),
             allowedDistancesKm = emptySet(),
             forbiddenCodes = forbidden,
             engineContext = answer.engineContext,
@@ -1100,6 +1114,65 @@ private fun dayLabel(today: LocalDate, target: LocalDate): String = when (target
     else -> "Esse dia"
 }
 
+private fun planCounts(plan: WeeklyPlan): Set<Int> = buildSet {
+    add(DAYS_IN_WEEK)
+    add(plan.sessions.size)
+    add(plan.qualityCount)
+    add(plan.sessions.count { it.type == WorkoutType.EASY })
+    add(plan.sessions.count { it.type == WorkoutType.LONG })
+    add(plan.sessions.count { it.type == WorkoutType.QUALITY })
+    add(plan.sessions.count { it.type == WorkoutType.REST })
+    add(plan.sessions.count { it.status == SessionStatus.DONE })
+    add(plan.sessions.count { it.status == SessionStatus.CLOSED })
+}
+
+private fun sessionCounts(plan: WeeklyPlan): Set<Int> = planCounts(plan)
+
+private fun reviewCounts(prompt: CoachReviewPrompt): Set<Int> = buildSet {
+    add(DAYS_IN_WEEK)
+    prompt.adherence?.let {
+        add(it.planned)
+        add(it.done)
+        add(it.verified)
+        add(it.manual)
+        add(it.legacy)
+        add(it.skipped)
+        it.percent?.let(::add)
+    }
+    prompt.quality?.let {
+        add(it.planned)
+        add(it.kept)
+        add(it.downgraded)
+    }
+    prompt.readiness?.let {
+        add(it.measuredDays)
+        add(it.redDays)
+    }
+    prompt.sleep?.let {
+        add(it.measuredNights)
+        add(it.shortNights)
+    }
+    prompt.intensity?.let { add(it.sessions) }
+}
+
+private fun progressCounts(summary: CoachProgressSummary): Set<Int> = buildSet {
+    add(DAYS_IN_WEEK)
+    add(summary.availableWeeks)
+    add(summary.plannedSessions)
+    add(summary.doneSessions)
+    add(summary.redDays)
+    add(summary.shortNights)
+    summary.adherencePercent?.let(::add)
+    summary.volumePercent?.let(::add)
+    summary.easyPercent28d?.let {
+        add(it)
+        add(CoachProgressAnswer.EASY_TARGET_PERCENT)
+        add(100 - CoachProgressAnswer.EASY_TARGET_PERCENT)
+    }
+}
+
+private const val DAYS_IN_WEEK = 7
+
 /**
  * Deterministic copy for the typed-message paths that need no model call
  * (ADR 0056). No numbers, no prescription, no diagnosis — just the next step.
@@ -1111,8 +1184,8 @@ private object FreeAnswerCopy {
             "Toca numa sugestão que eu organizo."
     const val CLARIFY = "Não entendi direito — me diz o dia e quantos minutos você tem?"
     const val CAPABILITIES =
-        "Posso dizer o treino do dia, como correr, explicar a semana, contar sua evolução e ajustar. " +
-            "É só me dizer — ou tocar numa sugestão."
+        "Posso dizer o treino do dia, como correr, explicar a semana, contar sua evolução, " +
+            "responder dúvidas de corrida e ajustar. É só me dizer — ou tocar numa sugestão."
     const val REPORT_ACK = "Boa! Marca lá no Hoje pra entrar na conta — por aqui eu sigo o plano."
     const val ADJUST_ACK = "Fechado, vamos ajustar. Confere as opções aqui embaixo."
     const val NO_PLAN = "Ainda estou montando sua semana — assim que o plano sair eu explico."

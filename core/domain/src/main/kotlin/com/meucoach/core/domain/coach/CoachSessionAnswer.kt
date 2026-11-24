@@ -205,18 +205,28 @@ object CoachSessionAnswer {
         val duration = session.durationMin?.let { "$it min" } ?: "sem duração fixa"
         return "$taskLine DIA: ${dayLine(input)}. " +
             "SESSÃO: ${session.title} · $duration · $kind. ${authorityLine(input)}. " +
-            "Motivo do plano: ${session.rationale}.${signalsLine(input)}${effortLine(input)} " +
+            "Motivo do plano: ${session.rationale}.${prescriptionReason(input)}" +
+            "${signalsLine(input)}${effortLine(input)} " +
             weekLine
     }
+
+    private fun prescriptionReason(input: EngineLines): String {
+        if (input.isPlannedOnly) return ""
+        val rationale = input.prescribed?.rationale?.takeIf { it.isNotBlank() } ?: return ""
+        return " Motivo de hoje: $rationale."
+    }
+
     private fun taskLine(task: SessionTask): String = when (task) {
         SessionTask.WHAT ->
-            "TAREFA: dizer o que tem no dia, sem inventar número novo. " +
+            "TAREFA: responder à pergunta do atleta sobre o dia usando o contexto, sem inventar número novo. " +
                 "Diga o essencial uma vez só: o que é, quanto tempo, e só mencione mudança " +
-                "quando houver (redução, descanso). Nunca diga 'o plano manteve' — diga o que o treino é."
+                "quando houver (redução, descanso). Se ele perguntar por quê, explique o motivo do dia " +
+                "em linguagem de corrida. Nunca diga 'o plano manteve' — diga o que o treino é."
 
         SessionTask.HOW_TO ->
-            "TAREFA: explicar como executar a sessão em linguagem de corrida, " +
-                "sem citar pace, FC ou números novos. Fale com o atleta (você): frases curtas, " +
+            "TAREFA: responder à pergunta do atleta sobre como executar a sessão, em linguagem de corrida, " +
+                "sem citar pace, FC ou números novos (a referência numérica fica no cartão do motor). " +
+                "Fale com o atleta (você): frases curtas, " +
                 "verbos de ação ('comece', 'segure', 'feche'). Pode usar 'soltinho', 'trotinho', " +
                 "'sem pressa'. Proibido jargão: 'conversável', 'esforço contínuo', 'o plano manteve'. " +
                 "Se o contexto disser sono curto, explique em uma frase o que muda " +

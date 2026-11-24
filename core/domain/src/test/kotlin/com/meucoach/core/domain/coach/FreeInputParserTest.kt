@@ -7,9 +7,9 @@ import java.time.DayOfWeek
 
 class FreeInputParserTest {
     @Test
-    fun `pergunta sobre o dia vira ASK_WEEK`() {
+    fun `pergunta sobre o dia vira ASK_SESSION`() {
         val parsed = FreeInputParser.parse("por que o treino de hoje é fácil?", DayOfWeek.MONDAY)
-        assertEquals(FreeInputIntent.ASK_WEEK, parsed.intent)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
     }
 
     @Test
@@ -116,9 +116,9 @@ class FreeInputParserTest {
     }
 
     @Test
-    fun `pedido de pace vira OUT_OF_SCOPE`() {
+    fun `pergunta de pace vira pergunta aberta`() {
         val parsed = FreeInputParser.parse("qual meu pace de limiar?", DayOfWeek.MONDAY)
-        assertEquals(FreeInputIntent.OUT_OF_SCOPE, parsed.intent)
+        assertEquals(FreeInputIntent.ASK_COACHING, parsed.intent)
     }
 
     @Test
@@ -234,20 +234,43 @@ class FreeInputParserTest {
     }
 
     @Test
-    fun `por que facil hoje continua ASK_WEEK`() {
-        val parsed = FreeInputParser.parse("por que o treino de hoje é fácil?", DayOfWeek.MONDAY)
-        assertEquals(FreeInputIntent.ASK_WEEK, parsed.intent)
+    fun `pergunta de pace com dia vira ASK_HOW_TO_RUN com slot`() {
+        val parsed = FreeInputParser.parse("qual meu pace pra amanhã?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_HOW_TO_RUN, parsed.intent)
+        assertEquals(FreeInputSlots(dayOfWeek = DayOfWeek.TUESDAY, dayOffset = 1), parsed.slots)
     }
 
     @Test
-    fun `pedido de pace em pergunta de sessao continua OUT_OF_SCOPE`() {
-        val parsed = FreeInputParser.parse("qual meu pace pra amanhã?", DayOfWeek.MONDAY)
+    fun `sessao mais relato vira pergunta de sessao`() {
+        val parsed = FreeInputParser.parse("fiz o longo e o que tem amanhã?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_SESSION, parsed.intent)
+    }
+
+    @Test
+    fun `duvida de corrida sem intent fixa vira ASK_COACHING`() {
+        assertEquals(
+            FreeInputIntent.ASK_COACHING,
+            FreeInputParser.parse("o que é fartlek?", DayOfWeek.MONDAY).intent,
+        )
+        assertEquals(
+            FreeInputIntent.ASK_COACHING,
+            FreeInputParser.parse("como está minha prontidão?", DayOfWeek.MONDAY).intent,
+        )
+        assertEquals(
+            FreeInputIntent.ASK_COACHING,
+            FreeInputParser.parse("posso correr na chuva?", DayOfWeek.MONDAY).intent,
+        )
+    }
+
+    @Test
+    fun `afirmacao sem tema de corrida continua fora de escopo`() {
+        val parsed = FreeInputParser.parse("abacaxi amarelo voa", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.OUT_OF_SCOPE, parsed.intent)
     }
 
     @Test
-    fun `sessao mais relato vira ASK_CLARIFY`() {
-        val parsed = FreeInputParser.parse("fiz o longo e o que tem amanhã?", DayOfWeek.MONDAY)
-        assertEquals(FreeInputIntent.ASK_CLARIFY, parsed.intent)
+    fun `pergunta fora do tema ainda pode ser recusada pelo modelo`() {
+        val parsed = FreeInputParser.parse("qual a capital da França?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.ASK_COACHING, parsed.intent)
     }
 }

@@ -72,7 +72,7 @@ object CoachResponseValidator {
         listOf("descanso", "pule", "adiciona", "corta", "move", "adiar", "antecipa")
             .map { token -> token to Regex("""\b${Regex.escape(token)}\b""") }
     private val medicalTokens =
-        listOf("dor", "dores", "doendo")
+        listOf("dor", "dores", "doendo", "doeu", "febre", "tontura", "desmaio", "vertigem")
             .map { token -> token to Regex("""\b${Regex.escape(token)}\b""") } +
             listOf(
                 "doenca",
@@ -82,6 +82,7 @@ object CoachResponseValidator {
                 "medico",
                 "diagnostico",
                 "remedio",
+                "medicament",
                 "suplemento",
                 "dieta",
                 "muscula",
@@ -93,6 +94,14 @@ object CoachResponseValidator {
                 "cirurgia",
                 "inflam",
                 "emagrec",
+                "inchac",
+                "sangr",
+                "formig",
+                "gripad",
+                "gripe",
+                "covid",
+                "antibiotic",
+                "anti-inflamat",
             ).map { prefix -> prefix to Regex("""\b${Regex.escape(prefix)}""") }
     private val memoryPromises =
         listOf("vou lembrar", "nao vou esquecer", "anotei", "memorizei", "jamais esqueco")
@@ -140,14 +149,14 @@ object CoachResponseValidator {
     }
 
     /**
-     * Free-answer path of the validator (ADR 0056 §2.2, refinado na ADR 0057):
-     * every base rule still applies, and the response may only cite
-     * durations, distances and shares already present in the current
-     * prescription. A prescription verb dies with an uncovered number
+     * Free-answer path of the validator (ADR 0056 §2.2, refined by ADR 0057
+     * and ADR 0063): every base rule still applies, and the response may only
+     * cite durations, distances, shares and counts already present in the
+     * current facts. A prescription verb dies with an uncovered number
      * ("faça 6 repetições") or a structural change ("troque por descanso"),
-     * never for citing a planned duration ("os 40 min"). Medical/scope
-     * lexicon and memory promises are `Invalid`. The legacy `validate`
-     * path is untouched.
+     * never for citing a planned duration ("os 40 min"). Medical/scope lexicon
+     * and memory promises are `Invalid`. The legacy `validate` path is
+     * untouched.
      */
     fun validateFreeAnswer(
         raw: CoachRawResponse,
@@ -155,13 +164,20 @@ object CoachResponseValidator {
         allowedPercents: Set<Int>,
         allowedDistancesKm: Set<Double>,
         forbiddenCodes: Set<String> = emptySet(),
+        allowedCounts: Set<Int> = emptySet(),
     ): CoachValidationResult {
         val base = validate(raw, allowedMinutes, allowedPercents, forbiddenCodes)
         if (base is CoachValidationResult.Invalid) return base
         val normalized = normalizedKeywordForm(
             (listOf(raw.title, raw.body) + raw.bullets + listOfNotNull(raw.suggestedAction)).joinToString("\n"),
         )
-        val reason = freeAnswerReason(normalized, allowedMinutes, allowedPercents, allowedDistancesKm) ?: return base
+        val reason = freeAnswerReason(
+            normalized,
+            allowedMinutes,
+            allowedPercents,
+            allowedDistancesKm,
+            allowedCounts,
+        ) ?: return base
         return CoachValidationResult.Invalid(reason)
     }
 
@@ -170,6 +186,7 @@ object CoachResponseValidator {
         allowedMinutes: Set<Int>,
         allowedPercents: Set<Int>,
         allowedDistancesKm: Set<Double>,
+        allowedCounts: Set<Int>,
     ): String? {
         val inventedDistance = distancePattern.findAll(normalized)
             .map { it.groupValues[1].replace(',', '.').toDouble() }
@@ -181,13 +198,52 @@ object CoachResponseValidator {
                 )
         val outOfScope = medicalTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
         val memoryPromise = memoryPromises.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
+        val inventedCount = if (allowedCounts.isEmpty()) {
+            null
+        } else {
+            uncoveredCount(normalized, allowedMinutes, allowedPercents, allowedDistancesKm, allowedCounts)
+        }
         return when {
             inventedDistance != null -> "Resposta contém distância fora do plano: $inventedDistance km"
             prescribes -> "Resposta sugere treino novo — ajuste só com sua confirmação"
             outOfScope -> "Resposta fora do escopo do Coach"
             memoryPromise -> "Resposta promete memória que o Coach não tem"
+            inventedCount != null -> "Resposta contém número fora do contexto: $inventedCount"
             else -> null
         }
+    }
+
+    /**
+     * Any bare digit the answer cites must exist in the deterministic facts.
+     * Units (minutes, percents, distances) have their own stricter sets; this
+     * catches invented counts like "9 treinos" or "12 semanas".
+     */
+    private fun uncoveredCount(
+        normalized: String,
+        allowedMinutes: Set<Int>,
+        allowedPercents: Set<Int>,
+        allowedDistancesKm: Set<Double>,
+        allowedCounts: Set<Int>,
+    ): Int? {
+        val covered = buildList {
+            minutesPattern.findAll(normalized).forEach { match ->
+                if (match.groupValues[1].toInt() in allowedMinutes) add(match.range)
+            }
+            percentPattern.findAll(normalized).forEach { match ->
+                if (match.groupValues[1].toInt() in allowedPercents) add(match.range)
+            }
+            distancePattern.findAll(normalized).forEach { match ->
+                val value = match.groupValues[1].replace(',', '.').toDouble()
+                if (allowedDistancesKm.any { abs(it - value) < 1e-6 }) add(match.range)
+            }
+        }
+        return bareNumberPattern.findAll(normalized)
+            .filter { match -> covered.none { span -> match.range.first in span && match.range.last in span } }
+            .mapNotNull { match ->
+                val raw = match.value.replace(',', '.')
+                raw.toDoubleOrNull()?.takeIf { it == it.toInt().toDouble() }?.toInt()
+            }
+            .firstOrNull { it !in allowedCounts }
     }
 
     /**

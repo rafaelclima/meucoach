@@ -45,6 +45,7 @@ import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachRawResponse
 import com.meucoach.core.domain.coach.FreeInputIntent
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -1219,7 +1220,7 @@ class CoachViewModelTest {
             CoachRawResponse(title = "Entendido", body = "Semana leve e consistente. Bora?"),
         )
         val vm = viewModel(api)
-        vm.sendFreeText("por que o treino de hoje é fácil?")
+        vm.sendFreeText("explica minha semana?")
 
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
@@ -1240,7 +1241,7 @@ class CoachViewModelTest {
         plans.value = CoachPlanContext(plan(), "hash1")
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Corra a 6:10/km"))
         val vm = viewModel(api)
-        vm.sendFreeText("por que o treino de hoje é fácil?")
+        vm.sendFreeText("explica minha semana?")
 
         assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         val turns = memory.observeTurns().first()
@@ -1253,7 +1254,7 @@ class CoachViewModelTest {
         plans.value = CoachPlanContext(plan(), "hash1")
         val api = FakeCoachApi(error = IOException("down"))
         val vm = viewModel(api)
-        vm.sendFreeText("por que o treino de hoje é fácil?")
+        vm.sendFreeText("explica minha semana?")
 
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
@@ -1337,6 +1338,7 @@ class CoachViewModelTest {
         sessionDate: LocalDate,
         today: LocalDate = LocalDate.of(2026, 11, 4),
         readiness: com.meucoach.core.domain.readiness.ReadinessResult? = null,
+        prescription: DailyPrescription? = null,
     ) = CoachNextContext(
         subject = CoachNextSubject.Training(
             PlannedSession(
@@ -1354,6 +1356,7 @@ class CoachViewModelTest {
         hasPlan = true,
         hasProfile = true,
         readiness = readiness,
+        prescription = prescription,
     )
 
     @Test
@@ -1726,7 +1729,7 @@ class CoachViewModelTest {
         next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
         val api = FakeCoachApi(error = IOException("down"))
         val vm = viewModel(api)
-        vm.sendFreeText("por que o treino de hoje é fácil?")
+        vm.sendFreeText("explica minha semana?")
 
         assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         vm.retryFreeAnswer()
@@ -1736,6 +1739,84 @@ class CoachViewModelTest {
         assertThat(vm.exchanges.value).hasSize(1)
         assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
     }
+
+    @Test
+    fun `open question answers with the typed question and engine facts`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5), prescription = todayPrescription())
+        val api = FakeCoachApi(
+            CoachRawResponse(title = "Fartlek", body = "É brincar com o ritmo: acelera e alivia. Bora?"),
+        )
+        val vm = viewModel(api)
+        vm.sendFreeText("o que é fartlek?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        val prompt = api.lastFreeAnswerPrompt
+        assertThat(prompt?.intent).isEqualTo(FreeInputIntent.ASK_COACHING)
+        assertThat(prompt?.question).isEqualTo("o que é fartlek?")
+        assertThat(prompt?.engineContext).contains("PERGUNTA DO ATLETA", "Rodagem", "PRESCRIÇÃO")
+        assertThat(prompt?.allowedCounts).isNotEmpty
+    }
+
+    @Test
+    fun `open answer with an invented count falls back without recording`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(
+            response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
+        ).apply {
+            freeAnswerResponse = CoachRawResponse(
+                title = "Evolução",
+                body = "Você fez 9 treinos na semana. Bora?",
+            )
+        }
+        val vm = viewModel(api)
+        vm.sendFreeText("posso correr na chuva?")
+
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        val answers = memory.observeTurns().first()
+            .filterIsInstance<ChatTurn.Coach>()
+            .filter { it.origin == ChatTurn.Origin.ANSWER }
+        assertThat(answers).isEmpty()
+    }
+
+    @Test
+    fun `open answer network failure falls back without inventing`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(error = IOException("down"))
+        val vm = viewModel(api)
+        vm.sendFreeText("posso correr na chuva?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("Sem conexão")
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    private fun todayPrescription() = DailyPrescription(
+        date = LocalDate.of(2026, 11, 4),
+        plannedSessionId = "session-1",
+        plannedType = WorkoutType.EASY,
+        plannedTitle = "Rodagem",
+        plannedDurationMin = 40,
+        prescribedType = WorkoutType.EASY,
+        title = "Rodagem",
+        prescribedDurationMin = 40,
+        targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 4),
+        adjustment = com.meucoach.core.domain.prescription.PrescriptionAdjustment.KEEP,
+        rationale = "Dia verde, mantém a rodagem.",
+        ruleIds = listOf("R-PRESC-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        confidence = com.meucoach.core.model.DataConfidence.HIGH,
+        engineVersion = "daily-prescription-v6",
+        inputsHash = "hash-p",
+    )
 
     private class GatedCoachApi : com.meucoach.core.data.coach.CoachApi {
         var freeAnswerCalls = 0

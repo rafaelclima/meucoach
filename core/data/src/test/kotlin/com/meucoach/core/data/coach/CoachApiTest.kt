@@ -123,7 +123,7 @@ class CoachApiTest {
     }
 
     @Test
-    fun `freeAnswer usa o endpoint free-answer com intent e slots, sem texto digitado`() {
+    fun `freeAnswer usa o endpoint free-answer com intent, pergunta e fatos permitidos`() {
         val inner = """{"title":"Entendido","body":"Fechado, mexo só quinta e sexta."}"""
         val escaped = inner.replace("\\", "\\\\").replace("\"", "\\\"")
         var received = ""
@@ -141,23 +141,26 @@ class CoachApiTest {
                 api.freeAnswer(
                     CoachFreeAnswerPrompt(
                         inputsHash = "coach-free-v1|hash",
-                        intent = FreeInputIntent.REQUEST_ADJUST,
+                        intent = FreeInputIntent.ASK_COACHING,
                         dayOfWeek = DayOfWeek.THURSDAY,
                         minutes = 30,
                         allowedMinutes = setOf(30, 40),
                         allowedPercents = setOf(80, 20),
+                        allowedCounts = setOf(3, 4),
                         allowedDistancesKm = setOf(8.0),
+                        question = "o que e fartlek?",
                         engineContext = "Semana base com 3 treinos",
                     ),
                 )
             }
 
             assertThat(out.title).isEqualTo("Entendido")
-            assertThat(received).contains("\"intent\":\"REQUEST_ADJUST\"")
+            assertThat(received).contains("\"intent\":\"ASK_COACHING\"")
             assertThat(received).contains("\"dayOfWeek\":\"THURSDAY\"")
             assertThat(received).contains("\"minutes\":30")
+            assertThat(received).contains("\"question\":\"o que e fartlek?\"")
+            assertThat(received).contains("\"allowedCounts\":[3,4]")
             assertThat(received).contains("\"inputsHash\":\"coach-free-v1|hash\"")
-            assertThat(received).doesNotContain("so tenho")
         } finally {
             server.stop(0)
         }

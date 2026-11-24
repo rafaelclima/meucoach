@@ -53,6 +53,9 @@ class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOExceptio
     var lastFreeAnswerPrompt: CoachFreeAnswerPrompt? = null
         private set
 
+    /** Optional response only for `free-answer`, keeping explain/review stable. */
+    var freeAnswerResponse: CoachRawResponse? = null
+
     override suspend fun explain(prompt: CoachPrompt, kind: CoachKind): CoachRawResponse {
         calls += 1
         error?.let { throw it }
@@ -69,7 +72,7 @@ class FakeCoachApi(var response: CoachRawResponse? = null, var error: IOExceptio
         freeAnswerCalls += 1
         lastFreeAnswerPrompt = prompt
         error?.let { throw it }
-        return response ?: CoachRawResponse(title = "Coach", body = "Resposta de teste.")
+        return freeAnswerResponse ?: response ?: CoachRawResponse(title = "Coach", body = "Resposta de teste.")
     }
 }
 
@@ -165,6 +168,8 @@ class HttpCoachApi(
         .put("allowedMinutes", prompt.allowedMinutes.sorted())
         .put("allowedPercents", prompt.allowedPercents.sorted())
         .put("allowedDistancesKm", prompt.allowedDistancesKm.sorted())
+        .put("allowedCounts", prompt.allowedCounts.sorted())
+        .put("question", prompt.question ?: JSONObject.NULL)
         .put("engineContext", prompt.engineContext)
         .toString()
 

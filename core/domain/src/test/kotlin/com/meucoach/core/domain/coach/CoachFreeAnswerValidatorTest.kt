@@ -8,13 +8,17 @@ class CoachFreeAnswerValidatorTest {
     private val percents = setOf(80, 20)
     private val distances = setOf(8.0, 10.5)
 
-    private fun freeAnswer(body: String, allowedDistancesKm: Set<Double> = distances) =
-        CoachResponseValidator.validateFreeAnswer(
-            raw = CoachRawResponse(title = "Sobre a semana", body = body),
-            allowedMinutes = minutes,
-            allowedPercents = percents,
-            allowedDistancesKm = allowedDistancesKm,
-        )
+    private fun freeAnswer(
+        body: String,
+        allowedDistancesKm: Set<Double> = distances,
+        allowedCounts: Set<Int> = emptySet(),
+    ) = CoachResponseValidator.validateFreeAnswer(
+        raw = CoachRawResponse(title = "Sobre a semana", body = body),
+        allowedMinutes = minutes,
+        allowedPercents = percents,
+        allowedDistancesKm = allowedDistancesKm,
+        allowedCounts = allowedCounts,
+    )
 
     @Test
     fun `aceita distancia do plano`() {
@@ -101,6 +105,12 @@ class CoachFreeAnswerValidatorTest {
     }
 
     @Test
+    fun `barra sintoma fora do lexico original`() {
+        val result = freeAnswer("Se tiver febre ou tontura, pare e procure um médico")
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
     fun `barra diagnostico`() {
         val result = freeAnswer("Isso parece tendinite, procure um médico")
         assertTrue(result is CoachValidationResult.Invalid)
@@ -122,6 +132,24 @@ class CoachFreeAnswerValidatorTest {
     fun `aceita copy de hidratacao estatica sem numeros`() {
         val result = freeAnswer("Com esse calor, hidrate-se ao longo do dia")
         assertTrue(result is CoachValidationResult.Valid)
+    }
+
+    @Test
+    fun `aceita contagens que estao nos fatos`() {
+        val result = freeAnswer("Você fez 3 de 4 treinos.", allowedCounts = setOf(3, 4))
+        assertTrue(result is CoachValidationResult.Valid)
+    }
+
+    @Test
+    fun `barra contagem inventada`() {
+        val result = freeAnswer("Você fez 9 treinos.", allowedCounts = setOf(3, 4))
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
+    fun `barra numero de data que nao esta nos fatos`() {
+        val result = freeAnswer("Na semana de 16/11 você correu bem.", allowedCounts = setOf(3, 4))
+        assertTrue(result is CoachValidationResult.Invalid)
     }
 
     @Test

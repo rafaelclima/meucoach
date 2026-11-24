@@ -1300,7 +1300,7 @@ class CoachScreenTest {
 
         compose.onNodeWithTag("coach-composer-input").assertIsDisplayed()
         compose.onNodeWithTag("coach-composer-send").assertHasClickAction()
-        compose.onNodeWithText("Em breve você poderá digitar", substring = true)
+        compose.onNodeWithText("Ative a IA para digitar", substring = true)
             .assertDoesNotExist()
     }
 
@@ -1353,7 +1353,7 @@ class CoachScreenTest {
         compose.onNodeWithTag("coach-composer-input").assertDoesNotExist()
         compose.onNodeWithTag("coach-composer-send").assertDoesNotExist()
         compose.onNodeWithTag("coach-composer").assertIsDisplayed()
-        compose.onNodeWithText("Em breve você poderá digitar", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Ative a IA para digitar", substring = true).assertIsDisplayed()
     }
 
     @Test

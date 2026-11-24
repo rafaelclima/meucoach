@@ -13,11 +13,14 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class CoachConsentStoreTest {
     private lateinit var store: CoachConsentStore
+    private lateinit var context: Context
+    private lateinit var prefsName: String
 
     @Before
     fun setUp() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        store = CoachConsentStore(context, "coach-consent-${System.nanoTime()}")
+        context = ApplicationProvider.getApplicationContext<Context>()
+        prefsName = "coach-consent-${System.nanoTime()}"
+        store = CoachConsentStore(context, prefsName)
     }
 
     @Test
@@ -31,5 +34,18 @@ class CoachConsentStoreTest {
         assertThat(store.isConsented()).isTrue()
         store.revoke()
         assertThat(store.isConsented()).isFalse()
+    }
+
+    @Test
+    fun `an old summary-only consent does not cover typed questions`() {
+        context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("consented", true)
+            .apply()
+
+        assertThat(store.isConsented()).isFalse()
+
+        store.grant()
+        assertThat(store.isConsented()).isTrue()
     }
 }

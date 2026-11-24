@@ -34,6 +34,9 @@ object CoachFallbackLabels {
             "porcentagem não calculada" in normalized ->
                 "Citei um percentual que não conferi no motor. Desconsidera — os números certos tão aqui embaixo."
 
+            "número fora do contexto" in normalized ->
+                "Citei um número que não confere com seus dados. Desconsidera — o que vale tá aqui embaixo."
+
             "longa demais" in normalized ->
                 "Falei demais e me perdi. Resumindo: o plano segue o mesmo aqui embaixo."
 

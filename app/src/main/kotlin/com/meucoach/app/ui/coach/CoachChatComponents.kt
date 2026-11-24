@@ -486,7 +486,7 @@ internal fun CoachHowItWorksSheet(onDismiss: () -> Unit, onRevoke: () -> Unit = 
 internal fun CoachComposerHint(modifier: Modifier = Modifier) {
     val colors = McTheme.colors
     Text(
-        text = "Em breve você poderá digitar — use as sugestões acima.",
+        text = "Ative a IA para digitar e perguntar — ou use as sugestões acima.",
         style = MaterialTheme.typography.bodySmall,
         color = colors.textTertiary,
         modifier = modifier
@@ -497,12 +497,12 @@ internal fun CoachComposerHint(modifier: Modifier = Modifier) {
 }
 
 /**
- * Typed input of the Coach tab (ADR 0056).
+ * Typed input of the Coach tab (ADR 0056/0063).
  *
  * Enabled only with opt-in and a plan context; otherwise the caller keeps
  * the disabled hint. Send target is 48 dp and both nodes expose TalkBack
- * descriptions; the message itself is parsed on-device and only `intent +
- * slots` ever leave it.
+ * descriptions; the message is parsed and safety-gated on-device, then the
+ * sanitized question and engine facts are sent to the model.
  */
 @Composable
 internal fun CoachComposer(
