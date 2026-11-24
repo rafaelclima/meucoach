@@ -786,7 +786,15 @@ class CoachViewModel @Inject constructor(
             when (validated) {
                 is CoachValidationResult.Valid -> {
                     val response = validated.response
-                    val historyBullets = (response.bullets + request.reference).take(5)
+                    val reference = when {
+                        request.reference.isNotEmpty() -> request.reference
+
+                        request.conditionalReference.isNotEmpty() &&
+                            responseCitesSessionTargets(response) -> request.conditionalReference
+
+                        else -> emptyList()
+                    }
+                    val historyBullets = (response.bullets + reference).take(5)
                     recordSafely {
                         memory.recordMessage(
                             kind = CoachMessageKind.ANSWER,
@@ -797,7 +805,7 @@ class CoachViewModel @Inject constructor(
                         )
                     }
                     android.util.Log.d("Coach", "free answer ok hash=$freeHash")
-                    settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(response.body), request.reference))
+                    settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(response.body), reference))
                 }
 
                 is CoachValidationResult.Invalid -> {
@@ -914,7 +922,14 @@ internal data class FreeAnswerRequest(
     val allowedDistancesKm: Set<Double>,
     val forbiddenCodes: Set<String>,
     val engineContext: String,
+    /** Always attached (session/how-to answers). */
     val reference: List<String> = emptyList(),
+    /**
+     * Candidate reference for an open answer. It is attached only when the
+     * validated response actually cites today's session/targets, so a generic
+     * definition ("o que é intervalado?") does not carry today's pace/FC card.
+     */
+    val conditionalReference: List<String> = emptyList(),
     /**
      * Deterministic content shown when the model is unreachable (ADR 0057):
      * motor copy only. Null when there is nothing factual to show — then

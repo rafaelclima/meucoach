@@ -62,6 +62,11 @@ presentes nos allow-lists. Conceitos gerais de corrida são permitidos; dados
 pessoais, números, pace, FC, carga, VDOT e ACWR não. Se o fato não existe, o
 Coach deve dizer o que falta e apontar Hoje/Tendências/check-in.
 
+A referência determinística de pace/FC (`CoachSessionReference`) só acompanha
+respostas de sessão/como correr ou respostas abertas que citem o treino de
+hoje/alvos; uma definição conceitual ("o que é intervalado?") não leva o
+cartão, para não sugerir que o pace do dia é o pace do conceito.
+
 ### 2.3 O validador continua sendo a autoridade final
 
 `CoachResponseValidator.validateFreeAnswer` ganhou `allowedCounts`. Além das

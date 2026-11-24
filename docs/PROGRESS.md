@@ -50,6 +50,10 @@ dependência nova.
   ("9 treinos"); seguem barrados pace/bpm, número/percentual/distância fora do
   contexto, verbo de prescrição com número/estrutura, código interno, léxico
   médico e promessa de memória. Inválido → fallback falado, não persiste.
+- **Referência do motor:** o cartão determinístico só acompanha respostas de
+  sessão/como correr (`ASK_SESSION`/`ASK_HOW_TO_RUN`) ou respostas abertas que
+  realmente citem pace/ritmo/FC/zona/esforço/treino de hoje. Definições
+  genéricas ("o que é intervalado?") não carregam mais o pace/FC do dia.
 - **Consentimento v2:** a copy agora diz que a IA responde as perguntas
   digitadas e envia um resumo do treino, da prontidão e o texto; um
   consentimento antigo (só resumo) exige novo aceite. Proxy continua stateless
@@ -59,7 +63,9 @@ dependência nova.
 - **Testes:** parser (pace/dia, dúvidas abertas, afirmação fora do tema),
   validador (`allowedCounts`), `CoachOpenAnswer`, `CoachApi`/payload,
   `CoachConsentStore` (v1→v2), VM (aberta com pergunta/fatos, contagem
-  inventada cai sem gravar, falha de rede) e `CoachScreenTest` (copy).
+  inventada cai sem gravar, falha de rede, referência condicional) e
+  `CoachScreenTest` (copy). `CoachReferencePolicyTest` cobre a decisão de
+  anexar ou não o cartão do motor.
 
 ### Gates
 

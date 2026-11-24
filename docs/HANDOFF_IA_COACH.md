@@ -258,6 +258,9 @@ Memória local do Coach **sem** transformar memória em decisão:
   seguem barrados pace/bpm, número/percentual/distância fora do contexto,
   verbo de prescrição com número/estrutura, código interno, léxico médico e
   promessa de memória. Inválido → fallback falado, não persiste.
+- **Referência do motor:** o cartão só acompanha sessão/como correr ou uma
+  resposta aberta que cite pace/ritmo/FC/zona/esforço/treino de hoje.
+  Definição genérica ("o que é intervalado?") não mostra mais o pace/FC do dia.
 - **Consentimento:** `CoachConsentStore.CONSENT_VERSION = 2`; um grant antigo
   (só resumo) exige novo aceite. A copy diz que a IA responde as perguntas
   digitadas e envia um resumo do treino, da prontidão e o texto, sem nome e sem mapa.

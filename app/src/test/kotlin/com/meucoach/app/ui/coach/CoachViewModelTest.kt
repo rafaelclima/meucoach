@@ -1339,25 +1339,27 @@ class CoachViewModelTest {
         today: LocalDate = LocalDate.of(2026, 11, 4),
         readiness: com.meucoach.core.domain.readiness.ReadinessResult? = null,
         prescription: DailyPrescription? = null,
-    ) = CoachNextContext(
-        subject = CoachNextSubject.Training(
-            PlannedSession(
-                date = sessionDate,
-                type = WorkoutType.EASY,
-                title = "Rodagem",
-                durationMin = 40,
-                rationale = "Base aeróbica",
-                ruleIds = listOf("R-PLAN-02"),
-                evidenceIds = listOf("EV-SEILER-2010"),
-                status = SessionStatus.PLANNED,
-            ),
-        ),
-        today = today,
-        hasPlan = true,
-        hasProfile = true,
-        readiness = readiness,
-        prescription = prescription,
-    )
+    ): CoachNextContext {
+        val session = PlannedSession(
+            date = sessionDate,
+            type = WorkoutType.EASY,
+            title = "Rodagem",
+            durationMin = 40,
+            rationale = "Base aeróbica",
+            ruleIds = listOf("R-PLAN-02"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            status = SessionStatus.PLANNED,
+        )
+        return CoachNextContext(
+            subject = CoachNextSubject.Training(session),
+            today = today,
+            hasPlan = true,
+            hasProfile = true,
+            readiness = readiness,
+            prescription = prescription,
+            todaySession = session.takeIf { it.date == today },
+        )
+    }
 
     @Test
     fun `session question calls free-answer with session context`(): Unit = runBlocking {
@@ -1817,6 +1819,48 @@ class CoachViewModelTest {
         engineVersion = "daily-prescription-v6",
         inputsHash = "hash-p",
     )
+
+    @Test
+    fun `generic open answer does not carry the engine reference`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 4)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 4), prescription = todayPrescription())
+        val api = FakeCoachApi(
+            response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
+        ).apply {
+            freeAnswerResponse = CoachRawResponse(
+                title = "Intervalado",
+                body = "É correr em pedaços: acelera forte, recupera e repete.",
+            )
+        }
+        val vm = viewModel(api)
+        vm.sendFreeText("o que é intervalado?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).reference).isEmpty()
+    }
+
+    @Test
+    fun `open answer about today keeps the engine reference`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 4)), "hash-s")
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 4), prescription = todayPrescription())
+        val api = FakeCoachApi(
+            response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
+        ).apply {
+            freeAnswerResponse = CoachRawResponse(
+                title = "Chuva",
+                body = "Pode correr, só ajusta o ritmo.",
+            )
+        }
+        val vm = viewModel(api)
+        vm.sendFreeText("posso correr na chuva?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).reference.joinToString(" ")).contains("Esforço")
+    }
 
     private class GatedCoachApi : com.meucoach.core.data.coach.CoachApi {
         var freeAnswerCalls = 0

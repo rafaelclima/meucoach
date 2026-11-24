@@ -66,7 +66,7 @@ internal suspend fun answerOpenContent(
             allowedDistancesKm = answer.allowedDistancesKm,
             forbiddenCodes = forbidden,
             engineContext = answer.engineContext,
-            reference = reference,
+            conditionalReference = reference,
         ),
     )
 }
