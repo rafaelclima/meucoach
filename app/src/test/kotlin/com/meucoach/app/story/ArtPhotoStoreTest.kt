@@ -244,6 +244,27 @@ class ArtPhotoStoreTest {
         assertThat(temporary).isEmpty()
     }
 
+    @Test
+    fun `clear deletes the directory metadata and photos`() = runBlocking<Unit> {
+        writePhoto(PHOTO_A)
+        writePhoto(PHOTO_B)
+        store.save(ACTIVITY_A, ArtPhotoRecord(ArtBackgroundMode.PHOTO, ArtPhotoRef(PHOTO_A, ACTIVITY_A)))
+        store.save(ACTIVITY_B, ArtPhotoRecord(ArtBackgroundMode.PHOTO, ArtPhotoRef(PHOTO_B, ACTIVITY_B)))
+
+        assertThat(store.clear()).isTrue()
+
+        assertThat(File(context.filesDir, ArtPhotoStore.DIRECTORY).exists()).isFalse()
+        assertThat(store.load(ACTIVITY_A))
+            .isEqualTo(ArtPhotoRecord(ArtBackgroundMode.TRANSPARENT, null))
+        assertThat(store.load(ACTIVITY_B))
+            .isEqualTo(ArtPhotoRecord(ArtBackgroundMode.TRANSPARENT, null))
+    }
+
+    @Test
+    fun `clear on a missing directory succeeds`() = runBlocking<Unit> {
+        assertThat(store.clear()).isTrue()
+    }
+
     private fun writePhoto(
         photoId: String,
         width: Int = 8,

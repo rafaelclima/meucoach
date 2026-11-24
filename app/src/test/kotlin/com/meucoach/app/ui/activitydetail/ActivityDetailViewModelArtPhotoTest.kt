@@ -283,6 +283,116 @@ class ActivityDetailViewModelArtPhotoTest {
     }
 
     @Test
+    fun `remove deletes the file and leaves no metadata behind`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = ArtPhotoStore(context)
+        val viewModel = viewModel("activity-1", photoStore = store)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
+        val photo = viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo != null && !it.storyStudio.artPhotoBusy
+        }.storyStudio.artRecipe.photo
+        checkNotNull(photo)
+
+        viewModel.requestRemovePhoto()
+        viewModel.removePhoto()
+        viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo == null && !it.storyStudio.artPhotoBusy
+        }
+
+        assertThat(store.photoFile(photo.photoId)).doesNotExist()
+        assertThat(store.metadataFile("activity-1")).doesNotExist()
+        assertThat(store.load("activity-1").photo).isNull()
+    }
+
+    @Test
+    fun `reset clears the style and the current photo without touching another activity`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = ArtPhotoStore(context)
+        val artStore = ArtRecipeStore(context)
+        val viewModel = viewModel("activity-1", artStore = artStore, photoStore = store)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
+        val photo = viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo != null && !it.storyStudio.artPhotoBusy
+        }.storyStudio.artRecipe.photo
+        checkNotNull(photo)
+        viewModel.selectArtFont(com.meucoach.core.domain.story.ArtFont.ANTON)
+        seedOtherPhoto(store, "activity-2")
+
+        viewModel.resetArtRecipe()
+        // resetArtRecipe clears the style synchronously and removes the
+        // photo asynchronously; wait for the file to disappear.
+        viewModel.uiState.first { it.storyStudio.artRecipe == ArtRecipe() }
+        kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+            while (store.photoFile(photo.photoId).exists()) {
+                kotlinx.coroutines.delay(10L)
+            }
+        }
+
+        assertThat(artStore.load()).isEqualTo(ArtRecipe())
+        assertThat(viewModel.uiState.value.storyStudio.artRecipe).isEqualTo(ArtRecipe())
+        assertThat(store.photoFile(photo.photoId)).doesNotExist()
+        assertThat(store.load("activity-1").photo).isNull()
+        // Another activity's photo is never touched by the per-activity reset.
+        assertThat(store.load("activity-2").photo).isNotNull()
+    }
+
+    @Test
+    fun `delete removes only that activity photo and invalidates the exporter`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = ArtPhotoStore(context)
+        val exporter = FakeArtExporter()
+        val viewModel = viewModel("activity-1", photoStore = store, exporter = exporter)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
+        val photo = viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo != null && !it.storyStudio.artPhotoBusy
+        }.storyStudio.artRecipe.photo
+        checkNotNull(photo)
+        val other = seedOtherPhoto(store, "activity-2")
+
+        viewModel.deleteActivity()
+        viewModel.uiState.first { it.deleted }
+
+        assertThat(store.photoFile(photo.photoId)).doesNotExist()
+        assertThat(store.load("activity-1").photo).isNull()
+        assertThat(store.metadataFile("activity-1")).doesNotExist()
+        assertThat(store.photoFile(other.photoId)).exists()
+        assertThat(store.load("activity-2").photo).isEqualTo(other)
+        assertThat(exporter.invalidated).isTrue()
+    }
+
+    @Test
+    fun `a failed delete preserves the photo and does not invalidate`() = runBlocking<Unit> {
+        repository.saveImportedActivity(gpsActivity(), "sha")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = ArtPhotoStore(context)
+        val exporter = FakeArtExporter()
+        val viewModel = viewModel("activity-1", photoStore = store, exporter = exporter)
+        viewModel.uiState.first { !it.isLoading }
+        viewModel.pickPhoto(uriFor(jpegBytes(64, 48)))
+        val photo = viewModel.uiState.first {
+            it.storyStudio.artRecipe.photo != null && !it.storyStudio.artPhotoBusy
+        }.storyStudio.artRecipe.photo
+        checkNotNull(photo)
+        // Soft-delete outside the ViewModel so its own delete returns false
+        // (already deleted): the photo must survive a failed delete.
+        repository.deleteActivity("activity-1")
+
+        viewModel.deleteActivity()
+        val state = viewModel.uiState.first { it.deleteError != null }
+
+        assertThat(state.deleted).isFalse()
+        assertThat(store.photoFile(photo.photoId)).exists()
+        assertThat(store.load("activity-1").photo).isEqualTo(photo)
+        assertThat(exporter.invalidated).isFalse()
+    }
+
+    @Test
     fun `template scale and block selection persist in the effective recipe`() = runBlocking<Unit> {
         repository.saveImportedActivity(gpsActivity(), "sha")
         val viewModel = viewModel("activity-1")
@@ -477,6 +587,24 @@ class ActivityDetailViewModelArtPhotoTest {
         )
     }
 
+    private suspend fun seedOtherPhoto(
+        store: ArtPhotoStore,
+        activityId: String,
+    ): com.meucoach.core.domain.story.ArtPhotoRef {
+        val photoId = java.util.UUID.randomUUID().toString()
+        val bitmap = Bitmap.createBitmap(8, 6, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(Color.RED)
+        val file = store.photoFile(photoId)
+        file.parentFile?.mkdirs()
+        file.outputStream().use { output ->
+            check(bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output))
+        }
+        bitmap.recycle()
+        val ref = com.meucoach.core.domain.story.ArtPhotoRef(photoId, activityId)
+        store.save(activityId, ArtPhotoRecord(ArtBackgroundMode.PHOTO, ref))
+        return ref
+    }
+
     private fun gpsActivity() = ImportedActivity(
         source = ActivitySource.GPX,
         sport = Sport.RUNNING,
@@ -557,6 +685,7 @@ class ActivityDetailViewModelArtPhotoTest {
         )
         var gate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
         val exports = mutableListOf<Pair<Boolean, ArtRecipe>>()
+        var invalidated = false
 
         override suspend fun export(
             plan: com.meucoach.core.domain.story.StoryPlan,
@@ -568,6 +697,10 @@ class ActivityDetailViewModelArtPhotoTest {
             exports += forShare to recipe
             gate?.await()
             return result
+        }
+
+        override suspend fun invalidate() {
+            invalidated = true
         }
     }
 }

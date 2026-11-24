@@ -52,6 +52,20 @@ class ArtPhotoStore @Inject constructor(@ApplicationContext context: Context) {
     }
 
     /**
+     * Deletes the whole `files/art_photo/` directory (F7 reset). Runs under the
+     * store mutex so no import, toggle or sweep interleaves. Returns true when
+     * the directory is gone (including when it never existed), false otherwise,
+     * so [com.meucoach.app.data.DataResetCoordinator] can report it in
+     * `failedCleanups`.
+     */
+    suspend fun clear(): Boolean = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            if (!directory.exists()) return@withLock true
+            directory.deleteRecursively()
+        }
+    }
+
+    /**
      * Deletes `.tmp` and unreferenced `.jpg` files older than 24 hours. A file
      * referenced by any valid metadata (including a waiting photo under
      * `TRANSPARENT`) is never touched. Returns the number of removed files.

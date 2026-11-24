@@ -17,6 +17,8 @@ import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.reminder.ReminderWorker
 import com.meucoach.app.replan.ProfilePlanEvaluationStore
 import com.meucoach.app.replan.ReplanSuggestionStore
+import com.meucoach.app.story.ArtPhotoStore
+import com.meucoach.app.story.ArtPngExporter
 import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryExportWorker
@@ -76,6 +78,8 @@ class DataResetCoordinator @Inject constructor(
     private val storyIntro: StoryIntroStore,
     private val storyRecipe: StoryRecipeStore,
     private val artRecipe: ArtRecipeStore,
+    private val artPhotos: ArtPhotoStore,
+    private val artExporter: ArtPngExporter,
     private val healthSync: HealthSyncCoordinator,
     private val reminderNotifier: ReminderNotifier,
     private val importNotifier: ImportNotifier,
@@ -111,6 +115,14 @@ class DataResetCoordinator @Inject constructor(
             cleanup("aviso de story") { storyIntro.reset() }?.let(failures::add)
             cleanup("receita de story") { storyRecipe.reset() }?.let(failures::add)
             cleanup("receita de arte") { artRecipe.reset() }?.let(failures::add)
+            cleanup("foto de arte") {
+                if (!artPhotos.clear()) error("diretório não removido")
+            }?.let(failures::add)
+            cleanup("cache de arte") {
+                val directory = File(context.cacheDir, "art")
+                if (directory.exists() && !directory.deleteRecursively()) error("cache não removido")
+            }?.let(failures::add)
+            cleanup("exportador de arte") { artExporter.invalidate() }?.let(failures::add)
             healthSync.resetState()
             reminderNotifier.cancelAll()
             importNotifier.cancel()

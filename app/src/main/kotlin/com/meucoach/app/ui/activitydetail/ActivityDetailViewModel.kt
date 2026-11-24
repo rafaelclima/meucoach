@@ -755,6 +755,16 @@ class ActivityDetailViewModel @Inject constructor(
             if (deleted) {
                 storyCoordinator.cancel(activityId)
                 storyFailures.clear(activityId)
+                // Best effort: a file failure must never fail the activity
+                // deletion; the orphan sweep recovers leftovers (ADR 0061 §2.2).
+                // The photo is only removed after a successful database delete,
+                // so a failed delete preserves the photo. No rethrow here: the
+                // UI must still reach deleted=true even if the scope is
+                // cancelled during the file cleanup.
+                runCatching { withContext(Dispatchers.IO) { artPhotoStore.remove(activityId) } }
+                    .onFailure { Log.w(TAG, "Art photo delete failed", it) }
+                runCatching { artPngExporter.invalidate() }
+                    .onFailure { Log.w(TAG, "Art exporter invalidate failed", it) }
             }
             _uiState.update {
                 if (deleted) {

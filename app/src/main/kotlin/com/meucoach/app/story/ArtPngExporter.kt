@@ -73,6 +73,14 @@ interface ArtPngExporter {
         forShare: Boolean,
         currentRecipe: () -> ArtRecipe,
     ): ArtPngExport = export(plan, localDate, recipe, activityId, forShare)
+
+    /**
+     * Clears the reuse memory (`lastKey`/`lastUri`/`lastFile`) and wipes
+     * `cache/art` (F7 lifecycle). Called on full reset and after an activity
+     * deletion so a later share regenerates instead of reusing a stale image.
+     * The default is a no-op so existing fakes keep compiling.
+     */
+    suspend fun invalidate() = Unit
 }
 
 class CanvasArtPngExporter
@@ -86,6 +94,16 @@ constructor(
     private var lastKey: ArtExportKey? = null
     private var lastUri: Uri? = null
     private var lastFile: File? = null
+
+    override suspend fun invalidate() = withContext(Dispatchers.IO) {
+        lastKey = null
+        lastUri = null
+        lastFile = null
+        val dir = File(context.cacheDir, ART_CACHE_DIRECTORY)
+        if (dir.exists()) {
+            dir.deleteRecursively()
+        }
+    }
 
     override suspend fun export(
         plan: StoryPlan,

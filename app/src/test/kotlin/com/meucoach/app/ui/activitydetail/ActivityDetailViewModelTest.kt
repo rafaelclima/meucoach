@@ -1355,6 +1355,7 @@ class ActivityDetailViewModelTest {
         )
         var gate: CompletableDeferred<Unit>? = null
         val exports = mutableListOf<Pair<Boolean, ArtRecipe>>()
+        var invalidated = false
 
         override suspend fun export(
             plan: com.meucoach.core.domain.story.StoryPlan,
@@ -1366,6 +1367,10 @@ class ActivityDetailViewModelTest {
             exports += forShare to recipe
             gate?.await()
             return result
+        }
+
+        override suspend fun invalidate() {
+            invalidated = true
         }
     }
 

@@ -7,6 +7,7 @@ import com.meucoach.app.data.TrashPurgeScheduler
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.health.HealthSyncScheduler
 import com.meucoach.app.reminder.ReminderScheduler
+import com.meucoach.app.story.ArtPhotoStartupSweeper
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.repository.ProfileRepository
 import dagger.hilt.android.HiltAndroidApp
@@ -40,6 +41,9 @@ class MeuCoachApplication :
     lateinit var profiles: ProfileRepository
 
     @Inject
+    lateinit var artPhotoStartupSweeper: ArtPhotoStartupSweeper
+
+    @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
@@ -50,6 +54,12 @@ class MeuCoachApplication :
 
     override fun onCreate() {
         super.onCreate()
+        // Orphan art photos (.tmp + unreferenced .jpg older than 24 h) are
+        // swept once per startup without blocking the main thread (F7). A
+        // referenced photo is never touched; failures only log.
+        applicationScope.launch {
+            runCatching { artPhotoStartupSweeper.sweep() }
+        }
         // Schedule only while a profile exists. After a full reset the app must
         // stay silent until onboarding creates a new profile (ADR 0025).
         applicationScope.launch {

@@ -20,6 +20,10 @@ import com.meucoach.app.importer.RaceAutoCompletionStore
 import com.meucoach.app.profile.ProfilePhotoStore
 import com.meucoach.app.reminder.ReminderNotifier
 import com.meucoach.app.replan.ReplanSuggestionStore
+import com.meucoach.app.story.ArtPhotoRecord
+import com.meucoach.app.story.ArtPhotoStore
+import com.meucoach.app.story.ArtPngExport
+import com.meucoach.app.story.ArtPngExporter
 import com.meucoach.app.story.ArtRecipeStore
 import com.meucoach.app.story.StoryExportFailureStore
 import com.meucoach.app.story.StoryIntroStore
@@ -94,6 +98,8 @@ class DataResetCoordinatorTest {
     private lateinit var storyIntro: StoryIntroStore
     private lateinit var storyRecipe: StoryRecipeStore
     private lateinit var artRecipeStore: ArtRecipeStore
+    private lateinit var artPhotoStore: ArtPhotoStore
+    private lateinit var artExporter: FakeArtExporter
     private lateinit var importedRunPrompts: ImportedRunPromptStore
     private lateinit var raceAutoCompletions: RaceAutoCompletionStore
     private lateinit var replanSuggestions: ReplanSuggestionStore
@@ -134,6 +140,8 @@ class DataResetCoordinatorTest {
         storyIntro = StoryIntroStore(context)
         storyRecipe = StoryRecipeStore(context)
         artRecipeStore = ArtRecipeStore(context)
+        artPhotoStore = ArtPhotoStore(context)
+        artExporter = FakeArtExporter()
         importedRunPrompts = ImportedRunPromptStore(context, "reset-import-prompts-${System.nanoTime()}")
         raceAutoCompletions = RaceAutoCompletionStore(context, "reset-race-auto-${System.nanoTime()}")
         replanSuggestions = ReplanSuggestionStore(context, "reset-replan-${System.nanoTime()}")
@@ -178,6 +186,8 @@ class DataResetCoordinatorTest {
             storyIntro = storyIntro,
             storyRecipe = storyRecipe,
             artRecipe = artRecipeStore,
+            artPhotos = artPhotoStore,
+            artExporter = artExporter,
             healthSync = healthSync,
             reminderNotifier = ReminderNotifier(context),
             importNotifier = ImportNotifier(context),
@@ -251,6 +261,83 @@ class DataResetCoordinatorTest {
         assertThat(infos).allMatch { it.state == WorkInfo.State.CANCELLED }
     }
 
+    @Test
+    fun `reset clears art photos cache and exporter while keeping no failures`(): Unit = runBlocking {
+        seedEverything()
+        seedArtPhoto("activity-1")
+        seedArtPhoto("activity-2")
+        val artCache = File(context.cacheDir, "art").apply { mkdirs() }
+        File(artCache, "old-arte-4x5.png").writeText("png")
+        File(artCache, "old-arte-foto-4x5.jpg").writeText("jpg")
+        File(artCache, "pending.jpg.tmp").writeText("tmp")
+
+        val result = coordinator.reset()
+
+        assertThat(File(context.filesDir, ArtPhotoStore.DIRECTORY).exists()).isFalse()
+        assertThat(File(context.cacheDir, "art").exists()).isFalse()
+        assertThat(artExporter.invalidated).isTrue()
+        assertThat(artRecipeStore.load()).isEqualTo(com.meucoach.core.domain.story.ArtRecipe())
+        // Full reset keeps clearing the video recipe (existing behavior); the
+        // art cleanup must not corrupt it.
+        assertThat(storyRecipe.load()).isEqualTo(StoryRecipe())
+        assertThat(result.failedCleanups).isEmpty()
+    }
+
+    @Test
+    fun `reset aggregates art cleanup failures without throwing`(): Unit = runBlocking {
+        seedEverything()
+        val failing = DataResetCoordinator(
+            context = context,
+            userData = userData,
+            epochStore = epochStore,
+            writeMutex = DataWriteMutex(),
+            workManager = WorkManager.getInstance(context),
+            staging = ImportStaging(context),
+            photos = ProfilePhotoStore(context),
+            importedRunPrompts = importedRunPrompts,
+            raceAutoCompletions = raceAutoCompletions,
+            replanSuggestions = replanSuggestions,
+            profilePlanEvaluations = com.meucoach.app.replan.ProfilePlanEvaluationStore(),
+            levelGraduations = levelGraduations,
+            tutorial = tutorial,
+            firstRunMetrics = firstRunMetrics,
+            firstRunTips = firstRunTips,
+            storyFailures = storyFailures,
+            storyIntro = storyIntro,
+            storyRecipe = storyRecipe,
+            artRecipe = artRecipeStore,
+            artPhotos = artPhotoStore,
+            artExporter = FailingArtExporter(),
+            healthSync = healthSync,
+            reminderNotifier = ReminderNotifier(context),
+            importNotifier = ImportNotifier(context),
+            storyNotifier = StoryNotifier(context),
+        )
+
+        val result = failing.reset()
+
+        assertThat(result.failedCleanups).anyMatch { it.startsWith("exportador de arte") }
+    }
+
+    private suspend fun seedArtPhoto(activityId: String) {
+        val photoId = java.util.UUID.randomUUID().toString()
+        val bitmap = android.graphics.Bitmap.createBitmap(8, 6, android.graphics.Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.RED)
+        val file = artPhotoStore.photoFile(photoId)
+        file.parentFile?.mkdirs()
+        file.outputStream().use { output ->
+            check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output))
+        }
+        bitmap.recycle()
+        artPhotoStore.save(
+            activityId,
+            ArtPhotoRecord(
+                com.meucoach.core.domain.story.ArtBackgroundMode.PHOTO,
+                com.meucoach.core.domain.story.ArtPhotoRef(photoId, activityId),
+            ),
+        )
+    }
+
     private suspend fun seedEverything() {
         profiles.saveProfile(
             AthleteProfile(
@@ -313,6 +400,7 @@ class DataResetCoordinatorTest {
         storyFailures.clearAll()
         storyIntro.reset()
         storyRecipe.reset()
+        artRecipeStore.reset()
         healthStore.reset()
     }
 
@@ -325,6 +413,34 @@ class DataResetCoordinatorTest {
 
         override suspend fun read(from: LocalDate, to: LocalDate, zoneId: ZoneId): HealthConnectReadResult =
             HealthConnectReadResult(emptyList(), emptySet())
+    }
+
+    private class FakeArtExporter : ArtPngExporter {
+        var invalidated = false
+
+        override suspend fun export(
+            plan: com.meucoach.core.domain.story.StoryPlan,
+            localDate: LocalDate?,
+            recipe: com.meucoach.core.domain.story.ArtRecipe,
+            activityId: String,
+            forShare: Boolean,
+        ): ArtPngExport = error("not used in reset")
+
+        override suspend fun invalidate() {
+            invalidated = true
+        }
+    }
+
+    private class FailingArtExporter : ArtPngExporter {
+        override suspend fun export(
+            plan: com.meucoach.core.domain.story.StoryPlan,
+            localDate: LocalDate?,
+            recipe: com.meucoach.core.domain.story.ArtRecipe,
+            activityId: String,
+            forShare: Boolean,
+        ): ArtPngExport = error("not used in reset")
+
+        override suspend fun invalidate(): Unit = error("boom")
     }
 }
 

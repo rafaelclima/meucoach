@@ -1,6 +1,72 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Arte com Foto — F6 export/share JPG concluída; F7 é a próxima)
+**Atualizado:** 24/11/2026 (Arte com Foto — F7 ciclo de vida e limpeza concluída; F8 é a próxima)
+
+## Sessão 2026-11-24 — Arte com Foto F7 (limpeza e ciclo de vida)
+
+**Escopo:** somente a fatia F7 do PRD v0.3/ADR 0061. Sem F8, sem validação
+visual/memória no aparelho, sem mudanças no renderer transparente/PHOTO,
+goldens, UI do Studio além do lifecycle, codecs F2/F3, migração de banco ou
+dependência nova.
+
+### Concluído
+
+- **`ArtPhotoStore.clear()`:** apaga `files/art_photo/` sob o mutex, com
+  retorno booleano para o `failedCleanups` do reset; diretório ausente é
+  sucesso.
+- **`DataResetCoordinator`:** injeta `ArtPhotoStore` e `ArtPngExporter`; no
+  reset limpa `files/art_photo/`, `cache/art` (PNG/JPG/tmp) e o estado do
+  exporter, além do `meucoach_art` já existente; cada limpeza em bloco
+  `cleanup(...)` próprio com falha agregada. `meucoach_story` segue com a
+  limpeza existente do reset total (decisão registrada: o “não toca em
+  story” do PRD vale para o reset só-de-arte; o apagar-tudo continua
+  limpando as duas receitas).
+- **`deleteActivity`:** após o delete do banco retornar sucesso, remove
+  metadata + foto da atividade via `ArtPhotoStore.remove(activityId)` e
+  invalida o exporter; falha de arquivo é best-effort (log + varredura de
+  órfãos) e nunca derruba o delete; delete com falha preserva a foto e não
+  invalida.
+- **Varredura no startup:** `ArtPhotoStartupSweeper` testável delegando a
+  `ArtPhotoStore.sweepOrphans()` (`.tmp` + `.jpg` órfãos >24 h, nunca apaga
+  referenciada); `MeuCoachApplication` chama via `applicationScope` com
+  `runCatching`, sem bloquear a main.
+- **Invalidação do exporter:** `ArtPngExporter.invalidate()` com default
+  no-op para fakes; `CanvasArtPngExporter` limpa
+  `lastKey/lastUri/lastFile` e apaga `cache/art`; chamada no reset e no
+  delete; após invalidar, um Compartilhar da mesma receita regenera
+  (`reused=false`, novo URI).
+- **Toggle/Remover (sem refazer F5):** testes garantem Toggle Transparente
+  mantém metadata+arquivo em espera, Remover apaga arquivo+metadata e volta
+  a transparente, `resetArtRecipe` limpa estilo + foto atual (sem tocar em
+  outra atividade), delete apaga só a foto daquela atividade e reset total
+  apaga todas + cache.
+- **Testes (TDD):** `DataResetCoordinatorTest` (semeia `art_photo` + metadata,
+  `cache/art` com PNG/JPG/.tmp, `meucoach_art`/`meucoach_story`; após reset
+  `art_photo`/`cache/art` não existem, exporter invalidado, `ArtRecipe`
+  default, `StoryRecipe` default, sem `failedCleanups`; + falha agregada do
+  exporter), `ArtPhotoStoreTest` (`clear()` + órfãos), `ArtPngExportTest`
+  (invalidar → regenera, `cache/art` limpo),
+  `ActivityDetailViewModelArtPhotoTest` (delete remove só a atividade +
+  invalida; delete com falha preserva + não invalida; remover sem metadata
+  órfã; reset só a atividade atual), `ArtPhotoStartupSweeperTest`. Só
+  bitmaps sintéticos; nenhuma foto/dado real.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde.
+- `./gradlew :app:testDebugUnitTest` verde (1.492 testes, 0 falhas).
+- `./gradlew :app:verifyRoborazziDebug --tests "*Art*"` verde e
+  `... --tests "*StoryStudioScreenshotTest"` verde em execução separada.
+- `./gradlew :app:assembleDebug`, `./gradlew :app:detekt` e
+  `./gradlew spotlessApply && ./gradlew spotlessCheck` verdes (baseline do
+  detekt atualizado para os 2 novos parâmetros do reset).
+- `./gradlew :app:koverVerify` verde (gate ≥78%).
+- Goldens: nenhum golden do renderer ou da UI foi alterado/regravado.
+- Flakes conhecidos não falharam nesta sessão.
+
+### Próximo
+
+1. **F8** — docs/DoD e validação no S24 Ultra + API 31 + low-RAM.
 
 ## Sessão 2026-11-24 — Arte com Foto F6 (export/share JPG)
 

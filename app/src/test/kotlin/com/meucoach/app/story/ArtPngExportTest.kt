@@ -395,6 +395,35 @@ class ArtPngExportTest {
         assertThat(cacheFiles("jpg")).isNotEmpty()
     }
 
+    @Test
+    fun `invalidate clears the reuse memory and wipes the art cache`() {
+        val plan = plan()
+        val recipe = photoRecipe(photoRef())
+
+        val first = runBlockingExport(plan, recipe, forShare = true) as ArtPngExport.Published
+        assertThat(cacheFiles("jpg")).isNotEmpty()
+
+        kotlinx.coroutines.runBlocking { exporter.invalidate() }
+
+        assertThat(File(context.cacheDir, "art").exists()).isFalse()
+        val second = runBlockingExport(plan, recipe, forShare = true) as ArtPngExport.Published
+        assertThat(second.uri).isNotEqualTo(first.uri)
+        assertThat(second.reused).isFalse()
+    }
+
+    @Test
+    fun `invalidate on an empty cache still forces regeneration`() {
+        val plan = plan()
+        val recipe = ArtRecipe()
+
+        val first = runBlockingExport(plan, recipe, forShare = true) as ArtPngExport.Published
+        kotlinx.coroutines.runBlocking { exporter.invalidate() }
+        val second = runBlockingExport(plan, recipe, forShare = true) as ArtPngExport.Published
+
+        assertThat(second.uri).isNotEqualTo(first.uri)
+        assertThat(second.reused).isFalse()
+    }
+
     private fun assertFailedPublishLeavesNoRow(name: String, publish: (File) -> ImagePublishResult) {
         val missing = File(context.cacheDir, "art/$name")
 
