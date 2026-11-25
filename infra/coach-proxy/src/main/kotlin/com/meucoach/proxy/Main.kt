@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -20,6 +21,8 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -28,6 +31,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import kotlin.coroutines.cancellation.CancellationException
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -52,13 +56,20 @@ fun main() {
     }
     require(proxyToken.isNotBlank()) { "COACH_PROXY_TOKEN required" }
     val chain = buildChain(openRouterKey, models, goUrl, goKey, goModels)
+    val upstreamTimeoutMs = System.getenv("COACH_UPSTREAM_TIMEOUT_MS")?.toLongOrNull()
+        ?: System.getenv("OPENROUTER_TIMEOUT_MS")?.toLongOrNull()
+        ?: 15_000
+    val freeAnswerTimeoutMs = System.getenv("COACH_FREE_ANSWER_TIMEOUT_MS")?.toLongOrNull()
+        ?.takeIf { it > 0 }
+        ?: FREE_ANSWER_TIMEOUT_MS
+    val freeAnswerBudgetMs = System.getenv("COACH_FREE_ANSWER_BUDGET_MS")?.toLongOrNull()
+        ?.takeIf { it > 0 }
+        ?: FREE_ANSWER_BUDGET_MS
 
     val upstream = HttpClient(CIO) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         install(HttpTimeout) {
-            requestTimeoutMillis = System.getenv("COACH_UPSTREAM_TIMEOUT_MS")?.toLongOrNull()
-                ?: System.getenv("OPENROUTER_TIMEOUT_MS")?.toLongOrNull()
-                ?: 15000
+            requestTimeoutMillis = upstreamTimeoutMs
         }
     }
 
@@ -76,7 +87,20 @@ fun main() {
                 // Sem log de payload (só status/latência no Dokploy).
                 val started = System.currentTimeMillis()
                 try {
-                    val upstream = tryModels(upstream, chain, kind, payload)
+                    // free-answer is a short rewrite with a 25 s app budget: cap
+                    // each attempt and the whole chain below it. explain/review
+                    // keep the full per-model timeout.
+                    val attemptTimeoutMs =
+                        if (kind == "free-answer") freeAnswerTimeoutMs else upstreamTimeoutMs
+                    val totalBudgetMs = if (kind == "free-answer") freeAnswerBudgetMs else null
+                    val upstream = tryModels(
+                        client = upstream,
+                        chain = chain,
+                        kind = kind,
+                        payload = payload,
+                        attemptTimeoutMs = attemptTimeoutMs,
+                        totalBudgetMs = totalBudgetMs,
+                    )
                     if (upstream == null) {
                         call.respondText(
                             """{"error":"all_models_unavailable"}""",
@@ -270,8 +294,42 @@ internal val DEFAULT_MODELS = listOf(
  * pensamento, DeepSeek por último. A cota é a da assinatura Go — a perna
  * OpenRouter é free-only por política (sem créditos naquela conta) e entra
  * só se o Go falhar.
+ *
+ * `free-answer` inverte a prioridade: o app corta essa chamada em 25 s, então
+ * MiMo (sem raciocínio) vai primeiro; GLM e DeepSeek seguem como fallback.
  */
 internal val DEFAULT_GO_MODELS = listOf("glm-5.3-flash", "mimo-v2.6-flash", "deepseek-v4.1-flash")
+
+/** Ordem preferida no `free-answer`; ids fora dela mantêm a ordem configurada. */
+internal val FREE_ANSWER_MODEL_PRIORITY = listOf(
+    "mimo-v2.6-flash",
+    "glm-5.3-flash",
+    "deepseek-v4.1-flash",
+)
+
+/**
+ * Timeout por tentativa no `free-answer`. O MiMo respondeu em ~9,9 s no
+ * prompt de avaliação que motivou a correção; 12 s deixa margem para ele sem
+ * estourar o orçamento de 18 s.
+ */
+internal const val FREE_ANSWER_TIMEOUT_MS = 12_000L
+
+/**
+ * Orçamento total do `free-answer`, abaixo dos 25 s do app. O proxy devolve
+ * 502 dentro do prazo em vez de deixar o app estourar o read timeout e
+ * mostrar "sem conexão" para uma resposta que ainda estava a caminho.
+ */
+internal const val FREE_ANSWER_BUDGET_MS = 18_000L
+
+internal fun modelsForKind(kind: String, models: List<String>): List<String> {
+    if (kind != "free-answer") return models
+    val preferred = FREE_ANSWER_MODEL_PRIORITY.filter { it in models }
+    return preferred + models.filterNot { it in preferred }
+}
+
+/** Never start an attempt that can outlive the remaining chain budget. */
+internal fun attemptTimeoutMs(attemptCapMs: Long, remainingMs: Long?): Long =
+    minOf(attemptCapMs, remainingMs ?: attemptCapMs).coerceAtLeast(1)
 
 /**
  * Tenta os alvos em ordem (Go, depois OpenRouter) e dentro de cada alvo os
@@ -279,42 +337,83 @@ internal val DEFAULT_GO_MODELS = listOf("glm-5.3-flash", "mimo-v2.6-flash", "dee
  * 429/5xx/timeout e 4xx passam para o próximo alvo/modelo; se a cadeia
  * esgotar, devolve o primeiro erro "duro" (400/401/402/422) para diagnóstico
  * — uma chave ruim num provedor não pode vetar o outro. Sem log de payload.
+ *
+ * [totalBudgetMs] limita a cadeia inteira (usado no `free-answer`). Cada
+ * tentativa recebe `min(attemptTimeoutMs, orçamento restante)`; quando o
+ * orçamento acaba, a função devolve o que tiver para o app cair no fallback
+ * antes do timeout de 25 s.
  */
-private suspend fun tryModels(
+internal suspend fun tryModels(
     client: HttpClient,
     chain: List<UpstreamTarget>,
     kind: String,
     payload: String,
+    attemptTimeoutMs: Long,
+    totalBudgetMs: Long?,
 ): Pair<String, HttpStatusCode>? {
     var hardError: Pair<String, HttpStatusCode>? = null
     val session = sessionIdFor(kind, payload)
+    val startedAt = System.nanoTime()
     for (target in chain) {
-        for (model in target.models) {
+        val models = modelsForKind(kind, target.models)
+        for (model in models) {
+            val remainingMs = totalBudgetMs?.let { it - elapsedMs(startedAt) }
+            if (remainingMs != null && remainingMs <= 0) {
+                println("coach budget kind=$kind exhaustedMs=${elapsedMs(startedAt)} (trying next)")
+                return hardError
+            }
+            val timeoutMs = attemptTimeoutMs(attemptTimeoutMs, remainingMs)
             try {
-                val res = client.post(target.url) {
-                    header(HttpHeaders.Authorization, "Bearer ${target.key}")
-                    header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    header("HTTP-Referer", "https://meucoach.app")
-                    header("X-Title", "MeuCoach Coach")
-                    header("x-opencode-session", session)
-                    target.userAgent?.let { header(HttpHeaders.UserAgent, it) }
-                    setBody(buildOpenRouterBody(model, kind, payload))
+                val (status, body) = withTimeout(timeoutMs) {
+                    val res = client.post(target.url) {
+                        timeout {
+                            requestTimeoutMillis = timeoutMs
+                            connectTimeoutMillis = minOf(timeoutMs, 5_000)
+                            socketTimeoutMillis = timeoutMs
+                        }
+                        header(HttpHeaders.Authorization, "Bearer ${target.key}")
+                        header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        header("HTTP-Referer", "https://meucoach.app")
+                        header("X-Title", "MeuCoach Coach")
+                        header("x-opencode-session", session)
+                        target.userAgent?.let { header(HttpHeaders.UserAgent, it) }
+                        setBody(buildOpenRouterBody(model, kind, payload))
+                    }
+                    res.status to res.bodyAsText()
                 }
-                if (res.status.value in 200..299) {
-                    println("coach upstream=${target.label} model=$model status=${res.status.value} (served)")
-                    return res.bodyAsText() to res.status
+                if (status.value in 200..299) {
+                    println(
+                        "coach upstream=${target.label} model=$model status=${status.value} " +
+                            "elapsedMs=${elapsedMs(startedAt)} (served)",
+                    )
+                    return body to status
                 }
-                println("coach upstream=${target.label} model=$model status=${res.status.value} (trying next)")
+                println(
+                    "coach upstream=${target.label} model=$model status=${status.value} " +
+                        "elapsedMs=${elapsedMs(startedAt)} (trying next)",
+                )
                 // 400/401/402/422 são problema do pedido ou da conta naquele
                 // provedor: guarda o primeiro para diagnóstico e segue a cadeia.
-                if (hardError == null && res.status.value in listOf(400, 401, 402, 422)) {
-                    hardError = res.bodyAsText() to res.status
+                if (hardError == null && status.value in listOf(400, 401, 402, 422)) {
+                    hardError = body to status
                 }
+            } catch (e: TimeoutCancellationException) {
+                println(
+                    "coach upstream=${target.label} model=$model error=timeout timeoutMs=$timeoutMs " +
+                        "elapsedMs=${elapsedMs(startedAt)} (trying next)",
+                )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                println("coach upstream=${target.label} model=$model error=${e.message} (trying next)")
+                println(
+                    "coach upstream=${target.label} model=$model error=${e.message} " +
+                        "elapsedMs=${elapsedMs(startedAt)} (trying next)",
+                )
             }
         }
     }
     // Cadeia esgotada: prefere o erro duro (diagnóstico real) ao 502 genérico.
     return hardError
 }
+
+private fun elapsedMs(startedAtNanos: Long): Long = (System.nanoTime() - startedAtNanos) / 1_000_000

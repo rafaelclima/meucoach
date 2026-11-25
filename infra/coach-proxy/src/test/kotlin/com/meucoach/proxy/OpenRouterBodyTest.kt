@@ -243,4 +243,43 @@ class OpenRouterBodyTest {
         assertEquals("meucoach-coach-review-unknown", sessionIdFor("review", "{}"))
         assertEquals("meucoach-coach-review-unknown", sessionIdFor("review", "not-json"))
     }
+
+    @Test
+    fun `free answer tries the non-thinking model first`() {
+        assertEquals(
+            listOf("mimo-v2.6-flash", "glm-5.3-flash", "deepseek-v4.1-flash"),
+            modelsForKind("free-answer", DEFAULT_GO_MODELS),
+        )
+    }
+
+    @Test
+    fun `free answer keeps unknown configured models after the preferred ones`() {
+        assertEquals(
+            listOf("mimo-v2.6-flash", "glm-5.3-flash", "custom-flash"),
+            modelsForKind("free-answer", listOf("custom-flash", "glm-5.3-flash", "mimo-v2.6-flash")),
+        )
+    }
+
+    @Test
+    fun `other kinds keep the configured model order`() {
+        assertEquals(DEFAULT_GO_MODELS, modelsForKind("explain", DEFAULT_GO_MODELS))
+        assertEquals(DEFAULT_GO_MODELS, modelsForKind("review", DEFAULT_GO_MODELS))
+    }
+
+    @Test
+    fun `free answer budget returns before the app read timeout`() {
+        assertTrue(FREE_ANSWER_BUDGET_MS < 25_000, "app cuts free-answer at 25 s")
+        assertTrue(
+            FREE_ANSWER_TIMEOUT_MS < FREE_ANSWER_BUDGET_MS,
+            "each attempt must expire before the whole chain",
+        )
+    }
+
+    @Test
+    fun `attempt timeout never outlives the remaining budget`() {
+        assertEquals(8_000, attemptTimeoutMs(8_000, null))
+        assertEquals(2_500, attemptTimeoutMs(8_000, 2_500))
+        assertEquals(1, attemptTimeoutMs(8_000, 0))
+        assertEquals(1, attemptTimeoutMs(8_000, -100))
+    }
 }

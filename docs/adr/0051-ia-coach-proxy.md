@@ -186,6 +186,23 @@ modelos sem publicar o app.
   `GET https://opencode.ai/inference/go/v1/models` (o antigo
   `/zen/go/v1/models` respondia como alias, mas não está na doc atual).
   404 cai no fallback sozinho, sem quebrar a aba.
+- **Correção 24/11/2026 (free-answer estourava o timeout do app):** o app
+  corta `free-answer` em 25 s; a cadeia Go tentava GLM primeiro com 15 s por
+  modelo, então um prompt de avaliação podia gastar 15 s no GLM, cair no MiMo
+  e responder em ~24,9 s — no limite — ou passar de 30–60 s quando o MiMo e o
+  DeepSeek também falhavam. O usuário via “sem conexão” para uma resposta que
+  ainda estava a caminho. Correção: no `free-answer`, MiMo (sem raciocínio) é
+  tentado primeiro; cada tentativa tem `COACH_FREE_ANSWER_TIMEOUT_MS` (default
+  12 s) e a cadeia inteira tem `COACH_FREE_ANSWER_BUDGET_MS` (default 18 s),
+  abaixo do timeout do app. `explain`/`review` mantêm a ordem e o timeout
+  cheio. Evidência no aparelho: `D/Coach: free answer io: timeout`; o mesmo
+  payload via curl levou 24,9 s e foi servido por `mimo-v2.6-flash` depois do
+  GLM. **Exige redeploy no Dokploy.**
+- **Correção 24/11/2026 (data do Coach usava UTC):** o `CoachViewModel`
+  injetava `Clock.systemUTC()` e `LocalDate.now(clock)`; no fuso
+  `America/Sao_Paulo`, depois das 21h o Coach já tratava o dia seguinte como
+  “hoje”. Passa a usar o `TimeProvider` do perfil (ADR 0022), com teste de
+  regressão para 00:30 UTC = 21:30 local.
 - **Correção 19/11/2026 (JSON inválido no explain):** `buildOpenRouterBody`
   montava o corpo por interpolação sem escapar o system prompt; `SYSTEM_EXPLAIN`
   e `SYSTEM_REPLAN` contêm `{"title":...}` literal e geravam JSON inválido →
