@@ -194,7 +194,7 @@ modelos sem publicar o app.
   ainda estava a caminho. Correção: no `free-answer`, MiMo e GLM correm em
   paralelo e o primeiro 2xx vence (o perdedor é cancelado); se ambos falharem,
   DeepSeek/OpenRouter seguem sequenciais com o orçamento restante. Cada
-  tentativa tem `COACH_FREE_ANSWER_TIMEOUT_MS` (default 12 s) e a cadeia
+  tentativa tem `COACH_FREE_ANSWER_TIMEOUT_MS` (default 18 s) e a cadeia
   inteira tem `COACH_FREE_ANSWER_BUDGET_MS` (default 20 s), abaixo do timeout
   do app. Trade-off: cada chamada pode disparar duas requisições Go em
   paralelo; a perdedora é cancelada no cliente, mas o provedor pode cobrá-la.

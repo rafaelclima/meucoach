@@ -311,11 +311,10 @@ internal val FREE_ANSWER_MODEL_PRIORITY = listOf(
 )
 
 /**
- * Timeout por tentativa no `free-answer`. O MiMo respondeu em ~9,9 s no
- * prompt de avaliação que motivou a correção; 12 s deixa margem para ele sem
- * estourar o orçamento de 20 s.
+ * Timeout por tentativa no `free-answer`. O prompt de avaliação às vezes
+ * passa de 12 s (GLM/MiMo); 18 s dá margem sem estourar o orçamento de 20 s.
  */
-internal const val FREE_ANSWER_TIMEOUT_MS = 12_000L
+internal const val FREE_ANSWER_TIMEOUT_MS = 18_000L
 
 /**
  * Orçamento total do `free-answer`, abaixo dos 25 s do app. O proxy devolve

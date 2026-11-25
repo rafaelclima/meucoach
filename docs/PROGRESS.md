@@ -24,13 +24,18 @@ nova.
 - **Proxy:** no `free-answer`, `mimo-v2.6-flash` e `glm-5.3-flash` correm
   em paralelo e o primeiro 2xx vence (o perdedor é cancelado); se ambos
   falharem, DeepSeek/OpenRouter seguem sequenciais com o que restar. Cada
-  tentativa tem 12 s (`COACH_FREE_ANSWER_TIMEOUT_MS`) e a cadeia total tem
+  tentativa tem 18 s (`COACH_FREE_ANSWER_TIMEOUT_MS`) e a cadeia total tem
   20 s (`COACH_FREE_ANSWER_BUDGET_MS`), abaixo dos 25 s do app. Tentativas
   usam `min(timeout por modelo, orçamento restante)` e os logs ganharam
   `elapsedMs`; `explain`/`review` mantêm a ordem e o timeout cheio.
 - **App:** `CoachViewModel` passou a receber `TimeProvider` e usa
   `currentDate()` em vez de `LocalDate.now(Clock.systemUTC())`. Depois das 21h
   em America/Sao_Paulo o Coach não trata mais o dia seguinte como hoje.
+- **Ajuste pós-log (25/11):** o Dokploy confirmou a corrida paralela (MiMo e
+  GLM caindo juntos em 12 s, DeepSeek em 8 s); como o prompt de avaliação às
+  vezes passa de 12 s, o teto por tentativa subiu para 18 s, mantendo o total
+  em 20 s. No aparelho, “como corro hoje?” às 23:01 respondeu “Hoje já foi”
+  (sessão de 24/11 `DONE`), confirmando a data local.
 - **Testes:** proxy (`modelsForKind`, orçamento de 20 s, `UpstreamBudgetTest`
   com upstream local lento e `FreeAnswerRaceTest` provando que o GLM rápido
   vence o MiMo lento sem esperar o timeout) e VM (00:30 UTC = 21:30 local

@@ -2,7 +2,7 @@
 
 **Atualizado:** 24/11/2026
 **Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064)
-**Próxima fatia:** redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo + orçamento do `free-answer` (MiMo+GLM em paralelo, 12 s por tentativa, 20 s total) e validação no aparelho; retomar P1-12/Ciclo 4 (§5.4)
+**Próxima fatia:** redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo + orçamento do `free-answer` (MiMo+GLM em paralelo, 18 s por tentativa, 20 s total) e validação no aparelho; retomar P1-12/Ciclo 4 (§5.4)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: timeout do free-answer e data local"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; falta o redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo e o orçamento do `free-answer` (MiMo+GLM em paralelo, 12 s por tentativa, 20 s total) e a validação no aparelho com `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: timeout do free-answer e data local"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; falta o redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo e o orçamento do `free-answer` (MiMo+GLM em paralelo, 18 s por tentativa, 20 s total) e a validação no aparelho com `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 
@@ -358,7 +358,7 @@ Proxy (não commitado):
 
 - URL: `https://meucoach-api.hojeafestaenossa.site`
 - Build com `-PcoachProxyUrl=... -PcoachProxyToken=...`; vazio = Coach desativado e fallback.
-- Token de produção no Dokploy (`COACH_PROXY_TOKEN`); chave OpenRouter em `OPENROUTER_API_KEY`, chave do Go em `COACH_GO_API_KEY` (`COACH_GO_MODELS` opcional, default `glm-5.3-flash,mimo-v2.6-flash,deepseek-v4.1-flash`; no `free-answer` o proxy corre MiMo+GLM em paralelo (primeiro 2xx vence), com 12 s por tentativa e 20 s de orçamento). OpenRouter é free-only por política (sem créditos naquela conta); a cota é a da assinatura Go. Nunca no repo, APK, log, issue ou prompt.
+- Token de produção no Dokploy (`COACH_PROXY_TOKEN`); chave OpenRouter em `OPENROUTER_API_KEY`, chave do Go em `COACH_GO_API_KEY` (`COACH_GO_MODELS` opcional, default `glm-5.3-flash,mimo-v2.6-flash,deepseek-v4.1-flash`; no `free-answer` o proxy corre MiMo+GLM em paralelo (primeiro 2xx vence), com 18 s por tentativa e 20 s de orçamento). OpenRouter é free-only por política (sem créditos naquela conta); a cota é a da assinatura Go. Nunca no repo, APK, log, issue ou prompt.
 - Backup real em `fixtures/private/` (gitignored); não usar em CI.
 
 Flakes conhecidos (ver `TESTING.md`): `TutorialSystemBackTest` (transação Room vazada) e `MetricsImportViewModelTest` (timeout de 30 s). Rodar isolado ou `--no-parallel`; consertar, não ignorar.
