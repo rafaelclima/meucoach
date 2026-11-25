@@ -1,6 +1,55 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (lembrete fiel à prescrição do dia + conversa aberta do Coach com fatos fechados)
+**Atualizado:** 24/11/2026 (Coach: orçamento de tempo do free-answer + data no fuso do perfil)
+
+## Sessão 2026-11-24 — Coach: timeout do free-answer e data local
+
+**Escopo:** diagnóstico no S24 Ultra do fallback “Sem conexão com o Coach”
+ao perguntar “avalie meu treino”. Sem schema, ciência, motor ou dependência
+nova.
+
+### Causa
+
+- O aparelho estava online, o token era válido e o proxy respondia (`/health`
+  200; curl dentro do aparelho 200 em 4,1 s).
+- O log mostrava `D/Coach: free answer io: timeout` exatamente 25 s depois do
+  envio: era o read timeout do app, não falta de rede.
+- O `free-answer` tentava GLM primeiro com 15 s por modelo. Num prompt de
+  avaliação, o GLM estourava, o MiMo respondia em ~24,9 s (no limite) e, quando
+  o MiMo/DeepSeek também falhavam, a cadeia levava 30–60 s — o app já tinha
+  desistido.
+
+### Correção
+
+- **Proxy:** `free-answer` tenta `mimo-v2.6-flash` primeiro (sem raciocínio),
+  com 12 s por tentativa (`COACH_FREE_ANSWER_TIMEOUT_MS`) e orçamento total de
+  18 s (`COACH_FREE_ANSWER_BUDGET_MS`), abaixo dos 25 s do app. Tentativas
+  usam `min(timeout por modelo, orçamento restante)` e os logs ganharam
+  `elapsedMs`; `explain`/`review` mantêm a ordem e o timeout cheio.
+- **App:** `CoachViewModel` passou a receber `TimeProvider` e usa
+  `currentDate()` em vez de `LocalDate.now(Clock.systemUTC())`. Depois das 21h
+  em America/Sao_Paulo o Coach não trata mais o dia seguinte como hoje.
+- **Testes:** proxy (`modelsForKind`, orçamento < 25 s, ordem dos modelos e
+  `UpstreamBudgetTest` com upstream local lento) e VM (00:30 UTC = 21:30 local
+  ainda resolve o treino de 24/11 e chama o `free-answer`).
+  `OpenRouterBodyTest`, `UpstreamBudgetTest` e `CoachViewModelTest` verdes.
+
+### Gates
+
+- `./gradlew check spotlessCheck` verde (inclui detekt, lint, Kover e parser
+  FIT 93,01% de branches).
+- `./gradlew :app:assembleDebug` verde.
+- `./gradlew -p infra/coach-proxy test` verde.
+- Sem dado real no diff; sem migração; sem dependência nova.
+
+### Próximo
+
+1. Redeploy do proxy no Dokploy com os novos defaults e validar no aparelho
+   “avalie meu treino” (deve responder pelo MiMo ou cair no fallback em ≤18 s,
+   nunca no timeout de 25 s); conferir `elapsedMs` e o modelo servido no log.
+2. Revalidar a virada de dia no Coach depois das 21h em America/Sao_Paulo.
+3. Retomar a validação do `SYSTEM_FREE_ANSWER`/consentimento v2 (sessão
+   anterior) e P1-12.
 
 ## Sessão 2026-11-24 — Lembrete fiel ao dia + Coach com conversa aberta
 

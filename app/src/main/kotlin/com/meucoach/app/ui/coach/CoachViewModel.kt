@@ -11,6 +11,7 @@ import com.meucoach.app.coach.CoachProgressSource
 import com.meucoach.app.coach.CoachSources
 import com.meucoach.app.di.ApplicationScope
 import com.meucoach.app.replan.ReplanControllerFactory
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.core.data.coach.CoachApi
@@ -55,7 +56,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.io.IOException
-import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
@@ -202,7 +202,7 @@ class CoachViewModel @Inject constructor(
     private val sources: CoachSources,
     private val api: CoachApi,
     private val memory: CoachMemoryRepository,
-    private val clock: Clock,
+    private val timeProvider: TimeProvider,
     @ApplicationScope private val appScope: CoroutineScope,
     replanFactory: ReplanControllerFactory,
 ) : ViewModel() {
@@ -570,7 +570,7 @@ class CoachViewModel @Inject constructor(
     fun sendFreeText(text: String, recordQuestion: Boolean = true) {
         if (!_consented.value) return
         if (_exchanges.value.any { it.answer is FreeAnswerUiState.Loading }) return
-        val parsed = FreeInputParser.parse(text, LocalDate.now(clock).dayOfWeek)
+        val parsed = FreeInputParser.parse(text, timeProvider.currentDate().dayOfWeek)
         lastFreeText = text
         val exchangeId = UUID.randomUUID().toString()
         _exchanges.value =
@@ -602,7 +602,7 @@ class CoachViewModel @Inject constructor(
         val pending = _exchanges.value.lastOrNull { it.answer is FreeAnswerUiState.Fallback } ?: return
         if (_exchanges.value.any { it.answer is FreeAnswerUiState.Loading }) return
         viewModelScope.launch {
-            val parsed = FreeInputParser.parse(text, LocalDate.now(clock).dayOfWeek)
+            val parsed = FreeInputParser.parse(text, timeProvider.currentDate().dayOfWeek)
             settle(pending.id, FreeAnswerUiState.Loading)
             route(parsed, pending.id)
         }
@@ -638,7 +638,7 @@ class CoachViewModel @Inject constructor(
             FreeInputIntent.ASK_PROGRESS -> answerProgress(parsed, exchangeId)
 
             FreeInputIntent.ASK_COACHING ->
-                answerOpenContent(parsed, exchangeId, LocalDate.now(clock), sources, ::freeAnswer)
+                answerOpenContent(parsed, exchangeId, timeProvider.currentDate(), sources, ::freeAnswer)
         }
     }
 
@@ -678,7 +678,7 @@ class CoachViewModel @Inject constructor(
     }
 
     private fun localHash(scope: String, parsed: FreeInputParse): String {
-        val today = LocalDate.now(clock)
+        val today = timeProvider.currentDate()
         return listOf("coach-free-v1", "local", scope, today.toString(), parsed.intent.name).joinToString("|")
     }
 
@@ -720,7 +720,7 @@ class CoachViewModel @Inject constructor(
             parsed = parsed,
             task = task,
             exchangeId = exchangeId,
-            today = LocalDate.now(clock),
+            today = timeProvider.currentDate(),
             sources = sources,
             callbacks = AnswerCallbacks(::settle, ::answerLocal, ::localHash, ::freeAnswer),
         )

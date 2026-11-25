@@ -28,6 +28,7 @@ import com.meucoach.app.replan.ReplanControllerFactory
 import com.meucoach.app.replan.ReplanOperations
 import com.meucoach.app.replan.ReplanSuggestionStore
 import com.meucoach.app.time.FakeTimeProvider
+import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.replan.LessTimeChange
 import com.meucoach.core.data.coach.CoachMemoryRepository
 import com.meucoach.core.data.coach.FakeCoachApi
@@ -91,6 +92,7 @@ import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
@@ -216,7 +218,10 @@ class CoachViewModelTest {
         database.close()
     }
 
-    private fun viewModel(api: com.meucoach.core.data.coach.CoachApi, viewClock: Clock = clock): CoachViewModel {
+    private fun viewModel(
+        api: com.meucoach.core.data.coach.CoachApi,
+        viewTimeProvider: TimeProvider = timeProvider,
+    ): CoachViewModel {
         val appScope = CoroutineScope(dispatcher)
         appScopes += appScope
         val vm = CoachViewModel(
@@ -240,7 +245,7 @@ class CoachViewModelTest {
             ),
             api = api,
             memory = memory,
-            clock = viewClock,
+            timeProvider = viewTimeProvider,
             appScope = appScope,
             replanFactory = replanFactory,
         )
@@ -1491,14 +1496,37 @@ class CoachViewModelTest {
         )
         next.value = sessionNextContext(sunday, sunday)
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
-        val sundayClock = Clock.fixed(Instant.parse("2026-11-22T12:00:00Z"), ZoneOffset.UTC)
-        val vm = viewModel(api, sundayClock)
+        val sundayTime = FakeTimeProvider(Instant.parse("2026-11-22T12:00:00Z"), ZoneOffset.UTC)
+        val vm = viewModel(api, sundayTime)
         vm.sendFreeText("o que tem amanhã?")
 
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("outra semana")
         assertThat(api.freeAnswerCalls).isZero()
+    }
+
+    @Test
+    fun `coach usa a data do perfil depois da meia-noite UTC`(): Unit = runBlocking {
+        consent.grant()
+        val localToday = LocalDate.of(2026, 11, 24)
+        plans.value = CoachPlanContext(
+            sessionWeek(LocalDate.of(2026, 11, 23), localToday),
+            "hash-local",
+        )
+        next.value = sessionNextContext(localToday, today = localToday)
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val lateNight = FakeTimeProvider(
+            Instant.parse("2026-11-25T00:30:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val vm = viewModel(api, lateNight)
+        vm.sendFreeText("como corro hoje?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.freeAnswerCalls).isEqualTo(1)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("Hoje (2026-11-24)")
     }
 
     @Test
