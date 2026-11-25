@@ -36,10 +36,10 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `weekly engine version is weekly-plan-v7`() {
+    fun `weekly engine version is weekly-plan-v8`() {
         // C4-53/ADR 0048 §2.4: the treino real engine is a new persisted
         // contract. v6 rows are upgraded by PlanUpgrade on opening.
-        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v7")
+        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v8")
     }
 
     @Test
@@ -1188,6 +1188,37 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
+    fun `interval quality carries I pace and Z5 instead of the generic T target`() {
+        val weekStart = LocalDate.of(2026, 11, 23)
+        val race = RacePlan("race-1", RaceDistance.FIVE_K, LocalDate.of(2026, 12, 20))
+        val plan = generator.generate(
+            input(
+                profile = profile(
+                    experience = Experience.INTERMEDIATE,
+                    availability = mapOf(
+                        DayOfWeek.TUESDAY to 40,
+                        DayOfWeek.FRIDAY to 40,
+                        DayOfWeek.SUNDAY to 40,
+                    ),
+                ),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+                weekStart = weekStart,
+                race = race,
+            ),
+        )
+
+        val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
+        assertThat(quality.qualityKind).isEqualTo(QualityKind.INTERVALS)
+        assertThat(quality.targets.primary).isEqualTo(TargetKind.PACE)
+        assertThat(quality.targets.zone).isEqualTo("Z5")
+        assertThat(quality.targets.pace?.fast?.secondsPerKm).isEqualTo(331)
+        assertThat(quality.targets.pace?.slow?.secondsPerKm).isEqualTo(342)
+        assertThat(quality.targets.heartRate?.minBpm).isEqualTo(180)
+        assertThat(quality.targets.heartRate?.maxBpm).isNull()
+    }
+
+    @Test
     fun `planned sessions keep RPE when the profile is not calibrated`() {
         val uncalibrated = profile(
             experience = Experience.INTERMEDIATE,
@@ -1307,7 +1338,12 @@ class WeeklyPlanGeneratorTest {
         // O piso de 45 do longão ancora o corte; o restante cabe em 82 min.
         assertThat(quality.durationMin).isEqualTo(27)
         assertThat(quality.targets).isEqualTo(
-            PrescriptionPolicy.targets(WorkoutType.QUALITY, profile, quality.durationMin),
+            PrescriptionPolicy.targets(
+                WorkoutType.QUALITY,
+                profile,
+                quality.durationMin,
+                qualityKind = quality.qualityKind,
+            ),
         )
     }
 
@@ -1871,7 +1907,11 @@ class WeeklyPlanGeneratorTest {
         assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
         assertThat(quality.ruleIds).contains("R-PLAN-05")
-        assertThat(quality.targets.zone).isEqualTo("Z3–Z4")
+        // The taper micro-dose is effort-led; the old T/Z3–Z4 target was the
+        // generic quality fallback, not a strides prescription.
+        assertThat(quality.targets.zone).isNull()
+        assertThat(quality.targets.rpe).isEqualTo(8)
+        assertThat(quality.targets.primary).isEqualTo(TargetKind.RPE)
     }
 
     @Test

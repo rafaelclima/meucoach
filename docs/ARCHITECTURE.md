@@ -180,7 +180,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - `engineVersion` semântica (ex.: `1.0.0`) e `inputsHash` determinístico por decisão.
 - A `DailyPrescription` persiste `engineVersion`, `inputsHash`, `ruleIds`/`evidenceIds` e confiança; a versão anterior permanece com `supersedesId`.
 - Mudou regra? Nova versão do motor e nova linha. Não há `rulesVersion`/`evidenceVersion` como colunas separadas.
-- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v7`, `daily-prescription-v6`, `macro-plan-v2`, `planning-v1` (fingerprint). O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o bump foi concluído em C4-53 e o mecanismo de upgrade compara qualquer versão armazenada com o alvo (v6→v7 na abertura; v5→v6 na prescrição). O default da coluna continua `'weekly-plan-v6'` para o legado da migração; o motor grava a versão atual em toda linha nova.
+- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v8`, `daily-prescription-v7`, `macro-plan-v2`, `planning-v1` (fingerprint). O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o mecanismo de upgrade compara qualquer versão armazenada com o alvo (v7→v8 na abertura; v6→v7 na prescrição). O default da coluna continua `'weekly-plan-v6'` para o legado da migração; o motor grava a versão atual em toda linha nova.
 
 ### 6.3 Tempo, prescrição e evidência
 
@@ -270,7 +270,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
   dados…”, gate falho gera com `dataIncomplete = true` (nota no rationale +
   `R-DATA-01`/`EV-IMPELLIZZERI-2020`) e o `DATA_READY` reavalia quando os dados
   chegam. O gate nunca espera o check-in: ausência de check-in é estado válido.
-- **Schema v18 (C4-45):** `MIGRATION_17_18` aditiva (9 `ALTER TABLE`): `weekly_plans.generatorVersion` (default `'weekly-plan-v6'` para o legado; o motor atual grava `weekly-plan-v7`), `planned_sessions.(structureJson|qualityKind|planDecisionCode|planDecisionDetail)` e `daily_prescriptions.(structureJson|qualityBlockReason|decisionDetail|unlockHint)`, todos os demais NULL. Sem `fallbackToDestructiveMigration`; round-trip testado.
+- **Schema v18 (C4-45):** `MIGRATION_17_18` aditiva (9 `ALTER TABLE`): `weekly_plans.generatorVersion` (default `'weekly-plan-v6'` para o legado; o motor atual grava `weekly-plan-v8`), `planned_sessions.(structureJson|qualityKind|planDecisionCode|planDecisionDetail)` e `daily_prescriptions.(structureJson|qualityBlockReason|decisionDetail|unlockHint)`, todos os demais NULL. Sem `fallbackToDestructiveMigration`; round-trip testado.
 - **Versão do plano (C4-46):** `WeeklyPlan.engineVersion` (default `ENGINE_VERSION`); `saveWeek` escreve a versão do domínio (autoridade do conteúdo) e `StoredWeeklyPlan.generatorVersion` expõe a armazenada para o upgrade comparar.
 - **`PlanUpgrade` idempotente (C4-47):** merge puro no domínio (preserva hoje/passado/`DONE`/`CLOSED`, troca só o futuro `PLANNED`, 1 slot estrutural, sem volume/long extra/2ª qualidade; golden `G-UPGRADE-01`) + `TrainingPlanRepository.applyUpgrade` transacional com revisão `ENGINE_UPGRADE`, `createdOn`/`inputsHash`/fingerprints preservados.
 - **Triggers + abertura (C4-48):** ver o último bullet do §6.4.

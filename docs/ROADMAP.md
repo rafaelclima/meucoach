@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.81 · **Data:** 25/11/2026 · **Mudança:** correção do dossiê aberto do Coach (último executado + allow-list do próprio dossiê, emenda ADR 0063 §6). Gates verdes.
+**Versão:** 1.82 · **Data:** 25/11/2026 · **Mudança:** correção do alvo da qualidade por tipo (ADR 0065) e do card do plano para mostrar a prescrição ajustada do dia. Gates verdes.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 

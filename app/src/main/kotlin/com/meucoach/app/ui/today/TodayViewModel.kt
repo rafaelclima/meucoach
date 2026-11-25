@@ -373,6 +373,9 @@ class TodayViewModel @Inject constructor(
                 prescription.adjustment == PrescriptionAdjustment.KEEP &&
                 todaySession?.status == SessionStatus.PLANNED &&
                 prescriptionRepository.getVersions(context.today).hasRestoredQuality()
+            val weekPrescriptions = effectivePlan
+                ?.let { prescriptionRepository.getLatestForWeek(it.weekStart) }
+                .orEmpty()
             todayState(
                 checkIn = context.checkIn,
                 metrics = context.metrics,
@@ -393,7 +396,10 @@ class TodayViewModel @Inject constructor(
                 activitySuggestions = suggestions,
                 todayExecution = todayExecution,
                 completionMessage = null,
-            ).copy(qualityRestored = qualityRestored)
+            ).copy(
+                weekPrescriptions = weekPrescriptions,
+                qualityRestored = qualityRestored,
+            )
         }
 
     /**
@@ -1009,7 +1015,9 @@ private fun DailyPrescription.toWorkoutUi() = WorkoutUi(
         com.meucoach.core.domain.prescription.WorkoutType.LONG,
         -> "Z2 · leve"
 
-        com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> "Forte · Z3–Z4"
+        com.meucoach.core.domain.prescription.WorkoutType.QUALITY -> targets.zone?.let { "Forte · $it" }
+            ?: targets.rpe?.let { "Forte · RPE $it" }
+            ?: "Forte"
 
         com.meucoach.core.domain.prescription.WorkoutType.REST -> "—"
     },

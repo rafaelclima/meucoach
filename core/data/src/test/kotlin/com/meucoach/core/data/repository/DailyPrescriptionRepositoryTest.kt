@@ -174,6 +174,31 @@ class DailyPrescriptionRepositoryTest {
         assertThat(repository.getVersions(today)).hasSize(3)
     }
 
+    @Test
+    fun `latest for week maps each day to its last version`(): Unit = runBlocking {
+        val monday = LocalDate.of(2026, 11, 2)
+        val tuesday = monday.plusDays(1)
+        val sunday = monday.plusDays(6)
+        repository.append(prescription(date = monday, hash = "mon-1"))
+        repository.append(prescription(date = tuesday, hash = "tue-1"))
+        repository.append(
+            prescription(
+                date = tuesday,
+                hash = "tue-2",
+                adjustment = PrescriptionAdjustment.REDUCE,
+            ),
+        )
+        repository.append(prescription(date = sunday, hash = "sun-1"))
+        repository.append(prescription(date = monday.minusDays(1), hash = "prev"))
+
+        val week = repository.getLatestForWeek(monday)
+
+        assertThat(week.keys).containsExactlyInAnyOrder(monday, tuesday, sunday)
+        assertThat(week[tuesday]?.inputsHash).isEqualTo("tue-2")
+        assertThat(week[tuesday]?.adjustment).isEqualTo(PrescriptionAdjustment.REDUCE)
+        assertThat(week).doesNotContainKey(monday.minusDays(1))
+    }
+
     private fun prescription(
         date: LocalDate = today,
         hash: String = "hash-1",

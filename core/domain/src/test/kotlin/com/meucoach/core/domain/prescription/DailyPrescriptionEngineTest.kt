@@ -888,10 +888,10 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
-    fun `daily engine version is daily-prescription-v6`() {
+    fun `daily engine version is daily-prescription-v7`() {
         // C4-53/ADR 0048 §2.4: a new day contract; the stored v5 is superseded
         // by GetTodayPrescription, never overwritten.
-        assertThat(PrescriptionPolicy.ENGINE_VERSION).isEqualTo("daily-prescription-v6")
+        assertThat(PrescriptionPolicy.ENGINE_VERSION).isEqualTo("daily-prescription-v7")
     }
 
     @Test

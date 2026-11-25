@@ -95,6 +95,13 @@ data class TodayUiState(
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     /** Single authority of the day; null only before a profile exists. */
     val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
+    /**
+     * Latest day decision for each date of the visible week. The plan card
+     * shows the prescribed title/duration instead of the original plan when
+     * the day was adjusted (R-PRESC-03). Empty for previews and legacy data.
+     */
+    val weekPrescriptions: Map<LocalDate, com.meucoach.core.domain.prescription.DailyPrescription> =
+        emptyMap(),
     /** Briefing derived from the persisted prescription; null for done/closed days. */
     val briefing: com.meucoach.core.domain.briefing.SessionBriefing? = null,
     /** Single daily authority resolved before rendering (ADR 0030). */

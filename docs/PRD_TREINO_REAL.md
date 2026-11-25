@@ -1011,7 +1011,7 @@ base = max(strongMinutes) over usable weeks
   - registra `WeeklyPlanRevision` com `trigger=ENGINE_UPGRADE`;
   - é idempotente e transacional.
 - O plano persiste `generatorVersion` (schema v18).
-- O dia é reavaliado com `daily-prescription-v6`; prescrições antigas ficam no histórico.
+- O dia é reavaliado com `daily-prescription-v7`; prescrições antigas ficam no histórico.
 - O usuário vê “Plano atualizado: nova versão do coach” (não um erro).
 
 **Algoritmo:**
@@ -1237,8 +1237,8 @@ Migração aditiva, sem `fallbackToDestructiveMigration`:
 
 | Motor | Versão antiga | Versão nova |
 |---|---|---|
-| Plano semanal | `weekly-plan-v6` | `weekly-plan-v7` |
-| Prescrição diária | `daily-prescription-v5` | `daily-prescription-v6` |
+| Plano semanal | `weekly-plan-v6` | `weekly-plan-v8` |
+| Prescrição diária | `daily-prescription-v5` | `daily-prescription-v7` |
 | Macro (se FR-411) | `macro-plan-v1` | `macro-plan-v2` |
 | Biblioteca | implícita | `session-library-v2` (citada no rationale) |
 

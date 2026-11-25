@@ -18,8 +18,14 @@ import androidx.compose.ui.test.performTextInput
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadMetric
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
+import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.QualityBlockReason
+import com.meucoach.core.domain.prescription.QualityKind
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DataConfidence
@@ -92,6 +98,79 @@ class TodayPlanTest {
         compose.onAllNodesWithText("Longão")[0].assertIsDisplayed()
         list.performScrollToNode(hasText("Sem progressão até existir histórico."))
         compose.onNodeWithText("Sem progressão até existir histórico.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `plan row shows the adjusted prescription instead of the original quality`() {
+        val today = LocalDate.of(2026, 11, 4)
+        val weekStart = LocalDate.of(2026, 11, 2)
+        val tuesday = weekStart.plusDays(1)
+        val plan = WeeklyPlan(
+            weekStart = weekStart,
+            sessions = listOf(
+                PlannedSession(
+                    date = tuesday,
+                    type = WorkoutType.QUALITY,
+                    title = "Intervalado",
+                    durationMin = 40,
+                    rationale = "5 × 3 min em ritmo de intervalado.",
+                    ruleIds = listOf("R-PER-04"),
+                    evidenceIds = listOf("EV-DANIELS-2014"),
+                    status = SessionStatus.DONE,
+                    qualityKind = QualityKind.INTERVALS,
+                    completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
+                    activityId = "activity-1",
+                ),
+            ),
+            weeklyMinutes = 40,
+            longRunMinutes = null,
+            qualityCount = 1,
+            rationale = "Plano da semana.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-PER-04"),
+            evidenceIds = listOf("EV-DANIELS-2014"),
+        )
+        val adjusted = DailyPrescription(
+            date = tuesday,
+            plannedSessionId = "$weekStart-$tuesday",
+            plannedType = WorkoutType.QUALITY,
+            plannedTitle = "Intervalado",
+            plannedDurationMin = 40,
+            prescribedType = WorkoutType.EASY,
+            title = "Hoje é fácil",
+            prescribedDurationMin = 28,
+            targets = PrescriptionTargets(zone = "Z2", rpe = 4, primary = TargetKind.RPE),
+            adjustment = PrescriptionAdjustment.DOWNGRADE,
+            rationale = "Planejado: Intervalado (40 min). Hoje: fácil, 28 min. Motivo: prontidão moderada.",
+            ruleIds = listOf("R-PER-04", "R-READY-03"),
+            evidenceIds = listOf("EV-DANIELS-2014"),
+            confidence = DataConfidence.MEDIUM,
+            engineVersion = "daily-prescription-v6",
+            inputsHash = "inputs-hash",
+            qualityBlockReason = QualityBlockReason.LOW_READINESS,
+            decisionDetail = "prontidão moderada (score 66)",
+            unlockHint = "Recupere até a prontidão ficar verde e confirme no check-in.",
+        )
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(today).copy(
+                        plan = plan,
+                        weekPrescriptions = mapOf(tuesday to adjusted),
+                    ),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("PLANO DA SEMANA"))
+        compose.onNodeWithText("Hoje é fácil").assertIsDisplayed()
+        compose.onNodeWithTag("plan-session-adjusted-$tuesday").assertIsDisplayed()
+        compose.onNodeWithTag("plan-session-adjusted-$tuesday")
+            .assertTextEquals("Ajustado de Intervalado · 40 min")
+        compose.onNodeWithText("Feito · ajustado").assertIsDisplayed()
     }
 
     @Test

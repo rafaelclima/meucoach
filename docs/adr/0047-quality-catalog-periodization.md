@@ -7,6 +7,9 @@
 **Relacionados:** ADR 0023 (plano × prescrição), ADR 0024 (evidência), ADR 0038
 (progressão), ADR 0041 (mesociclo), ADR 0042 (graduação), ADR 0043 (periodização),
 ADR 0044 (oportunidade), ADR 0048 (persistência).
+**Emenda:** ADR 0065 (25/11/2026) resolve o alvo do bloco pelo `QualityKind`
+(T no contínuo, I/Z5 no intervalado, RPE 8 em fartlek/subidas/strides e pace
+previsto no `RACE_PACE`); o catálogo e a estrutura não mudam.
 **PRD:** `docs/PRD_TREINO_REAL.md` FR-403, FR-404, FR-410, §11.5 (Q-05, Q-12).
 **Decisão do usuário 0:** 16/11/2026.
 

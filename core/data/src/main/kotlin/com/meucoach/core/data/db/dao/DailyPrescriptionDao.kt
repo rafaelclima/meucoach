@@ -23,6 +23,12 @@ interface DailyPrescriptionDao {
     @Query("SELECT * FROM daily_prescriptions WHERE date = :date ORDER BY createdAt, rowid")
     suspend fun versions(date: String): List<DailyPrescriptionEntity>
 
+    @Query(
+        "SELECT * FROM daily_prescriptions WHERE date BETWEEN :start AND :end " +
+            "ORDER BY date, createdAt, rowid",
+    )
+    suspend fun range(start: String, end: String): List<DailyPrescriptionEntity>
+
     @Query("SELECT * FROM daily_prescriptions ORDER BY date, createdAt, rowid")
     suspend fun getAll(): List<DailyPrescriptionEntity>
 

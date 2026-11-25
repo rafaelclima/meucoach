@@ -232,6 +232,7 @@ fun TodayScreen(
                     plan = plan,
                     today = today,
                     prescription = state.prescription,
+                    prescriptions = state.weekPrescriptions,
                     replan = replan,
                     raceEvent = raceEvent,
                     eventDates = state.eventDates,
@@ -1084,6 +1085,7 @@ private fun PlanWeekCard(
     plan: com.meucoach.core.domain.prescription.WeeklyPlan,
     today: LocalDate,
     prescription: com.meucoach.core.domain.prescription.DailyPrescription?,
+    prescriptions: Map<LocalDate, com.meucoach.core.domain.prescription.DailyPrescription> = emptyMap(),
     replan: ReplanUiState,
     raceEvent: com.meucoach.core.model.RaceEvent?,
     eventDates: Set<LocalDate>,
@@ -1237,6 +1239,12 @@ private fun PlanWeekCard(
                 }
                 return@forEachIndexed
             }
+            val dayPrescription = if (session.date == today) {
+                prescription
+            } else {
+                prescriptions[session.date]
+            }
+            val adjusted = dayPrescription?.differsFromPlan == true
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1249,7 +1257,7 @@ private fun PlanWeekCard(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = session.title,
+                        text = if (adjusted) dayPrescription.title else session.title,
                         style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
                         maxLines = 1,
@@ -1266,20 +1274,47 @@ private fun PlanWeekCard(
                     }
                 }
                 Text(
-                    text = session.durationMin?.let { "$it min" } ?: "—",
+                    text = if (adjusted) {
+                        dayPrescription.prescribedDurationMin?.let { "$it min" } ?: "—"
+                    } else {
+                        session.durationMin?.let { "$it min" } ?: "—"
+                    },
                     style = McTextStyles.caption,
                     color = colors.textSecondary,
                 )
-                val statusLabel = sessionStatusLabel(session)
+                val statusLabel = when {
+                    session.status == SessionStatus.DONE && adjusted -> "Feito · ajustado"
+                    session.status == SessionStatus.PLANNED && adjusted -> "Ajustado"
+                    else -> sessionStatusLabel(session)
+                }
                 if (statusLabel != null) {
                     Spacer(modifier = Modifier.width(8.dp))
-                    val statusColor = if (session.status == SessionStatus.DONE) colors.success else colors.warning
+                    val statusColor = when {
+                        adjusted -> colors.warning
+                        session.status == SessionStatus.DONE -> colors.success
+                        else -> colors.warning
+                    }
                     McPill(
                         text = statusLabel,
                         containerColor = statusColor.copy(alpha = 0.12f),
                         contentColor = statusColor,
+                        modifier = Modifier.testTag("plan-session-status-${session.date}"),
                     )
                 }
+            }
+            if (adjusted) {
+                Text(
+                    text = "Ajustado de ${session.title} · " +
+                        (session.durationMin?.let { "$it min" } ?: "—"),
+                    style = McTextStyles.caption,
+                    color = colors.warning,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 48.dp, top = 2.dp)
+                        .testTag("plan-session-adjusted-${session.date}"),
+                )
             }
             if (session.date == today &&
                 session.status == com.meucoach.core.domain.prescription.SessionStatus.PLANNED

@@ -512,7 +512,13 @@ class DailyPrescriptionEngine {
         durationMin: Int? = planned.durationMin,
     ): PrescriptionTargets {
         val base = if (planned.targets.isEmpty) {
-            PrescriptionPolicy.targets(type, input.profile, durationMin, heat = HeatLevel.NONE)
+            PrescriptionPolicy.targets(
+                type = type,
+                profile = input.profile,
+                durationMin = durationMin,
+                heat = HeatLevel.NONE,
+                qualityKind = planned.qualityKind,
+            )
         } else {
             planned.targets
         }

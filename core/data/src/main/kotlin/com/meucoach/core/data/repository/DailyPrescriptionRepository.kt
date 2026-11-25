@@ -35,6 +35,16 @@ class DailyPrescriptionRepository(
     suspend fun getVersions(date: LocalDate): List<DailyPrescription> =
         dao.versions(date.toString()).map { it.toModel() }
 
+    /**
+     * Latest decision of each day in the seven-day window. The weekly plan
+     * card uses it to show the day's prescription instead of the original
+     * plan intent when the day was adjusted (R-PRESC-03).
+     */
+    suspend fun getLatestForWeek(weekStart: LocalDate): Map<LocalDate, DailyPrescription> = dao
+        .range(weekStart.toString(), weekStart.plusDays(6).toString())
+        .groupBy { LocalDate.parse(it.date) }
+        .mapValues { (_, versions) -> versions.last().toModel() }
+
     suspend fun append(prescription: DailyPrescription): DailyPrescription = database.withTransaction {
         val date = prescription.date.toString()
         val latest = dao.latest(date)

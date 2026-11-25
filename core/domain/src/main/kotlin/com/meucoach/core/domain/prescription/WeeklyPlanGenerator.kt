@@ -562,6 +562,7 @@ class WeeklyPlanGenerator {
                             racePace = racePacePlan.takeIf {
                                 template.qualityKind == QualityKind.RACE_PACE
                             },
+                            qualityKind = template.qualityKind,
                         ),
                         qualityKind = requireNotNull(template.qualityKind) {
                             "Quality session ${template.title} must carry a kind"
@@ -592,6 +593,7 @@ class WeeklyPlanGenerator {
                             type = WorkoutType.QUALITY,
                             profile = input.profile,
                             durationMin = duration,
+                            qualityKind = template.qualityKind,
                         ),
                         qualityKind = requireNotNull(template.qualityKind) {
                             "Micro-dose ${template.title} must carry a kind"
@@ -1383,6 +1385,7 @@ class WeeklyPlanGenerator {
             profile = profile,
             durationMin = durationMin,
             racePace = racePacePlan.takeIf { qualityKind == QualityKind.RACE_PACE },
+            qualityKind = qualityKind,
         ),
     )
 
@@ -1626,7 +1629,7 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v7"
+        const val ENGINE_VERSION = "weekly-plan-v8"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MICRO_DOSE_TITLE = "Acelerações curtas"

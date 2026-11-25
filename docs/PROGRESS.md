@@ -1,6 +1,93 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 25/11/2026 (Coach: último executado, allow-list do dossiê e prescrição do dia executado)
+**Atualizado:** 25/11/2026 (ADR 0065: alvo da qualidade por tipo e card do plano com a prescrição ajustada)
+
+## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
+
+**Escopo:** correção dos dois achados da revisão do plano do usuário 0
+(3 dias × 40 min): o intervalado de 40 min prescrevia T/Z3–Z4 em vez de
+I/Z5, e o card do plano mostrava “Intervalado 40 min — Feito · verificado”
+mesmo quando o dia foi rebaixado para fácil de 28 min. Sem schema,
+migração ou dependência nova.
+
+### Evidência
+
+- Plano v1 de 23–29/11: ter `INTERVALS` 40 min, sex fácil 40, dom
+  “Corrida mais longa” 40; 120 min, 1 qualidade, BUILD.
+- Prescrição de terça: `DOWNGRADE` para fácil 28 min por prontidão
+  moderada (66); execução 28:12, 4,1 km, FC média 144.
+- Alvos persistidos do intervalado: `378–389 s/km` (T) e `152–167 bpm`
+  (Z3–Z4), enquanto o `structure` e a doc pedem 5 × 3 min em I.
+- Print do card: “Intervalado 40 min — Feito · verificado”, apesar da
+  prescrição easy/28.
+
+### Causa
+
+1. `PrescriptionPolicy.qualityTargets` usava a faixa T e Z3–Z4 para todo
+   `QUALITY`, sem conhecer o `QualityKind`; o catálogo já distingue
+   contínuo (T), intervalado (I), fartlek/subidas (RPE), strides (RPE) e
+   pace de prova (previsão atual).
+2. O card do plano lia apenas `WeeklyPlan.sessions`; a prescrição do dia
+   só aparecia no card do Hoje/Coach. O `TodayUiState` não carregava as
+   decisões da semana.
+
+### Correção
+
+- **Domínio:** `PrescriptionPolicy.targets` recebe `qualityKind`.
+  `CONTINUOUS` mantém T/Z3–Z4; `INTERVALS` usa I e Z5 como piso (sem
+  teto); `FARTLEK`/`HILLS`/`STRIDES_ONLY` usam RPE 8; `RACE_PACE` usa a
+  previsão e cai em RPE 8 sem previsão; `null` preserva o alvo legado.
+  Sem calibração, o alvo é RPE (7 no contínuo, 8 nos demais), sem pace/FC
+  inventados. `WeeklyPlanGenerator` e `DailyPrescriptionEngine` passam o
+  kind do `PlannedSession`.
+- **UI:** a zona do card do Hoje vem de `targets.zone`/`targets.rpe`
+  (“Forte · Z5”, “Forte · RPE 8” ou “Forte · Z3–Z4”), não mais fixa.
+- **Transparência:** `TodayUiState.weekPrescriptions` +
+  `DailyPrescriptionRepository.getLatestForWeek` (consulta de intervalo
+  no DAO, sem schema). O card do plano mostra a prescrição do dia
+  (“Hoje é fácil”, 28 min), a linha “Ajustado de Intervalado · 40 min” e
+  o selo “Feito · ajustado” no lugar de “Feito · verificado”; o plano
+  original continua visível.
+- **Versões:** `weekly-plan-v8`/`daily-prescription-v7`; o histórico
+  persistido não é reescrito. O plano atual v7 continua v1 porque o
+  `PlanUpgrade` só grava quando a projeção futura muda; o próximo plano
+  já nasce em v8.
+
+### Testes
+
+- `TargetPrecedenceTest`: contínuo T; intervalado I/Z5; fartlek, subidas
+  e strides RPE 8; pace de prova sem previsão RPE 8; intervalado sem
+  calibração RPE 8.
+- `WeeklyPlanGeneratorTest`: cenário real do usuário 0 (5K em 20/12,
+  ter/sex/dom 40) seleciona `INTERVALS` com `331–342 s/km` e FC ≥180;
+  micro-dose de taper é RPE 8; versão v8.
+- `DailyPrescriptionEngineTest`: versão v7.
+- `DailyPrescriptionRepositoryTest`: última versão por dia na janela
+  semanal.
+- `TodayPlanTest`: o card mostra “Hoje é fácil” 28 min, “Ajustado de
+  Intervalado · 40 min” e “Feito · ajustado”, sem “Intervalado 40 min”
+  como se tivesse sido executado.
+
+### Gates
+
+- `./gradlew check spotlessCheck` verde (domínio **1.338** testes, data
+  **243**, app **1.547**; FIT 93,01% de branches; lint/detekt/Kover
+  verdes).
+- `./gradlew :app:assembleDebug` verde.
+- APK instalado no S24 Ultra com `adb install -r` (dados preservados) e
+  o card validado no aparelho: “Hoje é fácil 28 min · Feito · ajustado ·
+  Ajustado de Intervalado · 40 min”.
+- Sem dado real no diff; sem schema/migração; sem dependência nova.
+
+### Próximo
+
+1. No próximo plano gerado (semana de 30/11, PEAK), conferir que um
+   `PEAK`/`RACE_PACE` usa a previsão atual e que o card não mostra
+   “ajustado” quando o dia mantém o plano.
+2. Na próxima semana de BUILD com intervalado, validar no aparelho o
+   alvo I/Z5 e o briefing (“Use o pace do bloco… a FC confirma a partir
+   de …”).
+3. Retomar P1-12/Ciclo 4 e a validação do dossiê do Coach.
 
 ## Sessão 2026-11-25 — Coach: último executado e allow-list do dossiê
 

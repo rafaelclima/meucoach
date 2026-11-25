@@ -78,7 +78,7 @@ data class PrescriptionTargets(
  * prescription, so the plan intent and the day decision cannot disagree.
  */
 internal object PrescriptionPolicy {
-    const val ENGINE_VERSION = "daily-prescription-v6"
+    const val ENGINE_VERSION = "daily-prescription-v7"
     const val MIN_EASY_MINUTES = 20
     const val REDUCE_FACTOR = 0.8
     const val DOWNGRADE_FACTOR = 0.7
@@ -86,6 +86,7 @@ internal object PrescriptionPolicy {
     const val HEAT_RPE_STEP = 1
     const val EASY_RPE = 4
     const val QUALITY_RPE = 7
+    const val HARD_QUALITY_RPE = 8
 
     fun targets(
         type: WorkoutType,
@@ -94,16 +95,19 @@ internal object PrescriptionPolicy {
         heat: HeatLevel = HeatLevel.NONE,
         /** Current race pace for a `RACE_PACE` quality session (FR-411). */
         racePace: RacePacePlan? = null,
+        /**
+         * Quality stimulus selected by the catalog. The block target decides
+         * the pace zone: continuous = T, intervals = I, fartlek/hills/strides
+         * = RPE. Null keeps the legacy threshold target.
+         */
+        qualityKind: QualityKind? = null,
     ): PrescriptionTargets {
         if (type == WorkoutType.REST) return PrescriptionTargets(primary = TargetKind.RPE)
-        val base = if (type == WorkoutType.QUALITY && racePace != null) {
-            racePaceTargets(racePace)
-        } else {
-            when (type) {
-                WorkoutType.QUALITY -> qualityTargets(profile)
-                WorkoutType.LONG, WorkoutType.EASY -> easyTargets(type, profile)
-                WorkoutType.REST -> PrescriptionTargets(primary = TargetKind.RPE)
-            }
+        val base = when {
+            type == WorkoutType.QUALITY && racePace != null -> racePaceTargets(racePace)
+            type == WorkoutType.QUALITY -> qualityTargets(profile, qualityKind)
+            type == WorkoutType.LONG || type == WorkoutType.EASY -> easyTargets(type, profile)
+            else -> PrescriptionTargets(primary = TargetKind.RPE)
         }
         return base.forDuration(durationMin).withHeat(heat)
     }
@@ -167,7 +171,27 @@ internal object PrescriptionPolicy {
         )
     }
 
-    private fun qualityTargets(profile: com.meucoach.core.model.AthleteProfile): PrescriptionTargets {
+    private fun qualityTargets(
+        profile: com.meucoach.core.model.AthleteProfile,
+        kind: QualityKind?,
+    ): PrescriptionTargets = when (kind) {
+        QualityKind.INTERVALS -> intervalTargets(profile)
+
+        QualityKind.FARTLEK, QualityKind.HILLS, QualityKind.STRIDES_ONLY ->
+            rpeQualityTargets(HARD_QUALITY_RPE)
+
+        // No race prediction: the catalog's fallback is effort-led, never an
+        // invented race pace (R-PER-04).
+        QualityKind.RACE_PACE -> rpeQualityTargets(HARD_QUALITY_RPE)
+
+        QualityKind.CONTINUOUS, null -> thresholdTargets(profile)
+    }
+
+    /**
+     * Continuous/tempo quality: the canonical T block (ADR 0047 §2.1, §8.4).
+     * Null keeps the pre-catalog target for legacy persisted sessions.
+     */
+    private fun thresholdTargets(profile: com.meucoach.core.model.AthleteProfile): PrescriptionTargets {
         val pace = profile.thresholdPace?.let { threshold ->
             val range = com.meucoach.core.domain.zones.PaceZoneCalculator
                 .ranges(threshold)
@@ -191,4 +215,40 @@ internal object PrescriptionPolicy {
             primary = primaryFor(WorkoutType.QUALITY, pace, heartRate),
         )
     }
+
+    /**
+     * VO2max intervals: the block target is I, not T (SPORTS_SCIENCE §5.2/§8.4).
+     * The I pace is the block pace; Z5 is a lower-bound guardrail because a
+     * 3-min repetition does not always reach a stable steady-state HR.
+     */
+    private fun intervalTargets(profile: com.meucoach.core.model.AthleteProfile): PrescriptionTargets {
+        val pace = profile.thresholdPace?.let { threshold ->
+            val range = com.meucoach.core.domain.zones.PaceZoneCalculator
+                .ranges(threshold)
+                .first { it.zone == com.meucoach.core.model.PaceZone.I }
+            PaceTarget(
+                fast = Pace.fromSecondsPerKm(range.minSecPerKm),
+                slow = Pace.fromSecondsPerKm(range.maxSecPerKm),
+            )
+        }
+        val heartRate = profile.lactateThresholdHeartRate?.let { lthr ->
+            val z5 = com.meucoach.core.domain.zones.HeartRateZoneCalculator
+                .ranges(lthr)
+                .first { it.zone == com.meucoach.core.model.HeartRateZone.Z5 }
+            HeartRateTarget(minBpm = z5.minBpm, maxBpm = z5.maxBpm)
+        }
+        return PrescriptionTargets(
+            pace = pace,
+            heartRate = heartRate,
+            zone = if (pace != null || heartRate != null) "Z5" else null,
+            rpe = if (pace == null && heartRate == null) HARD_QUALITY_RPE else null,
+            primary = primaryFor(WorkoutType.QUALITY, pace, heartRate),
+        )
+    }
+
+    /** Fartlek, hills and the taper strides micro-dose are effort-led. */
+    private fun rpeQualityTargets(rpe: Int): PrescriptionTargets = PrescriptionTargets(
+        rpe = rpe,
+        primary = TargetKind.RPE,
+    )
 }

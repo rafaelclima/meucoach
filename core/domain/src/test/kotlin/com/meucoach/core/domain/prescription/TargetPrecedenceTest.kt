@@ -78,6 +78,90 @@ class TargetPrecedenceTest {
     }
 
     @Test
+    fun `continuous quality keeps the threshold pace and Z3-Z4 guardrail`() {
+        val targets = PrescriptionPolicy.targets(
+            WorkoutType.QUALITY,
+            calibrated(),
+            40,
+            qualityKind = QualityKind.CONTINUOUS,
+        )
+
+        assertThat(targets.primary).isEqualTo(TargetKind.PACE)
+        assertThat(targets.pace?.fast?.secondsPerKm).isEqualTo(360)
+        assertThat(targets.pace?.slow?.secondsPerKm).isEqualTo(371)
+        assertThat(targets.heartRate?.minBpm).isEqualTo(162)
+        assertThat(targets.heartRate?.maxBpm).isEqualTo(179)
+        assertThat(targets.zone).isEqualTo("Z3–Z4")
+    }
+
+    @Test
+    fun `intervals use I pace and a Z5 lower bound, never the T target`() {
+        val targets = PrescriptionPolicy.targets(
+            WorkoutType.QUALITY,
+            calibrated(),
+            40,
+            qualityKind = QualityKind.INTERVALS,
+        )
+
+        assertThat(targets.primary).isEqualTo(TargetKind.PACE)
+        assertThat(targets.pace?.fast?.secondsPerKm).isEqualTo(331)
+        assertThat(targets.pace?.slow?.secondsPerKm).isEqualTo(342)
+        assertThat(targets.heartRate?.minBpm).isEqualTo(180)
+        assertThat(targets.heartRate?.maxBpm).isNull()
+        assertThat(targets.zone).isEqualTo("Z5")
+        assertThat(targets.rpe).isNull()
+    }
+
+    @Test
+    fun `fartlek hills and strides are effort led`() {
+        listOf(QualityKind.FARTLEK, QualityKind.HILLS, QualityKind.STRIDES_ONLY).forEach { kind ->
+            val targets = PrescriptionPolicy.targets(
+                WorkoutType.QUALITY,
+                calibrated(),
+                40,
+                qualityKind = kind,
+            )
+
+            assertThat(targets.primary).describedAs(kind.name).isEqualTo(TargetKind.RPE)
+            assertThat(targets.rpe).describedAs(kind.name).isEqualTo(8)
+            assertThat(targets.pace).describedAs(kind.name).isNull()
+            assertThat(targets.heartRate).describedAs(kind.name).isNull()
+            assertThat(targets.zone).describedAs(kind.name).isNull()
+        }
+    }
+
+    @Test
+    fun `race pace without a prediction falls back to RPE 8`() {
+        val targets = PrescriptionPolicy.targets(
+            WorkoutType.QUALITY,
+            calibrated(),
+            40,
+            qualityKind = QualityKind.RACE_PACE,
+        )
+
+        assertThat(targets.primary).isEqualTo(TargetKind.RPE)
+        assertThat(targets.rpe).isEqualTo(8)
+        assertThat(targets.pace).isNull()
+        assertThat(targets.heartRate).isNull()
+    }
+
+    @Test
+    fun `uncalibrated intervals fall back to RPE 8, not an invented I pace`() {
+        val targets = PrescriptionPolicy.targets(
+            WorkoutType.QUALITY,
+            uncalibrated(),
+            40,
+            qualityKind = QualityKind.INTERVALS,
+        )
+
+        assertThat(targets.primary).isEqualTo(TargetKind.RPE)
+        assertThat(targets.rpe).isEqualTo(8)
+        assertThat(targets.pace).isNull()
+        assertThat(targets.heartRate).isNull()
+        assertThat(targets.zone).isNull()
+    }
+
+    @Test
     fun `uncalibrated quality is led by RPE`() {
         val targets = PrescriptionPolicy.targets(WorkoutType.QUALITY, uncalibrated(), 40)
 
