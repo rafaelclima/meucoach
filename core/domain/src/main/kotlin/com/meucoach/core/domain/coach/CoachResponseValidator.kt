@@ -41,11 +41,7 @@ object CoachResponseValidator {
      */
     private val forbiddenTokens = listOf("vdot", "acwr", "tss", "trimp", "ctl", "atl", "tsb", "lthr", "vo2")
         .map { token -> token to Regex("""\b${Regex.escape(token)}\b""", RegexOption.IGNORE_CASE) }
-    private val minutesPattern = Regex("""(\d{1,4})\s?min""", RegexOption.IGNORE_CASE)
-    private val percentPattern = Regex("""(\d{1,3})\s?%""")
     private val internalCodePattern = Regex("""\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b""")
-    private val distancePattern = Regex("""(\d+(?:[.,]\d+)?)\s?km""", RegexOption.IGNORE_CASE)
-    private val bareNumberPattern = Regex("""\d+(?:[.,]\d+)?""")
 
     /**
      * Normalized (lowercase, no accents) tokens for the free-answer path.
@@ -188,7 +184,7 @@ object CoachResponseValidator {
         allowedDistancesKm: Set<Double>,
         allowedCounts: Set<Int>,
     ): String? {
-        val inventedDistance = distancePattern.findAll(normalized)
+        val inventedDistance = CoachNumberPatterns.distanceKm.findAll(normalized)
             .map { it.groupValues[1].replace(',', '.').toDouble() }
             .firstOrNull { candidate -> allowedDistancesKm.none { abs(it - candidate) < 1e-6 } }
         val prescribes = prescriptionVerbs.any { (_, pattern) -> pattern.containsMatchIn(normalized) } &&
@@ -226,18 +222,18 @@ object CoachResponseValidator {
         allowedCounts: Set<Int>,
     ): Int? {
         val covered = buildList {
-            minutesPattern.findAll(normalized).forEach { match ->
+            CoachNumberPatterns.minutes.findAll(normalized).forEach { match ->
                 if (match.groupValues[1].toInt() in allowedMinutes) add(match.range)
             }
-            percentPattern.findAll(normalized).forEach { match ->
+            CoachNumberPatterns.percent.findAll(normalized).forEach { match ->
                 if (match.groupValues[1].toInt() in allowedPercents) add(match.range)
             }
-            distancePattern.findAll(normalized).forEach { match ->
+            CoachNumberPatterns.distanceKm.findAll(normalized).forEach { match ->
                 val value = match.groupValues[1].replace(',', '.').toDouble()
                 if (allowedDistancesKm.any { abs(it - value) < 1e-6 }) add(match.range)
             }
         }
-        return bareNumberPattern.findAll(normalized)
+        return CoachNumberPatterns.bareNumber.findAll(normalized)
             .filter { match -> covered.none { span -> match.range.first in span && match.range.last in span } }
             .mapNotNull { match ->
                 val raw = match.value.replace(',', '.')
@@ -259,18 +255,18 @@ object CoachResponseValidator {
         allowedDistancesKm: Set<Double>,
     ): Boolean {
         val covered = buildList {
-            minutesPattern.findAll(normalized).forEach { match ->
+            CoachNumberPatterns.minutes.findAll(normalized).forEach { match ->
                 if (match.groupValues[1].toInt() in allowedMinutes) add(match.range)
             }
-            percentPattern.findAll(normalized).forEach { match ->
+            CoachNumberPatterns.percent.findAll(normalized).forEach { match ->
                 if (match.groupValues[1].toInt() in allowedPercents) add(match.range)
             }
-            distancePattern.findAll(normalized).forEach { match ->
+            CoachNumberPatterns.distanceKm.findAll(normalized).forEach { match ->
                 val value = match.groupValues[1].replace(',', '.').toDouble()
                 if (allowedDistancesKm.any { abs(it - value) < 1e-6 }) add(match.range)
             }
         }
-        return bareNumberPattern.findAll(normalized).any { match ->
+        return CoachNumberPatterns.bareNumber.findAll(normalized).any { match ->
             covered.none { span -> match.range.first in span && match.range.last in span }
         }
     }
@@ -286,11 +282,11 @@ object CoachResponseValidator {
             ?.first
         val internalCode = internalCodePattern.find(combined)?.value
             ?: forbiddenCodes.firstOrNull { it.lowercase() in combined.lowercase() }
-        val inventedMinutes = minutesPattern.findAll(combined)
+        val inventedMinutes = CoachNumberPatterns.minutes.findAll(combined)
             .map { it.groupValues[1].toInt() }
             .firstOrNull { it !in allowedMinutes }
         val inventedPercent = allowedPercents?.let { allowed ->
-            percentPattern.findAll(combined)
+            CoachNumberPatterns.percent.findAll(combined)
                 .map { it.groupValues[1].toInt() }
                 .firstOrNull { it !in allowed }
         }

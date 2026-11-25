@@ -29,12 +29,25 @@ internal suspend fun answerOpenContent(
     val progress = CoachProgress.summarize(progressContext.weeks, progressContext.easyPercent28d)
     val prescription = next.todayPrescription
         ?: next.prescription?.takeIf { it.date == today }
-    val session = next.todaySession
+    val execution = next.todayExecution ?: next.lastExecution
+    val executedSession = when {
+        next.todayExecution != null -> next.todaySession
+        next.lastExecution != null -> next.lastSession
+        else -> null
+    }
+    val referencedSession = executedSession ?: next.todaySession ?: next.lastSession
+    val referencedPrescription = when {
+        referencedSession == null -> null
+        referencedSession.date == today -> prescription
+        else -> next.lastPrescription
+    }
     val context = CoachOpenContext(
         today = today,
         plan = planContext?.plan,
         prescription = prescription,
-        execution = next.todayExecution,
+        execution = execution,
+        executedSession = executedSession,
+        executionPrescription = if (execution == null) null else referencedPrescription,
         readiness = next.readiness,
         hasCheckIn = next.hasCheckIn,
         sleepMinutes = next.sleepMinutes,
@@ -47,16 +60,24 @@ internal suspend fun answerOpenContent(
             addAll(it.ruleIds)
             addAll(it.evidenceIds)
         }
-        session?.let {
-            addAll(it.ruleIds)
-            addAll(it.evidenceIds)
-        }
-        prescription?.let {
-            addAll(it.ruleIds)
-            addAll(it.evidenceIds)
-        }
+        listOfNotNull(next.todaySession, next.lastSession)
+            .distinctBy { it.date }
+            .forEach {
+                addAll(it.ruleIds)
+                addAll(it.evidenceIds)
+            }
+        listOfNotNull(prescription, next.lastPrescription)
+            .distinctBy { it.date }
+            .forEach {
+                addAll(it.ruleIds)
+                addAll(it.evidenceIds)
+            }
     }
-    val reference = if (session != null) CoachSessionReference.lines(session, prescription) else emptyList()
+    val reference = if (referencedSession != null) {
+        CoachSessionReference.lines(referencedSession, referencedPrescription)
+    } else {
+        emptyList()
+    }
     send(
         FreeAnswerRequest(
             parsed = parsed,

@@ -15,6 +15,7 @@ import com.meucoach.core.domain.feedback.ComparisonPlan
 import com.meucoach.core.domain.feedback.SessionComparisonCalculator
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.model.ActivitySummary
@@ -50,6 +51,12 @@ data class CoachNextContext(
     val todayPrescription: DailyPrescription? = null,
     /** What the athlete already did today, when a session/execution exists. */
     val todayExecution: CoachExecution? = null,
+    /** Last completed session up to [today], even when it happened on another day. */
+    val lastExecution: CoachExecution? = null,
+    /** Session linked to [lastExecution], used by the deterministic reference card. */
+    val lastSession: PlannedSession? = null,
+    /** Persisted prescription of [lastSession], when it had one. */
+    val lastPrescription: DailyPrescription? = null,
     val readiness: ReadinessResult? = null,
     val hasCheckIn: Boolean = false,
     val sleepMinutes: Int? = null,
@@ -85,17 +92,27 @@ class RoomCoachNextSource @Inject constructor(
         val prescriptionDate: LocalDate?,
         val todaySession: PlannedSession?,
         val todayActivity: ActivitySummary?,
-        val todayExecution: SessionExecution?,
+        val todayExecutionRow: SessionExecution?,
+        val lastSession: PlannedSession?,
+        val lastActivity: ActivitySummary?,
+        val lastExecutionRow: SessionExecution?,
         val importedToday: Boolean,
     ) {
-        fun toContext(prescription: DailyPrescription?, todayPrescription: DailyPrescription?) = CoachNextContext(
+        fun toContext(
+            prescription: DailyPrescription?,
+            todayPrescription: DailyPrescription?,
+            lastPrescription: DailyPrescription?,
+        ) = CoachNextContext(
             subject = subject,
             today = today,
             hasPlan = hasPlan,
             hasProfile = hasProfile,
             prescription = prescription,
             todayPrescription = todayPrescription,
-            todayExecution = toExecution(todayPrescription),
+            todayExecution = toExecution(todaySession, todayActivity, todayExecutionRow, todayPrescription),
+            lastExecution = toExecution(lastSession, lastActivity, lastExecutionRow, lastPrescription),
+            lastSession = lastSession,
+            lastPrescription = lastPrescription,
             readiness = readiness,
             hasCheckIn = hasCheckIn,
             sleepMinutes = sleepMinutes,
@@ -103,17 +120,21 @@ class RoomCoachNextSource @Inject constructor(
             importedToday = importedToday,
         )
 
-        private fun toExecution(todayPrescription: DailyPrescription?): CoachExecution? {
-            val session = todaySession ?: return null
-            val activity = todayActivity
-            val execution = todayExecution
+        private fun toExecution(
+            session: PlannedSession?,
+            activity: ActivitySummary?,
+            execution: SessionExecution?,
+            prescription: DailyPrescription?,
+        ): CoachExecution? {
+            if (session == null) return null
             val durationSec = activity?.durationSec ?: execution?.durationSec ?: return null
             val comparison = activity?.let { summary ->
-                val plan = todayPrescription?.let(ComparisonPlan::from)
+                val plan = prescription?.let(ComparisonPlan::from)
                     ?: ComparisonPlan.from(session)
                 SessionComparisonCalculator.compare(plan, summary, execution?.rpe)
             }
             return CoachExecution(
+                date = session.date,
                 durationMin = (durationSec / SECONDS_PER_MINUTE).coerceAtLeast(1),
                 distanceKm = activity?.distance?.kilometers?.let { roundToOneDecimal(it) },
                 rpe = execution?.rpe,
@@ -125,6 +146,19 @@ class RoomCoachNextSource @Inject constructor(
         private fun roundToOneDecimal(value: Double): Double = (value * 10.0).roundToInt() / 10.0
     }
 
+    /** A completed session together with the week that owns its persisted id. */
+    private data class CompletedSession(val weekStart: LocalDate, val session: PlannedSession)
+
+    /** The most recent completed session that actually has an execution to narrate. */
+    private data class ExecutedSession(
+        val completed: CompletedSession,
+        val row: SessionExecution?,
+        val activity: ActivitySummary?,
+    )
+
+    private fun PlannedSession.isCompletedThrough(today: LocalDate): Boolean =
+        !date.isAfter(today) && (status == SessionStatus.DONE || status == SessionStatus.CLOSED)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeNext(): Flow<CoachNextContext> = time.today
         .map { it to it.weekStart() }
@@ -132,11 +166,12 @@ class RoomCoachNextSource @Inject constructor(
         .flatMapLatest { (today, weekStart) ->
             combine(
                 plans.observeWeek(weekStart),
+                plans.observeWeek(weekStart.minusWeeks(1)),
                 profiles.observeProfile(),
                 signals.observeSignals(),
-                raceEvents.observeAll(),
-                time.zoneId,
-            ) { plan, profile, persisted, races, zone ->
+                combine(raceEvents.observeAll(), time.zoneId) { races, zone -> races to zone },
+            ) { plan, previousPlan, profile, persisted, racesAndZone ->
+                val (races, zone) = racesAndZone
                 val next = CoachNextResolver.resolve(
                     sessions = plan?.sessions.orEmpty(),
                     today = today,
@@ -146,9 +181,39 @@ class RoomCoachNextSource @Inject constructor(
                 val dailyMetrics = persisted.metrics
                 val inputs = DailyMetricsReadinessBuilder.build(dailyMetrics, today)
                 val todaySession = plan?.sessions?.find { it.date == today }
-                val sessionId = plan?.let { plannedSessionId(it.weekStart, today) }
-                val todayExecution = persisted.executions.firstOrNull { it.plannedSessionId == sessionId }
-                val activityId = todayExecution?.activityId ?: todaySession?.activityId
+                val todayExecutionRow = if (plan != null && todaySession != null) {
+                    persisted.executions.firstOrNull {
+                        it.plannedSessionId == plannedSessionId(plan.weekStart, todaySession.date)
+                    }
+                } else {
+                    null
+                }
+                val todayActivityId = todayExecutionRow?.activityId ?: todaySession?.activityId
+                val completedSessions = buildList {
+                    plan?.let { current ->
+                        current.sessions
+                            .filter { it.isCompletedThrough(today) }
+                            .forEach { add(CompletedSession(current.weekStart, it)) }
+                    }
+                    previousPlan?.let { previous ->
+                        previous.sessions
+                            .filter { it.isCompletedThrough(today) }
+                            .forEach { add(CompletedSession(previous.weekStart, it)) }
+                    }
+                }
+                val lastExecuted = completedSessions
+                    .mapNotNull { completed ->
+                        val row = persisted.executions.firstOrNull {
+                            it.plannedSessionId == plannedSessionId(completed.weekStart, completed.session.date)
+                        }
+                        val activityId = row?.activityId ?: completed.session.activityId
+                        val activity = persisted.activities.firstOrNull { it.id == activityId }
+                        val durationSec = activity?.durationSec ?: row?.durationSec
+                        if (durationSec == null) null else ExecutedSession(completed, row, activity)
+                    }
+                    .maxByOrNull { it.completed.session.date }
+                val lastSession = lastExecuted?.completed?.session
+                val lastExecutionRow = lastExecuted?.row
                 Draft(
                     today = today,
                     subject = next?.subject,
@@ -159,37 +224,27 @@ class RoomCoachNextSource @Inject constructor(
                     sleepMinutes = inputs.sleep?.durationMin,
                     prescriptionDate = (next?.subject as? CoachNextSubject.Training)?.session?.date,
                     todaySession = todaySession,
-                    todayActivity = persisted.activities.firstOrNull { it.id == activityId },
-                    todayExecution = todayExecution,
+                    todayActivity = persisted.activities.firstOrNull { it.id == todayActivityId },
+                    todayExecutionRow = todayExecutionRow,
+                    lastSession = lastSession,
+                    lastActivity = lastExecuted?.activity,
+                    lastExecutionRow = lastExecutionRow,
                     importedToday = persisted.lastImportedAt?.atZone(zone)?.toLocalDate() == today,
                 )
             }.flatMapLatest { draft ->
-                val date = draft.prescriptionDate
-                val todayFlow = prescriptions.observeLatest(draft.today)
-                when {
-                    date == null -> todayFlow.map { todayPrescription ->
-                        draft.toContext(
-                            prescription = null,
-                            todayPrescription = todayPrescription,
-                        )
-                    }
-
-                    date == draft.today -> todayFlow.map { prescription ->
-                        draft.toContext(
-                            prescription = prescription,
-                            todayPrescription = prescription,
-                        )
-                    }
-
-                    else -> combine(
-                        todayFlow,
-                        prescriptions.observeLatest(date),
-                    ) { todayPrescription, nextPrescription ->
-                        draft.toContext(
-                            prescription = nextPrescription,
-                            todayPrescription = todayPrescription,
-                        )
-                    }
+                val dates = listOfNotNull(
+                    draft.today,
+                    draft.prescriptionDate,
+                    draft.lastSession?.date,
+                ).distinct()
+                val flows = dates.map(prescriptions::observeLatest)
+                combine(flows) { rows ->
+                    val byDate = dates.zip(rows.asList()).toMap()
+                    draft.toContext(
+                        prescription = draft.prescriptionDate?.let(byDate::get),
+                        todayPrescription = byDate[draft.today],
+                        lastPrescription = draft.lastSession?.date?.let(byDate::get),
+                    )
                 }
             }
         }

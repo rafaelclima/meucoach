@@ -182,6 +182,42 @@ class CoachSourceReactivityTest {
     }
 
     @Test
+    fun `next carrega a ultima execucao quando hoje e descanso`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val tuesday = currentMonday.plusDays(1)
+        val restPlan = currentPlan().let { plan ->
+            plan.copy(sessions = plan.sessions.filter { it.date != today })
+        }
+        plans.saveWeek(restPlan)
+        prescriptions.append(prescription(tuesday))
+        val imported = activity(tuesday)
+        val saved = activities.saveImportedActivity(imported) as SaveActivityResult.Saved
+        executions.recordActivityExecution(
+            plannedSessionId = plannedSessionId(currentMonday, tuesday),
+            activityId = saved.id,
+            startedAt = imported.startTime,
+            durationSec = imported.durationSec,
+            distanceM = imported.distanceM,
+            rpe = 6,
+        )
+
+        val context = withTimeout(5_000) {
+            next.observeNext().first { it.lastExecution != null }
+        }
+
+        assertThat(context.todaySession).isNull()
+        assertThat(context.todayExecution).isNull()
+        assertThat(context.lastSession?.date).isEqualTo(tuesday)
+        assertThat(context.lastPrescription?.date).isEqualTo(tuesday)
+        assertThat(context.lastExecution?.date).isEqualTo(tuesday)
+        assertThat(context.lastExecution?.durationMin).isEqualTo(30)
+        assertThat(context.lastExecution?.distanceKm).isEqualTo(5.0)
+        assertThat(context.lastExecution?.rpe).isEqualTo(6)
+        assertThat(context.lastExecution?.comparison?.durationVerdict)
+            .isEqualTo(ComparisonVerdict.WITHIN)
+    }
+
+    @Test
     fun `importar corrida reemite guardas, progresso e revisao`(): Unit = runBlocking {
         profiles.saveProfile(profile())
         plans.saveWeek(closedPlan())

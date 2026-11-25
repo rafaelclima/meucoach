@@ -62,6 +62,7 @@ import com.meucoach.core.domain.review.WeeklyReviewObservation
 import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklyReviewStatus
 import com.meucoach.core.domain.review.WeeklyVolume
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.WeeklyAvailability
@@ -1347,6 +1348,9 @@ class CoachViewModelTest {
         prescription: DailyPrescription? = null,
         todayPrescription: DailyPrescription? = null,
         todayExecution: CoachExecution? = null,
+        lastExecution: CoachExecution? = null,
+        lastSession: PlannedSession? = null,
+        lastPrescription: DailyPrescription? = null,
     ): CoachNextContext {
         val session = PlannedSession(
             date = sessionDate,
@@ -1367,6 +1371,9 @@ class CoachViewModelTest {
             prescription = prescription,
             todayPrescription = todayPrescription,
             todayExecution = todayExecution,
+            lastExecution = lastExecution,
+            lastSession = lastSession,
+            lastPrescription = lastPrescription,
             todaySession = session.takeIf { it.date == today },
         )
     }
@@ -1811,7 +1818,9 @@ class CoachViewModelTest {
         val vm = viewModel(api)
         vm.sendFreeText("posso correr na chuva?")
 
-        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat((state as FreeAnswerUiState.Fallback).copy).doesNotContain("aqui embaixo")
         assertThat(api.freeAnswerCalls).isEqualTo(1)
         val answers = memory.observeTurns().first()
             .filterIsInstance<ChatTurn.Coach>()
@@ -1861,7 +1870,12 @@ class CoachViewModelTest {
             LocalDate.of(2026, 11, 4),
             prescription = todayPrescription(),
             todayPrescription = todayPrescription(),
-            todayExecution = CoachExecution(durationMin = 40, distanceKm = 4.1, rpe = 6),
+            todayExecution = CoachExecution(
+                date = LocalDate.of(2026, 11, 4),
+                durationMin = 40,
+                distanceKm = 4.1,
+                rpe = 6,
+            ),
         )
         val api = FakeCoachApi(
             response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
@@ -1878,13 +1892,96 @@ class CoachViewModelTest {
         assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         assertThat(api.lastFreeAnswerPrompt?.engineContext).contains(
             "PRESCRIÇÃO DE HOJE",
-            "EXECUTADO: 40 min",
+            "EXECUTADO HOJE: 40 min",
             "4.1 km",
             "RPE 6",
         )
         assertThat(api.lastFreeAnswerPrompt?.allowedMinutes).contains(40)
         assertThat(api.lastFreeAnswerPrompt?.allowedDistancesKm).contains(4.1)
         assertThat(api.lastFreeAnswerPrompt?.allowedCounts).contains(6)
+    }
+
+    @Test
+    fun `open answer carries the last execution when today is rest`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 6)), "hash-s")
+        val lastSession = PlannedSession(
+            date = LocalDate.of(2026, 11, 4),
+            type = WorkoutType.EASY,
+            title = "Rodagem",
+            durationMin = 40,
+            rationale = "Base aeróbica",
+            ruleIds = listOf("R-PLAN-02"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            status = SessionStatus.DONE,
+            completionEvidence = CompletionEvidence.MANUAL,
+        )
+        next.value = sessionNextContext(
+            sessionDate = LocalDate.of(2026, 11, 6),
+            today = LocalDate.of(2026, 11, 5),
+            lastExecution = CoachExecution(
+                date = LocalDate.of(2026, 11, 4),
+                durationMin = 40,
+                distanceKm = 4.1,
+                rpe = 6,
+            ),
+            lastSession = lastSession,
+            lastPrescription = todayPrescription(),
+        )
+        val api = FakeCoachApi(
+            response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
+        ).apply {
+            freeAnswerResponse = CoachRawResponse(
+                title = "Avaliação",
+                body = "Você fez 40 min e 4,1 km; RPE 6.",
+            )
+        }
+        val vm = viewModel(
+            api,
+            viewTimeProvider = FakeTimeProvider(Instant.parse("2026-11-05T12:00:00Z"), ZoneOffset.UTC),
+        )
+        vm.sendFreeText("avalie meu treino")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains(
+            "EXECUTADO NO ÚLTIMO TREINO (Quarta): 40 min",
+            "MOTIVO DO DIA (Quarta)",
+            "4.1 km",
+            "RPE 6",
+        )
+        assertThat(api.lastFreeAnswerPrompt?.allowedMinutes).contains(40)
+        assertThat(api.lastFreeAnswerPrompt?.allowedDistancesKm).contains(4.1)
+        assertThat(api.lastFreeAnswerPrompt?.allowedCounts).contains(6)
+    }
+
+    @Test
+    fun `open answer can cite the four-week window printed in the dossier`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
+        progress.value = CoachProgressContext(
+            weeks = listOf(weeklyReview()),
+            easyPercent28d = 21,
+            intensitySessions28d = 3,
+            profile = null,
+            today = LocalDate.of(2026, 11, 4),
+        )
+        next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
+        val api = FakeCoachApi(
+            response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
+        ).apply {
+            freeAnswerResponse = CoachRawResponse(
+                title = "Evolução",
+                body = "Nas últimas 4 semanas você manteve o plano. Bora?",
+            )
+        }
+        val vm = viewModel(api)
+        vm.sendFreeText("avalie meu treino")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains("ÚLTIMAS 4 SEMANAS")
+        assertThat(api.lastFreeAnswerPrompt?.allowedCounts).contains(4)
     }
 
     @Test

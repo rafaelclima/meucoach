@@ -13,6 +13,41 @@ object CoachFallbackLabels {
         "Me enrolei aqui — te mostro o plano direto.",
     )
 
+    /**
+     * Free-answer fallback: unlike explain/review, an invalid typed answer has
+     * no deterministic card below it (the old copy promised one that was never
+     * rendered). The retry link is the next step, so never say "aqui embaixo".
+     */
+    fun freeAnswerReasonCopy(reason: String): String {
+        if (reason in friendlyReasons) return reason
+        val normalized = reason.lowercase()
+        return when {
+            "código interno" in normalized ||
+                "métrica proibida" in normalized ->
+                "Ih, me enrolei na explicação. Me pergunta de novo que eu respondo só com o que tá no motor."
+
+            "pace" in normalized ->
+                "Quis falar de ritmo e me passei — só o motor prescreve. Me pergunta de novo."
+
+            "fc" in normalized ->
+                "Quis falar de frequência cardíaca e me passei — só o motor prescreve. Me pergunta de novo."
+
+            "duração não planejada" in normalized ->
+                "Citei uma duração que não tá no plano. Desconsidera — me pergunta de novo."
+
+            "porcentagem não calculada" in normalized ->
+                "Citei um percentual que não conferi no motor. Desconsidera — me pergunta de novo."
+
+            "número fora do contexto" in normalized ->
+                "Citei um número que não confere com seus dados. Desconsidera — me pergunta de novo."
+
+            "longa demais" in normalized ->
+                "Falei demais e me perdi. Me pergunta de novo que eu resumo."
+
+            else -> "Me enrolei na explicação. Me pergunta de novo que eu respondo só com o que tá no motor."
+        }
+    }
+
     fun reasonCopy(reason: String): String {
         if (reason in friendlyReasons) return reason
         val normalized = reason.lowercase()

@@ -1,8 +1,8 @@
 # HANDOFF — IA Coach
 
-**Atualizado:** 24/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064)
-**Próxima fatia:** instalar o APK com o dossiê de avaliação (`todayPrescription` + `todayExecution`) e validar “avalie meu treino” no aparelho; o proxy já está com a corrida MiMo+GLM e 18 s/20 s. Depois, retomar P1-12/Ciclo 4 (§5.4)
+**Atualizado:** 25/11/2026
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064) · dossiê do último executado + allow-list do próprio dossiê (emenda ADR 0063 §6) · dia executado com a prescrição que ajustou o plano (emenda ADR 0063 §7)
+**Próxima fatia:** reinstalar o APK e revalidar “avalie meu treino” em dia de descanso (deve citar a última execução, inclusive “terça”, e aceitar “4 semanas”/“28 dias” do dossiê). Num dia ajustado, deve explicar o plano original × a prescrição (ex.: qualidade rebaixada para fácil por prontidão) e comparar com a prescrição. Depois, retomar P1-12/Ciclo 4 (§5.4)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: timeout do free-answer e data local"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; o proxy já tem MiMo+GLM em paralelo e 18 s/20 s. Falta instalar o APK com o dossiê de avaliação (`todayPrescription` + `todayExecution`) e validar “avalie meu treino” no aparelho com `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: último executado e allow-list do dossiê"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; o proxy já tem MiMo+GLM em paralelo e 18 s/20 s. O dossiê agora avalia a última sessão concluída (não só hoje) e autoriza todo número que ele imprime. Falta reinstalar o APK e revalidar “avalie meu treino” em dia de descanso com `-PcoachProxyToken=...`; depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 
@@ -292,6 +292,34 @@ Memória local do Coach **sem** transformar memória em decisão:
 - **Sem regra nova:** nenhuma duração, pace, FC ou plano nasce do lembrete; ele
   só lê a decisão. Sem schema, sem canal/permissão nova.
 
+### 4.12 Último executado + allow-list do dossiê (emenda ADR 0063 §6) — 25/11/2026
+
+- **Problema:** no aparelho, “avalie meu treino” numa quarta de descanso caía
+  em “Citei um número que não confere com seus dados”. O log mostrou
+  `free answer rejected: Resposta contém número fora do contexto: 4`.
+- **Causa dupla:** o dossiê só olhava `todaySession`/`todayExecution` (não havia
+  execução na quarta) **e** o allow-list era menor que o texto: “ÚLTIMAS 4
+  SEMANAS”/“28 dias” eram impressos, mas `4`/`28` não estavam em
+  `allowedCounts`. O modelo ecoava o fato e o validador barrava.
+- **Decisão:** `CoachExecution.date` + `CoachNextContext.lastExecution`/
+  `lastSession`/`lastPrescription`; a fonte olha a semana atual e a anterior e
+  escolhe a última sessão `DONE`/`CLOSED` até hoje. O dossiê diz “EXECUTADO
+  HOJE” ou “EXECUTADO NO ÚLTIMO TREINO (terça/passada)”.
+- **Allow-list:** `CoachOpenAnswer` deriva os conjuntos de todos os números do
+  próprio `engineContext` (`CoachNumberPatterns`), além dos tipados. Invariante
+  testada: todo número impresso é citável.
+- **Fallback:** `freeAnswerReasonCopy` não promete “aqui embaixo” (não há card
+  nesse fluxo); convida a repetir.
+- **Dia ajustado:** `CoachOpenContext` também leva `executedSession` e
+  `executionPrescription`; a linha da semana mostra a prescrição do dia
+  e o plano original como nota (`ajustado do plano: …`), com `MOTIVO DO DIA`
+  e `COMPARAÇÃO COM A PRESCRIÇÃO`; o `TASK_LINE` diz que a prescrição é o alvo
+  da avaliação. Sem isso, a IA usava o título/duração do plano original mesmo
+  quando o dia tinha sido rebaixado.
+- **Testes:** domínio (rótulo/data + invariante + dia ajustado), fonte (quarta
+  de descanso com execução de terça), VM (payload e resposta com “4 semanas”)
+  e copy.
+
 ---
 
 ## 5. Pendências restantes
@@ -322,6 +350,9 @@ Memória local do Coach **sem** transformar memória em decisão:
 - Validação restante: gerar o APK com `-PcoachProxyToken=...`, abrir o Coach e
   conferir o card Ready recolhido/expandido, o histórico real, uma pergunta
   aberta ("o que é fartlek?"), a recusa médica local e o consentimento v2.
+- Revalidar “avalie meu treino” em dia de descanso com o dossiê do último
+  executado (emenda §6): deve citar a sessão anterior, não “número fora do
+  contexto”, e aceitar “4 semanas”/“28 dias”.
 - Reimplantar o proxy no Dokploy para o `SYSTEM_FREE_ANSWER` novo (pergunta +
   dossiê) e para os prompts com `title`/`body` strings.
 - O lembrete de treino já segue a prescrição do dia (ADR 0064); validar no

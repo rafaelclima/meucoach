@@ -812,7 +812,7 @@ class CoachViewModel @Inject constructor(
                     android.util.Log.d("Coach", "free answer rejected: ${validated.reason}")
                     settle(
                         exchangeId,
-                        FreeAnswerUiState.Fallback(CoachFallbackLabels.reasonCopy(validated.reason)),
+                        FreeAnswerUiState.Fallback(CoachFallbackLabels.freeAnswerReasonCopy(validated.reason)),
                     )
                 }
             }

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.80 · **Data:** 25/11/2026 · **Mudança:** dossiê de avaliação do Coach com prescrição do dia e executado (emenda ADR 0063). Gates verdes.
+**Versão:** 1.81 · **Data:** 25/11/2026 · **Mudança:** correção do dossiê aberto do Coach (último executado + allow-list do próprio dossiê, emenda ADR 0063 §6). Gates verdes.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -392,6 +392,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] ADR 0064 (24/11/2026): lembrete das 07:00 segue `GetTodayDecision` e a notificação ativa é reescrita/cancelada com o dia (`TodayPrescriptionSync` + `WorkoutReminderSync`), sem divergir do Hoje ([ADR 0064](adr/0064-workout-reminder-day-authority.md)).
 - [x] Correção do `free-answer` (24/11/2026): MiMo e GLM em paralelo (primeiro 2xx vence), 18 s por tentativa e 20 s de orçamento total (abaixo dos 25 s do app); `CoachViewModel` usa o `TimeProvider` do perfil em vez de UTC. Diagnóstico no aparelho + testes; **redeploy do proxy pendente** ([ADR 0051](adr/0051-ia-coach-proxy.md)).
 - [x] Dossiê de avaliação (25/11/2026): `CoachExecution` com duração/distância/RPE/evidência e comparação determinística; `todayPrescription`/`todayExecution` no Coach; pace/FC seguem no cartão e fora da prosa. Testes de domínio, ViewModel e fonte ([ADR 0063](adr/0063-coach-open-answers.md)).
+- [x] Correção pós-aparelho do dossiê (25/11/2026): em dia de descanso, “avalie meu treino” usa a última sessão `DONE`/`CLOSED` (semana atual/anterior) e o dossiê autoriza todo número que imprime (“4 semanas”/“28 dias”); o dia executado mostra a prescrição que ajustou o plano (`<prescrito> · ajustado do plano: <original>`), o motivo e compara com a prescrição; fallback do `free-answer` não promete card. Logs/prints do aparelho reproduzidos; testes de domínio, ViewModel e fonte ([ADR 0063](adr/0063-coach-open-answers.md) §6/§7).
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 

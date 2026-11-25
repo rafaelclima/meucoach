@@ -1,6 +1,90 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 25/11/2026 (Coach: dossiê de avaliação com prescrição do dia e executado)
+**Atualizado:** 25/11/2026 (Coach: último executado, allow-list do dossiê e prescrição do dia executado)
+
+## Sessão 2026-11-25 — Coach: último executado e allow-list do dossiê
+
+**Escopo:** correção pós-aparelho do “avalie meu treino” em dia de descanso.
+Sem schema, ciência, motor ou dependência nova.
+
+### Evidência
+
+- Print do usuário 0: quarta de descanso, depois de o Coach dizer que a terça
+  fechou; “avalie meu treino” caía em “Citei um número que não confere com
+  seus dados”.
+- Reprodução via `adb` (25/11 09:41) no APK com a emenda §5:
+  `D/Coach: free answer rejected: Resposta contém número fora do contexto: 4`.
+- O `4` vinha do próprio dossiê: `CoachOpenAnswer` imprime “ÚLTIMAS 4 SEMANAS”
+  e “últimos 28 dias”, mas `allowedCounts` só recebia `availableWeeks`; o
+  modelo ecoava o fato e o validador barrava.
+
+### Causa
+
+1. O dossiê olhava só `todaySession`/`todayExecution`. Num dia de descanso não
+   há sessão no plano, então a execução do dia anterior não entrava — o modelo
+   não tinha o que avaliar.
+2. O allow-list era menor que o texto do dossiê (janela de 4 semanas, 28 dias
+   e números dos rationales).
+3. O fallback do `free-answer` dizia “o que vale tá aqui embaixo”, mas esse
+   fluxo só renderiza a bolha + “Tentar de novo”, sem card.
+
+### Correção
+
+- **Domínio:** `CoachExecution` ganhou `date`; o dossiê rotula “EXECUTADO
+  HOJE” vs. “EXECUTADO NO ÚLTIMO TREINO (terça/passada)”. `CoachOpenAnswer`
+  deriva os allow-lists de todos os números do próprio `engineContext`
+  (mesmos padrões do validador em `CoachNumberPatterns`).
+- **Fonte:** `CoachNextContext` ganhou `lastExecution`/`lastSession`/
+  `lastPrescription`; `RoomCoachNextSource` olha a semana atual e a anterior,
+  escolhe a última sessão `DONE`/`CLOSED` até hoje e carrega a prescrição
+  daquele dia para a comparação.
+- **Fluxo aberto:** usa `todayExecution ?: lastExecution`, leva a sessão e a
+  prescrição executadas para a referência determinística e mantém pace/FC
+  fora da prosa.
+- **Fallback:** `CoachFallbackLabels.freeAnswerReasonCopy` não promete card
+  inexistente e convida a repetir a pergunta.
+- **Testes:** `CoachOpenAnswerTest` (rótulo do último executado e invariante
+  “todo número do dossiê é citável”), `CoachSourceReactivityTest` (quarta de
+  descanso com execução de terça), `CoachViewModelTest` (payload com o último
+  executado e resposta que cita “4 semanas”) e `CoachFallbackLabelsTest`.
+
+### Correção pós-print — plano × prescrição no dia executado
+
+- **Print + banco local:** o dia executado tinha plano original de qualidade
+  e prescrição fácil (`DOWNGRADE` por prontidão). A resposta usou o
+  título/duração do plano original e os veredictos da prescrição ao mesmo
+  tempo.
+- **Causa:** o dossiê imprimia a linha do plano e os veredictos da comparação,
+  mas não o título, a duração e o motivo da prescrição do dia executado.
+- **Correção:** `CoachOpenContext` ganhou `executedSession` e
+  `executionPrescription`; a linha da semana do dia executado mostra a
+  prescrição e o plano original como nota
+  (`<prescrito> · ajustado do plano: <original>`); `MOTIVO DO DIA (terça)`
+  leva o rationale; a comparação vira `COMPARAÇÃO COM A PRESCRIÇÃO` quando
+  existe prescrição.
+- **Testes:** `CoachOpenAnswerTest` (dia ajustado com plano original +
+  prescrição) e payload do ViewModel; a referência determinística já usava a
+  prescrição.
+
+### Gates
+
+- `./gradlew check spotlessCheck` verde (1546 testes no app). Na primeira
+  execução, `TodayViewModelPersistTest.upgrades a stale stored week on opening`
+  estourou 30 s; passou isolado e no rerun completo — flake de carga, sem
+  relação com esta fatia.
+- `./gradlew :app:assembleDebug` verde.
+- Sem dado real no diff; sem migração; sem dependência nova.
+
+### Próximo
+
+1. Reinstalar o APK e repetir “avalie meu treino” numa quarta/segunda: deve
+   citar duração, distância e RPE do último treino e os veredictos da
+   comparação, sem “número fora do contexto”.
+2. Num dia ajustado, deve explicar o plano original × a prescrição (ex.:
+   qualidade rebaixada para fácil por prontidão) e comparar a execução com a
+   prescrição — não com o plano original.
+3. Conferir que uma resposta que cite “últimas 4 semanas” ou “28 dias” passa.
+4. Retomar P1-12/Ciclo 4.
 
 ## Sessão 2026-11-25 — Coach: dossiê de avaliação com o executado
 

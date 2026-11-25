@@ -4,6 +4,7 @@ import com.meucoach.core.domain.feedback.ComparisonVerdict
 import com.meucoach.core.domain.feedback.SessionComparison
 import com.meucoach.core.domain.feedback.SessionComparisonKind
 import com.meucoach.core.domain.prescription.DailyPrescription
+import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.WeeklyPlan
@@ -31,6 +32,10 @@ data class CoachOpenContext(
     val plan: WeeklyPlan? = null,
     val prescription: DailyPrescription? = null,
     val execution: CoachExecution? = null,
+    /** Plan session behind [execution]; carries the original title/type/duration. */
+    val executedSession: PlannedSession? = null,
+    /** Day authority of [executedSession] after check-in/readiness, when persisted. */
+    val executionPrescription: DailyPrescription? = null,
     val readiness: ReadinessResult? = null,
     val hasCheckIn: Boolean = false,
     val sleepMinutes: Int? = null,
@@ -46,6 +51,8 @@ data class CoachOpenContext(
  * card/Today. A manual completion has duration/RPE but no comparison.
  */
 data class CoachExecution(
+    /** Day the session was executed, so the dossier can say today vs. the last one. */
+    val date: LocalDate,
     val durationMin: Int,
     val distanceKm: Double? = null,
     val rpe: Int? = null,
@@ -66,8 +73,11 @@ data class CoachExecution(
  *
  * The model may explain concepts and the plan, but every duration, distance,
  * percentage and count it writes must exist in [allowedMinutes],
- * [allowedDistancesKm], [allowedPercents] or [allowedCounts]. Pace/FC stay out
- * of prose entirely and are shown by the deterministic reference card.
+ * [allowedDistancesKm], [allowedPercents] or [allowedCounts]. The allow-lists
+ * cover the typed facts and every number [engineContext] prints (fixed window
+ * labels and rationale numbers included), so the model is never punished for
+ * echoing the dossier. Pace/FC stay out of prose entirely and are shown by the
+ * deterministic reference card.
  */
 data class CoachOpenAnswer(
     val engineContext: String,
@@ -83,19 +93,19 @@ data class CoachOpenAnswer(
             val execution = context.execution
             val progress = context.progress
             val review = context.lastReview?.takeIf { it.status == WeeklyReviewStatus.AVAILABLE }
+            val engineContext = facts(question, context)
+            // The model may cite every number the engine itself wrote in the
+            // dossier. The structured sets below cover the typed facts; the
+            // extracted ones cover fixed labels ("últimas 4 semanas", "28
+            // dias") and rationale numbers. Without this, the model echoes a
+            // number it just read and the validator rejects an honest answer.
+            val factNumbers = dossierNumbers(engineContext.substringAfter('\n'))
             return CoachOpenAnswer(
-                engineContext = facts(
-                    question = question,
-                    context = context,
-                    plan = plan,
-                    prescription = prescription,
-                    execution = execution,
-                    progress = progress,
-                    review = review,
-                ),
-                allowedMinutes = allowedMinutes(context, plan, prescription, execution, progress, review),
-                allowedPercents = allowedPercents(progress, review, execution),
-                allowedDistancesKm = allowedDistances(plan, prescription, execution),
+                engineContext = engineContext,
+                allowedMinutes = allowedMinutes(context, plan, prescription, execution, progress, review) +
+                    factNumbers.minutes,
+                allowedPercents = allowedPercents(progress, review, execution) + factNumbers.percents,
+                allowedDistancesKm = allowedDistances(plan, prescription, execution) + factNumbers.distancesKm,
                 allowedCounts = allowedCounts(
                     plan = plan,
                     progress = progress,
@@ -104,9 +114,34 @@ data class CoachOpenAnswer(
                     readinessScore = context.readiness
                         ?.takeIf { it.components.isNotEmpty() }
                         ?.score,
-                ),
+                ) + factNumbers.counts,
             )
         }
+
+        private data class DossierNumbers(
+            val minutes: Set<Int> = emptySet(),
+            val percents: Set<Int> = emptySet(),
+            val distancesKm: Set<Double> = emptySet(),
+            val counts: Set<Int> = emptySet(),
+        )
+
+        private fun dossierNumbers(facts: String): DossierNumbers = DossierNumbers(
+            minutes = CoachNumberPatterns.minutes.findAll(facts)
+                .mapNotNull { it.groupValues[1].toIntOrNull() }
+                .toSet(),
+            percents = CoachNumberPatterns.percent.findAll(facts)
+                .mapNotNull { it.groupValues[1].toIntOrNull() }
+                .toSet(),
+            distancesKm = CoachNumberPatterns.distanceKm.findAll(facts)
+                .mapNotNull { it.groupValues[1].replace(',', '.').toDoubleOrNull() }
+                .toSet(),
+            counts = CoachNumberPatterns.bareNumber.findAll(facts)
+                .mapNotNull { match ->
+                    val raw = match.value.replace(',', '.')
+                    raw.toDoubleOrNull()?.takeIf { it == it.toInt().toDouble() }?.toInt()
+                }
+                .toSet(),
+        )
 
         private fun allowedMinutes(
             context: CoachOpenContext,
@@ -179,6 +214,7 @@ data class CoachOpenAnswer(
                 add(week.sessions.count { it.type == WorkoutType.REST })
                 add(week.sessions.count { it.status == SessionStatus.DONE })
                 add(week.sessions.count { it.status == SessionStatus.CLOSED })
+                add(week.sessions.count { it.status == SessionStatus.PLANNED })
             }
             progress?.let {
                 add(it.availableWeeks)
@@ -216,38 +252,71 @@ data class CoachOpenAnswer(
             }
         }
 
-        private fun facts(
-            question: String,
-            context: CoachOpenContext,
-            plan: WeeklyPlan?,
-            prescription: DailyPrescription?,
-            execution: CoachExecution?,
-            progress: CoachProgressSummary?,
-            review: WeeklyReview?,
-        ): String = buildString {
+        private fun facts(question: String, context: CoachOpenContext): String = buildString {
+            val prescription = context.prescription?.takeIf { it.date == context.today }
+            val review = context.lastReview?.takeIf { it.status == WeeklyReviewStatus.AVAILABLE }
             appendLine("PERGUNTA DO ATLETA: $question")
             appendLine("HOJE: ${weekday(context.today.dayOfWeek)}.")
-            appendLine(weekFacts(plan, context.today))
+            appendLine(
+                weekFacts(
+                    plan = context.plan,
+                    today = context.today,
+                    executedSession = context.executedSession,
+                    executionPrescription = context.executionPrescription,
+                ),
+            )
             prescription?.let { append(prescriptionFacts(it)) }
-            execution?.let { append(executionFacts(it)) }
+            if (context.execution != null && context.execution.date != context.today) {
+                context.executionPrescription?.let {
+                    appendLine("MOTIVO DO DIA (${dayLabel(it.date, context.today)}): ${it.rationale}")
+                }
+            }
+            context.execution?.let {
+                append(
+                    executionFacts(
+                        execution = it,
+                        today = context.today,
+                        hasPrescription = context.executionPrescription != null,
+                    ),
+                )
+            }
             context.readiness?.let { appendLine("PRONTIDÃO: ${readinessLine(it)}.") }
             context.sleepMinutes?.let { appendLine("SONO: $it min na última noite.") }
             appendLine("CHECK-IN: ${if (context.hasCheckIn) "feito" else "pendente"}.")
-            progress?.let { appendLine("ÚLTIMAS 4 SEMANAS: ${progressLine(it)}.") }
+            context.progress?.let { appendLine("ÚLTIMAS 4 SEMANAS: ${progressLine(it)}.") }
             review?.let { appendLine("ÚLTIMA SEMANA FECHADA: ${reviewLine(it)}.") }
             append(TASK_LINE)
         }
 
-        private fun weekFacts(plan: WeeklyPlan?, today: LocalDate): String {
+        private fun weekFacts(
+            plan: WeeklyPlan?,
+            today: LocalDate,
+            executedSession: PlannedSession?,
+            executionPrescription: DailyPrescription?,
+        ): String {
             if (plan == null) return "SEMANA: ainda sem plano gerado."
             return buildString {
                 appendLine(
                     "SEMANA: ${plan.weeklyMinutes} min planejados; ${plan.sessions.size} treinos.",
                 )
                 plan.sessions.forEach { session ->
-                    append("- ${weekday(session.date.dayOfWeek)}: ${session.title} · ")
-                    append(session.durationMin?.let { "$it min" } ?: "sem duração fixa")
-                    append(" · ${kindLabel(session.type)} · ${statusLabel(session.status)}")
+                    append("- ${weekday(session.date.dayOfWeek)}: ")
+                    val adjusted = executionPrescription.takeIf { session.date == executedSession?.date }
+                    if (adjusted != null) {
+                        append(adjusted.title)
+                        append(" · ${duration(adjusted.prescribedDurationMin)}")
+                        append(" · ${kindLabel(adjusted.prescribedType)}")
+                        append(" · ${statusLabel(session.status)}")
+                        append(" · ajustado do plano: ")
+                        append(session.title)
+                        append(" · ${duration(session.durationMin)}")
+                        append(" · ${kindLabel(session.type)}")
+                    } else {
+                        append(session.title)
+                        append(" · ${duration(session.durationMin)}")
+                        append(" · ${kindLabel(session.type)}")
+                        append(" · ${statusLabel(session.status)}")
+                    }
                     if (session.date == today) append(" · HOJE")
                     appendLine()
                 }
@@ -263,25 +332,44 @@ data class CoachOpenAnswer(
             appendLine("MOTIVO DE HOJE: ${prescription.rationale}")
         }
 
-        private fun executionFacts(execution: CoachExecution): String = buildString {
-            append("EXECUTADO: ${execution.durationMin} min")
-            execution.distanceKm?.let { append(" · ${formatDistance(it)} km") }
-            execution.rpe?.let { append(" · RPE $it") }
-            execution.evidence?.let { append(" · evidência ${it.label()}") }
-            appendLine(".")
-            val comparison = execution.comparison ?: return@buildString
-            if (comparison.kind == SessionComparisonKind.FREE_RUN) {
-                appendLine("CORRIDA LIVRE: sem sessão planejada vinculada; não há alvo para comparar.")
-            } else {
-                appendLine(
-                    "COMPARAÇÃO COM O PLANO: " +
-                        "duração ${verdictLabel(comparison.durationVerdict)}; " +
-                        "distância ${verdictLabel(comparison.distanceVerdict)}; " +
-                        "ritmo ${verdictLabel(comparison.paceVerdict)}; " +
-                        "FC ${verdictLabel(comparison.heartRateVerdict)}; " +
-                        "esforço ${verdictLabel(comparison.rpeVerdict)}.",
-                )
+        private fun executionFacts(execution: CoachExecution, today: LocalDate, hasPrescription: Boolean): String =
+            buildString {
+                append(executionLabel(execution.date, today))
+                append(": ${execution.durationMin} min")
+                execution.distanceKm?.let { append(" · ${formatDistance(it)} km") }
+                execution.rpe?.let { append(" · RPE $it") }
+                execution.evidence?.let { append(" · evidência ${it.label()}") }
+                appendLine(".")
+                val comparison = execution.comparison ?: return@buildString
+                if (comparison.kind == SessionComparisonKind.FREE_RUN) {
+                    appendLine("CORRIDA LIVRE: sem sessão planejada vinculada; não há alvo para comparar.")
+                } else {
+                    val source = if (hasPrescription) "COMPARAÇÃO COM A PRESCRIÇÃO" else "COMPARAÇÃO COM O PLANO"
+                    appendLine(
+                        "$source: " +
+                            "duração ${verdictLabel(comparison.durationVerdict)}; " +
+                            "distância ${verdictLabel(comparison.distanceVerdict)}; " +
+                            "ritmo ${verdictLabel(comparison.paceVerdict)}; " +
+                            "FC ${verdictLabel(comparison.heartRateVerdict)}; " +
+                            "esforço ${verdictLabel(comparison.rpeVerdict)}.",
+                    )
+                }
             }
+
+        /**
+         * The execution in the dossier may be today's or the last completed
+         * session (e.g. a rest day after a quality session). Name it
+         * explicitly so the model never presents yesterday's run as today's.
+         */
+        private fun executionLabel(date: LocalDate, today: LocalDate): String {
+            if (date == today) return "EXECUTADO HOJE"
+            return "EXECUTADO NO ÚLTIMO TREINO (${dayLabel(date, today)})"
+        }
+
+        private fun dayLabel(date: LocalDate, today: LocalDate): String {
+            val weekStart = today.with(DayOfWeek.MONDAY)
+            val suffix = if (date.isBefore(weekStart)) " passada" else ""
+            return "${weekday(date.dayOfWeek)}$suffix"
         }
 
         private fun verdictLabel(verdict: ComparisonVerdict?): String = when (verdict) {
@@ -309,7 +397,9 @@ data class CoachOpenAnswer(
                 "Pode explicar conceitos de corrida e o plano em linguagem simples. " +
                 "Nunca invente número, pace, FC, carga, volume, VDOT ou ACWR; se um número não estiver " +
                 "nos fatos, não escreva. Ritmo e FC ficam no cartão do motor: não escreva pace nem bpm " +
-                "no texto, use só a comparação qualitativa. Se a resposta não estiver nos fatos, diga o " +
+                "no texto, use só a comparação qualitativa. Em dia executado, o alvo da avaliação é a " +
+                "prescrição do dia; o plano original é só contexto — se o dia foi ajustado, explique o " +
+                "plano original × a prescrição. Se a resposta não estiver nos fatos, diga o " +
                 "que falta e indique Hoje, Tendências ou o check-in. Nunca prescreva treino novo, nunca " +
                 "troque treino, nunca dê diagnóstico, nutrição ou musculação. " +
                 "Aceite só o ajuste do motor com confirmação do atleta."

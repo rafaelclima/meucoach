@@ -143,3 +143,63 @@ Allow-lists ganham a duração, a distância e o RPE executados e os percentuais
 de adesão da comparação. Pace/FC continuam proibidos em prosa pelo validador.
 A fonte continua local e sem GPS/arquivo bruto: só o resumo persistido da
 atividade/execução. Sem schema, sem motor, sem ciência e sem dependência nova.
+
+---
+
+## 6. Emenda 25/11/2026 — último executado e allow-list do próprio dossiê
+
+A validação no aparelho (log `free answer rejected: Resposta contém número
+fora do contexto: 4`) mostrou dois furos que a emenda §5 ainda não cobria:
+
+- o dossiê só olhava `todaySession`/`todayExecution`. Numa quarta de descanso,
+  “avalie meu treino” não recebia a execução de terça — justamente a sessão que
+  o Coach acabara de dizer que fechou;
+- o allow-list era menor que o próprio dossiê: `CoachOpenAnswer` imprime
+  “ÚLTIMAS 4 SEMANAS” e “últimos 28 dias”, mas o `4` e o `28` não entravam em
+  `allowedCounts`. O modelo ecoava o fato e o validador barrava a resposta.
+
+Decisão:
+
+- `CoachExecution` carrega a data. `CoachNextContext` carrega a última sessão
+  concluída (`DONE`/`CLOSED`) até hoje, olhando a semana atual e a anterior,
+  com a atividade/execução e a prescrição daquele dia. O fluxo aberto usa
+  `todayExecution ?: lastExecution` e o dossiê rotula “EXECUTADO HOJE” vs.
+  “EXECUTADO NO ÚLTIMO TREINO (terça)” — nunca apresenta ontem como hoje.
+- `CoachOpenAnswer` deriva os allow-lists de **todos** os números do dossiê,
+  usando os mesmos padrões do validador (`CoachNumberPatterns`), além dos
+  conjuntos tipados. A garantia vira: todo número impresso pelo motor é
+  citável; nada fora do dossiê passa.
+- O fallback do `free-answer` não promete mais um card que não é renderizado
+  (“aqui embaixo”); ele convida o atleta a repetir a pergunta.
+
+Pace/FC continuam fora da prosa e no cartão determinístico. Sem schema, sem
+motor, sem ciência e sem dependência nova.
+
+---
+
+## 7. Emenda 25/11/2026 — o dia executado carrega a prescrição que ajustou o plano
+
+O print e o banco local mostraram um dia cujo plano original era uma sessão de
+qualidade e cuja prescrição do dia era fácil, com `DOWNGRADE` por prontidão
+moderada. A resposta usou o título/duração do plano original e os veredictos
+da prescrição ao mesmo tempo (duração dentro, distância/ritmo acima, FC
+dentro).
+
+O dossiê impresso tinha o plano original e os veredictos, mas não o título,
+a duração e o motivo da prescrição do dia executado. Decisão:
+
+- `CoachOpenContext` ganhou `executedSession` e `executionPrescription`;
+- a linha da semana do dia executado passa a mostrar a prescrição como
+  autoridade do dia e o plano original como nota:
+  `Terça: <título prescrito> · <duração prescrita> · <tipo prescrito> · <status> · ajustado do plano: <título original> · <duração original> · <tipo original>`;
+- `MOTIVO DO DIA (terça)` traz o rationale da prescrição (ex.: prontidão
+  moderada);
+- a comparação passa a se chamar `COMPARAÇÃO COM A PRESCRIÇÃO` quando há
+  prescrição; sem prescrição, continua `COMPARAÇÃO COM O PLANO`;
+- o `TASK_LINE` do dossiê instrui a usar a prescrição como alvo da avaliação
+  e o plano original apenas como contexto;
+- o cartão determinístico já usava os alvos da prescrição; agora a narrativa
+  usa a mesma autoridade.
+
+A IA continua só narrando: não decide ajuste, não prescreve e não inventa
+número. Sem schema, motor, ciência ou dependência nova.

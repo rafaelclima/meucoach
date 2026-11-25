@@ -6,6 +6,7 @@ import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
+import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -115,21 +116,24 @@ class CoachOpenAnswerTest {
                 plan = plan(),
                 prescription = prescription,
                 execution = CoachExecution(
+                    date = today,
                     durationMin = 28,
                     distanceKm = 4.1,
                     rpe = 6,
                     evidence = CompletionEvidence.ACTIVITY,
                     comparison = comparison,
                 ),
+                executedSession = plan().sessions.single(),
+                executionPrescription = prescription,
             ),
         )
 
         assertThat(answer.engineContext).contains(
-            "EXECUTADO: 28 min",
+            "EXECUTADO HOJE: 28 min",
             "4.1 km",
             "RPE 6",
             "evidência atividade importada",
-            "COMPARAÇÃO COM O PLANO",
+            "COMPARAÇÃO COM A PRESCRIÇÃO",
             "duração dentro do alvo",
             "ritmo sem alvo comparável",
         )
@@ -138,6 +142,132 @@ class CoachOpenAnswerTest {
         assertThat(answer.allowedDistancesKm).contains(4.1)
         assertThat(answer.allowedCounts).contains(6)
         assertThat(answer.allowedPercents).contains(comparison.durationPercentOfPlan)
+    }
+
+    @Test
+    fun `execution from another day is named as the last session`() {
+        val answer = CoachOpenAnswer.build(
+            question = "avalie meu treino",
+            context = CoachOpenContext(
+                today = today,
+                plan = plan(),
+                execution = CoachExecution(
+                    date = today.minusDays(1),
+                    durationMin = 28,
+                    distanceKm = 4.1,
+                    rpe = 6,
+                ),
+            ),
+        )
+
+        assertThat(answer.engineContext).contains(
+            "EXECUTADO NO ÚLTIMO TREINO (Terça): 28 min",
+            "4.1 km",
+            "RPE 6",
+        )
+        assertThat(answer.engineContext).doesNotContain("EXECUTADO HOJE")
+        assertThat(answer.allowedCounts).contains(6)
+        assertThat(answer.allowedDistancesKm).contains(4.1)
+    }
+
+    @Test
+    fun `executed day shows the prescription that changed the plan`() {
+        val session = plan().sessions.single().copy(
+            date = today.minusDays(1),
+            durationMin = 50,
+            status = SessionStatus.DONE,
+            completionEvidence = CompletionEvidence.ACTIVITY,
+            activityId = "activity-1",
+        )
+        val adjusted = prescription().copy(
+            date = today.minusDays(1),
+            title = "Fácil de terça",
+            plannedDurationMin = 50,
+            prescribedDurationMin = 25,
+            rationale = "Planejado: Intervalado (50 min). Hoje: fácil, 25 min. " +
+                "Motivo: prontidão moderada (score 58).",
+        )
+        val answer = CoachOpenAnswer.build(
+            question = "avalie meu treino",
+            context = CoachOpenContext(
+                today = today,
+                plan = plan().copy(sessions = listOf(session)),
+                execution = CoachExecution(
+                    date = today.minusDays(1),
+                    durationMin = 25,
+                    distanceKm = 3.7,
+                ),
+                executedSession = session,
+                executionPrescription = adjusted,
+            ),
+        )
+
+        assertThat(answer.engineContext).contains(
+            "- Terça: Fácil de terça · 25 min · fácil · feito · " +
+                "ajustado do plano: Intervalado · 50 min · forte",
+            "MOTIVO DO DIA (Terça): Planejado: Intervalado (50 min). " +
+                "Hoje: fácil, 25 min. Motivo: prontidão moderada (score 58).",
+            "EXECUTADO NO ÚLTIMO TREINO (Terça): 25 min",
+        )
+        assertThat(answer.allowedMinutes).contains(25, 50)
+        assertThat(answer.allowedCounts).contains(58)
+    }
+
+    @Test
+    fun `every number printed in the dossier is citable`() {
+        val answer = CoachOpenAnswer.build(
+            question = "avalie meu treino",
+            context = CoachOpenContext(
+                today = today,
+                plan = plan(),
+                prescription = prescription(),
+                execution = CoachExecution(
+                    date = today,
+                    durationMin = 28,
+                    distanceKm = 4.1,
+                    rpe = 6,
+                ),
+                progress = CoachProgressSummary(
+                    availableWeeks = 1,
+                    plannedSessions = 3,
+                    doneSessions = 3,
+                    adherencePercent = 100,
+                    plannedMinutes = 99,
+                    executedMinutes = 93,
+                    extraMinutes = 0,
+                    volumePercent = 94,
+                    avgReadiness = 73,
+                    redDays = 0,
+                    avgSleepMinutes = 434,
+                    shortNights = 1,
+                    easyPercent28d = 21,
+                ),
+            ),
+        )
+
+        val facts = answer.engineContext.substringAfter('\n')
+        val minutes = CoachNumberPatterns.minutes.findAll(facts)
+            .map { it.groupValues[1].toInt() }
+            .toSet()
+        val percents = CoachNumberPatterns.percent.findAll(facts)
+            .map { it.groupValues[1].toInt() }
+            .toSet()
+        val distances = CoachNumberPatterns.distanceKm.findAll(facts)
+            .map { it.groupValues[1].replace(',', '.').toDouble() }
+            .toSet()
+        val counts = CoachNumberPatterns.bareNumber.findAll(facts)
+            .mapNotNull { match ->
+                val raw = match.value.replace(',', '.')
+                raw.toDoubleOrNull()?.takeIf { it == it.toInt().toDouble() }?.toInt()
+            }
+            .toSet()
+
+        assertThat(answer.engineContext).contains("ÚLTIMAS 4 SEMANAS", "últimos 28 dias")
+        assertThat(answer.allowedMinutes).containsAll(minutes)
+        assertThat(answer.allowedPercents).containsAll(percents)
+        assertThat(answer.allowedDistancesKm).containsAll(distances)
+        assertThat(answer.allowedCounts).containsAll(counts)
+        assertThat(answer.allowedCounts).contains(4, 28)
     }
 
     @Test
