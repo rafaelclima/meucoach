@@ -27,12 +27,14 @@ internal suspend fun answerOpenContent(
     val progressContext = sources.progress.observeProgress().first()
     val review = sources.reviews.observeLastClosedWeek().first()
     val progress = CoachProgress.summarize(progressContext.weeks, progressContext.easyPercent28d)
-    val prescription = next.prescription
+    val prescription = next.todayPrescription
+        ?: next.prescription?.takeIf { it.date == today }
     val session = next.todaySession
     val context = CoachOpenContext(
         today = today,
         plan = planContext?.plan,
         prescription = prescription,
+        execution = next.todayExecution,
         readiness = next.readiness,
         hasCheckIn = next.hasCheckIn,
         sleepMinutes = next.sleepMinutes,

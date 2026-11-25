@@ -1,5 +1,7 @@
 package com.meucoach.core.domain.coach
 
+import com.meucoach.core.domain.feedback.ComparisonPlan
+import com.meucoach.core.domain.feedback.SessionComparisonCalculator
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
@@ -8,10 +10,17 @@ import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.ReadinessResult
+import com.meucoach.core.model.ActivitySource
+import com.meucoach.core.model.ActivitySummary
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.DataConfidence
+import com.meucoach.core.model.Distance
+import com.meucoach.core.model.Pace
 import com.meucoach.core.model.ReadinessLevel
+import com.meucoach.core.model.Sport
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
 
 class CoachOpenAnswerTest {
@@ -79,6 +88,56 @@ class CoachOpenAnswerTest {
         assertThat(answer.allowedCounts).contains(4, 16, 13, 2, 3, 80, 20)
         assertThat(answer.allowedPercents).contains(81, 82, 80)
         assertThat(answer.engineContext).contains("ÚLTIMAS 4 SEMANAS", "13 de 16 treinos", "fácil em 82%")
+    }
+
+    @Test
+    fun `executed facts carry duration distance rpe and comparison verdicts`() {
+        val prescription = prescription()
+        val comparison = SessionComparisonCalculator.compare(
+            linkedPlan = ComparisonPlan.from(prescription),
+            activity = ActivitySummary(
+                id = "activity-1",
+                source = ActivitySource.FIT,
+                sport = Sport.RUNNING,
+                startTime = Instant.parse("2026-11-18T10:00:00Z"),
+                durationSec = 1_692,
+                distance = Distance.ofKilometers(4.1),
+                averageHeartRate = 151,
+                averagePace = Pace.of(6, 53),
+            ),
+            rpe = 6,
+        )
+
+        val answer = CoachOpenAnswer.build(
+            question = "avalie meu treino",
+            context = CoachOpenContext(
+                today = today,
+                plan = plan(),
+                prescription = prescription,
+                execution = CoachExecution(
+                    durationMin = 28,
+                    distanceKm = 4.1,
+                    rpe = 6,
+                    evidence = CompletionEvidence.ACTIVITY,
+                    comparison = comparison,
+                ),
+            ),
+        )
+
+        assertThat(answer.engineContext).contains(
+            "EXECUTADO: 28 min",
+            "4.1 km",
+            "RPE 6",
+            "evidência atividade importada",
+            "COMPARAÇÃO COM O PLANO",
+            "duração dentro do alvo",
+            "ritmo sem alvo comparável",
+        )
+        assertThat(answer.engineContext).doesNotContain("6:53", "151 bpm")
+        assertThat(answer.allowedMinutes).contains(28)
+        assertThat(answer.allowedDistancesKm).contains(4.1)
+        assertThat(answer.allowedCounts).contains(6)
+        assertThat(answer.allowedPercents).contains(comparison.durationPercentOfPlan)
     }
 
     @Test

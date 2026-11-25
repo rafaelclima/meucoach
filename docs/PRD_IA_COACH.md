@@ -75,7 +75,7 @@ Fora do MVP (pós-MVP):
 - System prompt + pós-validação: bloqueia diagnóstico, prescrição de musculação/nutrição (exceto hidratação estática), dor ≥3/lesão/doença → interrompe + sugere avaliação + registra `ILLNESS_OR_INJURY`.
 - Números: qualquer pace/FC/carga/volume/VDOT na resposta que não exista no input → resposta descartada, fallback determinístico.
 - Estimativa permitida: só texto qualitativo ("parece que a rotina apertou") com marcador `estimativa`; números nunca estimados.
-- Privacidade: opt-in explícito; payload minimizado (sem GPS/nome); revogar apaga `coach_*`; export inclui `coach_*`; risco retenção/região registrado como aceito. Desde o consentimento v2 (ADR 0063), a pergunta digitada é enviada ao proxy somente após a porteira local e com um dossiê de fatos do motor; nome, GPS e timestamps exatos **do app** continuam fora.
+- Privacidade: opt-in explícito; payload minimizado (sem GPS/nome); revogar apaga `coach_*`; export inclui `coach_*`; risco retenção/região registrado como aceito. Desde o consentimento v2 (ADR 0063), a pergunta digitada é enviada ao proxy somente após a porteira local e com um dossiê de fatos do motor; nome, GPS e timestamps exatos **do app** continuam fora. A emenda de 25/11 inclui só o resumo do executado (duração, distância, RPE, evidência e veredictos), sem arquivo bruto e sem pace/FC em prosa.
 - Retenção local: mensagens do Coach expiram em 90 dias e resumos em 180 dias; a limpeza é preguiçosa (abertura/escrita), sem worker novo e sem alterar treino.
 
 ## 6. Estratégia lean de testes (acordo 18/11/2026)

@@ -41,6 +41,7 @@ import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.ChatTurn
+import com.meucoach.core.domain.coach.CoachExecution
 import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
@@ -1344,6 +1345,8 @@ class CoachViewModelTest {
         today: LocalDate = LocalDate.of(2026, 11, 4),
         readiness: com.meucoach.core.domain.readiness.ReadinessResult? = null,
         prescription: DailyPrescription? = null,
+        todayPrescription: DailyPrescription? = null,
+        todayExecution: CoachExecution? = null,
     ): CoachNextContext {
         val session = PlannedSession(
             date = sessionDate,
@@ -1362,6 +1365,8 @@ class CoachViewModelTest {
             hasProfile = true,
             readiness = readiness,
             prescription = prescription,
+            todayPrescription = todayPrescription,
+            todayExecution = todayExecution,
             todaySession = session.takeIf { it.date == today },
         )
     }
@@ -1847,6 +1852,40 @@ class CoachViewModelTest {
         engineVersion = "daily-prescription-v6",
         inputsHash = "hash-p",
     )
+
+    @Test
+    fun `open answer carries today's prescription and execution`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 4)), "hash-s")
+        next.value = sessionNextContext(
+            LocalDate.of(2026, 11, 4),
+            prescription = todayPrescription(),
+            todayPrescription = todayPrescription(),
+            todayExecution = CoachExecution(durationMin = 40, distanceKm = 4.1, rpe = 6),
+        )
+        val api = FakeCoachApi(
+            response = CoachRawResponse(title = "Foco", body = "Vamos manter os 40 min."),
+        ).apply {
+            freeAnswerResponse = CoachRawResponse(
+                title = "Avaliação",
+                body = "Você fez 40 min e 4,1 km; RPE 6.",
+            )
+        }
+        val vm = viewModel(api)
+        vm.sendFreeText("avalie meu treino")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.lastFreeAnswerPrompt?.engineContext).contains(
+            "PRESCRIÇÃO DE HOJE",
+            "EXECUTADO: 40 min",
+            "4.1 km",
+            "RPE 6",
+        )
+        assertThat(api.lastFreeAnswerPrompt?.allowedMinutes).contains(40)
+        assertThat(api.lastFreeAnswerPrompt?.allowedDistancesKm).contains(4.1)
+        assertThat(api.lastFreeAnswerPrompt?.allowedCounts).contains(6)
+    }
 
     @Test
     fun `generic open answer does not carry the engine reference`(): Unit = runBlocking {

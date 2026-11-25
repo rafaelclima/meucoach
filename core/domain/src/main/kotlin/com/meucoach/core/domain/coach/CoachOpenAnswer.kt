@@ -1,5 +1,8 @@
 package com.meucoach.core.domain.coach
 
+import com.meucoach.core.domain.feedback.ComparisonVerdict
+import com.meucoach.core.domain.feedback.SessionComparison
+import com.meucoach.core.domain.feedback.SessionComparisonKind
 import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.SessionStatus
@@ -9,9 +12,11 @@ import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.ReadinessResult
 import com.meucoach.core.domain.review.WeeklyReview
 import com.meucoach.core.domain.review.WeeklyReviewStatus
+import com.meucoach.core.model.CompletionEvidence
 import com.meucoach.core.model.ReadinessLevel
 import java.time.DayOfWeek
 import java.time.LocalDate
+import kotlin.math.roundToInt
 
 /**
  * Facts available to an open Coach answer (ADR 0063).
@@ -25,12 +30,36 @@ data class CoachOpenContext(
     val today: LocalDate,
     val plan: WeeklyPlan? = null,
     val prescription: DailyPrescription? = null,
+    val execution: CoachExecution? = null,
     val readiness: ReadinessResult? = null,
     val hasCheckIn: Boolean = false,
     val sleepMinutes: Int? = null,
     val progress: CoachProgressSummary? = null,
     val lastReview: WeeklyReview? = null,
 )
+
+/**
+ * What the athlete actually did, reduced to facts the Coach may narrate.
+ *
+ * Pace/FC are deliberately absent: the comparison carries only verdicts
+ * (`WITHIN`/`ABOVE`/`BELOW`), and the exact numbers stay in the deterministic
+ * card/Today. A manual completion has duration/RPE but no comparison.
+ */
+data class CoachExecution(
+    val durationMin: Int,
+    val distanceKm: Double? = null,
+    val rpe: Int? = null,
+    val evidence: CompletionEvidence? = null,
+    val comparison: SessionComparison? = null,
+) {
+    init {
+        require(durationMin > 0) { "Executed duration must be positive" }
+        require(distanceKm == null || (distanceKm.isFinite() && distanceKm >= 0.0)) {
+            "Executed distance must be finite and non-negative"
+        }
+        require(rpe == null || rpe in 1..10) { "Executed RPE must be between 1 and 10" }
+    }
+}
 
 /**
  * Context and number allow-lists for [FreeInputIntent.ASK_COACHING].
@@ -51,6 +80,7 @@ data class CoachOpenAnswer(
         fun build(question: String, context: CoachOpenContext): CoachOpenAnswer {
             val plan = context.plan
             val prescription = context.prescription?.takeIf { it.date == context.today }
+            val execution = context.execution
             val progress = context.progress
             val review = context.lastReview?.takeIf { it.status == WeeklyReviewStatus.AVAILABLE }
             return CoachOpenAnswer(
@@ -59,16 +89,18 @@ data class CoachOpenAnswer(
                     context = context,
                     plan = plan,
                     prescription = prescription,
+                    execution = execution,
                     progress = progress,
                     review = review,
                 ),
-                allowedMinutes = allowedMinutes(context, plan, prescription, progress, review),
-                allowedPercents = allowedPercents(progress, review),
-                allowedDistancesKm = allowedDistances(plan, prescription),
+                allowedMinutes = allowedMinutes(context, plan, prescription, execution, progress, review),
+                allowedPercents = allowedPercents(progress, review, execution),
+                allowedDistancesKm = allowedDistances(plan, prescription, execution),
                 allowedCounts = allowedCounts(
                     plan = plan,
                     progress = progress,
                     review = review,
+                    execution = execution,
                     readinessScore = context.readiness
                         ?.takeIf { it.components.isNotEmpty() }
                         ?.score,
@@ -80,6 +112,7 @@ data class CoachOpenAnswer(
             context: CoachOpenContext,
             plan: WeeklyPlan?,
             prescription: DailyPrescription?,
+            execution: CoachExecution?,
             progress: CoachProgressSummary?,
             review: WeeklyReview?,
         ): Set<Int> = buildSet {
@@ -87,6 +120,7 @@ data class CoachOpenAnswer(
             plan?.sessions?.forEach { session -> session.durationMin?.let(::add) }
             prescription?.plannedDurationMin?.let(::add)
             prescription?.prescribedDurationMin?.let(::add)
+            execution?.durationMin?.let(::add)
             context.sleepMinutes?.let(::add)
             progress?.let {
                 add(it.plannedMinutes)
@@ -100,29 +134,42 @@ data class CoachOpenAnswer(
             }
         }
 
-        private fun allowedPercents(progress: CoachProgressSummary?, review: WeeklyReview?): Set<Int> = buildSet {
+        private fun allowedPercents(
+            progress: CoachProgressSummary?,
+            review: WeeklyReview?,
+            execution: CoachExecution?,
+        ): Set<Int> = buildSet {
             progress?.let {
                 it.adherencePercent?.let(::add)
                 it.volumePercent?.let(::add)
                 it.easyPercent28d?.let(::add)
             }
             review?.volume?.percentOfPlan?.let(::add)
+            execution?.comparison?.durationPercentOfPlan?.let(::add)
+            execution?.comparison?.distancePercentOfPlan?.let(::add)
             if (progress?.easyPercent28d != null) add(CoachProgressAnswer.EASY_TARGET_PERCENT)
         }
 
-        private fun allowedDistances(plan: WeeklyPlan?, prescription: DailyPrescription?): Set<Double> = buildSet {
+        private fun allowedDistances(
+            plan: WeeklyPlan?,
+            prescription: DailyPrescription?,
+            execution: CoachExecution?,
+        ): Set<Double> = buildSet {
             plan?.sessions?.forEach { session -> session.targets.distanceKm?.let(::add) }
             prescription?.targets?.distanceKm?.let(::add)
+            execution?.distanceKm?.let { add(roundToOneDecimal(it)) }
         }
 
         private fun allowedCounts(
             plan: WeeklyPlan?,
             progress: CoachProgressSummary?,
             review: WeeklyReview?,
+            execution: CoachExecution?,
             readinessScore: Int?,
         ): Set<Int> = buildSet {
             add(DAYS_IN_WEEK)
             readinessScore?.let(::add)
+            execution?.rpe?.let(::add)
             plan?.let { week ->
                 add(week.sessions.size)
                 add(week.qualityCount)
@@ -174,6 +221,7 @@ data class CoachOpenAnswer(
             context: CoachOpenContext,
             plan: WeeklyPlan?,
             prescription: DailyPrescription?,
+            execution: CoachExecution?,
             progress: CoachProgressSummary?,
             review: WeeklyReview?,
         ): String = buildString {
@@ -181,6 +229,7 @@ data class CoachOpenAnswer(
             appendLine("HOJE: ${weekday(context.today.dayOfWeek)}.")
             appendLine(weekFacts(plan, context.today))
             prescription?.let { append(prescriptionFacts(it)) }
+            execution?.let { append(executionFacts(it)) }
             context.readiness?.let { appendLine("PRONTIDÃO: ${readinessLine(it)}.") }
             context.sleepMinutes?.let { appendLine("SONO: $it min na última noite.") }
             appendLine("CHECK-IN: ${if (context.hasCheckIn) "feito" else "pendente"}.")
@@ -214,15 +263,55 @@ data class CoachOpenAnswer(
             appendLine("MOTIVO DE HOJE: ${prescription.rationale}")
         }
 
+        private fun executionFacts(execution: CoachExecution): String = buildString {
+            append("EXECUTADO: ${execution.durationMin} min")
+            execution.distanceKm?.let { append(" · ${formatDistance(it)} km") }
+            execution.rpe?.let { append(" · RPE $it") }
+            execution.evidence?.let { append(" · evidência ${it.label()}") }
+            appendLine(".")
+            val comparison = execution.comparison ?: return@buildString
+            if (comparison.kind == SessionComparisonKind.FREE_RUN) {
+                appendLine("CORRIDA LIVRE: sem sessão planejada vinculada; não há alvo para comparar.")
+            } else {
+                appendLine(
+                    "COMPARAÇÃO COM O PLANO: " +
+                        "duração ${verdictLabel(comparison.durationVerdict)}; " +
+                        "distância ${verdictLabel(comparison.distanceVerdict)}; " +
+                        "ritmo ${verdictLabel(comparison.paceVerdict)}; " +
+                        "FC ${verdictLabel(comparison.heartRateVerdict)}; " +
+                        "esforço ${verdictLabel(comparison.rpeVerdict)}.",
+                )
+            }
+        }
+
+        private fun verdictLabel(verdict: ComparisonVerdict?): String = when (verdict) {
+            ComparisonVerdict.WITHIN -> "dentro do alvo"
+            ComparisonVerdict.ABOVE -> "acima do alvo"
+            ComparisonVerdict.BELOW -> "abaixo do alvo"
+            null -> "sem alvo comparável"
+        }
+
+        private fun CompletionEvidence.label(): String = when (this) {
+            CompletionEvidence.ACTIVITY -> "atividade importada"
+            CompletionEvidence.GUIDED -> "treino guiado"
+            CompletionEvidence.MANUAL -> "registro manual"
+            CompletionEvidence.LEGACY_UNVERIFIED -> "registro legado"
+        }
+
+        private fun formatDistance(km: Double): String = "%.1f".format(java.util.Locale.US, km)
+
+        private fun roundToOneDecimal(value: Double): Double = (value * 10.0).roundToInt() / 10.0
+
         private const val DAYS_IN_WEEK = 7
 
         private const val TASK_LINE =
             "TAREFA: responder à pergunta do atleta em conversa de treinador, usando SÓ os fatos acima. " +
                 "Pode explicar conceitos de corrida e o plano em linguagem simples. " +
                 "Nunca invente número, pace, FC, carga, volume, VDOT ou ACWR; se um número não estiver " +
-                "nos fatos, não escreva. Se a resposta não estiver nos fatos, diga o que falta e indique " +
-                "Hoje, Tendências ou o check-in. Nunca prescreva treino novo, nunca troque treino, " +
-                "nunca dê diagnóstico, nutrição ou musculação. " +
+                "nos fatos, não escreva. Ritmo e FC ficam no cartão do motor: não escreva pace nem bpm " +
+                "no texto, use só a comparação qualitativa. Se a resposta não estiver nos fatos, diga o " +
+                "que falta e indique Hoje, Tendências ou o check-in. Nunca prescreva treino novo, nunca " +
+                "troque treino, nunca dê diagnóstico, nutrição ou musculação. " +
                 "Aceite só o ajuste do motor com confirmação do atleta."
 
         private fun duration(minutes: Int?): String = minutes?.let { "$it min" } ?: "sem duração fixa"

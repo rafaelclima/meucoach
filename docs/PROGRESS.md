@@ -1,6 +1,51 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 24/11/2026 (Coach: orçamento de tempo do free-answer + data no fuso do perfil)
+**Atualizado:** 25/11/2026 (Coach: dossiê de avaliação com prescrição do dia e executado)
+
+## Sessão 2026-11-25 — Coach: dossiê de avaliação com o executado
+
+**Escopo:** pedido do usuário 0 — passar ao modelo o que o motor pensou e o
+que foi executado, para a IA avaliar o treino sem inventar número. Sem schema,
+ciência, motor ou dependência nova.
+
+### Causa
+
+- O log do aparelho mostrou o modelo respondendo a “avalie meu treino” e o
+  validador barrando `28` e depois `4`: o `CoachOpenContext` não recebia o
+  executado e, com a sessão do dia já `DONE`, a prescrição usada era a do
+  **próximo** treino (sexta), não a de hoje.
+
+### Correção
+
+- **Domínio:** `CoachExecution` (duração, distância, RPE, evidência e
+  `SessionComparison`) em `CoachOpenContext`; `CoachOpenAnswer` gera
+  `EXECUTADO` e `COMPARAÇÃO COM O PLANO` com veredictos qualitativos
+  (`dentro/acima/abaixo do alvo`) e adiciona duração/distância/RPE/percentuais
+  aos allow-lists. Pace/FC continuam fora da prosa e no cartão determinístico.
+- **Fonte:** `CoachNextContext` ganhou `todayPrescription` e `todayExecution`.
+  `RoomCoachNextSource` observa a prescrição de hoje independentemente do
+  próximo treino e monta a execução a partir da atividade/execução vinculada
+  (inclui conclusão manual sem corrida).
+- **Fluxo aberto:** `answerOpenContent` usa `todayPrescription`/`todayExecution`
+  e mantém a referência determinística.
+- **Testes:** `CoachOpenAnswerTest` (fatos executados, allow-lists e ausência
+  de pace/FC em prosa), `CoachViewModelTest` (payload com prescrição e
+  executado) e `CoachSourceReactivityTest` (prescrição de hoje + execução
+  vinculada mesmo com o próximo treino em outro dia).
+
+### Gates
+
+- `./gradlew check spotlessCheck` verde.
+- `./gradlew :app:assembleDebug` verde.
+- Sem dado real no diff; sem migração; sem dependência nova.
+
+### Próximo
+
+1. Instalar o APK novo e repetir “avalie meu treino” no aparelho: deve citar
+   `28 min`, `4,1 km` e `RPE 6` sem cair em “número fora do contexto”, ou
+   usar o fallback se o modelo inventar outro número.
+2. Conferir que “o que é intervalado?” continua sem cartão de referência e
+   que explicação/revisão seguem iguais.
 
 ## Sessão 2026-11-24 — Coach: timeout do free-answer e data local
 

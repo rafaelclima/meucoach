@@ -20,8 +20,13 @@ import com.meucoach.core.data.repository.SaveActivityResult
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.coach.CoachGuardKind
+import com.meucoach.core.domain.feedback.ComparisonVerdict
+import com.meucoach.core.domain.prescription.DailyPrescription
 import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
+import com.meucoach.core.domain.prescription.PrescriptionTargets
 import com.meucoach.core.domain.prescription.SessionStatus
+import com.meucoach.core.domain.prescription.TargetKind
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import com.meucoach.core.domain.prescription.WeeklyPlanGenerator
 import com.meucoach.core.domain.prescription.WorkoutType
@@ -39,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -76,6 +82,8 @@ class CoachSourceReactivityTest {
     private lateinit var activities: ActivityRepository
     private lateinit var executions: SessionExecutionRepository
     private lateinit var raceEvents: RaceEventRepository
+    private lateinit var prescriptions: DailyPrescriptionRepository
+    private lateinit var next: CoachNextSource
     private lateinit var guards: CoachGuardsSource
     private lateinit var progress: CoachProgressSource
     private lateinit var review: CoachReviewSource
@@ -105,8 +113,10 @@ class CoachSourceReactivityTest {
         val metrics = DailyMetricsRepository(database, clock)
         val signals = TrainingSignalSource(checkIns, metrics, activities, executions)
         val coachSignals = RoomCoachSignalsSource(checkIns, metrics, activities, executions)
-        val assembler = WeeklyReviewAssembler(plans, DailyPrescriptionRepository(database, clock), signals)
+        prescriptions = DailyPrescriptionRepository(database, clock)
+        val assembler = WeeklyReviewAssembler(plans, prescriptions, signals)
         val time = FakeTimeProvider(Instant.parse("2026-11-18T12:00:00Z"), ZoneOffset.UTC)
+        next = RoomCoachNextSource(plans, prescriptions, raceEvents, profiles, coachSignals, time)
         guards = RoomCoachGuardsSource(
             profiles = profiles,
             plans = plans,
@@ -141,6 +151,34 @@ class CoachSourceReactivityTest {
     fun tearDown() {
         database.close()
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `next carrega prescricao de hoje e execucao vinculada`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        plans.saveWeek(currentPlan())
+        prescriptions.append(prescription(today))
+        val imported = activity(today)
+        val saved = activities.saveImportedActivity(imported) as SaveActivityResult.Saved
+        executions.recordActivityExecution(
+            plannedSessionId = plannedSessionId(currentMonday, today),
+            activityId = saved.id,
+            startedAt = imported.startTime,
+            durationSec = imported.durationSec,
+            distanceM = imported.distanceM,
+            rpe = 6,
+        )
+
+        val context = withTimeout(5_000) {
+            next.observeNext().first { it.todayExecution != null }
+        }
+
+        assertThat(context.todayPrescription?.prescribedDurationMin).isEqualTo(28)
+        assertThat(context.todayExecution?.durationMin).isEqualTo(30)
+        assertThat(context.todayExecution?.distanceKm).isEqualTo(5.0)
+        assertThat(context.todayExecution?.rpe).isEqualTo(6)
+        assertThat(context.todayExecution?.comparison?.durationVerdict)
+            .isEqualTo(ComparisonVerdict.WITHIN)
     }
 
     @Test
@@ -339,6 +377,25 @@ class CoachSourceReactivityTest {
         distanceM = 5_000.0,
         averageHeartRate = 150,
         averagePace = Pace.fromSecondsPerKm(360),
+    )
+
+    private fun prescription(date: LocalDate) = DailyPrescription(
+        date = date,
+        plannedSessionId = plannedSessionId(currentMonday, date),
+        plannedType = WorkoutType.EASY,
+        plannedTitle = "Fácil",
+        plannedDurationMin = 30,
+        prescribedType = WorkoutType.EASY,
+        title = "Fácil",
+        prescribedDurationMin = 28,
+        targets = PrescriptionTargets(primary = TargetKind.RPE, rpe = 4),
+        adjustment = PrescriptionAdjustment.KEEP,
+        rationale = "Dia fácil.",
+        ruleIds = listOf("R-PRESC-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        confidence = DataConfidence.HIGH,
+        engineVersion = "daily-prescription-v6",
+        inputsHash = "hash-presc",
     )
 
     private fun closedPlan() = plan(

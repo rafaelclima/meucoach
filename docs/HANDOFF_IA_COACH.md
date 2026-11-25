@@ -2,7 +2,7 @@
 
 **Atualizado:** 24/11/2026
 **Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064)
-**Próxima fatia:** redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo + orçamento do `free-answer` (MiMo+GLM em paralelo, 18 s por tentativa, 20 s total) e validação no aparelho; retomar P1-12/Ciclo 4 (§5.4)
+**Próxima fatia:** instalar o APK com o dossiê de avaliação (`todayPrescription` + `todayExecution`) e validar “avalie meu treino” no aparelho; o proxy já está com a corrida MiMo+GLM e 18 s/20 s. Depois, retomar P1-12/Ciclo 4 (§5.4)
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
 
 ---
@@ -11,7 +11,7 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: timeout do free-answer e data local"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; falta o redeploy do proxy com o `SYSTEM_FREE_ANSWER` novo e o orçamento do `free-answer` (MiMo+GLM em paralelo, 18 s por tentativa, 20 s total) e a validação no aparelho com `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: timeout do free-answer e data local"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; o proxy já tem MiMo+GLM em paralelo e 18 s/20 s. Falta instalar o APK com o dossiê de avaliação (`todayPrescription` + `todayExecution`) e validar “avalie meu treino” no aparelho com `-PcoachProxyToken=...`. Depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 

@@ -116,3 +116,30 @@ apagando a memória local; a pergunta `YOU` segue com TTL de 90 dias.
   validador, API e ViewModel entram no gate.
 - Sem migração, sem dependência nova, sem mudança de motor/ciência.
 - A memória continua sendo copy validada; a pergunta é arquivada como `YOU`.
+
+---
+
+## 5. Emenda 25/11/2026 — dossiê de avaliação com o executado
+
+O log do aparelho mostrou o modelo respondendo a “avalie meu treino” com
+números fora do dossiê (`28`, `4`) porque o `CoachOpenContext` não recebia o
+executado e, quando a sessão do dia já estava `DONE`, a prescrição usada era a
+do **próximo** treino (sexta), não a de hoje. O validador barrava com razão,
+mas o Coach não tinha fatos para avaliar.
+
+A decisão continua a mesma: o motor entrega fatos fechados e a IA só narra.
+O dossiê agora inclui:
+
+- `CoachExecution`: duração, distância, RPE, evidência de conclusão e o
+  `SessionComparison` determinístico (duração/distância/ritmo/FC/esforço com
+  veredictos `WITHIN`/`ABOVE`/`BELOW`);
+- `todayPrescription` no `CoachNextContext`, independente de o próximo
+  treino ser outro dia;
+- fatos de comparação sem os dígitos de pace/FC: o texto pode dizer “ritmo
+  dentro do alvo”, mas os números exatos continuam no cartão determinístico e
+  no Hoje.
+
+Allow-lists ganham a duração, a distância e o RPE executados e os percentuais
+de adesão da comparação. Pace/FC continuam proibidos em prosa pelo validador.
+A fonte continua local e sem GPS/arquivo bruto: só o resumo persistido da
+atividade/execução. Sem schema, sem motor, sem ciência e sem dependência nova.
