@@ -191,13 +191,17 @@ modelos sem publicar o app.
   modelo, então um prompt de avaliação podia gastar 15 s no GLM, cair no MiMo
   e responder em ~24,9 s — no limite — ou passar de 30–60 s quando o MiMo e o
   DeepSeek também falhavam. O usuário via “sem conexão” para uma resposta que
-  ainda estava a caminho. Correção: no `free-answer`, MiMo (sem raciocínio) é
-  tentado primeiro; cada tentativa tem `COACH_FREE_ANSWER_TIMEOUT_MS` (default
-  12 s) e a cadeia inteira tem `COACH_FREE_ANSWER_BUDGET_MS` (default 18 s),
-  abaixo do timeout do app. `explain`/`review` mantêm a ordem e o timeout
-  cheio. Evidência no aparelho: `D/Coach: free answer io: timeout`; o mesmo
-  payload via curl levou 24,9 s e foi servido por `mimo-v2.6-flash` depois do
-  GLM. **Exige redeploy no Dokploy.**
+  ainda estava a caminho. Correção: no `free-answer`, MiMo e GLM correm em
+  paralelo e o primeiro 2xx vence (o perdedor é cancelado); se ambos falharem,
+  DeepSeek/OpenRouter seguem sequenciais com o orçamento restante. Cada
+  tentativa tem `COACH_FREE_ANSWER_TIMEOUT_MS` (default 12 s) e a cadeia
+  inteira tem `COACH_FREE_ANSWER_BUDGET_MS` (default 20 s), abaixo do timeout
+  do app. Trade-off: cada chamada pode disparar duas requisições Go em
+  paralelo; a perdedora é cancelada no cliente, mas o provedor pode cobrá-la.
+  `explain`/`review` mantêm a ordem e o timeout cheio. Evidência no
+  aparelho: `D/Coach: free answer io: timeout`; o mesmo payload via curl levou
+  24,9 s e foi servido por `mimo-v2.6-flash` depois do GLM. **Exige redeploy
+  no Dokploy.**
 - **Correção 24/11/2026 (data do Coach usava UTC):** o `CoachViewModel`
   injetava `Clock.systemUTC()` e `LocalDate.now(clock)`; no fuso
   `America/Sao_Paulo`, depois das 21h o Coach já tratava o dia seguinte como

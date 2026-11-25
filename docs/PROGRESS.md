@@ -21,18 +21,22 @@ nova.
 
 ### Correção
 
-- **Proxy:** `free-answer` tenta `mimo-v2.6-flash` primeiro (sem raciocínio),
-  com 12 s por tentativa (`COACH_FREE_ANSWER_TIMEOUT_MS`) e orçamento total de
-  18 s (`COACH_FREE_ANSWER_BUDGET_MS`), abaixo dos 25 s do app. Tentativas
+- **Proxy:** no `free-answer`, `mimo-v2.6-flash` e `glm-5.3-flash` correm
+  em paralelo e o primeiro 2xx vence (o perdedor é cancelado); se ambos
+  falharem, DeepSeek/OpenRouter seguem sequenciais com o que restar. Cada
+  tentativa tem 12 s (`COACH_FREE_ANSWER_TIMEOUT_MS`) e a cadeia total tem
+  20 s (`COACH_FREE_ANSWER_BUDGET_MS`), abaixo dos 25 s do app. Tentativas
   usam `min(timeout por modelo, orçamento restante)` e os logs ganharam
   `elapsedMs`; `explain`/`review` mantêm a ordem e o timeout cheio.
 - **App:** `CoachViewModel` passou a receber `TimeProvider` e usa
   `currentDate()` em vez de `LocalDate.now(Clock.systemUTC())`. Depois das 21h
   em America/Sao_Paulo o Coach não trata mais o dia seguinte como hoje.
-- **Testes:** proxy (`modelsForKind`, orçamento < 25 s, ordem dos modelos e
-  `UpstreamBudgetTest` com upstream local lento) e VM (00:30 UTC = 21:30 local
+- **Testes:** proxy (`modelsForKind`, orçamento de 20 s, `UpstreamBudgetTest`
+  com upstream local lento e `FreeAnswerRaceTest` provando que o GLM rápido
+  vence o MiMo lento sem esperar o timeout) e VM (00:30 UTC = 21:30 local
   ainda resolve o treino de 24/11 e chama o `free-answer`).
-  `OpenRouterBodyTest`, `UpstreamBudgetTest` e `CoachViewModelTest` verdes.
+  `OpenRouterBodyTest`, `UpstreamBudgetTest`, `FreeAnswerRaceTest` e
+  `CoachViewModelTest` verdes.
 
 ### Gates
 
@@ -45,8 +49,9 @@ nova.
 ### Próximo
 
 1. Redeploy do proxy no Dokploy com os novos defaults e validar no aparelho
-   “avalie meu treino” (deve responder pelo MiMo ou cair no fallback em ≤18 s,
-   nunca no timeout de 25 s); conferir `elapsedMs` e o modelo servido no log.
+   “avalie meu treino” (deve responder por MiMo/GLM em paralelo ou cair no
+   fallback em ≤20 s, nunca no timeout de 25 s); conferir `elapsedMs` e o
+   modelo servido no log.
 2. Revalidar a virada de dia no Coach depois das 21h em America/Sao_Paulo.
 3. Retomar a validação do `SYSTEM_FREE_ANSWER`/consentimento v2 (sessão
    anterior) e P1-12.

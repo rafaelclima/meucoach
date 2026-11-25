@@ -39,7 +39,7 @@ class UpstreamBudgetTest {
                 chain = listOf(target),
                 kind = "free-answer",
                 payload = "{}",
-                attemptTimeoutMs = 2_000,
+                attemptCapMs = 2_000,
                 totalBudgetMs = 1_000,
             )
             val elapsedMs = (System.nanoTime() - started) / 1_000_000

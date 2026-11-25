@@ -268,6 +268,7 @@ class OpenRouterBodyTest {
 
     @Test
     fun `free answer budget returns before the app read timeout`() {
+        assertEquals(20_000, FREE_ANSWER_BUDGET_MS)
         assertTrue(FREE_ANSWER_BUDGET_MS < 25_000, "app cuts free-answer at 25 s")
         assertTrue(
             FREE_ANSWER_TIMEOUT_MS < FREE_ANSWER_BUDGET_MS,
