@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatia 1 P0 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–2 do PRD de correções)
 
 ## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
 
@@ -91,6 +91,42 @@ nenhuma migração, dependência nova ou mudança de regra científica.
 
 1. Fatia 2 — disponibilidade como teto em todos os caminhos (`ALG-01`, `ALG-07`,
    `NOVO-ALG-01`, `NOVO-ALG-02`).
+
+## Sessão 2026-11-26 — Fatia 2 do PRD de correções (disponibilidade como teto)
+
+**Escopo:** `ALG-01`, `ALG-07`, `NOVO-ALG-01`, `NOVO-ALG-02` e D1 aprovada. Sem migração,
+dependência nova ou mudança de regra científica.
+
+### Concluído
+
+- **Dias abaixo do mínimo executável:** slots com menos de 20 min são removidos do plano em
+  vez de inflar a sessão; o rationale explica a remoção. A semana sem nenhum dia executável
+  devolve plano vazio com o motivo.
+- **Longão:** só é selecionado em dia com pelo menos 30 min; abaixo disso o dia fica fácil.
+- **Qualidade e micro-dose:** só entram em dias com slot ≥25 min; `plannedDuration` usa o
+  mínimo entre disponibilidade e teto em fácil, qualidade, micro-dose e strides.
+- **Strides:** sem estrutura executável, a sessão não mantém título de estímulo; vira fácil
+  simples. Com 20 min a estrutura atual continua cabendo.
+- **`NO_PLAN`:** 1–19 min devolve `REST` com motivo e sem alvos; 20 min vira fácil de 20;
+  o teto de 60 min continua. `DailyPrescriptionEngine` não anexa RPE/Z2 a um dia de descanso.
+
+### Testes
+
+- Novo `WeeklyPlanAvailabilityTest`: E14, E18, taper com slot de 10, strides com 10 e matriz
+  níveis × agendas 1–90 min × fases (BASE/BUILD/taper).
+- `WorkoutRecommenderTest` (10/20/cap 120) e `DailyPrescriptionEngineTest` (`NO_PLAN` 10/20).
+- `:core:domain:test` verde.
+- `./gradlew check -x spotlessMiscCheck` verde (testes, `koverVerify`, lint e detekt).
+- `./gradlew spotlessKotlinCheck` verde.
+
+### Pendente
+
+- Fatias 0, 3–8 do PRD (ADRs científicos, volume, validador, UX, Story, docs e aparelho).
+- Validação manual no aparelho dos cenários de disponibilidade (Fatia 8).
+
+### Próximo
+
+1. Fatia 3 — honestidade do volume (`ALG-03` e copy de `ALG-08`).
 
 ## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
 

@@ -267,7 +267,7 @@ class WorkoutRecommenderTest {
     }
 
     @Test
-    fun `duration is clamped to a safe easy range`() {
+    fun `duration never exceeds availability and below the minimum recommends rest`() {
         val short = recommender.recommend(
             input(
                 profile = profile(availability = WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 10))),
@@ -281,8 +281,24 @@ class WorkoutRecommenderTest {
             ),
         )
 
-        assertThat(short.durationMin).isEqualTo(20)
+        assertThat(short.type).isEqualTo(WorkoutType.REST)
+        assertThat(short.durationMin).isNull()
+        assertThat(short.rationale).contains("abaixo do mínimo", "20 min")
+        assertThat(long.type).isEqualTo(WorkoutType.EASY)
         assertThat(long.durationMin).isEqualTo(60)
+    }
+
+    @Test
+    fun `twenty minutes is a valid easy day`() {
+        val recommendation = recommender.recommend(
+            input(
+                profile = profile(availability = WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 20))),
+                readiness = readiness(level = ReadinessLevel.GREEN),
+            ),
+        )
+
+        assertThat(recommendation.type).isEqualTo(WorkoutType.EASY)
+        assertThat(recommendation.durationMin).isEqualTo(20)
     }
 
     @Test

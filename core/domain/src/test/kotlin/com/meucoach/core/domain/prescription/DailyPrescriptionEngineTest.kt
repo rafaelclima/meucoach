@@ -765,6 +765,40 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
+    fun `no plan below the easy minimum returns rest with the availability reason`() {
+        val prescription = engine.prescribe(
+            input(
+                planned = null,
+                profile = profile(availability = mapOf(DayOfWeek.MONDAY to 10)),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.NO_PLAN)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.REST)
+        assertThat(prescription.prescribedDurationMin).isNull()
+        assertThat(prescription.targets.isEmpty).isTrue()
+        assertThat(prescription.rationale).contains("Sem plano", "abaixo do mínimo", "20 min")
+    }
+
+    @Test
+    fun `no plan at twenty minutes keeps a twenty minute easy day`() {
+        val prescription = engine.prescribe(
+            input(
+                planned = null,
+                profile = profile(availability = mapOf(DayOfWeek.MONDAY to 20)),
+                readiness = readiness(ReadinessLevel.GREEN),
+                load = load(acwr = 1.0),
+            ),
+        )
+
+        assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.NO_PLAN)
+        assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
+        assertThat(prescription.prescribedDurationMin).isEqualTo(20)
+    }
+
+    @Test
     fun `no plan without check-in stays conservative and asks for check-in`() {
         val prescription = engine.prescribe(
             input(

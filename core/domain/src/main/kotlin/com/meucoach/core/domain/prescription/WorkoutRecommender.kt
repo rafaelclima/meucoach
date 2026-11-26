@@ -81,19 +81,8 @@ class WorkoutRecommender {
 
         val available = input.profile.weeklyAvailability
         val minutes = available.minutesOn(input.today.dayOfWeek)
-        if (available.minutesByDay.isNotEmpty() && minutes == 0) {
-            return WorkoutRecommendation(
-                type = WorkoutType.REST,
-                title = "Descanso",
-                durationMin = null,
-                distanceKm = null,
-                pace = null,
-                heartRate = null,
-                rationale = "Hoje não há disponibilidade registrada. Descansar também é treino.",
-                ruleIds = listOf("R-DATA-01"),
-                evidenceIds = listOf("EV-SEILER-2010"),
-                confidence = DataConfidence.HIGH,
-            )
+        if (available.minutesByDay.isNotEmpty() && minutes < MIN_EASY_MIN) {
+            return availabilityRest(minutes)
         }
 
         val loadState = input.load?.dataState ?: LoadDataState.INSUFFICIENT
@@ -112,7 +101,7 @@ class WorkoutRecommender {
             readiness.level != ReadinessLevel.GREEN || noQuality || shortSleep || acwrHigh ||
                 !loadTrusted || subjectiveMissing
 
-        val duration = minutes.takeIf { it > 0 }?.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN) ?: DEFAULT_EASY_MIN
+        val duration = minutes.takeIf { it > 0 }?.coerceAtMost(MAX_EASY_MIN) ?: DEFAULT_EASY_MIN
         val availabilityMissing = available.minutesByDay.isEmpty()
         val heat = input.heatLevel == HeatLevel.HOT
         val paceTarget = easyPace(input.profile)?.let { target ->
@@ -199,6 +188,24 @@ class WorkoutRecommender {
             confidence = confidence,
         )
     }
+
+    private fun availabilityRest(minutes: Int) = WorkoutRecommendation(
+        type = WorkoutType.REST,
+        title = "Descanso",
+        durationMin = null,
+        distanceKm = null,
+        pace = null,
+        heartRate = null,
+        rationale = if (minutes == 0) {
+            "Hoje não há disponibilidade registrada. Descansar também é treino."
+        } else {
+            "Você tem $minutes min hoje, abaixo do mínimo de $MIN_EASY_MIN min para uma rodagem. " +
+                "Não vou inflar a sessão: hoje é descanso."
+        },
+        ruleIds = listOf("R-DATA-01"),
+        evidenceIds = listOf("EV-SEILER-2010"),
+        confidence = DataConfidence.HIGH,
+    )
 
     private fun restRecommendation(illness: Boolean) = WorkoutRecommendation(
         type = WorkoutType.REST,

@@ -419,23 +419,27 @@ class DailyPrescriptionEngine {
             prescribedType = recommendation.type,
             title = recommendation.title,
             prescribedDurationMin = recommendation.durationMin,
-            targets = PrescriptionTargets(
-                pace = recommendation.pace,
-                heartRate = recommendation.heartRate,
-                zone = if (recommendation.type == WorkoutType.EASY) "Z2" else null,
-                distanceKm = recommendation.distanceKm,
-                rpe = if (recommendation.heartRate == null) {
-                    PrescriptionPolicy.EASY_RPE +
-                        if (input.heatLevel == HeatLevel.HOT) PrescriptionPolicy.HEAT_RPE_STEP else 0
-                } else {
-                    null
-                },
-                primary = PrescriptionPolicy.primaryFor(
-                    recommendation.type,
-                    recommendation.pace,
-                    recommendation.heartRate,
-                ),
-            ),
+            targets = if (recommendation.type == WorkoutType.REST) {
+                PrescriptionTargets(primary = TargetKind.RPE)
+            } else {
+                PrescriptionTargets(
+                    pace = recommendation.pace,
+                    heartRate = recommendation.heartRate,
+                    zone = "Z2",
+                    distanceKm = recommendation.distanceKm,
+                    rpe = if (recommendation.heartRate == null) {
+                        PrescriptionPolicy.EASY_RPE +
+                            if (input.heatLevel == HeatLevel.HOT) PrescriptionPolicy.HEAT_RPE_STEP else 0
+                    } else {
+                        null
+                    },
+                    primary = PrescriptionPolicy.primaryFor(
+                        recommendation.type,
+                        recommendation.pace,
+                        recommendation.heartRate,
+                    ),
+                )
+            },
             adjustment = PrescriptionAdjustment.NO_PLAN,
             rationale = "Sem plano para hoje: " + recommendation.rationale +
                 " O app não inventa alvos de um treino que não foi planejado.",

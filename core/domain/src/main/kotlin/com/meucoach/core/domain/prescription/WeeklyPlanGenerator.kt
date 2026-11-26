@@ -257,32 +257,49 @@ class WeeklyPlanGenerator {
         // A prova nunca recebe sessão comum; dias após a prova na mesma semana
         // recebem só EASY curto regenerativo (decisão do usuário 0, ADR 0043
         // §3.3) — sem qualidade/longão, que continuam vetados abaixo.
-        val days = daysAfterToday.filter { day ->
+        val raceEligibleDays = daysAfterToday.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             date !in eventDates && (race == null || !race.isRaceDayOrLater(date))
         }
-        val postRaceDays = daysAfterToday.filter { day ->
+        val raceEligiblePostRaceDays = daysAfterToday.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             date !in eventDates && race != null && race.isRaceDayOrLater(date)
         }
+        // D1: a slot below the executable minimum removes the day; the plan
+        // never inflates a session to fit its floor.
+        val slotDaysSkipped = raceEligibleDays.any { availability.getValue(it) < MIN_EASY_MIN } ||
+            raceEligiblePostRaceDays.any { availability.getValue(it) < MIN_EASY_MIN }
+        val days = raceEligibleDays.filter { availability.getValue(it) >= MIN_EASY_MIN }
+        val postRaceDays = raceEligiblePostRaceDays.filter { availability.getValue(it) >= MIN_EASY_MIN }
         if (days.isEmpty() && postRaceDays.isEmpty()) {
-            val message = if (daysAfterToday.isNotEmpty() && race != null) {
-                "Não há dias de treino antes da prova nesta semana. O próximo plano começa depois do evento."
-            } else {
-                "Não há dias de treino restantes nesta semana. O próximo plano começa na segunda-feira."
+            val message = when {
+                slotDaysSkipped ->
+                    "Sua disponibilidade restante é menor que o mínimo executável de " +
+                        "$MIN_EASY_MIN min. Não inflamos a sessão; registre mais tempo em um dia " +
+                        "para voltar a treinar."
+
+                daysAfterToday.isNotEmpty() && race != null ->
+                    "Não há dias de treino antes da prova nesta semana. O próximo plano " +
+                        "começa depois do evento."
+
+                else ->
+                    "Não há dias de treino restantes nesta semana. O próximo plano começa " +
+                        "na segunda-feira."
             }
             return base.copy(rationale = message)
         }
         val dayTrimmed = daysAfterToday.size < allDays.size
-        val eventDaysSkipped = days.size < daysAfterToday.size
+        val eventDaysSkipped = raceEligibleDays.size < daysAfterToday.size
         // A recovery day is active but never receives a long run (ADR 0037).
         // ADR 0045 §2.1: highest availability, then weekend, then later day.
         // A completed long run suppresses a second one: the week keeps a
-        // single longão (ADR 0028 addendum 19/11/2026).
+        // single longão (ADR 0028 addendum 19/11/2026). A slot below the long
+        // minimum is not a long run: the day stays easy instead.
+        val longCandidateDays = days.filter { availability.getValue(it) >= MIN_LONG_MIN }
         val longDay = if (input.longAlreadyDone) {
             null
         } else {
-            selectLongDay(days, availability, recovery, weekStart)
+            selectLongDay(longCandidateDays, availability, recovery, weekStart)
         }
         val recoveryDays = days.map { weekStart.plusDays((it.value - 1).toLong()) }
             .filter { recovery?.isActive(it) == true }
@@ -344,11 +361,13 @@ class WeeklyPlanGenerator {
         }
         val qualityCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
-            (race?.allowsQuality(date) ?: true) && (recovery?.allowsQuality(date) ?: true)
+            availability.getValue(day) >= MIN_QUALITY_MIN &&
+                (race?.allowsQuality(date) ?: true) && (recovery?.allowsQuality(date) ?: true)
         }
         val microDoseCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
-            (recovery?.allowsQuality(date) ?: true) &&
+            availability.getValue(day) >= MICRO_DOSE_MIN &&
+                (recovery?.allowsQuality(date) ?: true) &&
                 race != null &&
                 race.isInTaperWindow(date) &&
                 !race.allowsQuality(date) &&
@@ -631,23 +650,46 @@ class WeeklyPlanGenerator {
                         } else {
                             null
                         } ?: easyTemplate(SessionRole.STRIDES)
+                        val structure = template?.structure?.let { source ->
+                            runCatching { source.fittedTo(duration) }.getOrNull()
+                        }
+                        // ALG-07/D1: a stimulus title without an executable
+                        // structure is not a stride session — the day becomes
+                        // a plain easy run (or is removed before reaching here).
+                        val title = if (structure != null) {
+                            template.title
+                        } else if (isRecoveryDay) {
+                            RECOVERY_TITLE
+                        } else {
+                            easyTemplate(SessionRole.EASY_RUN)?.title ?: "Rodagem"
+                        }
+                        val rationale = when {
+                            structure != null -> template.blurb
+
+                            isRecoveryDay ->
+                                "Recuperação após a prova: sessão curta e leve, sem treino forte."
+
+                            else -> "Base aeróbica conversável; sem treino forte neste dia."
+                        }
                         PlannedSession(
                             date = date,
                             type = WorkoutType.EASY,
-                            title = template?.title ?: "Acelerações curtas",
+                            title = title,
                             durationMin = duration,
-                            rationale = template?.blurb
-                                ?: "Estímulo neuromuscular curto, sem fadiga.",
-                            ruleIds = listOf("R-ZONE-01", "R-PLAN-06", "R-PER-02"),
+                            rationale = rationale,
+                            ruleIds = buildList {
+                                add("R-ZONE-01")
+                                add("R-PLAN-06")
+                                if (structure != null) add("R-PER-02")
+                                if (isRecoveryDay) add("R-RACE-04")
+                            },
                             evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
                             targets = PrescriptionPolicy.targets(
                                 type = WorkoutType.EASY,
                                 profile = input.profile,
                                 durationMin = duration,
                             ),
-                            structure = template?.structure?.let { structure ->
-                                runCatching { structure.fittedTo(duration) }.getOrNull()
-                            },
+                            structure = structure,
                         )
                     } else {
                         val duration = durationByDay.getValue(day)
@@ -809,6 +851,12 @@ class WeeklyPlanGenerator {
             }
             if (eventDaysSkipped) {
                 append("Dias de prova não recebem sessão de treino. ")
+            }
+            if (slotDaysSkipped) {
+                append(
+                    "Dias com menos de $MIN_EASY_MIN min (mínimo executável) ficam de fora: " +
+                        "não inflamos a sessão para caber. ",
+                )
             }
             if (dayTrimmed) {
                 append("Plano criado hoje: dias anteriores não entram nesta semana. ")
@@ -1235,15 +1283,15 @@ class WeeklyPlanGenerator {
             minOf(available, POST_RACE_EASY_MAX_MIN).let { if (cap != null) minOf(it, cap) else it }
         }
 
-        day in plan.qualityDays -> available.coerceIn(MIN_QUALITY_MIN, MAX_QUALITY_MIN)
+        day in plan.qualityDays -> minOf(available, MAX_QUALITY_MIN)
 
-        day in plan.microDoseDays -> MICRO_DOSE_MIN
+        day in plan.microDoseDays -> minOf(available, MICRO_DOSE_MIN)
 
         day == plan.stridesDay -> minOf(available, MICRO_DOSE_MIN)
 
         else -> {
             val cap = plan.recovery?.maxSessionMinutes(date)
-            available.coerceIn(MIN_EASY_MIN, MAX_EASY_MIN).let { if (cap != null) minOf(it, cap) else it }
+            minOf(available, MAX_EASY_MIN).let { if (cap != null) minOf(it, cap) else it }
         }
     }
 
