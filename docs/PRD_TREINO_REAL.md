@@ -567,10 +567,10 @@ qualityDays = selectQualityDays(
 
 **Aceite:**
 
-- [ ] O plano da semana tem uma oportunidade visível mesmo se a segunda estiver âmbar.
-- [ ] A oportunidade não é uma promessa; o card diz “o dia confirma”.
-- [ ] O histórico distingue oportunidade de execução.
-- [ ] Nenhuma qualidade estruturada em iniciante/taper/recovery/race week; strides/intro fartlek são `EASY`.
+- [x] O plano da semana tem uma oportunidade visível mesmo se a segunda estiver âmbar. Evidência: `StructuralQualityTest.ambers and red readiness keep the structural opportunity for the day` e `QualityPlanPropertiesTest`.
+- [x] A oportunidade não é uma promessa; o card diz “o dia confirma”. Evidência: `StructuralQualityTest` (asserta `planDecision.detail` e o rationale) e `WeeklyPlanGeneratorTest` (rationale “o dia confirma”).
+- [x] O histórico distingue oportunidade de execução. Evidência: `QualityWeekSummaryTest` e `WeeklyReviewFormatTest` (“planejada/mantida/rebaixada” + motivo), consumidos pelo card de revisão.
+- [x] Nenhuma qualidade estruturada em iniciante/taper/recovery/race week; strides/intro fartlek são `EASY`. Evidência: `QualityPlanPropertiesTest`, `QualityIntegrationTest` e `PlanQualityGoldenTest` (iniciante), mais `G-BEGINNER-TAPER-01` para o taper.
 
 ---
 
@@ -633,10 +633,10 @@ title = if (target >= floor && target >= longestOther) "Longão" else "Corrida m
 
 **Aceite:**
 
-- [ ] Nenhum “Longão” menor que o fácil mais longo.
-- [ ] O app não chama de longão uma sessão abaixo do piso; explica o limite.
-- [ ] O dia mais longo é o de maior disponibilidade; empate vai para o fim de semana.
-- [ ] O volume não é reduzido abaixo do piso por causa da regra de 25–30%.
+- [x] Nenhum “Longão” menor que o fácil mais longo. Evidência: `LongRunSizingTest` (longão continua o mais longo em 4×60) e `G-PER-04`.
+- [x] O app não chama de longão uma sessão abaixo do piso; explica o limite. Evidência: `LongRunSizingTest.three forties keep the honest title and explain the agenda limit`.
+- [x] O dia mais longo é o de maior disponibilidade; empate vai para o fim de semana. Evidência: `LongRunSizingTest` (comparator: disponibilidade > fim de semana > dia mais tarde).
+- [x] O volume não é reduzido abaixo do piso por causa da regra de 25–30%. Evidência: `LongRunSizingTest.fitToVolume keeps every session and trims the overshoot when floors allow` e `minimal week preserves the floors and declares the volume above target`.
 
 ---
 
@@ -694,10 +694,10 @@ if (maxQualities == 2) {
 
 **Aceite:**
 
-- [ ] O intermediário vê intervalado/fartlek em `BUILD`/`PEAK`.
-- [ ] O `PEAK` não é cópia do `BUILD`.
-- [ ] O iniciante continua sem intervalado estruturado; strides + intro fartlek são `EASY`.
-- [ ] O app não promete mais trabalho do que cabe na duração.
+- [x] O intermediário vê intervalado/fartlek em `BUILD`/`PEAK`. Evidência: `QualityCatalogTest`, `QualityIntegrationTest` e `G-PER-05`.
+- [x] O `PEAK` não é cópia do `BUILD`. Evidência: `PlanQualityGoldenTest.peak is race specific and differs from the frozen build`, `QualityIntegrationTest.peak is specific to the race distance and differs from build` e `G-PER-06`.
+- [x] O iniciante continua sem intervalado estruturado; strides + intro fartlek são `EASY`. Evidência: `BeginnerStridesTest`, `QualityIntegrationTest.beginner keeps the easy strides and never a structured quality` e `PlanQualityGoldenTest.beginner with the same agenda gets easy strides and no structured quality`; no taper, `G-BEGINNER-TAPER-01`.
+- [x] O app não promete mais trabalho do que cabe na duração. Evidência: `WorkoutStructureTest` (fitted structure) e `QualityPlanPropertiesTest` (estrutura cabe na duração em toda a matriz).
 
 ---
 
