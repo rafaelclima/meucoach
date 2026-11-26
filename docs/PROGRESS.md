@@ -1,6 +1,44 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3)
+
+## Sessão 2026-11-26 — Fatia de código D3 (taper pela média de 3 semanas)
+
+**Escopo:** implementação do ADR 0066 no `WeeklyPlanGenerator`: baseline própria do
+taper, alvo semanal e copy auditável. Sem UI, schema, dependência, migração ou dado real.
+
+### Concluído
+
+- **`TaperBaselineResolver`:** média das 3 semanas elegíveis antes da primeira semana de
+  taper, fallback nomeado para a maior semana forte recente e `NO_HISTORY` sem
+  percentual. Elegibilidade igual à base de volume do ADR 0050 (plano desde a segunda,
+  semana normal, `strongMinutes > 0`).
+- **Alvo semanal:** `round(baseline × fator)`, `0,55` fora dos últimos 7 dias e `0,45`
+  dentro deles, aplicado antes da distribuição; a escala por sessão só permanece em
+  semana parcialmente dentro da janela (para não cortar duas vezes).
+- **Copy:** distingue “média das 3 semanas”, “maior semana forte recente” e “sem
+  histórico”; quando os pisos impedem a faixa, declara “Semana mínima” sem prometer o
+  corte completo. A decisão de produto foi confirmada com o usuário 0 neste dia.
+- **Golden `G-TAPER-01`:** `TaperGoldenTest` cobre média (alvo 66/54), fallback (140,
+  alvo 77) e ausência de histórico (sem percentual, volume pela agenda). No cenário A,
+  a agenda de 5 × 60 min entrega a semana mínima de 115 min (qualidade 25 + 3 fáceis 20
+  + longão 30) e a copy declara o piso.
+- **Versão:** `weekly-plan-v9`; `PlanUpgrade` continua preservando passado/`DONE`/
+  `CLOSED` e reavaliando a semana vigente na abertura. `daily-prescription-v7`
+  permanece (o motor diário só consome o plano).
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (1.369 testes).
+- `./gradlew spotlessKotlinCheck` verde; `git diff --check` limpo.
+- Nenhuma mudança de UI/schema/migração/dependência.
+
+### Pendente
+
+- D4 (rampa do longão), D5 (adjacência entre semanas) e D6 (strides `EASY` no taper do
+  iniciante), com os respectivos goldens.
+- `./gradlew check -x spotlessMiscCheck`, `koverVerify` e `assembleDebug` no fechamento
+  da sessão de código.
 
 ## Sessão 2026-11-26 — Fatia 0 do PRD de correções (ADRs científicos D3–D6)
 

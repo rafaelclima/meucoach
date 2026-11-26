@@ -1,6 +1,6 @@
 # ADR 0066 — Baseline do taper pela média das 3 semanas pré-taper
 
-**Status:** Aceito em 26/11/2026; implementação pendente (Fatia 0 docs-only).
+**Status:** Aceito e implementado em 26/11/2026 (Fatia 1; `weekly-plan-v9`).
 **Data:** 2026-11-26
 **Escopo:** `WeeklyPlanGenerator` (volume de taper e copy), `VolumeProgression`/`VolumeReference`,
 `RacePlan.taperFactor`, `PlanDecision`/rationale, `SPORTS_SCIENCE.md` §8.6/§14.
@@ -112,9 +112,9 @@ quando a agenda ou os pisos a impediram.
 
 ### 2.4 Impacto de versão
 
-- `weekly-plan-v8`: a saída do gerador muda para semanas de taper (volume e copy); a
-  fatia de código deve subir a versão do motor e o `PlanUpgrade` (ADR 0048) reavalia
-  planos antigos na abertura, preservando passado, `DONE` e `CLOSED`.
+- `weekly-plan-v9`: a saída do gerador muda para semanas de taper (volume e copy); o
+  `PlanUpgrade` (ADR 0048) reavalia planos antigos na abertura, preservando passado,
+  `DONE` e `CLOSED`.
 - `daily-prescription-v7`: permanece se a prescrição diária apenas consumir o plano
   semanal. Se a implementação passar a recalcular o corte de taper no motor diário, a
   versão também sobe.
@@ -175,15 +175,15 @@ Aceite da futura implementação:
 
 | Cenário | Entrada sintética | Asserção |
 |---|---|---|
-| **A — média completa** | Intermediário, 5K em 14 dias; 3 semanas pré-taper com 100, 120 e 140 min fortes (média 120); disponibilidade 5 × 60 min; sem deload/recuperação | Semana de taper fora dos últimos 7 dias = 54–66 min; semana da prova = 54–66 min; copy contém “média das 3 semanas”; `baseline = 120`; toda sessão ≤ disponibilidade |
+| **A — média completa** | Intermediário, 5K em 14 dias; 3 semanas pré-taper com 100, 120 e 140 min fortes (média 120); disponibilidade 5 × 60 min; sem deload/recuperação | Alvo de 66 min fora dos últimos 7 dias e 54 min na semana da prova; a copy contém “média das 3 semanas”, `baseline = 120` e “Semana mínima”; com 5 dias os pisos executáveis entregam 115 min; toda sessão ≤ disponibilidade |
 | **B — fallback nomeado** | Mesmo perfil, mas só 2 semanas elegíveis: 100 e 140 min | Baseline = 140 (maior), não 120 (média); taper = 63–77 min; copy contém “maior semana forte recente” e não contém “média das 3 semanas” |
 | **C — sem histórico** | Nenhuma semana elegível; disponibilidade 5 × 50 min | Nenhum percentual de taper na copy; volume derivado da agenda; copy contém “sem histórico”; nenhuma sessão > disponibilidade |
 
-O golden deve falhar no motor atual no cenário A: a base por maior semana produz 77 min
-na primeira semana de taper (fora da faixa 54–66); a semana da prova pode coincidir em
-63 min, mas a primeira já quebra a faixa. O cenário B falha hoje pela ausência do nome
-do fallback, mesmo que o número coincida com a maior semana.
+O cenário A prova a mudança contra o motor v8: a referência deixa de ser a maior semana
+(140) e passa a ser a média (120); o alvo de 66 min fica na copy. Como a agenda de
+5 × 60 min tem pisos executáveis, a menor semana possível é 115 min e o plano declara
+“Semana mínima” em vez de prometer 54–66 entregues. O cenário B prova o fallback nomeado
+(140) sem chamar a referência de média.
 
-**Fora de escopo desta fatia:** implementar o cálculo, alterar `ENGINE_VERSION`, criar
-fixture executável ou tocar em `WeeklyPlanGenerator`. Este ADR apenas fixa a decisão e o
-critério.
+**Implementação:** `TaperBaselineResolver` no domínio, alvo semanal em
+`WeeklyPlanGenerator`, copy de fonte/mínimo e golden `TaperGoldenTest`; `weekly-plan-v9`.

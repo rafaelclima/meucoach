@@ -359,6 +359,20 @@ class WeeklyPlanGenerator {
         val taperLimitsQuality = race != null && days.any { day ->
             race.isInTaperWindow(weekStart.plusDays((day.value - 1).toLong()))
         }
+        // ADR 0066: the weekly taper target applies to a week fully inside the
+        // window. A week with only its last day in the taper keeps the normal
+        // macro dose and the taper starts on the following Monday.
+        val taperWeekActive = race != null && days.isNotEmpty() && days.all { day ->
+            race.isInTaperWindow(weekStart.plusDays((day.value - 1).toLong()))
+        }
+        // The taper has its own reference: the three eligible weeks before the
+        // first taper week, never the current progression base.
+        val taperBaseline = race?.takeIf { taperWeekActive }?.let { activeRace ->
+            TaperBaselineResolver.resolve(volumeReferences, firstTaperWeekStart(activeRace))
+        }
+        val taperFactor = race?.takeIf { taperWeekActive }?.let { activeRace ->
+            taperWeeklyFactor(activeRace, weekStart, days)
+        }
         val qualityCandidateDays = days.filter { day ->
             val date = weekStart.plusDays((day.value - 1).toLong())
             availability.getValue(day) >= MIN_QUALITY_MIN &&
@@ -755,11 +769,28 @@ class WeeklyPlanGenerator {
                 strainOk = strainOk,
             ),
         )
-        val volumeAdjusted = fitToVolume(sessions, volumeDecision.minutes, longFloor)
+        // ADR 0066: the taper target is weekly, applied before the final
+        // distribution. Scaling each session again would cut the volume twice.
+        val taperTarget = taperBaseline?.minutes?.let { baseline ->
+            (baseline * requireNotNull(taperFactor)).roundToInt()
+        }
+        val taperWithoutHistory = taperBaseline?.source == TaperBaselineSource.NO_HISTORY
+        val volumeTarget = when {
+            taperTarget != null -> taperTarget
+            taperWithoutHistory -> availabilityCeiling
+            else -> volumeDecision.minutes
+        }
+        val volumeAdjusted = fitToVolume(sessions, volumeTarget, longFloor)
         val originalDurations = volumeAdjusted.sessions.associate { it.date to it.durationMin }
         val scaled = volumeAdjusted.sessions.map { session ->
             when {
-                race != null && race.isInTaperWindow(session.date) && session.durationMin != null ->
+                // A full taper week already received the weekly target above;
+                // scaling again would cut the volume twice. A partial week (one
+                // or two days in the window) keeps the day-level taper factor.
+                !taperWeekActive &&
+                    race != null &&
+                    race.isInTaperWindow(session.date) &&
+                    session.durationMin != null ->
                     session.copy(durationMin = scaledMinutes(session, race.taperFactor(session.date)))
 
                 deload && session.durationMin != null ->
@@ -843,6 +874,17 @@ class WeeklyPlanGenerator {
                 ),
             )
             append(" ")
+            if (taperBaseline != null) {
+                append(
+                    taperRationale(
+                        baseline = taperBaseline,
+                        target = taperTarget,
+                        availabilityCeiling = availabilityCeiling,
+                        deliveredMinutes = weeklyMinutes,
+                    ),
+                )
+                append(" ")
+            }
             if (raceGoalWithoutDate) {
                 append(
                     "Sua meta é uma prova, mas está sem data: o plano não reduz o volume antes " +
@@ -1608,6 +1650,62 @@ class WeeklyPlanGenerator {
         return gap in 1..7
     }
 
+    /** Monday of the week that contains the first day of the taper window. */
+    private fun firstTaperWeekStart(race: RacePlan): LocalDate = race.targetDate
+        .minusDays(race.taperWindowDays.toLong())
+        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+
+    /** Deep cut (`0.45`) when any trainable day is inside the last seven days. */
+    private fun taperWeeklyFactor(race: RacePlan, weekStart: LocalDate, days: List<DayOfWeek>): Double {
+        val deepest = days.minOfOrNull { day ->
+            race.daysTo(weekStart.plusDays((day.value - 1).toLong()))
+        } ?: race.taperWindowDays.toLong()
+        return if (deepest <= RacePlan.DEEP_CUT_DAYS) {
+            RacePlan.DEEP_CUT_FACTOR
+        } else {
+            RacePlan.TAPER_FACTOR
+        }
+    }
+
+    /**
+     * ADR 0066 §2.3: names the real baseline source instead of always claiming
+     * an average, and never promises the band when the agenda or the
+     * per-session floors prevented it.
+     */
+    private fun taperRationale(
+        baseline: TaperBaseline,
+        target: Int?,
+        availabilityCeiling: Int,
+        deliveredMinutes: Int,
+    ): String {
+        val source = when (baseline.source) {
+            TaperBaselineSource.AVERAGE_3_WEEKS ->
+                "Taper: −45–55% sobre a média das 3 semanas anteriores " +
+                    "(${baseline.minutes} min/semana)."
+
+            TaperBaselineSource.FALLBACK_MAX_RECENT ->
+                "Sem 3 semanas completas, o corte usa a maior semana forte recente " +
+                    "(${baseline.minutes} min) como referência."
+
+            TaperBaselineSource.NO_HISTORY ->
+                "Taper sem histórico de volume: o corte percentual não é inventado; " +
+                    "o volume segue sua agenda."
+        }
+        val limit = when {
+            target == null -> ""
+
+            target > availabilityCeiling ->
+                " A agenda limita esta semana a $availabilityCeiling min."
+
+            deliveredMinutes > target ->
+                " Alvo desta semana: $target min. Semana mínima: o piso por sessão " +
+                    "impede o corte completo; o estímulo obrigatório foi mantido."
+
+            else -> " Alvo desta semana: $target min."
+        }
+        return source + limit
+    }
+
     private fun volumeRationale(
         decision: VolumeDecision,
         deliveredMinutes: Int,
@@ -1723,7 +1821,7 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v8"
+        const val ENGINE_VERSION = "weekly-plan-v9"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MICRO_DOSE_TITLE = "Acelerações curtas"

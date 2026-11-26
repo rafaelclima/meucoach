@@ -201,6 +201,49 @@ class PlanUpgradeTest {
         assertThat(upgraded.sessions.first { it.date == thursday }.type).isEqualTo(WorkoutType.QUALITY)
     }
 
+    @Test
+    fun `preserves future closed sessions`() {
+        val closedFriday = session(
+            friday,
+            WorkoutType.EASY,
+            40,
+            "Fácil de sexta",
+        ).copy(
+            status = SessionStatus.CLOSED,
+            closureReason = com.meucoach.core.domain.prescription.SessionClosureReason.ILLNESS_OR_INJURY,
+            closedAt = java.time.Instant.parse("2026-11-05T10:00:00Z"),
+        )
+        val thursday = monday.plusDays(3)
+        val current = week(
+            engineVersion = "weekly-plan-v8",
+            sessions = listOf(
+                session(monday, WorkoutType.EASY, 40, "Fácil de segunda"),
+                session(wednesday, WorkoutType.EASY, 40, "Fácil de hoje"),
+                session(thursday, WorkoutType.EASY, 30, "Fácil de quinta"),
+                closedFriday,
+                session(sunday, WorkoutType.LONG, 40, "Corrida mais longa"),
+            ),
+        )
+        val regenerated = week(
+            engineVersion = target,
+            sessions = listOf(
+                session(monday, WorkoutType.EASY, 40, "Fácil de segunda"),
+                session(wednesday, WorkoutType.EASY, 40, "Fácil de hoje"),
+                session(thursday, WorkoutType.QUALITY, 30, "Fartlek leve", kind = QualityKind.FARTLEK),
+                session(friday, WorkoutType.QUALITY, 30, "Fartlek leve", kind = QualityKind.FARTLEK),
+                session(sunday, WorkoutType.LONG, 40, "Corrida mais longa"),
+            ),
+        )
+
+        val result = PlanUpgrade.upgrade(current, regenerated, today, target, Experience.INTERMEDIATE)
+
+        assertThat(result).isInstanceOf(PlanUpgradeResult.Upgraded::class.java)
+        val upgraded = (result as PlanUpgradeResult.Upgraded).plan
+        assertThat(upgraded.sessions.first { it.date == friday }).isEqualTo(closedFriday)
+        assertThat(upgraded.sessions.first { it.date == thursday }.type).isEqualTo(WorkoutType.QUALITY)
+        assertThat(upgraded.qualityCount).isEqualTo(1)
+    }
+
     private fun week(
         engineVersion: String,
         weekStart: LocalDate = monday,

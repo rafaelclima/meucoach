@@ -36,10 +36,10 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `weekly engine version is weekly-plan-v8`() {
-        // C4-53/ADR 0048 §2.4: the treino real engine is a new persisted
-        // contract. v6 rows are upgraded by PlanUpgrade on opening.
-        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v8")
+    fun `weekly engine version is weekly-plan-v9`() {
+        // ADR 0066: the taper baseline and copy changed the weekly output.
+        // Older rows are upgraded by PlanUpgrade on opening (ADR 0048).
+        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v9")
     }
 
     @Test
@@ -479,10 +479,15 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `reduces volume during taper`() {
+    fun `reduces volume during taper when the three-week average exists`() {
         val baseProfile = profile(
             experience = Experience.BEGINNER,
             availability = mapOf(DayOfWeek.MONDAY to 40, DayOfWeek.WEDNESDAY to 40, DayOfWeek.SATURDAY to 90),
+        )
+        val references = listOf(
+            volumeReference(monday.minusWeeks(4), 100),
+            volumeReference(monday.minusWeeks(3), 120),
+            volumeReference(monday.minusWeeks(2), 140),
         )
         val baseline = generator.generate(input(profile = baseProfile, readiness = readiness(ReadinessLevel.GREEN)))
         val taper = generator.generate(
@@ -494,11 +499,12 @@ class WeeklyPlanGeneratorTest {
                     ),
                 ),
                 readiness = readiness(ReadinessLevel.GREEN),
+                volumeReferences = references,
             ),
         )
 
         assertThat(taper.weeklyMinutes).isLessThan(baseline.weeklyMinutes)
-        assertThat(taper.rationale).contains("Semana de prova")
+        assertThat(taper.rationale).contains("Semana de prova", "média das 3 semanas", "120 min")
         assertThat(taper.ruleIds).contains("R-PLAN-05")
         assertThat(taper.evidenceIds).contains("EV-BOSQUET-2007", "EV-MUJIKA-2003")
     }
@@ -1669,6 +1675,17 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.rationale).contains("limitado pela sua disponibilidade em 150 min")
     }
 
+    private fun volumeReference(weekStart: LocalDate, strongMinutes: Int) = VolumeReference(
+        weekStart = weekStart,
+        plannedMinutes = strongMinutes,
+        executedMinutes = strongMinutes,
+        strongMinutes = strongMinutes,
+        strongSessions = 4,
+        plannedSessions = 4,
+        createdOn = weekStart,
+        specialWeek = false,
+    )
+
     private fun volumeWeek(weekStart: LocalDate, durations: List<Int>): WeeklyPlan {
         val sessions = durations.mapIndexed { index, minutes ->
             PlannedSession(
@@ -1795,7 +1812,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `applies the taper factor by session date`() {
+    fun `a full taper week without history keeps the agenda dose`() {
         val profile = profile(
             experience = Experience.BEGINNER,
             availability = mapOf(
@@ -1814,8 +1831,10 @@ class WeeklyPlanGeneratorTest {
 
         val mondaySession = plan.sessions.first { it.date == monday }
         val wednesdaySession = plan.sessions.first { it.date == monday.plusDays(2) }
-        assertThat(mondaySession.durationMin).isEqualTo(22)
-        assertThat(wednesdaySession.durationMin).isEqualTo(20)
+        assertThat(mondaySession.durationMin).isEqualTo(40)
+        assertThat(wednesdaySession.durationMin).isEqualTo(40)
+        assertThat(plan.rationale).contains("Taper sem histórico")
+        assertThat(plan.rationale).doesNotContain("média das 3 semanas")
     }
 
     @Test
@@ -2007,8 +2026,12 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(marathon.sessions.first { it.date == monday }.durationMin).isEqualTo(22)
+        // ADR 0066: without a three-week baseline the taper does not invent a
+        // percentage, so the day keeps the agenda dose (40 min).
+        assertThat(marathon.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
         assertThat(tenK.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
+        assertThat(marathon.rationale).contains("Taper sem histórico")
+        assertThat(tenK.rationale).doesNotContain("Taper sem histórico")
         assertThat(marathon.ruleIds).contains("R-PLAN-05")
         assertThat(tenK.ruleIds).doesNotContain("R-PLAN-05")
     }
@@ -2066,8 +2089,8 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(legacyPlan.ruleIds).contains("R-PLAN-05")
         assertThat(eventPlan.ruleIds).doesNotContain("R-PLAN-05")
-        assertThat(eventPlan.sessions.first { it.date == monday }.durationMin)
-            .isGreaterThan(legacyPlan.sessions.first { it.date == monday }.durationMin)
+        assertThat(legacyPlan.rationale).contains("Taper sem histórico")
+        assertThat(eventPlan.rationale).doesNotContain("Taper sem histórico")
     }
 
     @Test
@@ -2228,6 +2251,7 @@ class WeeklyPlanGeneratorTest {
         eventDates: Set<LocalDate> = emptySet(),
         recovery: RecoveryWindow? = null,
         dataIncomplete: Boolean = false,
+        volumeReferences: List<VolumeReference>? = null,
     ) = WeeklyPlanInput(
         profile = profile,
         readiness = readiness,
@@ -2240,6 +2264,7 @@ class WeeklyPlanGeneratorTest {
         eventDates = eventDates,
         recovery = recovery,
         dataIncomplete = dataIncomplete,
+        volumeReferences = volumeReferences,
     )
 
     private fun readiness(
