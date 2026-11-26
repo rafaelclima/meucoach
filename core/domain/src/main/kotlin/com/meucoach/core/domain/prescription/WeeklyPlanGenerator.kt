@@ -325,6 +325,12 @@ class WeeklyPlanGenerator {
             (input.recentWeeks + listOfNotNull(input.previousWeek)).distinctBy { it.weekStart }
         val volumeReferences = input.volumeReferences
             ?: VolumeReferenceBuilder.fromPlans(combinedReferences)
+        // ADR 0067: only a beginner's long run follows the +10 min/week ramp.
+        val lastNormalLongRun = if (input.profile.experience == Experience.BEGINNER) {
+            LongRunReferenceResolver.resolve(combinedReferences, weekStart)
+        } else {
+            null
+        }
         val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
         val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
         val mesoRecoveryActive = recovery != null &&
@@ -520,12 +526,23 @@ class WeeklyPlanGenerator {
                     ),
                 )
             }
+        val longRamp = if (input.profile.experience == Experience.BEGINNER && longDay != null) {
+            longRunRamp(
+                floor = longFloor,
+                otherDurations = otherDurations.values,
+                reference = lastNormalLongRun,
+                cap = longRunCap(input.profile.experience),
+            )
+        } else {
+            null
+        }
         val longTarget = longDay?.let { day ->
             longRunTarget(
                 maxAvailable = availability.getValue(day),
                 experience = input.profile.experience,
                 otherDurations = otherDurations.values,
                 reducedByPeriodization = reducedByPeriodization,
+                ramp = longRamp,
             )
         }
         val durationByDay = otherDurations.toMutableMap().apply {
@@ -804,6 +821,7 @@ class WeeklyPlanGenerator {
             profile = input.profile,
             availability = availability,
             reducedByPeriodization = reducedByPeriodization,
+            ramp = longRamp,
         ).map { session ->
             session
                 .withQualityCopy(input.profile, race, deload, originalDurations[session.date], racePacePlan)
@@ -1364,14 +1382,42 @@ class WeeklyPlanGenerator {
         experience: Experience,
         otherDurations: Collection<Int>,
         reducedByPeriodization: Boolean,
+        ramp: LongRunRamp?,
     ): Int {
         val floor = if (reducedByPeriodization) MIN_LONG_MIN else longRunFloor(experience)
+        val candidate = longRunCandidate(floor, otherDurations)
+        val bounded = if (ramp != null) {
+            maxOf(floor, minOf(candidate, ramp.limit))
+        } else {
+            candidate
+        }
+        return minOf(maxAvailable, longRunCap(experience), bounded)
+    }
+
+    /**
+     * ADR 0067 §2.2: the desired long run before the day's availability. The
+     * ramp only limits growth; it never forces a shorter week to grow.
+     */
+    private fun longRunRamp(
+        floor: Int,
+        otherDurations: Collection<Int>,
+        reference: LongRunReference?,
+        cap: Int,
+    ): LongRunRamp {
+        val candidate = longRunCandidate(floor, otherDurations)
+        val limit = reference?.minutes?.plus(LONG_RUN_RAMP_MIN) ?: floor
+        val desired = minOf(cap, maxOf(floor, minOf(candidate, limit)))
+        return LongRunRamp(reference = reference, floor = floor, limit = limit, desired = desired)
+    }
+
+    private fun longRunCandidate(floor: Int, otherDurations: Collection<Int>): Int {
         val otherMinutes = otherDurations.sum()
         val longestOther = otherDurations.maxOrNull() ?: 0
         val shareTarget = (otherMinutes * LONG_TARGET_SHARE / (1.0 - LONG_TARGET_SHARE)).roundToInt()
-        val target = maxOf(floor, longestOther + LONG_LONGER_MARGIN, shareTarget)
-        return minOf(maxAvailable, longRunCap(experience), target)
+        return maxOf(floor, longestOther + LONG_LONGER_MARGIN, shareTarget)
     }
+
+    private data class LongRunRamp(val reference: LongRunReference?, val floor: Int, val limit: Int, val desired: Int)
 
     /**
      * Rebuilds the long-run title and copy from the final duration (ADR 0045
@@ -1387,6 +1433,7 @@ class WeeklyPlanGenerator {
         profile: AthleteProfile,
         availability: Map<DayOfWeek, Int>,
         reducedByPeriodization: Boolean,
+        ramp: LongRunRamp? = null,
     ): List<PlannedSession> {
         val long = sessions.firstOrNull { it.type == WorkoutType.LONG && it.durationMin != null }
             ?: return sessions
@@ -1397,6 +1444,9 @@ class WeeklyPlanGenerator {
         val floor = longRunFloor(profile.experience)
         val dayMax = availability[long.date.dayOfWeek] ?: duration
         val copy = when {
+            duration >= floor && duration >= longestOther && ramp != null ->
+                longRunRampCopy(duration, floor, dayMax, ramp)
+
             duration >= floor && duration >= longestOther -> LongRunCopy(
                 title = LONG_RUN_TITLE,
                 rationale = "Longão em ritmo fácil. Piso de $floor min preservado; 25–30% do " +
@@ -1448,6 +1498,36 @@ class WeeklyPlanGenerator {
                 session.copy(title = copy.title, rationale = copy.rationale, planDecision = copy.decision)
             }
         }
+    }
+
+    /**
+     * ADR 0067 §2.4: names the last normal long run and the real limit. The
+     * copy never presents a maintenance/reduction as an increase and never
+     * promises the +10 when the agenda or the floor decided otherwise.
+     */
+    private fun longRunRampCopy(duration: Int, floor: Int, dayMax: Int, ramp: LongRunRamp): LongRunCopy {
+        val reference = ramp.reference
+        val rationale = when {
+            reference == null ->
+                "Primeiro longão do ciclo: piso de $floor min."
+
+            ramp.limit < floor ->
+                "Piso de $floor min para iniciante; o último longão foi ${reference.minutes} min, " +
+                    "então o piso vence nesta volta."
+
+            duration < ramp.desired && dayMax < ramp.desired ->
+                "Agenda limita o longão a $dayMax min; o aumento de até $LONG_RUN_RAMP_MIN min " +
+                    "fica para quando houver mais tempo."
+
+            duration <= reference.minutes ->
+                "Longão de $duration min; nesta semana o volume pede ${ramp.desired} min, " +
+                    "sem aumento."
+
+            else ->
+                "Último longão de ${reference.minutes} min; nesta semana o limite é " +
+                    "${ramp.limit} min (+$LONG_RUN_RAMP_MIN min)."
+        }
+        return LongRunCopy(title = LONG_RUN_TITLE, rationale = rationale, decision = null)
     }
 
     private fun dayLabel(day: DayOfWeek): String = when (day) {
@@ -1840,6 +1920,9 @@ class WeeklyPlanGenerator {
         /** Long-run target: 28% of the final week, so the share is a target, not a ceiling. */
         private const val LONG_TARGET_SHARE = 0.28
         private const val LONG_LONGER_MARGIN = 5
+
+        /** ADR 0067: beginner long-run ramp ceiling per week. */
+        private const val LONG_RUN_RAMP_MIN = 10
         private const val LONG_FLOOR_HINT_RANGE = 15
         private const val PROGRESSION_COMPLETION = 0.80
 

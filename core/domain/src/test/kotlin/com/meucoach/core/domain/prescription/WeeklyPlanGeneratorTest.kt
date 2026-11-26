@@ -1035,9 +1035,10 @@ class WeeklyPlanGeneratorTest {
         )
 
         // Segunda é strides (EASY, 25 min): base 110 com piso de 45 (ADR 0045);
-        // descarga de 25%: segunda 20 (piso), fácil 30 e longão 34 (45 × 0,75).
+        // sem longão normal de referência, o primeiro longão da descarga usa o
+        // piso reduzido de 30 (ADR 0067) e a semana fica em 80 min.
         assertThat(baseline.weeklyMinutes).isEqualTo(110)
-        assertThat(deload.weeklyMinutes).isEqualTo(84)
+        assertThat(deload.weeklyMinutes).isEqualTo(80)
         assertThat(deload.rationale).contains("Semana de descarga após 3 semanas", "−25%", "Fase BASE")
         assertThat(deload.ruleIds).contains("R-PLAN-04")
         assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
@@ -1812,7 +1813,7 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `a full taper week without history keeps the agenda dose`() {
+    fun `a full taper week without history keeps the reduced floor`() {
         val profile = profile(
             experience = Experience.BEGINNER,
             availability = mapOf(
@@ -1831,8 +1832,8 @@ class WeeklyPlanGeneratorTest {
 
         val mondaySession = plan.sessions.first { it.date == monday }
         val wednesdaySession = plan.sessions.first { it.date == monday.plusDays(2) }
-        assertThat(mondaySession.durationMin).isEqualTo(40)
-        assertThat(wednesdaySession.durationMin).isEqualTo(40)
+        assertThat(mondaySession.durationMin).isEqualTo(30)
+        assertThat(wednesdaySession.durationMin).isEqualTo(30)
         assertThat(plan.rationale).contains("Taper sem histórico")
         assertThat(plan.rationale).doesNotContain("média das 3 semanas")
     }
@@ -2027,8 +2028,9 @@ class WeeklyPlanGeneratorTest {
         )
 
         // ADR 0066: without a three-week baseline the taper does not invent a
-        // percentage, so the day keeps the agenda dose (40 min).
-        assertThat(marathon.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
+        // percentage; ADR 0067 keeps the first long run at the reduced floor
+        // (30 min), which also caps the other sessions.
+        assertThat(marathon.sessions.first { it.date == monday }.durationMin).isEqualTo(30)
         assertThat(tenK.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
         assertThat(marathon.rationale).contains("Taper sem histórico")
         assertThat(tenK.rationale).doesNotContain("Taper sem histórico")

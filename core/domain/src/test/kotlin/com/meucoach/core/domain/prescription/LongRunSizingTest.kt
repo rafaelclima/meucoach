@@ -253,11 +253,13 @@ class LongRunSizingTest {
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
         assertThat(plan.ruleIds).contains("R-PLAN-04")
-        assertThat(longRun.durationMin).isEqualTo(34)
+        // ADR 0067: without a normal long-run reference the first long run is
+        // the floor; the deload reduces that floor to 30.
+        assertThat(longRun.durationMin).isEqualTo(30)
         assertThat(longRun.title).isEqualTo("Corrida mais longa")
         // The limit is the deload, not the agenda: no agenda hint is recorded.
         assertThat(longRun.planDecision).isNull()
-        assertThat(plan.weeklyMinutes).isEqualTo(84)
+        assertThat(plan.weeklyMinutes).isEqualTo(80)
     }
 
     private fun plan(

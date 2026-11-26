@@ -1,6 +1,42 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3–D4)
+
+## Sessão 2026-11-26 — Fatia de código D4 (rampa do longão do iniciante)
+
+**Escopo:** implementação do ADR 0067 no `WeeklyPlanGenerator`: referência do último
+longão normal, teto de +10 min/semana, piso/agenda e copy honesta. Sem UI, schema,
+dependência, migração ou dado real.
+
+### Concluído
+
+- **`LongRunReferenceResolver`:** longão mais recente de semana normal na janela de 4
+  semanas; duração real forte (`ACTIVITY`/`GUIDED`) vence a planejada; semanas
+  deload/taper/prova/recuperação e encerramentos não treináveis ficam fora; sem
+  referência, o primeiro longão é o piso.
+- **Fórmula:** `alvo = min(disponibilidade, teto do nível, max(piso, min(candidato,
+  último + 10)))`; o piso vence quando o +10 não o alcança; agenda abaixo do alvo fica
+  no teto disponível e não promete aumento.
+- **Copy:** nomeia o último longão e o limite de +10, a agenda limitando, a exceção do
+  piso ou o primeiro longão; manutenção/redução nunca é chamada de aumento.
+- **Golden `G-LONG-RUN-RAMP-01`:** `LongRunRampGoldenTest` A–D (45 → 55 com agenda 90;
+  agenda 50; sem referência → 45; último 30 → 45 com exceção). Nenhuma sessão excede a
+  agenda. `LongRunReferenceTest` cobre real × planejado, semana especial e janela.
+- **Versão:** `weekly-plan-v9`; `PlanUpgrade` segue preservando passado/`DONE`/`CLOSED`.
+  `daily-prescription-v7` permanece.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (1.379 testes).
+- `./gradlew spotlessKotlinCheck` verde; `git diff --check` limpo.
+- Nenhuma mudança de UI/schema/migração/dependência.
+
+### Pendente
+
+- D5 (adjacência entre semanas) e D6 (strides `EASY` no taper do iniciante), com os
+  respectivos goldens.
+- `./gradlew check -x spotlessMiscCheck`, `koverVerify` e `assembleDebug` no fechamento
+  da sessão de código.
 
 ## Sessão 2026-11-26 — Fatia de código D3 (taper pela média de 3 semanas)
 

@@ -1,6 +1,6 @@
 # ADR 0067 — Rampa do longão do iniciante (+10 min/semana)
 
-**Status:** Aceito em 26/11/2026; implementação pendente (Fatia 0 docs-only).
+**Status:** Aceito e implementado em 26/11/2026 (Fatia 2; `weekly-plan-v9`).
 **Data:** 2026-11-26
 **Escopo:** `WeeklyPlanGenerator.longRunTarget`/`applyLongRunHonesty`, referência do último
 longão no input do gerador, `PlanDecision`/rationale, `SPORTS_SCIENCE.md` §8.5/§8.8/§14.
@@ -105,9 +105,8 @@ A copy deve declarar a referência e o limite, sem números inventados:
 
 ### 2.5 Impacto de versão
 
-- `weekly-plan-v8`: a saída muda para longões de iniciante; a fatia de código deve subir
-  a versão do motor e o `PlanUpgrade` (ADR 0048) reavalia planos antigos na abertura,
-  preservando passado, `DONE` e `CLOSED`.
+- `weekly-plan-v9`: a saída muda para longões de iniciante; o `PlanUpgrade` (ADR 0048)
+  reavalia planos antigos na abertura, preservando passado, `DONE` e `CLOSED`.
 - `daily-prescription-v7`: permanece se o motor diário apenas consumir o plano. Se o
   fallback diário sem plano passar a aplicar a rampa, a versão também sobe; hoje ele não
   conhece o último longão e não deve inventar um.
@@ -176,10 +175,11 @@ Aceite da futura implementação:
 | **C — sem referência** | Iniciante sem longão normal anterior; agenda 90 min | Longão = 45 min; copy contém “primeiro longão” ou “piso de 45”; nenhuma sessão >90 |
 | **D — piso vence** | Último longão normal 30 min (agenda curta anterior), agenda 90 min | Longão = 45 min; copy nomeia o piso e a exceção ao +10; nenhuma sessão >90 |
 
-O cenário A deve falhar no motor atual (o alvo por 28%/margem pode chegar a 62–69 min)
-e passar depois da rampa. Os cenários B–D provam as decisões de borda e a honestidade da
-copy; não congelam um valor publicado da auditoria.
+O cenário A falha no motor v8 (o alvo por 28%/margem pode chegar a 62–69 min) e passa
+depois da rampa. Os cenários B–D provam as decisões de borda e a honestidade da copy;
+não congelam um valor publicado da auditoria.
 
-**Fora de escopo desta fatia:** implementar a referência, alterar `longRunTarget`,
-mudar `ENGINE_VERSION` ou criar fixture executável. Este ADR apenas fixa a decisão e o
-critério.
+**Implementação:** `LongRunReferenceResolver` (real forte > planejado, janela de 4
+semanas, semanas especiais e encerramentos não treináveis fora), `longRunRamp` no
+`WeeklyPlanGenerator`, copy de rampa/agenda/piso e golden `LongRunRampGoldenTest`;
+`weekly-plan-v9`.
