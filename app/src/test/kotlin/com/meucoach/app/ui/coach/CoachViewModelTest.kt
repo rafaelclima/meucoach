@@ -322,6 +322,28 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `explain rejects an unauthorized percentage`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "Você fez 85% do volume.")))
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Fallback::class.java)
+        assertThat(memory.observeTurns().first()).isEmpty()
+    }
+
+    @Test
+    fun `explain accepts the session count from the plan`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val vm = viewModel(
+            FakeCoachApi(CoachRawResponse(title = "T", body = "Você tem 1 treino de 30 min nesta semana.")),
+        )
+
+        assertThat(awaitSettled(vm)).isInstanceOf(CoachExplanationState.Ready::class.java)
+        assertThat(memory.observeTurns().first()).hasSize(1)
+    }
+
+    @Test
     fun `falha de rede vira Fallback`() {
         consent.grant()
         plans.value = CoachPlanContext(plan(), "hash1")

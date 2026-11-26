@@ -121,9 +121,11 @@ object CoachResponseValidator {
             .map { phrase -> phrase to Regex(Regex.escape(phrase)) }
 
     /**
-     * [allowedPercents] enables the share check used by the weekly review: when
-     * the caller supplies the computed shares, any other percentage is an
-     * invention. `null` keeps the explain behaviour unchanged.
+     * [allowed] carries the typed facts the caller computed: minutes,
+     * percentages, distances, counts and decimals. An empty category means no
+     * number of that kind exists in the dossier; it is never an unchecked
+     * wildcard (COACH-10/U-1). The explain and review paths pass explicit sets;
+     * the free-answer path adds its own distances and counts.
      *
      * [forbiddenCodes] bars the prompt's internal codes (observation kinds and
      * rule ids, e.g. `INTENSITY_ABOVE_EASY_TARGET`, `R-REVIEW-01`): the UI
@@ -133,8 +135,7 @@ object CoachResponseValidator {
      */
     fun validate(
         raw: CoachRawResponse,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>? = null,
+        allowed: CoachNumberAllowList,
         forbiddenCodes: Set<String> = emptySet(),
     ): CoachValidationResult {
         if (raw.title.isBlank() || raw.body.isBlank()) {
@@ -149,7 +150,7 @@ object CoachResponseValidator {
                 raw.body,
             ) + raw.bullets + listOfNotNull(raw.suggestedAction)
             ).joinToString("\n")
-        val reason = invalidReason(combined, allowedMinutes, allowedPercents, forbiddenCodes)
+        val reason = invalidReason(combined, allowed, forbiddenCodes)
         if (reason != null) return CoachValidationResult.Invalid(reason)
         return CoachValidationResult.Valid(
             CoachResponse(
@@ -168,132 +169,59 @@ object CoachResponseValidator {
      * current facts. A prescription verb dies with an uncovered number
      * ("faça 6 repetições") or a structural change ("troque por descanso"),
      * never for citing a planned duration ("os 40 min"). Medical/scope lexicon
-     * and memory promises are `Invalid`. The legacy `validate` path is
-     * untouched.
+     * and memory promises are `Invalid`. Both paths share the same typed
+     * number allow-list; free-answer only adds its structural/medical rules.
      */
     fun validateFreeAnswer(
         raw: CoachRawResponse,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>,
-        allowedDistancesKm: Set<Double>,
+        allowed: CoachNumberAllowList,
         forbiddenCodes: Set<String> = emptySet(),
-        allowedCounts: Set<Int> = emptySet(),
     ): CoachValidationResult {
-        val base = validate(raw, allowedMinutes, allowedPercents, forbiddenCodes)
+        val base = validate(raw, allowed, forbiddenCodes)
         if (base is CoachValidationResult.Invalid) return base
         val normalized = normalizedKeywordForm(
             (listOf(raw.title, raw.body) + raw.bullets + listOfNotNull(raw.suggestedAction)).joinToString("\n"),
         )
-        val reason = freeAnswerReason(
-            normalized,
-            allowedMinutes,
-            allowedPercents,
-            allowedDistancesKm,
-            allowedCounts,
-        ) ?: return base
+        val reason = freeAnswerReason(normalized) ?: return base
         return CoachValidationResult.Invalid(reason)
     }
 
-    private fun freeAnswerReason(
-        normalized: String,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>,
-        allowedDistancesKm: Set<Double>,
-        allowedCounts: Set<Int>,
-    ): String? {
-        val inventedDistance = CoachNumberPatterns.distanceKm.findAll(normalized)
-            .map { it.groupValues[1].replace(',', '.').toDouble() }
-            .firstOrNull { candidate -> allowedDistancesKm.none { abs(it - candidate) < 1e-6 } }
+    private fun freeAnswerReason(normalized: String): String? {
         val prescribes = prescriptionVerbs.any { (_, pattern) -> pattern.containsMatchIn(normalized) } &&
             (
                 structuralTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) } ||
-                    hasUncoveredNumber(normalized, allowedMinutes, allowedPercents, allowedDistancesKm)
+                    hasPrescriptionNumber(normalized)
                 )
         val outOfScope = medicalTokens.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
         val memoryPromise = memoryPromises.any { (_, pattern) -> pattern.containsMatchIn(normalized) }
-        val inventedCount = if (allowedCounts.isEmpty()) {
-            null
-        } else {
-            uncoveredCount(normalized, allowedMinutes, allowedPercents, allowedDistancesKm, allowedCounts)
-        }
         return when {
-            inventedDistance != null -> "Resposta contém distância fora do plano: $inventedDistance km"
-            prescribes -> "Resposta sugere treino novo — ajuste só com sua confirmação"
             outOfScope -> "Resposta fora do escopo do Coach"
+            prescribes -> "Resposta sugere treino novo — ajuste só com sua confirmação"
             memoryPromise -> "Resposta promete memória que o Coach não tem"
-            inventedCount != null -> "Resposta contém número fora do contexto: $inventedCount"
             else -> null
         }
     }
 
     /**
-     * Any bare digit the answer cites must exist in the deterministic facts.
-     * Units (minutes, percents, distances) have their own stricter sets; this
-     * catches invented counts like "9 treinos" or "12 semanas".
+     * Any bare digit next to a prescription verb is a dose the model invented:
+     * the unit ("40 min") is the minimum needed, and only when the motor
+     * planned it. Typed tokens (minutes, percents, distances) never count as a
+     * bare dose; an allowed count still cannot authorize "faça 6 repetições".
      */
-    private fun uncoveredCount(
-        normalized: String,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>,
-        allowedDistancesKm: Set<Double>,
-        allowedCounts: Set<Int>,
-    ): Int? {
-        val covered = buildList {
-            CoachNumberPatterns.minutes.findAll(normalized).forEach { match ->
-                if (match.groupValues[1].toInt() in allowedMinutes) add(match.range)
-            }
-            CoachNumberPatterns.percent.findAll(normalized).forEach { match ->
-                if (match.groupValues[1].toInt() in allowedPercents) add(match.range)
-            }
-            CoachNumberPatterns.distanceKm.findAll(normalized).forEach { match ->
-                val value = match.groupValues[1].replace(',', '.').toDouble()
-                if (allowedDistancesKm.any { abs(it - value) < 1e-6 }) add(match.range)
-            }
-        }
-        return CoachNumberPatterns.bareNumber.findAll(normalized)
-            .filter { match -> covered.none { span -> match.range.first in span && match.range.last in span } }
-            .mapNotNull { match ->
-                val raw = match.value.replace(',', '.')
-                raw.toDoubleOrNull()?.takeIf { it == it.toInt().toDouble() }?.toInt()
-            }
-            .firstOrNull { it !in allowedCounts }
-    }
-
-    /**
-     * Any digit the answer may not cite: numbers with a unit must be covered
-     * by the allowed sets, and bare digits next to a prescription verb never
-     * pass — the model must write the unit ("40 min"), and even then only
-     * when the motor planned it.
-     */
-    private fun hasUncoveredNumber(
-        normalized: String,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>,
-        allowedDistancesKm: Set<Double>,
-    ): Boolean {
-        val covered = buildList {
-            CoachNumberPatterns.minutes.findAll(normalized).forEach { match ->
-                if (match.groupValues[1].toInt() in allowedMinutes) add(match.range)
-            }
-            CoachNumberPatterns.percent.findAll(normalized).forEach { match ->
-                if (match.groupValues[1].toInt() in allowedPercents) add(match.range)
-            }
-            CoachNumberPatterns.distanceKm.findAll(normalized).forEach { match ->
-                val value = match.groupValues[1].replace(',', '.').toDouble()
-                if (allowedDistancesKm.any { abs(it - value) < 1e-6 }) add(match.range)
-            }
-        }
+    private fun hasPrescriptionNumber(normalized: String): Boolean {
+        val typed = typedRanges(normalized)
         return CoachNumberPatterns.bareNumber.findAll(normalized).any { match ->
-            covered.none { span -> match.range.first in span && match.range.last in span }
+            typed.none { span -> match.range.first in span && match.range.last in span }
         }
     }
 
-    private fun invalidReason(
-        combined: String,
-        allowedMinutes: Set<Int>,
-        allowedPercents: Set<Int>?,
-        forbiddenCodes: Set<String>,
-    ): String? {
+    private fun typedRanges(text: String): List<IntRange> = buildList {
+        CoachNumberPatterns.minutes.findAll(text).forEach { add(it.range) }
+        CoachNumberPatterns.percent.findAll(text).forEach { add(it.range) }
+        CoachNumberPatterns.distanceKm.findAll(text).forEach { add(it.range) }
+    }
+
+    private fun invalidReason(combined: String, allowed: CoachNumberAllowList, forbiddenCodes: Set<String>): String? {
         val forbidden = forbiddenTokens
             .firstOrNull { (_, pattern) -> pattern.containsMatchIn(combined) }
             ?.first
@@ -301,12 +229,14 @@ object CoachResponseValidator {
             ?: forbiddenCodes.firstOrNull { it.lowercase() in combined.lowercase() }
         val inventedMinutes = CoachNumberPatterns.minutes.findAll(combined)
             .map { it.groupValues[1].toInt() }
-            .firstOrNull { it !in allowedMinutes }
-        val inventedPercent = allowedPercents?.let { allowed ->
-            CoachNumberPatterns.percent.findAll(combined)
-                .map { it.groupValues[1].toInt() }
-                .firstOrNull { it !in allowed }
-        }
+            .firstOrNull { it !in allowed.minutes }
+        val inventedPercent = CoachNumberPatterns.percent.findAll(combined)
+            .map { it.groupValues[1].toInt() }
+            .firstOrNull { it !in allowed.percents }
+        val inventedDistance = CoachNumberPatterns.distanceKm.findAll(combined)
+            .map { it.groupValues[1].replace(',', '.').toDouble() }
+            .firstOrNull { candidate -> allowed.distancesKm.none { abs(it - candidate) < 1e-6 } }
+        val uncoveredNumber = uncoveredBareNumber(combined, allowed)
         return when {
             pacePattern.containsMatchIn(combined) ->
                 "Resposta contém pace, que só o motor pode prescrever"
@@ -322,7 +252,40 @@ object CoachResponseValidator {
 
             inventedPercent != null -> "Resposta contém porcentagem não calculada: $inventedPercent%"
 
+            inventedDistance != null ->
+                "Resposta contém distância fora do plano: ${formatNumber(inventedDistance)} km"
+
+            uncoveredNumber != null -> "Resposta contém número fora do contexto: $uncoveredNumber"
+
             else -> null
         }
+    }
+
+    /**
+     * Any bare number the answer cites must be an allowed count (integer) or
+     * an allowed decimal. Numbers that belong to a typed token (minutes,
+     * percent, distance) are already checked by their own category.
+     */
+    private fun uncoveredBareNumber(text: String, allowed: CoachNumberAllowList): String? {
+        val typed = typedRanges(text)
+        return CoachNumberPatterns.bareNumber.findAll(text)
+            .filterNot { match -> typed.any { span -> match.range.first in span && match.range.last in span } }
+            .mapNotNull { match ->
+                val value = match.value.replace(',', '.').toDoubleOrNull() ?: return@mapNotNull null
+                if (value == value.toInt().toDouble()) {
+                    value.toInt().takeIf { it !in allowed.counts }?.toString()
+                } else {
+                    match.value.takeUnless { candidate ->
+                        allowed.decimals.any { abs(it - value) < 1e-6 }
+                    }
+                }
+            }
+            .firstOrNull()
+    }
+
+    private fun formatNumber(value: Double): String = if (value == value.toInt().toDouble()) {
+        value.toInt().toString()
+    } else {
+        value.toString().replace('.', ',')
     }
 }

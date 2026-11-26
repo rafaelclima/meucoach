@@ -22,6 +22,7 @@ import com.meucoach.core.domain.coach.ChatTurns
 import com.meucoach.core.domain.coach.CoachFreeAnswerPrompt
 import com.meucoach.core.domain.coach.CoachMessageKind
 import com.meucoach.core.domain.coach.CoachNextSubject
+import com.meucoach.core.domain.coach.CoachNumberAllowList
 import com.meucoach.core.domain.coach.CoachProgress
 import com.meucoach.core.domain.coach.CoachProgressAnswer
 import com.meucoach.core.domain.coach.CoachProgressSummary
@@ -321,7 +322,11 @@ class CoachViewModel @Inject constructor(
                         listOfNotNull(prompt.executedMinutes)
                     val validated = CoachResponseValidator.validate(
                         raw,
-                        allowed,
+                        allowed = CoachNumberAllowList(
+                            minutes = allowed,
+                            percents = CoachPromptBuilder.allowedPercents(prompt),
+                            counts = CoachPromptBuilder.allowedCounts(prompt),
+                        ),
                         forbiddenCodes = prompt.ruleIds.toSet(),
                     )
                     when (validated) {
@@ -391,8 +396,11 @@ class CoachViewModel @Inject constructor(
                     if (!_consented.value) return@collect
                     val validated = CoachResponseValidator.validate(
                         raw = raw,
-                        allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
-                        allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
+                        allowed = CoachNumberAllowList(
+                            minutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
+                            percents = CoachReviewPromptBuilder.allowedPercents(prompt),
+                            counts = CoachReviewPromptBuilder.allowedCounts(prompt),
+                        ),
                         forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
                     )
                     when (validated) {
@@ -750,7 +758,7 @@ class CoachViewModel @Inject constructor(
                 contextHash = prompt.inputsHash,
                 allowedMinutes = CoachReviewPromptBuilder.allowedMinutes(prompt),
                 allowedPercents = CoachReviewPromptBuilder.allowedPercents(prompt),
-                allowedCounts = reviewCounts(prompt),
+                allowedCounts = CoachReviewPromptBuilder.allowedCounts(prompt),
                 allowedDistancesKm = emptySet(),
                 forbiddenCodes = (prompt.observations + prompt.ruleIds).toSet(),
                 engineContext = reviewLine(prompt),
@@ -788,10 +796,12 @@ class CoachViewModel @Inject constructor(
             if (!_consented.value) return
             val validated = CoachResponseValidator.validateFreeAnswer(
                 raw = raw,
-                allowedMinutes = allowedMinutes,
-                allowedPercents = allowedPercents,
-                allowedDistancesKm = allowedDistancesKm,
-                allowedCounts = allowedCounts,
+                allowed = CoachNumberAllowList(
+                    minutes = allowedMinutes,
+                    percents = allowedPercents,
+                    distancesKm = allowedDistancesKm,
+                    counts = allowedCounts,
+                ),
                 forbiddenCodes = forbiddenCodes,
             )
             when (validated) {
@@ -1153,33 +1163,6 @@ private fun planCounts(plan: WeeklyPlan): Set<Int> = buildSet {
 }
 
 private fun sessionCounts(plan: WeeklyPlan): Set<Int> = planCounts(plan)
-
-private fun reviewCounts(prompt: CoachReviewPrompt): Set<Int> = buildSet {
-    add(DAYS_IN_WEEK)
-    prompt.adherence?.let {
-        add(it.planned)
-        add(it.done)
-        add(it.verified)
-        add(it.manual)
-        add(it.legacy)
-        add(it.skipped)
-        it.percent?.let(::add)
-    }
-    prompt.quality?.let {
-        add(it.planned)
-        add(it.kept)
-        add(it.downgraded)
-    }
-    prompt.readiness?.let {
-        add(it.measuredDays)
-        add(it.redDays)
-    }
-    prompt.sleep?.let {
-        add(it.measuredNights)
-        add(it.shortNights)
-    }
-    prompt.intensity?.let { add(it.sessions) }
-}
 
 private fun progressCounts(summary: CoachProgressSummary): Set<Int> = buildSet {
     add(DAYS_IN_WEEK)

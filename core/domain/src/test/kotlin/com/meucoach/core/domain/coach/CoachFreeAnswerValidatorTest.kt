@@ -12,12 +12,16 @@ class CoachFreeAnswerValidatorTest {
         body: String,
         allowedDistancesKm: Set<Double> = distances,
         allowedCounts: Set<Int> = emptySet(),
+        allowedDecimals: Set<Double> = emptySet(),
     ) = CoachResponseValidator.validateFreeAnswer(
         raw = CoachRawResponse(title = "Sobre a semana", body = body),
-        allowedMinutes = minutes,
-        allowedPercents = percents,
-        allowedDistancesKm = allowedDistancesKm,
-        allowedCounts = allowedCounts,
+        allowed = CoachNumberAllowList(
+            minutes = minutes,
+            percents = percents,
+            distancesKm = allowedDistancesKm,
+            counts = allowedCounts,
+            decimals = allowedDecimals,
+        ),
     )
 
     @Test
@@ -167,6 +171,22 @@ class CoachFreeAnswerValidatorTest {
     }
 
     @Test
+    fun `barra decimal sem unidade nao autorizado`() {
+        val result = freeAnswer("Você fez 12,5 unidades.", allowedCounts = setOf(3, 4))
+        assertTrue(result is CoachValidationResult.Invalid)
+    }
+
+    @Test
+    fun `aceita decimal autorizado`() {
+        val result = freeAnswer(
+            "Você fez 12,5 unidades.",
+            allowedCounts = setOf(3, 4),
+            allowedDecimals = setOf(12.5),
+        )
+        assertTrue(result is CoachValidationResult.Valid)
+    }
+
+    @Test
     fun `barra numero de data que nao esta nos fatos`() {
         val result = freeAnswer("Na semana de 16/11 você correu bem.", allowedCounts = setOf(3, 4))
         assertTrue(result is CoachValidationResult.Invalid)
@@ -176,7 +196,7 @@ class CoachFreeAnswerValidatorTest {
     fun `caminho legado nao barra sintoma`() {
         val result = CoachResponseValidator.validate(
             raw = CoachRawResponse(title = "Semana", body = "Se a dor persistir, fale com o Hoje"),
-            allowedMinutes = minutes,
+            allowed = CoachNumberAllowList(minutes = minutes),
         )
         assertTrue(result is CoachValidationResult.Valid)
     }

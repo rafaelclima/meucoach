@@ -3,6 +3,7 @@ package com.meucoach.core.domain.coach
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.WeeklyPlan
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 data class CoachSessionSummary(val date: String, val type: String, val durationMin: Int?, val status: String)
 
@@ -43,6 +44,22 @@ object CoachPromptBuilder {
             confidence = plan.confidence.name,
         )
     }
+
+    /**
+     * Counts the explain narrative may quote: total sessions and the
+     * per-type/per-status counts that exist in the weekly prompt. Nothing else
+     * is a computed count (COACH-10/U-1).
+     */
+    fun allowedCounts(prompt: CoachPrompt): Set<Int> = buildSet {
+        add(prompt.sessions.size)
+        prompt.sessions.groupingBy { it.type }.eachCount().values.forEach(::add)
+        prompt.sessions.groupingBy { it.status }.eachCount().values.forEach(::add)
+    }
+
+    /** Share the explain narrative may quote, only when the prompt carries it. */
+    fun allowedPercents(prompt: CoachPrompt): Set<Int> = setOfNotNull(
+        prompt.adherenceRatio?.let { ratio -> (ratio * 100).roundToInt() },
+    )
 
     private fun PlannedSession.toSummary(): CoachSessionSummary = CoachSessionSummary(
         date = date.format(dateFormat),

@@ -132,6 +132,38 @@ object CoachReviewPromptBuilder {
         prompt.intensity?.easyPercent?.let(::add)
     }
 
+    /**
+     * Counts the review narrative may quote. Percentages stay in
+     * [allowedPercents]; they are never accepted as bare counts (U-1/U-2).
+     */
+    fun allowedCounts(prompt: CoachReviewPrompt): Set<Int> = buildSet {
+        add(DAYS_IN_WEEK)
+        prompt.adherence?.let {
+            add(it.planned)
+            add(it.done)
+            add(it.verified)
+            add(it.manual)
+            add(it.legacy)
+            add(it.skipped)
+        }
+        prompt.quality?.let {
+            add(it.planned)
+            add(it.kept)
+            add(it.downgraded)
+        }
+        prompt.readiness?.let {
+            add(it.measuredDays)
+            add(it.redDays)
+        }
+        prompt.sleep?.let {
+            add(it.measuredNights)
+            add(it.shortNights)
+        }
+        prompt.intensity?.let { add(it.sessions) }
+    }
+
+    private const val DAYS_IN_WEEK = 7
+
     private fun fingerprint(prompt: CoachReviewPrompt): String = listOf(
         SCHEMA,
         prompt.locale,

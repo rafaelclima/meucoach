@@ -41,6 +41,9 @@ object CoachFallbackLabels {
             "número fora do contexto" in normalized ->
                 "Citei um número que não confere com seus dados. Desconsidera — me pergunta de novo."
 
+            "distância fora do plano" in normalized ->
+                "Citei uma distância que não tá no plano. Desconsidera — me pergunta de novo."
+
             "escopo do coach" in normalized ->
                 "Essa eu não respondo: não diagnostico nem digo se é seguro treinar com dor, " +
                     "lesão ou condição de saúde. Registre no check-in do Hoje e procure avaliação profissional."

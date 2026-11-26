@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–3 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–4 do PRD de correções)
 
 ## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
 
@@ -164,6 +164,48 @@ de regra científica.
 ### Próximo
 
 1. Fatia 4 — validador numérico explain/review (`COACH-10`, `U-1`, `U-3`).
+
+## Sessão 2026-11-26 — Fatia 4 do PRD de correções (allow-list numérica)
+
+**Escopo:** `COACH-10`, `U-1` e `U-3`. Sem migração, dependência nova ou mudança no motor de
+treino.
+
+### Concluído
+
+- **`CoachNumberAllowList`:** minutos, percentuais, distâncias, contagens e decimais são
+  categorias independentes; conjunto vazio significa “nada calculado”, nunca “sem checagem”.
+- **`validate`:** usada por explain/review, rejeita duração, percentual, distância, contagem e
+  decimal fora da allow-list. `null` deixou de desligar a checagem de percentual.
+- **Explain:** allow-lists construídas do prompt (`CoachPromptBuilder`): minutos das sessões,
+  contagens total/por tipo/por status e percentual apenas quando `adherenceRatio` existe.
+- **Review:** contagens explícitas em `CoachReviewPromptBuilder.allowedCounts`; percentuais
+  continuam separados e não viram contagem solta.
+- **`validateFreeAnswer`:** usa a mesma allow-list; verbos de prescrição continuam barrados
+  quando há número sem unidade, mesmo que o inteiro seja uma contagem permitida. Decimais sem
+  unidade só passam com autorização explícita; “82,5%” não é aceito quando o fato é “82%”.
+- **Copy de fallback:** distância fora do plano ganhou mensagem própria, sem “aqui embaixo”.
+
+### Testes
+
+- `CoachResponseValidatorTest`: 85%, 10 km, 99 sessões, “12,5 unidades”, “82,5%” e números
+  tipados do plano; decimal autorizado.
+- `CoachFreeAnswerValidatorTest`: decimais autorizados/não autorizados e distância fora do
+  plano; regressões existentes verdes.
+- `CoachViewModelTest`: explain rejeita 85% e aceita a contagem de treinos do plano.
+- `:core:domain:test` e `:app:testDebugUnitTest` relevantes verdes.
+- `./gradlew check -x spotlessMiscCheck` verde (testes, `koverVerify`, lint e detekt).
+- `./gradlew spotlessKotlinCheck` verde.
+
+### Pendente
+
+- Fatias 0, 5–8 do PRD (ADRs científicos, UX, Story, docs e aparelho).
+- `COACH-11`/`U-2`/`U-5` e over-rejection `V-1/V-2/V-4/V-5` ficam para as rodadas seguintes,
+  conforme D12.
+
+### Próximo
+
+1. Fatia 5 — UX selecionada (`NOVO-LVL-01`, `ALG-05`, `SEG-05`, `SCI-01`, `COACH-15`,
+   `COACH-07`, `GEN-07`).
 
 ## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
 
