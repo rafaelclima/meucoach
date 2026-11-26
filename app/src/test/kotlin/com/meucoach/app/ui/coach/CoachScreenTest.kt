@@ -1426,18 +1426,18 @@ class CoachScreenTest {
 
     @Test
     fun `fallback livre mostra a fala com tentar de novo`() {
-        var retried = 0
+        var retriedId: String? = null
         setContent(
             exchanges = listOf(
                 FreeExchange("e1", "o que tem hoje?", FreeAnswerUiState.Fallback("Sem conexão com o Coach.")),
             ),
-            onRetryFreeAnswer = { retried++ },
+            onRetryFreeAnswer = { retriedId = it },
         )
 
         compose.onNodeWithTag("coach-free-fallback").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-free-retry").performScrollTo().performClick()
 
-        assertThat(retried).isEqualTo(1)
+        assertThat(retriedId).isEqualTo("e1")
     }
 
     private fun setContent(
@@ -1457,7 +1457,7 @@ class CoachScreenTest {
         exchanges: List<FreeExchange> = emptyList(),
         onSendFreeText: (String) -> Unit = {},
         onEchoQuestion: (String) -> Unit = {},
-        onRetryFreeAnswer: () -> Unit = {},
+        onRetryFreeAnswer: (String) -> Unit = {},
         onReplanRequest: () -> Unit = {},
         onReplanRequestMissed: () -> Unit = {},
         onReplanRequestLessTime: () -> Unit = {},

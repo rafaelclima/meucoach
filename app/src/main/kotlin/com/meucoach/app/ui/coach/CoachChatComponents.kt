@@ -249,7 +249,11 @@ internal fun UserBubble(text: String, modifier: Modifier = Modifier, testTag: St
  * bubble immediately followed by its answer, never floating over content.
  */
 @Composable
-internal fun FreeExchangeRow(exchange: FreeExchange, onRetryFreeAnswer: () -> Unit, modifier: Modifier = Modifier) {
+internal fun FreeExchangeRow(
+    exchange: FreeExchange,
+    onRetryFreeAnswer: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -279,7 +283,7 @@ internal fun FreeExchangeRow(exchange: FreeExchange, onRetryFreeAnswer: () -> Un
                     testTag = "coach-free-fallback",
                 )
                 TextButton(
-                    onClick = onRetryFreeAnswer,
+                    onClick = { onRetryFreeAnswer(exchange.id) },
                     modifier = Modifier.testTag("coach-free-retry"),
                 ) {
                     Text(text = "Tentar de novo", color = McTheme.colors.accentText)

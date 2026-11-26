@@ -111,9 +111,10 @@ class HttpCoachApi(
             try {
                 connection.outputStream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
                 val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-                val body = stream?.bufferedReader(Charsets.UTF_8)?.readText().orEmpty()
-                if (code !in 200..299) throw IOException("coach upstream $code: ${body.take(200)}")
+                // The upstream body can echo the prompt or a provider payload:
+                // never read it on error and never put it in the exception/log.
+                if (code !in 200..299) throw IOException("coach upstream $code")
+                val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
                 parse(body)
             } finally {
                 connection.disconnect()

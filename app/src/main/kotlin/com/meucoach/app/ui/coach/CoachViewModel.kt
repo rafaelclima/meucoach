@@ -239,7 +239,6 @@ class CoachViewModel @Inject constructor(
 
     /** Free-text round trips in send order; answers settle in place, never overwrite each other. */
     val exchanges: StateFlow<List<FreeExchange>> = _exchanges
-    private var lastFreeText: String? = null
 
     private val _next = MutableStateFlow<CoachNextUiState>(CoachNextUiState.Loading)
     val next: StateFlow<CoachNextUiState> = _next
@@ -528,6 +527,10 @@ class CoachViewModel @Inject constructor(
         consent.revoke()
         _consented.value = false
         _dismissed.value = false
+        // Nothing the Coach said may remain visible after revoking, including
+        // an answer that is still in flight and would settle later.
+        _exchanges.value = emptyList()
+        _freeAnswer.value = FreeAnswerUiState.Idle
         // App scope: the deletion must finish even if the tab/ViewModel goes away.
         appScope.launch {
             runCatching { memory.clearAll() }
@@ -571,7 +574,6 @@ class CoachViewModel @Inject constructor(
         if (!_consented.value) return
         if (_exchanges.value.any { it.answer is FreeAnswerUiState.Loading }) return
         val parsed = FreeInputParser.parse(text, timeProvider.currentDate().dayOfWeek)
-        lastFreeText = text
         val exchangeId = UUID.randomUUID().toString()
         _exchanges.value =
             (_exchanges.value + FreeExchange(exchangeId, parsed.sanitized, FreeAnswerUiState.Loading))
@@ -595,20 +597,27 @@ class CoachViewModel @Inject constructor(
                 .takeLast(MAX_EXCHANGES)
     }
 
-    /** Retries the latest failed exchange in place, without persisting the question twice. */
-    fun retryFreeAnswer() {
+    /**
+     * Retries one failed exchange in place, always with the question that
+     * card shows. The id is required: with two failures, the latest question
+     * is not necessarily the one the athlete tapped.
+     */
+    fun retryFreeAnswer(exchangeId: String) {
         if (!_consented.value) return
-        val text = lastFreeText ?: return
-        val pending = _exchanges.value.lastOrNull { it.answer is FreeAnswerUiState.Fallback } ?: return
+        val pending = _exchanges.value.firstOrNull { it.id == exchangeId } ?: return
+        if (pending.answer !is FreeAnswerUiState.Fallback) return
         if (_exchanges.value.any { it.answer is FreeAnswerUiState.Loading }) return
         viewModelScope.launch {
-            val parsed = FreeInputParser.parse(text, timeProvider.currentDate().dayOfWeek)
+            val parsed = FreeInputParser.parse(pending.question, timeProvider.currentDate().dayOfWeek)
             settle(pending.id, FreeAnswerUiState.Loading)
             route(parsed, pending.id)
         }
     }
 
     private suspend fun route(parsed: FreeInputParse, exchangeId: String) {
+        // A revoke may have happened while the question was being persisted;
+        // never answer, persist or call the network after consent is gone.
+        if (!_consented.value) return
         when (parsed.intent) {
             FreeInputIntent.OUT_OF_SCOPE ->
                 settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.OUT_OF_SCOPE))
@@ -644,6 +653,7 @@ class CoachViewModel @Inject constructor(
 
     /** Terminal state of one exchange, mirrored to the legacy single-answer state. */
     private fun settle(exchangeId: String, state: FreeAnswerUiState) {
+        if (!_consented.value) return
         _exchanges.value = _exchanges.value.map { exchange ->
             if (exchange.id == exchangeId) exchange.copy(answer = state) else exchange
         }
@@ -761,6 +771,7 @@ class CoachViewModel @Inject constructor(
         val forbiddenCodes = request.forbiddenCodes
         val engineContext = request.engineContext
         try {
+            if (!_consented.value) return
             val prompt = CoachFreeAnswerPrompt(
                 inputsHash = freeHash,
                 intent = parsed.intent,
@@ -1195,8 +1206,10 @@ private const val DAYS_IN_WEEK = 7
 private const val MAX_EXCHANGES = 30
 private object FreeAnswerCopy {
     const val OUT_OF_SCOPE =
-        "Isso eu não faço por aqui — mas conto sua evolução, explico a semana e digo como correr. " +
-            "Toca numa sugestão que eu organizo."
+        "Isso eu não faço por aqui — não diagnostico nem digo se é seguro treinar com dor, " +
+            "lesão, doença ou condição de saúde. Se for o seu caso, registre no check-in do Hoje " +
+            "e procure avaliação profissional antes de correr. Também não prescrevo treino novo " +
+            "nem falo de nutrição. Eu sigo contando sua evolução e explicando o plano."
     const val CLARIFY = "Não entendi direito — me diz o dia e quantos minutos você tem?"
     const val CAPABILITIES =
         "Posso dizer o treino do dia, como correr, explicar a semana, contar sua evolução, " +

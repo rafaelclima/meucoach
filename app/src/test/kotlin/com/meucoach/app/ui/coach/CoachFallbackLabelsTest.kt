@@ -13,6 +13,14 @@ class CoachFallbackLabelsTest {
     }
 
     @Test
+    fun `medical scope fallback points to check-in and evaluation`() {
+        val copy = CoachFallbackLabels.freeAnswerReasonCopy("Resposta fora do escopo do Coach")
+
+        assertThat(copy).contains("check-in", "avaliação")
+        assertThat(copy).doesNotContain("aqui embaixo", "diagnóstico certo")
+    }
+
+    @Test
     fun `explain copy keeps the deterministic card reference`() {
         val copy = CoachFallbackLabels.reasonCopy("Resposta contém número fora do contexto: 4")
 

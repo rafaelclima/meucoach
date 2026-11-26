@@ -190,6 +190,28 @@ class CoachApiTest {
         }.isInstanceOf(IOException::class.java)
     }
 
+    @Test
+    fun `erro de upstream nao copia o corpo para a IOException`() {
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress(0), 0)
+        server.createContext("/api/v1/coach/explain") { exchange ->
+            val res = """{"secret":"SEGREDO"}""".toByteArray()
+            exchange.sendResponseHeaders(400, res.size.toLong())
+            exchange.responseBody.use { it.write(res) }
+        }
+        server.start()
+        try {
+            val api = HttpCoachApi(baseUrl = "http://localhost:${server.address.port}", token = "t")
+            val failure = runCatching {
+                runBlocking { api.explain(prompt()) }
+            }.exceptionOrNull()
+
+            assertThat(failure).isInstanceOf(IOException::class.java)
+            assertThat(failure?.message).contains("400").doesNotContain("SEGREDO")
+        } finally {
+            server.stop(0)
+        }
+    }
+
     private fun reviewPrompt() = CoachReviewPrompt(
         inputsHash = "coach-review-v1|hash",
         locale = "pt-BR",

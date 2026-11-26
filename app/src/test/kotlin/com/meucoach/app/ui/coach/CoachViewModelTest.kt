@@ -685,6 +685,34 @@ class CoachViewModelTest {
     }
 
     @Test
+    fun `revogar limpa exchanges e resposta em voo nao repopula`(): Unit = runBlocking {
+        consent.grant()
+        plans.value = CoachPlanContext(plan(), "hash1")
+        val api = GatedCoachApi()
+        val vm = viewModel(api)
+        vm.sendFreeText("explica minha semana?")
+        withTimeout(5_000) {
+            while (api.freeAnswerCalls < 1) {
+                delay(1)
+            }
+        }
+        assertThat(vm.exchanges.value).hasSize(1)
+        assertThat(vm.freeAnswer.value).isEqualTo(FreeAnswerUiState.Loading)
+
+        vm.revoke()
+
+        assertThat(vm.consented.value).isFalse()
+        assertThat(vm.exchanges.value).isEmpty()
+        assertThat(vm.freeAnswer.value).isEqualTo(FreeAnswerUiState.Idle)
+
+        api.gate.complete(CoachRawResponse(title = "Semana", body = "Tudo certo com o plano."))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(vm.exchanges.value).isEmpty()
+        assertThat(vm.freeAnswer.value).isEqualTo(FreeAnswerUiState.Idle)
+    }
+
+    @Test
     fun `historico fica oculto sem consentimento`(): Unit = runBlocking {
         memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "30 min", emptyList())
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "ok")))
@@ -1150,6 +1178,21 @@ class CoachViewModelTest {
         val turns = memory.observeTurns().first()
         assertThat(turns.filterIsInstance<ChatTurn.You>().map { it.body })
             .containsExactly("estou com dor no joelho")
+    }
+
+    @Test
+    fun `pergunta de arritmia recusa sem rede e aponta check-in e avaliacao`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
+        val vm = viewModel(api)
+        vm.sendFreeText("Tenho arritmia, posso correr?")
+
+        val state = awaitFreeAnswer(vm)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        val copy = (state as FreeAnswerUiState.Fallback).copy
+        assertThat(copy).contains("check-in", "avaliação")
+        assertThat(copy).doesNotContain("é seguro para você", "pode correr")
+        assertThat(api.freeAnswerCalls).isZero()
     }
 
     @Test
@@ -1772,14 +1815,40 @@ class CoachViewModelTest {
         val api = FakeCoachApi(error = IOException("down"))
         val vm = viewModel(api)
         vm.sendFreeText("explica minha semana?")
+        val failed = vm.exchanges.value.single()
 
         assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
-        vm.retryFreeAnswer()
+        vm.retryFreeAnswer(failed.id)
 
         val state = awaitFreeAnswer(vm)
         assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         assertThat(vm.exchanges.value).hasSize(1)
         assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+    }
+
+    @Test
+    fun `retry mira o exchange que falhou e nao duplica o YOU`(): Unit = runBlocking {
+        consent.grant()
+        val api = FakeCoachApi(error = IOException("down"))
+        val vm = viewModel(api)
+        vm.sendFreeText("o que é fartlek?")
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        val first = vm.exchanges.value.single()
+
+        api.error = null
+        vm.sendFreeText("posso correr na chuva?")
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(vm.exchanges.value).hasSize(2)
+
+        vm.retryFreeAnswer(first.id)
+
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(api.lastFreeAnswerPrompt?.question).isEqualTo("o que é fartlek?")
+        assertThat(vm.exchanges.value).hasSize(2)
+        assertThat(vm.exchanges.value.first().id).isEqualTo(first.id)
+        assertThat(vm.exchanges.value.first().answer).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>().map { it.body })
+            .containsExactlyInAnyOrder("o que é fartlek?", "posso correr na chuva?")
     }
 
     @Test

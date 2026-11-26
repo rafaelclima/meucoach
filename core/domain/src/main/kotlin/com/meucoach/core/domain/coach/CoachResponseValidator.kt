@@ -72,6 +72,8 @@ object CoachResponseValidator {
             .map { token -> token to Regex("""\b${Regex.escape(token)}\b""") } +
             listOf(
                 "doenca",
+                "doente",
+                "sintoma",
                 "lesao",
                 "tendinite",
                 "canelite",
@@ -98,7 +100,22 @@ object CoachResponseValidator {
                 "covid",
                 "antibiotic",
                 "anti-inflamat",
-            ).map { prefix -> prefix to Regex("""\b${Regex.escape(prefix)}""") }
+                "arritmia",
+                "palpit",
+                "cardiac",
+                "cardiopat",
+                "infarto",
+                "avc",
+                "derrame",
+                "desmai",
+                "hipertens",
+            ).map { prefix -> prefix to Regex("""\b${Regex.escape(prefix)}""") } +
+            listOf(
+                "falta de ar" to Regex("""\bfalta de ar\b"""),
+                "sem ar" to Regex("""\bsem ar\b"""),
+                "nao consigo respirar" to Regex("""\bnao consigo respirar\b"""),
+                "aperto no peito" to Regex("""\b(aperto|apertou|apertando|peso|queimacao)\b.*\bpeito\b"""),
+            )
     private val memoryPromises =
         listOf("vou lembrar", "nao vou esquecer", "anotei", "memorizei", "jamais esqueco")
             .map { phrase -> phrase to Regex(Regex.escape(phrase)) }

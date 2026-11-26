@@ -117,6 +117,26 @@ class CoachFreeAnswerValidatorTest {
     }
 
     @Test
+    fun `barra afirmacao de seguranca com arritmia`() {
+        val result = freeAnswer("Correr com arritmia é seguro para você")
+        assertTrue(result is CoachValidationResult.Invalid)
+        assertTrue((result as CoachValidationResult.Invalid).reason.contains("escopo"))
+    }
+
+    @Test
+    fun `barra conselho sobre sintoma cardiopulmonar`() {
+        val result = freeAnswer("Com falta de ar assim, pode seguir o treino")
+        assertTrue(result is CoachValidationResult.Invalid)
+        assertTrue((result as CoachValidationResult.Invalid).reason.contains("escopo"))
+    }
+
+    @Test
+    fun `aceita orientacao de respiracao sem sintoma`() {
+        val result = freeAnswer("Respire fundo e mantenha o peito aberto")
+        assertTrue(result is CoachValidationResult.Valid)
+    }
+
+    @Test
     fun `barra musculacao`() {
         val result = freeAnswer("Inclua musculação duas vezes na semana")
         assertTrue(result is CoachValidationResult.Invalid)

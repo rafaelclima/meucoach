@@ -116,6 +116,36 @@ class FreeInputParserTest {
     }
 
     @Test
+    fun `arritmia vira OUT_OF_SCOPE mesmo em pergunta de corrida`() {
+        val parsed = FreeInputParser.parse("Tenho arritmia, posso correr?", DayOfWeek.MONDAY)
+        assertEquals(FreeInputIntent.OUT_OF_SCOPE, parsed.intent)
+    }
+
+    @Test
+    fun `sintomas de alerta viram OUT_OF_SCOPE`() {
+        listOf(
+            "sinto palpitação quando acelero",
+            "tenho dor no peito ao correr",
+            "desmaiei no último treino",
+            "estou com falta de ar",
+            "sinto um aperto no peito",
+        ).forEach { text ->
+            assertEquals(text, FreeInputIntent.OUT_OF_SCOPE, FreeInputParser.parse(text, DayOfWeek.MONDAY).intent)
+        }
+    }
+
+    @Test
+    fun `duvida educativa de corrida continua ASK_COACHING`() {
+        listOf(
+            "o que é fartlek?",
+            "posso correr no calor?",
+            "como respirar melhor correndo?",
+        ).forEach { text ->
+            assertEquals(text, FreeInputIntent.ASK_COACHING, FreeInputParser.parse(text, DayOfWeek.MONDAY).intent)
+        }
+    }
+
+    @Test
     fun `pergunta de pace vira pergunta aberta`() {
         val parsed = FreeInputParser.parse("qual meu pace de limiar?", DayOfWeek.MONDAY)
         assertEquals(FreeInputIntent.ASK_COACHING, parsed.intent)

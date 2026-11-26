@@ -74,6 +74,11 @@ object FreeInputParser {
         Regex("""\b(gripe|covid)\b"""),
         Regex("""\b(machuc|emagrec|muscula|fisioter|inflam|sangr|formig|gripad|resfriado|antibiotic|medicament)"""),
         Regex("""anti-inflamat"""),
+        // Alert cardiac/respiratory conditions and symptoms: fail closed.
+        Regex("""\b(arritmia|palpit|cardiac|cardiopat|infarto|avc|derrame|desmai|hipertens|doenca|doente|sintoma)"""),
+        Regex("""\b(falta de ar|sem ar|nao consigo respirar|dificuldade (para|de) respirar)\b"""),
+        Regex("""\b(aperto|apertou|apertando|peso|queimacao)\b.*\bpeito\b"""),
+        Regex("""\b(visao turva|suor frio|pressao (alta|baixa)|coracao (acelerado|disparado))\b"""),
         Regex("""(monta|monte|cria|crie|prescrev|planeja|planeje).*(treino|plano|planilha)"""),
     )
 

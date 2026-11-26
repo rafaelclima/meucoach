@@ -84,7 +84,7 @@ fun CoachRoute(
             viewModel.sendFreeText(it)
         },
         onEchoQuestion = { viewModel.echoQuestion(it) },
-        onRetryFreeAnswer = { viewModel.retryFreeAnswer() },
+        onRetryFreeAnswer = { viewModel.retryFreeAnswer(it) },
         onGrant = { viewModel.grant() },
         onDismiss = { viewModel.dismiss() },
         onRevoke = { viewModel.revoke() },
@@ -150,7 +150,7 @@ fun CoachScreen(
     onNextToday: () -> Unit = {},
     onSendFreeText: (String) -> Unit = {},
     onEchoQuestion: (String) -> Unit = {},
-    onRetryFreeAnswer: () -> Unit = {},
+    onRetryFreeAnswer: (String) -> Unit = {},
     exchanges: List<FreeExchange> = emptyList(),
     onOnboardingProfile: () -> Unit = {},
     onOnboardingCalibration: () -> Unit = {},
