@@ -1,9 +1,8 @@
-# HANDOFF — Coach v3 (rodapé, retrovisor e acentos)
+# HANDOFF — Coach v3 (rodapé, retrovisor e acentos; histórico)
 
-**Atualizado:** 20/11/2026 ~22:37 (BRT)
-**Status:** v3 **validada no aparelho via adb** (acentos, dedup, Retrovisor, fade — ver §7).
-Próxima: F4 (roteiros diários) do `PRD_COACH_CHAT`.
-**Commits no ar:** `59b09d6` (lapidação v2), `d0d65b5` (GLM-5.3-Flash primeiro), `017a23a`
+**Atualizado:** 26/11/2026 (v3 registrada em 20/11/2026)
+**Status atual:** a v3 foi validada no aparelho em 20/11/2026 e o Coach evoluiu depois disso: input livre (ADRs 0056/0057), conversa aberta (ADR 0063), lembrete fiel (ADR 0064), dossiê do executado (emenda ADR 0063) e Fatia 7 de documentação. **Pendente:** redeploy do proxy com os prompts novos e validação no aparelho com token; ver `HANDOFF_IA_COACH.md` §5.4. O restante deste documento (§1–§7) é histórico da v3.
+**Commits à época:** `59b09d6` (lapidação v2), `d0d65b5` (GLM-5.3-Flash primeiro), `017a23a`
 (prompts com acentuação — **redeploy feito em 20/11, verificado no aparelho**), `01f67b1` (v3).
 
 ---
@@ -86,7 +85,7 @@ Próxima: F4 (roteiros diários) do `PRD_COACH_CHAT`.
 - `./install.sh` no aparelho + print final (dark/light, fonte 200% se der)
 - Sem migração, sem dependência nova, sem dado real no diff.
 
-## 6. Prompt para a próxima sessão
+## 6. Prompt para a próxima sessão à época (histórico)
 
 > Continue o MeuCoach pela feature Coach-chat, fatia **pós-v3 (redeploy + aparelho)**.
 > Leia `AGENTS.md`, `docs/PROGRESS.md` (topo) e `docs/HANDOFF_COACH_V3.md`. Estado: v3

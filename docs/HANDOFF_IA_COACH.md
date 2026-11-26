@@ -1,9 +1,18 @@
 # HANDOFF — IA Coach
 
-**Atualizado:** 25/11/2026
-**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · Room v19 (memória/conversa) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064) · dossiê do último executado + allow-list do próprio dossiê (emenda ADR 0063 §6) · dia executado com a prescrição que ajustou o plano (emenda ADR 0063 §7)
-**Próxima fatia:** reinstalar o APK e revalidar “avalie meu treino” em dia de descanso (deve citar a última execução, inclusive “terça”, e aceitar “4 semanas”/“28 dias” do dossiê). Num dia ajustado, deve explicar o plano original × a prescrição (ex.: qualidade rebaixada para fácil por prontidão) e comparar com a prescrição. Depois, retomar P1-12/Ciclo 4 (§5.4)
+**Atualizado:** 26/11/2026
+**Concluído:** 3.1 (proxy + opt-in + aba) · 3.2 (revisão da semana anterior) · 3.3-A (confirmação + diff + undo) · 3.3-B (intent explícito) · 3.3-C (dia inteiro/múltiplos dias) · ADR 0051 · memória em `chat_turns` (Room v22) · histórico somente leitura com apagar em bloco e individual · goldens da bar · auditoria de utilidade no aparelho · input livre (ADRs 0056/0057) · conversa aberta com fatos fechados/consentimento v2 (ADR 0063) · lembrete fiel à prescrição do dia (ADR 0064) · dossiê do último executado + allow-list do próprio dossiê (emenda ADR 0063 §6) · dia executado com a prescrição que ajustou o plano (emenda ADR 0063 §7) · Fatia 7 de documentação (timeouts reais e escopo médico fail-closed)
+**Próxima fatia:** **Fatia 8 — validação no aparelho** com o usuário 0, depois do redeploy do proxy no Dokploy com os prompts novos. Reinstalar o APK com token e revalidar “avalie meu treino” em dia de descanso (deve citar a última execução, inclusive “terça”, e aceitar “4 semanas”/“28 dias”), o dia ajustado (plano original × prescrição) e a recusa médica local. Depois, retomar P1-12. Não marcar validação física sem executar.
 **Fonte de verdade:** `docs/PRD_IA_COACH.md` + código. Este doc é o estado operacional da feature; se divergir do código, o código vence.
+
+---
+
+## 0. Estado em 26/11/2026
+
+- **Docs reconciliados:** `PRD_IA_COACH.md` v0.2 com decisão 8 (45/25 s no app; 18/20 s no proxy), decisão 21 (CTA de check-in/avaliação, fail-closed) e §10 em `chat_turns` v22. `PRODUCT.md` v1.3, `ROADMAP.md`, `TESTING.md`, `DECISIONS.md` e `ARCHITECTURE.md` apontam para o código/teste correspondente.
+- **Sem pendência funcional sem token:** a feature está encerrada no MVP; o que falta é operacional (redeploy) e físico (aparelho).
+- **Pendente explícito:** redeploy do proxy com `SYSTEM_FREE_ANSWER`/prompts novos e validação no aparelho da revogação em voo, retry de exchange, pergunta médica, card Ready/histórico e fonte 200% (Fatia 8/GEN-05).
+- **P1-12** (4 semanas de uso real) segue aberto e é critério de saída separado da validação em aparelho.
 
 ---
 
@@ -11,12 +20,12 @@
 
 Prompt para colar no início da sessão:
 
-> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (sessão "Coach: último executado e allow-list do dossiê"), `docs/PRD_IA_COACH.md`, `docs/PRD_COACH_CHAT.md`, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP e ganhou conversa aberta com fatos fechados; o proxy já tem MiMo+GLM em paralelo e 18 s/20 s. O dossiê agora avalia a última sessão concluída (não só hoje) e autoriza todo número que ele imprime. Falta reinstalar o APK e revalidar “avalie meu treino” em dia de descanso com `-PcoachProxyToken=...`; depois, retomar P1-12/Ciclo 4. Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
+> Continue o MeuCoach pela feature IA Coach. Leia `AGENTS.md`, `docs/PROGRESS.md` (topo: Fatia 7), `docs/PRD_IA_COACH.md` v0.2, `docs/HANDOFF_IA_COACH.md`, `docs/adr/0052-ia-coach-memory-schema-v19.md`, `docs/adr/0056-coach-free-input.md`, `docs/adr/0063-coach-open-answers.md` e `docs/adr/0064-workout-reminder-day-authority.md`. A feature está encerrada no MVP, com input livre, conversa aberta, dossiê do executado, Room v22 e docs da Fatia 7 reconciliados. O próximo trabalho é a **Fatia 8 (aparelho)**: redeploy do proxy no Dokploy com os prompts novos, reinstalar o APK com `-PcoachProxyToken=...` e revalidar “avalie meu treino” em dia de descanso, o dia ajustado e a recusa médica. Depois, P1-12 (4 semanas de uso real). Antes de codar, confirme `git status` e rode os gates do AGENTS.md.
 
 Ordem de leitura:
 
 1. `AGENTS.md` — regras invioláveis.
-2. `docs/PROGRESS.md` — sessão **IA Coach 3.3-B** no topo.
+2. `docs/PROGRESS.md` — topo: **Fatia 7 da documentação**; a sessão 3.3-B fica no histórico.
 3. `docs/PRD_IA_COACH.md` — decisões travadas, escopo, guardrails.
 4. Este handoff — estado e próxima fatia.
 5. `docs/adr/0051-ia-coach-proxy.md` — por que existe proxy e o que ele não faz.
@@ -26,7 +35,7 @@ Regra de trabalho: **uma fatia pequena e verificável por sessão**; não abrir 
 
 ---
 
-## 2. Estado atual
+## 2. Estado à época (18/11/2026 — histórico; ver §0 para Room v22)
 
 | Fatia | O que está pronto | Onde |
 |---|---|---|
@@ -43,7 +52,7 @@ Regra de trabalho: **uma fatia pequena e verificável por sessão**; não abrir 
 | ADR 0051 | Contrato, segurança mínima, trade-offs e risco LGPD aceito | `docs/adr/0051-ia-coach-proxy.md` |
 | ADR 0052 | Schema v19, TTL, revogação e limites da memória | `docs/adr/0052-ia-coach-memory-schema-v19.md` |
 
-Verificação no fechamento: **2.435 testes** (domain 1130, data 232, app 1033, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify`, `lintDebug` e `verifyRoborazziDebug --tests BottomBarScreenshotTest` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`.
+Verificação à época: **2.435 testes** (domain 1130, data 232, app 1033, model 40), 0 falhas/erros; `assembleDebug`, `spotlessCheck`, `check -x :app:testDebugUnitTest` (detekt incluído), `koverVerify`, `lintDebug` e `verifyRoborazziDebug --tests BottomBarScreenshotTest` verdes. Schema **v19** com `MIGRATION_18_19` testada; sem `fallbackToDestructiveMigration`. Hoje: Room v22 e 3.236 testes (§0/`TESTING.md`).
 
 Pontos de arquitetura que não devem regredir:
 
@@ -141,7 +150,7 @@ Fechar a pendência funcional da disponibilidade temporária sem criar regra nov
 
 ---
 
-## 4. Room v19 + histórico do Coach — concluído (18/11/2026)
+## 4. Room v19 + histórico do Coach — concluído (18/11/2026; histórico; schema atual v22)
 
 ### 4.1 Objetivo entregue
 
@@ -340,27 +349,32 @@ Memória local do Coach **sem** transformar memória em decisão:
 ### 5.3 UI de histórico do Coach — concluída
 
 - Decisões 17 (histórico + conversa) e 25 (vê/apaga, sem edição): lista somente leitura, só com opt-in, resumos + conversa, estados loading/vazio/erro, retry, “Apagar histórico” em bloco e apagar item a item com confirmação.
-- `deleteMessage`/`deleteSummary` removem só a linha pedida; treinos/perfil/check-ins ficam intactos. O input livre de conversa continua fora do MVP.
+- As remoções individuais removem só a linha pedida; treinos/perfil/check-ins ficam intactos. O input livre de conversa foi entregue depois (ADRs 0056/0057) e vive em `chat_turns`.
 - A memória continua local, expira por TTL e é apagada na revogação/“apagar tudo”; nenhum caminho a usa para decidir treino.
 
 ### 5.4 Encerramento
 
-- A IA Coach está concluída no MVP, recebeu input livre (0056/0057) e conversa
-  aberta com fatos fechados (0063); não há pendência funcional sem token.
-- Validação restante: gerar o APK com `-PcoachProxyToken=...`, abrir o Coach e
-  conferir o card Ready recolhido/expandido, o histórico real, uma pergunta
-  aberta ("o que é fartlek?"), a recusa médica local e o consentimento v2.
+- A IA Coach está concluída no MVP, recebeu input livre (0056/0057), conversa
+  aberta com fatos fechados (0063), lembrete fiel (0064) e a Fatia 7 de docs
+  (timeouts reais e escopo médico fail-closed); não há pendência funcional sem
+  token.
+- **Pendente operacional:** reimplantar o proxy no Dokploy para o
+  `SYSTEM_FREE_ANSWER` novo (pergunta + dossiê) e para os prompts com
+  `title`/`body` strings.
+- **Pendente físico (Fatia 8):** gerar o APK com `-PcoachProxyToken=...`, abrir o
+  Coach e conferir o card Ready recolhido/expandido, o histórico real, uma pergunta
+  aberta ("o que é fartlek?"), a recusa médica local com CTA, o consentimento v2
+  e a revogação em voo/retry de exchange antigo.
 - Revalidar “avalie meu treino” em dia de descanso com o dossiê do último
   executado (emenda §6): deve citar a sessão anterior, não “número fora do
   contexto”, e aceitar “4 semanas”/“28 dias”.
-- Reimplantar o proxy no Dokploy para o `SYSTEM_FREE_ANSWER` novo (pergunta +
-  dossiê) e para os prompts com `title`/`body` strings.
 - O lembrete de treino já segue a prescrição do dia (ADR 0064); validar no
   aparelho a reescrita silenciosa depois do check-in e o cancelamento em
   descanso/prova/conclusão.
 - Pós-MVP: memória como contexto de copy em prompt e “quero mais tempo” na
   disponibilidade temporária.
-- Próxima prioridade: P1-12 (4 semanas de uso real) / Ciclo 4.
+- Próxima prioridade: **Fatia 8 (aparelho)** e depois **P1-12** (4 semanas de uso
+  real); o Ciclo 4 está encerrado.
 
 ---
 
