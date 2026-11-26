@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.22 · **Data:** 26/11/2026 · Suíte completa após D3–D6 e Fatias 1–6: **3.236 testes** (1387 domain / 1565 app / 244 data / 40 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
+**Versão:** 1.23 · **Data:** 26/11/2026 · Suíte completa após D3–D6, Fatias 1–7 e correção de 200% no aparelho: **3.245 testes** (1387 domain / 1574 app / 244 data / 40 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -92,10 +92,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (26/11/2026, após D3–D6 e Fatias 1–6):
+Evidência atual (26/11/2026, após D3–D6, Fatias 1–7 e correção de 200%):
 
-- **3.236 testes** no repositório (1387 em `core:domain`, 1565 em `:app`, 244 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
-- Comando executado: `./gradlew :core:model:test :core:domain:test :core:data:testDebugUnitTest :app:testDebugUnitTest --rerun-tasks --no-parallel` (3m16s, verde). O `--no-parallel` evita os flakes de carga do §10.1; a suíte do app também foi validada sem ele em sessões anteriores.
+- **3.245 testes** no repositório (1387 em `core:domain`, 1574 em `:app`, 244 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- Comando executado: `./gradlew :core:model:test :core:domain:test :core:data:testDebugUnitTest :app:testDebugUnitTest --rerun-tasks --no-parallel` (3m39s, verde). O `--no-parallel` evita os flakes de carga do §10.1; a suíte do app também foi validada sem ele em sessões anteriores.
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,56% de linhas, 81,13% de branches, 96,23% de instruções.
@@ -410,11 +410,15 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-Screenshots atuais (80 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+**Regressão de fonte 200% (26/11/2026):** a validação no S24 Ultra encontrou cortes na barra inferior, na lista de corridas e no detalhe da atividade. A correção usa layouts empilhados quando `fontScale >= 1.5` e a barra com labels de até 2 linhas/altura mínima de 68 dp. Cobertura: `ActivitiesScreenTest`, `ActivitiesScreenshotTest`, `ActivityDetailScreenTest`, `ActivityDetailScreenshotTest`, `ActivityComparisonScreenshotTest` e `BottomBarScreenshotTest`; goldens `activities-narrow-200-dark`, `activity-detail-narrow-200-dark`, `activity-detail-splits-narrow-200-dark`, `activity-comparison-narrow-200-dark` e `bottom-bar-narrow-200-dark`.
+
+Screenshots atuais (110 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
-| Atividade | `activity-detail-dark`, `activity-detail-light`, `activity-comparison-dark`, `activity-comparison-light`, `activity-comparison-free-dark` |
+| Atividade | `activity-detail-dark`, `activity-detail-light`, `activity-detail-narrow-200-dark`, `activity-detail-splits-narrow-200-dark`, `activity-comparison-dark`, `activity-comparison-light`, `activity-comparison-narrow-200-dark`, `activity-comparison-free-dark` |
+| Atividades | `activities-narrow-200-dark` |
+| Barra inferior | `bottom-bar-dark`, `bottom-bar-light`, `bottom-bar-narrow-200-dark` |
 | Calibração | `calibration-dark`, `calibration-light`, `calibration-tier-b-dark`, `calibration-tier-b-light` |
 | Check-in | `checkin-dark`, `checkin-light` |
 | Dados | `data-management-dark`, `data-management-light` (lixeira e opção de backup) |

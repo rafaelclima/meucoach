@@ -1,6 +1,68 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–7 do PRD de correções + D3–D6)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–7 do PRD de correções + D3–D6 + Fatia 8 parcial)
+
+## Sessão 2026-11-26 — Fatia 8 (validação manual + correção de 200%)
+
+**Escopo:** validação no Galaxy S24 Ultra (`RQCX209N5SK`, Android 17, app aberto) e correção
+dos cortes de layout em fonte 200% encontrados no aparelho. Nenhuma regra de treino,
+schema, migração, dependência ou dado de saúde real no código/testes.
+
+### Validado no aparelho
+
+- **Coach/IA:** `explain ok` e `review ok` no logcat; proxy respondendo.
+- **Escopo médico:** “Tenho arritmia posso correr” recusado localmente, sem chamada de
+  rede, com orientação de check-in/avaliação e sem diagnóstico.
+- **Story com GPX sintético:** importei uma corrida de 5,05 km; prévia renderizou rota e
+  métricas; “Baixando o mapa do OpenStreetMap…” exibiu **Cancelar**; export gerou MP4,
+  capa 9:16 e pôster 4:5. O clique em Cancelar não foi confirmado porque o export
+  terminou antes da interação automatizada.
+- **Limpeza:** `font_scale` restaurado para `1.0`; arquivos GPX e mídias de teste
+  removidos; as 3 atividades sintéticas foram apagadas (lixeira de 7 dias).
+
+### Achado e correção
+
+- **200%:** cortes na barra inferior (“Corrid”, “Tendê”), na lista de corridas
+  (“DISTÂN/CIA”, “28:1/2”) e no detalhe (“144/16/1”, “bpm”, “PLANEJ/ADO”, “TRECHO/
+  RITM/TEMPO”). Causa: colunas fixas de 3–4 métricas e labels de uma linha.
+- **Barra inferior:** labels com até 2 linhas, `TextOverflow.Ellipsis`, altura mínima de
+  68 dp e crescimento conforme a fonte; ícones/seleção preservados.
+- **Lista de corridas:** `ActivityStats` empilha Distância/Tempo/Ritmo quando
+  `fontScale >= 1.5`.
+- **Detalhe:** métricas empilhadas; trechos viram blocos “#N · distância” com
+  Ritmo/Tempo/FC em linhas separadas; o comparativo planejado × executado empilha
+  título/valor; layout normal intacto.
+- **Testes/goldens:** `ActivitiesScreenTest`, `ActivitiesScreenshotTest`,
+  `ActivityDetailScreenTest`, `ActivityDetailScreenshotTest`,
+  `ActivityComparisonScreenshotTest` e `BottomBarScreenshotTest`; novos goldens
+  `activities-narrow-200-dark`, `activity-detail-narrow-200-dark`,
+  `activity-detail-splits-narrow-200-dark`, `activity-comparison-narrow-200-dark`
+  e `bottom-bar-narrow-200-dark`.
+
+### Gates
+
+- Suíte completa: **3.245 testes** (1387 domain / 1574 app / 244 data / 40 model),
+  0 falhas/erros/skip.
+- `./gradlew check -x spotlessMiscCheck :app:assembleDebug` verde (detekt, lint, Kover,
+  parser FIT 93,01%).
+- `./gradlew :app:verifyRoborazziDebug` dos testes de screenshot alterados verde.
+- `spotlessKotlinCheck` verde; `spotlessMiscCheck` continua falhando apenas nos três
+  documentos de auditoria preexistentes.
+- `git diff --check` limpo.
+
+### Pendente
+
+- **Revalidar no aparelho amanhã** com o APK novo: barra/lista/detalhe em 200% e retorno
+  a 100%; repetir o cancelamento do `PreparingMap` manualmente.
+- TalkBack `Role.Tab`, alvo de 48 dp do `McTextButton`, revogação em voo/retry de
+  exchange, E14/E18, redeploy do proxy e P1-12 continuam abertos.
+- O turno de teste “Tenho arritmia posso correr” permanece no histórico do Coach; apagar
+  individualmente quando o usuário quiser.
+
+### Próximo
+
+1. Instalar o APK novo com token e validar os cenários acima no aparelho.
+2. Fechar a Fatia 8 e retomar P1-12.
 
 ## Sessão 2026-11-26 — Fatia 7 do PRD de correções (documentação)
 

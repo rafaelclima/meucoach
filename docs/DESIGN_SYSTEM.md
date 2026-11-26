@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — MeuCoach
 
-**Versão:** 1.4 · **Data:** 26/11/2026 · **Status:** direção aprovada; §11 atualizado para a barra real (Hoje · Corridas · Coach · Tendências · Saúde; Perfil via avatar/engrenagem); §7.3 normatiza campos de data e duração (U-13 concluído) e a leitura read-only da referência da meta
+**Versão:** 1.5 · **Data:** 26/11/2026 · **Status:** direção aprovada; §11 atualizado para a barra real (Hoje · Corridas · Coach · Tendências · Saúde; Perfil via avatar/engrenagem); §10 registra o empilhamento em 200%; §7.3 normatiza campos de data e duração (U-13 concluído) e a leitura read-only da referência da meta
 
 ## 1. Ideia de marca
 
@@ -386,7 +386,7 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 ## 10. Acessibilidade
 
 - Contraste mínimo **4.5:1** para texto e **3:1** para ícones/linhas.
-- Suporte a fonte do sistema até 200%; layouts não podem cortar métricas.
+- Suporte a fonte do sistema até 200%; layouts não podem cortar métricas. Com `fontScale >= 1.5`, grades de 3–4 métricas (lista de corridas e detalhe) e a tabela de trechos empilham em linhas; a barra inferior cresce e usa labels de até 2 linhas.
 - TalkBack: cada gráfico tem descrição; cada card tem `contentDescription` agrupado.
 - Alvos de toque ≥ 48×48 dp.
 - Não usar apenas cor para status; incluir ícone/texto.
