@@ -1,6 +1,8 @@
 package com.meucoach.app.ui.activitydetail
 
 import android.net.Uri
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -11,7 +13,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.Density
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.calibration.CalibrationCandidate
 import com.meucoach.core.domain.story.StoryDuration
@@ -367,10 +371,43 @@ class ActivityDetailScreenTest {
         compose.onNodeWithText("Corrida").assertIsDisplayed()
     }
 
-    private fun setContent(content: @androidx.compose.runtime.Composable () -> Unit) {
+    @Test
+    fun `large font stacks metrics and splits instead of squeezing columns`() {
+        setContent(fontScale = 2f) {
+            ActivityDetailContent(state = ActivityDetailTestData.state(), onBack = {})
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToIndex(2)
+        compose.onNodeWithTag("activity-metrics-large-text").assertExists()
+
+        list.performScrollToIndex(6)
+        compose.onNodeWithTag("activity-splits-large-text", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun `large font stacks comparison rows instead of squeezing them`() {
+        setContent(fontScale = 2f) {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state(comparison = ActivityDetailTestData.linkedComparison()),
+                onBack = {},
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToIndex(3)
+        compose.onNodeWithTag("activity-comparison-large-text", useUnmergedTree = true).assertExists()
+    }
+
+    private fun setContent(fontScale: Float = 1f, content: @androidx.compose.runtime.Composable () -> Unit) {
         compose.setContent {
-            McTheme(darkTheme = true) {
-                content()
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = fontScale),
+            ) {
+                McTheme(darkTheme = true) {
+                    content()
+                }
             }
         }
     }
