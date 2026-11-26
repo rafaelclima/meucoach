@@ -160,7 +160,7 @@ Aceite da futura implementação:
 4. A sessão não é adjacente ao longão/qualidade e não entra na contagem de qualidades.
 5. A copy não chama a sessão de “treino forte” nem promete intensidade de qualidade.
 
-### Golden `G-BEGINNER-TAPER-01` (definido; executável só na fatia de código)
+### Golden `G-BEGINNER-TAPER-01` (executável)
 
 | Cenário | Entrada sintética | Asserção |
 |---|---|---|

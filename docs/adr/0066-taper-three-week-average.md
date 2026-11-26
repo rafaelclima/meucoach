@@ -171,7 +171,7 @@ Aceite da futura implementação:
 5. O cenário com pisos impeditivos declara a semana mínima, sem remover estímulo
    obrigatório e sem afirmar a faixa.
 
-### Golden `G-TAPER-01` (definido; executável só na fatia de código)
+### Golden `G-TAPER-01` (executável)
 
 | Cenário | Entrada sintética | Asserção |
 |---|---|---|

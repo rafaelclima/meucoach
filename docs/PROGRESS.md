@@ -27,14 +27,18 @@ ou dado real.
 ### Gates
 
 - `./gradlew :core:domain:test` verde (1.388 testes).
-- `./gradlew spotlessKotlinCheck` verde; `git diff --check` limpo.
-- Nenhuma mudança de UI/schema/migração/dependência.
+- `./gradlew check -x spotlessMiscCheck`, `./gradlew spotlessKotlinCheck`,
+  `./gradlew :core:domain:koverVerify` e `./gradlew :app:assembleDebug` verdes.
+- `./gradlew spotlessMiscCheck` continua falhando apenas nos três documentos de
+  auditoria preexistentes, que não foram alterados.
+- `git diff --check` limpo; nenhuma mudança de UI/schema/migração/dependência.
+- Versões atuais (`weekly-plan-v9`/`daily-prescription-v7`) refletidas em
+  `ARCHITECTURE.md`, `DATA_MODEL.md`, `PRD_TREINO_REAL.md` e `TESTING.md`.
 
 ### Pendente
 
-- Gates finais de fechamento (`check -x spotlessMiscCheck`, `koverVerify`,
-  `assembleDebug`) e atualização das versões citadas em `ARCHITECTURE.md`,
-  `DATA_MODEL.md` e `TESTING.md`.
+- Fatias 7 e 8 do PRD (documentação e validação em aparelho); nenhuma regra científica
+  de D3–D6 ficou pendente.
 
 ## Sessão 2026-11-26 — Fatia de código D5 (qualidade × longão entre semanas)
 

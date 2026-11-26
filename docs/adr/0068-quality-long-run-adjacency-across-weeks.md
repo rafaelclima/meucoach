@@ -149,7 +149,7 @@ Aceite da futura implementação:
 6. O comportamento existente dentro da semana (longão × qualidade, 2 qualidades máximo,
    não consecutivas) permanece.
 
-### Golden `G-QUALITY-ADJACENCY-01` (definido; executável só na fatia de código)
+### Golden `G-QUALITY-ADJACENCY-01` (executável)
 
 | Cenário | Entrada sintética | Asserção |
 |---|---|---|

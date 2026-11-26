@@ -349,6 +349,10 @@ Cenários implementados hoje:
 | `G-PER-06` | 5K a 26 semanas: general BUILD com qualidade, bloco específico de 12 semanas (1 PEAK) e PEAK no pace previsto, com gap da meta ambiciosa |
 | `G-UPGRADE-01` | Upgrade v6→v7: terça `DONE` preservada, sexta vira oportunidade, volume intacto |
 | `G-VOL-02` | Treino extra de 28 min entra na base real (142 → alvo 151), adesão 3/3, copy "treino extra contou"; `LEGACY` 33 não infla a base |
+| `G-TAPER-01` | Taper pela média de 3 semanas (120 → alvo 66/54), fallback nomeado (140 → 77) e sem histórico sem percentual; pisos declaram semana mínima |
+| `G-LONG-RUN-RAMP-01` | Longão do iniciante 45 → 55 (+10), agenda 50, sem referência → 45 e piso vencendo um último longão de 30 |
+| `G-QUALITY-ADJACENCY-01` | Longão de domingo bloqueia qualidade na segunda; qualidade movida, omitida sem dia seguro ou mantida sem plano anterior |
+| `G-BEGINNER-TAPER-01` | Iniciante em taper/prova com 1 strides `EASY` ≤25 min e estrutura, zero `QUALITY`; sem dia seguro, omissão com copy |
 | `G-READY-01` | Dia verde com dados completos |
 | `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
 | `G-READY-03` | Sinal de doença/lesão suspende qualidade |

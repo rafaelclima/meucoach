@@ -166,7 +166,7 @@ Aceite da futura implementação:
 6. O longão continua sendo a sessão mais longa ou empatada com a mais longa; a regra de
    `applyLongRunHonesty` do ADR 0045 permanece.
 
-### Golden `G-LONG-RUN-RAMP-01` (definido; executável só na fatia de código)
+### Golden `G-LONG-RUN-RAMP-01` (executável)
 
 | Cenário | Entrada sintética | Asserção |
 |---|---|---|

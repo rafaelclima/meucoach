@@ -1237,7 +1237,7 @@ Migração aditiva, sem `fallbackToDestructiveMigration`:
 
 | Motor | Versão antiga | Versão nova |
 |---|---|---|
-| Plano semanal | `weekly-plan-v6` | `weekly-plan-v8` |
+| Plano semanal | `weekly-plan-v6` | `weekly-plan-v9` |
 | Prescrição diária | `daily-prescription-v5` | `daily-prescription-v7` |
 | Macro (se FR-411) | `macro-plan-v1` | `macro-plan-v2` |
 | Biblioteca | implícita | `session-library-v2` (citada no rationale) |
