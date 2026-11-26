@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.17 · **Data:** 26/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.18 · **Data:** 26/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -18,6 +18,7 @@
 > Revisão 1.15 (26/11/2026, Fatia 1, ADR 0066 implementado): o taper usa a média das 3 semanas elegíveis, o fallback nomeado para a maior semana forte recente e nenhum percentual sem histórico; o alvo semanal (`0,55`/`0,45`) é aplicado antes da distribuição e a “semana mínima” é declarada quando os pisos impedem a faixa. `weekly-plan-v9`; `daily-prescription-v7` permanece.
 > Revisão 1.16 (26/11/2026, Fatia 2, ADR 0067 implementado): o longão do iniciante cresce no máximo +10 min/semana sobre o último longão normal real/planejado, com piso 45, teto do nível e agenda como limites; semanas especiais não são referência e a copy nomeia rampa, agenda, piso vencendo ou primeiro longão. Golden `G-LONG-RUN-RAMP-01`; `weekly-plan-v9`.
 > Revisão 1.17 (26/11/2026, Fatia 3, ADR 0068 implementado): a qualidade não cai na segunda seguinte a um longão treinável de domingo; com outro dia seguro ela é movida e a copy nomeia o longão anterior, sem dia seguro a semana tem zero `QUALITY` com copy. Semana anterior ausente ou longão encerrado como não treinável não bloqueiam. Golden `G-QUALITY-ADJACENCY-01`; `weekly-plan-v9`.
+> Revisão 1.18 (26/11/2026, Fatia 4, ADR 0069 implementado): o iniciante em taper/prova recebe no máximo 1 strides `EASY` ≤25 min com estrutura, `qualityKind = null` e `qualityCount` 0; a posição respeita a janela 7–10/10–14 (ou a semana da prova) e, sem dia seguro de 20–25 min, a sessão é omitida com copy. Nenhum `QUALITY`; `R-PRESC-04` preservada. Golden `G-BEGINNER-TAPER-01`; `weekly-plan-v9`.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 

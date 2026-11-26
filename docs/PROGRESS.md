@@ -1,6 +1,40 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3–D5)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3–D6)
+
+## Sessão 2026-11-26 — Fatia de código D6 (strides `EASY` no taper do iniciante)
+
+**Escopo:** implementação do ADR 0069: template `EASY` de strides no catálogo do taper,
+seleção de um único dia seguro e omissão honesta. Sem UI, schema, dependência, migração
+ou dado real.
+
+### Concluído
+
+- **Catálogo:** `easyTemplates(TAPER)` expõe o template `STRIDES` (`EASY`,
+  `qualityKind = null`, estrutura) para o iniciante; intermediário/avançado continuam
+  com a micro-dose `QUALITY`.
+- **Seleção:** no máximo 1 sessão no taper/prova, em dia com 20–25 min, sem longão/
+  qualidade no próprio dia ou no dia anterior, sem véspera/dia da prova e sem
+  recuperação. Preferência pela janela 7–10 dias (5K/10K) ou 10–14 (meia/maratona),
+  mais próxima do fim; semana da prova aceita a dose curta em outro dia seguro.
+- **Omissão:** sem dia seguro de 20–25 min, a sessão é omitida com copy (“sem
+  acelerações; nenhum treino forte foi inventado”), inclusive quando todos os slots
+  ficam abaixo do mínimo executável.
+- **Contratos:** `qualityCount` continua 0, nenhum `QUALITY` para iniciante e
+  `R-PRESC-04` preservada. Golden `G-BEGINNER-TAPER-01` A–C; teste de catálogo.
+- **Versão:** `weekly-plan-v9`; `daily-prescription-v7` permanece.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (1.388 testes).
+- `./gradlew spotlessKotlinCheck` verde; `git diff --check` limpo.
+- Nenhuma mudança de UI/schema/migração/dependência.
+
+### Pendente
+
+- Gates finais de fechamento (`check -x spotlessMiscCheck`, `koverVerify`,
+  `assembleDebug`) e atualização das versões citadas em `ARCHITECTURE.md`,
+  `DATA_MODEL.md` e `TESTING.md`.
 
 ## Sessão 2026-11-26 — Fatia de código D5 (qualidade × longão entre semanas)
 

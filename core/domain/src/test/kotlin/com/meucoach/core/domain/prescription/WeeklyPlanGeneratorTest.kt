@@ -1833,7 +1833,10 @@ class WeeklyPlanGeneratorTest {
         val mondaySession = plan.sessions.first { it.date == monday }
         val wednesdaySession = plan.sessions.first { it.date == monday.plusDays(2) }
         assertThat(mondaySession.durationMin).isEqualTo(30)
-        assertThat(wednesdaySession.durationMin).isEqualTo(30)
+        // ADR 0069: the beginner's taper strides occupy the 7–10 day window.
+        assertThat(wednesdaySession.title).isEqualTo("Acelerações curtas")
+        assertThat(wednesdaySession.type).isEqualTo(WorkoutType.EASY)
+        assertThat(wednesdaySession.durationMin).isEqualTo(25)
         assertThat(plan.rationale).contains("Taper sem histórico")
         assertThat(plan.rationale).doesNotContain("média das 3 semanas")
     }

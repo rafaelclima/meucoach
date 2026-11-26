@@ -107,7 +107,12 @@ object SessionLibrary {
     ): List<SessionTemplate> = when (phase) {
         MesoPhase.RECOVERY -> listOf(easy(recovery = true))
 
-        MesoPhase.TAPER -> listOf(easy(recovery = false))
+        MesoPhase.TAPER -> buildList {
+            add(easy(recovery = false))
+            // ADR 0069: the beginner keeps one EASY strides micro-dose in the
+            // taper; intermediate/advanced keep the QUALITY micro-dose.
+            if (level == Experience.BEGINNER) add(stridesBase())
+        }
 
         MesoPhase.BASE, MesoPhase.BUILD, MesoPhase.PEAK -> buildList {
             add(easy(recovery = false))

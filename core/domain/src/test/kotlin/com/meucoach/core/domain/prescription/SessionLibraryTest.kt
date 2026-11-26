@@ -46,6 +46,20 @@ class SessionLibraryTest {
     }
 
     @Test
+    fun `beginner taper easy catalog carries one easy strides template`() {
+        val beginner = SessionLibrary.easyTemplates(MesoPhase.TAPER, Experience.BEGINNER)
+        assertThat(beginner.map { it.role }).containsExactly(SessionRole.EASY_RUN, SessionRole.STRIDES)
+
+        val strides = beginner.first { it.role == SessionRole.STRIDES }
+        assertThat(strides.type).isEqualTo(WorkoutType.EASY)
+        assertThat(strides.qualityKind).isNull()
+        assertThat(strides.structure).isNotNull
+
+        val intermediate = SessionLibrary.easyTemplates(MesoPhase.TAPER, Experience.INTERMEDIATE)
+        assertThat(intermediate.map { it.role }).containsExactly(SessionRole.EASY_RUN)
+    }
+
+    @Test
     fun `build gives two qualities with distinct kinds to intermediate and advanced`() {
         val intermediate = SessionLibrary.qualityRotation(
             phase = MesoPhase.BUILD,

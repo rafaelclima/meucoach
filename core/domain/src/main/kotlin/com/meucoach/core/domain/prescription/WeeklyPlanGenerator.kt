@@ -11,6 +11,7 @@ import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.Experience
 import com.meucoach.core.model.Pace
 import com.meucoach.core.model.PaceZone
+import com.meucoach.core.model.RaceDistance
 import com.meucoach.core.model.ReadinessLevel
 import com.meucoach.core.model.isRace
 import java.time.DayOfWeek
@@ -239,6 +240,15 @@ class WeeklyPlanGenerator {
         // plans; only the event projection can define a race from now on.
         val race = input.race ?: RacePlan.from(input.profile.goal)
             .takeIf { input.eventDates.isEmpty() }
+        // ADR 0069: the beginner taper window (or the race week fallback).
+        val taperStridesWindowPresent = race != null &&
+            input.profile.experience == Experience.BEGINNER &&
+            (
+                race.targetDate in weekStart..weekStart.plusDays(6) ||
+                    daysAfterToday.any { day ->
+                        race.daysTo(weekStart.plusDays((day.value - 1).toLong())) in race.stridesWindowDays()
+                    }
+                )
         // FR-411: the PEAK pace is always the current prediction. The goal time
         // is a reference only and may explain the gap in the copy.
         val racePacePlan = race?.let { activeRace ->
@@ -286,7 +296,12 @@ class WeeklyPlanGenerator {
                     "Não há dias de treino restantes nesta semana. O próximo plano começa " +
                         "na segunda-feira."
             }
-            return base.copy(rationale = message)
+            val rationale = if (taperStridesWindowPresent) {
+                "$message $TAPER_STRIDES_OMITTED"
+            } else {
+                message
+            }
+            return base.copy(rationale = rationale)
         }
         val dayTrimmed = daysAfterToday.size < allDays.size
         val eventDaysSkipped = raceEligibleDays.size < daysAfterToday.size
@@ -511,6 +526,35 @@ class WeeklyPlanGenerator {
         } else {
             null
         }
+        // ADR 0069: at most one EASY strides session in the beginner taper,
+        // placed on a safe day inside the 7–10 (5K/10K) or 10–14 (half/marathon)
+        // window. If the window already passed, the race week may still keep a
+        // short dose; without a safe 20–25 min day the session is omitted.
+        val taperStridesTemplate = easyTemplate(SessionRole.STRIDES)
+        val beginnerTaperStrides = input.profile.experience == Experience.BEGINNER &&
+            race != null &&
+            (taperLimitsQuality || isRaceWeek)
+        val taperStridesDay = if (
+            beginnerTaperStrides &&
+            taperStridesTemplate != null &&
+            taperStridesWindowPresent
+        ) {
+            selectTaperStridesDay(
+                TaperStridesContext(
+                    race = requireNotNull(race),
+                    weekStart = weekStart,
+                    days = days,
+                    availability = availability,
+                    longDay = longDay,
+                    qualityDays = qualityDays,
+                    microDoseDays = microDoseDays,
+                    previousSundayLong = previousSundayLong,
+                    recovery = recovery,
+                ),
+            )
+        } else {
+            null
+        }
 
         // ADR 0045 §2.2: the long run is sized before the sessions exist. The
         // other sessions' durations define the share target and the "longest
@@ -529,6 +573,7 @@ class WeeklyPlanGenerator {
                         qualityDays = qualityDays,
                         microDoseDays = microDoseDays,
                         stridesDay = stridesDay,
+                        taperStridesDay = taperStridesDay,
                         postRaceDays = postRaceDays,
                         recovery = recovery,
                     ),
@@ -658,6 +703,36 @@ class WeeklyPlanGenerator {
                         },
                         planDecision = qualityPlanDecision(template),
                         structure = requireNotNull(template.structure).fittedTo(duration),
+                    )
+                }
+
+                day == taperStridesDay -> {
+                    val duration = durationByDay.getValue(day)
+                    val template = requireNotNull(taperStridesTemplate) {
+                        "A beginner taper stride day requires its easy template"
+                    }
+                    val structure = requireNotNull(template.structure).fittedTo(duration)
+                    val raceWeek = race?.targetDate in weekStart..weekStart.plusDays(6)
+                    PlannedSession(
+                        date = date,
+                        type = WorkoutType.EASY,
+                        title = template.title,
+                        durationMin = duration,
+                        rationale = if (raceWeek) {
+                            "Dose curta de acelerações na semana da prova, em ritmo fácil; " +
+                                "sem treino forte."
+                        } else {
+                            "Taper: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, " +
+                                "para manter o estímulo sem fadiga, sem treino forte."
+                        },
+                        ruleIds = (template.ruleIds + listOf("R-PLAN-06", "R-PLAN-10")).distinct(),
+                        evidenceIds = template.evidenceIds,
+                        targets = PrescriptionPolicy.targets(
+                            type = WorkoutType.EASY,
+                            profile = input.profile,
+                            durationMin = duration,
+                        ),
+                        structure = structure,
                     )
                 }
 
@@ -874,6 +949,7 @@ class WeeklyPlanGenerator {
         } else {
             null
         }
+        val taperStridesOmitted = taperStridesWindowPresent && taperStridesDay == null
         val rationale = buildString {
             append("Fase ${meso.phase}. ")
             if (meso.fallbackUsed) {
@@ -992,6 +1068,10 @@ class WeeklyPlanGenerator {
             if (qualityNoSafeNote != null) {
                 append(qualityNoSafeNote)
             }
+            if (taperStridesOmitted) {
+                append(TAPER_STRIDES_OMITTED)
+                append(" ")
+            }
             if (structuralQualityEligible && qualityCount > 0) {
                 when {
                     !secondQualityAllowed -> append(
@@ -1097,6 +1177,72 @@ class WeeklyPlanGenerator {
             selected += day
         }
         return selected.toSet()
+    }
+
+    /**
+     * ADR 0069 §2.2: a safe day for the beginner's taper strides. The day needs
+     * 20–25 min, no long/quality on the day or the day before, no race eve/day
+     * and no recovery. Preference is the 7–10 (5K/10K) or 10–14 (half/marathon)
+     * window, closest to its end; the race week accepts any remaining safe day.
+     */
+    private data class TaperStridesContext(
+        val race: RacePlan,
+        val weekStart: LocalDate,
+        val days: List<DayOfWeek>,
+        val availability: Map<DayOfWeek, Int>,
+        val longDay: DayOfWeek?,
+        val qualityDays: Set<DayOfWeek>,
+        val microDoseDays: Set<DayOfWeek>,
+        val previousSundayLong: PlannedSession?,
+        val recovery: RecoveryWindow?,
+    )
+
+    private fun selectTaperStridesDay(context: TaperStridesContext): DayOfWeek? = with(context) {
+        val window = race.stridesWindowDays()
+        val raceWeek = race.targetDate in weekStart..weekStart.plusDays(6)
+        val candidates = days.filter { day ->
+            val date = weekStart.plusDays((day.value - 1).toLong())
+            val previousDate = date.minusDays(1)
+            val previousDay = previousDate.dayOfWeek
+            val previousStrong = if (previousDate < weekStart) {
+                previousSundayLong != null
+            } else {
+                previousDay == longDay ||
+                    previousDay in qualityDays ||
+                    previousDay in microDoseDays
+            }
+            day != longDay &&
+                day !in qualityDays &&
+                day !in microDoseDays &&
+                availability.getValue(day) >= MIN_TAPER_STRIDES_MIN &&
+                race.daysTo(date) >= RACE_EVE_DAYS &&
+                recovery?.isActive(date) != true &&
+                !previousStrong
+        }
+        val preferred = candidates.filter { day ->
+            race.daysTo(weekStart.plusDays((day.value - 1).toLong())) in window
+        }
+        when {
+            preferred.isNotEmpty() -> preferred.minWith(
+                compareBy({ day ->
+                    race.daysTo(weekStart.plusDays((day.value - 1).toLong()))
+                }, { it.value }),
+            )
+
+            raceWeek -> candidates.minWith(
+                compareBy({ day ->
+                    race.daysTo(weekStart.plusDays((day.value - 1).toLong()))
+                }, { it.value }),
+            )
+
+            else -> null
+        }
+    }
+
+    /** 5K/10K keep the last intense session 7–10 days out; half/marathon 10–14. */
+    private fun RacePlan.stridesWindowDays(): IntRange = when (distance) {
+        RaceDistance.FIVE_K, RaceDistance.TEN_K -> 7..10
+        RaceDistance.HALF_MARATHON, RaceDistance.MARATHON -> 10..14
     }
 
     /**
@@ -1396,6 +1542,8 @@ class WeeklyPlanGenerator {
 
         day == plan.stridesDay -> minOf(available, MICRO_DOSE_MIN)
 
+        day == plan.taperStridesDay -> minOf(available, TAPER_STRIDES_MAX_MIN)
+
         else -> {
             val cap = plan.recovery?.maxSessionMinutes(date)
             minOf(available, MAX_EASY_MIN).let { if (cap != null) minOf(it, cap) else it }
@@ -1406,6 +1554,7 @@ class WeeklyPlanGenerator {
         val qualityDays: Set<DayOfWeek>,
         val microDoseDays: Set<DayOfWeek>,
         val stridesDay: DayOfWeek?,
+        val taperStridesDay: DayOfWeek?,
         val postRaceDays: List<DayOfWeek>,
         val recovery: RecoveryWindow?,
     )
@@ -1955,6 +2104,11 @@ class WeeklyPlanGenerator {
         private const val LONG_RUN_TITLE = "Longão"
         private const val LONG_RUN_HONEST_TITLE = "Corrida mais longa"
         private const val MICRO_DOSE_MIN = 25
+        private const val TAPER_STRIDES_MAX_MIN = 25
+        private const val MIN_TAPER_STRIDES_MIN = 20
+        private const val RACE_EVE_DAYS = 2L
+        private const val TAPER_STRIDES_OMITTED = "Sem um dia de 20–25 min na janela do taper, " +
+            "esta semana fica sem acelerações; nenhum treino forte foi inventado."
 
         /** EASY curto após a prova na mesma semana (decisão do usuário 0, ADR 0043 §3.3). */
         private const val POST_RACE_EASY_MAX_MIN = 30

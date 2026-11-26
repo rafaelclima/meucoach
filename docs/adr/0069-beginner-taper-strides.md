@@ -1,6 +1,6 @@
 # ADR 0069 — Strides `EASY` no taper do iniciante
 
-**Status:** Aceito em 26/11/2026; implementação pendente (Fatia 0 docs-only).
+**Status:** Aceito e implementado em 26/11/2026 (Fatia 4; `weekly-plan-v9`).
 **Data:** 2026-11-26
 **Escopo:** `SessionLibrary.easyTemplates(TAPER)`, `WeeklyPlanGenerator` (seleção da
 micro-dose/estrutura), `DailyPrescriptionEngine` (preservação da sessão `EASY`),
@@ -99,10 +99,9 @@ declarar zero do que inventar uma dose que o usuário não tem.
 
 ### 2.5 Impacto de versão
 
-- `weekly-plan-v8`: a composição do taper do iniciante muda (uma sessão `EASY` a mais,
-  com estrutura); a fatia de código deve subir a versão do motor e o `PlanUpgrade`
-  (ADR 0048) reavalia planos antigos na abertura, preservando passado, `DONE` e
-  `CLOSED`.
+- `weekly-plan-v9`: a composição do taper do iniciante muda (uma sessão `EASY` a mais,
+  com estrutura); o `PlanUpgrade` (ADR 0048) reavalia planos antigos na abertura,
+  preservando passado, `DONE` e `CLOSED`.
 - `daily-prescription-v7`: permanece se o motor diário apenas consumir a sessão `EASY`
   do plano. Se ele rebaixar/remover a sessão ou mudar a copy do dia, a versão também
   sobe.
@@ -169,10 +168,12 @@ Aceite da futura implementação:
 | **B — agenda sem mínimo** | Mesmo perfil, mas nenhum dia com 20–25 min na janela (slots de 15 min) | Zero strides e zero `QUALITY`; copy contém “sem ... acelerações” e “nenhum treino forte foi inventado”; nenhuma sessão >15; nenhum estímulo com `structure == null` |
 | **C — semana da prova** | Iniciante, prova em 4 dias; um dia seguro com 20 min na semana da prova | Exatamente 1 strides `EASY` ≤25 min, `qualityKind == null`, `structure != null`; zero `QUALITY`; copy contém “semana da prova” |
 
-O cenário A falha no motor atual (o iniciante em taper não recebe strides) e passa
-depois da implementação. O cenário B prova a omissão honesta; o C prova a dose de semana
-da prova sem criar qualidade.
+O cenário A falha no motor v8 (o iniciante em taper não recebe strides) e passa depois da
+implementação. O cenário B prova a omissão honesta; o C prova a dose de semana da prova
+sem criar qualidade.
 
-**Fora de escopo desta fatia:** implementar o template, alterar `easyTemplates(TAPER)`,
-mudar `ENGINE_VERSION`, criar fixture executável ou abrir `QUALITY` para iniciante. Este
-ADR apenas fixa a decisão e o critério.
+**Implementação:** `easyTemplates(TAPER)` expõe o template `EASY` de strides para o
+iniciante, o gerador escolhe no máximo um dia seguro na janela 7–10/10–14 (ou na semana
+da prova), com 20–25 min e estrutura; sem dia seguro, omite com copy. `qualityCount`
+continua 0 e `R-PRESC-04` permanece. Golden `BeginnerTaperStridesGoldenTest`;
+`weekly-plan-v9`.
