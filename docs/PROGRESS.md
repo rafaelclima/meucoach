@@ -1,6 +1,70 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3–D6)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–7 do PRD de correções + D3–D6)
+
+## Sessão 2026-11-26 — Fatia 7 do PRD de correções (documentação)
+
+**Escopo:** `DOC-01`..`DOC-10`, `GEN-01/02/03/06/07` e `NOVO-DOC-01`. Sessão **docs-only**:
+nenhum código de produção/UI, schema, migração, dependência ou dado de saúde real.
+Os três documentos de auditoria permaneceram intactos.
+
+### Concluído
+
+- **`PRODUCT.md` v1.3:** Coach, Story e Arte no escopo entregue; barra
+  `Hoje · Corridas · Coach · Tendências · Saúde` com Perfil via avatar/engrenagem;
+  Tier C como teste de 30 min por conta própria + inserção manual, sem player;
+  `GUIDED` futuro e recusado por `CompleteSession`; métricas de desenvolvimento
+  separadas das de produto não instrumentadas; notificação de **import concluído**;
+  exportação JSON explícita sem restauração de backup no MVP.
+- **`ROADMAP.md` v1.83:** Fase 3 por subfeature (Story/LLM entregues ×
+  Zepp/social/Wear/backend planejados), P1-18 com pendências operacionais reais e
+  critérios de saída com **P1-12 e validação em aparelho**, ambos desmarcados.
+- **`TESTING.md` v1.22:** suíte completa real de **3.236 testes** (1387 domain /
+  1565 app / 244 data / 40 model), 0 falhas; flakes de Story com sintoma, contexto
+  e comando que fica verde; REF-01 explicitamente aberto (baseline com 7 entradas);
+  goldens `G-TAPER-01`, `G-LONG-RUN-RAMP-01`, `G-QUALITY-ADJACENCY-01` e
+  `G-BEGINNER-TAPER-01` já na tabela de cenários.
+- **`DECISIONS.md` r2.05 e `ARCHITECTURE.md` v1.13:** barra real, Room v22,
+  `weekly-plan-v9`/`daily-prescription-v7`, `TaperBaselineResolver` e
+  `LongRunReferenceResolver`, migração 21→22 e D10 como decisão doc-only.
+- **Handoffs:** `HANDOFF_POS_CHAT_TURNS`, `HANDOFF_COACH_V3` e
+  `HANDOFF_IA_COACH` com estado atual, histórico preservado e pendência explícita
+  de redeploy do proxy + validação no aparelho.
+- **`PRD_IA_COACH.md` v0.2:** decisão 8 com timeouts reais (45/25 s no app;
+  18/20 s no proxy), decisão 21 com CTA de check-in/avaliação e escopo médico
+  fail-closed, memória em `chat_turns` v22 e sem promessa de resposta aberta para
+  sintomas/condições cardíacas.
+- **`PRD_TREINO_REAL.md`:** aceites de FR-401/FR-402/FR-403 cobertos marcados com
+  teste/golden; itens de aparelho e P1-12 continuam abertos.
+
+### Gates
+
+- `git diff --check` limpo.
+- `./gradlew spotlessMiscCheck` continua falhando **apenas** nos três documentos
+  de auditoria preexistentes (`AUDITORIA_GERAL_2026-11.md`,
+  `REVISAO_AUDITORIA_2026-11.md`, `PRD_CORRECOES_AUDITORIA_2026-11.md`), que não
+  foram alterados; os documentos desta fatia não introduzem espaços à direita nem
+  falta de newline.
+- `./gradlew spotlessKotlinCheck` verde; nenhum arquivo Kotlin alterado.
+- Suíte completa executada para as contagens reais:
+  `./gradlew :core:model:test :core:domain:test :core:data:testDebugUnitTest :app:testDebugUnitTest --rerun-tasks --no-parallel`
+  verde (3m16s, 3.236 testes, 0 falhas/erros/skip).
+- Nenhum dos três documentos de auditoria foi alterado; nenhum dado real no diff.
+
+### Pendente
+
+- **Fatia 8 (manual):** validação no aparelho com o usuário 0 — revogação em voo,
+  retry de exchange antigo, pergunta médica, E14/E18, Story `PreparingMap`/prévia,
+  fonte 200%, TalkBack do segmento e `McTextButton`. Não executada sem aparelho.
+- **Redeploy do proxy** no Dokploy com os prompts novos do `free-answer` e do
+  dossiê.
+- **P1-12:** 4 semanas de uso real, ajuste de pesos e paces; critério separado da
+  validação em aparelho.
+
+### Próximo
+
+1. Fatia 8 — validação em aparelho com o usuário 0 (manual; não marcar sem executar).
+2. P1-12 — 4 semanas de uso real.
 
 ## Sessão 2026-11-26 — Fatia de código D6 (strides `EASY` no taper do iniciante)
 
