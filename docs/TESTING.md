@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.21 · **Data:** 19/11/2026 · Bloco B do Coach: 2.566 testes (1178 domain / 1115 app / 233 data / 40 model), gates verdes; flakes conhecidos documentados (§10.1).
+**Versão:** 1.22 · **Data:** 26/11/2026 · Suíte completa após D3–D6 e Fatias 1–6: **3.236 testes** (1387 domain / 1565 app / 244 data / 40 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -92,10 +92,10 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 **Fuzz leve (T-05, 13/11/2026):** `FitParserFuzzTest` muta os 4 fixtures reais (truncamento em qualquer ponto, flips de bit, substituição de bytes, inserção/duplicação de blocos, zeramento de trechos) com seeds determinísticas e alimenta 200 blocos de lixo aleatório. O contrato é: qualquer entrada retorna resultado ou lança `FitParseException` com código — nenhuma outra exceção pode escapar, e parse repetido é determinístico. Sem dependência externa; toda falha reproduz com o `repro` (fixture + seed) da mensagem.
 
-Evidência atual (19/11/2026, Bloco B do Coach):
+Evidência atual (26/11/2026, após D3–D6 e Fatias 1–6):
 
-- 2.566 testes no repositório (1178 em `core:domain`, 1115 em `:app`, 233 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
-- Comandos de referência: `./gradlew :core:domain:test :core:model:test :core:data:testDebugUnitTest --rerun-tasks` + `./gradlew :app:testDebugUnitTest --rerun-tasks --no-parallel` (a suíte do app cai nos flakes do §10.1 sob paralelismo; sem paralelismo fica verde).
+- **3.236 testes** no repositório (1387 em `core:domain`, 1565 em `:app`, 244 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- Comando executado: `./gradlew :core:model:test :core:domain:test :core:data:testDebugUnitTest :app:testDebugUnitTest --rerun-tasks --no-parallel` (3m16s, verde). O `--no-parallel` evita os flakes de carga do §10.1; a suíte do app também foi validada sem ele em sessões anteriores.
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
 - `core:domain`: 97,56% de linhas, 81,13% de branches, 96,23% de instruções.
@@ -353,6 +353,12 @@ Cenários implementados hoje:
 | `G-LONG-RUN-RAMP-01` | Longão do iniciante 45 → 55 (+10), agenda 50, sem referência → 45 e piso vencendo um último longão de 30 |
 | `G-QUALITY-ADJACENCY-01` | Longão de domingo bloqueia qualidade na segunda; qualidade movida, omitida sem dia seguro ou mantida sem plano anterior |
 | `G-BEGINNER-TAPER-01` | Iniciante em taper/prova com 1 strides `EASY` ≤25 min e estrutura, zero `QUALITY`; sem dia seguro, omissão com copy |
+
+Os quatro goldens de D3–D6 (`G-TAPER-01`, `G-LONG-RUN-RAMP-01`,
+`G-QUALITY-ADJACENCY-01` e `G-BEGINNER-TAPER-01`) foram adicionados pelos ADRs
+0066–0069 e rodam em `:core:domain:test` junto dos testes de contrato
+(`TaperGoldenTest`, `LongRunRampGoldenTest`, `QualityAdjacencyGoldenTest` e
+`BeginnerTaperStridesGoldenTest`).
 | `G-READY-01` | Dia verde com dados completos |
 | `G-READY-02` | Dados ausentes totais → não quebra, confiança baixa |
 | `G-READY-03` | Sinal de doença/lesão suspende qualidade |
@@ -475,17 +481,17 @@ inteira pode disputar frames com o Compose/Roborazzi.
 - **Não há** nightly de emulador nem `connectedDebugAndroidTest`; instrumentados dependem de decisão de distribuição (TEST-01).
 - Branch protection: CI verde obrigatório.
 
-### 10.1 Flakes conhecidos (C4-56, 18/11/2026)
+### 10.1 Flakes conhecidos (C4-56, 18/11/2026; Story ampliado em 26/11/2026)
 
-Três testes caem de forma intermitente sob paralelismo/carga e passam isolados; nenhum é da área alterada quando aparece. A suíte completa do app é validada com `--rerun-tasks --no-parallel`.
+Testes que caem de forma intermitente sob paralelismo/carga e passam isolados; nenhum é da área alterada quando aparece. A suíte completa é validada com `--rerun-tasks --no-parallel`. Nenhum flake é `@Ignore`.
 
-| Teste | Sintoma | Contexto |
-|---|---|---|
-| `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução |
-| `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado. Em 3.3-B a origem foi corrigida: `TodayViewModelPersistTest` cancela os `viewModelScope` antes de fechar o banco; 2 execuções completas verdes depois disso (com e sem `--no-parallel`). |
-| `TodayViewModelPersistTest` | `TimeoutCancellationException` de 5 s (`withTimeout`) na suíte cheia | Caso “upgrades a stale stored week on opening”; verde 5× isolado e na reexecução da suíte completa |
-| `StoryStudioContentTest` (“describes the preview”) | `waitUntil` de 10 s esperando a prévia sair de `Loading` | Render de frames fora da main (`Dispatchers.Default`) sob carga; verde isolado e no rerun. Rodar `:app:testDebugUnitTest --tests "*StoryStudioContentTest"` ou a suíte com `--no-parallel`. |
-| `StoryStudioScreenshotTest` | Timeout/verify da captura quando roda junto da suíte lógica | Frames Robolectric pesados; o gate roda isolado com `:app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"`. |
+| Teste | Sintoma | Contexto | Comando que fica verde |
+|---|---|---|---|
+| `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução | `./gradlew :app:testDebugUnitTest --tests "*MetricsImportViewModelTest"` |
+| `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado. Em 3.3-B a origem foi corrigida: `TodayViewModelPersistTest` cancela os `viewModelScope` antes de fechar o banco; 2 execuções completas verdes depois disso (com e sem `--no-parallel`). | `./gradlew :app:testDebugUnitTest --tests "*TutorialSystemBackTest"` |
+| `TodayViewModelPersistTest` | `TimeoutCancellationException` de 5 s (`withTimeout`) na suíte cheia | Caso “upgrades a stale stored week on opening”; verde 5× isolado e na reexecução da suíte completa | `./gradlew :app:testDebugUnitTest --tests "*TodayViewModelPersistTest"` |
+| `StoryStudioContentTest` (“describes the preview”) | `waitUntil` de 10 s esperando a prévia sair de `Loading` | Render de frames fora da main (`Dispatchers.Default`) sob carga; desde a Fatia 6 os estados `Loading`/`Empty`/`Error` têm testes próprios sem depender do renderer, mas o caso antigo continua sensível à carga. | `./gradlew :app:testDebugUnitTest --tests "*StoryStudioContentTest"` (ou a suíte com `--no-parallel`) |
+| `StoryStudioScreenshotTest` | Timeout/verify da captura quando roda junto da suíte lógica | Frames Robolectric pesados; inclui o golden `story-studio-video-narrow-200-dark` (360 dp/fonte 200%). O gate visual é explícito e roda isolado. | `./gradlew :app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"` |
 
 - **18/11/2026 (apagar individual):** `TodayViewModelPersistTest`
   (“upgrades a stale stored week on opening”) falhou uma vez na suíte cheia por
@@ -546,7 +552,9 @@ Exceção conhecida: os 7 achados de `core:domain` em `MacroPlan`, `MesoCycle` e
 `WeeklyPlanGenerator` (ADR 0043) entraram no baseline em 16/11/2026 porque o
 código já estava commitado e o `check` estava vermelho. São dívida **rastreada**
 em `ROADMAP.md` (REF-01), não perdão: o item só fecha quando as entradas saírem
-do baseline sem mudança de comportamento.
+do baseline sem mudança de comportamento. **Em 26/11/2026 o baseline ainda
+contém as 7 entradas e REF-01 continua aberto**; a Fatia 7 não removeu baseline
+nem “fechou” dívida por documentação.
 
 ## 11.1 Teste manual de notificações
 

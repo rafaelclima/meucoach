@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.12 · **Data:** 19/11/2026 · **Reconciliação:** Blocos A/B do Coach (F1 verdadeiro + composição reativa read-only) sobre IA Coach + Room v19.
+**Versão:** 1.13 · **Data:** 26/11/2026 · **Reconciliação:** Fatia 7 da documentação — barra real (Hoje · Corridas · Coach · Tendências · Saúde), Room v22 e motores `weekly-plan-v9`/`daily-prescription-v7`; D3–D6 refletidos nos componentes do plano.
 
 ## 1. Restrições e forças
 
@@ -16,13 +16,13 @@
 ```mermaid
 flowchart LR
     subgraph Android
-        UI[Compose UI\nHoje · Corridas · Tendências · Saúde · Perfil]
+        UI[Compose UI\nHoje · Corridas · Coach · Tendências · Saúde]
         VM[ViewModels / State]
         UC[Use cases]
         DOM[core:domain\nzonas · carga · prontidão · prescrição · evidência]
         TIME[TimeProvider\nfuso do perfil]
         REPO[Repositórios]
-        ROOM[(Room v19 / SQLite)]
+        ROOM[(Room v22 / SQLite)]
         HC[Health Connect]
         IMP[Import\nFIT · TCX · GPX · CSV]
         FS[Arquivos originais]
@@ -158,8 +158,10 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 | `HeartRateZoneCalculator` / `PaceZoneCalculator` | LTHR, pace de limiar | 5 zonas de FC, 5 de pace, 3 zonas polarizadas |
 | `TrainingLoadEngine` | atividades + frescor da fonte | TRIMP, rTSS, CTL, ATL, TSB, ACWR, monotonia, `LoadCoverage`/`LoadDataState` |
 | `ReadinessCalculator` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
-| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today`, semanas anteriores, prova, janela de recuperação | semana conservadora (até 2 qualidades, longão, taper, deload, recuperação pós-prova) com volume +6% sobre o concluído |
+| `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today`, semanas anteriores, prova, janela de recuperação | semana conservadora (até 2 qualidades, longão, taper, deload, recuperação pós-prova) com volume +6% sobre o concluído; taper por média/fallback (D3), rampa do longão (D4), adjacência entre semanas (D5) e strides `EASY` do iniciante no taper (D6) |
 | `VolumeProgression` | semanas anteriores, teto de disponibilidade, prontidão/carga/ACWR | alvo de minutos, base e motivo de manutenção (ADR 0038) |
+| `TaperBaselineResolver` | semanas elegíveis antes do taper, maior semana forte recente | baseline da média de 3 semanas, fallback nomeado ou `NO_HISTORY` (ADR 0066) |
+| `LongRunReferenceResolver` | semanas anteriores, nível e encerramentos | último longão normal real/planejado para limitar o iniciante a +10 min/semana (ADR 0067) |
 | `RecoveryWindow` | prova concluída (`distância`/`data`) e data consultada | janela ativa, teto de duração, bloqueio de qualidade/longão |
 | `PlanReplanner` | plano versionado, perfil, prontidão, carga, `today`, datas não treináveis, recuperação | `Suggest` (futuro mesclado) ou `NoChange`, sem tocar hoje/passado/protegidas |
 | `DailyPrescriptionEngine` + `PrescriptionPolicy` | plano, sessão, prontidão, carga, calor, perfil, recuperação, rampa cold-start | `KEEP`/`REDUCE`/`DOWNGRADE`/`REST`/`NO_PLAN`, alvos, rationale |
@@ -180,13 +182,13 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - `engineVersion` semântica (ex.: `1.0.0`) e `inputsHash` determinístico por decisão.
 - A `DailyPrescription` persiste `engineVersion`, `inputsHash`, `ruleIds`/`evidenceIds` e confiança; a versão anterior permanece com `supersedesId`.
 - Mudou regra? Nova versão do motor e nova linha. Não há `rulesVersion`/`evidenceVersion` como colunas separadas.
-- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v9`, `daily-prescription-v7`, `macro-plan-v2`, `planning-v1` (fingerprint). O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o mecanismo de upgrade compara qualquer versão armazenada com o alvo (v8→v9 na abertura; v6→v7 na prescrição). O default da coluna continua `'weekly-plan-v6'` para o legado da migração; o motor grava a versão atual em toda linha nova.
+- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v9`, `daily-prescription-v7`, `macro-plan-v2`, `planning-v1` (fingerprint). A Fatia 7 é docs-only e **não** bumpa motor; as versões seguem as dos ADRs 0066–0069. O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o mecanismo de upgrade compara qualquer versão armazenada com o alvo (v8→v9 na abertura; v6→v7 na prescrição). O default da coluna continua `'weekly-plan-v6'` para o legado da migração; o motor grava a versão atual em toda linha nova.
 
 ### 6.3 Tempo, prescrição e evidência
 
 - **Tempo:** `TimeProvider` (em `:app/time`) expõe `today`, `zoneId`, `now()`, `currentWeekStart()` e `refresh()`. `SystemTimeProvider` usa o relógio do sistema; `ProfileTimeProvider` usa o fuso IANA do perfil e cai para o fuso do sistema antes do onboarding. Hilt fornece um único `Clock`. `MainActivity.onResume()` e a meia-noite disparam `refresh()`; trocar o fuso reagenda lembretes. ViewModels e telas não chamam `LocalDate.now()`/`System.currentTimeMillis()` (`ADR 0022`).
 - **Decisão do dia:** `GetTodayDecision` resolve primeiro um `RaceEvent` na data; se existir, devolve `Competition` sem chamar a prescrição. Sem evento, `GetTodayPrescription` lê a última versão de `daily_prescriptions` e só persiste quando `inputsHash`/`engineVersion` mudam. Editar o check-in cria uma nova linha com `supersedesId`; a anterior continua auditável. `TodayViewModel` não recalcula a decisão (`ADR 0023`/`0030`).
-- **Conclusão:** `CompleteSession` valida data, estado e prescrição; `DONE` exige `completionEvidence` (`ACTIVITY`, `GUIDED` ou `MANUAL`). `SessionExecution` guarda a execução; índices únicos garantem 1:1 entre atividade e sessão. Descanso/doença encerram a sessão como `CLOSED` com motivo. `LEGACY_UNVERIFIED` preserva o histórico antigo sem promovê-lo a verdade (`ADR 0024`).
+- **Conclusão:** `CompleteSession` valida data, estado e prescrição; no MVP `DONE` exige `completionEvidence` `ACTIVITY` ou `MANUAL`. O valor `GUIDED` existe no modelo, mas o caminho é recusado até a sessão guiada (etapa G/ADR 0027) ser aprovada. `SessionExecution` guarda a execução; índices únicos garantem 1:1 entre atividade e sessão. Descanso/doença encerram a sessão como `CLOSED` com motivo. `LEGACY_UNVERIFIED` preserva o histórico antigo sem promovê-lo a verdade (`ADR 0024`).
 - **Datas locais:** atividades persistem instante UTC + `zoneId` + `localDate`; a data local de planejamento vem do fuso do perfil. Treino que cruza meia-noite pertence ao dia de início.
 
 ### 6.4 Replanejamento da semana (ADR 0028)
@@ -290,8 +292,8 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - “Apagar tudo” usa transação + `DataEpochStore` + `DataWriteMutex`: gira a época, cancela importação/saúde/lembretes/story/expurgo, limpa banco, staging, avatar, cache e preferências; Health Connect externo não é tocado (`ADR 0025`).
 - Arquivos originais em storage privado do app, referenciados por hash; o arquivo temporário de staging é limpo após o processamento.
 - `SharedPreferences`/DataStore apenas para preferências e marcas d'água (tema, unidades, onboarding, tutorial, `firstRun`, `HealthSyncStore`, `DataEpochStore`).
-- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`), `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior), `16→17` (proveniência de calibração em `athlete_profile`: `vdotSource`/`vdotCalibratedAt`/`vdotReferenceDistanceM`/`vdotReferenceDurationSec`, ADR 0036), `17→18` (C4-45: `generatorVersion` com default `'weekly-plan-v6'` em `weekly_plans`; `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` em `planned_sessions`; `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` em `daily_prescriptions`; nada reescrito, desconhecido vira `null`) e `18→19` (ADR 0052: `coach_messages`/`coach_summaries` vazias, sem reescrever treino), `19→20` (ADR 0054: `chat_turns` + backfill com TTL por `expiresAt`, tabelas v19 intactas) e `20→21` (ADR 0055: `inputsHash` em `chat_turns` preenchido das tabelas v19, índice único `(origin, inputsHash)`, `coach_messages`/`coach_summaries` removidas).
-- Backup Android desativado para o banco de saúde; exportação explícita pelo usuário.
+- Migrações exportadas em `core/data/schemas/` e testadas com `MigrationTestHelper` em Robolectric: `1→2` (`deletedAt`), `2→3` (`activity_alternates`), `3→4` (`athlete_profile`), `4→5` (`daily_check_ins`), `5→6` (`daily_metrics`), `6→7` (`weekly_plans`/`planned_sessions`), `7→8` (status/motivo), `8→9` (calor/esteira), `9→10` (nome/avatar), `10→11` (`daily_prescriptions`, `createdOn`, `targetsJson`), `11→12` (`session_executions` + evidência/vínculo/encerramento, com backfill `DONE → LEGACY_UNVERIFIED` e `SKIPPED → CLOSED/USER_SKIPPED`), `12→13` (`version`/hashes do plano + `weekly_plan_revisions`, com hashes legados desconhecidos), `13→14` (fingerprint/checkpoint/proveniência do plano + contexto temporal, com todos os campos novos `NULL` no legado), `14→15` (`race_events` vazia, com `activeKey` único, FK `SET NULL` para `activities` e nenhum backfill de `TrainingGoal`), `15→16` (`completionSource` nullable em `race_events`, com o histórico preservado e `NULL` lido como conclusão explícita anterior), `16→17` (proveniência de calibração em `athlete_profile`: `vdotSource`/`vdotCalibratedAt`/`vdotReferenceDistanceM`/`vdotReferenceDurationSec`, ADR 0036), `17→18` (C4-45: `generatorVersion` com default `'weekly-plan-v6'` em `weekly_plans`; `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` em `planned_sessions`; `structureJson`/`qualityBlockReason`/`decisionDetail`/`unlockHint` em `daily_prescriptions`; nada reescrito, desconhecido vira `null`) e `18→19` (ADR 0052: `coach_messages`/`coach_summaries` vazias, sem reescrever treino), `19→20` (ADR 0054: `chat_turns` + backfill com TTL por `expiresAt`, tabelas v19 intactas), `20→21` (ADR 0055: `inputsHash` em `chat_turns` preenchido das tabelas v19, índice único `(origin, inputsHash)`, `coach_messages`/`coach_summaries` removidas) e `21→22` (ADR 0056: `origin` nullable em `chat_turns` para o turno `YOU`, schema `22.json`; nenhum treino reescrito).
+- Backup Android desativado para o banco de saúde; exportação JSON explícita pelo usuário. Restauração de backup não faz parte do MVP (D10); não há round-trip prometido pelo export.
 
 ## 8. Health Connect
 
@@ -323,7 +325,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - Monorepo Gradle, version catalog, wrapper 9.8.2.
 - JDK 17 (AGP exige mínimo 17; Gradle 9.8 suporta até 27).
 - `compileSdk 37`, `targetSdk 36`, `minSdk 31` (Android 12+).
-- Convenções: Spotless (ktlint). Detekt está no roadmap técnico (T-02), não configurado.
+- Convenções: Spotless (ktlint) e Detekt bloqueante nos 5 módulos (T-02, desde 13/11/2026; dívida pré-existente no baseline por módulo, REF-01 aberto).
 - Kover aplicado a `core:domain` (linhas/branches/instruções) e gate próprio de branches do parser FIT (`verifyParserBranchCoverage`, ≥ 90%).
 - CI: `./gradlew check :app:assembleDebug :app:verifyRoborazziDebug` + parser golden tests; lint sem erros.
 - Testes de UI/screenshot rodam em JVM com Robolectric/Roborazzi; não há `androidTest` nem emulador no CI hoje.
@@ -402,8 +404,15 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR-0038](adr/0038-volume-progression-from-completed.md) — progressão de volume a partir do concluído
 - [ADR 0051](adr/0051-ia-coach-proxy.md) — proxy stateless do IA Coach
 - [ADR 0052](adr/0052-ia-coach-memory-schema-v19.md) — memória local do IA Coach, schema v19 e TTL
+- [ADR 0063](adr/0063-coach-open-answers.md) — conversa aberta do Coach com fatos fechados
+- [ADR 0064](adr/0064-workout-reminder-day-authority.md) — lembrete fiel à prescrição do dia
+- [ADR 0065](adr/0065-quality-target-by-kind.md) — alvo da qualidade por `QualityKind`
+- [ADR 0066](adr/0066-taper-three-week-average.md) — taper pela média de 3 semanas
+- [ADR 0067](adr/0067-beginner-long-run-ramp.md) — rampa do longão do iniciante
+- [ADR 0068](adr/0068-quality-long-run-adjacency-across-weeks.md) — adjacência qualidade × longão entre semanas
+- [ADR 0069](adr/0069-beginner-taper-strides.md) — strides `EASY` no taper do iniciante
 
-> Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) ainda não foi extraído.
+> Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) segue proposto e fora do MVP; `GUIDED` não é contrato desta fase. O índice completo está em `DECISIONS.md`.
 
 ## 15. Perguntas abertas
 
