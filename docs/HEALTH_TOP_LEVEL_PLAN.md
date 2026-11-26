@@ -51,7 +51,8 @@ Tutorial
 ## 4. Estado alvo
 
 ```
-Barra inferior: Hoje · Corridas · Tendências · Saúde · Perfil
+Barra inferior (atualizada em 26/11/2026; o Coach entrou no centro): Hoje · Corridas · Coach · Tendências · Saúde
+Perfil fora da barra (avatar no Hoje/engrenagem global)
 Hoje
   └── card de prontidão ── “Ver recuperação” ──► aba Saúde
 Saúde (top-level, sem seta de voltar)

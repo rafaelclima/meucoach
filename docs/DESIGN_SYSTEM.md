@@ -1,6 +1,6 @@
 # DESIGN_SYSTEM.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 11/11/2026 · **Status:** direção aprovada; §7.3 normatiza campos de data e duração (U-13 concluído) e a leitura read-only da referência da meta
+**Versão:** 1.4 · **Data:** 26/11/2026 · **Status:** direção aprovada; §11 atualizado para a barra real (Hoje · Corridas · Coach · Tendências · Saúde; Perfil via avatar/engrenagem); §7.3 normatiza campos de data e duração (U-13 concluído) e a leitura read-only da referência da meta
 
 ## 1. Ideia de marca
 
@@ -395,9 +395,10 @@ Ordem para séries categóricas: lima (destaque), coral, lavanda, ciano, azul, �
 
 ## 11. Blueprints de tela
 
-Barra inferior: **Hoje · Corridas · Tendências · Saúde · Perfil**. Os quatro
-primeiros são destinos de conteúdo; o Perfil concentra identidade, calibração,
-backup e ajuda.
+Barra inferior: **Hoje · Corridas · Coach · Tendências · Saúde**. Os cinco
+destinos são de conteúdo; o Perfil fica fora da barra, acessível pelo avatar no
+Hoje e pela engrenagem global, e concentra identidade, calibração, exportação e
+ajuda.
 
 ### Hoje
 

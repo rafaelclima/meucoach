@@ -155,7 +155,7 @@
 
 ## 7. Pendências anteriores (não são C1)
 
-- [ ] 5 abas (`Hoje · Corridas · Tendências · Saúde · Perfil`) em fonte 200% e 360 dp.
+- [ ] 5 abas (`Hoje · Corridas · Coach · Tendências · Saúde` desde 18/11/2026; Perfil via avatar/engrenagem) em fonte 200% e 360 dp.
 - [ ] Sync do Health Connect após 6 h e com permissão revogada (sem diálogo automático).
 - [ ] Aviso “os dados de hoje ainda não chegaram” e link “Abrir Health Connect”.
 - [ ] Mapa vetorial do story em 1080p e exportação MP4 no aparelho.
