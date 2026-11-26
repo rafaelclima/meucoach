@@ -1269,10 +1269,11 @@ class WeeklyPlanGeneratorTest {
         )
 
         // D5: sRPE conserves — the base week is kept, never accelerated.
-        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides.
-        assertThat(plan.weeklyMinutes).isEqualTo(103)
+        // D2: the fit keeps every day; the week lands exactly on the target.
+        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        assertThat(plan.sessions).hasSize(4)
         assertThat(plan.rationale).doesNotContain("+6%")
-        assertThat(plan.rationale).contains("dados de carga insuficientes")
+        assertThat(plan.rationale).contains("dados de carga insuficientes", "Entregue 120 min")
         assertThat(plan.ruleIds).contains("R-LOAD-04")
         assertThat(ExplanationCatalog.hasRule("R-LOAD-04")).isTrue()
     }
@@ -1300,9 +1301,10 @@ class WeeklyPlanGeneratorTest {
         )
 
         // ADR 0046: progression needs a reliable 28-day baseline.
-        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides.
-        assertThat(plan.weeklyMinutes).isEqualTo(103)
-        assertThat(plan.rationale).contains("em calibração")
+        // D2: the fit keeps every day; the week lands exactly on the target.
+        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        assertThat(plan.sessions).hasSize(4)
+        assertThat(plan.rationale).contains("em calibração", "Entregue 120 min")
         assertThat(plan.rationale).doesNotContain("+6%")
         assertThat(plan.ruleIds).contains("R-PLAN-01")
     }
@@ -1330,8 +1332,13 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.weeklyMinutes).isEqualTo(126)
-        assertThat(plan.rationale).contains("base de 120 min", "+6%", "alvo de 127 min")
+        assertThat(plan.weeklyMinutes).isEqualTo(127)
+        assertThat(plan.rationale).contains(
+            "base de 120 min",
+            "+6%",
+            "entregue 127 min",
+            "alvo de 127 min",
+        )
         assertThat(plan.ruleIds).contains("R-PLAN-01")
         assertThat(plan.evidenceIds).contains("EV-GABBETT-2016")
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
@@ -1364,12 +1371,17 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // O piso de 45 do longão obriga a remover dois dias (o strides não
-        // sobrevive ao fit): 45 + 25 + 25 + 21 = 116, abaixo do alvo de 127.
-        // O 21 em vez de 20 vem do arredondamento do fit com a nova base crua.
-        assertThat(plan.weeklyMinutes).isEqualTo(116)
-        assertThat(plan.sessions).hasSize(4)
-        assertThat(plan.rationale).contains("base de 120 min", "permite mais dias")
+        // D2: no day is dropped to fit 127; the floors anchor the week at 155,
+        // still far below the new 360 min availability.
+        assertThat(plan.weeklyMinutes).isEqualTo(155)
+        assertThat(plan.sessions).hasSize(6)
+        assertThat(plan.rationale).contains(
+            "base de 120 min",
+            "alvo de 127 min",
+            "Semana mínima",
+            "entregue 155 min",
+        )
+        assertThat(plan.rationale).doesNotContain("permite mais dias")
     }
 
     @Test
@@ -1394,11 +1406,15 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // Alvo mantido em 60, mas os pisos (45 do longão + 25 da qualidade + 20
-        // do fácil) elevam a semana mínima para 90; o rationale declara a dose
-        // mínima (ADR 0045 §2.4).
-        assertThat(plan.weeklyMinutes).isEqualTo(90)
-        assertThat(plan.rationale).contains("alvo mantido em 60 min", "abaixo de 80%")
+        // Base 60 (2 de 4 sessões fortes), alvo mantido em 60; os pisos somam
+        // 110 e a copy declara a semana mínima, sem prometer progressão (D2).
+        assertThat(plan.weeklyMinutes).isEqualTo(110)
+        assertThat(plan.rationale).contains(
+            "alvo mantido em 60 min",
+            "abaixo de 80%",
+            "Entregue 110 min",
+            "Semana mínima",
+        )
         assertThat(plan.rationale).doesNotContain("+6%")
     }
 
@@ -1544,9 +1560,9 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides e
-        // fecha em 103 — mesma pressão que o iniciante já sofria.
-        assertThat(plan.weeklyMinutes).isEqualTo(103)
+        // D2: the fit keeps every day and lands exactly on the maintained target.
+        assertThat(plan.weeklyMinutes).isEqualTo(120)
+        assertThat(plan.sessions).hasSize(4)
         assertThat(plan.rationale).contains("alvo mantido em 120 min", "prontidão não está alta")
     }
 
@@ -1590,10 +1606,11 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(highAcwr.rationale).contains("carga recente fora da faixa")
         assertThat(staleLoad.rationale).contains("dados de carga insuficientes")
-        // C4-18: quarta vira strides (25); o fit ao alvo 120 dropa o strides e
-        // fecha em 103 — mesma pressão que o iniciante já sofria.
-        assertThat(highAcwr.weeklyMinutes).isEqualTo(103)
-        assertThat(staleLoad.weeklyMinutes).isEqualTo(103)
+        // D2: no day is dropped; both weeks land exactly on the target.
+        assertThat(highAcwr.weeklyMinutes).isEqualTo(120)
+        assertThat(staleLoad.weeklyMinutes).isEqualTo(120)
+        assertThat(highAcwr.sessions).hasSize(4)
+        assertThat(staleLoad.sessions).hasSize(4)
     }
 
     @Test

@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–2 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–3 do PRD de correções)
 
 ## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
 
@@ -127,6 +127,43 @@ dependência nova ou mudança de regra científica.
 ### Próximo
 
 1. Fatia 3 — honestidade do volume (`ALG-03` e copy de `ALG-08`).
+
+## Sessão 2026-11-26 — Fatia 3 do PRD de correções (honestidade do volume)
+
+**Escopo:** `ALG-03` e `ALG-08`, com D2 aprovada. Sem migração, dependência nova ou mudança
+de regra científica.
+
+### Concluído
+
+- **`fitToVolume`:** pós-valida o total; preenche o que o arredondamento deixou abaixo do alvo
+  e apara o overshoot minuto a minuto nos dias com folga sobre o piso. Nenhuma sessão inteira
+  é largada; quando os pisos impedem o alvo, a semana fica acima dele e é declarada mínima.
+- **Invariante:** com alvo ≥ base, o volume entregue nunca fica abaixo da base. O caso de
+  arredondamento 202×201 não remove o dia de strides.
+- **`volumeRationale`:** usa o volume entregue e o percentual real; não imprime “+6%” quando o
+  entregue não sustenta o crescimento. `ALG-08`: a branch de disponibilidade também anexa o
+  hint do ACWR quando há bloqueio ativo.
+- **Copy:** `Entregue X min` e `Semana mínima` tornam explícita a diferença entre alvo e
+  entrega; o hint antigo que culpava a disponibilidade por um drop de volume foi removido.
+
+### Testes
+
+- Novo `VolumeHonestyTest`: matriz base 120/190/200 × agendas de 3–6 dias, corte 202×201 sem
+  drop, arredondamento abaixo do alvo preenchido, alvo limitado abaixo da base sem “+%” e
+  disponibilidade + ACWR na mesma copy.
+- Atualizados `LongRunSizingTest` e `WeeklyPlanGeneratorTest` para a nova regra (sem drop).
+- `:core:domain:test` verde.
+- `./gradlew check -x spotlessMiscCheck` verde (testes, `koverVerify`, lint e detekt).
+- `./gradlew spotlessKotlinCheck` verde.
+
+### Pendente
+
+- Fatias 0, 4–8 do PRD (ADRs científicos, validador, UX, Story, docs e aparelho).
+- Validação manual no aparelho (Fatia 8).
+
+### Próximo
+
+1. Fatia 4 — validador numérico explain/review (`COACH-10`, `U-1`, `U-3`).
 
 ## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
 

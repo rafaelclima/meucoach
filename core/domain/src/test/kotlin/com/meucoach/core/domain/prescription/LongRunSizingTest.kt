@@ -168,7 +168,7 @@ class LongRunSizingTest {
     }
 
     @Test
-    fun `fitToVolume drops easy days but keeps quality and the long floor`() {
+    fun `fitToVolume keeps every session and trims the overshoot when floors allow`() {
         val previous = completedWeek(minutes = 130)
         val plan = plan(
             experience = Experience.INTERMEDIATE,
@@ -186,13 +186,13 @@ class LongRunSizingTest {
         )
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
-        assertThat(plan.rationale).contains("alvo de 138 min", "permite mais dias")
-        assertThat(plan.weeklyMinutes).isEqualTo(135)
+        assertThat(plan.rationale).contains("alvo de 138 min", "Semana mínima", "entregue 155 min")
+        assertThat(plan.weeklyMinutes).isEqualTo(155)
         assertThat(plan.qualityCount).isEqualTo(2)
-        assertThat(plan.sessions.count { it.type == WorkoutType.EASY }).isEqualTo(2)
-        // Monday is adjacent to the Sunday long run, so the qualities fall on
-        // Tuesday/Thursday and the Monday easy is the shortest one dropped.
-        assertThat(plan.sessions.none { it.date.dayOfWeek == DayOfWeek.MONDAY }).isTrue()
+        // D2: no day is dropped to fit the target; the floors anchor the week.
+        assertThat(plan.sessions).hasSize(6)
+        assertThat(plan.sessions.count { it.type == WorkoutType.EASY }).isEqualTo(3)
+        assertThat(plan.sessions.any { it.date.dayOfWeek == DayOfWeek.MONDAY }).isTrue()
         assertThat(longRun.durationMin).isEqualTo(45)
         assertThat(longRun.durationMin).isGreaterThanOrEqualTo(
             plan.sessions.filter { it.type != WorkoutType.LONG }.maxOf { it.durationMin!! },
@@ -218,8 +218,14 @@ class LongRunSizingTest {
         )
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
-        assertThat(plan.rationale).contains("alvo de 106 min", "Semana mínima", "não é progressão")
-        assertThat(plan.weeklyMinutes).isEqualTo(115)
+        assertThat(plan.rationale).contains(
+            "alvo de 106 min",
+            "entregue 155 min",
+            "Semana mínima",
+            "não é progressão",
+        )
+        assertThat(plan.weeklyMinutes).isEqualTo(155)
+        assertThat(plan.sessions).hasSize(6)
         assertThat(plan.qualityCount).isEqualTo(2)
         assertThat(longRun.durationMin).isEqualTo(45)
         assertThat(longRun.durationMin).isGreaterThanOrEqualTo(

@@ -837,8 +837,8 @@ class WeeklyPlanGenerator {
             append(
                 volumeRationale(
                     volumeDecision,
-                    volumeAdjusted.droppedSessions,
-                    volumeAdjusted.minimalWeek,
+                    weeklyMinutes,
+                    weeklyMinutes > volumeDecision.minutes,
                     extraTrainingNote(volumeDecision, volumeReferences, combinedReferences),
                 ),
             )
@@ -1452,15 +1452,15 @@ class WeeklyPlanGenerator {
      * Scales the availability layout down to the volume target (ADR 0038).
      * The long run is the anchor: it shrinks proportionally but never below
      * its floor (45/60; 30 in deload/taper) and never grows. The other sessions
-     * fit what remains of the target. If the floors do not fit, the shortest
-     * easy days leave the week; quality and the long run are never dropped and
-     * a minimal week keeps its floors and says the volume is above the target
-     * (ADR 0045 §2.4).
+     * fit what remains of the target. D2: an overshoot is trimmed minute by
+     * minute from sessions above their floors, never by dropping a whole
+     * session. If the floors prevent reaching the target, the week stays above
+     * it and the rationale declares a minimal week (ADR 0045 §2.4).
      */
-    private fun fitToVolume(sessions: List<PlannedSession>, targetMinutes: Int, longFloor: Int): FittedVolume {
+    internal fun fitToVolume(sessions: List<PlannedSession>, targetMinutes: Int, longFloor: Int): FittedVolume {
         val current = sessions.sumOf { it.durationMin ?: 0 }
         if (current == 0 || targetMinutes >= current) {
-            return FittedVolume(sessions, droppedSessions = 0, minimalWeek = false)
+            return FittedVolume(sessions)
         }
         val factor = targetMinutes.toDouble() / current
         val long = sessions.firstOrNull { it.type == WorkoutType.LONG && it.durationMin != null }
@@ -1474,12 +1474,79 @@ class WeeklyPlanGenerator {
             (otherTarget.toDouble() / otherCurrent).coerceIn(0.0, 1.0)
         }
         val scaled = sessions.map { session -> scaleToVolume(session, longMinutes, otherFactor) }
-        val droppedVolume = dropShortestEasy(scaled, targetMinutes)
-        return FittedVolume(
-            sessions = droppedVolume.sessions.sortedBy { it.date },
-            droppedSessions = droppedVolume.dropped,
-            minimalWeek = droppedVolume.sessions.sumOf { it.durationMin ?: 0 } > targetMinutes,
-        )
+        val balanced = fillToTarget(scaled, sessions, targetMinutes)
+        return FittedVolume(trimToTarget(balanced, targetMinutes, longFloor).sortedBy { it.date })
+    }
+
+    /**
+     * Rounding can leave the scaled week a few minutes below the target. Add
+     * the missing minutes back up to each session's original dose (never above
+     * the availability layout), so a target at or above the base is never
+     * delivered short.
+     */
+    private fun fillToTarget(
+        scaled: List<PlannedSession>,
+        originals: List<PlannedSession>,
+        targetMinutes: Int,
+    ): List<PlannedSession> {
+        val originalMinutes = originals.associate { it.date to (it.durationMin ?: 0) }
+        val filled = scaled.toMutableList()
+        var total = filled.sumOf { it.durationMin ?: 0 }
+        while (total < targetMinutes) {
+            val index = filled.indices
+                .filter { index ->
+                    val session = filled[index]
+                    val minutes = session.durationMin ?: return@filter false
+                    minutes < originalMinutes.getValue(session.date)
+                }
+                .maxByOrNull { index ->
+                    val session = filled[index]
+                    originalMinutes.getValue(session.date) - (session.durationMin ?: 0)
+                } ?: break
+            val session = filled[index]
+            filled[index] = session.copy(durationMin = requireNotNull(session.durationMin) + 1)
+            total += 1
+        }
+        return filled
+    }
+
+    /**
+     * D2: removes the overshoot from the sessions with the most room above
+     * their floor. Quality, the long run and the last easy day are never
+     * dropped; when no minute can be removed, the target is declared unreachable.
+     */
+    private fun trimToTarget(
+        sessions: List<PlannedSession>,
+        targetMinutes: Int,
+        longFloor: Int,
+    ): List<PlannedSession> {
+        val trimmed = sessions.toMutableList()
+        var total = trimmed.sumOf { it.durationMin ?: 0 }
+        while (total > targetMinutes) {
+            val index = trimmed.indices
+                .filter { index ->
+                    val session = trimmed[index]
+                    val minutes = session.durationMin ?: return@filter false
+                    minutes > volumeFloor(session, longFloor)
+                }
+                .maxByOrNull { index ->
+                    val session = trimmed[index]
+                    (session.durationMin ?: 0) - volumeFloor(session, longFloor)
+                } ?: break
+            val session = trimmed[index]
+            trimmed[index] = session.copy(durationMin = requireNotNull(session.durationMin) - 1)
+            total -= 1
+        }
+        return trimmed
+    }
+
+    private fun volumeFloor(session: PlannedSession, longFloor: Int): Int {
+        val minutes = session.durationMin ?: return 0
+        return when (session.type) {
+            WorkoutType.QUALITY -> MIN_QUALITY_MIN
+            WorkoutType.LONG -> minOf(longFloor, minutes)
+            else -> MIN_EASY_MIN
+        }
     }
 
     /** The long run shrinks proportionally but never below its floor or above its current dose. */
@@ -1495,31 +1562,7 @@ class WeeklyPlanGenerator {
         return session.copy(durationMin = maxOf(floor, (minutes * otherFactor).roundToInt()))
     }
 
-    /** Keep at least one easy day; quality and the long run are never dropped. */
-    private fun dropShortestEasy(sessions: List<PlannedSession>, targetMinutes: Int): DroppedVolume {
-        var current = sessions
-        var total = current.sumOf { it.durationMin ?: 0 }
-        var dropped = 0
-        val easyByDuration = current
-            .filter { it.type == WorkoutType.EASY }
-            .sortedBy { it.durationMin ?: 0 }
-        for (easy in easyByDuration) {
-            if (total <= targetMinutes) break
-            if (current.count { it.type == WorkoutType.EASY } <= 1) break
-            current = current.filterNot { it.date == easy.date }
-            total -= easy.durationMin ?: 0
-            dropped++
-        }
-        return DroppedVolume(current, dropped)
-    }
-
-    private data class DroppedVolume(val sessions: List<PlannedSession>, val dropped: Int)
-
-    private data class FittedVolume(
-        val sessions: List<PlannedSession>,
-        val droppedSessions: Int,
-        val minimalWeek: Boolean,
-    )
+    internal data class FittedVolume(val sessions: List<PlannedSession>)
 
     private enum class QualityReduction { TAPER, DELOAD }
 
@@ -1567,17 +1610,18 @@ class WeeklyPlanGenerator {
 
     private fun volumeRationale(
         decision: VolumeDecision,
-        droppedSessions: Int,
+        deliveredMinutes: Int,
         minimalWeek: Boolean,
         extraNote: String?,
     ): String {
         val base = decision.baseMinutes
         val week = decision.baseWeekStart?.format(WEEK_LABEL)
-        val droppedHint = if (droppedSessions > 0) {
-            " A sua disponibilidade permite mais dias; esta semana usa o volume que cabe nela."
+        val realGrowthPercent = if (base != null && base > 0) {
+            ((deliveredMinutes - base) * 100.0 / base).roundToInt()
         } else {
-            ""
+            0
         }
+        val deliveredHint = " Entregue $deliveredMinutes min."
         val minimalHint = if (minimalWeek) {
             " Semana mínima: o volume fica acima do alvo para preservar o piso do longão e a " +
                 "dose mínima de cada sessão; isso não é progressão."
@@ -1585,27 +1629,29 @@ class WeeklyPlanGenerator {
             ""
         }
         val extraHint = if (extraNote != null) " $extraNote" else ""
-        val suffix = "$droppedHint$minimalHint$extraHint"
+        val suffix = "$minimalHint$extraHint"
         return when {
             base == null || week == null ->
                 "Volume definido pela sua disponibilidade: ainda não há semana concluída " +
-                    "com evidência para ajustar.$suffix"
+                    "com evidência para ajustar.$deliveredHint$suffix"
 
             decision.block in SPECIAL_VOLUME_BLOCKS ->
                 "Volume: base de $base min concluídos na semana de $week; sem aumento nesta " +
-                    "semana${volumeBlockHint(decision.block)}.$suffix"
+                    "semana${volumeBlockHint(decision.block)}.$deliveredHint$suffix"
 
             decision.cappedByAvailability ->
                 "Volume: base de $base min concluídos na semana de $week; limitado pela sua " +
-                    "disponibilidade em ${decision.minutes} min.$suffix"
+                    "disponibilidade em ${decision.minutes} min${volumeBlockHint(decision.block)}." +
+                    "$deliveredHint$suffix"
 
-            decision.growthPercent > 0 ->
+            decision.growthPercent > 0 && realGrowthPercent > 0 ->
                 "Volume: base de $base min concluídos na semana de $week; " +
-                    "+${decision.growthPercent}% nesta semana, alvo de ${decision.minutes} min.$suffix"
+                    "+$realGrowthPercent% nesta semana, entregue $deliveredMinutes min " +
+                    "(alvo de ${decision.minutes} min).$suffix"
 
             else ->
                 "Volume: base de $base min concluídos na semana de $week; alvo mantido em " +
-                    "${decision.minutes} min${volumeBlockHint(decision.block)}.$suffix"
+                    "${decision.minutes} min${volumeBlockHint(decision.block)}.$deliveredHint$suffix"
         }
     }
 
