@@ -1,6 +1,96 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 25/11/2026 (ADR 0065: alvo da qualidade por tipo e card do plano com a prescrição ajustada)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatia 1 P0 do PRD de correções)
+
+## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
+
+**Escopo:** pedido do usuário 0 — auditoria profunda com dupla competência (engenharia +
+ciência do esporte), entregue como documento auditável por outro LLM, sem enviesamento.
+Nenhuma mudança de motor, CI, schema ou dependência; nenhum dado real no diff.
+
+### Concluído
+
+- **Documento:** `docs/AUDITORIA_GERAL_2026-11.md` — 8 seções (método/limites, sumário,
+  algoritmo, níveis, ciência, Story Studio, Coach, docs, priorização, checklist do revisor)
+  + Apêndice de reprodução. Cachada em 4 camadas (fato/inferência/juízo/sugestão), campo
+  "Como refutar" por achado, escalas de severidade/confiança declaradas, seções de pontos
+  fortes como contrabalanço, e checklist de confronto para o revisor LLM.
+- **Experimentos (motor real, fixtures sintéticas):** harness temporário
+  `AuditExperimentTest` (E1–E19) rodou `WeeklyPlanGenerator`, `DailyPrescriptionEngine`,
+  `QualityGate`, `SessionLibrary` com perfis iniciante/intermediário/avançado. **Arquivo
+  apagado após a coleta** (escrevia em `/tmp`; receita de reprodução no Apêndice A do doc).
+- **Achados principais reproduzíveis:**
+  - `ALG-01` — piso por sessão estoura o teto de disponibilidade (E14: 10 min planejados
+    como 20; E18: qualidade 25 em slot de 20), contra `SPORTS_SCIENCE §8.3`;
+  - `ALG-03` — rationale anuncia "+6%, alvo 201" e entrega 178 min (< base 190) quando
+    `dropShortestEasy` larga uma sessão para caber 1 min (E16);
+  - `ALG-04` — iniciante 7 dias × 40 min recebe 7 corridas sem aviso de frequência (E5);
+  - `ALG-05/SEG-05` — slot < 60 min torna o critério de longão da graduação inatingível
+    pelo plano, sem dica (E6/E8);
+  - `SEG-01/02/03` — iniciante ≡ intermediário na BASE inicial (E1); avançado
+    sub-diferenciado; iniciante sem strides/micro-dose em taper (E2/E13) vs §8.4 "Todos";
+  - `ALG-02` — qualidade cai na segunda colada no longão do domingo anterior (E19);
+  - gate do dia 6/6 correto (E10) e ACWR/descarga/taper aderentes ao doc — registrado
+    como ponto forte.
+- **Auditorias delegadas (somente leitura):** Story Studio (17 achados + lacunas doc×código),
+  Coach IA (19 achados + tabela do validador over/under-rejection; `COACH-05/06/13`
+  verificados pessoalmente), documentação×código (`DOC-01..10`: Tier C/GUIDED/métricas sem
+  instrumentação, PRODUCT.md desatualizado, threads de handoff, gates Gradle conferidos).
+- **Priorização P0–P3** e **checklist de 14 itens** para o revisor confrontar o documento.
+
+### Gates
+
+- Nenhum gate de build aplicável: só arquivos `docs/` alterados (este registro + o documento).
+- Harness removido; `git status` sem código de produção modificado; sem dado real;
+  sem dependência nova; sem migração.
+
+### Próximo
+
+1. Revisão do usuário 0 do `AUDITORIA_GERAL_2026-11.md` (ou de outro LLM via Seção J).
+2. Escolher a fatia P0 (4 fixes XS do Coach) e/ou P1 (`ALG-01`/`ALG-03` + reconciliação do
+   PRODUCT.md) conforme a priorização da Seção I.
+3. Checklist único de validação no aparelho (`GEN-05`) antes de feature nova.
+
+## Sessão 2026-11-26 — Fatia 1 do PRD de correções (P0 Coach)
+
+**Escopo:** `COACH-13`, `COACH-05`, `COACH-06`, `NOVO-COACH-01` e `COACH-09`, aprovados na
+seção 12 de `docs/PRD_CORRECOES_AUDITORIA_2026-11.md`. Testes sintéticos, sem dados reais;
+nenhuma migração, dependência nova ou mudança de regra científica.
+
+### Concluído
+
+- **`COACH-13`:** `HttpCoachApi` não lê nem copia o corpo do upstream em erro; a exceção e o
+  log carregam só o status HTTP estável (`coach upstream 400`).
+- **`COACH-05`:** `revoke()` limpa `exchanges` e `freeAnswer`; `route`, `settle` e `freeAnswer`
+  não respondem nem chamam a rede quando o consentimento já foi revogado.
+- **`COACH-06`:** `retryFreeAnswer(exchangeId)`; o card envia o id do exchange e o retry usa a
+  pergunta daquele card, sem duplicar o turno `YOU`.
+- **`NOVO-COACH-01`/`COACH-09`:** parser e validador barram arritmia, palpitação, dor/aperto no
+  peito, desmaio, falta de ar e condições de alerta; a recusa tem CTA de check-in/avaliação e
+  não diagnostica. Perguntas educativas (fartlek, calor, respiração) continuam passando.
+
+### Testes
+
+- `:core:domain:test` (`FreeInputParserTest`, `CoachFreeAnswerValidatorTest`).
+- `:core:data:testDebugUnitTest` (`CoachApiTest`).
+- `:app:testDebugUnitTest` (`CoachViewModelTest`, `CoachScreenTest`, `CoachFallbackLabelsTest`).
+- `./gradlew check -x spotlessMiscCheck` verde (testes, koverVerify, lint e detekt).
+- `./gradlew spotlessKotlinCheck` verde.
+- `./gradlew :app:assembleDebug` verde.
+- `spotlessCheck` global falha apenas nos três documentos de auditoria preexistentes
+  (untracked), que foram preservados intactos.
+
+### Pendente
+
+- Fatias 0, 2–8 do PRD (ADRs científicos, disponibilidade, volume, validador, UX, Story, docs
+  e validação em aparelho).
+- Validação manual no aparelho dos cenários de revogação em voo, retry de exchange antigo e
+  recusa médica (`GEN-05`).
+
+### Próximo
+
+1. Fatia 2 — disponibilidade como teto em todos os caminhos (`ALG-01`, `ALG-07`,
+   `NOVO-ALG-01`, `NOVO-ALG-02`).
 
 ## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
 
