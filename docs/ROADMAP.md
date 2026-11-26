@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.82 · **Data:** 25/11/2026 · **Mudança:** correção do alvo da qualidade por tipo (ADR 0065) e do card do plano para mostrar a prescrição ajustada do dia. Gates verdes.
+**Versão:** 1.83 · **Data:** 26/11/2026 · **Mudança:** Fatia 7 da documentação (DOC/GEN): Fase 3 por subfeature, barra Hoje · Corridas · Coach · Tendências · Saúde, critérios de saída com P1-12 **e** validação em aparelho, e ponteiros para os goldens D3–D6. Nenhuma feature nova.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -9,9 +9,9 @@
 | Fase | Objetivo | Status |
 |---|---|---|
 | **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Concluída em 30/10/2026** |
-| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclos 1–4 concluídos no motor; P1-12 (4 semanas de uso real) pendente** |
-| **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada |
-| **3 — Experimental** | Social, conector Zepp, explicações com LLM | Planejada |
+| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclos 1–4 e D3–D6 concluídos no motor; P1-12 (4 semanas de uso real) e validação em aparelho pendentes** |
+| **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada; o proxy mínimo do Coach já existe como infraestrutura da IA, mas backend/sync seguem futuros |
+| **3 — Experimental** | Social, conector Zepp, explicações com LLM, Story e Wear OS | **Parcial — Story/LLM entregues; Zepp/social/Wear e backend completo planejados** (ver §Fase 3) |
 
 ---
 
@@ -297,6 +297,9 @@ Treino do dia, check-in, import concluído. Sem culpa/streak.
 - [x] Notificação de importação concluída (sucesso, duplicado ou falha), com atalho para o treino importado.
 
 ### P1-12 · E2E e validação
+
+**Status:** aberto — é critério de saída, não feature; exige 4 semanas de uso real e ajuste de pesos/paces. Não pode ser marcado por teste JVM.
+
 Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P1-13 · Linguagem simples
@@ -317,7 +320,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 **Status:** concluído em 05/11/2026 — validação em aparelho pendente
 
-- [x] 5ª aba `Saúde` (`Hoje · Corridas · Tendências · Saúde · Perfil`), rota top-level `health`, sem seta de voltar.
+- [x] 5ª aba `Saúde` (`Hoje · Corridas · Coach · Tendências · Saúde`; o Perfil saiu da barra e fica no avatar/engrenagem), rota top-level `health`, sem seta de voltar.
 - [x] Hoje com link “Ver recuperação” no card de prontidão, sem duplicar gráficos.
 - [x] Perfil sem o card grande de Health Connect; link compacto + backup/privacidade.
 - [x] Checklist e tutorial apontam para a aba Saúde.
@@ -364,7 +367,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 
 ### P1-18 · IA Coach (fora dos ciclos 1–4)
 
-**Status:** concluído no MVP em 18/11/2026 (3.1 + 3.2 + 3.3-A/B/C + Room v19 + histórico + goldens da bar + auditoria de utilidade); **F3-bolhas (chat sem paredes de texto) implementada em 20/11/2026**; falta a validação visual no aparelho com token e a chave Go/região Global no Dokploy.
+**Status:** concluído no MVP em 18/11/2026 e ampliado até 26/11/2026 (3.1 + 3.2 + 3.3-A/B/C + Room v22 + histórico + goldens da bar + input livre + conversa aberta + dossiê do executado + lembrete fiel + docs da Fatia 7). **Pendente:** redeploy do proxy no Dokploy com os prompts novos e validação no aparelho com token (Fatia 8); nada disso é substituível por teste JVM.
 
 - [x] Proxy stateless no Dokploy, `X-Coach-Token`, cadeia com fallback e sem log de payload ([ADR 0051](adr/0051-ia-coach-proxy.md)).
 - [x] Aba central Coach, opt-in/revogação, explicação da semana com validação e fallback determinístico.
@@ -393,6 +396,7 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Correção do `free-answer` (24/11/2026): MiMo e GLM em paralelo (primeiro 2xx vence), 18 s por tentativa e 20 s de orçamento total (abaixo dos 25 s do app); `CoachViewModel` usa o `TimeProvider` do perfil em vez de UTC. Diagnóstico no aparelho + testes; **redeploy do proxy pendente** ([ADR 0051](adr/0051-ia-coach-proxy.md)).
 - [x] Dossiê de avaliação (25/11/2026): `CoachExecution` com duração/distância/RPE/evidência e comparação determinística; `todayPrescription`/`todayExecution` no Coach; pace/FC seguem no cartão e fora da prosa. Testes de domínio, ViewModel e fonte ([ADR 0063](adr/0063-coach-open-answers.md)).
 - [x] Correção pós-aparelho do dossiê (25/11/2026): em dia de descanso, “avalie meu treino” usa a última sessão `DONE`/`CLOSED` (semana atual/anterior) e o dossiê autoriza todo número que imprime (“4 semanas”/“28 dias”); o dia executado mostra a prescrição que ajustou o plano (`<prescrito> · ajustado do plano: <original>`), o motivo e compara com a prescrição; fallback do `free-answer` não promete card. Logs/prints do aparelho reproduzidos; testes de domínio, ViewModel e fonte ([ADR 0063](adr/0063-coach-open-answers.md) §6/§7).
+- [x] Fatia 7 da documentação (26/11/2026): `PRODUCT.md` v1.3 com Coach/Story/Arte, `PRD_IA_COACH.md` com timeouts reais (decisão 8) e escopo médico fail-closed (decisão 21), `TESTING.md` com flakes/contagens e `DECISIONS.md`/`ARCHITECTURE.md` com a barra e as versões atuais. Nenhuma feature nova.
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
 
@@ -616,11 +620,20 @@ prescrição.
 
 ## Fase 3 — Experimental
 
-- P3-01 Conector Zepp não oficial (avaliar riscos e termos).
-- P3-02 Social (opt-in, privacidade).
-- P3-03 LLM apenas para reescrever explicações determinísticas, com validação.
-- P3-04 Wear OS / companion.
-- P3-05 Story de treino ao ar livre (vídeo com animação do percurso) — **mapa vetorial 1080p implementado; validação em aparelho pendente**.
+A fase **não** é um bloco único: Story e LLM já têm fatias entregues; Zepp, social, Wear OS e o backend completo seguem planejados. O status é por subfeature.
+
+| ID | Subfeature | Status | Evidência |
+|---|---|---|---|
+| P3-01 | Conector Zepp não oficial (riscos e termos) | Planejado | Nenhum código; export manual/Health Connect cobrem o MVP. |
+| P3-02 | Social (opt-in, privacidade) | Planejado | Nenhum código; fora do MVP. |
+| P3-03 | LLM apenas para reescrever explicações determinísticas, com validação | **Entregue no MVP** | Aba Coach (ADRs 0051–0057, 0063), validador/fallback e proxy; pendente redeploy + aparelho. |
+| P3-04 | Wear OS / companion | Planejado | Nenhum código; `minSdk 31` no telefone. |
+| P3-05 | Story de treino ao ar livre (vídeo com animação do percurso) | **Entregue; validação física pendente** | Renderer/Studio/MapLibre e goldens; checklist de aparelho aberto. |
+| P3-06 | Arte PNG da rota (4:5/1:1/9:16) | **Entregue; validação física pendente** | ADRs 0058/0060/0062 e goldens; checklist de aparelho aberto. |
+| P3-07 | Arte com foto no Story Studio | **Entregue; validação física pendente** | ADR 0061 e goldens; memória/aparelho no checklist. |
+| P3-08..P3-11 | Ajustes pós-aparelho, crash do nudge, prévia fixa e traçados | **Entregues; re-teste pendente** | Itens abaixo e `PROGRESS.md`; sem promessa de validação física. |
+
+> “Entregue” significa código, testes e goldens no repositório; **não** significa validação no aparelho do usuário 0. O checklist físico continua aberto na Fatia 8/GEN-05.
 
 ### P3-05 · Story de treino ao ar livre (protótipo)
 
@@ -864,7 +877,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 
 ## Critérios de saída do MVP
 
-Capacidade entregue; a aceitação final depende de P1-12 (4 semanas de uso real) e da validação em aparelho.
+A capacidade está entregue; a aceitação final depende de **dois critérios separados**, ambos abertos: P1-12 e a validação em aparelho. Nenhum deles é substituível por teste JVM e nenhum é declarado concluído por este documento.
 
 - [x] Importa FIT/TCX/GPX e deduplica.
 - [x] Abre detalhe com gráficos e splits.
@@ -874,4 +887,5 @@ Capacidade entregue; a aceitação final depende de P1-12 (4 semanas de uso real
 - [x] Exporta e apaga todos os dados (T-06; lixeira de 7 dias e reset com época).
 - [x] Testes verdes, cobertura ≥ 85% no domínio (97,56% de linhas).
 - [x] Nenhum dado real no repositório (fixtures sanitizadas/sintéticas).
-- [ ] P1-12: validação E2E com 4 semanas de uso real.
+- [ ] **P1-12:** validação E2E com 4 semanas de uso real, ajuste de pesos e paces.
+- [ ] **Validação em aparelho:** checklist GEN-05/Fatia 8 com o usuário 0 — revogação em voo, retry de exchange antigo, pergunta médica, E14/E18, Story `PreparingMap`/prévia, fonte 200%, TalkBack do segmento e `McTextButton`; registrar aparelho, data, cenário e resultado.
