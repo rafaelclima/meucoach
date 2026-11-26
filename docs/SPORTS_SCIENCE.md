@@ -1,6 +1,6 @@
 # SPORTS_SCIENCE.md — MeuCoach
 
-**Versão:** 1.13 · **Data:** 25/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
+**Versão:** 1.14 · **Data:** 26/11/2026 · **Modelo:** `engine 1.0.0` · **Evidências:** `evidence 1.0.0`
 
 > Revisão 1.2 (15/11/2026, Ciclo 2 fatia 3, ADR 0041 implementado): mesociclo por histórico real — `MesoPhase {BASE, BUILD, PEAK, TAPER, RECOVERY}` + descarga derivada de 3 semanas de carga demonstrada em `recentWeeks` (§8.1/§8.3, `R-PLAN-04 v2` implementado); taper/recuperação prevalecem, semana de prova nunca é descarga, `PEAK` com volume estável. Código em `daily-prescription-v5`/`weekly-plan-v6`; sem migração.
 > Revisão 1.3 (15/11/2026, Ciclo 2 fatia 4a, ADR 0042 parcial-domínio): graduação de nível no domínio — `LevelGraduationEngine` puro e determinístico (`R-LVL-01/02` implementados, confiança máxima `MEDIUM`, downgrade nunca automático, golden `G-LVL-01`); card de aceite no app pendente (fatia 4b). Sem migração.
@@ -14,6 +14,7 @@
 > Revisão 1.11 (17/11/2026, Ciclo 4/S15, C4-58, FR-411): horizonte de 5K em 12 semanas (`macro-plan-v2`) a partir de 9 semanas; entrada tardia mantém a tabela curta; prova distante fica no modo geral com qualidade. O `PEAK` usa o pace da previsão atual (VDOT), nunca a meta; gap explícito, meta >5% mais rápida é ambiciosa e não vira pace; sem previsão recente, RPE 8. Golden `G-PER-06`; `R-PER-01`/`R-PER-04` atualizadas no §14.
 > Revisão 1.12 (17/11/2026, Ciclo 4/S16, C4-53, ADR 0048 §2.4): versões de motor `weekly-plan-v7`/`daily-prescription-v6`; nenhuma regra científica mudou. O plano v6 é atualizado pelo `PlanUpgrade` na abertura e a prescrição v5 é superseded por v6; `macro-plan-v2` permanece.
 > Revisão 1.13 (25/11/2026, ADR 0065): o alvo objetivo do bloco passa a ser resolvido pelo `QualityKind` — contínuo T/Z3–Z4, intervalado I/Z5 (piso, sem teto), fartlek/subidas/strides RPE 8 e pace de prova pela previsão atual; sem calibração, RPE. O motor deixa de usar T para todo `QUALITY`; `weekly-plan-v8`/`daily-prescription-v7`. O card do plano também passa a mostrar a prescrição ajustada do dia.
+> Revisão 1.14 (26/11/2026, Fatia 0, ADRs 0066–0069): decisões científicas registradas **sem código** — taper com baseline na média das 3 semanas pré-taper e fallback nomeado (ADR 0066), longão de iniciante com teto de +10 min/semana sobre o último longão normal real/planejado (ADR 0067), adjacência qualidade×longão estendida à virada de semana como convenção `LIMITED` (ADR 0068) e 1 strides `EASY` ≤25 min no taper do iniciante, sem `QUALITY` (ADR 0069). `weekly-plan-v8`/`daily-prescription-v7` seguem vigentes; implementação, goldens executáveis e bump de motor ficam para a fatia de código.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -355,21 +356,29 @@ O alvo objetivo do bloco segue o tipo: contínuo em T, intervalado em I, fartlek
 
 Aquecimento de 10 min + mobilidade nas sessões de qualidade. A tabela mostra o estímulo canônico; no plano, a duração total da qualidade é 25–45 min e o texto deriva o bloco dessa duração: 10 min de aquecimento; no contínuo, o bloco principal é o restante menos 5 min de desaquecimento (mínimo 10 min); nos intervalos, 3 min fortes com 2 min leves, de 3 a 5 repetições; no fartlek, 1 min forte/1 min fácil por RPE; nas colinas, 45 s de subida; no bloco de prova, o pace atual da distância — e o restante sempre em ritmo leve. A estrutura é ajustada à duração real (`fittedTo`) e nenhum texto promete mais trabalho do que cabe. Sessões curtas usam a dose menor. Qualidade nunca em dia de sono < 6 h.
 
+No iniciante, a micro-dose de taper é **1 strides `EASY` ≤25 min**, com estrutura e sem `QUALITY`; se a agenda não tiver um dia seguro de 20–25 min, a sessão é omitida e a copy explica, em vez de inventar estímulo (ADR 0069). `R-PRESC-04` continua valendo.
+
 ### 8.5 Longão
 
 - 25–30% do volume semanal é um **alvo de distribuição**, não um teto: em semanas pequenas o piso vence.
 - Piso: 45 min para iniciante/intermediário e 60 min para avançado, sempre limitado pela disponibilidade do dia. Em deload/taper o piso cai para 30.
 - O longão é a sessão mais longa (ou empatada com a mais longa) da semana; nunca fica abaixo do fácil mais longo.
 - Abaixo do piso, a sessão é a mais longa que a agenda permite e recebe o título **“Corrida mais longa”**, com o limite explicado e sugestão de ajuste de disponibilidade.
-- Iniciantes: 45–90 min quando a agenda permite; aumentar 5–10 min/semana.
+- Iniciantes: 45–90 min quando a agenda permite; aumentar 5–10 min/semana. No plano, o
+  teto é **+10 min/semana** sobre o último longão normal real/planejado, com piso de 45
+  min e disponibilidade como teto rígido (`R-PLAN-03 v3`, ADR 0067). Semanas de
+  deload/taper/recuperação não são referência de rampa; quando a agenda impede o
+  aumento, o longão fica no teto disponível e a copy explica; quando o piso impede o
+  corte, o piso vence e a copy nomeia a exceção.
 - Z2, com opção de acelerar os últimos 10–20 min em Z3 no build.
 - Não fazer longão no dia seguinte a qualidade.
 
 ### 8.6 Taper
 
-- Volume −45 a −55% sobre a média das 3 semanas pré-taper; intensidade mantida em micro-doses (`EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
+- Volume −45 a −55% sobre a média das **3 semanas completas elegíveis pré-taper**, com a mesma elegibilidade da base de volume do §8.3 (plano desde a segunda, semana normal, volume forte >0; deload/taper/recuperação ficam fora). Com menos de 3 semanas, o fallback é a **maior semana forte recente** e a copy nomeia o fallback; sem nenhuma semana, não há corte percentual inventado e o volume segue a agenda, com confiança reduzida (ADR 0066, `R-PLAN-05 v2`). A média do taper é uma referência própria: não substitui a base de progressão semanal do §8.3, que continua o maior volume forte recente.
 - Última sessão intensa 7–10 dias antes da prova (5k/10k) ou 10–14 dias (meia/maratona).
-- No plano, a qualidade fora do corte de 10 dias (5k/10k) ou 14 dias (meia/maratona) é encurtada pelo fator de taper (`0,55`; `0,45` nos últimos 7 dias), com piso de 25 min; tipo e esforço mantidos. Dentro do corte e na semana da prova não há `QUALITY` longa nem `LONG`: mantém 1 micro-dose ≤ 25 min (`8×20s strides` ou `3×3min T leve + trote`). Nunca zero estímulo (`R-PLAN-05`, `R-PLAN-10` v2 proposto).
+- No plano, a qualidade fora do corte de 10 dias (5k/10k) ou 14 dias (meia/maratona) é encurtada pelo fator de taper (`0,55`; `0,45` nos últimos 7 dias), com piso de 25 min; tipo e esforço mantidos. Dentro do corte e na semana da prova não há `QUALITY` longa nem `LONG`: mantém 1 micro-dose ≤ 25 min (`8×20s strides` ou `3×3min T leve + trote`). Nunca zero estímulo quando há agenda para o mínimo executável (`R-PLAN-05 v2`, `R-PLAN-10` v2 proposto).
+- No iniciante, a micro-dose de taper é **1 strides `EASY` ≤25 min**, com estrutura e sem `QUALITY`; `R-PRESC-04` permanece. Se a agenda não tiver um dia seguro de 20–25 min na janela, a sessão é omitida e a copy explica a ausência, em vez de inventar estímulo (ADR 0069). A omissão é a exceção `LIMITED` ao “nunca zero estímulo” quando o mínimo executável não cabe.
 - Sem treino novo, sem tênis novo, sem dieta nova na semana da prova.
 
 ### 8.7 Recomendação diária conservadora
@@ -397,7 +406,8 @@ segunda→domingo:
 
 - Dias disponíveis viram sessões; sem disponibilidade, não há plano inventado.
 - No máximo **2 qualidades** por semana; a segunda só com progressão e nunca consecutiva/adjacente ao longão.
-- Oportunidade de qualidade estrutural: a semana agenda 1 qualidade quando o nível (não iniciante), a fase (sem taper/recovery/race) e a agenda (3+ dias com um dia seguro) permitem, sem olhar a prontidão ou a carga da segunda; a micro-dose de taper/race week (≤25 min) também é estrutural (`R-PER-03`, ADR 0044).
+- Adjacência entre semanas (`R-PLAN-02 v2`, ADR 0068): não há `QUALITY` no dia seguinte a um `LONG`, inclusive quando o longão é o domingo da semana anterior. Se a agenda não oferecer dia seguro, a semana fica sem qualidade e a copy explica, nomeando o longão anterior; é convenção `LIMITED` de produto, não uma violação científica já estabelecida. A direção inversa (longão no dia seguinte à qualidade) continua proibida dentro da semana; a extensão inversa entre semanas fica registrada como limitação.
+- Oportunidade de qualidade estrutural: a semana agenda 1 qualidade quando o nível (não iniciante), a fase (sem taper/recovery/race) e a agenda (3+ dias com um dia seguro) permitem, sem olhar a prontidão ou a carga da segunda; a micro-dose de taper/race week (≤25 min) também é estrutural (`R-PER-03`, ADR 0044); no iniciante, a micro-dose é `EASY` e não conta como qualidade (ADR 0069).
 - Rampa de entrada (ADR 0053, `R-COLD-01`): intermediário/avançado com VDOT recente com proveniência (≤56 dias, `PERFORMANCE` ou `TRAINING_ESTIMATE`) pode manter 1 qualidade curta (≤30 min) mesmo sem 8 dias de carga. Exige dia verde, check-in, sono ≥6h e sem recovery/taper/race; iniciante continua bloqueado (`R-PRESC-04`); volume segue mantido, sem +6%; confiança máxima `LOW`.
 - O dia confirma a qualidade planejada via `QualityGate`: doença/lesão, prontidão vermelha, iniciante (`R-PRESC-04`), check-in ausente (`R-READY-06`), sono válido < 6 h, prontidão âmbar, recovery/taper/race, carga desatualizada ou insuficiente, monotonia 7d ≥ 2,0, strain em spike confiável ou ACWR confiável > 1,5 rebaixam para fácil, com motivo, valor que falhou e dica de desbloqueio (`R-PER-03`, `R-LOAD-03` v3, ADR 0044/0046). ACWR desconhecido, em calibração ou fora de faixa sozinho não veta; apenas mantém.
 - A qualidade exige `LoadDataState.KNOWN`: pelo menos 8 dias com carga nos
@@ -405,14 +415,14 @@ segunda→domingo:
   ou com fonte velha, o plano não oferece treino forte, reduz a confiança e
   explica “dados de carga insuficientes” ou “desatualizados” (`R-DATA-01`,
   ADR 0026).
-- Longão é o dia de maior disponibilidade (empate: sábado/domingo > sexta > o dia mais tarde na semana), com piso de 45/60 min (30 em deload/taper) e alvo de 25–30% como referência, não como teto. O piso vence em semanas pequenas; a disponibilidade continua sendo o teto rígido e o longão nunca fica abaixo do fácil mais longo. Abaixo do piso, o plano usa “Corrida mais longa” e explica o limite (`R-PLAN-03 v2`, ADR 0045).
+- Longão é o dia de maior disponibilidade (empate: sábado/domingo > sexta > o dia mais tarde na semana), com piso de 45/60 min (30 em deload/taper) e alvo de 25–30% como referência, não como teto. O piso vence em semanas pequenas; a disponibilidade continua sendo o teto rígido e o longão nunca fica abaixo do fácil mais longo. Abaixo do piso, o plano usa “Corrida mais longa” e explica o limite (`R-PLAN-03 v3`, ADR 0045/0067). No iniciante, o aumento é limitado a +10 min/semana sobre o último longão normal real/planejado; agenda e piso têm precedência declarada (ADR 0067).
 - Fácil entre 20–60 min; qualidade entre 25–45 min ("Ritmo forte", "Intervalos", "Fartlek", "Colinas" ou "Pace de prova" conforme fase/nível/distância e rotação; `R-PER-04`). O iniciante recebe "Strides curtos" ou "Fácil com surtos" como `EASY` com estrutura, nunca `QUALITY` (`R-PER-02`, `R-PRESC-04`). O texto deriva aquecimento/bloco/desaquecimento da duração real e nunca descreve mais trabalho do que cabe.
-- Taper encurta a qualidade fora do corte (10 dias para 5k/10k, 14 para meia/maratona) com piso de 25 min; dentro do corte e na semana da prova vale 1 micro-dose ≤ 25 min, nunca zero estímulo (`R-PLAN-05`, `R-PLAN-10` v2 proposto).
-- Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% com intensidade mantida em micro-dose (`R-PLAN-05`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`).
+- Taper encurta a qualidade fora do corte (10 dias para 5k/10k, 14 para meia/maratona) com piso de 25 min; dentro do corte e na semana da prova vale 1 micro-dose ≤ 25 min, nunca zero estímulo quando há agenda para o mínimo executável (`R-PLAN-05 v2`, `R-PLAN-10` v2 proposto). No iniciante, a micro-dose é 1 strides `EASY` ≤25 min, sem `QUALITY`; sem dia seguro de 20–25 min, a sessão é omitida com copy (ADR 0069).
+- Taper: 2 semanas antes (5k–meia) ou 3 (maratona), volume −45–55% sobre a média das 3 semanas pré-taper, com fallback nomeado quando o histórico é incompleto, e intensidade mantida em micro-dose (`R-PLAN-05 v2`, `EV-BOSQUET-2007`, `EV-MUJIKA-2003`, ADR 0066).
 - Sem data de prova, não há taper: a meta de prova sem data não define quando reduzir o volume. O plano mantém o volume normal e diz isso explicitamente, sem inventar uma data (`R-PLAN-11`, BUG-08).
 - Progressão: semana anterior ≥80% concluída + guardrails verdes libera a segunda qualidade; volume nunca ultrapassa a disponibilidade (ADR 0010).
 - Deload a cada 4ª semana consecutiva de plano (−25% no volume, intensidade mantida; ADR 0011).
-- Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo (tipo, título, duração, alvos, rationale, `qualityKind`, `planDecision` e estrutura executável) e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão (ADR 0013, `R-PLAN-02`, `R-PLAN-03`).
+- Troca manual: só entre sessões planejadas futuras da mesma semana, trocando o conteúdo (tipo, título, duração, alvos, rationale, `qualityKind`, `planDecision` e estrutura executável) e mantendo data/status; a semana resultante não pode ter duas qualidades consecutivas nem qualidade no dia ou ao lado do longão, inclusive o longão de domingo da semana anterior (ADR 0013, `R-PLAN-02 v2`, `R-PLAN-03`).
 - Replanejamento da semana vigente ([ADR 0028](adr/0028-versioned-plan-replanning.md), R-01): regenera apenas os dias estritamente futuros com o mesmo gerador, preserva hoje/passado e sessões `DONE`/`CLOSED` e valida a semana mesclada (máximo de 2 qualidades, um longão, espaçamento e disponibilidade). Sessões passadas `PLANNED` elegíveis são contadas como perdidas sem serem fechadas; o limiar de 2 é heurística de produto (A6), não limiar científico. A revisão não repõe carga nem adiciona treino forte além da intenção futura vigente e não cria `ruleId`/`evidenceId`: apenas reaplica o que o gerador emitiu.
 - Confiança do plano é capturada quando a semana é montada e fica no máximo média; ela não muda durante a semana. Novos dados entram no plano seguinte. A UI explica isso em “Por que este plano?” e lista os dados usados e ausentes (`R-DATA-01`).
 
@@ -499,7 +509,8 @@ fortes (`StrongRun`), planejadas ou não: 60 min para `BEGINNER → INTERMEDIATE
 90 min para `INTERMEDIATE → ADVANCED`. A duração apenas planejada não basta, e
 `LEGACY_UNVERIFIED` sem atividade não conta. As semanas fortes da graduação
 continuam medidas pela adesão planejada (`strongCompletionRatio`): treino extra
-não infla adesão.
+não infla adesão. A rampa do longão planejado do iniciante (ADR 0067) não altera
+o critério de longão real de 60/90 min da graduação.
 
 ## 9. Segurança e guardrails
 
@@ -645,11 +656,11 @@ A UI mostra um resumo no card e o detalhe em "Por que este treino?". O bottom sh
 | `R-READY-05` | RHR +7 bpm por 2 dias ⇒ no mínimo âmbar | BUCHHEIT | MODERATE |
 | `R-READY-06` | Sem check-in subjetivo, o treino forte não é liberado (verde parcial não basta); 3/3/3/3 não é default; check-in tardio antes do `DONE` pode restaurar a qualidade planejada em nova versão (golden `G-READY-05`) | SAW, BUCHHEIT | LIMITED — convenção de produto |
 | `R-PLAN-01 v2` | Volume semanal cresce no máximo 6% (faixa 5–8%) sobre o maior volume real forte (`strongMinutes`, planejado ou extra) nas últimas 4 semanas, e só com a semana anterior ≥ 80% de adesão planejada, prontidão verde, carga objetiva conhecida + monotonia <2,0 + strain sem spike confiável + ACWR confiável em 0,8–1,3; ACWR em calibração ou fora de faixa apenas mantém. A disponibilidade é o teto. Semana fraca mantém, não reduz. O plano declara o crédito do extra (`G-VOL-02`); `LEGACY_UNVERIFIED` sem atividade não entra na base | SEILER, GABBETT, FOSTER; ADR 0038; ADR 0046; ADR 0050; `R-LOAD-03` v3 | MODERATE |
-| `R-PLAN-02` | Máx. 2 qualidades/semana; nunca consecutivas | SEILER, DANIELS | MODERATE |
-| `R-PLAN-03 v2` | Longão é a sessão mais longa; piso 45/60 (30 em deload/taper), alvo 25–30% sem virar teto, disponibilidade como teto rígido; abaixo do piso, “Corrida mais longa” e ajuste de agenda | PFITZINGER, DANIELS; ADR 0045 | MODERATE (piso: LIMITED — convenção de produto) |
+| `R-PLAN-02 v2` | Máx. 2 qualidades/semana; nunca consecutivas; nunca no dia seguinte a um longão, inclusive o longão de domingo da semana anterior; sem dia seguro, a qualidade é omitida com copy | SEILER, DANIELS; ADR 0068 | MODERATE (adjacência entre semanas: LIMITED — convenção de produto) |
+| `R-PLAN-03 v3` | Longão é a sessão mais longa; piso 45/60 (30 em deload/taper), alvo 25–30% sem virar teto, disponibilidade como teto rígido; iniciante sobe no máximo +10 min/semana sobre o último longão normal real/planejado; abaixo do piso, “Corrida mais longa” e ajuste de agenda | PFITZINGER, DANIELS; ADR 0045/0067 | MODERATE (piso/rampa: LIMITED — convenção de produto) |
 | `R-PLAN-04` | Deload a cada 4ª semana (−20 a −30%) | ISSURIN | MODERATE |
 | `R-PLAN-04 v2` | Deload a cada 4ª semana de carga demonstrada, derivado de `recentWeeks` reais; taper/recuperação prevalecem | ISSURIN; ADR 0041 | MODERATE |
-| `R-PLAN-05` | Taper 2 semanas (5k–meia) / 3 (maratona), volume −45–55%, intensidade mantida em micro-dose ≤25 min; qualidade fora do corte encurtada com piso 25 min | BOSQUET, MUJIKA | STRONG |
+| `R-PLAN-05 v2` | Taper 2 semanas (5k–meia) / 3 (maratona), volume −45–55% sobre a média das 3 semanas completas pré-taper, com fallback nomeado para a maior semana forte recente e sem percentual inventado sem histórico; intensidade mantida em micro-dose ≤25 min; no iniciante, 1 strides `EASY` ≤25 min, sem `QUALITY`, ou omissão honesta se a agenda não couber; qualidade fora do corte encurtada com piso 25 min | BOSQUET, MUJIKA; ADR 0066/0069 | STRONG (baseline/fallback e strides do iniciante: LIMITED — convenção de produto) |
 | `R-PLAN-06` | 80% do tempo em Z1–Z2; qualidade doseada | SEILER | MODERATE |
 | `R-PLAN-07` | Ajuste por calor +3–8%, subordinado a FC/RPE | ELY | LIMITED |
 | `R-PLAN-08` | Esteira válida para qualidade no calor; prescrever por velocidade/inclinação | ELY, DANIELS | LIMITED |

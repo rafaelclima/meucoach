@@ -1,6 +1,65 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–6 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções)
+
+## Sessão 2026-11-26 — Fatia 0 do PRD de correções (ADRs científicos D3–D6)
+
+**Escopo:** D3–D6 aprovadas na direção A (`docs/PRD_CORRECOES_AUDITORIA_2026-11.md` §12):
+baseline do taper pela média das 3 semanas, rampa do longão do iniciante, adjacência
+qualidade×longão entre semanas e strides `EASY` no taper do iniciante. Sessão
+**docs-only**: nenhum código de motor, UI, schema, dependência ou migração alterado;
+nenhum golden executável criado nesta fatia.
+
+### Concluído
+
+- **ADR 0066 (D3):** baseline do taper pela média das 3 semanas completas pré-taper,
+  com elegibilidade de volume do §8.3, fallback nomeado para a maior semana forte
+  recente, ausência de percentual inventado sem histórico e copy que declara a fonte.
+  Golden `G-TAPER-01` definido (média −45–55%, fallback nomeado e cenário sem
+  histórico).
+- **ADR 0067 (D4):** longão de iniciante limitado a +10 min/semana sobre o último
+  longão normal real/planejado, piso 45 e disponibilidade como teto; comportamento
+  explícito para agenda abaixo do alvo, piso vencendo a rampa, ausência de referência e
+  semana especial. Golden `G-LONG-RUN-RAMP-01` definido (45 → ≤55 com agenda 90,
+  agenda 50, sem referência e piso 40 → 45).
+- **ADR 0068 (D5):** qualidade não cai no dia seguinte a longão, inclusive o domingo da
+  semana anterior; sem dia seguro, a semana fica sem qualidade e a copy explica,
+  nomeando o longão. Convenção `LIMITED`, não violação científica estabelecida. Golden
+  `G-QUALITY-ADJACENCY-01` definido (qualidade movida, sem dia seguro e sem plano
+  anterior).
+- **ADR 0069 (D6):** 1 strides `EASY` ≤25 min no taper do iniciante, com estrutura e
+  sem `QUALITY`; `R-PRESC-04` preservada; sem dia seguro de 20–25 min, omissão honesta
+  com copy. Golden `G-BEGINNER-TAPER-01` definido (prova em 10 dias, 1 strides `EASY`
+  ≤25, zero `QUALITY`, agenda sem mínimo e semana da prova).
+- **`SPORTS_SCIENCE.md` v1.14:** §8.4/§8.5/§8.6/§8.8/§8.12/§14 atualizados apenas para
+  refletir D3–D6, citando os ADRs; `R-PLAN-02 v2`, `R-PLAN-03 v3` e `R-PLAN-05 v2`.
+- **`DECISIONS.md` v2.00:** ADRs 0066–0069 indexados com status “aceito; implementação
+  pendente”.
+
+### Gates
+
+- Sessão docs-only; nenhum gate de build de código aplicável.
+- `git diff --check` limpo.
+- `./gradlew spotlessMiscCheck` continua falhando apenas nos três documentos de
+  auditoria preexistentes (`AUDITORIA_GERAL_2026-11.md`, `REVISAO_AUDITORIA_2026-11.md`,
+  `PRD_CORRECOES_AUDITORIA_2026-11.md`), que não foram alterados; os ADRs e documentos
+  novos/alterados não introduzem espaços à direita nem falta de newline.
+- Nenhum dado de saúde real, dependência nova, schema ou migração no diff.
+
+### Pendente
+
+- Implementação de D3–D6 no motor e goldens executáveis (`G-TAPER-01`,
+  `G-LONG-RUN-RAMP-01`, `G-QUALITY-ADJACENCY-01`, `G-BEGINNER-TAPER-01`); bump de
+  `weekly-plan-v8`/`daily-prescription-v7` quando a regra entrar.
+- Fatias 7 e 8 do PRD (documentação e validação em aparelho).
+- Nenhuma regra científica foi marcada como concluída nesta sessão.
+
+### Próximo
+
+1. Abrir a fatia de código de D3–D6 com TDD/goldens, começando pelos cenários
+   definidos nesta sessão e sem reabrir as decisões aprovadas.
+2. Alternativamente, Fatia 7 (documentação) se a prioridade mudar; a implementação
+   científica continua bloqueada até a fatia de código própria.
 
 ## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
 
