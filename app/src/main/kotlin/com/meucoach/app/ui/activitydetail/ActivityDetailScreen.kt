@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -543,19 +544,36 @@ private fun HeroCard(activity: StoredActivity) {
 private fun MetricsCard(activity: StoredActivity) {
     val metrics = detailMetrics(activity.imported)
     if (metrics.isEmpty()) return
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     McCard {
-        metrics.chunked(2).forEachIndexed { index, row ->
-            if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                row.forEach { metric ->
+        if (largeText) {
+            Column(
+                modifier = Modifier.testTag("activity-metrics-large-text"),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                metrics.forEach { metric ->
                     McStat(
                         label = metric.label,
                         value = metric.value,
                         unit = metric.unit,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        } else {
+            metrics.chunked(2).forEachIndexed { index, row ->
+                if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    row.forEach { metric ->
+                        McStat(
+                            label = metric.label,
+                            value = metric.value,
+                            unit = metric.unit,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
@@ -565,78 +583,108 @@ private fun MetricsCard(activity: StoredActivity) {
 private fun SplitsCard(activity: StoredActivity) {
     val colors = McTheme.colors
     val laps = activity.imported.laps
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     McCard {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "TRECHO",
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-                modifier = Modifier.weight(1.4f),
-            )
-            Text(
-                text = "RITMO",
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = "TEMPO",
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = "FC",
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(0.8f),
-            )
-        }
-        laps.forEachIndexed { index, lap ->
-            if (index > 0) {
-                Spacer(modifier = Modifier.height(10.dp))
-                McDivider()
-                Spacer(modifier = Modifier.height(10.dp))
-            } else {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1.4f)) {
+        if (largeText) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("activity-splits-large-text"),
+            ) {
+                laps.forEachIndexed { index, lap ->
+                    if (index > 0) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        McDivider()
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     Text(
-                        text = "#${lap.index + 1}",
+                        text = "#${lap.index + 1} · ${lapDistanceLabel(lap)}",
                         style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = lapDistanceLabel(lap),
-                        style = McTextStyles.caption,
-                        color = colors.textTertiary,
+                        text = "Ritmo ${paceLabel(lapPace(lap))}\n" +
+                            "Tempo ${formatDuration(lap.durationSec)}\n" +
+                            "FC ${lap.averageHeartRate?.toString() ?: "—"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
                     )
                 }
+            }
+        } else {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = paceLabel(lapPace(lap)),
-                    style = McTextStyles.metricSmall,
-                    color = colors.textPrimary,
+                    text = "TRECHO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                    modifier = Modifier.weight(1.4f),
+                )
+                Text(
+                    text = "RITMO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = formatDuration(lap.durationSec),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
+                    text = "TEMPO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = lap.averageHeartRate?.toString() ?: "—",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
+                    text = "FC",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(0.8f),
                 )
+            }
+            laps.forEachIndexed { index, lap ->
+                if (index > 0) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    McDivider()
+                    Spacer(modifier = Modifier.height(10.dp))
+                } else {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1.4f)) {
+                        Text(
+                            text = "#${lap.index + 1}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.textPrimary,
+                        )
+                        Text(
+                            text = lapDistanceLabel(lap),
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                    }
+                    Text(
+                        text = paceLabel(lapPace(lap)),
+                        style = McTextStyles.metricSmall,
+                        color = colors.textPrimary,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = formatDuration(lap.durationSec),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = lap.averageHeartRate?.toString() ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(0.8f),
+                    )
+                }
             }
         }
     }

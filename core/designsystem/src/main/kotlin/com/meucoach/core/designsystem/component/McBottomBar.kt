@@ -5,10 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
@@ -24,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.meucoach.core.designsystem.theme.McTheme
 
@@ -43,7 +46,8 @@ fun McBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .height(68.dp)
+                .heightIn(min = 68.dp)
+                .testTag("bottom-bar")
                 .selectableGroup(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
@@ -53,13 +57,14 @@ fun McBottomBar(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxHeight()
+                        .heightIn(min = 68.dp)
                         .testTag("bottom-bar-${item.route}")
                         .selectable(
                             selected = selected,
                             onClick = { onSelect(item.route) },
                             role = Role.Tab,
-                        ),
+                        )
+                        .padding(vertical = 6.dp, horizontal = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -84,7 +89,10 @@ fun McBottomBar(
                         text = item.label,
                         style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                         color = if (selected) colors.textPrimary else colors.textTertiary,
-                        maxLines = 1,
+                        maxLines = 2,
+                        textAlign = TextAlign.Center,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }

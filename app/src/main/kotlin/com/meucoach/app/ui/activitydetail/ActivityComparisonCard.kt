@@ -2,8 +2,10 @@ package com.meucoach.app.ui.activitydetail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -13,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -38,22 +41,37 @@ import com.meucoach.core.domain.feedback.SessionComparisonKind
 @Composable
 internal fun ActivityComparisonCard(comparison: SessionComparison, modifier: Modifier = Modifier) {
     val colors = McTheme.colors
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     McCard(modifier = modifier.testTag("activity-comparison")) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "PLANEJADO × EXECUTADO",
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-                modifier = Modifier.weight(1f),
-            )
-            if (comparison.kind == SessionComparisonKind.LINKED) {
-                McConfidenceBadge(confidence = comparison.confidence)
+        if (largeText) {
+            Column(modifier = Modifier.testTag("activity-comparison-large-text")) {
+                Text(
+                    text = "PLANEJADO × EXECUTADO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                )
+                if (comparison.kind == SessionComparisonKind.LINKED) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    McConfidenceBadge(confidence = comparison.confidence)
+                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "PLANEJADO × EXECUTADO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                    modifier = Modifier.weight(1f),
+                )
+                if (comparison.kind == SessionComparisonKind.LINKED) {
+                    McConfidenceBadge(confidence = comparison.confidence)
+                }
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
         when (comparison.kind) {
             SessionComparisonKind.FREE_RUN -> FreeRunBody(comparison)
-            SessionComparisonKind.LINKED -> LinkedBody(comparison)
+            SessionComparisonKind.LINKED -> LinkedBody(comparison, largeText)
         }
     }
 }
@@ -81,7 +99,7 @@ private fun FreeRunBody(comparison: SessionComparison) {
 }
 
 @Composable
-private fun LinkedBody(comparison: SessionComparison) {
+private fun LinkedBody(comparison: SessionComparison, largeText: Boolean) {
     val colors = McTheme.colors
     val plan = comparison.plan
     if (plan != null) {
@@ -103,38 +121,58 @@ private fun LinkedBody(comparison: SessionComparison) {
         Spacer(modifier = Modifier.height(14.dp))
         rows.forEachIndexed { index, row ->
             if (index > 0) Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.semantics(mergeDescendants = true) {},
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = row.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = colors.textSecondary, fontFeatureSettings = "tnum")) {
-                            append(row.planned)
-                        }
-                        withStyle(SpanStyle(color = colors.textTertiary, fontFeatureSettings = "tnum")) {
-                            append("  →  ")
-                        }
-                        withStyle(
-                            SpanStyle(
-                                color = colors.textPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFeatureSettings = "tnum",
-                            ),
-                        ) {
-                            append(row.actual)
-                        }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier.weight(1.9f),
-                )
+            val value = buildAnnotatedString {
+                withStyle(SpanStyle(color = colors.textSecondary, fontFeatureSettings = "tnum")) {
+                    append(row.planned)
+                }
+                withStyle(SpanStyle(color = colors.textTertiary, fontFeatureSettings = "tnum")) {
+                    append("  →  ")
+                }
+                withStyle(
+                    SpanStyle(
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                ) {
+                    append(row.actual)
+                }
+            }
+            if (largeText) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics(mergeDescendants = true) {},
+                ) {
+                    Text(
+                        text = row.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textPrimary,
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = row.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(1.9f),
+                    )
+                }
             }
         }
     }

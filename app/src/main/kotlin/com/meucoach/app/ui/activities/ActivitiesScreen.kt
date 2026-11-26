@@ -31,6 +31,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -89,7 +91,8 @@ internal fun ActivitiesContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .testTag("activities-list"),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -220,6 +223,50 @@ private fun ActivityCard(activity: ActivitySummary, onClick: () -> Unit) {
             McPill(text = sourcesLabel(activity.sources))
         }
         Spacer(modifier = Modifier.height(16.dp))
+        ActivityStats(activity = activity, largeText = LocalDensity.current.fontScale >= 1.5f)
+        val details = buildList {
+            heartRateLabel(activity.averageHeartRate, activity.maxHeartRate)?.let { add("FC $it bpm") }
+            activity.averageCadenceSpm?.let { add("Cadência $it spm") }
+        }
+        if (details.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = details.joinToString(" · "),
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActivityStats(activity: ActivitySummary, largeText: Boolean) {
+    if (largeText) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("activity-stats-large-text"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            McStat(
+                label = "Distância",
+                value = formatDistance(activity.distance),
+                unit = "km",
+                modifier = Modifier.fillMaxWidth(),
+            )
+            McStat(
+                label = "Tempo",
+                value = formatDuration(activity.durationSec),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            McStat(
+                label = "Ritmo",
+                value = paceLabel(activity.averagePace),
+                unit = if (activity.averagePace != null) "/km" else null,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    } else {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             McStat(
                 label = "Distância",
@@ -237,18 +284,6 @@ private fun ActivityCard(activity: ActivitySummary, onClick: () -> Unit) {
                 value = paceLabel(activity.averagePace),
                 unit = if (activity.averagePace != null) "/km" else null,
                 modifier = Modifier.weight(1f),
-            )
-        }
-        val details = buildList {
-            heartRateLabel(activity.averageHeartRate, activity.maxHeartRate)?.let { add("FC $it bpm") }
-            activity.averageCadenceSpm?.let { add("Cadência $it spm") }
-        }
-        if (details.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = details.joinToString(" · "),
-                style = McTextStyles.caption,
-                color = colors.textSecondary,
             )
         }
     }
