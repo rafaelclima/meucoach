@@ -68,17 +68,19 @@ class CoachMemoryRepositoryTest {
     }
 
     @Test
-    fun `reopening the same motor context does not duplicate the turn`(): Unit = runBlocking {
+    fun `reopening the same motor context replaces the copy without duplicating`(): Unit = runBlocking {
         assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList()))
             .isTrue()
         clock.instant = now.plusSeconds(30)
 
-        assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco", "40 min", emptyList()))
-            .isFalse()
+        assertThat(memory.recordMessage(CoachMessageKind.EXPLAIN, "hash-1", "Foco revisado", "45 min", emptyList()))
+            .isTrue()
 
         val turns = database.chatTurnDao().getAll()
         assertThat(turns).hasSize(1)
-        assertThat(turns.single().createdAt).isEqualTo(now.toEpochMilli())
+        assertThat(turns.single().title).isEqualTo("Foco revisado")
+        assertThat(turns.single().body).isEqualTo("45 min")
+        assertThat(turns.single().createdAt).isEqualTo(now.plusSeconds(30).toEpochMilli())
     }
 
     @Test

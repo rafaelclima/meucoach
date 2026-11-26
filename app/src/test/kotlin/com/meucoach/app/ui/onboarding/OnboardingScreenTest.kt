@@ -60,6 +60,25 @@ class OnboardingScreenTest {
     }
 
     @Test
+    fun `availability copy says minutes are a ceiling`() {
+        setContent(state = step(1))
+
+        compose.onNodeWithTag("onboarding-list")
+            .performScrollToNode(hasText("Os minutos são um teto", substring = true))
+        compose.onNodeWithText("Os minutos são um teto", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `experience copy says the level changes stimuli from build`() {
+        setContent(state = step(0))
+
+        compose.onNodeWithTag("onboarding-list")
+            .performScrollToNode(hasText("O nível muda os estímulos a partir da fase BUILD", substring = true))
+        compose.onNodeWithText("O nível muda os estímulos a partir da fase BUILD", substring = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun `shows the save action on the last step`() {
         var saved = false
         setContent(state = step(2), onSave = { saved = true })

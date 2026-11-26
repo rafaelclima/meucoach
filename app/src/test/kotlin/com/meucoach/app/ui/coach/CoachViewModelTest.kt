@@ -1187,19 +1187,21 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `out-of-scope records YOU and falls back without calling the model`(): Unit = runBlocking {
+    fun `out-of-scope answers deterministically without calling the model`(): Unit = runBlocking {
         consent.grant()
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
         val vm = viewModel(api)
         vm.sendFreeText("estou com dor no joelho")
 
         val state = awaitFreeAnswer(vm)
-        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
-        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("não faço por aqui")
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("não faço por aqui")
         assertThat(api.freeAnswerCalls).isZero()
         val turns = memory.observeTurns().first()
         assertThat(turns.filterIsInstance<ChatTurn.You>().map { it.body })
             .containsExactly("estou com dor no joelho")
+        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin })
+            .contains(ChatTurn.Origin.ANSWER)
     }
 
     @Test
@@ -1210,8 +1212,8 @@ class CoachViewModelTest {
         vm.sendFreeText("Tenho arritmia, posso correr?")
 
         val state = awaitFreeAnswer(vm)
-        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
-        val copy = (state as FreeAnswerUiState.Fallback).copy
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        val copy = (state as FreeAnswerUiState.Ready).texts.joinToString(" ")
         assertThat(copy).contains("check-in", "avaliação")
         assertThat(copy).doesNotContain("é seguro para você", "pode correr")
         assertThat(api.freeAnswerCalls).isZero()
@@ -1308,7 +1310,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `invalid free answer falls back and is not recorded`(): Unit = runBlocking {
+    fun `invalid free answer falls back with a deterministic answer recorded`(): Unit = runBlocking {
         consent.grant()
         plans.value = CoachPlanContext(plan(), "hash1")
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Corra a 6:10/km"))
@@ -1317,11 +1319,13 @@ class CoachViewModelTest {
 
         assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         val turns = memory.observeTurns().first()
-        assertThat(turns.filterIsInstance<ChatTurn.Coach>()).isEmpty()
+        assertThat(turns.filterIsInstance<ChatTurn.Coach>().map { it.origin })
+            .contains(ChatTurn.Origin.ANSWER)
+        assertThat(turns.filterIsInstance<ChatTurn.You>()).hasSize(1)
     }
 
     @Test
-    fun `free-answer network failure falls back but keeps the question`(): Unit = runBlocking {
+    fun `free-answer network failure keeps the QA pair`(): Unit = runBlocking {
         consent.grant()
         plans.value = CoachPlanContext(plan(), "hash1")
         val api = FakeCoachApi(error = IOException("down"))
@@ -1332,18 +1336,20 @@ class CoachViewModelTest {
         assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         assertThat((state as FreeAnswerUiState.Fallback).copy).contains("Sem conexão")
         assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.Coach>().map { it.origin })
+            .contains(ChatTurn.Origin.ANSWER)
     }
 
     @Test
-    fun `review question without a closed week falls back`(): Unit = runBlocking {
+    fun `review question without a closed week answers deterministically`(): Unit = runBlocking {
         consent.grant()
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
         val vm = viewModel(api)
         vm.sendFreeText("como foi semana passada?")
 
         val state = awaitFreeAnswer(vm)
-        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
-        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("ainda não fechou")
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("ainda não fechou")
         assertThat(api.freeAnswerCalls).isZero()
     }
 
@@ -1552,14 +1558,14 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `session without a plan falls back`(): Unit = runBlocking {
+    fun `session without a plan answers deterministically`(): Unit = runBlocking {
         consent.grant()
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
         val vm = viewModel(api)
         vm.sendFreeText("o que tem amanhã?")
 
         val state = awaitFreeAnswer(vm)
-        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         assertThat(api.freeAnswerCalls).isZero()
     }
 
@@ -1644,7 +1650,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `clarify and capabilities persist ANSWER while refusal stays ephemeral`(): Unit = runBlocking {
+    fun `deterministic clarify capabilities and refusal all persist ANSWER`(): Unit = runBlocking {
         consent.grant()
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
         val vm = viewModel(api)
@@ -1653,13 +1659,13 @@ class CoachViewModelTest {
         vm.sendFreeText("o que você pode fazer?")
         assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
         vm.sendFreeText("estou com dor no joelho")
-        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
+        assertThat(awaitFreeAnswer(vm)).isInstanceOf(FreeAnswerUiState.Ready::class.java)
 
         val turns = memory.observeTurns().first()
         assertThat(turns.filterIsInstance<ChatTurn.You>()).hasSize(3)
         val answers = turns.filterIsInstance<ChatTurn.Coach>()
             .filter { it.origin == ChatTurn.Origin.ANSWER }
-        assertThat(answers).hasSize(2)
+        assertThat(answers).hasSize(3)
     }
 
     @Test
@@ -1766,7 +1772,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `progress without closed weeks falls back`(): Unit = runBlocking {
+    fun `progress without closed weeks answers deterministically`(): Unit = runBlocking {
         consent.grant()
         progress.value = CoachProgressContext(emptyList(), null, 0, null, LocalDate.of(2026, 11, 16))
         val api = FakeCoachApi(CoachRawResponse(title = "T", body = "Ok."))
@@ -1774,8 +1780,8 @@ class CoachViewModelTest {
         vm.sendFreeText("como anda minha evolução?")
 
         val state = awaitFreeAnswer(vm)
-        assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
-        assertThat((state as FreeAnswerUiState.Fallback).copy).contains("semanas fechadas")
+        assertThat(state).isInstanceOf(FreeAnswerUiState.Ready::class.java)
+        assertThat((state as FreeAnswerUiState.Ready).texts.joinToString(" ")).contains("semanas fechadas")
         assertThat(api.freeAnswerCalls).isZero()
         assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
     }
@@ -1894,7 +1900,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `open answer with an invented count falls back without recording`(): Unit = runBlocking {
+    fun `open answer with an invented count falls back with a deterministic answer`(): Unit = runBlocking {
         consent.grant()
         plans.value = CoachPlanContext(sessionWeek(LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 5)), "hash-s")
         next.value = sessionNextContext(LocalDate.of(2026, 11, 5))
@@ -1916,7 +1922,7 @@ class CoachViewModelTest {
         val answers = memory.observeTurns().first()
             .filterIsInstance<ChatTurn.Coach>()
             .filter { it.origin == ChatTurn.Origin.ANSWER }
-        assertThat(answers).isEmpty()
+        assertThat(answers).hasSize(1)
     }
 
     @Test
@@ -1932,6 +1938,8 @@ class CoachViewModelTest {
         assertThat(state).isInstanceOf(FreeAnswerUiState.Fallback::class.java)
         assertThat((state as FreeAnswerUiState.Fallback).copy).contains("Sem conexão")
         assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.You>()).hasSize(1)
+        assertThat(memory.observeTurns().first().filterIsInstance<ChatTurn.Coach>().map { it.origin })
+            .contains(ChatTurn.Origin.ANSWER)
     }
 
     private fun todayPrescription() = DailyPrescription(

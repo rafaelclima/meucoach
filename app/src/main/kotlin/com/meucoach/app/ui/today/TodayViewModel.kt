@@ -64,6 +64,7 @@ import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.prescription.hasRestoredQuality
 import com.meucoach.core.domain.readiness.DailyMetricsReadinessBuilder
 import com.meucoach.core.domain.readiness.ReadinessCalculator
+import com.meucoach.core.domain.readiness.ReadinessFlag
 import com.meucoach.core.domain.readiness.toSubjectiveCheckIn
 import com.meucoach.core.domain.replan.DATA_INCOMPLETE_RULE_ID
 import com.meucoach.core.domain.replan.ReplanTrigger
@@ -932,6 +933,7 @@ internal fun todayState(
         readinessScore = result.score,
         readinessLevel = result.level,
         readinessConfidence = result.confidence,
+        readinessHasData = !(ReadinessFlag.INSUFFICIENT_DATA in result.flags && result.components.isEmpty()),
         readinessSignals = buildSignals(
             checkIn = checkIn,
             inputs = inputs,

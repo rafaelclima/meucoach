@@ -230,6 +230,18 @@ class LevelGraduationViewModelTest {
     }
 
     @Test
+    fun `stay surfaces the missing long run and the availability hint`(): Unit = runBlocking {
+        seedStayWithoutLongRun()
+        viewModel.refresh()
+        val state = awaitIdle()
+
+        assertThat(state.suggestion).isNull()
+        val next = requireNotNull(state.nextLevel) { "Stay must expose the next-level criteria" }
+        assertThat(next.missing).anyMatch { it.contains("Longão real de pelo menos 60 min") }
+        assertThat(next.availabilityHint).contains("50 min", "longão real de 60 min")
+    }
+
+    @Test
     fun `an advanced profile never suggests a downgrade`(): Unit = runBlocking {
         seedGraduatable(experience = Experience.ADVANCED)
 
@@ -337,6 +349,49 @@ class LevelGraduationViewModelTest {
             weekStart.minusWeeks(1) to null,
         ).forEach { (start, longMin) ->
             plans.saveWeek(strongWeek(start, longMin))
+        }
+    }
+
+    private suspend fun seedStayWithoutLongRun() {
+        profiles.saveProfile(
+            baseProfile(Experience.BEGINNER).copy(
+                weeklyAvailability = WeeklyAvailability(
+                    mapOf(
+                        DayOfWeek.MONDAY to 30,
+                        DayOfWeek.WEDNESDAY to 30,
+                        DayOfWeek.SATURDAY to 50,
+                    ),
+                ),
+            ),
+        )
+        checkIns.save(
+            DailyCheckIn(
+                date = today,
+                sleepQuality = 4,
+                fatigue = 2,
+                soreness = 1,
+                stress = 2,
+            ),
+        )
+        listOf(
+            Instant.parse("2026-10-20T12:00:00Z"),
+            Instant.parse("2026-10-27T12:00:00Z"),
+            Instant.parse("2026-11-02T12:00:00Z"),
+        ).forEach { start ->
+            activities.saveImportedActivity(
+                ImportedActivity(
+                    source = ActivitySource.FIT,
+                    sport = Sport.RUNNING,
+                    startTime = start,
+                    durationSec = 25 * 60,
+                    distanceM = 5_000.0,
+                    averageHeartRate = 170,
+                    averagePace = Pace.fromSecondsPerKm(360),
+                ),
+            )
+        }
+        (1..4).forEach { weeksAgo ->
+            plans.saveWeek(strongWeek(weekStart.minusWeeks(weeksAgo.toLong()), longRunMin = 30))
         }
     }
 

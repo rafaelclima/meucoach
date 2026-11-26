@@ -63,6 +63,57 @@ fun LevelGraduationSection(
             onDismiss = onDismissMessage,
             modifier = modifier,
         )
+
+        state.nextLevel != null -> LevelGraduationNextCard(
+            next = state.nextLevel,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun LevelGraduationNextCard(next: LevelGraduationNextUi, modifier: Modifier = Modifier) {
+    val colors = McTheme.colors
+    McCard(
+        variant = McCardVariant.INSET,
+        modifier = modifier.testTag("level-next-card"),
+    ) {
+        Text(
+            text = "PRÓXIMO NÍVEL",
+            style = McTextStyles.overline,
+            color = colors.textTertiary,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = next.reason,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+        if (next.missing.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Critérios que faltam",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+            )
+            next.missing.forEach { criterion ->
+                Text(
+                    text = "• $criterion",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        next.availabilityHint?.let { hint ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = hint,
+                style = McTextStyles.caption,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("level-next-availability"),
+            )
+        }
     }
 }
 

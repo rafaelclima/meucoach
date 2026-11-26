@@ -291,7 +291,11 @@ private fun ProfileDetails(
                 }
             }
         }
-        if (levelGraduation.suggestion != null || levelGraduation.message != null || levelGraduation.isLoading) {
+        val showLevelGraduation = levelGraduation.suggestion != null ||
+            levelGraduation.message != null ||
+            levelGraduation.nextLevel != null ||
+            levelGraduation.isLoading
+        if (showLevelGraduation) {
             item {
                 LevelGraduationSection(
                     state = levelGraduation,

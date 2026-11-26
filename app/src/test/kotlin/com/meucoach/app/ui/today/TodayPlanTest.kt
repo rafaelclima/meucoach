@@ -915,7 +915,7 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("CARGA DA SEMANA"))
+        list.performScrollToNode(hasText("Nenhuma corrida nesta semana"))
         compose.onNodeWithText("Nenhuma corrida nesta semana").assertIsDisplayed()
         compose.onNodeWithText("Base", ignoreCase = true).assertDoesNotExist()
         compose.onNodeWithText("Balanço", ignoreCase = true).assertDoesNotExist()
@@ -1038,6 +1038,27 @@ class TodayPlanTest {
         compose.onNodeWithTag("readiness-health-link").performClick()
 
         assertThat(health).isTrue()
+    }
+
+    @Test
+    fun `readiness without data shows no-data state and check-in CTA`() {
+        var checkedIn = false
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(LocalDate.of(2026, 11, 2)).copy(readinessHasData = false),
+                    onCheckInClick = { checkedIn = true },
+                )
+            }
+        }
+
+        compose.onNodeWithTag("readiness-no-data").assertIsDisplayed()
+        compose.onNodeWithText("Sem dados").assertIsDisplayed()
+        compose.onNodeWithTag("readiness-check-in").performClick()
+
+        assertThat(checkedIn).isTrue()
     }
 
     @Test

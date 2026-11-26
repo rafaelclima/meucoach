@@ -21,6 +21,9 @@ interface ChatTurnDao {
     @Query("DELETE FROM chat_turns WHERE expiresAt < :now")
     suspend fun deleteOlderThan(now: Long): Int
 
+    @Query("DELETE FROM chat_turns WHERE origin = :origin AND inputsHash = :inputsHash")
+    suspend fun deleteByOriginAndInputsHash(origin: String, inputsHash: String): Int
+
     @Query("DELETE FROM chat_turns WHERE id = :id")
     suspend fun deleteById(id: String): Int
 

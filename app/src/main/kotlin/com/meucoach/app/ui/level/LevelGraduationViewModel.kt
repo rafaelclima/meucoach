@@ -13,6 +13,9 @@ import com.meucoach.app.time.TimeProvider
 import com.meucoach.app.ui.profile.experienceLabel
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.domain.prescription.LevelGraduationEngine
+import com.meucoach.core.domain.prescription.LevelGraduationResult
+import com.meucoach.core.model.AthleteProfile
+import com.meucoach.core.model.Experience
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +73,7 @@ class LevelGraduationViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         suggestion = null,
+                        nextLevel = null,
                         message = "Não foi possível avaliar o nível agora. Tente de novo em instantes.",
                     )
                 }
@@ -127,6 +131,7 @@ class LevelGraduationViewModel @Inject constructor(
                     it.copy(
                         isApplying = false,
                         suggestion = null,
+                        nextLevel = null,
                         message = "Nível atualizado para $toLabel. " +
                             "O plano seguinte usa o novo nível; hoje nada muda.",
                     )
@@ -188,19 +193,77 @@ class LevelGraduationViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         suggestion = if (blocked) null else result.suggestion.toUi(),
+                        nextLevel = null,
                         message = null,
                     )
                 }
             }
 
-            is EvaluateLevelGraduationResult.Stay,
-            is EvaluateLevelGraduationResult.Unavailable,
-            -> {
+            is EvaluateLevelGraduationResult.Stay -> {
+                pending = null
+                val profile = runCatching { profiles.getProfile() }.getOrNull()
+                mutableState.update {
+                    it.copy(
+                        isLoading = false,
+                        suggestion = null,
+                        nextLevel = result.toNextUi(profile),
+                        message = null,
+                    )
+                }
+            }
+
+            is EvaluateLevelGraduationResult.Unavailable -> {
                 pending = null
                 mutableState.update {
-                    it.copy(isLoading = false, suggestion = null, message = null)
+                    it.copy(isLoading = false, suggestion = null, nextLevel = null, message = null)
                 }
             }
         }
     }
+}
+
+private fun EvaluateLevelGraduationResult.Stay.toNextUi(profile: AthleteProfile?): LevelGraduationNextUi? {
+    if (profile?.experience == Experience.ADVANCED) return null
+    val maxAvailability = profile?.weeklyAvailability?.minutesByDay?.values?.maxOrNull() ?: 0
+    val hint = when {
+        LevelGraduationEngine.MISSING_LONG_RUN in missing && maxAvailability in 1 until 60 ->
+            "Sua agenda máxima é $maxAvailability min. Libere um dia de 60 min ou registre um " +
+                "longão real de 60 min por conta própria para cumprir este critério."
+
+        LevelGraduationEngine.MISSING_LONG_RUN_90 in missing && maxAvailability in 1 until 90 ->
+            "Sua agenda máxima é $maxAvailability min. Libere um dia de 90 min ou registre um " +
+                "longão real de 90 min por conta própria para cumprir este critério."
+
+        else -> null
+    }
+    return LevelGraduationNextUi(
+        reason = reason,
+        missing = missing.map(::missingCriterionLabel),
+        availabilityHint = hint,
+    )
+}
+
+private fun missingCriterionLabel(key: String): String = when (key) {
+    LevelGraduationEngine.MISSING_STRONG_WEEKS ->
+        "6 semanas com pelo menos 80% dos treinos concluídos com evidência"
+
+    LevelGraduationEngine.MISSING_EFFORTS -> "3 esforços de 20–35 min com FC e ritmo"
+
+    LevelGraduationEngine.MISSING_CALIBRATION -> "Calibração de limiar válida"
+
+    LevelGraduationEngine.MISSING_ILLNESS -> "14 dias sem doença ou lesão"
+
+    LevelGraduationEngine.MISSING_READINESS -> "Prontidão atual fora do vermelho"
+
+    LevelGraduationEngine.MISSING_LONG_RUN -> "Longão real de pelo menos 60 min"
+
+    LevelGraduationEngine.MISSING_CTL -> "CTL estável ou crescente nas últimas 4 semanas"
+
+    LevelGraduationEngine.MISSING_LONG_RUN_90 -> "Longão real de pelo menos 90 min"
+
+    LevelGraduationEngine.MISSING_RACE -> "Prova recente com evidência"
+
+    LevelGraduationEngine.MISSING_MONOTONY -> "Monotonia abaixo de 2,0 nas últimas 4 semanas"
+
+    else -> key
 }

@@ -628,7 +628,7 @@ class CoachViewModel @Inject constructor(
         if (!_consented.value) return
         when (parsed.intent) {
             FreeInputIntent.OUT_OF_SCOPE ->
-                settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.OUT_OF_SCOPE))
+                answerLocal(exchangeId, FreeAnswerCopy.OUT_OF_SCOPE, localHash("STATIC", parsed))
 
             FreeInputIntent.ASK_CLARIFY ->
                 answerLocal(exchangeId, FreeAnswerCopy.CLARIFY, localHash("STATIC", parsed))
@@ -703,7 +703,7 @@ class CoachViewModel @Inject constructor(
     private suspend fun answerWeek(parsed: FreeInputParse, exchangeId: String) {
         val context = sources.plans.observeCurrent().first()
         if (context == null) {
-            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN))
+            answerLocal(exchangeId, FreeAnswerCopy.NO_PLAN, localHash("STATIC", parsed))
             return
         }
         val prompt = CoachPromptBuilder.build(context.plan, context.inputsHash)
@@ -747,7 +747,7 @@ class CoachViewModel @Inject constructor(
     private suspend fun answerReview(parsed: FreeInputParse, exchangeId: String) {
         val review = sources.reviews.observeLastClosedWeek().first()
         if (review == null) {
-            settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_REVIEW))
+            answerLocal(exchangeId, FreeAnswerCopy.NO_REVIEW, localHash("STATIC", parsed))
             return
         }
         val prompt = CoachReviewPromptBuilder.build(review)
@@ -831,10 +831,9 @@ class CoachViewModel @Inject constructor(
 
                 is CoachValidationResult.Invalid -> {
                     android.util.Log.d("Coach", "free answer rejected: ${validated.reason}")
-                    settle(
-                        exchangeId,
-                        FreeAnswerUiState.Fallback(CoachFallbackLabels.freeAnswerReasonCopy(validated.reason)),
-                    )
+                    val copy = CoachFallbackLabels.freeAnswerReasonCopy(validated.reason)
+                    storeAnswerCopy(freeHash, copy, ::storeTurn)
+                    settle(exchangeId, FreeAnswerUiState.Fallback(copy))
                 }
             }
         } catch (e: IOException) {
@@ -867,7 +866,8 @@ class CoachViewModel @Inject constructor(
             parsed = parsed,
             exchangeId = exchangeId,
             progress = sources.progress,
-            settle = ::settle,
+            noProgressHash = localHash("STATIC", parsed),
+            answerLocal = ::answerLocal,
             send = ::freeAnswer,
         )
     }
@@ -976,7 +976,11 @@ private suspend fun answerSessionContent(
 ) {
     val planContext = sources.plans.observeCurrent().first()
     if (planContext == null) {
-        callbacks.settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PLAN))
+        callbacks.answerLocal(
+            exchangeId,
+            FreeAnswerCopy.NO_PLAN,
+            callbacks.localHash("STATIC", parsed),
+        )
         return
     }
     val plan = planContext.plan
@@ -1030,13 +1034,14 @@ private suspend fun answerProgressContent(
     parsed: FreeInputParse,
     exchangeId: String,
     progress: CoachProgressSource,
-    settle: (String, FreeAnswerUiState) -> Unit,
+    noProgressHash: String,
+    answerLocal: suspend (String, String, String) -> Unit,
     send: suspend (FreeAnswerRequest) -> Unit,
 ) {
     val context = progress.observeProgress().first()
     val summary = CoachProgress.summarize(context.weeks, context.easyPercent28d)
     if (summary.availableWeeks == 0) {
-        settle(exchangeId, FreeAnswerUiState.Fallback(FreeAnswerCopy.NO_PROGRESS))
+        answerLocal(exchangeId, FreeAnswerCopy.NO_PROGRESS, noProgressHash)
         return
     }
     val answer = CoachProgressAnswer.build(summary)
@@ -1086,6 +1091,10 @@ private suspend fun settleFreeAnswerFailure(
         storeAnswerCopy(freeHash, fallbackCopy, record)
         settle(exchangeId, FreeAnswerUiState.Ready(CoachBubbles.split(fallbackCopy)))
     } else {
+        // D9: the archive never keeps a YOU without an ANSWER. The deterministic
+        // failure copy is stored; a later successful retry replaces it because
+        // the answer hash is the same.
+        storeAnswerCopy(freeHash, connectionCopy, record)
         settle(exchangeId, FreeAnswerUiState.Fallback(connectionCopy))
     }
 }
@@ -1202,8 +1211,8 @@ private object FreeAnswerCopy {
     const val NO_PLAN = "Ainda estou montando sua semana — assim que o plano sair eu explico."
     const val NO_REVIEW = "A semana passada ainda não fechou por aqui — me pergunta de novo depois."
     const val NO_PROGRESS = "Ainda não tenho semanas fechadas por aqui — me pergunta de novo daqui a pouco."
-    const val NO_CONNECTION = "Sem conexão com o Coach. O plano segue o mesmo — tá aqui embaixo."
-    const val GENERIC = "O Coach não respondeu. O plano segue o mesmo — tá aqui embaixo."
+    const val NO_CONNECTION = "Sem conexão com o Coach agora. O plano segue o mesmo — tenta de novo."
+    const val GENERIC = "O Coach não respondeu agora. O plano segue o mesmo — tenta de novo."
     const val OUTSIDE_WEEK =
         "Esse dia é de outra semana — te mostro a semana atual ou como foi a passada?"
     const val SESSION_PAST =

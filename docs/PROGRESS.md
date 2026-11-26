@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–4 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–5 do PRD de correções)
 
 ## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
 
@@ -206,6 +206,48 @@ treino.
 
 1. Fatia 5 — UX selecionada (`NOVO-LVL-01`, `ALG-05`, `SEG-05`, `SCI-01`, `COACH-15`,
    `COACH-07`, `GEN-07`).
+
+## Sessão 2026-11-26 — Fatia 5 do PRD de correções (UX selecionada)
+
+**Escopo:** `NOVO-LVL-01`/`ALG-05`/`SEG-05`, `SCI-01`, `COACH-15`, `COACH-07` (D9) e `GEN-07`.
+Sem dependência nova ou mudança no motor de treino.
+
+### Concluído
+
+- **Perfil — “Próximo nível”:** `Stay` deixa de sumir; o card mostra o motivo, os critérios
+  faltantes em pt-BR e, quando `MISSING_LONG_RUN`/`MISSING_LONG_RUN_90` não cabe na agenda,
+  uma dica de disponibilidade. Nenhum aceite automático.
+- **Hoje — prontidão sem dados:** quando `INSUFFICIENT_DATA` + `components.isEmpty()`, o gauge
+  vira “Sem dados” com CTA de check-in; score/level/confiança continuam no estado e a
+  explicação existente é preservada.
+- **Coach — fallback honesto:** `NO_CONNECTION`/`GENERIC` não prometem mais card “aqui
+  embaixo”; o retry é o próximo passo.
+- **Coach — D9:** recusas e fallbacks determinísticos são persistidos como `ANSWER`
+  (inclusive falha de rede), então nenhum `YOU` fica órfão. `recordMessage` substitui a cópia
+  do mesmo `(origin, inputsHash)`; um retry bem-sucedido substitui o fallback.
+- **Onboarding:** “os minutos são um teto, não uma meta”; o nível muda os estímulos a partir
+  de BUILD e a base inicial é igual para iniciante/intermediário.
+
+### Testes
+
+- `LevelGraduationViewModelTest` (Stay + `MISSING_LONG_RUN` + agenda 50) e
+  `LevelGraduationCardTest` (card “Próximo nível” sem botão de aceite).
+- `TodayViewModelTest`/`TodayPlanTest` (sem dados + CTA).
+- `CoachViewModelTest` (recusa/fallback com `ANSWER`, retry substitui, fallback sem “aqui
+  embaixo”) e `CoachMemoryRepositoryTest` (substituição sem duplicar).
+- `OnboardingScreenTest` (teto de minutos e nível a partir de BUILD).
+- `./gradlew check -x spotlessMiscCheck` verde (testes, `koverVerify`, lint e detekt).
+- `./gradlew spotlessKotlinCheck` e `:app:assembleDebug` verdes.
+
+### Pendente
+
+- Fatias 0, 6–8 do PRD (ADRs científicos, Story, docs e aparelho).
+- Validação manual no aparelho dos novos estados (Fatia 8).
+
+### Próximo
+
+1. Fatia 6 — Story selecionado (`STORY-02`, `STORY-03`, `STORY-07`, `STORY-15`, `STORY-16`,
+   `STORY-17`, `NOVO-STORY-01`).
 
 ## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
 

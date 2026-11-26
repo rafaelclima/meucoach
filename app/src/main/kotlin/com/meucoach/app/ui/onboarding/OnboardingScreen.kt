@@ -365,6 +365,12 @@ private fun aboutStep(
         selected = form.experience,
         onSelect = { value -> onUpdate { it.copy(experience = value) } },
     )
+    Text(
+        text = "A base inicial é a mesma para iniciante e intermediário. " +
+            "O nível muda os estímulos a partir da fase BUILD.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = McTheme.colors.textSecondary,
+    )
 }
 
 @Composable
@@ -417,7 +423,8 @@ private fun goalStep(
         color = McTheme.colors.textPrimary,
     )
     Text(
-        text = "Marque os dias e quantos minutos você costuma ter.",
+        text = "Marque os dias e o tempo máximo que cabe em cada um. " +
+            "Os minutos são um teto, não uma meta.",
         style = MaterialTheme.typography.bodyMedium,
         color = McTheme.colors.textSecondary,
     )

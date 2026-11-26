@@ -115,6 +115,33 @@ class LevelGraduationCardTest {
     }
 
     @Test
+    fun `next level card shows missing criteria and hint without accept`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                LevelGraduationSection(
+                    state = LevelGraduationUiState(
+                        nextLevel = LevelGraduationNextUi(
+                            reason = "Ainda não há base para subir de nível.",
+                            missing = listOf("Longão real de pelo menos 60 min"),
+                            availabilityHint = "Sua agenda máxima é 50 min. Libere um dia de 60 min.",
+                        ),
+                    ),
+                    onAccept = {},
+                    onDecline = {},
+                    onSuppress = {},
+                    onDismissMessage = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("level-next-card").assertIsDisplayed()
+        compose.onNodeWithText("PRÓXIMO NÍVEL").assertIsDisplayed()
+        compose.onNodeWithText("Longão real de pelo menos 60 min", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("level-next-availability").assertIsDisplayed()
+        compose.onNodeWithTag("level-graduation-accept").assertDoesNotExist()
+    }
+
+    @Test
     fun `section is empty without suggestion or message`() {
         compose.setContent {
             McTheme(darkTheme = true) {

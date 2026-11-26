@@ -41,8 +41,9 @@ class CoachMemoryRepository(
     }
 
     /**
-     * Stores a validated turn. The same `(origin, inputsHash)` is written
-     * once; reopening the tab or retrying does not duplicate the conversation.
+     * Stores a validated turn. The same `(origin, inputsHash)` is replaced in
+     * place: reopening the tab does not duplicate the conversation, and a
+     * successful retry replaces the deterministic fallback answer (D9).
      */
     suspend fun recordMessage(
         kind: CoachMessageKind,
@@ -53,6 +54,7 @@ class CoachMemoryRepository(
     ): Boolean = database.withTransaction {
         val now = clock.millis()
         database.chatTurnDao().deleteOlderThan(now)
+        database.chatTurnDao().deleteByOriginAndInputsHash(kind.name, inputsHash)
         val inserted = database.chatTurnDao().insert(
             turnEntity("message-${idGenerator()}", kind.name, inputsHash, title, body, bullets, now),
         )

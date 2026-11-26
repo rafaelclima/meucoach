@@ -10,7 +10,12 @@ data class LevelGraduationUiState(
     val isApplying: Boolean = false,
     val suggestion: LevelGraduationSuggestionUi? = null,
     val message: String? = null,
+    /** Compact "next level" state when the engine is on `Stay` (D7). */
+    val nextLevel: LevelGraduationNextUi? = null,
 )
+
+/** Criteria still missing for the next level, in pt-BR and without internal ids. */
+data class LevelGraduationNextUi(val reason: String, val missing: List<String>, val availabilityHint: String? = null)
 
 data class LevelGraduationSuggestionUi(
     val from: Experience,

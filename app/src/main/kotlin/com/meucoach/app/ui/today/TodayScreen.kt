@@ -177,6 +177,7 @@ fun TodayScreen(
                 state = state,
                 onWhyClick = { openExplanation(ExplanationSource.READINESS) },
                 onHealthClick = onHealthClick,
+                onCheckInClick = onCheckInClick,
             )
         }
         val todaySession = state.plan?.sessions?.firstOrNull { it.date == today }
@@ -434,7 +435,12 @@ private fun Greeting(state: TodayUiState, onProfileClick: () -> Unit) {
 }
 
 @Composable
-private fun ReadinessCard(state: TodayUiState, onWhyClick: () -> Unit, onHealthClick: () -> Unit) {
+private fun ReadinessCard(
+    state: TodayUiState,
+    onWhyClick: () -> Unit,
+    onHealthClick: () -> Unit,
+    onCheckInClick: () -> Unit,
+) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.ELEVATED) {
         Row(
@@ -450,25 +456,50 @@ private fun ReadinessCard(state: TodayUiState, onWhyClick: () -> Unit, onHealthC
             McConfidenceBadge(confidence = state.readinessConfidence)
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            McGauge(
-                score = state.readinessScore,
-                level = state.readinessLevel,
-                levelLabel = readinessLabel(state.readinessLevel),
-                size = 132.dp,
-                strokeWidth = 9.dp,
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+        if (state.readinessHasData) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                state.readinessSignals.forEach { signal ->
-                    ReadinessSignalRow(signal = signal)
+                McGauge(
+                    score = state.readinessScore,
+                    level = state.readinessLevel,
+                    levelLabel = readinessLabel(state.readinessLevel),
+                    size = 132.dp,
+                    strokeWidth = 9.dp,
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    state.readinessSignals.forEach { signal ->
+                        ReadinessSignalRow(signal = signal)
+                    }
                 }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("readiness-no-data"),
+            ) {
+                Text(
+                    text = "Sem dados",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Ainda não há check-in ou métricas de recuperação hoje.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                McTextButton(
+                    text = "Fazer check-in",
+                    onClick = onCheckInClick,
+                    modifier = Modifier.testTag("readiness-check-in"),
+                )
             }
         }
         Spacer(modifier = Modifier.height(4.dp))

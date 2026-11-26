@@ -81,6 +81,8 @@ data class TodayUiState(
     val readinessLevel: ReadinessLevel,
     val readinessConfidence: DataConfidence,
     val readinessSignals: List<ReadinessSignalUi>,
+    /** False when there is no check-in or recovery metric; the gauge says "Sem dados". */
+    val readinessHasData: Boolean = true,
     val workout: WorkoutUi,
     /** Null until there is at least one activity with distance; the UI shows an empty state. */
     val weeklyLoadKm: Double? = null,

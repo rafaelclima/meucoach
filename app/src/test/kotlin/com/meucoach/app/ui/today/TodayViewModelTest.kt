@@ -22,6 +22,7 @@ class TodayViewModelTest {
         assertThat(state.readinessScore).isEqualTo(50)
         assertThat(state.readinessLevel).isEqualTo(ReadinessLevel.AMBER)
         assertThat(state.readinessConfidence).isEqualTo(DataConfidence.LOW)
+        assertThat(state.readinessHasData).isFalse()
         assertThat(state.readinessSignals.single().value).isEqualTo("Pendente")
         assertThat(state.hasCheckedIn).isFalse()
     }
