@@ -1,6 +1,40 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3–D4)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–6 do PRD de correções + D3–D5)
+
+## Sessão 2026-11-26 — Fatia de código D5 (qualidade × longão entre semanas)
+
+**Escopo:** implementação do ADR 0068 em `selectQualityDays`/`WeeklyPlanGenerator`:
+bloqueio da qualidade na segunda seguinte a um longão de domingo, movimento para outro
+dia seguro ou omissão com copy. Sem UI, schema, dependência, migração ou dado real.
+
+### Concluído
+
+- **Bloqueio entre semanas:** a semana anterior é lida de `previousWeek`/`recentWeeks`;
+  um `LONG` treinável no domingo bloqueia a segunda. Encerramento não treinável (rest,
+  doença, substituição) não bloqueia; semana anterior ausente não inventa bloqueio.
+- **Movimento:** se há outro dia seguro, a qualidade vai para o próximo dia e a copy
+  diz “Qualidade movida de segunda para …: longão de domingo (X min) ainda pesa na
+  segunda.”
+- **Omissão:** sem dia seguro, zero `QUALITY` e copy “sem dia seguro” nomeando o longão
+  anterior; nenhum estímulo sem estrutura.
+- **Regras da mesma semana preservadas:** máximo 2 qualidades, não consecutivas, longe
+  do longão; a direção inversa entre semanas não foi ampliada.
+- **Golden `G-QUALITY-ADJACENCY-01`:** `QualityAdjacencyGoldenTest` A–D (movida, sem dia
+  seguro, sem plano anterior, longão não treinável não bloqueia).
+- **Versão:** `weekly-plan-v9`; `daily-prescription-v7` permanece.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (1.383 testes).
+- `./gradlew spotlessKotlinCheck` verde; `git diff --check` limpo.
+- Nenhuma mudança de UI/schema/migração/dependência.
+
+### Pendente
+
+- D6 (strides `EASY` no taper do iniciante) e golden `G-BEGINNER-TAPER-01`.
+- `./gradlew check -x spotlessMiscCheck`, `koverVerify` e `assembleDebug` no fechamento
+  da sessão de código.
 
 ## Sessão 2026-11-26 — Fatia de código D4 (rampa do longão do iniciante)
 

@@ -331,6 +331,12 @@ class WeeklyPlanGenerator {
         } else {
             null
         }
+        // ADR 0068: Sunday's long run belongs to the previous civil week but is
+        // still the day before Monday. A non-trainable closure is not a dose.
+        val previousSundayLong = combinedReferences
+            .firstOrNull { it.weekStart == weekStart.minusWeeks(1) }
+            ?.trainableSessions()
+            ?.firstOrNull { it.date == weekStart.minusDays(1) && it.type == WorkoutType.LONG }
         val isRaceWeek = race != null && race.targetDate in weekStart..weekStart.plusDays(6)
         val isTaperWeek = race != null && (0L..6L).any { race.isInTaperWindow(weekStart.plusDays(it)) }
         val mesoRecoveryActive = recovery != null &&
@@ -453,6 +459,7 @@ class WeeklyPlanGenerator {
                 days = qualityCandidateDays,
                 longDay = longDay,
                 maxQualities = qualitySelection.size,
+                previousSundayLong = previousSundayLong,
             )
         }
         val qualityByDay = qualityDays.sortedBy { it.value }.zip(qualitySelection).toMap()
@@ -473,6 +480,7 @@ class WeeklyPlanGenerator {
                 days = microDoseCandidateDays,
                 longDay = longDay,
                 maxQualities = 1,
+                previousSundayLong = previousSundayLong,
             )
         } else {
             emptySet()
@@ -841,6 +849,31 @@ class WeeklyPlanGenerator {
 
             else -> baseConfidence
         }
+        val previousLongBlocksMonday = previousSundayLong != null &&
+            DayOfWeek.MONDAY in qualityCandidateDays &&
+            longDay != DayOfWeek.MONDAY
+        val qualityMoveNote = if (
+            previousLongBlocksMonday &&
+            qualityDays.isNotEmpty() &&
+            DayOfWeek.MONDAY !in qualityDays
+        ) {
+            val movedTo = qualityDays.minBy { it.value }
+            "Qualidade movida de segunda para ${dayLabel(movedTo)}: longão de domingo " +
+                "(${previousSundayLong?.durationMin} min) ainda pesa na segunda. "
+        } else {
+            null
+        }
+        val qualityNoSafeNote = if (
+            previousLongBlocksMonday &&
+            qualitySelection.isNotEmpty() &&
+            qualityDays.isEmpty()
+        ) {
+            "Qualidade: sem dia seguro nesta semana porque o longão de domingo " +
+                "(${previousSundayLong?.durationMin} min) ainda pesa na segunda; a semana fica " +
+                "sem treino forte. "
+        } else {
+            null
+        }
         val rationale = buildString {
             append("Fase ${meso.phase}. ")
             if (meso.fallbackUsed) {
@@ -953,6 +986,12 @@ class WeeklyPlanGenerator {
                 )
                 append(" ")
             }
+            if (qualityMoveNote != null) {
+                append(qualityMoveNote)
+            }
+            if (qualityNoSafeNote != null) {
+                append(qualityNoSafeNote)
+            }
             if (structuralQualityEligible && qualityCount > 0) {
                 when {
                     !secondQualityAllowed -> append(
@@ -1041,10 +1080,18 @@ class WeeklyPlanGenerator {
         )
     }
 
-    private fun selectQualityDays(days: List<DayOfWeek>, longDay: DayOfWeek?, maxQualities: Int): Set<DayOfWeek> {
+    private fun selectQualityDays(
+        days: List<DayOfWeek>,
+        longDay: DayOfWeek?,
+        maxQualities: Int,
+        previousSundayLong: PlannedSession?,
+    ): Set<DayOfWeek> {
         val selected = mutableListOf<DayOfWeek>()
         days.forEach { day ->
             if (selected.size >= maxQualities) return@forEach
+            // ADR 0068: Monday follows Sunday, even when Sunday belongs to the
+            // previous civil week. A missing previous week blocks nothing.
+            if (day == DayOfWeek.MONDAY && previousSundayLong != null) return@forEach
             if (day == longDay || (longDay != null && adjacentDays(day, longDay))) return@forEach
             if (selected.any { adjacentDays(it, day) }) return@forEach
             selected += day

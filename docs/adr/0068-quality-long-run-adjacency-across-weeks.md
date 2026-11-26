@@ -1,7 +1,7 @@
 # ADR 0068 — Adjacência qualidade × longão entre semanas
 
-**Status:** Aceito em 26/11/2026 como convenção `LIMITED`; implementação pendente
-(Fatia 0 docs-only).
+**Status:** Aceito e implementado em 26/11/2026 como convenção `LIMITED`
+(Fatia 3; `weekly-plan-v9`).
 **Data:** 2026-11-26
 **Escopo:** `WeeklyPlanGenerator.selectQualityDays`/`qualityPlanDecision`, uso de
 `previousWeek`/`recentWeeks`, copy do plano, `SPORTS_SCIENCE.md` §8.2/§8.5/§8.8/§14.
@@ -88,9 +88,9 @@ e não sugere que o usuário “compense” com outro treino forte.
 
 ### 2.4 Impacto de versão
 
-- `weekly-plan-v8`: a seleção de dias e a copy mudam para semanas após um longão;
-  a fatia de código deve subir a versão do motor e o `PlanUpgrade` (ADR 0048) reavalia
-  planos antigos na abertura, preservando passado, `DONE` e `CLOSED`.
+- `weekly-plan-v9`: a seleção de dias e a copy mudam para semanas após um longão; o
+  `PlanUpgrade` (ADR 0048) reavalia planos antigos na abertura, preservando passado,
+  `DONE` e `CLOSED`.
 - `daily-prescription-v7`: permanece se o motor diário apenas consumir a qualidade já
   escolhida pelo plano. Se ele passar a recalcular a oportunidade olhando o dia anterior,
   a versão também sobe.
@@ -157,10 +157,11 @@ Aceite da futura implementação:
 | **B — sem dia seguro** | Mesmo perfil, mas a única disponibilidade de qualidade é segunda 40 (sábado 90 é o longão) | Zero `QUALITY`; copy contém “sem dia seguro” e “longão de domingo”; nenhuma sessão > agenda; nenhum estímulo sem estrutura |
 | **C — sem plano anterior** | Sem `previousWeek`/`recentWeeks`; disponibilidade segunda 40 e sábado 90 | A segunda pode receber qualidade (não há longão conhecido); copy não inventa adjacência; regras da mesma semana continuam |
 
-O cenário A falha no motor atual (a qualidade pode cair na segunda) e passa depois da
+O cenário A falha no motor v8 (a qualidade pode cair na segunda) e passa depois da
 verificação entre semanas. O cenário B prova a copy de omissão. O cenário C protege a
-regra “dado ausente é ausente”.
+regra “dado ausente é ausente”; um longão encerrado como não treinável também não
+bloqueia.
 
-**Fora de escopo desta fatia:** implementar a checagem, alterar `selectQualityDays`,
-mudar `ENGINE_VERSION`, criar fixture executável ou ampliar a direção inversa entre
-semanas. Este ADR apenas fixa a decisão e o critério.
+**Implementação:** `selectQualityDays` recebe o `LONG` treinável do domingo anterior,
+move a qualidade para o próximo dia seguro ou a omite com copy; a direção inversa entre
+semanas continua fora desta fatia. Golden `QualityAdjacencyGoldenTest`; `weekly-plan-v9`.
