@@ -109,6 +109,12 @@ class StoryStudioScreenshotTest {
     }
 
     @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun videoStudioNarrow200Dark() {
+        captureVideo(name = "story-studio-video-narrow-200-dark.png", fontScale = 2f, darkTheme = true)
+    }
+
+    @Test
     fun artStudioTabDark() {
         captureArtTab(name = "art-studio-tab-dark.png", fontScale = 1f, darkTheme = true)
     }
@@ -172,6 +178,46 @@ class StoryStudioScreenshotTest {
             fontScale = 2f,
             darkTheme = true,
         )
+    }
+
+    private fun captureVideo(name: String, fontScale: Float, darkTheme: Boolean) {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density = density.density, fontScale = fontScale),
+            ) {
+                McTheme(darkTheme = darkTheme) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(McTheme.colors.background),
+                    ) {
+                        StoryStudioContent(
+                            state = StoryStudioUiState(
+                                recipe = StoryRecipe(),
+                                plan = plan(),
+                                extras = options(),
+                            ),
+                            avatar = null,
+                            introSeen = true,
+                            onClose = {},
+                            onDismissIntro = {},
+                            onPreset = {},
+                            onToggleExtra = {},
+                            onDuration = {},
+                            onMapStyle = {},
+                            onSaveAsDefault = {},
+                            onReset = {},
+                            onGenerate = {},
+                        )
+                    }
+                }
+            }
+        }
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodesWithTag("story-preview-loading").fetchSemanticsNodes().isEmpty()
+        }
+        compose.onRoot().captureRoboImage("src/test/screenshots/$name")
     }
 
     private fun captureArtTab(

@@ -1037,6 +1037,28 @@ class ActivityDetailViewModelTest {
     }
 
     @Test
+    fun `free run on a planned day has no target verdict`() {
+        runBlocking {
+            profiles.saveProfile(
+                AthleteProfile(
+                    id = "athlete-1",
+                    birthDate = java.time.LocalDate.of(1988, 1, 1),
+                    sex = Sex.MALE,
+                    lactateThresholdHeartRate = 180,
+                    timezone = "America/Sao_Paulo",
+                ),
+            )
+            repository.saveImportedActivity(gpsActivity(), "sha")
+            saveEasyPlan(activityId = null)
+            val plan = viewModel("activity-1").uiState.first { !it.isLoading }.storyStudio.plan
+
+            assertThat(plan?.verdict?.tone).isNull()
+            assertThat(plan?.verdict?.coachLine).isEqualTo("Cada corrida conta.")
+            assertThat(plan?.splits?.map { it.verdict }).containsOnlyNulls()
+        }
+    }
+
+    @Test
     fun `keeps the story positive when there is no plan`() {
         runBlocking {
             profiles.saveProfile(
@@ -1349,7 +1371,7 @@ class ActivityDetailViewModelTest {
         zone5 = 17,
     )
 
-    private suspend fun saveEasyPlan() {
+    private suspend fun saveEasyPlan(activityId: String? = "activity-1") {
         val date = java.time.LocalDate.parse("2026-10-24")
         plans.saveWeek(
             WeeklyPlan(
@@ -1363,9 +1385,13 @@ class ActivityDetailViewModelTest {
                         rationale = "Teste determinístico.",
                         ruleIds = listOf("R-ZONE-01"),
                         evidenceIds = listOf("EV-FRIEL-2018"),
-                        status = SessionStatus.DONE,
-                        completionEvidence = com.meucoach.core.model.CompletionEvidence.ACTIVITY,
-                        activityId = "activity-1",
+                        status = if (activityId != null) SessionStatus.DONE else SessionStatus.PLANNED,
+                        completionEvidence = if (activityId != null) {
+                            com.meucoach.core.model.CompletionEvidence.ACTIVITY
+                        } else {
+                            null
+                        },
+                        activityId = activityId,
                     ),
                 ),
                 weeklyMinutes = 40,

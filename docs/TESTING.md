@@ -480,6 +480,8 @@ Três testes caem de forma intermitente sob paralelismo/carga e passam isolados;
 | `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução |
 | `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado. Em 3.3-B a origem foi corrigida: `TodayViewModelPersistTest` cancela os `viewModelScope` antes de fechar o banco; 2 execuções completas verdes depois disso (com e sem `--no-parallel`). |
 | `TodayViewModelPersistTest` | `TimeoutCancellationException` de 5 s (`withTimeout`) na suíte cheia | Caso “upgrades a stale stored week on opening”; verde 5× isolado e na reexecução da suíte completa |
+| `StoryStudioContentTest` (“describes the preview”) | `waitUntil` de 10 s esperando a prévia sair de `Loading` | Render de frames fora da main (`Dispatchers.Default`) sob carga; verde isolado e no rerun. Rodar `:app:testDebugUnitTest --tests "*StoryStudioContentTest"` ou a suíte com `--no-parallel`. |
+| `StoryStudioScreenshotTest` | Timeout/verify da captura quando roda junto da suíte lógica | Frames Robolectric pesados; o gate roda isolado com `:app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"`. |
 
 - **18/11/2026 (apagar individual):** `TodayViewModelPersistTest`
   (“upgrades a stale stored week on opening”) falhou uma vez na suíte cheia por
@@ -497,6 +499,12 @@ Três testes caem de forma intermitente sob paralelismo/carga e passam isolados;
   e compilação dos módulos em paralelo (`org.gradle.parallel=true`, 8m59s).
   Verde 5× isolado e na suíte completa reexecutada (1.304 testes, 1m18s); o gate
   final (`assembleDebug check spotlessCheck koverVerify`) passou.
+- **26/11/2026 (Fatia 6 Story):** a prévia ganhou estados explícitos
+  `Loading`/`Empty`/`Error`; `StoryStudioContentTest` cobre os três sem depender
+  do renderer. O golden `story-studio-video-narrow-200-dark` foi criado com
+  360 dp e fonte 200%; o segmento de frames usa largura intrínseca nesse
+  tamanho para não cortar “Abertura”. Os flakes de Story continuam valendo sob
+  carga e ficam listados acima.
 
 Política: flake não se ignora (`@Ignore` proibido) nem se "conserta" reduzindo assert; registra-se aqui com sintoma, contexto e o comando que fica verde.
 

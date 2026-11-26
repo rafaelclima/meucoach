@@ -1,6 +1,6 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–5 do PRD de correções)
+**Atualizado:** 26/11/2026 (auditoria geral + Fatias 1–6 do PRD de correções)
 
 ## Sessão 2026-11-26 — Auditoria geral auditável (docs/AUDITORIA_GERAL_2026-11.md)
 
@@ -248,6 +248,48 @@ Sem dependência nova ou mudança no motor de treino.
 
 1. Fatia 6 — Story selecionado (`STORY-02`, `STORY-03`, `STORY-07`, `STORY-15`, `STORY-16`,
    `STORY-17`, `NOVO-STORY-01`).
+
+## Sessão 2026-11-26 — Fatia 6 do PRD de correções (Story selecionado)
+
+**Escopo:** `STORY-02`, `STORY-03`, `STORY-07`, `STORY-15`, `STORY-16`, `STORY-17` e
+`NOVO-STORY-01`. Sem feature nova (scrubber, pôster avulso ou CTA pós-importação).
+
+### Concluído
+
+- **Prévia (`STORY-02`):** estados explícitos `Loading` (spinner + “Preparando prévia…”),
+  `Empty` (sem GPS) e `Error` (render falhou). O mapa continua omitido na prévia.
+- **`PreparingMap` (`STORY-03`):** card ganhou “Cancelar” com o mesmo `cancelStory()`; a
+  janela de download deixa de ser um beco sem saída.
+- **Acessibilidade (`STORY-15`):** o segmento Vídeo/Arte expõe `Role.Tab`; seleção e
+  descrição continuam no `semantics`.
+- **Fonte 200% (`STORY-07`/`STORY-16`):** novo golden
+  `story-studio-video-narrow-200-dark` (360 dp, fonte 200%). O segmento de frames usa
+  largura intrínseca e o resumo do header some nesse tamanho para não cortar “Abertura”.
+- **Veredito (`NOVO-STORY-01`/D8):** `StorySessionResolver.resolve(activityId, date)` só
+  ancora a sessão quando `PlannedSession.activityId` é o da atividade. Corrida livre num dia
+  planejado fica sem alvo/veredito; prévia e worker usam o mesmo resolver.
+- **Testes (`STORY-16`)/flakes (`STORY-17`):** testes de `StoryPreviewSurface`
+  (Loading/Empty/Error), `Role.Tab`, cancelamento em `PreparingMap` e corrida livre sem
+  veredito; flakes de Story documentados em `TESTING.md §10.1`.
+
+### Testes
+
+- `StoryStudioContentTest`, `ActivityDetailScreenTest`, `ActivityDetailViewModelTest` e
+  `StoryStudioScreenshotTest` verdes.
+- `:app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"` verde, incluindo o novo
+  golden de 200%.
+- `./gradlew check -x spotlessMiscCheck` verde (testes, `koverVerify`, lint e detekt).
+- `./gradlew spotlessKotlinCheck` e `:app:assembleDebug` verdes.
+
+### Pendente
+
+- Fatias 0, 7 e 8 do PRD (ADRs científicos, documentação e aparelho).
+- Validação visual do 200% em aparelho; o golden cobre o layout, não o hardware.
+
+### Próximo
+
+1. Fatia 7 — documentação (`PRODUCT.md` v1.3, ROADMAP, TESTING, DECISIONS, handoffs e PRD IA
+   Coach).
 
 ## Sessão 2026-11-25 — Alvo da qualidade por tipo + card do plano ajustado (ADR 0065)
 

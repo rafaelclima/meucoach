@@ -712,11 +712,21 @@ private fun StoryCard(
                 minHeight = 48.dp,
             )
 
-            StoryExportUiState.PreparingMap -> Text(
-                text = "Baixando o mapa do OpenStreetMap…",
-                style = MaterialTheme.typography.titleSmall,
-                color = colors.textPrimary,
-            )
+            StoryExportUiState.PreparingMap -> {
+                Text(
+                    text = "Baixando o mapa do OpenStreetMap…",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                McSecondaryButton(
+                    text = "Cancelar",
+                    onClick = onCancelStory,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("story-cancel"),
+                )
+            }
 
             is StoryExportUiState.Generating -> {
                 Text(

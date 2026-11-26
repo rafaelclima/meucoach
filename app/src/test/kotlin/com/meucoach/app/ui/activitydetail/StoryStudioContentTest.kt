@@ -1,6 +1,9 @@
 package com.meucoach.app.ui.activitydetail
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -41,6 +44,66 @@ import org.robolectric.annotation.GraphicsMode
 class StoryStudioContentTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun `preview empty state explains missing GPS`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                StoryPreviewSurface(
+                    state = StoryPreviewState.Empty,
+                    imageHeight = 240.dp,
+                    contentDescription = "Prévia",
+                )
+            }
+        }
+
+        compose.onNodeWithTag("story-preview-empty").assertIsDisplayed()
+        compose.onNodeWithText("Prévia indisponível sem rota GPS.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `preview loading state shows progress instead of an error`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                StoryPreviewSurface(
+                    state = StoryPreviewState.Loading,
+                    imageHeight = 240.dp,
+                    contentDescription = "Prévia",
+                )
+            }
+        }
+
+        compose.onNodeWithTag("story-preview-loading").assertIsDisplayed()
+        compose.onNodeWithText("Preparando prévia…").assertIsDisplayed()
+        compose.onNodeWithText("Prévia indisponível sem rota GPS.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `preview error state is distinct from loading and empty`() {
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                StoryPreviewSurface(
+                    state = StoryPreviewState.Error,
+                    imageHeight = 240.dp,
+                    contentDescription = "Prévia",
+                )
+            }
+        }
+
+        compose.onNodeWithTag("story-preview-error").assertIsDisplayed()
+        compose.onNodeWithText("Não foi possível preparar a prévia.").assertIsDisplayed()
+        compose.onNodeWithTag("story-preview-loading").assertDoesNotExist()
+    }
+
+    @Test
+    fun `tab segment exposes Role Tab`() {
+        setContent()
+
+        compose.onNodeWithTag("story-tab-video")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
+        compose.onNodeWithTag("story-tab-art")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab))
+    }
 
     @Test
     fun `shows the fixed essentials and the extra counter`() {

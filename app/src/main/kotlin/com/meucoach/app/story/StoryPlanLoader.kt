@@ -25,12 +25,14 @@ data class StorySessions(val current: PlannedSession? = null, val next: PlannedS
 class StorySessionResolver @Inject constructor(private val plans: TrainingPlanRepository) {
     /**
      * Missing plans are not an error: the story then reports effort only.
+     * A session only anchors the verdict when it is linked to this exact
+     * activity (D8); a free run on a planned day stays a free run.
      */
-    suspend fun resolve(activityDate: LocalDate): StorySessions {
+    suspend fun resolve(activityId: String, activityDate: LocalDate): StorySessions {
         val weekStart = activityDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val week = runCatching { plans.getWeek(weekStart) }.getOrNull() ?: return StorySessions()
         return StorySessions(
-            current = week.sessions.firstOrNull { it.date == activityDate },
+            current = week.sessions.firstOrNull { it.date == activityDate && it.activityId == activityId },
             next = week.sessions
                 .filter { it.date.isAfter(activityDate) }
                 .minByOrNull { it.date },
@@ -50,7 +52,7 @@ class StoryPlanLoader @Inject constructor(
 ) {
     suspend fun load(activityId: String, recipe: StoryRecipe = StoryRecipe()): StoryPlan? {
         val stored = repository.openActivity(activityId) ?: return null
-        val planned = sessions.resolve(stored.localDate)
+        val planned = sessions.resolve(activityId, stored.localDate)
         return withContext(Dispatchers.Default) {
             StoryPlanCalculator.calculate(
                 activity = stored.imported,

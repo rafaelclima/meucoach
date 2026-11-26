@@ -2,6 +2,7 @@ package com.meucoach.app.ui.activitydetail
 
 import android.graphics.Bitmap
 import android.graphics.Typeface
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Terrain
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,9 +69,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -93,6 +98,7 @@ import com.meucoach.core.domain.story.StoryPreset
 import com.meucoach.core.domain.story.StoryRecipe
 import com.meucoach.core.domain.story.StoryRouteStroke
 import com.meucoach.core.domain.story.StorySegmentType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -200,6 +206,7 @@ internal fun StoryStudioContent(
 ) {
     val colors = McTheme.colors
     var tab by rememberSaveable { mutableStateOf(StoryStudioTab.VIDEO) }
+    val largeFont = LocalDensity.current.fontScale >= 1.5f
     val videoScroll = rememberScrollState()
     val artScroll = rememberScrollState()
     // The video tab scrolls under the fixed chrome; the art tab has its own
@@ -235,7 +242,7 @@ internal fun StoryStudioContent(
                     style = MaterialTheme.typography.headlineSmall,
                     color = colors.textPrimary,
                 )
-                if (tab == StoryStudioTab.VIDEO) {
+                if (tab == StoryStudioTab.VIDEO && !largeFont) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = state.recipe.summaryLine(),
@@ -272,7 +279,12 @@ internal fun StoryStudioContent(
             // Same model as the art tab (ADR 0060): the preview stays fixed
             // on top and only the controls scroll below it.
             BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                val videoHeight = (maxHeight * 0.40f).coerceIn(120.dp, 300.dp)
+                // At 200% the chrome and the frame control grow; a smaller
+                // preview keeps the fixed card inside the available height so
+                // the segment is never clipped.
+                val videoHeight = (
+                    maxHeight * if (largeFont) 0.28f else 0.40f
+                    ).coerceIn(120.dp, if (largeFont) 200.dp else 300.dp)
                 Column(modifier = Modifier.fillMaxSize()) {
                     StoryPreviewCard(
                         plan = state.plan,
@@ -585,6 +597,7 @@ private fun StudioTabSegment(selected: StoryStudioTab, onSelect: (StoryStudioTab
                         .clickable { onSelect(option) }
                         .semantics {
                             this.selected = isSelected
+                            this.role = Role.Tab
                             contentDescription = if (isSelected) {
                                 "${option.label}, selecionado"
                             } else {
@@ -605,6 +618,16 @@ private fun StudioTabSegment(selected: StoryStudioTab, onSelect: (StoryStudioTab
     }
 }
 
+internal sealed interface StoryPreviewState {
+    data object Empty : StoryPreviewState
+
+    data object Loading : StoryPreviewState
+
+    data object Error : StoryPreviewState
+
+    data class Ready(val bitmap: Bitmap) : StoryPreviewState
+}
+
 @Composable
 private fun StoryPreviewCard(
     plan: StoryPlan?,
@@ -621,24 +644,42 @@ private fun StoryPreviewCard(
     val logo = remember(context) { StoryBranding.logo(context) }
     val storyPalette = McTheme.colors.toStoryPalette(recipe.mapStyle)
     val timeSec = plan?.let(frame::timeSec)
-    val bitmap by produceState<Bitmap?>(initialValue = null, plan, recipe, storyPalette, timeSec, avatar) {
-        value = if (plan == null || timeSec == null) {
-            null
-        } else {
-            withContext(Dispatchers.Default) {
-                StoryFrameRenderer(
-                    palette = storyPalette,
-                    typeface = typeface,
-                    logoBitmap = logo,
-                    mapBackground = null,
-                    avatarBitmap = avatar,
-                    recipe = recipe,
-                ).render(
-                    plan = plan,
-                    timeSec = timeSec,
-                    width = PREVIEW_WIDTH,
-                    height = PREVIEW_HEIGHT,
+    val preview by produceState<StoryPreviewState>(
+        initialValue = if (plan == null) StoryPreviewState.Empty else StoryPreviewState.Loading,
+        plan,
+        recipe,
+        storyPalette,
+        timeSec,
+        avatar,
+    ) {
+        value = when {
+            plan == null -> StoryPreviewState.Empty
+
+            timeSec == null -> StoryPreviewState.Error
+
+            else -> try {
+                StoryPreviewState.Ready(
+                    withContext(Dispatchers.Default) {
+                        StoryFrameRenderer(
+                            palette = storyPalette,
+                            typeface = typeface,
+                            logoBitmap = logo,
+                            mapBackground = null,
+                            avatarBitmap = avatar,
+                            recipe = recipe,
+                        ).render(
+                            plan = plan,
+                            timeSec = timeSec,
+                            width = PREVIEW_WIDTH,
+                            height = PREVIEW_HEIGHT,
+                        )
+                    },
                 )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.d("StoryPreview", "preview render failed: ${error.message}")
+                StoryPreviewState.Error
             }
         }
     }
@@ -676,41 +717,11 @@ private fun StoryPreviewCard(
                 .testTag("story-preview"),
             contentAlignment = Alignment.Center,
         ) {
-            val preview = bitmap
-            if (preview == null) {
-                Box(
-                    modifier = Modifier
-                        .height(imageHeight)
-                        .width(imageHeight * 9f / 16f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colors.surfaceInset)
-                        .testTag("story-preview-loading"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Prévia indisponível sem rota GPS.",
-                        style = McTextStyles.caption,
-                        color = colors.textSecondary,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-            } else {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, colors.borderStrong),
-                    color = colors.surfaceInset,
-                ) {
-                    Image(
-                        bitmap = preview.asImageBitmap(),
-                        contentDescription = "Prévia do story — ${frame.label}",
-                        modifier = Modifier
-                            .height(imageHeight)
-                            .width(imageHeight * 9f / 16f)
-                            .clip(RoundedCornerShape(20.dp)),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-            }
+            StoryPreviewSurface(
+                state = preview,
+                imageHeight = imageHeight,
+                contentDescription = "Prévia do story — ${frame.label}",
+            )
         }
         Spacer(modifier = Modifier.height(12.dp))
         FrameSegmentedControl(
@@ -722,12 +733,91 @@ private fun StoryPreviewCard(
 }
 
 @Composable
+internal fun StoryPreviewSurface(state: StoryPreviewState, imageHeight: Dp, contentDescription: String) {
+    val colors = McTheme.colors
+    val boxModifier = Modifier
+        .height(imageHeight)
+        .width(imageHeight * 9f / 16f)
+    when (state) {
+        StoryPreviewState.Empty -> PreviewPlaceholder(
+            text = "Prévia indisponível sem rota GPS.",
+            tag = "story-preview-empty",
+            modifier = boxModifier,
+        )
+
+        StoryPreviewState.Loading -> Box(
+            modifier = boxModifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(colors.surfaceInset)
+                .testTag("story-preview-loading"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(16.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = colors.accent,
+                    strokeWidth = 2.dp,
+                )
+                Text(
+                    text = "Preparando prévia…",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+
+        StoryPreviewState.Error -> PreviewPlaceholder(
+            text = "Não foi possível preparar a prévia.",
+            tag = "story-preview-error",
+            modifier = boxModifier,
+        )
+
+        is StoryPreviewState.Ready -> Surface(
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, colors.borderStrong),
+            color = colors.surfaceInset,
+        ) {
+            Image(
+                bitmap = state.bitmap.asImageBitmap(),
+                contentDescription = contentDescription,
+                modifier = boxModifier.clip(RoundedCornerShape(20.dp)),
+                contentScale = ContentScale.Fit,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreviewPlaceholder(text: String, tag: String, modifier: Modifier) {
+    val colors = McTheme.colors
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.surfaceInset)
+            .testTag(tag),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Composable
 private fun FrameSegmentedControl(
     selected: StoryPreviewFrame,
     enabled: Boolean,
     onSelect: (StoryPreviewFrame) -> Unit,
 ) {
     val colors = McTheme.colors
+    val largeFont = LocalDensity.current.fontScale >= 1.5f
     Surface(
         shape = RoundedCornerShape(999.dp),
         color = colors.surfaceInset,
@@ -737,7 +827,11 @@ private fun FrameSegmentedControl(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = if (largeFont) {
+                Arrangement.SpaceEvenly
+            } else {
+                Arrangement.spacedBy(4.dp)
+            },
         ) {
             StoryPreviewFrame.entries.forEach { option ->
                 val isSelected = option == selected
@@ -746,7 +840,7 @@ private fun FrameSegmentedControl(
                     color = if (isSelected) colors.accent else colors.surfaceInset,
                     contentColor = if (isSelected) colors.onAccent else colors.textSecondary,
                     modifier = Modifier
-                        .weight(1f)
+                        .then(if (largeFont) Modifier else Modifier.weight(1f))
                         .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .clickable(enabled = enabled) { onSelect(option) }
@@ -760,7 +854,13 @@ private fun FrameSegmentedControl(
                         }
                         .testTag("story-frame-${option.name.lowercase(Locale.ROOT)}"),
                 ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 12.dp)) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.padding(
+                            horizontal = if (largeFont) 8.dp else 0.dp,
+                            vertical = 12.dp,
+                        ),
+                    ) {
                         Text(
                             text = option.label,
                             style = MaterialTheme.typography.labelLarge,

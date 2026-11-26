@@ -537,7 +537,7 @@ class ActivityDetailViewModel @Inject constructor(
     }
 
     private suspend fun calculateStoryPlan(stored: StoredActivity, recipe: StoryRecipe, lthr: Int?): StoryPlan? {
-        val planned = sessions.resolve(stored.localDate)
+        val planned = sessions.resolve(activityId, stored.localDate)
         return withContext(Dispatchers.Default) {
             StoryPlanCalculator.calculate(
                 activity = stored.imported,

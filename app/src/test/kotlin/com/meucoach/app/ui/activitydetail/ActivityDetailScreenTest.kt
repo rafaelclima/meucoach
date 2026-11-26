@@ -244,6 +244,28 @@ class ActivityDetailScreenTest {
     }
 
     @Test
+    fun `offers cancel while preparing the map`() {
+        var cancelled = false
+        setContent {
+            ActivityDetailContent(
+                state = ActivityDetailTestData.state().copy(
+                    storyExport = StoryExportUiState.PreparingMap,
+                ),
+                onBack = {},
+                onCancelStory = { cancelled = true },
+            )
+        }
+
+        val list = compose.onNodeWithTag("activity-detail-list")
+        list.performScrollToNode(hasText("Baixando o mapa do OpenStreetMap…"))
+        compose.onNodeWithText("Baixando o mapa do OpenStreetMap…").assertIsDisplayed()
+        list.performScrollToNode(hasText("Cancelar"))
+        compose.onNodeWithTag("story-cancel").performClick()
+
+        assertThat(cancelled).isTrue()
+    }
+
+    @Test
     fun `shows the estimate, background hint and cancel while generating`() {
         var cancelled = false
         setContent {
