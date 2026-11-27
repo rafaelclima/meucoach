@@ -21,7 +21,7 @@ import java.time.LocalDate
  *
  * Contrato: com prova dentro do horizonte, a fase da semana vem do
  * [MacroPlanResolver] (a tabela aprovada prevalece sobre o ramo de prova do
- * [MesoCycle]), o rationale declara `Bloco X de Y` + contagem regressiva e o
+ * [MesoCycle]), o rationale declara `Etapa X de Y para a prova` + contagem regressiva e o
  * plano cita `R-PER-01`. Sem prova, além do horizonte ou passada, o mesociclo
  * segue como antes, sem moldura de bloco. Proteções de carga por dia
  * (taper, cutoff, recovery, deload por streak) não mudam.
@@ -43,7 +43,7 @@ class MacroWiringTest {
             input(recentWeeks = history, previousWeek = history.last(), race = race),
         )
 
-        assertThat(plan.rationale).contains("Fase BASE", "Bloco 1 de 4", "Faltam 7 semanas para a prova")
+        assertThat(plan.rationale).contains("Etapa: Base", "Etapa 1 de 4 para a prova", "Faltam 7 semanas para a prova")
         assertThat(plan.ruleIds).contains("R-PER-01")
         assertThat(plan.evidenceIds).contains("EV-ISSURIN-2010")
     }
@@ -57,7 +57,7 @@ class MacroWiringTest {
             input(recentWeeks = listOf(base), previousWeek = base, race = race),
         )
 
-        assertThat(plan.rationale).contains("Fase PEAK", "Bloco 1 de 2", "Faltam 2 semanas para a prova")
+        assertThat(plan.rationale).contains("Etapa: Pico", "Etapa 1 de 2 para a prova", "Faltam 2 semanas para a prova")
         assertThat(plan.ruleIds).contains("R-PER-01")
         assertThat(plan.ruleIds).doesNotContain("R-PLAN-04")
         assertThat(plan.weeklyMinutes).isLessThanOrEqualTo(128)
@@ -73,8 +73,8 @@ class MacroWiringTest {
 
         val plan = generator.generate(input(recentWeeks = history, previousWeek = history.last()))
 
-        assertThat(plan.rationale).contains("Fase BASE")
-        assertThat(plan.rationale).doesNotContain("Bloco")
+        assertThat(plan.rationale).contains("Etapa: Base")
+        assertThat(plan.rationale).doesNotContain("Etapa 1 de")
         assertThat(plan.ruleIds).doesNotContain("R-PER-01")
     }
 
@@ -93,7 +93,7 @@ class MacroWiringTest {
             input(recentWeeks = history, previousWeek = history.last(), race = race),
         )
 
-        assertThat(plan.rationale).doesNotContain("Bloco")
+        assertThat(plan.rationale).doesNotContain("Etapa 1 de")
         assertThat(plan.ruleIds).doesNotContain("R-PER-01")
         assertThat(plan.ruleIds).contains("R-PLAN-04")
     }
@@ -104,7 +104,7 @@ class MacroWiringTest {
 
         val plan = generator.generate(input(race = race))
 
-        assertThat(plan.rationale).contains("Fase TAPER", "Bloco 1 de 1")
+        assertThat(plan.rationale).contains("Etapa: Semana de prova", "Etapa 1 de 1 para a prova")
         assertThat(plan.ruleIds).contains("R-PER-01")
     }
 

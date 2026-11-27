@@ -42,7 +42,7 @@ class PlanQualityGoldenTest {
 
         assertThat(plan.qualityCount).isEqualTo(expected.getInt("qualityCount"))
         assertThat(plan.weeklyMinutes).isEqualTo(expected.getInt("weeklyMinutes"))
-        assertThat(plan.rationale).contains("Fase ${expected.getString("phase")}", "o dia confirma")
+        assertThat(plan.rationale).contains("Etapa: Construção", "o dia confirma")
 
         val qualityExpected = expected.getJSONObject("quality")
         val quality = plan.sessions.single { it.type == WorkoutType.QUALITY }

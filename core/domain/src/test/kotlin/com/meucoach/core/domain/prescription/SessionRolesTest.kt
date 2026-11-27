@@ -49,7 +49,7 @@ class SessionRolesTest {
         // the light fartlek starts in the second half (C4-17).
         assertThat(plan.sessions.map { it.type }).doesNotContain(WorkoutType.QUALITY)
         assertThat(plan.ruleIds).doesNotContain("R-PER-02")
-        assertThat(plan.rationale).doesNotContain("Bloco")
+        assertThat(plan.rationale).doesNotContain("Etapa 1 de")
         assertThat(plan.rationale).contains("primeira metade da base")
     }
 
@@ -77,7 +77,7 @@ class SessionRolesTest {
         val qualities = plan.sessions.filter { it.type == WorkoutType.QUALITY }
         assertThat(qualities).isNotEmpty()
         assertThat(qualities.map { it.title }).containsExactlyElementsOf(libraryTitles)
-        assertThat(plan.rationale).contains("Bloco 1 de 3", "Faltam 4 semanas para a prova")
+        assertThat(plan.rationale).contains("Etapa 1 de 3 para a prova", "Faltam 4 semanas para a prova")
         assertThat(plan.ruleIds).contains("R-PER-02")
     }
 

@@ -1,6 +1,59 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F1: gate automatizado de vocabulário ativo com baseline de 91 + 39 violações)
+**Atualizado:** 27/11/2026 (Ciclo 5, F2: rationale do plano semanal em fala de corredor, `weekly-plan-v10`, baseline de 66 + 39 violações)
+
+## Sessão 2026-11-27 — Ciclo 5, F2: rationale do plano semanal
+
+**Objetivo:** corrigir o rationale do `WeeklyPlanGenerator` conforme as linhas
+F2 da auditoria (`docs/AUDITORIA_UX_WRITING_2026-11.md`), sem mudar nenhuma
+regra fisiológica, limiar, volume, alvo, critério de qualidade ou `ruleId`/
+`evidenceId`; schema Room v23 intacto. `Longão` e títulos de sessão mantidos
+(decisão 21/11/2026); `QualityGate`, `ExplanationCatalog`, `SessionLibrary`,
+`RacePace`, `StoryVerdict` e UI ficam para F3–F7.
+
+### Concluído
+
+- **Motor (`WeeklyPlanGenerator`, `weekly-plan-v9` → `v10`):** mapper
+  explícito de `MesoPhase` (`Base`/`Construção`/`Pico`/`Semana de prova`/
+  `Recuperação`), nunca interpolando o enum; `Fase X` → `Etapa: <rótulo>`;
+  `Bloco N` → `Etapa N de M para a prova`; `mesociclo` → sequência padrão;
+  `Taper:`/`taper`/`janela do taper` → `Semana de prova`/`semana da prova`;
+  `Qualidade movida/planejada` → `O treino forte foi/planejado`;
+  `micro-dose` → `dose pequena` (incluindo `planDecision`);
+  `não inflamos` → `o app não estica`; `ACWR …` → carga dos últimos 7 dias
+  fora da faixa segura; `monotonia` → variedade/esforço parecido;
+  `strides`/`fácil` como sessão → `Fartlek leve`/`corrida leve`;
+  `Volume: base de …` → `Na semana de … você fez … Esta semana: …`;
+  `Entregue` → `Esta semana:`; `Longão … Piso … Teto …` → faixa
+  `entre … e … min, mirando 25–30%`.
+- **Goldens:** `per-horizon` (`rationaleContains` → `Etapa: Construção`),
+  `plan-upgrade/input.json` (rationale regenerado → `treino forte`);
+  `forbiddenTitles` por cenário preservados; `Longão` inalterado.
+- **Testes:** `WeeklyPlanGeneratorTest` (versão + 20 asserções de copy),
+  `MacroWiringTest`, `SessionRolesTest`, `RaceHorizonTest`,
+  `BeginnerStridesTest`, `MesoCycleTest`, `StructuralQualityTest`,
+  `QualityAdjacencyGoldenTest`, `WeeklyPlanAvailabilityTest`,
+  `VolumeHonestyTest`, `LongRunSizingTest`, goldens de plano e
+  `TodayViewModelPersistTest` atualizados para a nova copy.
+- **Baseline:** 25 linhas F2 removidas no mesmo commit (só encolhe):
+  `plan.rationale` de `per-horizon` (10), `per-opportunity` (2),
+  `per-quality` (9), `vol-02` (3) e `plan-upgrade` (1). Restam 7 linhas F2,
+  todas de `session.rationale` vindas da nota do `RacePace` (F5): o gate
+  continua acusando-as, então ficam baselinadas até a F5.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (incluindo goldens de plano e gate de
+  vocabulário, sem violações novas nem obsoletas).
+- `./gradlew spotlessApply` + `./gradlew check` verdes (detekt, Kover,
+  `spotlessCheck`, lint); nenhum dado real no diff; sem dependência nova.
+
+### Pendente (F3–F9, fora desta fatia)
+
+- F3 gate/catálogo → F4 títulos/briefing → F5 prova/level/story (inclui as 7
+  linhas F2 restantes de `session.rationale`) → F6 Coach → F7 demais telas →
+  F8 bugs literais → F9 fechar o gate. Cada linha do baseline aponta a fatia
+  que a remove.
 
 ## Sessão 2026-11-27 — Ciclo 5, F1: gate automatizado de vocabulário
 

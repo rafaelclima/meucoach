@@ -40,7 +40,7 @@ class WeeklyPlanAvailabilityTest {
 
         assertThat(plan.sessions.map { it.date.dayOfWeek })
             .doesNotContain(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)
-        assertThat(plan.rationale).contains("mínimo executável", "20 min", "não inflamos")
+        assertThat(plan.rationale).contains("20 min", "o app não estica")
         assertCeiling(plan, availability)
         assertStimulusHasStructure(plan)
     }
@@ -71,7 +71,7 @@ class WeeklyPlanAvailabilityTest {
         assertThat(plan.sessions.filter { it.type == WorkoutType.QUALITY }).isNotEmpty
         assertThat(plan.sessions.filter { it.type == WorkoutType.QUALITY })
             .allMatch { it.date.dayOfWeek != DayOfWeek.TUESDAY }
-        assertThat(plan.rationale).contains("Fase BUILD")
+        assertThat(plan.rationale).contains("Etapa: Construção")
         assertCeiling(plan, availability)
         assertStimulusHasStructure(plan)
     }

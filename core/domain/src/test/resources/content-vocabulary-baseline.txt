@@ -64,38 +64,13 @@ core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculato
 core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityOnTarget headline] | qualidade | Qualidade completa | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityTooEasy coachLine] | qualidade | Qualidade abaixo do alvo. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityTooEasy headline] | qualidade | Qualidade abaixo do alvo | F5
-fixtures/golden/per-horizon/expected.json:conservative :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume defini … | F2
-fixtures/golden/per-horizon/expected.json:conservative :: plan.rationale | mesociclo / bloco | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume definido pela … | F2
-fixtures/golden/per-horizon/expected.json:conservative :: plan.rationale | qualidade | … a para ajustar. Entregue 115 min. 4 dias, 115 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
 fixtures/golden/per-horizon/expected.json:conservative :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … revisão atual (30:59): ela segue como referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
 fixtures/golden/per-horizon/expected.json:conservative :: session[WEDNESDAY].rationale | pace | … que a previsão atual (30:59): ela segue como referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
-fixtures/golden/per-horizon/expected.json:general :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Volume: base de 150 min concluídos na semana de 26/10; alv … | F2
-fixtures/golden/per-horizon/expected.json:general :: plan.rationale | qualidade | … com evidência). Entregue 150 min. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
-fixtures/golden/per-horizon/expected.json:noRace :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Volume: base de 150 min concluídos na semana de 26/10; alv … | F2
-fixtures/golden/per-horizon/expected.json:noRace :: plan.rationale | qualidade | … com evidência). Entregue 150 min. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
-fixtures/golden/per-horizon/expected.json:peak :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume defini … | F2
-fixtures/golden/per-horizon/expected.json:peak :: plan.rationale | mesociclo / bloco | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume definido pela … | F2
-fixtures/golden/per-horizon/expected.json:peak :: plan.rationale | qualidade | … a para ajustar. Entregue 115 min. 4 dias, 115 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
 fixtures/golden/per-horizon/expected.json:peak :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … da que a previsão atual (30:59): ela é ambiciosa. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
 fixtures/golden/per-horizon/expected.json:peak :: session[WEDNESDAY].rationale | pace | … ais rápida que a previsão atual (30:59): ela é ambiciosa. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
-fixtures/golden/per-opportunity/expected.json:plan :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BASE. Volume: base de 120 min concluídos na semana de 26/10; alv … | F2
-fixtures/golden/per-opportunity/expected.json:plan :: plan.rationale | qualidade | … com evidência). Entregue 120 min. 3 dias, 120 min no total. Qualidade planejada para terça-feira; o dia confirma com prontidão e … | F2
-fixtures/golden/per-quality/expected.json:beginner :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume defini … | F2
-fixtures/golden/per-quality/expected.json:beginner :: plan.rationale | mesociclo / bloco | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume definido pela … | F2
-fixtures/golden/per-quality/expected.json:build :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume defini … | F2
-fixtures/golden/per-quality/expected.json:build :: plan.rationale | mesociclo / bloco | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume definido pela … | F2
-fixtures/golden/per-quality/expected.json:build :: plan.rationale | qualidade | … a para ajustar. Entregue 150 min. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
-fixtures/golden/per-quality/expected.json:peak :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Semana de pro … | F2
-fixtures/golden/per-quality/expected.json:peak :: plan.rationale | mesociclo / bloco | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Semana de prova em 1 … | F2
-fixtures/golden/per-quality/expected.json:peak :: plan.rationale | qualidade | … ntado; o volume segue sua agenda. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
-fixtures/golden/per-quality/expected.json:peak :: plan.rationale | taper | … ana concluída com evidência para ajustar. Entregue 150 min. Taper sem histórico de volume: o corte percentual não é inventado … | F2
 fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … mo leve. Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F2
 fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | VDOT | … in restantes em ritmo leve. Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescre … | F2
 fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | pace | … rado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F2
-fixtures/golden/plan-upgrade/expected.json:upgraded :: plan.rationale | qualidade | Semana base com oportunidade estrutural de qualidade na sexta; o dia confirma. | F2
 fixtures/golden/plan-upgrade/expected.json:upgraded :: session[MONDAY].title | Fácil | Fácil de segunda | F4
 fixtures/golden/plan-upgrade/expected.json:upgraded :: session[TUESDAY].title | Fácil | Fácil de terça | F4
 fixtures/golden/plan-upgrade/expected.json:upgraded :: session[WEDNESDAY].title | Fácil | Fácil de hoje | F4
-fixtures/golden/vol-02/expected.json:plan :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume: base … | F2
-fixtures/golden/vol-02/expected.json:plan :: plan.rationale | mesociclo / bloco | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume: base de 142 … | F2
-fixtures/golden/vol-02/expected.json:plan :: plan.rationale | qualidade | … desão considera só o plano (3/3). 3 dias, 151 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2

@@ -49,7 +49,7 @@ class PlanHorizonGoldenTest {
 
         val plan = generator.generate(input.toWeeklyInput())
 
-        assertThat(plan.rationale).contains("Fase ${expected.getString("phase")}")
+        assertThat(plan.rationale).contains("Etapa: Construção")
         assertThat(plan.qualityCount).isEqualTo(expected.getInt("qualityCount"))
         assertThat(plan.weeklyMinutes).isEqualTo(expected.getInt("weeklyMinutes"))
         val contains = expected.getJSONArray("rationaleContains").toStringList()

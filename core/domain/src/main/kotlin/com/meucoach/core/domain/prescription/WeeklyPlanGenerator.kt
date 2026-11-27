@@ -285,7 +285,7 @@ class WeeklyPlanGenerator {
             val message = when {
                 slotDaysSkipped ->
                     "Sua disponibilidade restante é menor que o mínimo executável de " +
-                        "$MIN_EASY_MIN min. Não inflamos a sessão; registre mais tempo em um dia " +
+                        "$MIN_EASY_MIN min. O app não estica a sessão; registre mais tempo em um dia " +
                         "para voltar a treinar."
 
                 daysAfterToday.isNotEmpty() && race != null ->
@@ -630,7 +630,7 @@ class WeeklyPlanGenerator {
                         "Quality template ${template.title} must carry a structure"
                     }.fittedTo(duration)
                     val rationale = if (template.durationPolicy == DurationPolicy.MICRO_DOSE_25) {
-                        "Semana de prova: micro-dose para manter o estímulo, sem fadiga. " +
+                        "Semana de prova: dose pequena para manter o estímulo, sem fadiga. " +
                             describeStructure(structure)
                     } else {
                         qualityRationale(
@@ -685,7 +685,7 @@ class WeeklyPlanGenerator {
                         type = WorkoutType.QUALITY,
                         title = template.title,
                         durationMin = duration,
-                        rationale = "Semana de prova: micro-dose para manter o estímulo, sem fadiga. " +
+                        rationale = "Semana de prova: dose pequena para manter o estímulo, sem fadiga. " +
                             describeStructure(requireNotNull(template.structure).fittedTo(duration)),
                         ruleIds = buildList {
                             addAll(template.ruleIds)
@@ -722,7 +722,7 @@ class WeeklyPlanGenerator {
                             "Dose curta de acelerações na semana da prova, em ritmo fácil; " +
                                 "sem treino forte."
                         } else {
-                            "Taper: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, " +
+                            "Semana de prova: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, " +
                                 "para manter o estímulo sem fadiga, sem treino forte."
                         },
                         ruleIds = (template.ruleIds + listOf("R-PLAN-06", "R-PLAN-10")).distinct(),
@@ -933,7 +933,7 @@ class WeeklyPlanGenerator {
             DayOfWeek.MONDAY !in qualityDays
         ) {
             val movedTo = qualityDays.minBy { it.value }
-            "Qualidade movida de segunda para ${dayLabel(movedTo)}: longão de domingo " +
+            "O treino forte foi de segunda para ${dayLabel(movedTo)}: o longão de domingo " +
                 "(${previousSundayLong?.durationMin} min) ainda pesa na segunda. "
         } else {
             null
@@ -943,7 +943,7 @@ class WeeklyPlanGenerator {
             qualitySelection.isNotEmpty() &&
             qualityDays.isEmpty()
         ) {
-            "Qualidade: sem dia seguro nesta semana porque o longão de domingo " +
+            "Sem dia seguro para o treino forte nesta semana: o longão de domingo " +
                 "(${previousSundayLong?.durationMin} min) ainda pesa na segunda; a semana fica " +
                 "sem treino forte. "
         } else {
@@ -951,13 +951,13 @@ class WeeklyPlanGenerator {
         }
         val taperStridesOmitted = taperStridesWindowPresent && taperStridesDay == null
         val rationale = buildString {
-            append("Fase ${meso.phase}. ")
+            append("Etapa: ${mesoPhaseLabel(meso.phase)}. ")
             if (meso.fallbackUsed) {
-                append("Sem histórico suficiente para mesociclo; usando posição legada. ")
+                append("Ainda não há histórico para posicionar esta semana; o app usa a sequência padrão. ")
             }
             if (macroIntent != null) {
                 val totalBlocks = macroPlan.weeks.maxOf { it.blockIndex }
-                append("Bloco ${macroIntent.blockIndex} de $totalBlocks. ")
+                append("Etapa ${macroIntent.blockIndex} de $totalBlocks para a prova. ")
                 if (macroIntent.weeksToRace == 0) {
                     append("É a semana da prova. ")
                 } else if (macroIntent.weeksToRace == 1) {
@@ -1023,8 +1023,8 @@ class WeeklyPlanGenerator {
             }
             if (slotDaysSkipped) {
                 append(
-                    "Dias com menos de $MIN_EASY_MIN min (mínimo executável) ficam de fora: " +
-                        "não inflamos a sessão para caber. ",
+                    "Dias com menos de $MIN_EASY_MIN min ficam de fora: " +
+                        "o app não estica a sessão para caber. ",
                 )
             }
             if (dayTrimmed) {
@@ -1035,7 +1035,7 @@ class WeeklyPlanGenerator {
                 val qualityDaysLabel = adjusted
                     .filter { it.type == WorkoutType.QUALITY }
                     .joinToString(" e ") { dayLabel(it.date.dayOfWeek) }
-                append("Qualidade planejada para $qualityDaysLabel; o dia confirma com prontidão e carga. ")
+                append("Treino forte planejado para $qualityDaysLabel; o dia confirma com prontidão e carga. ")
             } else {
                 append("Sem treino forte: ")
                 append(
@@ -1048,11 +1048,11 @@ class WeeklyPlanGenerator {
                             "semana de recuperação: sem treino forte."
 
                         meso.phase == MesoPhase.TAPER || isRaceWeek ->
-                            "semana de prova: sem dia elegível para a micro-dose."
+                            "semana de prova: sem dia elegível para a dose pequena."
 
                         meso.phase == MesoPhase.BASE && qualitySelection.isEmpty() ->
-                            "a primeira metade da base é só fácil, longão e strides; " +
-                                "o fartlek leve entra na segunda metade."
+                            "a primeira metade da base é só corrida leve, longão e Fartlek leve; " +
+                                "o Fartlek entra na segunda metade."
 
                         input.longAlreadyDone ->
                             "longão já concluído nesta semana."
@@ -1272,7 +1272,7 @@ class WeeklyPlanGenerator {
     private fun qualityPlanDecision(template: SessionTemplate): PlanDecision = when {
         template.qualityKind == QualityKind.STRIDES_ONLY -> PlanDecision(
             reason = PlanDecisionReason.QUALITY_OPPORTUNITY,
-            detail = "Micro-dose estrutural da semana de prova; o dia confirma por segurança.",
+            detail = "Dose pequena estrutural da semana de prova; o dia confirma por segurança.",
         )
 
         template.role == SessionRole.QUALITY_SECOND -> PlanDecision(
@@ -1314,7 +1314,7 @@ class WeeklyPlanGenerator {
                 "evidência (abaixo de 80%); a semana tem 1 oportunidade. "
         }
         if (taperLimitsQuality) {
-            return "Sem progressão: semana de prova/taper tem 1 estímulo; a semana tem 1 oportunidade. "
+            return "Sem progressão: a semana da prova tem 1 estímulo; a semana tem 1 oportunidade. "
         }
         return progressionBlockedByLoad(load)
     }
@@ -1327,55 +1327,52 @@ class WeeklyPlanGenerator {
         return when {
             load == null ->
                 "Sem progressão: carga em calibração (sem dados de carga); " +
-                    "a qualidade continua planejada, o dia decide. "
+                    "o treino forte continua planejado, o dia decide. "
 
             loadState == LoadDataState.STALE ->
                 "Sem progressão: fonte de carga desatualizada; " +
-                    "a qualidade continua planejada, o dia decide. "
+                    "o treino forte continua planejado, o dia decide. "
 
             loadState == LoadDataState.INSUFFICIENT -> {
                 val withLoad = load.coverage.daysWithLoad
                 val window = load.coverage.daysInWindow
                 "Sem progressão: carga em calibração ($withLoad de $window dias de histórico); " +
-                    "a qualidade continua planejada, o dia decide. "
+                    "o treino forte continua planejado, o dia decide. "
             }
 
             !loadTrusted ->
                 "Sem progressão: carga recente vem do esforço percebido; " +
-                    "a qualidade continua planejada, o dia decide. "
+                    "o treino forte continua planejado, o dia decide. "
 
             !monotonyOk -> {
                 val monotony = load.monotony
                 if (monotony == null) {
-                    "Sem progressão: a monotonia não é calculável nesta semana; " +
-                        "a qualidade continua planejada, o dia decide. "
+                    "Sem progressão: não dá para medir a variedade desta semana; " +
+                        "o treino forte continua planejado, o dia decide. "
                 } else {
-                    "Sem progressão: a semana variou pouco (monotonia ≥2,0); " +
-                        "a qualidade continua planejada, o dia decide. "
+                    "Sem progressão: a semana variou pouco (todos os dias com esforço parecido); " +
+                        "o treino forte continua planejado, o dia decide. "
                 }
             }
 
             strainSpikeReliable ->
                 "Sem progressão: a carga concentrou demais nesta semana; " +
-                    "a qualidade continua planejada, o dia decide. "
+                    "o treino forte continua planejado, o dia decide. "
 
             !load.acwrReliable ->
-                "Sem progressão: ACWR em calibração; " +
-                    "a qualidade continua planejada, o dia decide. "
+                "Sem progressão: a carga ainda está sendo medida; " +
+                    "o treino forte continua planejado, o dia decide. "
 
             load.acwr != null -> {
-                val value = decimal(load.acwr)
-                "Sem progressão: ACWR $value fora da faixa 0,8–1,3; " +
-                    "a qualidade continua planejada, o dia decide. "
+                "Sem progressão: a carga dos últimos 7 dias está fora da faixa segura (0,8 a 1,3); " +
+                    "o treino forte continua planejado, o dia decide. "
             }
 
             else ->
                 "Sem progressão: carga recente fora da faixa; " +
-                    "a qualidade continua planejada, o dia decide. "
+                    "o treino forte continua planejado, o dia decide. "
         }
     }
-
-    private fun decimal(value: Double): String = String.format(Locale.ROOT, "%.2f", value).replace('.', ',')
 
     /**
      * Quality copy comes from the executable structure, never from a fixed
@@ -1645,8 +1642,8 @@ class WeeklyPlanGenerator {
 
             duration >= floor && duration >= longestOther -> LongRunCopy(
                 title = LONG_RUN_TITLE,
-                rationale = "Longão em ritmo fácil. Piso de $floor min preservado; 25–30% do " +
-                    "volume é um alvo, não um teto. Teto de ${longRunCap(profile.experience)} min.",
+                rationale = "Longão em ritmo fácil: entre $floor e ${longRunCap(profile.experience)} min, " +
+                    "mirando 25–30% do volume da semana.",
                 decision = null,
             )
 
@@ -1734,6 +1731,18 @@ class WeeklyPlanGenerator {
         DayOfWeek.FRIDAY -> "sexta-feira"
         DayOfWeek.SATURDAY -> "sábado"
         DayOfWeek.SUNDAY -> "domingo"
+    }
+
+    /**
+     * ADR 0071 §2.2: the engine never interpolates [MesoPhase] into user text.
+     * Every phase goes through this explicit mapper to its canonical label.
+     */
+    private fun mesoPhaseLabel(phase: MesoPhase): String = when (phase) {
+        MesoPhase.BASE -> "Base"
+        MesoPhase.BUILD -> "Construção"
+        MesoPhase.PEAK -> "Pico"
+        MesoPhase.TAPER -> "Semana de prova"
+        MesoPhase.RECOVERY -> "Recuperação"
     }
 
     private data class LongRunCopy(val title: String, val rationale: String, val decision: PlanDecision?)
@@ -1956,7 +1965,7 @@ class WeeklyPlanGenerator {
     ): String {
         val source = when (baseline.source) {
             TaperBaselineSource.AVERAGE_3_WEEKS ->
-                "Taper: −45–55% sobre a média das 3 semanas anteriores " +
+                "Semana de prova: volume 45 a 55% abaixo da média das 3 semanas anteriores " +
                     "(${baseline.minutes} min/semana)."
 
             TaperBaselineSource.FALLBACK_MAX_RECENT ->
@@ -1964,7 +1973,7 @@ class WeeklyPlanGenerator {
                     "(${baseline.minutes} min) como referência."
 
             TaperBaselineSource.NO_HISTORY ->
-                "Taper sem histórico de volume: o corte percentual não é inventado; " +
+                "Semana de prova sem histórico de volume: o app não chuta o quanto cortar; " +
                     "o volume segue sua agenda."
         }
         val limit = when {
@@ -1995,7 +2004,7 @@ class WeeklyPlanGenerator {
         } else {
             0
         }
-        val deliveredHint = " Entregue $deliveredMinutes min."
+        val deliveredHint = " Esta semana: $deliveredMinutes min."
         val minimalHint = if (minimalWeek) {
             " Semana mínima: o volume fica acima do alvo para preservar o piso do longão e a " +
                 "dose mínima de cada sessão; isso não é progressão."
@@ -2010,22 +2019,21 @@ class WeeklyPlanGenerator {
                     "com evidência para ajustar.$deliveredHint$suffix"
 
             decision.block in SPECIAL_VOLUME_BLOCKS ->
-                "Volume: base de $base min concluídos na semana de $week; sem aumento nesta " +
-                    "semana${volumeBlockHint(decision.block)}.$deliveredHint$suffix"
+                "Na semana de $week você fez $base min. Esta semana: $deliveredMinutes min, " +
+                    "sem aumento${volumeBlockHint(decision.block)}.$suffix"
 
             decision.cappedByAvailability ->
-                "Volume: base de $base min concluídos na semana de $week; limitado pela sua " +
-                    "disponibilidade em ${decision.minutes} min${volumeBlockHint(decision.block)}." +
-                    "$deliveredHint$suffix"
+                "Na semana de $week você fez $base min. Esta semana: $deliveredMinutes min, " +
+                    "limitado pela sua disponibilidade em ${decision.minutes} min" +
+                    "${volumeBlockHint(decision.block)}.$suffix"
 
             decision.growthPercent > 0 && realGrowthPercent > 0 ->
-                "Volume: base de $base min concluídos na semana de $week; " +
-                    "+$realGrowthPercent% nesta semana, entregue $deliveredMinutes min " +
-                    "(alvo de ${decision.minutes} min).$suffix"
+                "Na semana de $week você fez $base min. Esta semana: $deliveredMinutes min " +
+                    "(+$realGrowthPercent%, alvo de ${decision.minutes} min).$suffix"
 
             else ->
-                "Volume: base de $base min concluídos na semana de $week; alvo mantido em " +
-                    "${decision.minutes} min${volumeBlockHint(decision.block)}.$deliveredHint$suffix"
+                "Na semana de $week você fez $base min. Esta semana: $deliveredMinutes min " +
+                    "(alvo mantido em ${decision.minutes} min${volumeBlockHint(decision.block)}).$suffix"
         }
     }
 
@@ -2097,7 +2105,7 @@ class WeeklyPlanGenerator {
 
     companion object {
         /** Version of the weekly generation rules; persisted with each plan revision. */
-        const val ENGINE_VERSION = "weekly-plan-v9"
+        const val ENGINE_VERSION = "weekly-plan-v10"
 
         private const val RECOVERY_TITLE = "Recuperação: fácil e curto"
         private const val MICRO_DOSE_TITLE = "Acelerações curtas"
@@ -2107,7 +2115,7 @@ class WeeklyPlanGenerator {
         private const val TAPER_STRIDES_MAX_MIN = 25
         private const val MIN_TAPER_STRIDES_MIN = 20
         private const val RACE_EVE_DAYS = 2L
-        private const val TAPER_STRIDES_OMITTED = "Sem um dia de 20–25 min na janela do taper, " +
+        private const val TAPER_STRIDES_OMITTED = "Sem um dia de 20–25 min na semana da prova, " +
             "esta semana fica sem acelerações; nenhum treino forte foi inventado."
 
         /** EASY curto após a prova na mesma semana (decisão do usuário 0, ADR 0043 §3.3). */

@@ -82,7 +82,7 @@ class VolumeHonestyTest {
 
         scenarios.forEach { scenario ->
             val plan = generate(scenario.base, scenario.availability)
-            assertThat(plan.rationale).contains("base de ${scenario.base} min")
+            assertThat(plan.rationale).contains("você fez ${scenario.base} min")
             assertThat(plan.weeklyMinutes)
                 .withFailMessage(
                     "base ${scenario.base}, delivered ${plan.weeklyMinutes}: ${plan.rationale}",

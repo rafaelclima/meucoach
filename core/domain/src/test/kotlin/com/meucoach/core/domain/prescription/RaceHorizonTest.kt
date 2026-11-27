@@ -37,7 +37,7 @@ class RaceHorizonTest {
             ),
         )
 
-        assertThat(plan.rationale).contains("Fase BUILD")
+        assertThat(plan.rationale).contains("Etapa: Construção")
         assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(plan.sessions).anyMatch { it.type == WorkoutType.QUALITY }
     }

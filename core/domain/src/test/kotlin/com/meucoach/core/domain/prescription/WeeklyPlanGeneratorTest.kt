@@ -36,10 +36,10 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `weekly engine version is weekly-plan-v9`() {
-        // ADR 0066: the taper baseline and copy changed the weekly output.
+    fun `weekly engine version is weekly-plan-v10`() {
+        // ADR 0071 F2: the weekly rationale copy changed (no rule change).
         // Older rows are upgraded by PlanUpgrade on opening (ADR 0048).
-        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v9")
+        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v10")
     }
 
     @Test
@@ -728,7 +728,7 @@ class WeeklyPlanGeneratorTest {
         // the facts; the copy must carry the failing ACWR value.
         assertThat(plan.qualityCount).isEqualTo(1)
         assertThat(plan.rationale).contains("Sem progressão")
-        assertThat(plan.rationale).contains("1,6")
+        assertThat(plan.rationale).contains("fora da faixa segura", "0,8 a 1,3")
         assertThat(plan.rationale).doesNotContain("até existir histórico")
     }
 
@@ -824,7 +824,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.qualityCount).isEqualTo(2)
         assertThat(plan.rationale).contains(
             "Semana de descarga",
-            "sem aumento nesta semana (descarga)",
+            "sem aumento (descarga)",
             "Progressão liberada",
         )
         assertThat(plan.rationale).doesNotContain("O volume segue limitado pela disponibilidade")
@@ -853,8 +853,8 @@ class WeeklyPlanGeneratorTest {
         // C4-59/FR-412: null monotony blocks conservatively, but it is not
         // evidence that the week crossed the 2.0 threshold.
         assertThat(plan.qualityCount).isEqualTo(1)
-        assertThat(plan.rationale).contains("monotonia não é calculável")
-        assertThat(plan.rationale).doesNotContain("monotonia ≥2,0")
+        assertThat(plan.rationale).contains("não dá para medir a variedade")
+        assertThat(plan.rationale).doesNotContain("todos os dias com esforço parecido")
     }
 
     @Test
@@ -1039,7 +1039,7 @@ class WeeklyPlanGeneratorTest {
         // piso reduzido de 30 (ADR 0067) e a semana fica em 80 min.
         assertThat(baseline.weeklyMinutes).isEqualTo(110)
         assertThat(deload.weeklyMinutes).isEqualTo(80)
-        assertThat(deload.rationale).contains("Semana de descarga após 3 semanas", "−25%", "Fase BASE")
+        assertThat(deload.rationale).contains("Semana de descarga após 3 semanas", "−25%", "Etapa: Base")
         assertThat(deload.ruleIds).contains("R-PLAN-04")
         assertThat(deload.evidenceIds).contains("EV-ISSURIN-2010")
         assertThat(baseline.ruleIds).doesNotContain("R-PLAN-04")
@@ -1062,7 +1062,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(deload.ruleIds).contains("R-PLAN-04")
-        assertThat(deload.rationale).contains("Sem histórico suficiente", "Fase BASE")
+        assertThat(deload.rationale).contains("Ainda não há histórico", "Etapa: Base")
     }
 
     @Test
@@ -1280,7 +1280,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.weeklyMinutes).isEqualTo(120)
         assertThat(plan.sessions).hasSize(4)
         assertThat(plan.rationale).doesNotContain("+6%")
-        assertThat(plan.rationale).contains("dados de carga insuficientes", "Entregue 120 min")
+        assertThat(plan.rationale).contains("dados de carga insuficientes", "Esta semana: 120 min")
         assertThat(plan.ruleIds).contains("R-LOAD-04")
         assertThat(ExplanationCatalog.hasRule("R-LOAD-04")).isTrue()
     }
@@ -1311,7 +1311,7 @@ class WeeklyPlanGeneratorTest {
         // D2: the fit keeps every day; the week lands exactly on the target.
         assertThat(plan.weeklyMinutes).isEqualTo(120)
         assertThat(plan.sessions).hasSize(4)
-        assertThat(plan.rationale).contains("em calibração", "Entregue 120 min")
+        assertThat(plan.rationale).contains("em calibração", "Esta semana: 120 min")
         assertThat(plan.rationale).doesNotContain("+6%")
         assertThat(plan.ruleIds).contains("R-PLAN-01")
     }
@@ -1341,9 +1341,9 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(plan.weeklyMinutes).isEqualTo(127)
         assertThat(plan.rationale).contains(
-            "base de 120 min",
+            "você fez 120 min",
             "+6%",
-            "entregue 127 min",
+            "Esta semana: 127 min",
             "alvo de 127 min",
         )
         assertThat(plan.ruleIds).contains("R-PLAN-01")
@@ -1383,10 +1383,10 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.weeklyMinutes).isEqualTo(155)
         assertThat(plan.sessions).hasSize(6)
         assertThat(plan.rationale).contains(
-            "base de 120 min",
+            "você fez 120 min",
             "alvo de 127 min",
             "Semana mínima",
-            "entregue 155 min",
+            "Esta semana: 155 min",
         )
         assertThat(plan.rationale).doesNotContain("permite mais dias")
     }
@@ -1419,7 +1419,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(plan.rationale).contains(
             "alvo mantido em 60 min",
             "abaixo de 80%",
-            "Entregue 110 min",
+            "Esta semana: 110 min",
             "Semana mínima",
         )
         assertThat(plan.rationale).doesNotContain("+6%")
@@ -1477,7 +1477,7 @@ class WeeklyPlanGeneratorTest {
         )
 
         assertThat(plan.weeklyMinutes).isLessThan(128)
-        assertThat(plan.rationale).contains("sem aumento nesta semana (descarga)")
+        assertThat(plan.rationale).contains("sem aumento (descarga)")
         assertThat(plan.rationale).doesNotContain("+6%")
     }
 
@@ -1514,8 +1514,8 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(raceWeek.rationale).contains("sem aumento nesta semana (prova)")
-        assertThat(taper.rationale).contains("sem aumento nesta semana (prova)")
+        assertThat(raceWeek.rationale).contains("sem aumento (prova)")
+        assertThat(taper.rationale).contains("sem aumento (prova)")
         assertThat(raceWeek.rationale).doesNotContain("+6%")
         assertThat(taper.rationale).doesNotContain("+6%")
     }
@@ -1542,7 +1542,7 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.rationale).contains("sem aumento nesta semana (recuperação após a prova)")
+        assertThat(plan.rationale).contains("sem aumento (recuperação após a prova)")
         assertThat(plan.rationale).doesNotContain("+6%")
     }
 
@@ -1669,7 +1669,7 @@ class WeeklyPlanGeneratorTest {
             ),
         )
 
-        assertThat(plan.rationale).contains("base de 200 min")
+        assertThat(plan.rationale).contains("você fez 200 min")
         // C4-18: o teto agora é a disponibilidade com o longão de 45 e o
         // strides de 25 no lugar de um fácil 40: 40 + 25 + 40 + 45 = 150 min.
         assertThat(plan.weeklyMinutes).isEqualTo(150)
@@ -1837,7 +1837,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(wednesdaySession.title).isEqualTo("Acelerações curtas")
         assertThat(wednesdaySession.type).isEqualTo(WorkoutType.EASY)
         assertThat(wednesdaySession.durationMin).isEqualTo(25)
-        assertThat(plan.rationale).contains("Taper sem histórico")
+        assertThat(plan.rationale).contains("Semana de prova sem histórico")
         assertThat(plan.rationale).doesNotContain("média das 3 semanas")
     }
 
@@ -1945,7 +1945,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(quality.durationMin).isEqualTo(25)
         assertThat(quality.title).isEqualTo("Acelerações curtas")
         assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
-        assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
+        assertThat(quality.rationale).contains("dose pequena", "Faça 6 × 20 s")
         assertThat(quality.ruleIds).contains("R-PLAN-05")
         // The taper micro-dose is effort-led; the old T/Z3–Z4 target was the
         // generic quality fallback, not a strides prescription.
@@ -1977,7 +1977,7 @@ class WeeklyPlanGeneratorTest {
         assertThat(quality.title).isEqualTo("Acelerações curtas")
         assertThat(quality.qualityKind).isEqualTo(QualityKind.STRIDES_ONLY)
         assertThat(quality.rationale).doesNotContain("bloco mais curto")
-        assertThat(quality.rationale).contains("micro-dose", "Faça 6 × 20 s")
+        assertThat(quality.rationale).contains("dose pequena", "Faça 6 × 20 s")
         assertThat(quality.ruleIds).contains("R-PLAN-05")
     }
 
@@ -2035,8 +2035,8 @@ class WeeklyPlanGeneratorTest {
         // (30 min), which also caps the other sessions.
         assertThat(marathon.sessions.first { it.date == monday }.durationMin).isEqualTo(30)
         assertThat(tenK.sessions.first { it.date == monday }.durationMin).isEqualTo(40)
-        assertThat(marathon.rationale).contains("Taper sem histórico")
-        assertThat(tenK.rationale).doesNotContain("Taper sem histórico")
+        assertThat(marathon.rationale).contains("Semana de prova sem histórico")
+        assertThat(tenK.rationale).doesNotContain("Semana de prova sem histórico")
         assertThat(marathon.ruleIds).contains("R-PLAN-05")
         assertThat(tenK.ruleIds).doesNotContain("R-PLAN-05")
     }
@@ -2094,8 +2094,8 @@ class WeeklyPlanGeneratorTest {
 
         assertThat(legacyPlan.ruleIds).contains("R-PLAN-05")
         assertThat(eventPlan.ruleIds).doesNotContain("R-PLAN-05")
-        assertThat(legacyPlan.rationale).contains("Taper sem histórico")
-        assertThat(eventPlan.rationale).doesNotContain("Taper sem histórico")
+        assertThat(legacyPlan.rationale).contains("Semana de prova sem histórico")
+        assertThat(eventPlan.rationale).doesNotContain("Semana de prova sem histórico")
     }
 
     @Test

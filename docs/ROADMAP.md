@@ -899,9 +899,12 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   `RacePredictionBlock`, `WeeklyReviewFormat`, labels do Coach), com baseline
   explícito de 91 + 39 violações. Prova: remover uma linha do baseline quebra
   o teste com a origem, o termo e o trecho.
-- [ ] **F2 · Motor — rationale do plano semanal.** `WeeklyPlanGenerator`: enum de
-  fase, “taper”, “ACWR”, “monotonia”, “strides”, “bloco”, “mesociclo”.
-  Atualizar `ENGINE_VERSION` e os goldens de título.
+- [x] **F2 · Motor — rationale do plano semanal.** `WeeklyPlanGenerator`: enum de
+  fase com mapper explícito (`Base`/`Construção`/`Pico`/`Semana de prova`/
+  `Recuperação`), “taper”, “ACWR”, “monotonia”, “strides”, “bloco”,
+  “mesociclo”, “Qualidade planejada/movida” e “micro-dose” em fala de
+  corredor. `ENGINE_VERSION` `v10`; goldens de plano regravados;
+  `forbiddenTitles` por cenário preservados; `Longão` inalterado.
 - [ ] **F3 · Motor — gate de qualidade e catálogo de regras.** `QualityGate`
   (`detail`), `ExplanationCatalog` (títulos de regra e evidência).
 - [ ] **F4 · Motor — títulos, blurps, briefing e estrutura.** `SessionLibrary`,

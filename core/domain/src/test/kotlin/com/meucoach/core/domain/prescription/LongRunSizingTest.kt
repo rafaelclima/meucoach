@@ -186,7 +186,7 @@ class LongRunSizingTest {
         )
 
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
-        assertThat(plan.rationale).contains("alvo de 138 min", "Semana mínima", "entregue 155 min")
+        assertThat(plan.rationale).contains("alvo de 138 min", "Semana mínima", "Esta semana: 155 min")
         assertThat(plan.weeklyMinutes).isEqualTo(155)
         assertThat(plan.qualityCount).isEqualTo(2)
         // D2: no day is dropped to fit the target; the floors anchor the week.
@@ -220,7 +220,7 @@ class LongRunSizingTest {
         val longRun = plan.sessions.single { it.type == WorkoutType.LONG }
         assertThat(plan.rationale).contains(
             "alvo de 106 min",
-            "entregue 155 min",
+            "Esta semana: 155 min",
             "Semana mínima",
             "não é progressão",
         )

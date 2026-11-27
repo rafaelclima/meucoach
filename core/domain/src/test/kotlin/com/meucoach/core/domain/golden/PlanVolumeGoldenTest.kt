@@ -47,7 +47,7 @@ class PlanVolumeGoldenTest {
 
         val adherence = expected.getString("adherence")
         val extra = expected.getInt("extraMinutes")
-        assertThat(plan.rationale).contains("base de ${expected.getInt("baseMinutes")} min")
+        assertThat(plan.rationale).contains("você fez ${expected.getInt("baseMinutes")} min")
         assertThat(plan.rationale).contains("+${expected.getInt("growthPercent")}%")
         assertThat(plan.rationale).contains("alvo de ${expected.getInt("targetMinutes")} min")
         assertThat(plan.rationale).contains("treino extra contou")

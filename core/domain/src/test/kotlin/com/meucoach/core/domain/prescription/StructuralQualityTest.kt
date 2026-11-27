@@ -51,7 +51,7 @@ class StructuralQualityTest {
         assertThat(quality.structure).isNotNull
         assertThat(quality.planDecision?.reason).isEqualTo(PlanDecisionReason.QUALITY_OPPORTUNITY)
         assertThat(quality.planDecision?.detail).contains("o dia confirma")
-        assertThat(plan.rationale).contains("Qualidade planejada", "o dia confirma")
+        assertThat(plan.rationale).contains("Treino forte planejado", "o dia confirma")
     }
 
     @Test

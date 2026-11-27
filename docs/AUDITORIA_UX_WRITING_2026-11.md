@@ -47,27 +47,27 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `WeeklyPlanGenerator.kt:954` | `"Fase ${meso.phase}. "` | `"Etapa: $faseLabel. "` com mapper de `MesoPhase` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:725-726` | `"Taper: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, ..."` | `"Semana de prova: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1959-1960` | `"Taper: −45–55% sobre a média das 3 semanas anteriores (...)"` | `"Semana de prova: volume 45 a 55% abaixo da média das 3 semanas anteriores (...)"` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1967-1968` | `"Taper sem histórico de volume: o corte percentual não é inventado; ..."` | `"Semana de prova sem histórico de volume: o app não chuteia o quanto cortar; ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:2110-2111` | `"Sem um dia de 20–25 min na janela do taper, ..."` | `"Sem um dia de 20–25 min na semana da prova, ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1317` | `"Sem progressão: semana de prova/taper tem 1 estímulo; ..."` | `"Sem progressão: a semana da prova tem 1 estímulo; ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1054-1055` | `"a primeira metade da base é só fácil, longão e strides; o fartlek leve entra na segunda metade."` | `"a primeira metade da base é só corrida leve, longão e Fartlek leve; o Fartlek entra na segunda metade."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1368-1369` | `"Sem progressão: ACWR $value fora da faixa 0,8–1,3; ..."` | `"Sem progressão: a carga dos últimos 7 dias está fora da faixa segura (0,8 a 1,3); ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1353-1354` | `"Sem progressão: a semana variou pouco (monotonia ≥2,0); ..."` | `"Sem progressão: a semana variou pouco (todos os dias com esforço parecido); ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:1363-1364` | `"Sem progressão: ACWR em calibração; ..."` | `"Sem progressão: a carga ainda está sendo medida; ..."` | pendente |
-| [C] | `WeeklyPlanGenerator.kt:956` | `"Sem histórico suficiente para mesociclo; usando posição legada. "` | `"Ainda não há histórico para posicionar esta semana; o app usa a sequência padrão."` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:960` | `"Bloco ${macroIntent.blockIndex} de $totalBlocks. "` | `"Etapa ${macroIntent.blockIndex} de $totalBlocks para a prova."` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:936-937` | `"Qualidade movida de segunda para ...: longão de domingo ..."` | `"O treino forte foi de segunda para ...: o longão de domingo ainda pesa na segunda."` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:946-948` | `"Qualidade: sem dia seguro nesta semana porque o longão de domingo ..."` | `"Sem dia seguro para o treino forte nesta semana: o longão de domingo ainda pesa na segunda."` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:1648-1649` | `"Longão em ritmo fácil. Piso de $floor min preservado; 25–30% do volume é um alvo, não um teto. Teto de ..."` | `"Longão em ritmo fácil: entre $floor e ${teto} min, mirando 25–30% do volume da semana."` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:2013-2028` | `"Volume: base de $base min concluídos na semana de $week; ..."` | `"Na semana de $week você fez $base min. Esta semana: $minutes min."` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:1026-1027` | `"Dias com menos de $MIN_EASY_MIN min (mínimo executável) ficam de fora: não inflamos a sessão para caber. "` | `"Dias com menos de $MIN_EASY_MIN min ficam de fora: o app não estica a sessão para caber."` | pendente |
+| [C] | `WeeklyPlanGenerator.kt:954` | `"Fase ${meso.phase}. "` | `"Etapa: $faseLabel. "` com mapper de `MesoPhase` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:725-726` | `"Taper: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, ..."` | `"Semana de prova: 1 sessão curta de acelerações em ritmo fácil, 20–25 min, ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1959-1960` | `"Taper: −45–55% sobre a média das 3 semanas anteriores (...)"` | `"Semana de prova: volume 45 a 55% abaixo da média das 3 semanas anteriores (...)"` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1967-1968` | `"Taper sem histórico de volume: o corte percentual não é inventado; ..."` | `"Semana de prova sem histórico de volume: o app não chuteia o quanto cortar; ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:2110-2111` | `"Sem um dia de 20–25 min na janela do taper, ..."` | `"Sem um dia de 20–25 min na semana da prova, ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1317` | `"Sem progressão: semana de prova/taper tem 1 estímulo; ..."` | `"Sem progressão: a semana da prova tem 1 estímulo; ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1054-1055` | `"a primeira metade da base é só fácil, longão e strides; o fartlek leve entra na segunda metade."` | `"a primeira metade da base é só corrida leve, longão e Fartlek leve; o Fartlek entra na segunda metade."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1368-1369` | `"Sem progressão: ACWR $value fora da faixa 0,8–1,3; ..."` | `"Sem progressão: a carga dos últimos 7 dias está fora da faixa segura (0,8 a 1,3); ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1353-1354` | `"Sem progressão: a semana variou pouco (monotonia ≥2,0); ..."` | `"Sem progressão: a semana variou pouco (todos os dias com esforço parecido); ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:1363-1364` | `"Sem progressão: ACWR em calibração; ..."` | `"Sem progressão: a carga ainda está sendo medida; ..."` | corrigido |
+| [C] | `WeeklyPlanGenerator.kt:956` | `"Sem histórico suficiente para mesociclo; usando posição legada. "` | `"Ainda não há histórico para posicionar esta semana; o app usa a sequência padrão."` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:960` | `"Bloco ${macroIntent.blockIndex} de $totalBlocks. "` | `"Etapa ${macroIntent.blockIndex} de $totalBlocks para a prova."` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:936-937` | `"Qualidade movida de segunda para ...: longão de domingo ..."` | `"O treino forte foi de segunda para ...: o longão de domingo ainda pesa na segunda."` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:946-948` | `"Qualidade: sem dia seguro nesta semana porque o longão de domingo ..."` | `"Sem dia seguro para o treino forte nesta semana: o longão de domingo ainda pesa na segunda."` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:1648-1649` | `"Longão em ritmo fácil. Piso de $floor min preservado; 25–30% do volume é um alvo, não um teto. Teto de ..."` | `"Longão em ritmo fácil: entre $floor e ${teto} min, mirando 25–30% do volume da semana."` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:2013-2028` | `"Volume: base de $base min concluídos na semana de $week; ..."` | `"Na semana de $week você fez $base min. Esta semana: $minutes min."` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:1026-1027` | `"Dias com menos de $MIN_EASY_MIN min (mínimo executável) ficam de fora: não inflamos a sessão para caber. "` | `"Dias com menos de $MIN_EASY_MIN min ficam de fora: o app não estica a sessão para caber."` | corrigido |
 | [OK] | `WeeklyPlanGenerator.kt:1655`, `:1662`, `:1675`, `:1708`, `:1711`, `:1715`, `:1719`, `:1723` | `"Longão ..."`, `"... o piso para um longão ..."` | manter | — |
 | [OK] | `WeeklyPlanGenerator.kt:2104` | `"Longão"` | manter | — |
-| [M] | `WeeklyPlanGenerator.kt:2110` | `"na janela do taper"` | `"na semana da prova"` | pendente |
-| [M] | `WeeklyPlanGenerator.kt:2061-2085` | `" (semana anterior concluída)"`, `" (descarga)"`, `" (pico: volume estável)"` | rótulos de fase em português minúsculo | pendente |
+| [M] | `WeeklyPlanGenerator.kt:2110` | `"na janela do taper"` | `"na semana da prova"` | corrigido |
+| [M] | `WeeklyPlanGenerator.kt:2061-2085` | `" (semana anterior concluída)"`, `" (descarga)"`, `" (pico: volume estável)"` | rótulos de fase em português minúsculo | corrigido |
 | [OK] | `WeeklyPlanGenerator.kt:1017-1018`, `:1033`, `:1038`, `:1088`, `:1106-1107`, `:1402-1403`, `:1411`, `:1417` | copy de meta, volume e progressão | manter | — |
 
 ---

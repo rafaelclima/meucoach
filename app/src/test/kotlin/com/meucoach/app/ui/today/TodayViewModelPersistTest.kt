@@ -530,7 +530,7 @@ class TodayViewModelPersistTest {
 
         val viewModel = createViewModel(timeProvider)
         val state = withTimeout(10_000) {
-            viewModel.uiState.first { it.plan?.rationale?.contains("Volume: base de 120 min") == true }
+            viewModel.uiState.first { it.plan?.rationale?.contains("você fez 120 min") == true }
         }
 
         // O piso de 45 do longão ancora o corte do alvo de 127; com o strides de
@@ -570,7 +570,7 @@ class TodayViewModelPersistTest {
 
         assertThat(state.plan?.ruleIds).contains("R-PLAN-04")
         assertThat(state.plan?.evidenceIds).contains("EV-ISSURIN-2010")
-        assertThat(state.plan?.rationale).contains("após 3 semanas", "Fase BASE")
+        assertThat(state.plan?.rationale).contains("após 3 semanas", "Etapa: Base")
     }
 
     @Test

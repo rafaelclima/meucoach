@@ -107,7 +107,7 @@ class BeginnerStridesTest {
             ),
         )
 
-        assertThat(plan.rationale).contains("Fase BUILD")
+        assertThat(plan.rationale).contains("Etapa: Construção")
         val strides = plan.sessions.single { it.title == "Acelerações curtas" }
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(plan.qualityCount).isZero()

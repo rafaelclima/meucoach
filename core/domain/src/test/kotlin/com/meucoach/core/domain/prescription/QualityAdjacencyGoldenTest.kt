@@ -42,7 +42,7 @@ class QualityAdjacencyGoldenTest {
         assertThat(qualities.map { it.date.dayOfWeek })
             .doesNotContain(DayOfWeek.MONDAY)
             .allMatch { it == DayOfWeek.TUESDAY || it == DayOfWeek.THURSDAY }
-        assertThat(plan.rationale).contains("Qualidade movida", "longão de domingo")
+        assertThat(plan.rationale).contains("O treino forte foi", "longão de domingo")
         assertCeiling(
             plan,
             mapOf(

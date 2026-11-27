@@ -122,7 +122,7 @@ class MesoCycleTest {
         val second = generator.generate(input())
 
         assertThat(first.ruleIds).doesNotContain("R-PLAN-04")
-        assertThat(first.rationale).contains("Fase BASE")
+        assertThat(first.rationale).contains("Etapa: Base")
         assertThat(second).isEqualTo(first)
     }
 
@@ -168,7 +168,7 @@ class MesoCycleTest {
             ),
         )
 
-        assertThat(plan.rationale).contains("Fase PEAK")
+        assertThat(plan.rationale).contains("Etapa: Pico")
         assertThat(plan.weeklyMinutes).isLessThanOrEqualTo(128)
         assertThat(plan.rationale).doesNotContain("+6%")
     }
