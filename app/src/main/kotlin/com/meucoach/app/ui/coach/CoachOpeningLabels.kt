@@ -25,7 +25,7 @@ object CoachOpeningLabels {
             is CoachNextSubject.Race -> when (subject.event.targetDate) {
                 context.today -> "$hello Hoje é dia de prova. Sem treino — boa prova!"
                 context.today.plusDays(1) -> "$hello Amanhã é dia de prova. Dorme bem hoje que conta."
-                else -> "$hello Bora ver o que importa?"
+                else -> "Oi! Bora ver o que importa?"
             }
 
             is CoachNextSubject.Training -> when {
@@ -39,10 +39,10 @@ object CoachOpeningLabels {
                 context.prescription == null && !context.hasCheckIn ->
                     "$hello Falta seu check-in de 15 s pra eu liberar o treino de hoje."
 
-                else -> "$hello Bora ver o que importa?"
+                else -> "Oi! Bora ver o que importa?"
             }
 
-            null -> "$hello Bora ver o que importa?"
+            null -> "Oi! Bora ver o que importa?"
         }
     }
 }

@@ -73,7 +73,7 @@ internal fun CoachHistoryCard(
         )
         Text(
             text = "Só você vê este histórico. Ele lembra a conversa, mas as decisões " +
-                "de treino continuam vindo do motor.",
+                "de treino continuam vindo do app.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )

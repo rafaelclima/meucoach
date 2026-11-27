@@ -102,11 +102,11 @@ class CoachScreenTest {
 
         compose.onNodeWithText("3 de 4 sessões concluídas").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("75%").assertExists()
-        compose.onNodeWithText("Volume: 2h planejados", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Volume: 120 min planejados", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun `fallback mantem o resumo do motor com as observacoes`() {
+    fun `fallback mantem o resumo do plano com as observacoes`() {
         setContent(
             review = review(),
             reviewState = CoachReviewState.Fallback("O Coach não respondeu."),
@@ -378,13 +378,13 @@ class CoachScreenTest {
     fun `fallback de rede mantem copy amigavel`() {
         setContent(
             explanation = CoachExplanationState.Fallback(
-                reason = "Sem conexão aqui — te mostro o plano direto do motor.",
+                reason = "Sem conexão aqui — te mostro o plano direto do app.",
                 planRationale = "Plano da semana.",
             ),
         )
 
         compose.onNodeWithText(
-            "Sem conexão aqui — te mostro o plano direto do motor.",
+            "Sem conexão aqui — te mostro o plano direto do app.",
             substring = true,
         ).performScrollTo().assertIsDisplayed()
     }
@@ -409,7 +409,7 @@ class CoachScreenTest {
     fun `acoes do fallback ficam abaixo do cartao sem sobrepor`() {
         setContent(
             explanation = CoachExplanationState.Fallback(
-                reason = "Sem conexão aqui — te mostro o plano direto do motor.",
+                reason = "Sem conexão aqui — te mostro o plano direto do app.",
                 planRationale = "Plano da semana.",
             ),
         )
@@ -542,7 +542,7 @@ class CoachScreenTest {
         )
 
         compose.onNodeWithTag("coach-next-readiness").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Prontidão Alta · 82/100.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Prontidão alta · 82/100.").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -973,9 +973,11 @@ class CoachScreenTest {
         compose.onNodeWithTag("coach-progress-numbers-toggle").performScrollTo().performClick()
 
         compose.onNodeWithText("Planejado 3h34 · feito 3h39 (102%)").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("52% fácil nos últimos 28 dias (alvo ~80%).").performScrollTo()
+        compose.onNodeWithText("52% fácil nos últimos 28 dias. O ideal é 80%.").performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithText("Sem VDOT recente — correndo por RPE.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(
+            "Sem índice de aptidão recente — você corre pelo esforço percebido.",
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -1091,7 +1093,7 @@ class CoachScreenTest {
         setContent()
 
         compose.onNodeWithTag("coach-chat-header").assertIsDisplayed()
-        compose.onNodeWithText("motor no comando").assertIsDisplayed()
+        compose.onNodeWithText("tudo certo").assertIsDisplayed()
         compose.onNodeWithText("IA ativa").assertDoesNotExist()
         compose.onNodeWithTag("coach-chat-info").performClick()
         compose.onNodeWithTag("coach-how-it-works-sheet").assertIsDisplayed()
@@ -1230,7 +1232,7 @@ class CoachScreenTest {
 
         compose.onNodeWithTag("coach-system-done").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("coach-done-cheer").performScrollTo().assertTextContains(
-            "Rodagem",
+            "Boa! Treino concluído.",
             substring = true,
         )
     }

@@ -138,15 +138,17 @@ private fun ReviewNumbers(review: WeeklyReview) {
     }
 
     review.volume?.let { volume ->
-        val planned = WeeklyReviewFormat.volume(volume.plannedMin)
-        val executed = WeeklyReviewFormat.volume(volume.executedMin)
-        Text(
-            text = "Volume: $planned planejados · $executed feitos " +
-                "(${WeeklyReviewFormat.volumePercent(volume)})",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-            modifier = Modifier.testTag("coach-review-volume"),
-        )
+        val planned = volume.plannedMin
+        val executed = volume.executedMin
+        if (planned != null && executed != null) {
+            Text(
+                text = "Volume: $planned min planejados · $executed min feitos " +
+                    "(${WeeklyReviewFormat.volumePercent(volume)})",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("coach-review-volume"),
+            )
+        }
         WeeklyReviewFormat.volumeExtra(volume.extraMin)?.let { extra ->
             Text(
                 text = extra,

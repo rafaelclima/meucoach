@@ -60,9 +60,13 @@ class CoachProgressLabelsTest {
         val fresh = profile(calibratedAt = LocalDate.of(2026, 10, 24))
         val stale = profile(calibratedAt = LocalDate.of(2026, 8, 1))
 
-        assertThat(CoachProgressLabels.vdotLine(fresh, today)).isEqualTo("VDOT 31 (prova em 24/10).")
-        assertThat(CoachProgressLabels.vdotLine(stale, today)).isEqualTo("Sem VDOT recente — correndo por RPE.")
-        assertThat(CoachProgressLabels.vdotLine(null, today)).isEqualTo("Sem VDOT recente — correndo por RPE.")
+        assertThat(CoachProgressLabels.vdotLine(fresh, today)).isEqualTo("Índice de aptidão 31 (prova em 24/10).")
+        assertThat(CoachProgressLabels.vdotLine(stale, today)).isEqualTo(
+            "Sem índice de aptidão recente — você corre pelo esforço percebido.",
+        )
+        assertThat(CoachProgressLabels.vdotLine(null, today)).isEqualTo(
+            "Sem índice de aptidão recente — você corre pelo esforço percebido.",
+        )
     }
 
     private fun summary() = CoachProgressSummary(

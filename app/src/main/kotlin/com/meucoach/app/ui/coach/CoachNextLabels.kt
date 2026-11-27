@@ -1,7 +1,7 @@
 package com.meucoach.app.ui.coach
 
 import com.meucoach.app.coach.CoachNextContext
-import com.meucoach.app.ui.common.readinessLabel
+import com.meucoach.app.ui.common.readinessLabelLowercase
 import com.meucoach.app.ui.review.WeeklyReviewFormat
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
@@ -91,7 +91,7 @@ object CoachNextLabels {
         if (ReadinessFlag.INSUFFICIENT_DATA in result.flags) {
             return "Prontidão ainda não medida — faça o check-in de 15 s."
         }
-        val level = readinessLabel(result.level)
+        val level = readinessLabelLowercase(result.level)
         val reasons = buildList {
             if (ReadinessFlag.ILLNESS_OR_INJURY in result.flags) {
                 add("sinal de doença ou lesão")
@@ -134,18 +134,32 @@ object CoachNextLabels {
     /** What unlocks the strong session, derived from the reason, never from the raw hint. */
     fun unlockCopy(reason: QualityBlockReason): String = when (reason) {
         QualityBlockReason.SUBJECTIVE_MISSING -> "Faça o check-in de hoje para liberar o treino forte."
+
         QualityBlockReason.SHORT_SLEEP -> "Com uma noite cheia de sono, o treino forte pode voltar."
-        QualityBlockReason.LOW_READINESS -> "Quando a prontidão subir, a qualidade volta."
+
+        QualityBlockReason.LOW_READINESS -> "Quando a prontidão subir, o treino forte volta."
+
         QualityBlockReason.ILLNESS_OR_RED_READINESS -> "Volte ao treino forte quando estiver recuperado."
+
         QualityBlockReason.BEGINNER_GUARD -> "O treino forte entra com a graduação de nível."
-        QualityBlockReason.RECOVERY_WINDOW -> "A qualidade volta ao fim da recuperação pós-prova."
-        QualityBlockReason.TAPER_WINDOW -> "A qualidade volta depois da prova."
-        QualityBlockReason.RACE_WEEK -> "A qualidade volta depois da prova."
+
+        QualityBlockReason.RECOVERY_WINDOW -> "O treino forte volta ao fim da recuperação pós-prova."
+
+        QualityBlockReason.TAPER_WINDOW -> "O treino forte volta depois da prova."
+
+        QualityBlockReason.RACE_WEEK -> "O treino forte volta depois da prova."
+
         QualityBlockReason.LOAD_STALE -> "Importe suas corridas para atualizar a carga."
-        QualityBlockReason.LOAD_INSUFFICIENT -> "A qualidade volta quando a base de carga fechar a calibração."
-        QualityBlockReason.MONOTONY_HIGH -> "Varie os estímulos para a qualidade voltar."
-        QualityBlockReason.ACWR_HIGH -> "A qualidade volta quando a carga estiver na faixa."
-        QualityBlockReason.STRAIN_SPIKE -> "A qualidade volta quando a carga estiver na faixa."
+
+        QualityBlockReason.LOAD_INSUFFICIENT ->
+            "O treino forte volta quando você tiver mais semanas " +
+                "com carga registrada."
+
+        QualityBlockReason.MONOTONY_HIGH -> "Varie os estímulos para o treino forte voltar."
+
+        QualityBlockReason.ACWR_HIGH -> "O treino forte volta quando a carga estiver na faixa."
+
+        QualityBlockReason.STRAIN_SPIKE -> "O treino forte volta quando a carga estiver na faixa."
     }
 
     private fun trainingLine(context: CoachNextContext): String {
@@ -155,7 +169,7 @@ object CoachNextLabels {
             PrescriptionAdjustment.REDUCE -> "Reduzido para o dia."
             PrescriptionAdjustment.DOWNGRADE -> "Ajustado para fácil."
             PrescriptionAdjustment.REST -> "Descanso prescrito."
-            PrescriptionAdjustment.NO_PLAN -> "Fácil conservador."
+            PrescriptionAdjustment.NO_PLAN -> "Leve conservador."
         }
         val reason = prescription.qualityBlockReason ?: return base
         return "$base ${blockCopy(reason)}"

@@ -363,14 +363,14 @@ class CoachViewModel @Inject constructor(
                     if (!_consented.value) return@collect
                     android.util.Log.d("Coach", "explain io: ${e.message}")
                     _explanation.value = CoachExplanationState.Fallback(
-                        reason = "Sem conexão com o Coach. Mostrando o resumo do motor.",
+                        reason = "Sem conexão com o Coach. Mostrando o resumo do seu plano.",
                         planRationale = plan.rationale,
                     )
                 } catch (e: Exception) {
                     if (!_consented.value) return@collect
                     android.util.Log.d("Coach", "explain failed: ${e.message}")
                     _explanation.value = CoachExplanationState.Fallback(
-                        reason = "O Coach não respondeu. Mostrando o resumo do motor.",
+                        reason = "O Coach não respondeu. Mostrando o resumo do seu plano.",
                         planRationale = plan.rationale,
                     )
                 }

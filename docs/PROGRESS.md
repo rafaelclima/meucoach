@@ -1,6 +1,78 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F5: prova, level e story em fala de corredor, `weekly-plan-v12`, baseline de 0 + 39 violações)
+**Atualizado:** 27/11/2026 (Ciclo 5, F6: UI do Coach sem nome interno e com saudação única, baseline da UI com 7 violações F7)
+
+## Sessão 2026-11-27 — Ciclo 5, F6: UI do Coach (voz e rótulos)
+
+**Objetivo:** corrigir voz e rótulos do Coach conforme as linhas F6 da auditoria
+(`docs/AUDITORIA_UX_WRITING_2026-11.md`): nome interno “motor” em tela, frase sem
+sujeito e saudações duplicadas. **A gíria fica** (decisão do usuário 0): só o
+defeito sai. Nenhuma regra fisiológica, limiar, volume, alvo, critério de
+qualidade ou `ruleId`/`evidenceId` muda; schema Room v23 intacto; sem texto
+persistido novo (labels de leitura, sem `engineVersion`).
+
+### Concluído
+
+- **Fallback (`CoachFallbackLabels`):** `só o motor prescreve` → `ritmo é o app
+  que prescreve` (pace e FC, `freeAnswer` e `reason`, dando sujeito à frase);
+  `direto do motor` / `só com o que tá no motor` / `não conferi no motor` →
+  `… do/no app`. Gíria (`Me enrolei`, `tá`, `aqui embaixo`) intacta.
+- **Abertura (`CoachOpeningLabels` + `CoachScreen`):** saudação única `Oi! Bora
+  ver o que importa?` nos 3 ramos do `opening` e no `else` da tela (antes:
+  `$hello Bora…` × `Oi, bora…`).
+- **Comando e resumo:** `motor no comando` → `tudo certo` (`CoachScreen`);
+  `Mostrando o resumo do motor.` → `Mostrando o resumo do seu plano.`
+  (`CoachViewModel`, 2 ramos de fallback); `continuam vindo do motor` →
+  `continuam vindo do app` (`CoachHistoryCard`); `Consultando o motor…` →
+  `Consultando seu plano…` (`CoachNextCard`).
+- **Aplauso e volume:** `Boa! ${done.title} feito.` → `Boa! Treino concluído.`
+  (`CoachDoneLabels`, sem citar título — concordância sempre certa);
+  `Volume: 2h planejados · …` → `Volume: 120 min planejados · 90 min feitos
+  (75%)` com minutos crus (`CoachReviewCard`; linha some só quando algum lado
+  é nulo, em vez de imprimir “— planejados”). `Referência do motor`
+  (`CoachSessionReference.TITLE`, domínio) e `O motor decide o treino`
+  (`CoachHowItWorksSheet`) são `[OK]` da auditoria — intactos.
+- **Próximo (`CoachNextLabels`):** `A qualidade volta…` / `…qualidade voltar` →
+  `O treino forte volta…` / `…treino forte voltar` (8 `unlockCopy`, cobrindo
+  `actionLine` junto); `quando a base de carga fechar a calibração` → `quando
+  você tiver mais semanas com carga registrada`; `Fácil conservador.` → `Leve
+  conservador.`; `Prontidão $level` passa a `readinessLabelLowercase`
+  (`Prontidão alta · 82/100 — sono curto`).
+- **Evolução (`CoachProgressLabels`):** `Sem VDOT recente — correndo por RPE.`
+  → `Sem índice de aptidão recente — você corre pelo esforço percebido.`;
+  `VDOT $value (…)` → `Índice de aptidão $value (…)`; `(alvo ~80%)` → `. O
+  ideal é 80%.`; `sem dia / N dias em vermelho` → `nenhum dia / N dias com
+  prontidão baixa`.
+- **Testes:** `ContentVocabularyUiTest` (pass-through `direto do app`),
+  `CoachProgressLabelsTest` (índice de aptidão), `CoachNextLabelsTest`
+  (`Prontidão alta/moderada/baixa` minúsculas), `CoachDoneLabelsTest`
+  (`Boa! Treino concluído.`), `CoachScreenTest` (`Volume: 120 min…`,
+  `tudo certo`, fallback `do app`, `52%… O ideal é 80%`, índice de aptidão),
+  nomes de teste sem “motor”. Sem screenshot do Coach no repo — nada a
+  regravar.
+- **Baseline:** 32 linhas F6 removidas no mesmo commit (só encolhe). Restam 7
+  na UI, todas F7 (`RacePredictionBlock` + `WeeklyReviewFormat`); domínio zerado.
+
+### Gates
+
+- `:app:testDebugUnitTest` (coach + content, `--rerun-tasks`) verde; 4 falhas
+  intermediárias eram asserts da copy antiga na mesma fatia (prontidão
+  maiúscula, cheer com título) — atualizadas.
+- `./gradlew spotlessApply` (1 estouro de 120 col. quebrado) + `./gradlew check`
+  verdes (detekt, Kover, `spotlessCheck`, lint, Roborazzi); nenhum dado real no
+  diff; sem dependência nova.
+
+### Por que nenhum bump (ADR 0071 §2.7)
+
+- Labels do Coach são resolvidos na leitura a partir da prescrição/plano
+  persistidos; nenhum `rationale`/`title`/`decisionDetail` novo é gravado —
+  texto novo sem versão nova (precedente F4: label `Intensidade`).
+
+### Pendente (F7–F9, fora desta fatia)
+
+- F7 Tendências/Perfil/Previsão/Atividades/Level → F8 bugs literais → F9 fechar
+  o gate (remover baseline da UI). Cada linha do baseline aponta a fatia que a
+  remove.
 
 ## Sessão 2026-11-27 — Ciclo 5, F5: prova, level e story
 

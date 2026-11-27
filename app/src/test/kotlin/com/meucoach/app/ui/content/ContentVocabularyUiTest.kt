@@ -347,7 +347,7 @@ class ContentVocabularyUiTest {
             "escopo" to "escopo do coach aqui",
             "longa" to "longa demais aqui",
             "desconhecido" to "algo nunca visto",
-            "offline" to "Sem conexão aqui — te mostro o plano direto do motor.",
+            "offline" to "Sem conexão aqui — te mostro o plano direto do app.",
             "direto" to "Me enrolei aqui — te mostro o plano direto.",
         ).forEach { (slug, reason) ->
             texts +=

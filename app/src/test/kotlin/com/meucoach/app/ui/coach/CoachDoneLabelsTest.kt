@@ -26,10 +26,10 @@ class CoachDoneLabelsTest {
     }
 
     @Test
-    fun `treino de hoje feito comemora com o titulo`() {
+    fun `treino de hoje feito comemora sem citar o titulo`() {
         val cheer = CoachDoneLabels.cheer(trainingContext(doneSession()))
 
-        assertThat(cheer).contains("Fácil")
+        assertThat(cheer).isEqualTo("Boa! Treino concluído.")
     }
 
     @Test

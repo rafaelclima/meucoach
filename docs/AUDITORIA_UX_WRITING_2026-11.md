@@ -171,25 +171,25 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `CoachFallbackLabels.kt:30`, `:33`, `:67`, `:70` | `"...só o motor prescreve."` — frase **sem sujeito** e com nome interno | `"...— ritmo é o app que prescreve. Me pergunta de novo."` | pendente |
-| [M] | `CoachFallbackLabels.kt:12`, `:27`, `:39`, `:54` | `"...direto do motor"`, `"...só com o que tá no motor"`, `"...não conferi no motor"` | `"...direto do app"`, `"...só com o que tá no app"`, `"...não conferi no app"` — **a gíria fica**; só “motor” sai | pendente |
-| [M] | `CoachOpeningLabels.kt:28`, `:42`, `:45` + `CoachScreen.kt:568` | `"Bora ver o que importa?"` / `"Oi, bora ver o que importa?"` — **duas saudações para a mesma tela** | unificar em `"Oi! Bora ver o que importa?"` (a gíria fica) | pendente |
+| [C] | `CoachFallbackLabels.kt:30`, `:33`, `:67`, `:70` | `"...só o motor prescreve."` — frase **sem sujeito** e com nome interno | `"...— ritmo é o app que prescreve. Me pergunta de novo."` | corrigido |
+| [M] | `CoachFallbackLabels.kt:12`, `:27`, `:39`, `:54` | `"...direto do motor"`, `"...só com o que tá no motor"`, `"...não conferi no motor"` | `"...direto do app"`, `"...só com o que tá no app"`, `"...não conferi no app"` — **a gíria fica**; só “motor” sai | corrigido |
+| [M] | `CoachOpeningLabels.kt:28`, `:42`, `:45` + `CoachScreen.kt:568` | `"Bora ver o que importa?"` / `"Oi, bora ver o que importa?"` — **duas saudações para a mesma tela** | unificar em `"Oi! Bora ver o que importa?"` (a gíria fica) | corrigido |
 | [OK] | `CoachViewModel.kt:1209` | `"Boa! Marca lá no Hoje pra entrar na conta — por aqui eu sigo o plano."` | manter — registro do Coach | — |
 | [OK] | `CoachViewModel.kt:1214`, `:1215` | `"...O plano segue o mesmo — tenta de novo."` | manter — registro do Coach | — |
-| [M] | `CoachScreen.kt:197` | `"motor no comando"` | `"tudo certo"` | pendente |
-| [M] | `CoachViewModel.kt:366`, `:373` | `"Mostrando o resumo do motor."` | `"Mostrando o resumo do seu plano."` | pendente |
-| [M] | `CoachHistoryCard.kt:75` | `"...continuam vindo do motor."` | `"...continuam vindo do app."` | pendente |
-| [M] | `CoachNextCard.kt:53` | `"Consultando o motor…"` | `"Consultando seu plano…"` | pendente |
-| [M] | `CoachDoneLabels.kt:20` | `"Boa! ${done.title} feito."` (concordância) | `"Boa! Treino concluído."` | pendente |
-| [M] | `CoachReviewCard.kt:144` | `"Volume: $planned planejados · $executed feitos"` (concordância) | `"Volume: ${planned} min planejados · ${executed} min feitos"` | pendente |
-| [M] | `CoachNextLabels.kt:138`, `:141`, `:142`, `:143`, `:145`, `:146`, `:147` | `"A qualidade volta..."` | `"O treino forte volta..."` | pendente |
-| [M] | `CoachNextLabels.kt:145` | `"...quando a base de carga fechar a calibração."` | `"...quando você tiver mais semanas com carga registrada."` | pendente |
-| [M] | `CoachNextLabels.kt:107` | `"Prontidão $level · N/100"` | `"Prontidão alta · N/100 — sono curto."` | pendente |
-| [C] | `CoachNextLabels.kt:158` | `"Fácil conservador."` (achado do gate F1; `Fácil` como nome de sessão, `trainingLine` com `NO_PLAN`) | `"Leve conservador."` | pendente |
-| [M] | `CoachProgressLabels.kt:71` | `"Sem VDOT recente — correndo por RPE."` | `"Sem índice de aptidão recente — você corre pelo esforço percebido."` | pendente |
-| [M] | `CoachProgressLabels.kt:82` | `"VDOT $value ($origin em $data)."` | `"Índice de aptidão $value ($origin em $data)."` | pendente |
-| [M] | `CoachProgressLabels.kt:42` | `"$easy% fácil nos últimos 28 dias (alvo ~80%)."` | `"$easy% fácil nos últimos 28 dias. O ideal é 80%."` | pendente |
-| [M] | `CoachProgressLabels.kt:48`, `:50` | `"sem dia em vermelho"`, `"N dias em vermelho"` | `"nenhum dia com prontidão baixa"`, `"N dias com prontidão baixa"` | pendente |
+| [M] | `CoachScreen.kt:197` | `"motor no comando"` | `"tudo certo"` | corrigido |
+| [M] | `CoachViewModel.kt:366`, `:373` | `"Mostrando o resumo do motor."` | `"Mostrando o resumo do seu plano."` | corrigido |
+| [M] | `CoachHistoryCard.kt:75` | `"...continuam vindo do motor."` | `"...continuam vindo do app."` | corrigido |
+| [M] | `CoachNextCard.kt:53` | `"Consultando o motor…"` | `"Consultando seu plano…"` | corrigido |
+| [M] | `CoachDoneLabels.kt:20` | `"Boa! ${done.title} feito."` (concordância) | `"Boa! Treino concluído."` | corrigido |
+| [M] | `CoachReviewCard.kt:144` | `"Volume: $planned planejados · $executed feitos"` (concordância) | `"Volume: ${planned} min planejados · ${executed} min feitos"` | corrigido |
+| [M] | `CoachNextLabels.kt:138`, `:141`, `:142`, `:143`, `:145`, `:146`, `:147` | `"A qualidade volta..."` | `"O treino forte volta..."` | corrigido |
+| [M] | `CoachNextLabels.kt:145` | `"...quando a base de carga fechar a calibração."` | `"...quando você tiver mais semanas com carga registrada."` | corrigido |
+| [M] | `CoachNextLabels.kt:107` | `"Prontidão $level · N/100"` | `"Prontidão alta · N/100 — sono curto."` | corrigido |
+| [C] | `CoachNextLabels.kt:158` | `"Fácil conservador."` (achado do gate F1; `Fácil` como nome de sessão, `trainingLine` com `NO_PLAN`) | `"Leve conservador."` | corrigido |
+| [M] | `CoachProgressLabels.kt:71` | `"Sem VDOT recente — correndo por RPE."` | `"Sem índice de aptidão recente — você corre pelo esforço percebido."` | corrigido |
+| [M] | `CoachProgressLabels.kt:82` | `"VDOT $value ($origin em $data)."` | `"Índice de aptidão $value ($origin em $data)."` | corrigido |
+| [M] | `CoachProgressLabels.kt:42` | `"$easy% fácil nos últimos 28 dias (alvo ~80%)."` | `"$easy% fácil nos últimos 28 dias. O ideal é 80%."` | corrigido |
+| [M] | `CoachProgressLabels.kt:48`, `:50` | `"sem dia em vermelho"`, `"N dias em vermelho"` | `"nenhum dia com prontidão baixa"`, `"N dias com prontidão baixa"` | corrigido |
 | [OK] | `CoachViewModel.kt:1200`, `:1206`, `:1222`, `:1225`, `:1209`, `:1214`, `:1215` | escopo, menu de capacidades, descanso, "pra", "tenta de novo" | manter — **a gíria do Coach é intencional** (decisão do usuário 0) | — |
 | [OK] | `CoachChatComponents.kt:451-453`, `:457`, `:459`, `:493` | explicação da IA | manter | — |
 | [OK] | `CoachIntentSheets.kt:75`, `:155`, `:219` | escopo do ajuste | manter | — |

@@ -50,7 +50,7 @@ internal fun CoachNextCard(
         CoachNextUiState.Loading -> {
             CoachAttachment(testTag = "coach-next-loading", modifier = modifier) {
                 Text(
-                    text = "Consultando o motor…",
+                    text = "Consultando seu plano…",
                     style = McTextStyles.caption,
                     color = colors.textTertiary,
                 )

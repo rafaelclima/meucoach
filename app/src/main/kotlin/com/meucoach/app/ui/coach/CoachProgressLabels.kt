@@ -39,15 +39,15 @@ object CoachProgressLabels {
 
     fun intensityLine(summary: CoachProgressSummary): String {
         val easy = summary.easyPercent28d ?: return "Sem base de FC para medir intensidade."
-        return "$easy% fácil nos últimos 28 dias (alvo ~80%)."
+        return "$easy% fácil nos últimos 28 dias. O ideal é 80%."
     }
 
     fun readinessLine(summary: CoachProgressSummary): String {
         val avg = summary.avgReadiness ?: return "Sem prontidão medida."
         val red = if (summary.redDays == 0) {
-            "sem dia em vermelho"
+            "nenhum dia com prontidão baixa"
         } else {
-            "${summary.redDays} ${if (summary.redDays == 1) "dia em vermelho" else "dias em vermelho"}"
+            "${summary.redDays} ${if (summary.redDays == 1) "dia com prontidão baixa" else "dias com prontidão baixa"}"
         }
         return "Prontidão média $avg · $red."
     }
@@ -68,7 +68,7 @@ object CoachProgressLabels {
         val source = profile?.vdotSource
         val fresh = calibratedAt != null && !calibratedAt.isBefore(today.minusDays(VDOT_FRESH_DAYS))
         if (vdot == null || source == null || !fresh) {
-            return "Sem VDOT recente — correndo por RPE."
+            return "Sem índice de aptidão recente — você corre pelo esforço percebido."
         }
         // `fresh` above already proves the date exists; `require` documents it.
         val calibrationDate = requireNotNull(calibratedAt) {
@@ -79,7 +79,7 @@ object CoachProgressLabels {
             VdotSource.TRAINING_ESTIMATE -> "estimativa de treino"
         }
         val value = vdot.roundToInt()
-        return "VDOT $value ($origin em ${calibrationDate.format(dayFormat)})."
+        return "Índice de aptidão $value ($origin em ${calibrationDate.format(dayFormat)})."
     }
 
     private const val VDOT_FRESH_DAYS = 56L

@@ -876,7 +876,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
 **Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
-F2–F5 concluídas; F6–F9 pendentes.
+F2–F6 concluídas; F7–F9 pendentes.
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -928,9 +928,17 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   `Treino forte ...`, `Corrida leve bem feita`, `corrida leve/treino forte de X min`).
   `weekly-plan-v12`; domínio zera (29 linhas do baseline removidas, 0 + 39 na UI);
   `Longão`/`Pace de prova` inalterados.
-- [ ] **F6 · UI — Coach.** “motor” na tela, frase sem sujeito
-  (`CoachFallbackLabels`), saudações duplicadas (`CoachOpeningLabels`),
-  `VDOT` em `CoachProgressLabels`. **A gíria fica.**
+- [x] **F6 · UI — Coach.** Voz sem nome interno: `CoachFallbackLabels`
+  (`ritmo é o app que prescreve`, `direto/só com o que tá/não conferi no app`),
+  saudação única `Oi! Bora ver o que importa?` (`CoachOpeningLabels` +
+  `CoachScreen`), `tudo certo` (`CoachScreen`), `resumo do seu plano`
+  (`CoachViewModel`), `vindas do app` (`CoachHistoryCard`), `Consultando seu
+  plano…` (`CoachNextCard`), `Boa! Treino concluído.` (`CoachDoneLabels`),
+  `Volume: N min planejados · N min feitos` (`CoachReviewCard`),
+  `O treino forte volta…` + `Leve conservador` + `Prontidão alta…`
+  (`CoachNextLabels`), `Índice de aptidão…` + `O ideal é 80%` + `prontidão
+  baixa` (`CoachProgressLabels`). 32 linhas do baseline da UI removidas
+  (7 F7 restantes); **gíria do Coach intacta**; `[OK]` mantidos.
 - [ ] **F7 · UI — Tendências, Perfil, Previsão, Atividades, Level.** `CTL`,
   `Monotonia`, “vermelho”, “pace” em prosa, “Riegel”, IDs crus no card de
   graduação.

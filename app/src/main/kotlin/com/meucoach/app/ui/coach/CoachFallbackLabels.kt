@@ -9,7 +9,7 @@ package com.meucoach.app.ui.coach
  */
 object CoachFallbackLabels {
     private val friendlyReasons = setOf(
-        "Sem conexão aqui — te mostro o plano direto do motor.",
+        "Sem conexão aqui — te mostro o plano direto do app.",
         "Me enrolei aqui — te mostro o plano direto.",
     )
 
@@ -24,19 +24,19 @@ object CoachFallbackLabels {
         return when {
             "código interno" in normalized ||
                 "métrica proibida" in normalized ->
-                "Ih, me enrolei na explicação. Me pergunta de novo que eu respondo só com o que tá no motor."
+                "Ih, me enrolei na explicação. Me pergunta de novo que eu respondo só com o que tá no app."
 
             "pace" in normalized ->
-                "Quis falar de ritmo e me passei — só o motor prescreve. Me pergunta de novo."
+                "Quis falar de ritmo e me passei — ritmo é o app que prescreve. Me pergunta de novo."
 
             "fc" in normalized ->
-                "Quis falar de frequência cardíaca e me passei — só o motor prescreve. Me pergunta de novo."
+                "Quis falar de frequência cardíaca e me passei — ritmo é o app que prescreve. Me pergunta de novo."
 
             "duração não planejada" in normalized ->
                 "Citei uma duração que não tá no plano. Desconsidera — me pergunta de novo."
 
             "porcentagem não calculada" in normalized ->
-                "Citei um percentual que não conferi no motor. Desconsidera — me pergunta de novo."
+                "Citei um percentual que não conferi no app. Desconsidera — me pergunta de novo."
 
             "número fora do contexto" in normalized ->
                 "Citei um número que não confere com seus dados. Desconsidera — me pergunta de novo."
@@ -51,7 +51,7 @@ object CoachFallbackLabels {
             "longa demais" in normalized ->
                 "Falei demais e me perdi. Me pergunta de novo que eu resumo."
 
-            else -> "Me enrolei na explicação. Me pergunta de novo que eu respondo só com o que tá no motor."
+            else -> "Me enrolei na explicação. Me pergunta de novo que eu respondo só com o que tá no app."
         }
     }
 
@@ -64,17 +64,17 @@ object CoachFallbackLabels {
                 "Ih, me enrolei na explicação. O plano segue o mesmo — tá aqui embaixo."
 
             "pace" in normalized ->
-                "Quis falar de ritmo e me passei — só o motor prescreve. O plano segue aqui embaixo."
+                "Quis falar de ritmo e me passei — ritmo é o app que prescreve. O plano segue aqui embaixo."
 
             "fc" in normalized ->
-                "Quis falar de frequência cardíaca e me passei — só o motor prescreve. " +
+                "Quis falar de frequência cardíaca e me passei — ritmo é o app que prescreve. " +
                     "O plano segue aqui embaixo."
 
             "duração não planejada" in normalized ->
                 "Citei uma duração que não tá no plano. Desconsidera — o plano certo tá aqui embaixo."
 
             "porcentagem não calculada" in normalized ->
-                "Citei um percentual que não conferi no motor. Desconsidera — os números certos tão aqui embaixo."
+                "Citei um percentual que não conferi no app. Desconsidera — os números certos tão aqui embaixo."
 
             "número fora do contexto" in normalized ->
                 "Citei um número que não confere com seus dados. Desconsidera — o que vale tá aqui embaixo."

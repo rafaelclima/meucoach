@@ -7,38 +7,7 @@
 #   docs/AUDITORIA_UX_WRITING_2026-11.md that removes the line.
 # The gate fails on any violation missing here and on any stale entry:
 # the baseline only shrinks, never grows.
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy codigo] | motor | … ção. Me pergunta de novo que eu respondo só com o que tá no motor. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy desconhecido] | motor | … ção. Me pergunta de novo que eu respondo só com o que tá no motor. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy fc] | motor | Quis falar de frequência cardíaca e me passei — só o motor prescreve. Me pergunta de novo. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy metrica] | motor | … ção. Me pergunta de novo que eu respondo só com o que tá no motor. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy offline] | motor | Sem conexão aqui — te mostro o plano direto do motor. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy pace] | motor | Quis falar de ritmo e me passei — só o motor prescreve. Me pergunta de novo. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [freeAnswerReasonCopy porcentagem] | motor | Citei um percentual que não conferi no motor. Desconsidera — me pergunta de novo. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [reasonCopy fc] | motor | Quis falar de frequência cardíaca e me passei — só o motor prescreve. O plano segue aqui embaixo. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [reasonCopy offline] | motor | Sem conexão aqui — te mostro o plano direto do motor. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [reasonCopy pace] | motor | Quis falar de ritmo e me passei — só o motor prescreve. O plano segue aqui embaixo. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt [reasonCopy porcentagem] | motor | Citei um percentual que não conferi no motor. Desconsidera — os números certos tão aqui embaixo. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine ACWR_HIGH] | qualidade | A qualidade volta quando a carga estiver na faixa. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine LOAD_INSUFFICIENT] | qualidade | A qualidade volta quando a base de carga fechar a calibração. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine LOW_READINESS] | qualidade | Quando a prontidão subir, a qualidade volta. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine MONOTONY_HIGH] | qualidade | Varie os estímulos para a qualidade voltar. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine RACE_WEEK] | qualidade | A qualidade volta depois da prova. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine RECOVERY_WINDOW] | qualidade | A qualidade volta ao fim da recuperação pós-prova. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine STRAIN_SPIKE] | qualidade | A qualidade volta quando a carga estiver na faixa. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [actionLine TAPER_WINDOW] | qualidade | A qualidade volta depois da prova. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [statusLine NO_PLAN] | Fácil | Fácil conservador. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy ACWR_HIGH] | qualidade | A qualidade volta quando a carga estiver na faixa. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy LOAD_INSUFFICIENT] | qualidade | A qualidade volta quando a base de carga fechar a calibração. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy LOW_READINESS] | qualidade | Quando a prontidão subir, a qualidade volta. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy MONOTONY_HIGH] | qualidade | Varie os estímulos para a qualidade voltar. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy RACE_WEEK] | qualidade | A qualidade volta depois da prova. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy RECOVERY_WINDOW] | qualidade | A qualidade volta ao fim da recuperação pós-prova. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy STRAIN_SPIKE] | qualidade | A qualidade volta quando a carga estiver na faixa. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt [unlockCopy TAPER_WINDOW] | qualidade | A qualidade volta depois da prova. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachProgressLabels.kt [vdotLine absent] | VDOT | Sem VDOT recente — correndo por RPE. | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachProgressLabels.kt [vdotLine estimate] | VDOT | VDOT 30 (estimativa de treino em 31/10). | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachProgressLabels.kt [vdotLine proof] | VDOT | VDOT 30 (prova em 31/10). | F6
-app/src/main/kotlin/com/meucoach/app/ui/coach/CoachProgressLabels.kt [vdotLine stale] | VDOT | Sem VDOT recente — correndo por RPE. | F6
+# F6 done 27/11/2026: UI Coach voice labels (32 lines removed).
 app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available aligned] | Riegel | A faixa também considera a checagem de Riegel. | F7
 app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available aligned] | pace | O pace do plano usa a previsão, não a meta. | F7
 app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available ambitious] | Riegel | A faixa também considera a checagem de Riegel. | F7

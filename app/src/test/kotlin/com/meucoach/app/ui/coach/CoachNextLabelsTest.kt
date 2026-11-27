@@ -206,7 +206,7 @@ class CoachNextLabelsTest {
         )
 
         assertThat(CoachNextLabels.readinessLine(context))
-            .isEqualTo("Prontidão Moderada · 59/100 — sono 5h40.")
+            .isEqualTo("Prontidão moderada · 59/100 — sono 5h40.")
         assertThat(CoachNextLabels.readinessLevel(context)).isEqualTo(ReadinessLevel.AMBER)
     }
 
@@ -223,8 +223,8 @@ class CoachNextLabelsTest {
             hasCheckIn = true,
         )
 
-        assertThat(CoachNextLabels.readinessLine(green)).isEqualTo("Prontidão Alta · 82/100.")
-        assertThat(CoachNextLabels.readinessLine(red)).isEqualTo("Prontidão Baixa · 28/100.")
+        assertThat(CoachNextLabels.readinessLine(green)).isEqualTo("Prontidão alta · 82/100.")
+        assertThat(CoachNextLabels.readinessLine(red)).isEqualTo("Prontidão baixa · 28/100.")
     }
 
     @Test

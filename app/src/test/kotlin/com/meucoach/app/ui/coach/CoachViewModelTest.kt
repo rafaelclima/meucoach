@@ -912,7 +912,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `codigo interno na revisao cai para o resumo do motor sem gravar`(): Unit = runBlocking {
+    fun `codigo interno na revisao cai para o resumo do plano sem gravar`(): Unit = runBlocking {
         consent.grant()
         reviews.value = weeklyReview()
         val vm = viewModel(
@@ -939,7 +939,7 @@ class CoachViewModelTest {
     }
 
     @Test
-    fun `revisao com porcentagem inventada cai para o resumo do motor`() {
+    fun `revisao com porcentagem inventada cai para o resumo do plano`() {
         consent.grant()
         reviews.value = weeklyReview()
         val vm = viewModel(FakeCoachApi(CoachRawResponse(title = "T", body = "O volume ficou em 140% do plano")))

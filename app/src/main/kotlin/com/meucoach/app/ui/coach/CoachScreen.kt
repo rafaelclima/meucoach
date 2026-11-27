@@ -194,7 +194,7 @@ fun CoachScreen(
     }
     val onboarding = next is CoachNextUiState.Onboarding
     val hour = remember { LocalTime.now().hour }
-    val status = "motor no comando"
+    val status = "tudo certo"
     val reviewAvailable = consented && review != null
     val historyAvailable = consented && history != CoachHistoryState.Hidden
     val progressAvailable = progress != CoachProgressUiState.Hidden
@@ -565,5 +565,5 @@ private fun openingText(next: CoachNextUiState, hour: Int): String = when (next)
 
     is CoachNextUiState.Ready -> CoachOpeningLabels.opening(next.context, hour)
 
-    else -> "Oi, bora ver o que importa?"
+    else -> "Oi! Bora ver o que importa?"
 }

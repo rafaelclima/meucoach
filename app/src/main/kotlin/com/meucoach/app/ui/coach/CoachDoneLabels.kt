@@ -15,8 +15,8 @@ object CoachDoneLabels {
     const val SYSTEM_LINE: String = "Treino feito ✓"
 
     fun cheer(context: CoachNextContext): String? {
-        val done = context.todaySession?.takeIf { it.status == SessionStatus.DONE } ?: return null
+        context.todaySession?.takeIf { it.status == SessionStatus.DONE } ?: return null
         if (context.subject is CoachNextSubject.Race) return null
-        return "Boa! ${done.title} feito."
+        return "Boa! Treino concluído."
     }
 }
