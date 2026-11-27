@@ -1,5 +1,7 @@
 package com.meucoach.app.ui.today
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -15,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.Density
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadMetric
@@ -1038,6 +1041,25 @@ class TodayPlanTest {
         compose.onNodeWithTag("readiness-health-link").performClick()
 
         assertThat(health).isTrue()
+    }
+
+    @Test
+    fun `large font stacks readiness gauge and signals`() {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = 2f),
+            ) {
+                McTheme(darkTheme = true) {
+                    TodayScreen(
+                        onDemoAction = {},
+                        state = demoTodayUiState(LocalDate.of(2026, 11, 2)),
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithTag("readiness-large-text", useUnmergedTree = true).assertExists()
     }
 
     @Test

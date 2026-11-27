@@ -1,11 +1,14 @@
 package com.meucoach.app.ui.today
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.meucoach.app.application.ReplanChangeKind
@@ -70,6 +73,16 @@ class TodayScreenshotTest {
     @Config(qualifiers = "w360dp-h800dp-xxhdpi")
     fun todayNarrowDark() {
         capture(darkTheme = true, file = "src/test/screenshots/today-narrow-dark.png")
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun todayNarrow200Dark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-narrow-200-dark.png",
+            fontScale = 2f,
+        )
     }
 
     @Test
@@ -144,6 +157,7 @@ class TodayScreenshotTest {
         replan: ReplanUiState = ReplanUiState(),
         scrollTo: String? = null,
         raceEvent: RaceEvent? = null,
+        fontScale: Float = 1f,
     ) {
         val today = LocalDate.of(2026, 10, 30)
         val baseState = todayState(
@@ -182,13 +196,18 @@ class TodayScreenshotTest {
             )
         } ?: baseState
         compose.setContent {
-            McTheme(darkTheme = darkTheme) {
-                TodayScreen(
-                    onDemoAction = {},
-                    state = state,
-                    checklistState = checklistState,
-                    replan = replan,
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = fontScale),
+            ) {
+                McTheme(darkTheme = darkTheme) {
+                    TodayScreen(
+                        onDemoAction = {},
+                        state = state,
+                        checklistState = checklistState,
+                        replan = replan,
+                    )
+                }
             }
         }
         if (scrollTo != null) {
