@@ -126,6 +126,32 @@ class OnboardingValidatorTest {
     }
 
     @Test
+    fun `round-trips the usual training time`() {
+        val profile = OnboardingValidator.toProfile(
+            form = form().copy(preferredTrainingTime = "04:00"),
+            id = "athlete-1",
+            today = today,
+        )
+
+        assertThat(profile.preferredTrainingTimeMinutes).isEqualTo(240)
+        assertThat(OnboardingValidator.fromProfile(profile).preferredTrainingTime).isEqualTo("04:00")
+    }
+
+    @Test
+    fun `accepts four-digit training time and rejects invalid values`() {
+        val profile = OnboardingValidator.toProfile(
+            form = form().copy(preferredTrainingTime = "0400"),
+            id = "athlete-1",
+            today = today,
+        )
+
+        assertThat(profile.preferredTrainingTimeMinutes).isEqualTo(240)
+        assertInvalid(2, form().copy(preferredTrainingTime = "24:00"), OnboardingField.TRAINING_TIME)
+        assertInvalid(2, form().copy(preferredTrainingTime = "04:60"), OnboardingField.TRAINING_TIME)
+        assertInvalid(2, form().copy(preferredTrainingTime = "amanhã"), OnboardingField.TRAINING_TIME)
+    }
+
+    @Test
     fun `rejects invalid personal data`() {
         assertInvalid(0, form().copy(birthDate = "30/10/2026"), OnboardingField.BIRTH_DATE)
         assertInvalid(0, form().copy(birthDate = "31/02/1990"), OnboardingField.BIRTH_DATE)

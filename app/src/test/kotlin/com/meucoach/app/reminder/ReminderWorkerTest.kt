@@ -112,6 +112,26 @@ class ReminderWorkerTest {
     }
 
     @Test
+    fun `the weekly preview notifies only when next week is already persisted`(): Unit = runBlocking {
+        profiles.saveProfile(profile())
+        val nextMonday = today.with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.MONDAY))
+        val nextPlan = plan().copy(
+            weekStart = nextMonday,
+            qualityCount = 1,
+            rationale = "Prévia da próxima semana.",
+            createdOn = today,
+        )
+        plans.saveWeek(nextPlan)
+
+        val result = worker(ReminderKind.WEEK_PREVIEW).doWork()
+
+        assertThat(result).isInstanceOf(ListenableWorker.Result.Success::class.java)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val notification = Shadows.shadowOf(manager).allNotifications.single()
+        assertThat(Shadows.shadowOf(notification).contentTitle.toString()).isEqualTo("Próxima semana pronta")
+    }
+
+    @Test
     fun `the check-in worker never cancels the workout reminder`(): Unit = runBlocking {
         notifier.notify(
             ReminderMessage(
@@ -158,6 +178,7 @@ class ReminderWorkerTest {
                     appContext = appContext,
                     params = workerParameters,
                     checkIns = checkIns,
+                    plans = plans,
                     workoutResolver = resolver,
                     timeProvider = timeProvider,
                     notifier = notifier,

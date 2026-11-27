@@ -1,9 +1,9 @@
 # PRD — Correções da auditoria geral 2026-11
 
-**Versão:** 0.1 (proposta para aprovação)  
-**Data:** 26/11/2026  
-**Status:** aguardando aprovação explícita do usuário 0. Nenhum código foi alterado nesta fase.  
-**Fontes primárias:** `docs/AUDITORIA_GERAL_2026-11.md`, `docs/REVISAO_AUDITORIA_2026-11.md`, código em `core/domain`, `core/data`, `:app` e `infra/coach-proxy`, `docs/SPORTS_SCIENCE.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`, `docs/PROGRESS.md`, `docs/HANDOFF_IA_COACH.md` e os PRDs/ADRs citados.  
+**Versão:** 0.1 (proposta para aprovação)
+**Data:** 26/11/2026
+**Status:** aguardando aprovação explícita do usuário 0. Nenhum código foi alterado nesta fase.
+**Fontes primárias:** `docs/AUDITORIA_GERAL_2026-11.md`, `docs/REVISAO_AUDITORIA_2026-11.md`, código em `core/domain`, `core/data`, `:app` e `infra/coach-proxy`, `docs/SPORTS_SCIENCE.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/ROADMAP.md`, `docs/PROGRESS.md`, `docs/HANDOFF_IA_COACH.md` e os PRDs/ADRs citados.
 **Regra desta fase:** transformar achados em decisões e critérios de aceite. Não implementar, não atualizar `PROGRESS.md`/`ROADMAP.md` e não alterar os dois documentos de auditoria.
 
 > Este PRD não trata a auditoria original como especificação. Cada achado recebe um veredito próprio, uma severidade reavaliada e, quando aplicável, uma decisão de produto/ciência separada da correção de código. Achados refutados ou não verificáveis **não** viram requisito por aparecerem no documento original.

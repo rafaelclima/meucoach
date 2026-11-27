@@ -87,7 +87,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
     abstract fun chatTurnDao(): ChatTurnDao
 
     companion object {
-        const val VERSION = 22
+        const val VERSION = 23
         const val NAME = "meucoach.db"
 
         /**
@@ -795,6 +795,20 @@ abstract class MeuCoachDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Version 23 stores the athlete's usual training time so reminders can
+         * run before the workout instead of at a fixed hour. Legacy rows keep
+         * `NULL`; the app then keeps its previous 07:00/18:00 schedule.
+         */
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `athlete_profile` " +
+                        "ADD COLUMN `preferredTrainingTimeMinutes` INTEGER",
+                )
+            }
+        }
+
         fun create(context: Context): MeuCoachDatabase = Room
             .databaseBuilder(context, MeuCoachDatabase::class.java, NAME)
             .addMigrations(
@@ -819,6 +833,7 @@ abstract class MeuCoachDatabase : RoomDatabase() {
                 MIGRATION_19_20,
                 MIGRATION_20_21,
                 MIGRATION_21_22,
+                MIGRATION_22_23,
             )
             .build()
     }

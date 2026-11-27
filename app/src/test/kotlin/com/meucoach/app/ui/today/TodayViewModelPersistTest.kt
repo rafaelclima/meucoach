@@ -150,6 +150,44 @@ class TodayViewModelPersistTest {
     }
 
     @Test
+    fun `persists a Sunday preview and reuses it on Monday morning`(): Unit = runBlocking {
+        val sundayProvider = FakeTimeProvider(
+            Instant.parse("2026-11-01T12:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val sunday = sundayProvider.currentDate()
+        val nextMonday = LocalDate.of(2026, 11, 2)
+        profiles.saveProfile(profile(sunday))
+        checkIns.save(
+            DailyCheckIn(sunday, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        val coordinator = syncCoordinator()
+        coordinator.syncOnResume()
+        withTimeout(10_000) { coordinator.gate.first { it is HealthSyncGate.Ready } }
+
+        val sundayViewModel = createViewModel(sundayProvider, coordinator, settleGate = false)
+        val sundayState = withTimeout(10_000) {
+            sundayViewModel.uiState.first { it.nextWeekPlan != null }
+        }
+
+        assertThat(sundayState.nextWeekPlan?.weekStart).isEqualTo(nextMonday)
+        assertThat(sundayState.nextWeekPlan?.createdOn).isEqualTo(sunday)
+        assertThat(plans.getWeek(nextMonday)).isNotNull
+
+        val mondayProvider = FakeTimeProvider(
+            Instant.parse("2026-11-02T07:00:00Z"),
+            ZoneId.of("America/Sao_Paulo"),
+        )
+        val mondayViewModel = createViewModel(mondayProvider, coordinator, settleGate = false)
+        val mondayState = withTimeout(10_000) {
+            mondayViewModel.uiState.first { it.plan?.weekStart == nextMonday }
+        }
+
+        assertThat(mondayState.plan?.createdOn).isEqualTo(sunday)
+        assertThat(mondayState.nextWeekPlan).isNull()
+    }
+
+    @Test
     fun `generates the plan once the sync gate settles ready`(): Unit = runBlocking {
         val coordinator = syncCoordinator()
         val timeProvider = FakeTimeProvider(

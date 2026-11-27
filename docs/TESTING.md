@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.23 · **Data:** 26/11/2026 · Suíte completa após D3–D6, Fatias 1–7 e correção de 200% no aparelho: **3.247 testes** (1387 domain / 1576 app / 244 data / 40 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
+**Versão:** 1.24 · **Data:** 27/11/2026 · Suíte completa após o ADR 0070 (janela de planejamento e lembretes): **3.265 testes** (1389 domain / 1590 app / 245 data / 41 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -94,7 +94,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (26/11/2026, após D3–D6, Fatias 1–7 e correção de 200%):
 
-- **3.247 testes** no repositório (1387 em `core:domain`, 1576 em `:app`, 244 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- **3.265 testes** no repositório (1389 em `core:domain`, 1590 em `:app`, 245 em `core:data`, 41 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
 - Comando executado: `./gradlew :core:model:test :core:domain:test :core:data:testDebugUnitTest :app:testDebugUnitTest --rerun-tasks --no-parallel` (3m39s, verde). O `--no-parallel` evita os flakes de carga do §10.1; a suíte do app também foi validada sem ele em sessões anteriores.
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
@@ -228,9 +228,9 @@ Evidência atual (26/11/2026, após D3–D6, Fatias 1–7 e correção de 200%):
 - `CoachScreenTest` (ADR 0056): composer habilitado com opt-in (envia como eco + callback, descrições de TalkBack), dica sem opt-in, bolhas da resposta livre e fallback com tentar de novo.
 - `CoachHistoryTest` (ADR 0056): turno `YOU` aparece na timeline com apagar individual passando o próprio turn.
 - `CoachMemoryPolicyTest` (Room v21): mensagens 90 dias e resumos 180, com corte inclusivo; `turnExpiresAt` segue a origem.
-- `CoachMemoryRepositoryTest` (Room v22): escrita só em `chat_turns` com `inputsHash` e TTL por origem, `recordYouTurn` (trim + teto 500, branco não grava, TTL 90 d, `origin` nulo), dedupe por `(origin, inputsHash)`, um resumo por semana com o último texto validado, prune por `expiresAt` com boundary, prune na escrita e clear; Flow newest-first com linha ilegível (role/origem, body JSON legado, branco, `YOU` com origin) ignorada e `NULL` de hash preservado; apagar um turn (inclusive `YOU`) preserva o resto.
-- `MeuCoachDatabaseMigrationTest` (cadeia 1→22): 19→20 preserva as tabelas v19 com backfill dourado; 20→21 preenche `inputsHash` das tabelas v19 e as remove, com TTL intacto; 21→22 reconstrói `chat_turns` com `origin` nullable, preserva linhas/TTL e aceita `YOU` com `NULL` mantendo o índice único.
-- `UserDataRepositoryTest` (Room v22): export só com `coachTurns` (inclui `inputsHash`; `YOU` leva `origin` nulo); delete conta e remove só os turns sem tocar no resto.
+- `CoachMemoryRepositoryTest` (Room v23, tabela herdada da v22): escrita só em `chat_turns` com `inputsHash` e TTL por origem, `recordYouTurn` (trim + teto 500, branco não grava, TTL 90 d, `origin` nulo), dedupe por `(origin, inputsHash)`, um resumo por semana com o último texto validado, prune por `expiresAt` com boundary, prune na escrita e clear; Flow newest-first com linha ilegível (role/origem, body JSON legado, branco, `YOU` com origin) ignorada e `NULL` de hash preservado; apagar um turn (inclusive `YOU`) preserva o resto.
+- `MeuCoachDatabaseMigrationTest` (cadeia 1→23): 19→20 preserva as tabelas v19 com backfill dourado; 20→21 preenche `inputsHash` das tabelas v19 e as remove, com TTL intacto; 21→22 reconstrói `chat_turns` com `origin` nullable, preserva linhas/TTL e aceita `YOU` com `NULL` mantendo o índice único; 22→23 adiciona `preferredTrainingTimeMinutes` nulo a `athlete_profile` sem tocar no restante.
+- `UserDataRepositoryTest` (Room v23): export só com `coachTurns` (inclui `inputsHash`; `YOU` leva `origin` nulo); delete conta e remove só os turns sem tocar no resto.
 - `CoachViewModelTest` (Room v21): explicação válida grava, fallback não grava, revisão grava review + resumo e revogar apaga a memória preservando o plano.
 - `CoachViewModelTest` (histórico): oculto sem opt-in, vazio, lista resumos/conversa com consentimento, apagar histórico e apagar turn individual (mensagem/resumo) preservando o restante.
 - `CoachHistoryTest` (histórico): timeline única intercalada, resumo substituindo o review do mesmo hash, confirmação/cancelamento do apagar em bloco e por item, tema claro e fonte 200%.
@@ -412,7 +412,7 @@ Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), Android
 
 **Regressão de fonte 200% (26/11/2026):** a validação no S24 Ultra encontrou cortes na barra inferior, na lista de corridas, no detalhe da atividade e no card de prontidão do Hoje. A correção usa layouts empilhados quando `fontScale >= 1.5` e a barra com labels de até 2 linhas/altura mínima de 68 dp. Cobertura: `ActivitiesScreenTest`, `ActivitiesScreenshotTest`, `ActivityDetailScreenTest`, `ActivityDetailScreenshotTest`, `ActivityComparisonScreenshotTest`, `TodayPlanTest`, `TodayScreenshotTest` e `BottomBarScreenshotTest`; goldens `activities-narrow-200-dark`, `activity-detail-narrow-200-dark`, `activity-detail-splits-narrow-200-dark`, `activity-comparison-narrow-200-dark`, `today-narrow-200-dark` e `bottom-bar-narrow-200-dark`.
 
-Screenshots atuais (111 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (112 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -426,7 +426,7 @@ Screenshots atuais (111 goldens em `app/src/test/screenshots/`, Roborazzi + Robo
 | Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-goal-dark`, `onboarding-routine-dark` |
 | Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light`, `profile-race-dark`, `profile-race-light` |
 | Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
-| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-narrow-200-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
+| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-narrow-200-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-next-week-dark`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
 | Replanejamento | `replan-dark`, `replan-light` |
 | Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
 | Revisão semanal | `trends-weekly-review-dark`, `trends-weekly-review-light`, `trends-weekly-review-narrow-dark` |
@@ -445,6 +445,8 @@ Goldens de D6-B (ADR 0036): os mesmos `profile-race-{dark,light}` e `today-race-
 Goldens de FR-010: `activity-comparison-{dark,light}` e `activity-comparison-free-dark` capturam o card isolado (tema escuro/claro e treino livre).
 
 Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o card isolado com adesão, volume, zonas, prontidão, sono e observações. `HealthMetricsScreenshotTest`, `TrendsFullScreenshotTest` e `WeeklyReviewScreenshotTest` usam `captureStableScreenshot`, que espera 8 quadros idênticos (~700 ms) e, nos gráficos, 1 s real inicial; o helper não faz nada quando nenhum modo do Roborazzi está ativo. É uma proteção geral de captura; o flake de gráficos foi eliminado na raiz pelo modelo síncrono (abaixo).
+
+Goldens de ADR 0070: `today-next-week-dark` cobre o card da prévia da próxima semana com o selo “Prévia” e o treino forte condicionado; `onboarding-routine-dark`, `profile-health-{dark,light}` e `trends-weekly-review-{dark,light,narrow-dark}` foram regravados com o horário habitual, a linha “Horário habitual” e o bloco “Próxima semana”.
 
 Goldens de C3-07: **nenhum golden novo**. A recuperação só aparece quando existe prova `COMPLETED` com janela ativa e o estado de demo não tem janela; `TodayRecoveryTest` cobre a linha “Recuperação após a prova · dia N de M · até dd/mm” no card e o downgrade da prescrição.
 
@@ -494,6 +496,7 @@ Testes que caem de forma intermitente sob paralelismo/carga e passam isolados; n
 | `MetricsImportViewModelTest` | Timeout de 30 s (`withTimeout`) na suíte cheia | Arquivo não tocado pela task; verde isolado e na reexecução | `./gradlew :app:testDebugUnitTest --tests "*MetricsImportViewModelTest"` |
 | `TutorialSystemBackTest` | Cascata `UncaughtExceptionsBeforeTest` ("Database is closed", invalidation tracker Room vazado entre testes) | Vítima de vazamento de transação de outro teste sob carga; verde isolado. Em 3.3-B a origem foi corrigida: `TodayViewModelPersistTest` cancela os `viewModelScope` antes de fechar o banco; 2 execuções completas verdes depois disso (com e sem `--no-parallel`). | `./gradlew :app:testDebugUnitTest --tests "*TutorialSystemBackTest"` |
 | `TodayViewModelPersistTest` | `TimeoutCancellationException` de 5 s (`withTimeout`) na suíte cheia | Caso “upgrades a stale stored week on opening”; verde 5× isolado e na reexecução da suíte completa | `./gradlew :app:testDebugUnitTest --tests "*TodayViewModelPersistTest"` |
+| `ReplanViewModelTest` (“a suppressed suggestion stays hidden but the explicit request still works”) | `TimeoutCancellationException` na suíte cheia | Caso não tocado pelo ADR 0070; verde isolado e na reexecução completa (27/11/2026) | `./gradlew :app:testDebugUnitTest --tests "*ReplanViewModelTest"` |
 | `StoryStudioContentTest` (“describes the preview”) | `waitUntil` de 10 s esperando a prévia sair de `Loading` | Render de frames fora da main (`Dispatchers.Default`) sob carga; desde a Fatia 6 os estados `Loading`/`Empty`/`Error` têm testes próprios sem depender do renderer, mas o caso antigo continua sensível à carga. | `./gradlew :app:testDebugUnitTest --tests "*StoryStudioContentTest"` (ou a suíte com `--no-parallel`) |
 | `StoryStudioScreenshotTest` | Timeout/verify da captura quando roda junto da suíte lógica | Frames Robolectric pesados; inclui o golden `story-studio-video-narrow-200-dark` (360 dp/fonte 200%). O gate visual é explícito e roda isolado. | `./gradlew :app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"` |
 

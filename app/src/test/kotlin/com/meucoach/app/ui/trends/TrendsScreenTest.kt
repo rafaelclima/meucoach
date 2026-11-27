@@ -20,6 +20,9 @@ import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.PlanCompletion
 import com.meucoach.core.domain.prescription.PlanCompletionWeek
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.readiness.ReadinessHistoryDay
 import com.meucoach.core.domain.review.WeeklyAdherence
 import com.meucoach.core.domain.review.WeeklyQuality
@@ -431,6 +434,61 @@ class TrendsScreenTest {
         compose.onNodeWithText("Qualidade: 1 planejada, 1 rebaixada (check-in de hoje ausente)").assertIsDisplayed()
         list.performScrollToNode(hasText("Inclui 28 min de treino fora do plano — contou para o volume."))
         compose.onNodeWithText("Inclui 28 min de treino fora do plano — contou para o volume.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows what changes in the current week after the closed-week review`() {
+        val weekStart = LocalDate.of(2026, 10, 26)
+        setContent(
+            TrendsUiState(
+                isLoading = false,
+                profile = profile(),
+                snapshot = snapshot(hasData = true),
+                weeklyReview = review(),
+                currentWeekPlan = WeeklyPlan(
+                    weekStart = weekStart,
+                    sessions = listOf(
+                        PlannedSession(
+                            date = weekStart,
+                            type = WorkoutType.QUALITY,
+                            title = "Ritmo forte",
+                            durationMin = 40,
+                            rationale = "Estímulo.",
+                            ruleIds = listOf("R-PER-04"),
+                            evidenceIds = listOf("EV-SEILER-2010"),
+                        ),
+                        PlannedSession(
+                            date = weekStart.plusDays(6),
+                            type = WorkoutType.LONG,
+                            title = "Longão",
+                            durationMin = 70,
+                            rationale = "Longo.",
+                            ruleIds = listOf("R-PLAN-03"),
+                            evidenceIds = listOf("EV-PFITZINGER-2008"),
+                        ),
+                    ),
+                    weeklyMinutes = 110,
+                    longRunMinutes = 70,
+                    qualityCount = 1,
+                    rationale = "Semana seguinte.",
+                    confidence = DataConfidence.MEDIUM,
+                    ruleIds = listOf("R-PER-04"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+            ),
+        )
+
+        val list = compose.onNodeWithTag("trends-list")
+        list.performScrollToNode(hasTestTag("weekly-review-next-week"))
+        compose.onNodeWithTag("weekly-review-next-week").assertIsDisplayed()
+        compose.onNodeWithText("Próxima semana").assertIsDisplayed()
+        compose.onNodeWithText("110 min").assertIsDisplayed()
+        compose.onNodeWithText("70 min").assertIsDisplayed()
+        list.performScrollToNode(
+            hasText("O check-in e a prontidão confirmam os treinos fortes; o volume pode se ajustar."),
+        )
+        compose.onNodeWithText("O check-in e a prontidão confirmam os treinos fortes; o volume pode se ajustar.")
+            .assertIsDisplayed()
     }
 
     @Test

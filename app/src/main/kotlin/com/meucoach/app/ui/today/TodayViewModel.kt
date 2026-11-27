@@ -20,7 +20,6 @@ import com.meucoach.app.application.TodayDecisionRequest
 import com.meucoach.app.application.UndoRaceAutoCompletion
 import com.meucoach.app.application.UpgradeWeekOnOpening
 import com.meucoach.app.application.VolumeReferenceProjection
-import com.meucoach.app.application.buildLoadSnapshot
 import com.meucoach.app.application.readinessResult
 import com.meucoach.app.health.HealthSyncCoordinator
 import com.meucoach.app.health.HealthSyncGate
@@ -41,7 +40,6 @@ import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.briefing.SessionBriefingEngine
-import com.meucoach.core.domain.load.ActivitySourceStatus
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.DailyPrescription
@@ -93,11 +91,33 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.roundToInt
+
+private data class PlanHistory(
+    val previousWeek: WeeklyPlan?,
+    val recentWeeks: List<WeeklyPlan>,
+    val weekNumberInBlock: Int,
+    val isReady: Boolean,
+    val weekStart: LocalDate,
+)
+
+private data class ResolvedDay(
+    val context: TodayContext,
+    val plan: WeeklyPlan?,
+    /** True when [plan] is the persisted week rather than a fresh generation. */
+    val planIsStored: Boolean,
+    /** Provisional plan for next week, generated on Sunday; null otherwise. */
+    val nextWeekPlan: WeeklyPlan? = null,
+    val nextWeekIsStored: Boolean = false,
+    val events: List<RaceEvent>,
+    val recovery: RecoveryWindow?,
+    val dataGate: HealthSyncGate,
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -119,39 +139,9 @@ class TodayViewModel @Inject constructor(
     private val prescriptionRepository: DailyPrescriptionRepository,
 ) : ViewModel() {
     private val planGenerator = WeeklyPlanGenerator()
+    private val previewGenerator = TodayPreviewGenerator()
     private val matcher = SessionMatcher()
     private val completionMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-    private data class PlanHistory(
-        val previousWeek: WeeklyPlan?,
-        val recentWeeks: List<WeeklyPlan>,
-        val weekNumberInBlock: Int,
-        val isReady: Boolean,
-        val weekStart: LocalDate,
-    )
-
-    private data class ResolvedDay(
-        val context: TodayContext,
-        val plan: WeeklyPlan?,
-        /** True when [plan] is the persisted week rather than a fresh generation. */
-        val planIsStored: Boolean,
-        val events: List<RaceEvent>,
-        val recovery: RecoveryWindow?,
-        val dataGate: HealthSyncGate,
-    )
-
-    private data class TodayContext(
-        val checkIn: DailyCheckIn?,
-        val metrics: List<DailyMetrics>,
-        val profile: AthleteProfile?,
-        val load: LoadSnapshot?,
-        val today: LocalDate,
-        val weeklyLoadKm: Double,
-        val lastActivityImportAt: java.time.Instant?,
-        val kmByDay: Map<LocalDate, Double>,
-        val recentActivity: RecentActivityUi?,
-        val activities: List<ActivitySummary>,
-        val linkedActivityIds: Set<String>,
-    )
 
     private val planHistory = timeProvider.today
         .map { it.weekStart() }
@@ -171,14 +161,6 @@ class TodayViewModel @Inject constructor(
             }
         }
 
-    private data class ContextInputs(
-        val checkIn: DailyCheckIn?,
-        val metrics: List<DailyMetrics>,
-        val profile: AthleteProfile?,
-        val activities: List<ActivitySummary>,
-        val lastImportedAt: java.time.Instant?,
-    )
-
     private val context = timeProvider.today
         .flatMapLatest { today ->
             val checkedAt = timeProvider.now()
@@ -196,12 +178,13 @@ class TodayViewModel @Inject constructor(
                     linkedActivityIds,
                     executions,
                 ->
-                buildContext(
+                buildTodayContext(
                     inputs = base,
                     linkedActivityIds = linkedActivityIds,
                     executions = executions,
                     today = today,
                     checkedAt = checkedAt,
+                    zone = timeProvider.zoneId.value,
                 )
             }
         }
@@ -289,10 +272,47 @@ class TodayViewModel @Inject constructor(
             } else {
                 null
             }
+            val nextWeekStart = weekStart.plusWeeks(1)
+            val isSunday = context.today.dayOfWeek == DayOfWeek.SUNDAY
+            val storedNextPreview = if (isSunday) {
+                planRepository.getWeek(nextWeekStart)
+            } else {
+                null
+            }
+            val generatedNextPreview = if (isSunday && storedNextPreview == null) {
+                val currentPlan = planned
+                if (currentPlan != null && historyReady && gateSettled) {
+                    context.profile?.let { profile ->
+                        previewGenerator.generate(
+                            TodayPreviewInput(
+                                profile = profile,
+                                readiness = readinessResult(context.checkIn, context.metrics, context.today),
+                                load = context.load,
+                                today = context.today,
+                                weekStart = nextWeekStart,
+                                currentPlan = currentPlan,
+                                recentWeeks = history.recentWeeks,
+                                weekNumberInBlock = history.weekNumberInBlock + 1,
+                                events = events,
+                                activities = context.activities,
+                                zoneId = runCatching { java.time.ZoneId.of(profile.timezone) }
+                                    .getOrNull() ?: timeProvider.zoneId.value,
+                                dataIncomplete = gate is HealthSyncGate.Failed,
+                            ),
+                        )
+                    }
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
             ResolvedDay(
                 context = context,
                 plan = planned,
                 planIsStored = plan != null,
+                nextWeekPlan = storedNextPreview ?: generatedNextPreview,
+                nextWeekIsStored = storedNextPreview != null,
                 events = events,
                 recovery = recovery,
                 dataGate = gate,
@@ -304,6 +324,16 @@ class TodayViewModel @Inject constructor(
             val context = resolved.context
             val existing = if (resolved.planIsStored) resolved.plan else null
             val plan = existing ?: resolved.plan?.also { planRepository.saveWeek(it) }
+            // A Sunday preview is persisted before Monday so the first workout
+            // of the week already finds a plan instead of waiting for a fresh
+            // generation at 4 a.m. It is still an intent: the day authority
+            // keeps the final say on Monday.
+            if (resolved.nextWeekPlan != null &&
+                !resolved.nextWeekIsStored &&
+                resolved.nextWeekPlan.sessions.isNotEmpty()
+            ) {
+                runCatching { planRepository.saveWeek(resolved.nextWeekPlan) }
+            }
             // ADR 0048 §2.1–§2.2: a stored week that predates the engine or was
             // born with incomplete data upgrades itself on opening once the
             // gate settles. Anything else stays untouched for the user.
@@ -400,6 +430,7 @@ class TodayViewModel @Inject constructor(
             ).copy(
                 weekPrescriptions = weekPrescriptions,
                 qualityRestored = qualityRestored,
+                nextWeekPlan = resolved.nextWeekPlan,
             )
         }
 
@@ -536,67 +567,6 @@ class TodayViewModel @Inject constructor(
                 duration = formatDuration(activity.durationSec),
             )
         }
-    }
-
-    private fun buildContext(
-        inputs: ContextInputs,
-        linkedActivityIds: Set<String>,
-        executions: List<SessionExecution>,
-        today: LocalDate,
-        checkedAt: java.time.Instant,
-    ): TodayContext {
-        val checkIn = inputs.checkIn
-        val metrics = inputs.metrics
-        val profile = inputs.profile
-        val activities = inputs.activities
-        val lastImportedAt = inputs.lastImportedAt
-        val load = profile?.let {
-            buildLoadSnapshot(
-                activities = activities,
-                profile = it,
-                today = today,
-                sourceStatus = ActivitySourceStatus(
-                    lastImportedAt = lastImportedAt,
-                    checkedAt = checkedAt,
-                    firstActivityAt = activities.minOfOrNull { it.startTime },
-                ),
-                executions = executions,
-            )
-        }
-        val zone = timeProvider.zoneId.value
-        val weekStart = today.weekStart()
-        val weekKm = activities
-            .filter {
-                val date = it.startTime.atZone(zone).toLocalDate()
-                !date.isBefore(weekStart) && !date.isAfter(weekStart.plusDays(6))
-            }
-            .sumOf { it.distance.kilometers }
-        val kmByDay = activities.groupBy { it.startTime.atZone(zone).toLocalDate() }
-            .mapValues { (_, rows) -> rows.sumOf { it.distance.kilometers } }
-        val recent = activities.maxByOrNull { it.startTime }?.let { summary ->
-            RecentActivityUi(
-                id = summary.id,
-                title = sportLabel(summary.sport),
-                subtitle = formatDateTime(summary.startTime, zone),
-                distance = "${formatDistance(summary.distance)} km",
-                duration = formatDuration(summary.durationSec),
-                pace = summary.averagePace?.let { "${paceLabel(it)} /km" } ?: "—",
-                zone = "—",
-            )
-        }
-        return TodayContext(
-            checkIn = checkIn,
-            metrics = metrics,
-            profile = profile,
-            load = load,
-            today = today,
-            weeklyLoadKm = weekKm,
-            lastActivityImportAt = lastImportedAt,
-            kmByDay = kmByDay,
-            recentActivity = recent,
-            activities = activities,
-            linkedActivityIds = linkedActivityIds,
-        )
     }
 
     fun completeWithActivity(date: LocalDate, activityId: String, rpe: Int? = null) {

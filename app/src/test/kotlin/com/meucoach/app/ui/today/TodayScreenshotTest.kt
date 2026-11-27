@@ -147,6 +147,16 @@ class TodayScreenshotTest {
         )
     }
 
+    @Test
+    fun todayNextWeekDark() {
+        capture(
+            darkTheme = true,
+            file = "src/test/screenshots/today-next-week-dark.png",
+            nextWeekPlan = nextWeekPlan(LocalDate.of(2026, 10, 30)),
+            scrollTo = "PRÓXIMA SEMANA",
+        )
+    }
+
     private fun capture(
         darkTheme: Boolean,
         file: String,
@@ -157,6 +167,7 @@ class TodayScreenshotTest {
         replan: ReplanUiState = ReplanUiState(),
         scrollTo: String? = null,
         raceEvent: RaceEvent? = null,
+        nextWeekPlan: WeeklyPlan? = null,
         fontScale: Float = 1f,
     ) {
         val today = LocalDate.of(2026, 10, 30)
@@ -172,29 +183,31 @@ class TodayScreenshotTest {
             kmByDay = mapOf(today.minusDays(2) to 5.11, today to 6.2),
             weeklyLoadKm = 11.31,
         )
-        val state = raceEvent?.let { event ->
-            baseState.copy(
-                decision = TodayDecision.Competition(event),
-                prescription = null,
-                briefing = null,
-                raceProjection = com.meucoach.core.domain.race.RaceTargetProjector.project(
-                    event.distance,
-                    event.targetTimeSec,
-                ),
-                racePrediction = com.meucoach.core.domain.race.RaceTimePredictor.predict(
-                    vdot = 29.6477,
-                    confidence = com.meucoach.core.model.DataConfidence.HIGH,
-                    calibratedAt = today,
-                    reference = com.meucoach.core.domain.race.RaceReference(
-                        distanceM = 5_000.0,
-                        durationSec = 1_859,
+        val state = (
+            raceEvent?.let { event ->
+                baseState.copy(
+                    decision = TodayDecision.Competition(event),
+                    prescription = null,
+                    briefing = null,
+                    raceProjection = com.meucoach.core.domain.race.RaceTargetProjector.project(
+                        event.distance,
+                        event.targetTimeSec,
                     ),
-                    distance = event.distance,
-                    today = today,
-                ),
-                eventDates = setOf(event.targetDate),
-            )
-        } ?: baseState
+                    racePrediction = com.meucoach.core.domain.race.RaceTimePredictor.predict(
+                        vdot = 29.6477,
+                        confidence = com.meucoach.core.model.DataConfidence.HIGH,
+                        calibratedAt = today,
+                        reference = com.meucoach.core.domain.race.RaceReference(
+                            distanceM = 5_000.0,
+                            durationSec = 1_859,
+                        ),
+                        distance = event.distance,
+                        today = today,
+                    ),
+                    eventDates = setOf(event.targetDate),
+                )
+            } ?: baseState
+            ).copy(nextWeekPlan = nextWeekPlan)
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(
@@ -317,6 +330,50 @@ class TodayScreenshotTest {
             confidence = DataConfidence.MEDIUM,
             ruleIds = listOf("R-PLAN-03"),
             evidenceIds = listOf("EV-PFITZINGER-2008"),
+        )
+    }
+
+    private fun nextWeekPlan(today: LocalDate): WeeklyPlan {
+        val monday = today.plusDays(3)
+        return WeeklyPlan(
+            weekStart = monday,
+            sessions = listOf(
+                PlannedSession(
+                    date = monday,
+                    type = WorkoutType.QUALITY,
+                    title = "Ritmo forte",
+                    durationMin = 40,
+                    rationale = "Estímulo.",
+                    ruleIds = listOf("R-PER-04"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                PlannedSession(
+                    date = monday.plusDays(2),
+                    type = WorkoutType.EASY,
+                    title = "Fácil e conversável",
+                    durationMin = 40,
+                    rationale = "Base.",
+                    ruleIds = listOf("R-ZONE-01"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                PlannedSession(
+                    date = monday.plusDays(6),
+                    type = WorkoutType.LONG,
+                    title = "Longão",
+                    durationMin = 70,
+                    rationale = "Longo.",
+                    ruleIds = listOf("R-PLAN-03"),
+                    evidenceIds = listOf("EV-PFITZINGER-2008"),
+                ),
+            ),
+            weeklyMinutes = 150,
+            longRunMinutes = 70,
+            qualityCount = 1,
+            rationale = "Prévia da próxima semana.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-PER-04"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            createdOn = today.plusDays(2),
         )
     }
 

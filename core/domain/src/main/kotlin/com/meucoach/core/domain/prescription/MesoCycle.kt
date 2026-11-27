@@ -29,8 +29,9 @@ data class MesoState(
  * Derives the mesocycle from persisted weeks, never from a volatile counter.
  *
  * A load week has at least one real strong run (planned or not), was created on
- * its own Monday and carries no taper/deload/recovery rule (ADR 0050 §2.3). A
- * hole (missing plan or a week without strong runs) resets the streak for deload
+ * or before its own Monday and carries no taper/deload/recovery rule (ADR 0050
+ * §2.3). A preview generated on Sunday counts as on time.
+ * A hole (missing plan or a week without strong runs) resets the streak for deload
  * purposes but preserves the macrocycle phase, which uses the total in 12 weeks.
  */
 object MesoCycle {
@@ -40,7 +41,8 @@ object MesoCycle {
     const val PEAK_WINDOW_DAYS = 21L
 
     fun isLoadWeek(reference: VolumeReference): Boolean {
-        if (reference.createdOn != reference.weekStart) return false
+        val createdOn = reference.createdOn ?: return false
+        if (createdOn.isAfter(reference.weekStart)) return false
         if (reference.specialWeek) return false
         return reference.strongSessions >= 1
     }

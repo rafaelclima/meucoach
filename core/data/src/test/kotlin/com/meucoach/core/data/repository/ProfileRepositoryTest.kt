@@ -107,6 +107,14 @@ class ProfileRepositoryTest {
     }
 
     @Test
+    fun `round-trips the usual training time`(): Unit = runBlocking {
+        repository.saveProfile(profile().copy(preferredTrainingTimeMinutes = 240))
+
+        assertThat(repository.getProfile()?.preferredTrainingTimeMinutes).isEqualTo(240)
+        assertThat(database.profileDao().get()?.preferredTrainingTimeMinutes).isEqualTo(240)
+    }
+
+    @Test
     fun `starts empty`(): Unit = runBlocking {
         assertThat(repository.getProfile()).isNull()
         assertThat(repository.observeProfile().first()).isNull()

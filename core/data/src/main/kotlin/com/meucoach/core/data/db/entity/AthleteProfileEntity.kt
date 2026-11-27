@@ -26,6 +26,7 @@ data class AthleteProfileEntity(
     val experience: Experience,
     val timezone: String,
     val availabilityJson: String,
+    val preferredTrainingTimeMinutes: Int? = null,
     val goalJson: String?,
     val city: String?,
     val latitude: Double?,

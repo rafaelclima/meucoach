@@ -210,6 +210,13 @@ class MesoCycleTest {
     }
 
     @Test
+    fun `a plan created the day before the week is a load week`() {
+        val reference = reference(monday.minusWeeks(1), createdOn = monday.minusWeeks(1).minusDays(1))
+
+        assertThat(MesoCycle.isLoadWeek(reference)).isTrue()
+    }
+
+    @Test
     fun `a planless or special week is not a load week`() {
         assertThat(MesoCycle.isLoadWeek(reference(monday, createdOn = null))).isFalse()
         assertThat(MesoCycle.isLoadWeek(reference(monday, specialWeek = true))).isFalse()

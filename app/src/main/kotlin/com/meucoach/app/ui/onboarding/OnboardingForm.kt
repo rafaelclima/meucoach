@@ -17,6 +17,7 @@ import com.meucoach.core.model.isRace
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 
 enum class OnboardingField {
     NAME,
@@ -31,6 +32,7 @@ enum class OnboardingField {
     LACTATE_THRESHOLD_HEART_RATE,
     TIMEZONE,
     CITY,
+    TRAINING_TIME,
 }
 
 data class OnboardingForm(
@@ -51,6 +53,7 @@ data class OnboardingForm(
     val lactateThresholdHeartRate: String = "",
     val timezone: String = ZoneId.systemDefault().id,
     val city: String = "",
+    val preferredTrainingTime: String = "",
     val treadmillAccess: Boolean = false,
 ) {
     val isRaceGoal: Boolean
@@ -100,6 +103,7 @@ object OnboardingValidator {
             weeklyAvailability = WeeklyAvailability(
                 form.availabilityMinutes.mapValues { (_, minutes) -> requireNotNull(minutes.toIntOrNull()) },
             ),
+            preferredTrainingTimeMinutes = parseTrainingTime(form.preferredTrainingTime),
             goal = goalFor(form, existing),
             city = form.city.trim().ifBlank { null },
             latitude = existing?.latitude,
@@ -131,6 +135,7 @@ object OnboardingValidator {
             lactateThresholdHeartRate = profile.lactateThresholdHeartRate?.toString() ?: "",
             timezone = profile.timezone,
             city = profile.city ?: "",
+            preferredTrainingTime = formatTrainingTime(profile.preferredTrainingTimeMinutes),
             treadmillAccess = profile.treadmillAccess,
         )
     }
@@ -236,7 +241,37 @@ object OnboardingValidator {
         if (form.city.isNotBlank() && form.city.trim().length < 2) {
             errors[OnboardingField.CITY] = "Informe uma cidade válida."
         }
+        if (form.preferredTrainingTime.isNotBlank() && parseTrainingTime(form.preferredTrainingTime) == null) {
+            errors[OnboardingField.TRAINING_TIME] = "Use um horário entre 00:00 e 23:59."
+        }
         return OnboardingValidation(errors)
+    }
+
+    /**
+     * Accepts `HH:mm`, `H:mm` or four digits (`0400`). Blank means “not
+     * informed” and keeps the legacy reminder times.
+     */
+    internal fun parseTrainingTime(value: String): Int? {
+        val trimmed = value.trim()
+        if (trimmed.isEmpty()) return null
+        val normalized = if (trimmed.contains(':')) trimmed else trimmed.chunked(2).joinToString(":")
+        val parts = normalized.split(':')
+        val hour = parts.getOrNull(0)?.toIntOrNull()
+        val minute = parts.getOrNull(1)?.toIntOrNull()
+        val shapeValid = parts.size == 2 && parts[1].length == 2
+        val timeValid = hour != null && hour in 0..23 && minute != null && minute in 0..59
+        return if (shapeValid && timeValid) {
+            requireNotNull(hour) * 60 + requireNotNull(minute)
+        } else {
+            null
+        }
+    }
+
+    internal fun formatTrainingTime(minutes: Int?): String {
+        if (minutes == null) return ""
+        val hour = minutes / 60
+        val minute = minutes % 60
+        return String.format(Locale.US, "%02d:%02d", hour, minute)
     }
 
     private fun goalFor(form: OnboardingForm, existing: AthleteProfile?): TrainingGoal? {

@@ -1,6 +1,6 @@
 # PRODUCT.md — MeuCoach
 
-**Versão:** 1.3 · **Data:** 26/11/2026 · **Status:** aprovado para a Fase 1; revisão 1.3 reconcilia o escopo entregue (Coach, Story e Arte) e corrige navegação, Tier C, GUIDED, métricas, importação e backup. Nenhuma feature nova foi prometida nesta revisão.
+**Versão:** 1.4 · **Data:** 27/11/2026 · **Status:** aprovado para a Fase 1; revisão 1.4 registra a janela de planejamento semanal (ADR 0070): horário habitual, lembretes antes do treino, prévia da próxima semana, treino forte condicionado ao check-in e revisão com “o que muda”.
 
 **Histórico de revisão**
 
@@ -10,6 +10,7 @@
 | 1.1 | 06/11/2026 | Registro das decisões aprovadas de captura, perfil, objetivo, backend, backup e determinismo. |
 | 1.2 | 06/11/2026 | C1-01..C1-05 implementados; lixeira de 7 dias e conclusão com evidência refletidas no escopo; divergências do PRD reconciliadas. |
 | 1.3 | 26/11/2026 | Coach, Story e Arte no escopo entregue; barra Hoje · Corridas · Coach · Tendências · Saúde com Perfil via avatar/engrenagem; Tier C manual e GUIDED futuro; métricas de desenvolvimento separadas das não instrumentadas; importação concluída e exportação JSON explícita sem restauração no MVP (DOC-01..DOC-07, GEN-01/02/03, D10). |
+| 1.4 | 27/11/2026 | Janela de planejamento semanal (ADR 0070): horário habitual no perfil, check-in/treino lembrados antes do treino, prévia persistida da próxima semana com aviso no domingo, treino forte futuro condicionado ao check-in e bloco “próxima semana” na revisão. |
 
 ## 1. Visão
 
@@ -48,9 +49,10 @@ A promessa central:
 1. **Importar** meus treinos sem trabalho manual e sem depender de um único vestível.
 2. **Entender** se estou evoluindo: carga, ritmo, FC, cadência, consistência.
 3. **Saber o que fazer hoje** — e por que — sem montar planilha.
-4. **Não me lesionar** nem acumular fadiga sem perceber.
-5. **Confiar** no que o app diz: ver a fonte e o nível de confiança.
-6. **Ter meus dados comigo**, com exportação JSON explícita e exclusão sob meu controle.
+4. **Planejar a semana antes dela começar**, inclusive quando treino cedo e o app ainda não foi aberto.
+5. **Não me lesionar** nem acumular fadiga sem perceber.
+6. **Confiar** no que o app diz: ver a fonte e o nível de confiança.
+7. **Ter meus dados comigo**, com exportação JSON explícita e exclusão sob meu controle.
 
 ## 4. Escopo do MVP
 
@@ -60,21 +62,23 @@ A promessa central:
 - Deduplicação de atividades importadas em mais de um formato.
 - **Navegação:** barra inferior **Hoje · Corridas · Coach · Tendências · Saúde**; Perfil fica fora da barra, acessível pelo avatar no Hoje e pela engrenagem global, sem quebrar as rotas existentes.
 - Detalhe do treino: resumo, laps/splits, FC, pace, cadência, potência (quando houver), elevação, rota, zonas.
-- Perfil e onboarding (dados antropométricos, objetivo, disponibilidade).
+- Perfil e onboarding (dados antropométricos, objetivo, disponibilidade e **horário habitual de treino** opcional; o horário ancora os lembretes antes do treino).
 - Calibração por prova/TT recente (Tier A/B) ou **teste de 30 min feito por conta própria**, com inserção manual do resultado (Tier C). O MVP orienta o teste e aceita os dados informados; **não há player guiado** nem promessa de execução assistida.
 - Motor de zonas (LTHR + pace), carga (TRIMP, rTSS, CTL/ATL/TSB, ACWR), prontidão e prescrição.
-- Check-in diário de 15 s (sono, fadiga, dor, stress).
+- Check-in diário de 15 s (sono, fadiga, dor, stress), lembrado **antes do treino** quando o horário habitual está informado.
+- **Prévia da próxima semana:** na primeira abertura de domingo, o app persiste a semana seguinte como intenção e a mostra com o selo “Prévia — pode mudar até segunda”. O plano da semana seguinte já existe antes da segunda; o dia continua sendo a autoridade final.
 - Leitura de **Health Connect** (sono, RHR, HRV, SpO2) com diagnóstico de sincronização e atualização automática ao abrir o app. `ExerciseSession`/corridas do Health Connect ficam para o ciclo 2 (FR-007).
 - **Coach (IA):** aba central com explicação da semana, revisão da semana fechada, replanejamento com confirmação/diff/undo, input livre e conversa aberta. A IA só reescreve texto do motor; opt-in explícito, memória local com TTL, revogação apaga e qualquer falha/validação cai no determinístico. Números, carga, pace e plano nunca nascem da IA.
 - **Story e Arte:** Story Studio no detalhe da atividade, com vídeo 9:16 (mapa via tiles OSM; exige rede), capa/pôster e Arte PNG transparente ou com foto nos formatos 4:5, 1:1 e 9:16. A Arte funciona offline; Story e Arte são visuais e não alteram treino, carga ou prescrição.
-- Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto. Quando o treino do dia já foi concluído, o card vira um resumo com selo “Concluído” e esconde as ações.
+- Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto. Quando o treino do dia já foi concluído, o card vira um resumo com selo “Concluído” e esconde as ações. Treinos fortes futuros aparecem como “Condicionado ao check-in”; a primeira semana criada no meio da semana explica que começa hoje.
+- **Revisão semanal com próxima semana:** além do resumo da semana fechada, um bloco curto mostra volume, treinos fortes e longão da semana seguinte, sempre condicionado ao check-in.
 - **Briefing do treino** (“Como correr hoje”): foco, alvo, por que hoje, como correr e o que fazer se estiver difícil, sempre copiados da prescrição vigente. Sessão concluída não recebe briefing retrospectivo; o histórico mostra a execução registrada.
 - Conclusão com evidência: corrida vinculada ou “fiz sem registro” com duração e RPE; descanso/doença encerram o dia com motivo. **Execução guiada (`GUIDED`) é futuro**, não contrato do MVP: `CompleteSession` continua recusando esse caminho até decisão/ADR próprio.
 - Evento de prova (5K/10K/meia/maratona) com taper por data e dia de prova como autoridade única; a corrida importada compatível pode concluir a prova automaticamente, com origem auditável e correção, e a meta declarada gera apenas uma referência aritmética de pace/faixa/passagens (ADR 0030/0032).
 - Oferta reativa ao importar: uma corrida do próprio dia, em dia de treino ainda pendente, pergunta na hora se deve virar o treino de hoje; se o dia já foi concluído, o app avisa que ela fica apenas como treino livre. Um “fiz sem registro” pode ser corrigido pela corrida real, com confirmação explícita.
 - Tela **Saúde** como destino principal: painel de sono, FC de repouso, HRV e SpO₂, com período, fontes e aviso quando o dia atual ainda não chegou.
 - Tela **Tendências** com gráficos de evolução.
-- Notificações locais: treino do dia, lembrete de check-in e **import concluído** (sucesso, duplicado ou falha).
+- Notificações locais: treino do dia, lembrete de check-in, **prévia da próxima semana no domingo** e **import concluído** (sucesso, duplicado ou falha). O horário de treino/check-in segue o horário habitual; sem ele, 07h e 18h.
 - Exportação JSON explícita e exclusão de todos os dados, com lixeira de 7 dias para atividades e reset imediato. **Restauração de backup não está no MVP**; o JSON é uma exportação, não um round-trip prometido.
 - Funcionar offline — exceto o mapa do story, que baixa tiles do `OpenStreetMap` no momento da geração (`ADR-0015`).
 

@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.83 · **Data:** 26/11/2026 · **Mudança:** Fatia 7 da documentação (DOC/GEN): Fase 3 por subfeature, barra Hoje · Corridas · Coach · Tendências · Saúde, critérios de saída com P1-12 **e** validação em aparelho, e ponteiros para os goldens D3–D6. Nenhuma feature nova.
+**Versão:** 1.84 · **Data:** 27/11/2026 · **Mudança:** ADR 0070 — horário habitual, lembretes antes do treino, prévia da próxima semana, aviso de domingo, treino forte condicionado ao check-in e revisão com “próxima semana”. Nenhuma regra fisiológica nova.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -9,7 +9,7 @@
 | Fase | Objetivo | Status |
 |---|---|---|
 | **0 — Fundação** | Repositório, build, CI, design system, modelo, domínio inicial, import e detalhe de atividade | **Concluída em 30/10/2026** |
-| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclos 1–4 e D3–D6 concluídos no motor; P1-12 (4 semanas de uso real) e validação em aparelho pendentes** |
+| **1 — Coach** | Perfil, calibração, carga, prontidão, prescrição, Hoje, Tendências, Health Connect | **Em andamento — ciclos 1–4, D3–D6 e ADR 0070 concluídos; P1-12 (4 semanas de uso real) e validação em aparelho pendentes** |
 | **2 — Nuvem e extensões** | Backend Ktor/Postgres, sync, Dokploy, widgets, mapas, release | Planejada; o proxy mínimo do Coach já existe como infraestrutura da IA, mas backend/sync seguem futuros |
 | **3 — Experimental** | Social, conector Zepp, explicações com LLM, Story e Wear OS | **Parcial — Story/LLM entregues; Zepp/social/Wear e backend completo planejados** (ver §Fase 3) |
 
@@ -156,6 +156,20 @@
 - [x] Validação por passo, mensagens em pt-BR e testes de ViewModel/UI.
 
 **Aceite:** perfil completo é salvo e reaberto; ausência de dados não bloqueia o app depois do onboarding.
+
+### P1-01B · Janela de planejamento e lembretes (ADR 0070)
+
+**Status:** concluído em 27/11/2026; validação no aparelho pendente.
+
+- [x] Horário habitual de treino opcional no perfil/onboarding (schema v23, legado `NULL`).
+- [x] Check-in 30 min e treino 15 min antes do horário habitual; 18h/07h sem o campo.
+- [x] Prévia da próxima semana persistida na primeira abertura de domingo, sem contar como histórico antes de começar.
+- [x] Aviso local de domingo às 18h somente quando a prévia existe.
+- [x] Treino forte futuro marcado como “Condicionado ao check-in”; confirmação no dia.
+- [x] Primeira semana parcial explicada e bloco “Próxima semana” na revisão semanal.
+- [x] Goldens `today-next-week-dark` e atualizações de onboarding/perfil/revisão.
+
+**Aceite:** quem corre às 4h encontra o plano da semana antes do treino e o check-in/lembrete no horário certo; a prévia nunca parece um contrato e não entra em adesão/volume antes da segunda.
 
 ### P1-02 · Calibração
 

@@ -49,6 +49,8 @@ data class TrendsUiState(
     val intensity: IntensityDistribution? = null,
     val planCompletion: PlanCompletion? = null,
     val weeklyReview: WeeklyReview? = null,
+    /** Current week's plan, shown as "next week" after the closed-week review. */
+    val currentWeekPlan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     val period: TrendsPeriod = TrendsPeriod.WEEKS_6,
 )
 
@@ -114,6 +116,7 @@ class TrendsViewModel @Inject constructor(
             val reviewWeekStart = today.with(
                 TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY),
             ).minusWeeks(1)
+            val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             val weeklyReview = weeklyReviewAssembler.assemble(
                 weekStart = reviewWeekStart,
                 today = today,
@@ -137,6 +140,7 @@ class TrendsViewModel @Inject constructor(
                 intensity = intensity,
                 planCompletion = completion,
                 weeklyReview = weeklyReview,
+                currentWeekPlan = planRepository.getWeek(currentWeekStart),
                 period = period,
             )
         }

@@ -1,6 +1,6 @@
 # DATA_MODEL.md — MeuCoach
 
-**Versão:** 1.8 · **Data:** 18/11/2026 · Reconcilia o schema v19 (memória local do IA Coach, ADR 0052) e mantém a distinção entre persistido e derivado.
+**Versão:** 1.9 · **Data:** 27/11/2026 · Reconcilia o schema v23 (`preferredTrainingTimeMinutes`, ADR 0070) e a prévia da próxima semana; mantém a distinção entre persistido e derivado.
 
 ## 1. Convenções
 
@@ -69,6 +69,7 @@ erDiagram
 | `experience` | enum | `BEGINNER`, `INTERMEDIATE`, `ADVANCED` |
 | `treadmillAccess` | Boolean | alternativa de qualidade por velocidade/inclinação |
 | `weeklyAvailability` | JSON | dias + minutos por dia |
+| `preferredTrainingTimeMinutes` | Int? | horário habitual local em minutos desde a meia-noite; `NULL` mantém 07h/18h nos lembretes (ADR 0070) |
 | `goal` | JSON | tipo, prova, data, distância, tempo alvo |
 | `timezone` | String | IANA |
 | `city` / `lat` / `lon` | | clima e horário |
@@ -205,6 +206,8 @@ O check-in alimenta o **Hooper index** e o modelo de prontidão mesmo sem wearab
 `WeeklyPlan`: `weekStart` (PK), `createdAt`, `createdOn` (data de criação usada para cortar a adesão), `confidence`, `rationale`, `weeklyMinutes`, `longRunMinutes`, `qualityCount`, `ruleIdsJson`, `evidenceIdsJson`, `version` (começa em 1), `revisionReason`, `revisedAt`, `inputsHash`, `availabilityHash`, `generatedFromFingerprintVersion`, `generatedFromFingerprint`, `generatedFromProfileSnapshotJson`, `lastEvaluatedFingerprintVersion`, `lastEvaluatedFingerprint`, `temporalContextHash` e `generatorVersion` (schema v18, default de coluna `'weekly-plan-v6'` para o legado; o motor atual grava `weekly-plan-v9`; C4-46/C4-53/ADR 0065/ADR 0066–0069). `createdAt`/`createdOn` são da primeira gravação e não mudam em re-save; `revisedAt` marca a última revisão aceita (FR-413/C4-60). Não há `startDate`/`endDate`/`goalType`/`status` na tabela; o objetivo vem do perfil. `inputsHash`/`availabilityHash`/campos de fingerprint nulos significam histórico desconhecido (planos migrados de v12/v13), nunca hash inventado. `generatedFrom*` é proveniência; `lastEvaluated*` é o checkpoint de avaliação e pode avançar em `NoChange` sem incrementar versão (ADR 0031). O snapshot JSON usa apenas a allowlist (experiência, pace de limiar, LTHR, esteira e objetivo suportado). Disponibilidade temporária e `ReplanIntent` da IA Coach 3.3-B **não** têm coluna: vivem só no input da avaliação e são revalidados no aceite; `availabilityHash` continua sendo o baseline do perfil.
 
 `PlannedSession`: `id`, `weekStart`, `date`, `type` (`EASY`, `LONG`, `QUALITY`, `REST`), `title`, `durationMin`, `targets` (JSON: zona, pace, FC, distância e RPE), `status` (`PLANNED`, `DONE`, `CLOSED`), `skipReason`, `completedAt`, `completionEvidence` (`ACTIVITY`, `GUIDED`, `MANUAL`, `LEGACY_UNVERIFIED`), `executionId?`, `activityId?`, `closureReason?` (`REST_PRESCRIBED`, `ILLNESS_OR_INJURY`, `USER_SKIPPED`, `MISSED`, `PLAN_REPLACED`), `closedAt?`, `rationale`, IDs de regra/evidência, `structureJson?` (codec versionado `WorkoutStructureJson`, C4-14), `qualityKind?` (`FARTLEK`, `INTERVALS`, `TEMPO`, `HILLS`, `STRIDES_ONLY`, `RACE_PACE`; só em `QUALITY`), `planDecisionCode?`/`planDecisionDetail?` (`PlanDecisionReason` + detalhe; C4-45). No domínio, `structure?` carrega o `WorkoutStructure` executável (aquecimento, blocos, recuperações e volta à calma; C4-14); as quatro colunas chegam no schema v18 (C4-45) e linhas antigas/export antigo decodificam como `null`.
+
+Uma semana futura pode ser persistida no domingo como prévia (ADR 0070). Nesse caso `createdOn` é a data real da geração (domingo), anterior ao `weekStart`; a semana só entra em adesão/volume/mesociclo quando começa, e `createdOn <= weekStart` é lido como “criada a tempo” — não como semana nascida no meio.
 
 O catálogo de sessões é `SessionLibrary` (domínio puro): `qualityTemplates(phase, level, distance)` e `easyTemplates(phase, level, includeIntroFartlek)` devolvem `SessionTemplate` com `qualityKind`, IDs de regra/evidência e `structure` canônica. Em qualidade, `structure` é obrigatória; `INTRO_FARTLEK` e os strides de dia fácil são `EASY`, com `qualityKind=null` e estrutura própria (C4-15). O gerador consome `qualityRotation` e preenche `qualityKind`/`structure` no plano em memória (C4-17); a projeção legada `templates(...)` foi removida. As colunas `structureJson`/`qualityKind`/`planDecisionCode`/`planDecisionDetail` e o round-trip chegam com o schema v18 (C4-45); o export `PlanJson` desses campos fica para C4-50.
 
@@ -391,7 +394,7 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 ## 7. Migrações
 
 - Room com `exportSchema = true`, schemas em `core/data/schemas/`.
-- Estado atual: banco **v22**; migrações 1→2 até 21→22 testadas em Robolectric.
+- Estado atual: banco **v23**; migrações 1→2 até 22→23 testadas em Robolectric.
 - `7→8` grava status/motivo da sessão; `8→9` adiciona calor no check-in e acesso a esteira; `9→10` adiciona nome e avatar do perfil.
 - `10→11` cria `daily_prescriptions` e adiciona `createdOn`/`targetsJson`.
 - `11→12` cria `session_executions`, adiciona as colunas de evidência/vínculo/encerramento e faz backfill explícito: `DONE → LEGACY_UNVERIFIED`; `SKIPPED → CLOSED/USER_SKIPPED`. Status, `completedAt`, planos e sessões são preservados.
@@ -404,6 +407,8 @@ Regras: ler apenas o intervalo desde `lastSync`; deduplicar por `metadata.id`/`d
 - `18→19` (ADR 0052) cria `coach_messages` (índice `createdAt` + único `kind`/`inputsHash`) e `coach_summaries` (PK `weekStart`), ambas vazias. Nenhuma tabela existente é reescrita; o histórico de treino é preservado campo a campo.
 - `19→20` (ADR 0054) cria `chat_turns` + índices e faz backfill (mensagens com TTL 90 d, resumos 180 d; linhas corrompidas de fora); tabelas v19 intactas.
 - `20→21` (ADR 0055) adiciona `inputsHash` em `chat_turns` (preenchido das tabelas v19), cria o índice único `(origin, inputsHash)` e remove `coach_messages`/`coach_summaries`. Sem backfill de linhas; dado sem par mantém `NULL`.
+- `21→22` (ADR 0056) reconstrói `chat_turns` para `origin` nullable (turno `YOU`), preserva linhas e recria os índices; schema `22.json`.
+- `22→23` (ADR 0070) adiciona `preferredTrainingTimeMinutes` nullable a `athlete_profile`; o legado permanece `NULL` e os lembretes continuam em 07h/18h.
 - Migrações explícitas testadas com `MigrationTestHelper` em Robolectric; os schemas são assets de teste.
 - Nunca `fallbackToDestructiveMigration` em produção.
 - Ao mudar o modelo de samples, versionar o `encoding` do blob e manter leitura da versão anterior por pelo menos uma release.

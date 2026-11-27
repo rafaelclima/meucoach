@@ -240,6 +240,25 @@ class VolumeProgressionTest {
     }
 
     @Test
+    fun `a plan created the day before the week is a volume reference`() {
+        val previous = monday.minusWeeks(1)
+        val decision = progression.decide(
+            targetWeekStart = monday,
+            availabilityCeilingMinutes = 210,
+            references = listOf(
+                reference(
+                    previous,
+                    strongMinutes = 120,
+                    createdOn = previous.minusDays(1),
+                ),
+            ),
+            previousWeek = week(previous, completed = listOf(30, 30, 30, 30)),
+        )
+
+        assertThat(decision.hasHistory).isTrue()
+    }
+
+    @Test
     fun `only the last four weeks are considered`() {
         val decision = progression.decide(
             targetWeekStart = monday,

@@ -104,6 +104,104 @@ class TodayPlanTest {
     }
 
     @Test
+    fun `marks future quality as conditional and explains a partial first week`() {
+        val monday = LocalDate.of(2026, 11, 2)
+        val tuesday = monday.plusDays(1)
+        val thursday = monday.plusDays(3)
+        val plan = WeeklyPlan(
+            weekStart = monday,
+            sessions = listOf(
+                PlannedSession(
+                    date = tuesday,
+                    type = WorkoutType.EASY,
+                    title = "Fácil e conversável",
+                    durationMin = 40,
+                    rationale = "Base.",
+                    ruleIds = listOf("R-ZONE-01"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                PlannedSession(
+                    date = thursday,
+                    type = WorkoutType.QUALITY,
+                    title = "Ritmo forte",
+                    durationMin = 40,
+                    rationale = "Estímulo.",
+                    ruleIds = listOf("R-PER-04"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+            ),
+            weeklyMinutes = 80,
+            longRunMinutes = null,
+            qualityCount = 1,
+            rationale = "Primeira semana.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            createdOn = tuesday,
+        )
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(tuesday).copy(plan = plan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("Sua primeira semana começa hoje; a próxima já vem completa."))
+        compose.onNodeWithText("Sua primeira semana começa hoje; a próxima já vem completa.")
+            .assertIsDisplayed()
+        list.performScrollToNode(hasText("Condicionado ao check-in"))
+        compose.onNodeWithText("Condicionado ao check-in").assertIsDisplayed()
+    }
+
+    @Test
+    fun `shows the next week preview as an intent`() {
+        val monday = LocalDate.of(2026, 11, 2)
+        val nextMonday = monday.plusWeeks(1)
+        val nextPlan = WeeklyPlan(
+            weekStart = nextMonday,
+            sessions = listOf(
+                PlannedSession(
+                    date = nextMonday,
+                    type = WorkoutType.QUALITY,
+                    title = "Ritmo forte",
+                    durationMin = 40,
+                    rationale = "Estímulo.",
+                    ruleIds = listOf("R-PER-04"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+            ),
+            weeklyMinutes = 40,
+            longRunMinutes = null,
+            qualityCount = 1,
+            rationale = "Prévia.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+            createdOn = monday.plusDays(6),
+        )
+
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                TodayScreen(
+                    onDemoAction = {},
+                    state = demoTodayUiState(monday.plusDays(6)).copy(nextWeekPlan = nextPlan),
+                )
+            }
+        }
+
+        val list = compose.onNodeWithTag("today-list")
+        list.performScrollToNode(hasText("PRÓXIMA SEMANA"))
+        compose.onNodeWithText("PRÓXIMA SEMANA").assertIsDisplayed()
+        compose.onNodeWithText("Prévia").assertIsDisplayed()
+        compose.onNodeWithTag("next-week-preview-note").assertIsDisplayed()
+        compose.onNodeWithText("Treino forte · condicionado ao check-in").assertIsDisplayed()
+    }
+
+    @Test
     fun `plan row shows the adjusted prescription instead of the original quality`() {
         val today = LocalDate.of(2026, 11, 4)
         val weekStart = LocalDate.of(2026, 11, 2)

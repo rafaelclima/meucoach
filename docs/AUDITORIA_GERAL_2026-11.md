@@ -999,6 +999,3 @@ class AuditExperimentTest {
 ---
 
 **Fim do documento.** Achados: 9 `ALG` (10 com fortes), 6 `SEG`, 4 `SCI`, 19 `STORY`, 19 `COACH` + 13 casos de validador, 10 `DOC`, 7 `GEN`. Nenhum dado de saúde real foi usado; nenhum arquivo fora deste documento e do `PROGRESS.md` foi alterado.
-
-
-

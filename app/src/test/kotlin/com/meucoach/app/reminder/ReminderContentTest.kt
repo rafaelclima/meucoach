@@ -214,6 +214,49 @@ class ReminderContentTest {
     }
 
     @Test
+    fun `summarizes the persisted next week preview`() {
+        val nextMonday = today.with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.MONDAY))
+        val session = PlannedSession(
+            date = nextMonday,
+            type = WorkoutType.QUALITY,
+            title = "Ritmo forte",
+            durationMin = 40,
+            rationale = "Plano forte.",
+            ruleIds = listOf("R-ZONE-01"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+        )
+        val nextPlan = plan(session).copy(
+            weekStart = nextMonday,
+            weeklyMinutes = 40,
+            qualityCount = 1,
+        )
+
+        val message = ReminderContent.weekPreview(nextPlan, nextMonday)!!
+
+        assertThat(message.kind).isEqualTo(ReminderKind.WEEK_PREVIEW)
+        assertThat(message.title).isEqualTo("Próxima semana pronta")
+        assertThat(message.body).contains("40 min", "1 treino forte", "pode mudar até segunda")
+        assertThat(message.deepLink).isEqualTo(DEEP_LINK_TODAY)
+        assertThat(ReminderContent.weekPreview(nextPlan, nextMonday.plusWeeks(1))).isNull()
+        assertThat(ReminderContent.weekPreview(nextPlan.copy(sessions = emptyList()), nextMonday)).isNull()
+        assertThat(ReminderContent.weekPreview(null, nextMonday)).isNull()
+    }
+
+    @Test
+    fun `computes the next weekly reminder delay`() {
+        val zone = ZoneId.of("America/Sao_Paulo")
+        val friday = today.atTime(10, 0).atZone(zone)
+        val sunday = LocalDate.of(2026, 11, 1).atTime(10, 0).atZone(zone)
+
+        assertThat(
+            ReminderContent.nextWeeklyDelay(friday, java.time.DayOfWeek.SUNDAY, hour = 18),
+        ).isEqualTo(Duration.ofDays(2).plusHours(8))
+        assertThat(
+            ReminderContent.nextWeeklyDelay(sunday, java.time.DayOfWeek.SUNDAY, hour = 18),
+        ).isEqualTo(Duration.ofHours(8))
+    }
+
+    @Test
     fun `computes the next reminder delay`() {
         val zone = ZoneId.of("America/Sao_Paulo")
         val morning = today.atTime(7, 0).atZone(zone)

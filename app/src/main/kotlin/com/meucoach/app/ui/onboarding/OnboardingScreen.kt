@@ -484,6 +484,28 @@ private fun routineStep(state: OnboardingUiState, onUpdate: ((OnboardingForm) ->
         style = McTextStyles.caption,
         color = McTheme.colors.textTertiary,
     )
+    FormTextField(
+        label = "Horário habitual de treino (opcional)",
+        value = form.preferredTrainingTime,
+        onValueChange = { value ->
+            onUpdate {
+                it.copy(
+                    preferredTrainingTime = value
+                        .filter { char -> char.isDigit() || char == ':' }
+                        .take(5),
+                )
+            }
+        },
+        placeholder = "04:00",
+        keyboardType = KeyboardType.Number,
+        error = state.errors[OnboardingField.TRAINING_TIME],
+        modifier = Modifier.testTag("profile-training-time-field"),
+    )
+    Text(
+        text = "Usamos esse horário para enviar o lembrete e o check-in antes do treino.",
+        style = McTextStyles.caption,
+        color = McTheme.colors.textTertiary,
+    )
     var timezoneOpen by rememberSaveable { mutableStateOf(false) }
     var cityOpen by rememberSaveable { mutableStateOf(false) }
     SelectField(

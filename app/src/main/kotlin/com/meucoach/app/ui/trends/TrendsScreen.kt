@@ -156,6 +156,7 @@ internal fun TrendsContent(
                 intensity = state.intensity,
                 planCompletion = state.planCompletion,
                 weeklyReview = state.weeklyReview,
+                currentWeekPlan = state.currentWeekPlan,
                 period = state.period,
                 onPeriodSelected = onPeriodSelected,
                 lthr = state.profile.lactateThresholdHeartRate,
@@ -172,6 +173,7 @@ private fun LoadDetails(
     intensity: IntensityDistribution?,
     planCompletion: PlanCompletion?,
     weeklyReview: WeeklyReview?,
+    currentWeekPlan: com.meucoach.core.domain.prescription.WeeklyPlan?,
     period: TrendsPeriod,
     onPeriodSelected: (TrendsPeriod) -> Unit,
     lthr: Int?,
@@ -228,7 +230,7 @@ private fun LoadDetails(
         }
         if (weeklyReview != null) {
             item { McSectionHeader(title = "Revisão da semana") }
-            item { WeeklyReviewCard(review = weeklyReview) }
+            item { WeeklyReviewCard(review = weeklyReview, currentWeekPlan = currentWeekPlan) }
         }
         if (activityTrends != null) {
             item { PeriodFilter(period = period, onSelect = onPeriodSelected) }

@@ -54,6 +54,18 @@ class AthleteProfileTest {
     }
 
     @Test
+    fun `accepts a usual training time and rejects an invalid one`() {
+        val profile = profile().copy(preferredTrainingTimeMinutes = 4 * 60)
+
+        assertThat(profile.preferredTrainingTimeMinutes).isEqualTo(240)
+        assertThat(profile.copy(preferredTrainingTimeMinutes = null).preferredTrainingTimeMinutes).isNull()
+        assertThatThrownBy { profile.copy(preferredTrainingTimeMinutes = -1) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { profile.copy(preferredTrainingTimeMinutes = 1_440) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
     fun `rejects invalid availability minutes`() {
         assertThatThrownBy { WeeklyAvailability(mapOf(DayOfWeek.MONDAY to 0)) }
             .isInstanceOf(IllegalArgumentException::class.java)

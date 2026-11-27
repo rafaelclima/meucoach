@@ -76,6 +76,7 @@ import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.load.LoadDataState
 import com.meucoach.core.domain.load.LoadMetric
+import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.SessionStatus
 import com.meucoach.core.domain.prescription.SessionSwapper
 import com.meucoach.core.domain.prescription.SwapResult
@@ -263,6 +264,11 @@ fun TodayScreen(
                         )
                     }
                 }
+            }
+        }
+        state.nextWeekPlan?.let { nextPlan ->
+            item {
+                NextWeekPreviewCard(plan = nextPlan)
             }
         }
         item {
@@ -1146,6 +1152,97 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
 }
 
 @Composable
+private fun NextWeekPreviewCard(plan: WeeklyPlan) {
+    val colors = McTheme.colors
+    McCard(
+        variant = McCardVariant.INSET,
+        modifier = Modifier.testTag("next-week-preview"),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "PRÓXIMA SEMANA",
+                style = McTextStyles.overline,
+                color = colors.textTertiary,
+            )
+            McPill(
+                text = "Prévia",
+                containerColor = colors.accentSoft,
+                contentColor = colors.accentText,
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Pode mudar até segunda. O check-in confirma os treinos fortes.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.testTag("next-week-preview-note"),
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        if (plan.sessions.isEmpty()) {
+            Text(
+                text = plan.rationale,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag("next-week-preview-empty"),
+            )
+            return@McCard
+        }
+        plan.sessions.sortedBy { it.date }.forEachIndexed { index, session ->
+            if (index > 0) {
+                McDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("next-week-session-${session.date}"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = formatPlanDay(session.date),
+                    style = McTextStyles.caption,
+                    color = colors.textTertiary,
+                    modifier = Modifier.width(48.dp),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = session.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (session.type == WorkoutType.QUALITY) {
+                        Text(
+                            text = "Treino forte · condicionado ao check-in",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Text(
+                    text = session.durationMin?.let { "$it min" } ?: "—",
+                    style = McTextStyles.caption,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "${plan.sessions.size} dias, ${plan.weeklyMinutes} min no total.",
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+            modifier = Modifier.testTag("next-week-preview-total"),
+        )
+    }
+}
+
+@Composable
 private fun PlanWeekCard(
     plan: com.meucoach.core.domain.prescription.WeeklyPlan,
     today: LocalDate,
@@ -1229,6 +1326,15 @@ private fun PlanWeekCard(
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
                 modifier = Modifier.testTag("plan-quality-cap-note"),
+            )
+        }
+        if (plan.createdOn.isAfter(plan.weekStart)) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Sua primeira semana começa hoje; a próxima já vem completa.",
+                style = McTextStyles.caption,
+                color = colors.textTertiary,
+                modifier = Modifier.testTag("plan-first-week-note"),
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -1336,6 +1442,34 @@ private fun PlanWeekCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                    }
+                    val qualityPlanned = session.type == WorkoutType.QUALITY &&
+                        session.status == SessionStatus.PLANNED
+                    when {
+                        qualityPlanned && session.date.isAfter(today) -> {
+                            Text(
+                                text = "Condicionado ao check-in",
+                                style = McTextStyles.caption,
+                                color = colors.textTertiary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.testTag("plan-quality-conditional-${session.date}"),
+                            )
+                        }
+
+                        qualityPlanned &&
+                            session.date == today &&
+                            prescription?.prescribedType == WorkoutType.QUALITY &&
+                            prescription?.adjustment == PrescriptionAdjustment.KEEP -> {
+                            Text(
+                                text = "Confirmado pelo check-in de hoje",
+                                style = McTextStyles.caption,
+                                color = colors.success,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.testTag("plan-quality-confirmed-today"),
+                            )
+                        }
                     }
                 }
                 Text(

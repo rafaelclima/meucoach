@@ -106,6 +106,11 @@ data class AthleteProfile(
     val experience: Experience = Experience.BEGINNER,
     val timezone: String = "UTC",
     val weeklyAvailability: WeeklyAvailability = WeeklyAvailability(),
+    /**
+     * Usual local training time, in minutes since midnight. `null` means the
+     * athlete has not told the app yet; reminders then keep their legacy times.
+     */
+    val preferredTrainingTimeMinutes: Int? = null,
     val goal: TrainingGoal? = null,
     val city: String? = null,
     val latitude: Double? = null,
@@ -145,6 +150,12 @@ data class AthleteProfile(
         }
         require(runCatching { ZoneId.of(timezone) }.isSuccess) {
             "Timezone must be a valid IANA zone"
+        }
+        require(
+            preferredTrainingTimeMinutes == null ||
+                preferredTrainingTimeMinutes in 0 until 1_440,
+        ) {
+            "Preferred training time must be between 0 and 1439 minutes"
         }
         require(city == null || city.isNotBlank()) { "City must not be blank" }
         require(latitude == null || latitude in -90.0..90.0) { "Latitude out of range" }

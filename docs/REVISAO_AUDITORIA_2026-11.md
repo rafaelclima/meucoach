@@ -1,8 +1,8 @@
 # Revisão crítica da auditoria geral — MeuCoach
 
-**Data:** 26/11/2026  
-**Documento revisado:** [`AUDITORIA_GERAL_2026-11.md`](AUDITORIA_GERAL_2026-11.md)  
-**Escopo:** achados ALG, SEG, SCI, STORY, COACH/validador, DOC e GEN.  
+**Data:** 26/11/2026
+**Documento revisado:** [`AUDITORIA_GERAL_2026-11.md`](AUDITORIA_GERAL_2026-11.md)
+**Escopo:** achados ALG, SEG, SCI, STORY, COACH/validador, DOC e GEN.
 **Método:** leitura própria das evidências primárias, buscas negativas e execução de harness temporário com dados sintéticos. Nenhum arquivo privado ou dado de saúde real foi usado.
 
 > Este documento confronta a auditoria original; não a substitui como fonte de verdade científica. Fato, inferência, severidade e sugestão são avaliados separadamente.

@@ -29,6 +29,8 @@ import com.meucoach.core.designsystem.component.McDivider
 import com.meucoach.core.designsystem.component.McStat
 import com.meucoach.core.designsystem.theme.McTextStyles
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.review.WeeklyAdherence
 import com.meucoach.core.domain.review.WeeklyQuality
 import com.meucoach.core.domain.review.WeeklyReadiness
@@ -47,7 +49,11 @@ import com.meucoach.core.domain.trends.WeeklyIntensity
  * streak, grade or call to action, and no rule/evidence ID on the surface.
  */
 @Composable
-internal fun WeeklyReviewCard(review: WeeklyReview, modifier: Modifier = Modifier) {
+internal fun WeeklyReviewCard(
+    review: WeeklyReview,
+    currentWeekPlan: WeeklyPlan? = null,
+    modifier: Modifier = Modifier,
+) {
     val colors = McTheme.colors
     McCard(modifier = modifier.testTag("weekly-review-card")) {
         Row(verticalAlignment = Alignment.Top) {
@@ -110,9 +116,71 @@ internal fun WeeklyReviewCard(review: WeeklyReview, modifier: Modifier = Modifie
                     style = McTextStyles.caption,
                     color = colors.textTertiary,
                 )
+                NextWeekBlock(currentWeekPlan)
             }
         }
     }
+}
+
+@Composable
+private fun NextWeekBlock(plan: WeeklyPlan?) {
+    val colors = McTheme.colors
+    McDivider(modifier = Modifier.padding(vertical = 10.dp))
+    Text(
+        text = "Próxima semana",
+        style = MaterialTheme.typography.titleSmall,
+        color = colors.textPrimary,
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    if (plan == null) {
+        Text(
+            text = "O plano da semana que vem aparece quando você abrir o Hoje.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.testTag("weekly-review-next-week-empty"),
+        )
+        return
+    }
+    if (plan.sessions.isEmpty()) {
+        Text(
+            text = "Ainda não há sessões previstas para a próxima semana.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.testTag("weekly-review-next-week-empty"),
+        )
+        return
+    }
+    val qualities = plan.sessions.count { it.type == WorkoutType.QUALITY }
+    val longRun = plan.sessions.firstOrNull { it.type == WorkoutType.LONG }?.durationMin
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.testTag("weekly-review-next-week"),
+    ) {
+        McStat(
+            label = "Volume",
+            hint = "previsto",
+            value = "${plan.weeklyMinutes} min",
+            modifier = Modifier.weight(1f),
+        )
+        McStat(
+            label = "Fortes",
+            hint = "no plano",
+            value = qualities.toString(),
+            modifier = Modifier.weight(1f),
+        )
+        McStat(
+            label = "Longão",
+            hint = "previsto",
+            value = longRun?.let { "$it min" } ?: "—",
+            modifier = Modifier.weight(1f),
+        )
+    }
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = "O check-in e a prontidão confirmam os treinos fortes; o volume pode se ajustar.",
+        style = McTextStyles.caption,
+        color = colors.textTertiary,
+    )
 }
 
 @Composable

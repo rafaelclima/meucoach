@@ -75,6 +75,38 @@ class ReminderNotifierTest {
     }
 
     @Test
+    fun `cancels the week preview without touching the check-in`() {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        Shadows.shadowOf(context).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        val notifier = ReminderNotifier(context)
+        notifier.notify(
+            ReminderMessage(
+                id = ReminderContent.CHECK_IN_ID,
+                kind = ReminderKind.CHECK_IN,
+                title = "Check-in",
+                body = "15 s",
+                deepLink = DEEP_LINK_CHECK_IN,
+            ),
+        )
+        notifier.notify(
+            ReminderMessage(
+                id = ReminderContent.WEEK_PREVIEW_ID,
+                kind = ReminderKind.WEEK_PREVIEW,
+                title = "Próxima semana pronta",
+                body = "4 dias, 120 min",
+                deepLink = DEEP_LINK_TODAY,
+            ),
+        )
+
+        notifier.cancelWeekPreview()
+
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val notifications = Shadows.shadowOf(manager).allNotifications
+        assertThat(notifications).hasSize(1)
+        assertThat(Shadows.shadowOf(notifications.single()).contentTitle.toString()).isEqualTo("Check-in")
+    }
+
+    @Test
     fun `cancels only the workout reminder`() {
         val context = ApplicationProvider.getApplicationContext<Application>()
         Shadows.shadowOf(context).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)

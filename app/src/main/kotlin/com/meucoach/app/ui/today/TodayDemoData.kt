@@ -95,6 +95,11 @@ data class TodayUiState(
     val recentActivity: RecentActivityUi? = null,
     val hasCheckedIn: Boolean = false,
     val plan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
+    /**
+     * Provisional plan for the next civil week, generated on Sunday. It is an
+     * intent, not a confirmed prescription; null on every other day.
+     */
+    val nextWeekPlan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
     /** Single authority of the day; null only before a profile exists. */
     val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
     /**

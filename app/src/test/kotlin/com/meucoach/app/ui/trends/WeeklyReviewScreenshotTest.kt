@@ -10,6 +10,9 @@ import com.meucoach.core.domain.load.DailyLoad
 import com.meucoach.core.domain.load.LoadCoverage
 import com.meucoach.core.domain.load.LoadMetric
 import com.meucoach.core.domain.load.LoadSnapshot
+import com.meucoach.core.domain.prescription.PlannedSession
+import com.meucoach.core.domain.prescription.WeeklyPlan
+import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.domain.review.WeeklyAdherence
 import com.meucoach.core.domain.review.WeeklyReadiness
 import com.meucoach.core.domain.review.WeeklyReview
@@ -62,6 +65,7 @@ class WeeklyReviewScreenshotTest {
                         profile = profile(),
                         snapshot = snapshot(),
                         weeklyReview = review(),
+                        currentWeekPlan = plan(),
                     ),
                 )
             }
@@ -91,6 +95,40 @@ class WeeklyReviewScreenshotTest {
         sex = Sex.MALE,
         timezone = "America/Sao_Paulo",
     )
+
+    private fun plan(): WeeklyPlan {
+        val weekStart = LocalDate.of(2026, 10, 26)
+        return WeeklyPlan(
+            weekStart = weekStart,
+            sessions = listOf(
+                PlannedSession(
+                    date = weekStart,
+                    type = WorkoutType.QUALITY,
+                    title = "Ritmo forte",
+                    durationMin = 40,
+                    rationale = "Estímulo.",
+                    ruleIds = listOf("R-PER-04"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+                PlannedSession(
+                    date = weekStart.plusDays(6),
+                    type = WorkoutType.LONG,
+                    title = "Longão",
+                    durationMin = 70,
+                    rationale = "Longo.",
+                    ruleIds = listOf("R-PLAN-03"),
+                    evidenceIds = listOf("EV-PFITZINGER-2008"),
+                ),
+            ),
+            weeklyMinutes = 110,
+            longRunMinutes = 70,
+            qualityCount = 1,
+            rationale = "Semana seguinte.",
+            confidence = DataConfidence.MEDIUM,
+            ruleIds = listOf("R-PER-04"),
+            evidenceIds = listOf("EV-SEILER-2010"),
+        )
+    }
 
     private fun review() = WeeklyReview(
         weekStart = LocalDate.of(2026, 10, 19),

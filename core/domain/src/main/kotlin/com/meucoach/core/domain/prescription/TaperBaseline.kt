@@ -70,7 +70,8 @@ object TaperBaselineResolver {
 
     private fun VolumeReference.isEligibleTaperReference(firstTaperWeekStart: LocalDate): Boolean {
         if (!weekStart.isBefore(firstTaperWeekStart)) return false
-        if (createdOn != weekStart) return false
+        val createdOn = createdOn ?: return false
+        if (createdOn.isAfter(weekStart)) return false
         if (specialWeek) return false
         if (!hasPlan) return false
         if (plannedSessions == 0) return false

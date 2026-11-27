@@ -55,6 +55,10 @@ fun targetTimeLabel(seconds: Int?): String {
     }
 }
 
+fun preferredTrainingTimeLabel(profile: AthleteProfile): String = profile.preferredTrainingTimeMinutes?.let {
+    String.format(Locale.US, "%02d:%02d", it / 60, it % 60)
+} ?: "Não informado"
+
 fun availabilityLabel(profile: AthleteProfile): String {
     val availability = profile.weeklyAvailability
     if (availability.minutesByDay.isEmpty()) return "Não informada"

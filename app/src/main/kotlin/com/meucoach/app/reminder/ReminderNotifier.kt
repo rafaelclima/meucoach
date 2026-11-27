@@ -55,6 +55,10 @@ class ReminderNotifier @Inject constructor(@ApplicationContext context: Context)
         NotificationManagerCompat.from(appContext).cancel(ReminderContent.WORKOUT_ID)
     }
 
+    fun cancelWeekPreview() {
+        NotificationManagerCompat.from(appContext).cancel(ReminderContent.WEEK_PREVIEW_ID)
+    }
+
     private fun post(message: ReminderMessage, silentUpdate: Boolean) {
         ensureChannel()
         if (
@@ -94,6 +98,7 @@ class ReminderNotifier @Inject constructor(@ApplicationContext context: Context)
         manager.cancel(ReminderContent.CHECK_IN_ID)
         manager.cancel(ReminderContent.WORKOUT_ID)
         manager.cancel(ReminderContent.RACE_ID)
+        manager.cancel(ReminderContent.WEEK_PREVIEW_ID)
     }
 
     companion object {

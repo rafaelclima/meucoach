@@ -220,6 +220,7 @@ private fun AthleteProfileEntity.toJson(): JSONObject = JSONObject().apply {
     put("experience", experience.name)
     put("timezone", timezone)
     put("weeklyAvailability", JSONObject(availabilityJson))
+    putNullable("preferredTrainingTimeMinutes", preferredTrainingTimeMinutes)
     put("goal", goalJson?.let(::JSONObject) ?: JSONObject.NULL)
     putNullable("city", city)
     putNullable("latitude", latitude)

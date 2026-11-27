@@ -157,14 +157,16 @@ class VolumeProgression {
 
     /**
      * A week is a comparable reference only when it was planned from its own
-     * Monday, is at most four weeks old, was not a deload/taper/recovery week,
-     * has trainable sessions and proved real strong volume (ADR 0050 §2.2).
+     * Monday or earlier (a Sunday preview counts), is at most four weeks old,
+     * was not a deload/taper/recovery week, has trainable sessions and proved
+     * real strong volume (ADR 0050 §2.2).
      * A week without a plan is never a reference, even if it has strong runs.
      */
     private fun VolumeReference.isUsableVolumeReference(targetWeekStart: LocalDate): Boolean {
         if (!weekStart.isBefore(targetWeekStart)) return false
         if (weekStart.isBefore(targetWeekStart.minusWeeks(MAX_REFERENCE_WEEKS.toLong()))) return false
-        if (createdOn != weekStart) return false
+        val createdOn = createdOn ?: return false
+        if (createdOn.isAfter(weekStart)) return false
         if (specialWeek) return false
         if (!hasPlan) return false
         if (plannedSessions == 0) return false

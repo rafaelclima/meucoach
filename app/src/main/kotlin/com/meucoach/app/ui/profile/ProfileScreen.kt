@@ -406,6 +406,7 @@ private fun ProfileDetails(
             McCard(variant = McCardVariant.INSET) {
                 profile.restingHeartRate?.let { SummaryRow("FC de repouso", "$it bpm") }
                 profile.maxHeartRateObserved?.let { SummaryRow("FC máxima vista", "$it bpm") }
+                SummaryRow("Horário habitual", preferredTrainingTimeLabel(profile))
                 SummaryRow("Fuso horário", timezoneLabel(profile.timezone))
                 profile.city?.let { SummaryRow("Cidade", it) }
             }

@@ -8,9 +8,11 @@ import com.meucoach.core.domain.prescription.WorkoutType
 import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.RaceEvent
 import com.meucoach.core.model.RaceStatus
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import java.time.temporal.TemporalAdjusters
 
 const val DEEP_LINK_CHECK_IN = "meucoach://check-in"
 const val DEEP_LINK_TODAY = "meucoach://today"
@@ -19,6 +21,7 @@ enum class ReminderKind {
     CHECK_IN,
     WORKOUT,
     RACE,
+    WEEK_PREVIEW,
 }
 
 data class ReminderMessage(
@@ -33,6 +36,7 @@ object ReminderContent {
     const val CHECK_IN_ID = 1_001
     const val WORKOUT_ID = 1_002
     const val RACE_ID = 1_003
+    const val WEEK_PREVIEW_ID = 1_004
 
     fun checkIn(today: LocalDate, checkIn: DailyCheckIn?): ReminderMessage? {
         if (checkIn?.date == today) return null
@@ -40,7 +44,8 @@ object ReminderContent {
             id = CHECK_IN_ID,
             kind = ReminderKind.CHECK_IN,
             title = "Check-in de hoje",
-            body = "15 s para registrar sono, energia e dor. Isso ajusta a leitura da sua prontidão.",
+            body = "15 s para registrar sono, energia e dor antes do treino. " +
+                "Isso ajusta a leitura da sua prontidão.",
             deepLink = DEEP_LINK_CHECK_IN,
         )
     }
@@ -127,6 +132,42 @@ object ReminderContent {
             body = body,
             deepLink = DEEP_LINK_TODAY,
         )
+    }
+
+    /**
+     * Sunday preview of the next week. The weekly plan is already persisted by
+     * the Hoje screen; this message never generates or invents a plan.
+     */
+    fun weekPreview(plan: WeeklyPlan?, nextWeekStart: LocalDate): ReminderMessage? {
+        if (plan == null || plan.weekStart != nextWeekStart || plan.sessions.isEmpty()) return null
+        val qualities = plan.sessions.count { it.type == WorkoutType.QUALITY }
+        val strong = when (qualities) {
+            0 -> ""
+            1 -> " · 1 treino forte"
+            else -> " · $qualities treinos fortes"
+        }
+        return ReminderMessage(
+            id = WEEK_PREVIEW_ID,
+            kind = ReminderKind.WEEK_PREVIEW,
+            title = "Próxima semana pronta",
+            body = "${plan.sessions.size} dias, ${plan.weeklyMinutes} min$strong. " +
+                "Prévia: pode mudar até segunda.",
+            deepLink = DEEP_LINK_TODAY,
+        )
+    }
+
+    /** Delay until the next [dayOfWeek] at [hour]:[minute] in the given zone. */
+    fun nextWeeklyDelay(now: ZonedDateTime, dayOfWeek: DayOfWeek, hour: Int, minute: Int = 0): Duration {
+        require(hour in 0..23) { "Hour must be between 0 and 23" }
+        require(minute in 0..59) { "Minute must be between 0 and 59" }
+        var target = now
+            .with(TemporalAdjusters.nextOrSame(dayOfWeek))
+            .withHour(hour)
+            .withMinute(minute)
+            .withSecond(0)
+            .withNano(0)
+        if (!target.isAfter(now)) target = target.plusWeeks(1)
+        return Duration.between(now, target)
     }
 
     /** Delay until the next occurrence of [hour]:[minute] in the given zone. */

@@ -82,20 +82,31 @@ class MeuCoachApplication :
                     if (hasProfile) scheduleBackgroundWork()
                 }
         }
+        // The usual training time changes reminder hours; reschedule on every
+        // profile edit instead of only when the profile appears.
+        applicationScope.launch {
+            profiles.observeProfile()
+                .distinctUntilChanged()
+                .collect { profile ->
+                    if (profile != null) {
+                        runCatching { reminderScheduler.schedule(profile) }
+                    }
+                }
+        }
         // Profile creation/edit and a fallback system-zone change reschedule reminders.
         applicationScope.launch {
             timeProvider.zoneId
                 .drop(1)
                 .collect {
-                    if (profiles.getProfile() != null) {
-                        runCatching { reminderScheduler.schedule() }
+                    val profile = profiles.getProfile()
+                    if (profile != null) {
+                        runCatching { reminderScheduler.schedule(profile) }
                     }
                 }
         }
     }
 
     private fun scheduleBackgroundWork() {
-        runCatching { reminderScheduler.schedule() }
         runCatching { healthSyncScheduler.schedule() }
         runCatching { trashPurgeScheduler.schedule() }
     }

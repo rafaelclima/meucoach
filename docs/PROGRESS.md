@@ -1,6 +1,93 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 26/11/2026 (auditoria geral + Fatias 0–7 do PRD de correções + D3–D6 + Fatia 8 parcial)
+**Atualizado:** 27/11/2026 (ADR 0070: janela de planejamento semanal + lembretes ancorados no treino)
+
+## Sessão 2026-11-27 — ADR 0070: janela de planejamento e lembretes ancorados no treino
+
+**Objetivo:** fechar o cenário do usuário que corre às 4h e dar margem de planejamento
+semanal: plano da próxima semana antes da segunda, lembretes antes do treino, check-in
+no horário certo e transparência entre intenção e confirmação. Nenhuma regra
+fisiológica, pace, volume ou critério de qualidade novo.
+
+### Concluído
+
+- **Horário habitual (Gap 2):** `AthleteProfile.preferredTrainingTimeMinutes` (nullable,
+  minutos desde a meia-noite), onboarding/perfil opcional, export JSON e schema v23
+  (`MIGRATION_22_23`, legado `NULL`). O perfil mostra “Horário habitual” e o valor
+  “Não informado” quando ausente.
+- **Lembretes (Gap 1):** `ReminderTimes` deriva check-in 30 min e treino 15 min antes do
+  horário habitual; sem o campo, mantém 18h/07h. `MeuCoachApplication` reagenda em toda
+  edição de perfil; o check-in continua sendo do dia corrente (não há check-in noturno
+  valendo para o dia seguinte nesta entrega).
+- **Prévia da próxima semana (fundação):** `TodayPreviewGenerator` gera a semana seguinte
+  na primeira abertura de domingo (`weekStart` = próxima segunda, `today` = domingo) e o
+  `TodayViewModel` a persiste. O card “Próxima semana · Prévia” mostra dias, minutos e
+  treinos fortes condicionados; a prévia não entra em adesão/volume/mesociclo antes de
+  começar. `createdOn <= weekStart` passa a contar como semana inteira em `MesoCycle`,
+  `VolumeProgression` e `TaperBaseline`; testes cobrem a prévia de domingo.
+- **Aviso de semana pronta (Gap 3):** worker semanal de domingo às 18h lê a prévia e
+  notifica “Próxima semana pronta” com dias/minutos/fortes; se a prévia não existe, não
+  inventa plano nem notifica. O lembrete de treino ativo continua sendo atualizado quando
+  a prescrição do dia muda; não há push a cada replanejamento.
+- **Transparência (Gaps 4 e 6):** treino forte futuro no card da semana aparece como
+  “Condicionado ao check-in”; o treino forte de hoje mantido pelo gate mostra “Confirmado
+  pelo check-in de hoje”. A primeira semana criada no meio da semana explica “Sua primeira
+  semana começa hoje; a próxima já vem completa”. A prévia da próxima semana também marca
+  treino forte como condicionado.
+- **Revisão semanal (Gap 5):** bloco “Próxima semana” no card de Tendências com volume
+  previsto, quantidade de treinos fortes e longão, sempre descritivo e condicionado ao
+  check-in; estado vazio honesto quando não há plano.
+- **Testes/goldens:** novos testes de `AthleteProfile`, `OnboardingValidator`,
+  `ReminderTimes`/`ReminderContent`/`ReminderScheduler`/`ReminderWorker`,
+  `TodayPreviewGenerator` via `TodayViewModelPersistTest`, `TodayPlanTest`,
+  `TrendsScreenTest`, `ProfileLabelsTest`, migração 22→23 e mesociclo/progressão.
+  Novo golden `today-next-week-dark`; `onboarding-routine-dark`,
+  `profile-health-{dark,light}` e `trends-weekly-review-{dark,light,narrow-dark}`
+  regravados. `WeeklyReviewScreenshotTest` passa a incluir a próxima semana.
+
+### Gates
+
+- Suíte completa: **3.265 testes** (1389 domain / 1590 app / 245 data / 41 model),
+  0 falhas/erros/skip.
+- `./gradlew spotlessCheck`, `:app:detekt`, `:core:domain:detekt`,
+  `:core:data:detekt`, `:app:lintDebug`, `koverVerify` e
+  `:core:domain:verifyParserBranchCoverage` (93,01%) verdes. O `spotlessApply`
+  também normalizou espaços à direita nos três documentos de auditoria
+  preexistentes, sem mudança de conteúdo.
+- `./gradlew :app:verifyRoborazziDebug --tests "*ScreenshotTest"` verde (112 goldens).
+- Schema `23.json` exportado; migração 22→23 validada em Robolectric.
+- Nenhum dado real no diff; sem dependência nova.
+
+### Decisões e observações
+
+- **Prévia é intenção, não promessa.** A revalidação automática de segunda com trigger
+  próprio fica para uma evolução; hoje a segunda usa o plano persistido e o motor diário
+  mantém/reduz/rebaixa a sessão. O card diz “pode mudar até segunda”.
+- **Sem check-in noturno:** a manhã resolve o cenário das 4h com o dado mais próximo do
+  treino; o noturno exigiria mudar a semântica de data e a leitura de sono.
+- **Sem push a cada mudança:** o lembrete ativo já é atualizado e o app mostra
+  versão/“Ajustado”; um segundo push seria ruído.
+- **Coach:** a transparência do treino forte condicionado ficou no card da semana e na
+  prévia; a explicação do Coach continua derivada do mesmo plano, sem um novo badge.
+- **Sem motor novo:** `weekly-plan-v9`/`daily-prescription-v7` permanecem; o ADR 0070 é
+  produto/arquitetura de planejamento e comunicação.
+
+### Pendente
+
+- Validar no aparelho com o usuário 0: perfil 04:00, check-in/treino antes das 4h,
+  prévia no domingo, aviso das 18h e card da semana na segunda.
+- Avaliar a revalidação automática da prévia na segunda (trigger próprio) e um eventual
+  “plano mudou” fora do app, se o uso real pedir.
+- Superfície do treino condicionado no Coach, se o texto explicativo precisar repetir o
+  selo.
+- Gap 7 (visão de ciclo/prova) segue guardado no prompt de handoff combinado com o
+  usuário, agora com a prévia semanal como base.
+
+### Próximo
+
+1. Validação no aparelho do fluxo das 4h e da prévia de domingo.
+2. Revisar a necessidade de confirmação automática da prévia na segunda.
+3. Iniciar o gap 7 (visão de ciclo/prova) depois da validação.
 
 ## Sessão 2026-11-26 — Fatia 8 (validação manual + correção de 200%)
 

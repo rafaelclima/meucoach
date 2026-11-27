@@ -32,6 +32,14 @@ class ProfileLabelsTest {
     }
 
     @Test
+    fun `formats the usual training time`() {
+        assertThat(preferredTrainingTimeLabel(profile())).isEqualTo("Não informado")
+        assertThat(
+            preferredTrainingTimeLabel(profile().copy(preferredTrainingTimeMinutes = 4 * 60)),
+        ).isEqualTo("04:00")
+    }
+
+    @Test
     fun `handles a profile without a goal or availability`() {
         val empty = profile().copy(
             goal = null,
