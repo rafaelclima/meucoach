@@ -518,7 +518,7 @@ class TodayBriefingTest {
         }
 
         compose.onNodeWithTag("briefing-target-primary-note")
-            .assertTextEquals("Principal: FC e esforço; o pace é referência.")
+            .assertTextEquals("Principal: FC e esforço; o ritmo é referência.")
         val tree = compose.onNodeWithTag("briefing-content").printToString()
         assertThat(tree.indexOf("briefing-target-heart-rate"))
             .isLessThan(tree.indexOf("briefing-target-pace"))
@@ -561,7 +561,7 @@ class TodayBriefingTest {
         }
 
         compose.onNodeWithTag("briefing-target-primary-note")
-            .assertTextEquals("Principal: pace do bloco; a FC confirma.")
+            .assertTextEquals("Principal: ritmo do bloco; a FC confirma.")
         val tree = compose.onNodeWithTag("briefing-content").printToString()
         assertThat(tree.indexOf("briefing-target-pace"))
             .isLessThan(tree.indexOf("briefing-target-heart-rate"))

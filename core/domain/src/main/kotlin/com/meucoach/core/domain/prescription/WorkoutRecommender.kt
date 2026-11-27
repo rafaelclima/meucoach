@@ -142,7 +142,7 @@ class WorkoutRecommender {
         val rationale = when {
             subjectiveMissing ->
                 "Sem check-in hoje: fique no fácil e sem treino forte. " +
-                    "Faça o check-in para confirmar a qualidade de hoje. " +
+                    "Faça o check-in para confirmar o treino forte de hoje. " +
                     easyHint(paceTarget, heartRateTarget)
 
             shortSleep ->

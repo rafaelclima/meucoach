@@ -52,7 +52,7 @@ class BeginnerStridesTest {
         assertThat(strides.type).isEqualTo(WorkoutType.EASY)
         assertThat(strides.durationMin).isEqualTo(25)
         assertThat(strides.date.dayOfWeek).isEqualTo(DayOfWeek.MONDAY)
-        assertThat(strides.rationale).contains("Estímulo neuromuscular curto")
+        assertThat(strides.rationale).contains("Acelerações curtas no fim da corrida leve")
         assertThat(strides.ruleIds).contains("R-PER-02")
         assertThat(plan.qualityCount).isZero()
     }

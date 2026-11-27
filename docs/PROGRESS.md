@@ -1,6 +1,92 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F3: gate de qualidade e catálogo de regras em fala de corredor, `daily-prescription-v8`, baseline de 47 + 39 violações)
+**Atualizado:** 27/11/2026 (Ciclo 5, F4: títulos, blurbs, briefing e estrutura em fala de corredor, `weekly-plan-v11` + `daily-prescription-v9` + `session-briefing-v2`, baseline de 29 + 39 violações)
+
+## Sessão 2026-11-27 — Ciclo 5, F4: títulos, blurbs, briefing e estrutura
+
+**Objetivo:** corrigir títulos/blurbs do `SessionLibrary`, briefing do
+`SessionBriefingEngine` (+ zona no briefing), `WorkoutStructure` e texto do
+`WorkoutRecommender` conforme as linhas F4 da auditoria
+(`docs/AUDITORIA_UX_WRITING_2026-11.md`), sem mudar nenhuma regra fisiológica,
+limiar, volume, alvo, critério de qualidade ou `ruleId`/`evidenceId`; schema
+Room v23 intacto. `Longão`, `dose pequena`, `Pace de prova`, `Rodagem` e demais
+títulos aprovados mantidos (decisões 21/11/2026 e 27/11/2026); `WeeklyPlanGenerator`
+(F2), `QualityGate`/`ExplanationCatalog` (F3), `RacePace`,
+`LevelGraduationEngine`, `StoryVerdict` e UI do Coach/Tendências (F5–F7) intactos.
+
+### Concluído
+
+- **Motor (`SessionLibrary`, `weekly-plan-v10` → `v11`):** 6 blurbs na sugestão
+  da auditoria (`pace` em prosa → `ritmo`, `fácil` como sessão → `corrida leve`,
+  `bloco` → `etapa`, `especificidade` → `estilo dos 5 km`); títulos aprovados
+  (`Rodagem`, `Pace de prova`, `Longão`, etc.) inalterados. `Fartlek`,
+  `Pace de prova` (×4 distâncias, agora sem variável de distância no blurb),
+  `Intervalado` curto, `Acelerações curtas`, `Rodagem com estímulos` e
+  `Fartlek leve` no texto novo.
+- **Briefing (`SessionBriefingEngine`, `session-briefing-v1` → `v2`):**
+  `Use o pace do bloco: fique entre …` → `Siga o ritmo da etapa: entre …`
+  (remove `pace` e `bloco`); `; o pace é referência …` → `; o ritmo é só
+  referência …`. `steps()` do `racePaceSteps` limpo via `WorkoutStructure`
+  (abaixo), sem linha própria.
+- **Estrutura (`WorkoutStructure`, sem bump próprio — o `steps()` entra no
+  rationale do plano, coberto pelo `weekly-plan-v11`):** `pace atual de 5K/10K/
+  meia maratona/maratona` → `ritmo atual de 5 km/10 km/meia maratona/maratona`
+  (códigos `GOAL_*`/`T`/`I`/`RPE` preservados; só a tradução do `steps()` muda).
+  Verificado: nenhum caminho de UI renderiza `T`/`I`/`RPE 7`/`RPE 8` cru —
+  só `steps()` traduz, via `targetPhrase`.
+- **Zona no briefing (`PrescriptionTargets` + `DailyPrescriptionEngine.noPlan`
+  + `SessionBriefingSheet`, `daily-prescription-v8` → `v9`):** label `Zona` →
+  `Intensidade`; `Z2` → `Fácil (Z2)` (exceção aprovada da lista negra),
+  `Z3–Z4` → `Moderado a forte (Z3–Z4)`, `Z5` → `Forte (Z5)`. Desvio documentado:
+  a auditoria sugere `Forte (Z4–Z5)`, mas o código atual só conhece `Z5` como
+  teto de intervalado; trocar o código para `Z4–Z5` seria mudança fisiológica
+  (proibida) — preservado o código, adicionado só o prefixo em fala de corredor.
+  `primaryNote` do briefing: `pace` → `ritmo` nos 3 ramos (`FC e esforço`,
+  `ritmo do bloco`, `esforço percebido`).
+- **Dia (`WorkoutRecommender`, coberto pelo `daily-prescription-v9`):**
+  `… confirmar a qualidade de hoje.` → `… confirmar o treino forte de hoje.`.
+- **Fixture (`plan-upgrade/input.json`, regenerado):** `Fácil de segunda/terça/
+  hoje/sexta` → `Rodagem de segunda/terça/hoje/sexta` (achado do gate F1);
+  `Corrida mais longa` mantida (título aprovado); `Fartlek leve` inalterado.
+- **Testes:** `TargetPrecedenceTest` (zona + `Siga o ritmo da etapa`/`o ritmo é
+  só referência`), `WeeklyPlanGeneratorTest` (zona + versão `v11`),
+  `DailyPrescriptionEngineTest` (versão `v9`), `GetTodayPrescriptionTest`
+  (versão `v9`), `TodayBriefingTest` (`ritmo do bloco`/`o ritmo é referência`),
+  `BeginnerStridesTest` (`Acelerações curtas no fim da corrida leve`).
+- **Baseline:** 18 linhas F4 removidas no mesmo commit (só encolhe): 7 do
+  `SessionBriefingEngine` (inclui `racePaceSteps` via `targetPhrase`), 7 do
+  `SessionLibrary` e 1 do `WorkoutRecommender` + 3 do `plan-upgrade`. Restam
+  29 no domínio + 39 na UI.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (incluindo goldens de plano e gate de
+  vocabulário, sem violações novas nem obsoletas).
+- `./gradlew spotlessApply` + `./gradlew check` verdes (detekt, Kover,
+  `spotlessCheck`, lint); nenhum dado real no diff; sem dependência nova.
+
+### Por que dois bumps + um de briefing (ADR 0071 §2.7)
+
+- `SessionLibrary` (blurb → `PlannedSession.rationale`) + `WorkoutStructure`
+  (`steps()` → rationale do plano via `describeStructure`) + `zone`
+  (`PlannedSession.targets.zone`) mudam o plano persistido → `weekly-plan-v11`.
+  O histórico mantém o texto antigo, sem migração.
+- `WorkoutRecommender` (→ `DailyPrescription.rationale`) + `zone`
+  (`DailyPrescription.targets.zone`, inclui o `noPlan` com `Fácil (Z2)`) mudam a
+  prescrição persistida → `daily-prescription-v9`.
+- `howToRun` do briefing não é persistido (`SessionBriefing` deriva da
+  prescrição na leitura), mas é texto exibido do motor — versão própria
+  `session-briefing-v1` → `v2` para distinguir o template novo do antigo.
+- Label `Zona` → `Intensidade` no `SessionBriefingSheet` é só UI (sem decisão):
+  nenhum bump por essa parte — o alvo (`pace`/`FC`/`zone`) não mudou.
+
+### Pendente (F5–F9, fora desta fatia)
+
+- F5 prova/level/story (`RacePace`, `LevelGraduationEngine`,
+  `StoryVerdictCalculator`, inclui as 7 linhas F2 restantes de
+  `session.rationale` vindas da nota do `RacePace`) → F6 Coach → F7 demais telas
+  → F8 bugs literais → F9 fechar o gate. Cada linha do baseline aponta a fatia
+  que a remove.
 
 ## Sessão 2026-11-27 — Ciclo 5, F3: gate de qualidade e catálogo de regras
 

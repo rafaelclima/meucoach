@@ -282,7 +282,7 @@ object SessionLibrary {
         title = "Acelerações curtas",
         qualityKind = null,
         durationPolicy = DurationPolicy.MICRO_DOSE_25,
-        blurb = "Estímulo neuromuscular curto no fim de um fácil; não conta como treino forte.",
+        blurb = "Acelerações curtas no fim da corrida leve — não é o treino forte da semana.",
         ruleIds = listOf(RULE_ID),
         evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
         structure = stridesStructure(note = "Rápido e relaxado; recuperação completa."),
@@ -294,8 +294,7 @@ object SessionLibrary {
         title = "Rodagem com estímulos",
         qualityKind = null,
         durationPolicy = DurationPolicy.EASY_SIZED,
-        blurb = "Surtos curtos e controlados no fácil, após 4 semanas consistentes; " +
-            "não conta como qualidade.",
+        blurb = "Surtos curtos e controlados no fim da corrida leve, depois de 4 semanas consistentes.",
         ruleIds = listOf(RULE_ID),
         evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
         structure = structure(
@@ -349,7 +348,7 @@ object SessionLibrary {
         title = "Fartlek leve",
         qualityKind = QualityKind.FARTLEK,
         durationPolicy = DurationPolicy.QUALITY_SIZED,
-        blurb = "Dose baixa de variação na segunda metade da base; não é treino forte.",
+        blurb = "Variação leve no meio do treino, na segunda metade da fase de base. Não é o treino forte.",
         ruleIds = QUALITY_RULES,
         evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
         structure = structure(
@@ -427,7 +426,7 @@ object SessionLibrary {
             title = "Fartlek",
             qualityKind = QualityKind.FARTLEK,
             durationPolicy = DurationPolicy.QUALITY_SIZED,
-            blurb = "Variação por esforço percebido, sem pace fixo.",
+            blurb = "Variação de ritmo, guiado pelo quanto você se sente cansado — sem ritmo marcado.",
             ruleIds = QUALITY_RULES,
             evidenceIds = listOf("EV-SEILER-2010", "EV-DANIELS-2014"),
             structure = structure(
@@ -485,8 +484,7 @@ object SessionLibrary {
             title = "Pace de prova ${distance.raceLabel()}",
             qualityKind = QualityKind.RACE_PACE,
             durationPolicy = DurationPolicy.QUALITY_SIZED,
-            blurb = "Blocos no pace atual da prova (${distance.raceLabel()}), não na meta; " +
-                "a previsão manda.",
+            blurb = "Blocos no ritmo que você corre hoje, não na meta: a previsão do app manda.",
             ruleIds = QUALITY_RULES,
             evidenceIds = listOf("EV-DANIELS-2014", "EV-FOSTER-2001"),
             structure = structure(
@@ -513,7 +511,7 @@ object SessionLibrary {
         title = "Intervalado",
         qualityKind = QualityKind.INTERVALS,
         durationPolicy = DurationPolicy.QUALITY_SIZED,
-        blurb = "Repetições curtas para a especificidade de 5K.",
+        blurb = "Repetições curtas, no estilo dos 5 km.",
         ruleIds = QUALITY_RULES,
         evidenceIds = listOf("EV-DANIELS-2014", "EV-FOSTER-2001"),
         structure = structure(

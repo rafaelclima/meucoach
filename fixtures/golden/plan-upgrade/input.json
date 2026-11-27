@@ -15,14 +15,14 @@
       {
         "date": "2026-11-02",
         "type": "EASY",
-        "title": "Fácil de segunda",
+        "title": "Rodagem de segunda",
         "durationMin": 40,
         "status": "PLANNED"
       },
       {
         "date": "2026-11-03",
         "type": "EASY",
-        "title": "Fácil de terça",
+        "title": "Rodagem de terça",
         "durationMin": 40,
         "status": "DONE",
         "completionEvidence": "MANUAL"
@@ -30,14 +30,14 @@
       {
         "date": "2026-11-04",
         "type": "EASY",
-        "title": "Fácil de hoje",
+        "title": "Rodagem de hoje",
         "durationMin": 40,
         "status": "PLANNED"
       },
       {
         "date": "2026-11-06",
         "type": "EASY",
-        "title": "Fácil de sexta",
+        "title": "Rodagem de sexta",
         "durationMin": 40,
         "status": "PLANNED"
       },
@@ -61,14 +61,14 @@
       {
         "date": "2026-11-02",
         "type": "EASY",
-        "title": "Fácil de segunda",
+        "title": "Rodagem de segunda",
         "durationMin": 40,
         "status": "PLANNED"
       },
       {
         "date": "2026-11-03",
         "type": "EASY",
-        "title": "Fácil de terça",
+        "title": "Rodagem de terça",
         "durationMin": 40,
         "status": "DONE",
         "completionEvidence": "MANUAL"
@@ -76,7 +76,7 @@
       {
         "date": "2026-11-04",
         "type": "EASY",
-        "title": "Fácil de hoje",
+        "title": "Rodagem de hoje",
         "durationMin": 40,
         "status": "PLANNED"
       },

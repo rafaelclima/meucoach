@@ -425,7 +425,7 @@ class DailyPrescriptionEngine {
                 PrescriptionTargets(
                     pace = recommendation.pace,
                     heartRate = recommendation.heartRate,
-                    zone = "Z2",
+                    zone = "Fácil (Z2)",
                     distanceKm = recommendation.distanceKm,
                     rpe = if (recommendation.heartRate == null) {
                         PrescriptionPolicy.EASY_RPE +

@@ -215,10 +215,10 @@ data class WorkoutStructure(
         target.startsWith("RPE") -> "esforço ${target.removePrefix("RPE").trim()} de 10"
         target == "T" -> "ritmo forte sustentado"
         target == "I" -> "ritmo de intervalado"
-        target == "GOAL_5K" -> "pace atual de 5K"
-        target == "GOAL_10K" -> "pace atual de 10K"
-        target == "GOAL_HALF" -> "pace atual de meia maratona"
-        target == "GOAL_MARATHON" -> "pace atual de maratona"
+        target == "GOAL_5K" -> "ritmo atual de 5 km"
+        target == "GOAL_10K" -> "ritmo atual de 10 km"
+        target == "GOAL_HALF" -> "ritmo atual de meia maratona"
+        target == "GOAL_MARATHON" -> "ritmo atual de maratona"
         else -> target
     }
 

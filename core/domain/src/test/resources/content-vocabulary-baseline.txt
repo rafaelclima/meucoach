@@ -8,13 +8,6 @@
 #   docs/AUDITORIA_UX_WRITING_2026-11.md that removes the line.
 # The gate fails on any violation missing here and on any stale entry:
 # the baseline only shrinks, never grows.
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [easyHeartRatePaceRef howToRun] | pace | … . Guie pelo esforço e pela FC: fique entre 140 e 155 bpm; o pace é referência (entre 6:00 e 6:30 por km). Mantenha o esforço … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [easyRpePaceRef howToRun] | pace | … 0 min prescritos. Use o esforço percebido 6/10 como guia; o pace é referência (entre 6:00 e 6:30 por km). Mantenha o esforço … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPace howToRun] | mesociclo / bloco | … forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (teto 172 bp … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPace howToRun] | pace | … treino forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (te … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPaceNoCeil howToRun] | mesociclo / bloco | … forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (a partir de … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPaceNoCeil howToRun] | pace | … treino forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (a … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [racePaceSteps step1] | pace | Faça 5 × 4 min no pace atual de 5K, com 2 min leves de recuperação. | F4
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedFast note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … atual (30:59), dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedFast note] | pace | … revisão atual (30:59), dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedSlow note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … (30:59), ainda dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
@@ -32,14 +25,6 @@ core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [u
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableNoVdot note] | pace | … rado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableStale note] | PEAK / BUILD / TAPER / BASE / RECOVERY | Sem previsão recente de 5K (calibração vencida): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableStale note] | pace | … cida): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F5
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Fartlek"] | pace | Variação por esforço percebido, sem pace fixo. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Intervalado"] | especificidade | Repetições curtas para a especificidade de 5K. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova 10K"] | pace | Blocos no pace atual da prova (10K), não na meta; a previsão manda. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova 5K"] | pace | Blocos no pace atual da prova (5K), não na meta; a previsão manda. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova maratona"] | pace | Blocos no pace atual da prova (maratona), não na meta; a previsão manda. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova meia maratona"] | pace | Blocos no pace atual da prova (meia maratona), não na meta; a previsão man … | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Rodagem com estímulos"] | qualidade | … lados no fácil, após 4 semanas consistentes; não conta como qualidade. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/WorkoutRecommender.kt [subjectiveMissing rationale] | qualidade | … fácil e sem treino forte. Faça o check-in para confirmar a qualidade de hoje. Alvo 7:30–8:24/km · FC 146–161. | F4
 core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [nextQuality coachLine] | qualidade | Rodagem bem feita. Amanhã: qualidade de 40 min. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityOnTarget coachLine] | qualidade | Qualidade completa. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityOnTarget headline] | qualidade | Qualidade completa | F5
@@ -52,6 +37,3 @@ fixtures/golden/per-horizon/expected.json:peak :: session[WEDNESDAY].rationale |
 fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … mo leve. Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F2
 fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | VDOT | … in restantes em ritmo leve. Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescre … | F2
 fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | pace | … rado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F2
-fixtures/golden/plan-upgrade/expected.json:upgraded :: session[MONDAY].title | Fácil | Fácil de segunda | F4
-fixtures/golden/plan-upgrade/expected.json:upgraded :: session[TUESDAY].title | Fácil | Fácil de terça | F4
-fixtures/golden/plan-upgrade/expected.json:upgraded :: session[WEDNESDAY].title | Fácil | Fácil de hoje | F4

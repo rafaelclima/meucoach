@@ -255,7 +255,7 @@ private fun orderedTargetRows(targets: PrescriptionTargets): List<TargetRow> {
         targets.heartRate?.let { TargetRow("FC-alvo", it.value(), "briefing-target-heart-rate") }
     val distance =
         targets.distanceKm?.let { TargetRow("Distância", distanceValue(it), "briefing-target-distance") }
-    val zone = targets.zone?.let { TargetRow("Zona", it, "briefing-target-zone") }
+    val zone = targets.zone?.let { TargetRow("Intensidade", it, "briefing-target-zone") }
     val rpe = targets.rpe?.let { TargetRow("Esforço", "$it/10", "briefing-target-rpe") }
     val leading = when (targets.primary) {
         TargetKind.HEART_RATE -> listOfNotNull(heartRate, rpe, pace)
@@ -267,14 +267,14 @@ private fun orderedTargetRows(targets: PrescriptionTargets): List<TargetRow> {
 }
 
 private fun primaryNote(targets: PrescriptionTargets): String = when (targets.primary) {
-    TargetKind.HEART_RATE -> "Principal: FC e esforço; o pace é referência."
+    TargetKind.HEART_RATE -> "Principal: FC e esforço; o ritmo é referência."
 
-    TargetKind.PACE -> "Principal: pace do bloco; a FC confirma."
+    TargetKind.PACE -> "Principal: ritmo do bloco; a FC confirma."
 
     TargetKind.MIXED -> "Principal: FC como teto; o esforço é o guia."
 
     TargetKind.RPE -> if (targets.pace != null) {
-        "Principal: esforço percebido; o pace é referência."
+        "Principal: esforço percebido; o ritmo é referência."
     } else {
         "Principal: esforço percebido."
     }

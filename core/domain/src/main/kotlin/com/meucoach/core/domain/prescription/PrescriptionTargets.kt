@@ -78,7 +78,7 @@ data class PrescriptionTargets(
  * prescription, so the plan intent and the day decision cannot disagree.
  */
 internal object PrescriptionPolicy {
-    const val ENGINE_VERSION = "daily-prescription-v8"
+    const val ENGINE_VERSION = "daily-prescription-v9"
     const val MIN_EASY_MINUTES = 20
     const val REDUCE_FACTOR = 0.8
     const val DOWNGRADE_FACTOR = 0.7
@@ -164,7 +164,7 @@ internal object PrescriptionPolicy {
         return PrescriptionTargets(
             pace = pace,
             heartRate = heartRate,
-            zone = "Z2",
+            zone = "Fácil (Z2)",
             // FR-410: without LTHR, RPE leads and pace (when present) is reference.
             rpe = if (heartRate == null) EASY_RPE else null,
             primary = primaryFor(type, pace, heartRate),
@@ -210,7 +210,7 @@ internal object PrescriptionPolicy {
         return PrescriptionTargets(
             pace = pace,
             heartRate = heartRate,
-            zone = "Z3–Z4",
+            zone = "Moderado a forte (Z3–Z4)",
             rpe = if (pace == null && heartRate == null) QUALITY_RPE else null,
             primary = primaryFor(WorkoutType.QUALITY, pace, heartRate),
         )
@@ -240,7 +240,7 @@ internal object PrescriptionPolicy {
         return PrescriptionTargets(
             pace = pace,
             heartRate = heartRate,
-            zone = if (pace != null || heartRate != null) "Z5" else null,
+            zone = if (pace != null || heartRate != null) "Forte (Z5)" else null,
             rpe = if (pace == null && heartRate == null) HARD_QUALITY_RPE else null,
             primary = primaryFor(WorkoutType.QUALITY, pace, heartRate),
         )

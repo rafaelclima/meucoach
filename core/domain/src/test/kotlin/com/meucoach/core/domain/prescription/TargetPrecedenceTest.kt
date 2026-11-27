@@ -91,7 +91,7 @@ class TargetPrecedenceTest {
         assertThat(targets.pace?.slow?.secondsPerKm).isEqualTo(371)
         assertThat(targets.heartRate?.minBpm).isEqualTo(162)
         assertThat(targets.heartRate?.maxBpm).isEqualTo(179)
-        assertThat(targets.zone).isEqualTo("Z3–Z4")
+        assertThat(targets.zone).isEqualTo("Moderado a forte (Z3–Z4)")
     }
 
     @Test
@@ -108,7 +108,7 @@ class TargetPrecedenceTest {
         assertThat(targets.pace?.slow?.secondsPerKm).isEqualTo(342)
         assertThat(targets.heartRate?.minBpm).isEqualTo(180)
         assertThat(targets.heartRate?.maxBpm).isNull()
-        assertThat(targets.zone).isEqualTo("Z5")
+        assertThat(targets.zone).isEqualTo("Forte (Z5)")
         assertThat(targets.rpe).isNull()
     }
 
@@ -184,13 +184,13 @@ class TargetPrecedenceTest {
             targets = PrescriptionTargets(
                 pace = PaceTarget(Pace.of(7, 40), Pace.of(8, 20)),
                 heartRate = HeartRateTarget(minBpm = 146, maxBpm = 161),
-                zone = "Z2",
+                zone = "Fácil (Z2)",
                 primary = TargetKind.HEART_RATE,
             ),
         )
 
         assertThat(briefing.howToRun).contains("Guie pelo esforço e pela FC")
-        assertThat(briefing.howToRun).contains("o pace é referência")
+        assertThat(briefing.howToRun).contains("o ritmo é só referência")
         assertThat(briefing.howToRun).contains("146")
         assertThat(briefing.howToRun).doesNotContain("Se usar")
     }
@@ -202,12 +202,12 @@ class TargetPrecedenceTest {
             targets = PrescriptionTargets(
                 pace = PaceTarget(Pace.of(5, 20), Pace.of(5, 40)),
                 heartRate = HeartRateTarget(minBpm = 165, maxBpm = 178),
-                zone = "Z3–Z4",
+                zone = "Moderado a forte (Z3–Z4)",
                 primary = TargetKind.PACE,
             ),
         )
 
-        assertThat(briefing.howToRun).contains("Use o pace do bloco")
+        assertThat(briefing.howToRun).contains("Siga o ritmo da etapa")
         assertThat(briefing.howToRun).contains("a FC confirma")
         assertThat(briefing.howToRun).contains("5:20")
         assertThat(briefing.howToRun).doesNotContain("Se usar")
@@ -225,7 +225,7 @@ class TargetPrecedenceTest {
         )
 
         assertThat(briefing.howToRun).contains("esforço percebido 4/10")
-        assertThat(briefing.howToRun).contains("o pace é referência")
+        assertThat(briefing.howToRun).contains("o ritmo é só referência")
     }
 
     private fun brief(type: WorkoutType, targets: PrescriptionTargets) = SessionBriefingEngine().brief(

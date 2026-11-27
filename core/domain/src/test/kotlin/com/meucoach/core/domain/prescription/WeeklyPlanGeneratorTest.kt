@@ -36,10 +36,10 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `weekly engine version is weekly-plan-v10`() {
-        // ADR 0071 F2: the weekly rationale copy changed (no rule change).
+    fun `weekly engine version is weekly-plan-v11`() {
+        // ADR 0071 F4: session copy in runner talk (no rule change).
         // Older rows are upgraded by PlanUpgrade on opening (ADR 0048).
-        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v10")
+        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v11")
     }
 
     @Test
@@ -1178,18 +1178,18 @@ class WeeklyPlanGeneratorTest {
         )
 
         val easy = plan.sessions.first { it.type == WorkoutType.EASY }
-        assertThat(easy.targets.zone).isEqualTo("Z2")
+        assertThat(easy.targets.zone).isEqualTo("Fácil (Z2)")
         assertThat(easy.targets.pace).isNotNull
         assertThat(easy.targets.heartRate).isNotNull
         assertThat(easy.targets.distanceKm).isNotNull
         assertThat(easy.targets.rpe).isNull()
 
         val longRun = plan.sessions.first { it.type == WorkoutType.LONG }
-        assertThat(longRun.targets.zone).isEqualTo("Z2")
+        assertThat(longRun.targets.zone).isEqualTo("Fácil (Z2)")
         assertThat(longRun.targets.pace).isNotNull
 
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
-        assertThat(quality.targets.zone).isEqualTo("Z3–Z4")
+        assertThat(quality.targets.zone).isEqualTo("Moderado a forte (Z3–Z4)")
         assertThat(quality.targets.pace).isNotNull
         assertThat(quality.targets.heartRate).isNotNull
     }
@@ -1218,7 +1218,7 @@ class WeeklyPlanGeneratorTest {
         val quality = plan.sessions.first { it.type == WorkoutType.QUALITY }
         assertThat(quality.qualityKind).isEqualTo(QualityKind.INTERVALS)
         assertThat(quality.targets.primary).isEqualTo(TargetKind.PACE)
-        assertThat(quality.targets.zone).isEqualTo("Z5")
+        assertThat(quality.targets.zone).isEqualTo("Forte (Z5)")
         assertThat(quality.targets.pace?.fast?.secondsPerKm).isEqualTo(331)
         assertThat(quality.targets.pace?.slow?.secondsPerKm).isEqualTo(342)
         assertThat(quality.targets.heartRate?.minBpm).isEqualTo(180)

@@ -113,22 +113,22 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `SessionBriefingEngine.kt:91` | `"Use o pace do bloco: fique entre X e Y por km"` | `"Siga o ritmo da etapa: entre X e Y por km"` | pendente |
-| [C] | `SessionBriefingEngine.kt:119` | `"; o pace é referência (entre X e Y por km)."` | `"; o ritmo é só referência (entre X e Y por km)."` | pendente |
-| [C] | `SessionBriefingSheet.kt:258` + `PrescriptionTargets.kt:167,213,243` | `label = "Zona"` com valor `"Z2"`/`"Z3–Z4"`/`"Z5"` | `"Intensidade"` + `"Fácil (Z2)"` / `"Forte (Z4–Z5)"` / `"Moderado a forte (Z3–Z4)"` | pendente |
-| [M] | `SessionLibrary.kt:430` | `"Variação por esforço percebido, sem pace fixo."` | `"Variação de ritmo, guiado pelo quanto você se sente cansado — sem ritmo marcado."` | pendente |
+| [C] | `SessionBriefingEngine.kt:91` | `"Use o pace do bloco: fique entre X e Y por km"` | `"Siga o ritmo da etapa: entre X e Y por km"` | corrigido |
+| [C] | `SessionBriefingEngine.kt:119` | `"; o pace é referência (entre X e Y por km)."` | `"; o ritmo é só referência (entre X e Y por km)."` | corrigido |
+| [C] | `SessionBriefingSheet.kt:258` + `PrescriptionTargets.kt:167,213,243` | `label = "Zona"` com valor `"Z2"`/`"Z3–Z4"`/`"Z5"` | `"Intensidade"` + `"Fácil (Z2)"` / `"Forte (Z4–Z5)"` / `"Moderado a forte (Z3–Z4)"` | corrigido |
+| [M] | `SessionLibrary.kt:430` | `"Variação por esforço percebido, sem pace fixo."` | `"Variação de ritmo, guiado pelo quanto você se sente cansado — sem ritmo marcado."` | corrigido |
 | [OK] | `SessionLibrary.kt:485` | `title = "Pace de prova ${distance.raceLabel()}"` | manter — título aprovado em 21/11/2026 | — |
-| [M] | `SessionLibrary.kt:488-489` | `"Blocos no pace atual da prova (...), não na meta; a previsão manda."` | `"Blocos no ritmo que você corre hoje, não na meta: a previsão do app manda."` | pendente |
-| [M] | `SessionLibrary.kt:516` | `"Repetições curtas para a especificidade de 5K."` | `"Repetições curtas, no estilo dos 5 km."` | pendente |
-| [M] | `SessionLibrary.kt:285` | `"Estímulo neuromuscular curto no fim de um fácil; não conta como treino forte."` | `"Acelerações curtas no fim da corrida leve — não é o treino forte da semana."` | pendente |
-| [M] | `SessionLibrary.kt:297-298` | `"Surtos curtos e controlados no fácil, após 4 semanas consistentes; não conta como qualidade."` | `"Surtos curtos e controlados no fim da corrida leve, depois de 4 semanas consistentes."` | pendente |
-| [M] | `SessionLibrary.kt:352` | `"Dose baixa de variação na segunda metade da base; não é treino forte."` | `"Variação leve no meio do treino, na segunda metade da fase de base. Não é o treino forte."` | pendente |
-| [M] | `SessionLibrary.kt:267` | `title = "Rodagem"` | manter “Rodagem” **com** descrição visível; “Corrida leve” em lista compacta | pendente |
-| [M] | `SessionLibrary.kt:387`, `:413`, `:527`, `:309`, `:338`, `:441`, `:470` | `target = "T"`, `"I"`, `"RPE 7"`, `"RPE 8"` | garantir que nenhum caminho de UI renderize o código cru (hoje só `steps()` traduz) | pendente |
-| [M] | `WorkoutStructure.kt:218-221` | `"pace atual de 5K"` etc. | `"ritmo atual de 5 km"` etc. | pendente |
-| [M] | `SessionBriefingSheet.kt:270`, `:272`, `:277` | `"Principal: FC e esforço; o pace é referência."` | `"Principal: FC e esforço; o ritmo é referência."` | pendente |
-| [C] | `WorkoutRecommender.kt:145` | `"Faça o check-in para confirmar a qualidade de hoje."` (achado do gate F1; não estava na lista) | `"Faça o check-in para confirmar o treino forte de hoje."` | pendente |
-| [C] | `fixtures/golden/plan-upgrade/input.json:18,25,33` (títulos preservados em `expected.json`) | `"Fácil de segunda"`, `"Fácil de terça"`, `"Fácil de hoje"` (achado do gate F1; título legado preservado pelo `PlanUpgrade`) | `"Rodagem ..."` pela regra de retitulação da F4, ou regenerar o fixture | pendente |
+| [M] | `SessionLibrary.kt:488-489` | `"Blocos no pace atual da prova (...), não na meta; a previsão manda."` | `"Blocos no ritmo que você corre hoje, não na meta: a previsão do app manda."` | corrigido |
+| [M] | `SessionLibrary.kt:516` | `"Repetições curtas para a especificidade de 5K."` | `"Repetições curtas, no estilo dos 5 km."` | corrigido |
+| [M] | `SessionLibrary.kt:285` | `"Estímulo neuromuscular curto no fim de um fácil; não conta como treino forte."` | `"Acelerações curtas no fim da corrida leve — não é o treino forte da semana."` | corrigido |
+| [M] | `SessionLibrary.kt:297-298` | `"Surtos curtos e controlados no fácil, após 4 semanas consistentes; não conta como qualidade."` | `"Surtos curtos e controlados no fim da corrida leve, depois de 4 semanas consistentes."` | corrigido |
+| [M] | `SessionLibrary.kt:352` | `"Dose baixa de variação na segunda metade da base; não é treino forte."` | `"Variação leve no meio do treino, na segunda metade da fase de base. Não é o treino forte."` | corrigido |
+| [M] | `SessionLibrary.kt:267` | `title = "Rodagem"` | manter “Rodagem” **com** descrição visível; “Corrida leve” em lista compacta | corrigido |
+| [M] | `SessionLibrary.kt:387`, `:413`, `:527`, `:309`, `:338`, `:441`, `:470` | `target = "T"`, `"I"`, `"RPE 7"`, `"RPE 8"` | garantir que nenhum caminho de UI renderize o código cru (hoje só `steps()` traduz) | corrigido |
+| [M] | `WorkoutStructure.kt:218-221` | `"pace atual de 5K"` etc. | `"ritmo atual de 5 km"` etc. | corrigido |
+| [M] | `SessionBriefingSheet.kt:270`, `:272`, `:277` | `"Principal: FC e esforço; o pace é referência."` | `"Principal: FC e esforço; o ritmo é referência."` | corrigido |
+| [C] | `WorkoutRecommender.kt:145` | `"Faça o check-in para confirmar a qualidade de hoje."` (achado do gate F1; não estava na lista) | `"Faça o check-in para confirmar o treino forte de hoje."` | corrigido |
+| [C] | `fixtures/golden/plan-upgrade/input.json:18,25,33` (títulos preservados em `expected.json`) | `"Fácil de segunda"`, `"Fácil de terça"`, `"Fácil de hoje"` (achado do gate F1; título legado preservado pelo `PlanUpgrade`) | `"Rodagem ..."` pela regra de retitulação da F4, ou regenerar o fixture | corrigido |
 | [OK] | `WorkoutStructure.kt:172`, `:176`, `:180`, `:191`, `:198`, `:200`, `:203`, `:215` | passo a passo do treino | manter | — |
 | [OK] | `SessionBriefingEngine.kt:47`, `:51`, `:59`, `:63`, `:81`, `:83`, `:107`, `:109`, `:114`, `:123`, `:125`, `:129-134` | orientação e sinais de alerta | manter | — |
 

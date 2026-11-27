@@ -911,8 +911,15 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   e `ExplanationCatalog` (16 títulos de regra + 2 de evidência).
   `daily-prescription-v8`; goldens do dia regravados; 19 linhas do baseline
   removidas; `Longão`/`dose pequena` inalterados.
-- [ ] **F4 · Motor — títulos, blurps, briefing e estrutura.** `SessionLibrary`,
-  `SessionBriefingEngine`, `WorkoutStructure`, zona no briefing.
+- [x] **F4 · Motor — títulos, blurbs, briefing e estrutura.** `SessionLibrary`
+  (6 blurbs em fala de corredor, títulos aprovados mantidos),
+  `SessionBriefingEngine` (`Siga o ritmo da etapa`, `o ritmo é só referência`,
+  `session-briefing-v2`), `WorkoutStructure` (`ritmo atual de 5 km/10 km/meia/
+  maratona`), zona no briefing (`Intensidade` + `Fácil (Z2)` /
+  `Moderado a forte (Z3–Z4)` / `Forte (Z5)`) e `WorkoutRecommender`
+  (`treino forte de hoje`). `weekly-plan-v11` + `daily-prescription-v9`;
+  fixture `plan-upgrade` regenerado (`Rodagem de …`); 18 linhas do baseline
+  removidas; `Longão`/`dose pequena`/`Pace de prova` inalterados.
 - [ ] **F5 · Motor — prova, level e story.** `RacePace`, `LevelGraduationEngine`,
   `InitialExperienceSuggester`, `StoryVerdictCalculator` (julgamento proibido por
   §6.12).

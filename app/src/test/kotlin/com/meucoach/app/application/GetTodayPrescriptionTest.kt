@@ -91,7 +91,7 @@ class GetTodayPrescriptionTest {
 
         val upgraded = useCase(request(plan = plan()))
 
-        assertThat(upgraded.engineVersion).isEqualTo("daily-prescription-v8")
+        assertThat(upgraded.engineVersion).isEqualTo("daily-prescription-v9")
         assertThat(upgraded.id).isNotEqualTo(current.id)
         assertThat(repository.getLatest(today)?.id).isEqualTo(upgraded.id)
         assertThat(repository.getVersions(today)).hasSize(3)

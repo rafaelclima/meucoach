@@ -88,7 +88,7 @@ class SessionBriefingEngine {
     /** FR-410: quality is led by the block pace; HR confirms. */
     private fun paceLed(targets: PrescriptionTargets): String {
         val pace = targets.pace ?: return rpeLed(targets)
-        val base = "Use o pace do bloco: fique entre ${pace.fast.format()} e ${pace.slow.format()} por km"
+        val base = "Siga o ritmo da etapa: entre ${pace.fast.format()} e ${pace.slow.format()} por km"
         val guardrail = targets.heartRate?.let { heartRate ->
             val ceiling = heartRate.maxBpm
             if (ceiling != null) {
@@ -116,7 +116,7 @@ class SessionBriefingEngine {
     }
 
     private fun paceReference(targets: PrescriptionTargets): String = targets.pace?.let { pace ->
-        "; o pace é referência (entre ${pace.fast.format()} e ${pace.slow.format()} por km)."
+        "; o ritmo é só referência (entre ${pace.fast.format()} e ${pace.slow.format()} por km)."
     } ?: "."
 
     private fun restGuidance(ruleIds: List<String>): String = if (STOP_RULE in ruleIds) {
@@ -135,7 +135,7 @@ class SessionBriefingEngine {
     }
 
     companion object {
-        const val ENGINE_VERSION = "session-briefing-v1"
+        const val ENGINE_VERSION = "session-briefing-v2"
         private const val STOP_RULE = "R-SAFE-01"
     }
 }
