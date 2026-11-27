@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -442,39 +443,72 @@ private fun ReadinessCard(
     onCheckInClick: () -> Unit,
 ) {
     val colors = McTheme.colors
+    val largeText = LocalDensity.current.fontScale >= 1.5f
     McCard(variant = McCardVariant.ELEVATED) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "PRONTIDÃO",
-                style = McTextStyles.overline,
-                color = colors.textTertiary,
-            )
-            McConfidenceBadge(confidence = state.readinessConfidence)
+        if (largeText) {
+            Column(modifier = Modifier.testTag("readiness-large-text")) {
+                Text(
+                    text = "PRONTIDÃO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                McConfidenceBadge(confidence = state.readinessConfidence)
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "PRONTIDÃO",
+                    style = McTextStyles.overline,
+                    color = colors.textTertiary,
+                )
+                McConfidenceBadge(confidence = state.readinessConfidence)
+            }
         }
         Spacer(modifier = Modifier.height(10.dp))
         if (state.readinessHasData) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                McGauge(
-                    score = state.readinessScore,
-                    level = state.readinessLevel,
-                    levelLabel = readinessLabel(state.readinessLevel),
-                    size = 132.dp,
-                    strokeWidth = 9.dp,
-                )
-                Spacer(modifier = Modifier.width(16.dp))
+            if (largeText) {
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    state.readinessSignals.forEach { signal ->
-                        ReadinessSignalRow(signal = signal)
+                    McGauge(
+                        score = state.readinessScore,
+                        level = state.readinessLevel,
+                        levelLabel = readinessLabel(state.readinessLevel),
+                        size = 132.dp,
+                        strokeWidth = 9.dp,
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        state.readinessSignals.forEach { signal ->
+                            ReadinessSignalRow(signal = signal, largeText = true)
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    McGauge(
+                        score = state.readinessScore,
+                        level = state.readinessLevel,
+                        levelLabel = readinessLabel(state.readinessLevel),
+                        size = 132.dp,
+                        strokeWidth = 9.dp,
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        state.readinessSignals.forEach { signal ->
+                            ReadinessSignalRow(signal = signal, largeText = false)
+                        }
                     }
                 }
             }
@@ -520,7 +554,7 @@ private fun ReadinessCard(
 }
 
 @Composable
-private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
+private fun ReadinessSignalRow(signal: ReadinessSignalUi, largeText: Boolean) {
     val colors = McTheme.colors
     val toneColor = when (signal.tone) {
         SignalTone.POSITIVE -> colors.success
@@ -538,7 +572,7 @@ private fun ReadinessSignalRow(signal: ReadinessSignalUi) {
                 text = signal.label,
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
-                maxLines = 1,
+                maxLines = if (largeText) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Row(verticalAlignment = Alignment.Bottom) {
