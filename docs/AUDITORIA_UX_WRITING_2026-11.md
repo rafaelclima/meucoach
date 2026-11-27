@@ -274,11 +274,17 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 ## Fatia F9 — Fechar o gate
 
-| Item | Onde | Observação |
-|---|---|---|
-| Remover o baseline de jargão | `core/domain/src/test/...`, `app/src/test/...` | lista negra cheia ativa; `check` verde |
-| Atualizar goldens | `fixtures/golden/**` | títulos e `forbidden*` conforme o vocabulário canônico |
-| Atualizar testes de string literal | `CalibrationScreenTest`, `LevelGraduationCardTest`, `WeeklyReviewFormatTest`, snapshots do Hoje e do briefing | junto com a fatia correspondente |
+| Item | Onde | Observação | Status |
+|---|---|---|---|
+| Remover o baseline de jargão | `core/domain/src/test/...`, `app/src/test/...` | lista negra cheia ativa; `check` verde | verificado |
+| Atualizar goldens | `fixtures/golden/**` | títulos e `forbidden*` conforme o vocabulário canônico | verificado |
+| Atualizar testes de string literal | `CalibrationScreenTest`, `LevelGraduationCardTest`, `WeeklyReviewFormatTest`, snapshots do Hoje e do briefing | junto com a fatia correspondente | verificado |
+
+> **F9 concluída em 27/11/2026:** baselines apagados (já zerados em F7/F8);
+> `VocabularyGate`/`UiVocabularyGate` sem baseline, falhando em qualquer
+> violação; `forbiddenVocabulary` espelha `DISPLAYS` nos 5 goldens de plano
+> (drift check verde); testes de string literal só conferidos, sem reescrever
+> copy. Nenhuma regra, limiar, volume, alvo ou schema muda.
 
 ---
 

@@ -1,6 +1,49 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F8: bugs literais e muros de texto, 2 goldens regravados; só F9 pendente)
+**Atualizado:** 27/11/2026 (Ciclo 5, F9: gate sem baseline; Ciclo 5 encerrado)
+
+## Sessão 2026-11-27 — Ciclo 5, F9: fechar o gate (sem baseline)
+
+**Objetivo:** remover o baseline de jargão e deixar o gate sem baseline
+conforme a linha F9 da auditoria (`docs/AUDITORIA_UX_WRITING_2026-11.md`).
+Nenhuma mudança de copy, regra fisiológica, limiar, volume, alvo, critério
+de qualidade, `ruleId`/`evidenceId` ou schema (Room v23 intacto; sem
+`engineVersion`).
+
+### Concluído
+
+- **Decisão (manter trava vazia vs. remover):** removidos os dois
+  `content-vocabulary-baseline.txt` (já zerados desde F7/F8, só cabeçalhos)
+  + `VocabularyGate`/`UiVocabularyGate` simplificados para falhar em qualquer
+  violação, sem `loadBaseline`/`checkNotNull`. Mesma assinatura
+  `assertClean(texts, scopePrefix)` — só a mensagem usa o escopo.
+- **Goldens (`fixtures/golden/**`):** `forbiddenVocabulary` continua
+  espelhando `ForbiddenVocabulary.DISPLAYS` nos 5 goldens de plano
+  (`per-horizon`, `per-opportunity`, `per-quality`, `plan-upgrade`, `vol-02`,
+  29 termos); drift check em `GoldenVocabulary.kt` intacto — nenhum ajuste.
+- **Testes de string literal:** já atualizados nas fatias donas; só
+  conferidos aqui — `CalibrationScreenTest`, `LevelGraduationCardTest`,
+  `WeeklyReviewFormatTest` e snapshots do Hoje/briefing passam sem reescrever
+  copy.
+- **F1–F8 confirmadas:** auditoria sem `pendente` fora de F9 (só a legenda
+  cita o fluxo `pendente → corrigido → verificado`).
+
+### Gates
+
+- `:core:domain:test` + `:app:testDebugUnitTest --tests "*content*"` verdes;
+  `spotlessApply` sem diff extra; `check` + `verifyRoborazziDebug` verdes;
+  nenhum dado real no diff; sem dependência nova.
+
+### Por que nenhum bump (ADR 0071 §2.7)
+
+- F9 é só mecânica de gate + verificação; nenhum `rationale`/`title`/
+  `decisionDetail` persistido muda.
+
+### Pendente
+
+- Nada do Ciclo 5 — F9 encerra o ciclo. **Nota de coordenação:** sem commit
+  e sem push nesta sessão (outro agente ativo no repo; dev está 1 commit à
+  frente de `origin/dev` desde F8).
 
 ## Sessão 2026-11-27 — Ciclo 5, F8: bugs literais e muros de texto
 

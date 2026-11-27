@@ -876,7 +876,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
 **Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
-F2–F8 concluídas; F9 pendente (fechar o gate).
+F2–F9 concluídas; Ciclo 5 encerrado.
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -963,8 +963,9 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   2 blocos), `CheckInScreen` (`Dor muscular`), `DailyMetricsCsvParser`
   (sempre pt-BR: `Valores inválidos.` em vez do `it.message` em inglês).
   2 goldens regravados; `[OK]` e F9 intactos.
-- [ ] **F9 · Fechar o gate.** Remover o baseline; lista negra cheia ativa no
-  `check`.
+- [x] **F9 · Fechar o gate.** Baseline removido (`content-vocabulary-baseline.txt`
+  apagados no domínio e na UI); `VocabularyGate`/`UiVocabularyGate` sem
+  baseline, falhando em qualquer violação; lista negra cheia ativa no `check`.
 
 Decisões: `docs/adr/0071-content-vocabulary-and-voice.md`. Vocabulário
 canônico: `docs/GLOSSARY.md`. Lista de trabalho com arquivo e linha:
