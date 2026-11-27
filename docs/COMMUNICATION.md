@@ -347,3 +347,79 @@ a sessão tem, e a nota de redução só aparece quando a duração realmente ca
 Proibições: “Tempo” no nome do treino, “trote”, “VO2max”, “Z3–Z4” no texto corrido,
 “taper”, IDs de regra/evidência e blocos que não caibam na duração. A nota de
 taper/descarga não aparece quando o piso de 25 min impediu a redução.
+
+### 6.15 Varredura de UX Writing (27/11/2026)
+
+A varredura completa de todo texto visível (UI, motor, `strings.xml`,
+notificações) está em `docs/AUDITORIA_UX_WRITING_2026-11.md`: 45 itens críticos e
+57 melhorias, com arquivo e linha. As decisões estão no ADR 0071
+(`docs/adr/0071-content-vocabulary-and-voice.md`) e o catálogo canônico em
+`docs/GLOSSARY.md`.
+
+O achado principal é que **o jargão não nasce na UI: ele nasce no motor.** A
+camada de apresentação foi limpa em 03/11/2026, mas `rationale`, `detail` e
+`unlockHint` continuam sendo produced pelo motor e são exibidos no card do dia e
+no sheet “Por que este treino?”. Por isso a correção **precisa** mexer em
+`core:domain` e na UI juntos — mexer só na UI deixa o texto incoerente entre as
+duas superfícies.
+
+| Onde | Antes | Depois |
+|---|---|---|
+| Motivo do plano | `Fase TAPER.` | `Etapa: Semana de prova.` |
+| Motivo do treino forte bloqueado | `ACWR 1,62 > 1,50` | `carga dos últimos 7 dias 1,62×, acima de 1,50×` |
+| Regra do catálogo | `Prova ou teste recente define VDOT e LTHR` | `Prova ou teste recente define seu índice de aptidão e sua FC no limite` |
+| Bloqueio por nível iniciante | `semana de prova/taper tem 1 estímulo` | `a semana da prova tem 1 estímulo` |
+| Veredito do story | `Forte demais hoje` | `Ritmo acima do planejado` |
+| Prontidão (3 nomes) | `vermelha` / `dia em vermelho` / `Alta` | `Baixa` (único nome) |
+| Zona no briefing | `Zona: Z3–Z4` | `Intensidade: Forte (Z4–Z5)` |
+
+**“Longão” não muda** (decisão do usuário 0 em 27/11/2026): é gíria de corrida
+amplamente conhecida e de fácil compreensão. “Corrida leve” continua valendo
+para o título em lista compacta, ao lado de “Rodagem”.
+
+Proibições confirmadas nesta varredura (além das de §6.5): “taper”,
+“micro-dose”, “monótona”, “Strides”, “Colinas”, “Fácil*”, “qualidade” como tipo
+de sessão, `VDOT`, `LTHR`, `ACWR`, `CTL`, `Tier A/B`, `TT`, “Riegel”, “blob”,
+“analytics”, “tiles”, “splits”, “especificidade” e a violação de §6.12
+(“forte demais”, “leve demais”).
+
+O gate que existia (`fixtures/golden/per-horizon/expected.json` com
+`forbiddenRationale: ["Fase PEAK", "Fase TAPER"]`) **não pegava o vazamento
+real**: ele só é aplicado ao cenário `noRace`, cuja fase é `BASE`/`BUILD`, então
+“Fase BASE.” passava sem ser notado. A fatia F1 do ADR 0071 corrige a cobertura
+antes de mexer no texto.
+
+## 7. Voz do produto (27/11/2026)
+
+**Um só grau de informalidade em todo o produto** — a fala de corredor. Não
+existe “tela formal” e “Coach informal”: o app fala do mesmo jeito em todas as
+superfícies, sem camada de tradução entre elas (decisão de 21/11/2026,
+`DECISIONS.md` §Decisões de produto). O que muda é **quem está falando**, não o
+nível de linguagem.
+
+| Contexto | Quem fala | Registro | Exemplo |
+|---|---|---|---|
+| Motor, explicação, telas, dados | o app | “você”, fala de corredor | `Carga dos últimos 7 dias 1,62× — acima de 1,50×.` |
+| Coach (chat) | o treinador | 1ª pessoa, fala de corredor | `Me enrolei na explicação. Me pergunta de novo.` |
+| Notificação | o app | 1 frase, com o próximo passo | `Treino de hoje: Longão · 40 min. Toque para ver o porquê.` |
+
+**A gíria é intencional** (decisão do usuário 0): o treinador usa um pouco de
+gíria para se aproximar mais da realidade do dia a dia. `Opa`, `bora`, `pra`,
+`tá`, `me enrolei` e `Ih` são permitidos — **no Coach e nas telas**, porque o
+produto fala do mesmo jeito em todo lugar. Uniformidade de registro não é o
+objetivo; proximidade é.
+
+O que se corrige é só o defeito **dentro** do registro: a palavra “motor”
+(nome interno de artefato) não aparece em tela, nenhuma frase fica sem
+sujeito, e a mesma tela não abre com duas saudações diferentes.
+
+**Regra de consistência:** a mesma palavra não pode aparecer traduzida em um
+lugar e crua em outro. Se o card do dia diz “Longão”, o rationale diz
+“Longão” — e “VDOT” não aparece em lugar nenhum.
+
+O texto **não comenta o próprio comportamento** (“não inventei”, “não
+inflamos”, “o app não prescreve…”). Ele afirma o fato e, quando é preciso
+limitar, diz o limite em uma frase de usuário.
+
+Nenhum parágrafo visível passa de 30 palavras. Acima disso, quebrar em dois
+blocos ou mover para “Ver mais”.

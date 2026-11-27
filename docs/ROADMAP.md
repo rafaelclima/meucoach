@@ -873,6 +873,59 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 | U-13 | Aplicar o padrão de `DESIGN_SYSTEM.md` §7.3 a todos os campos de data/duração: unificar a máscara de data, migrar tempo alvo do onboarding e data/tempo da Calibração. | Concluído em 11/11/2026 |
 | U-14 | Meta de prova sem data: explicar no Perfil e no plano que não há redução de volume antes da prova, sem usar “taper”. | Concluído em 12/11/2026 |
 
+### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
+
+**Status:** decisão tomada em 27/11/2026; implementação em fatias a partir de
+28/11/2026.
+
+A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
+encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
+nasce na UI — nasce no motor: `rationale`, `detail` e `unlockHint` são produced
+pelo motor e exibidos no card do dia e no sheet “Por que este treino?”. Por
+isso, cada fatia toca `core:domain` **e** a UI correspondente.
+
+**Fora do escopo desta fase:** títulos de sessão **não** são renomeados. `Longão`,
+`Fartlek`, `Pace de prova`, `Subidas`, `Intervalado`, `Rodagem` e `dose pequena`
+foram aprovados pelo usuário 0 em 21/11/2026 e ficam (`DECISIONS.md`
+§Decisões de produto). O registro coloquial do Coach **também** fica: a gíria é
+desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
+
+- [ ] **F1 · Gate automatizado.** Ampliar `forbiddenTitles`/`forbiddenRationale`
+  nos goldens (hoje o gate só cobre o cenário `noRace` e não pega “Fase BASE.”)
+  e criar os testes de catálogo (`ExplanationCatalog`, `QualityGate`,
+  `SessionLibrary`, `SessionBriefingEngine`, `StoryVerdictCalculator`,
+  `RacePace`) e de UI (`strings.xml`, `ReadinessLabels`, `CoachNextLabels`,
+  `RacePredictionBlock`, `WeeklyReviewFormat`, labels do Coach), com baseline
+  explícito dos violadores conhecidos.
+- [ ] **F2 · Motor — rationale do plano semanal.** `WeeklyPlanGenerator`: enum de
+  fase, “taper”, “ACWR”, “monotonia”, “strides”, “bloco”, “mesociclo”.
+  Atualizar `ENGINE_VERSION` e os goldens de título.
+- [ ] **F3 · Motor — gate de qualidade e catálogo de regras.** `QualityGate`
+  (`detail`), `ExplanationCatalog` (títulos de regra e evidência).
+- [ ] **F4 · Motor — títulos, blurps, briefing e estrutura.** `SessionLibrary`,
+  `SessionBriefingEngine`, `WorkoutStructure`, zona no briefing.
+- [ ] **F5 · Motor — prova, level e story.** `RacePace`, `LevelGraduationEngine`,
+  `InitialExperienceSuggester`, `StoryVerdictCalculator` (julgamento proibido por
+  §6.12).
+- [ ] **F6 · UI — Coach.** “motor” na tela, frase sem sujeito
+  (`CoachFallbackLabels`), saudações duplicadas (`CoachOpeningLabels`),
+  `VDOT` em `CoachProgressLabels`. **A gíria fica.**
+- [ ] **F7 · UI — Tendências, Perfil, Previsão, Atividades, Level.** `CTL`,
+  `Monotonia`, “vermelho”, “pace” em prosa, “Riegel”, IDs crus no card de
+  graduação.
+- [ ] **F8 · UI — bugs literais e muros de texto.** `dia(s)`, concordância de
+  “Volume”, range duplicado, `Recuperação X/20`, blocos acima de 30 palavras.
+- [ ] **F9 · Fechar o gate.** Remover o baseline; lista negra cheia ativa no
+  `check`.
+
+Decisões: `docs/adr/0071-content-vocabulary-and-voice.md`. Vocabulário
+canônico: `docs/GLOSSARY.md`. Lista de trabalho com arquivo e linha:
+`docs/AUDITORIA_UX_WRITING_2026-11.md`.
+
+**Fora de escopo desta fase:** nenhuma regra fisiológica, limiar, alvo, volume
+ou critério de qualidade muda. Nenhuma migração de schema: o texto já
+persistido mantém a redação antiga (ADR 0071 §2.7).
+
 ## Backlog técnico
 
 | ID | Item | Quando |

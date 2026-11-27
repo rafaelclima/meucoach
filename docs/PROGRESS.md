@@ -1,6 +1,52 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (ADR 0070: janela de planejamento semanal + lembretes ancorados no treino)
+**Atualizado:** 27/11/2026 (ADR 0071: vocabulário, voz e estados padronizados no texto de usuário)
+
+## Sessão 2026-11-27 — ADR 0071: vocabulário, voz e texto do motor
+
+**Objetivo:** auditar todo o texto visível do app (UI, motor, `strings.xml`,
+notificações) e decidir, **antes** de corrigir, o vocabulário canônico, a voz por
+contexto e o gate que mantém a decisão. Nenhuma regra fisiológica, limiar,
+alvo, volume ou critério de qualidade muda; nenhuma migração de schema.
+
+### Concluído
+
+- **Auditoria completa** (`docs/AUDITORIA_UX_WRITING_2026-11.md`): varredura de todo
+  texto de usuário, com arquivo e linha. **39 linhas críticas** e **80 de melhoria**
+  (agrupadas por arquivo), mais 31 grupos listados como já no padrão e não-tocar. O
+  achado central: **o jargão
+  nasce no motor, não na UI** — `rationale`, `detail` e `unlockHint` são produced
+  pelo motor e exibidos no card do dia e no sheet “Por que este treino?”, então a
+  camada limpa em 03/11/2026 é reintroduzida por baixo.
+- **ADR 0071 aceito** (`docs/adr/0071-content-vocabulary-and-voice.md`): lista
+  negra de jargão, mapa de enums → rótulos canônicos, um vocabulário por conceito,
+  três registros de voz (telas / Coach / notificação), proibições de julgamento e
+  de auto-comentário do motor, limites de forma (30 palavras por parágrafo),
+  política de texto persistido (versionamento por `engineVersion`, sem migração) e
+  especificação do gate com baseline explícito.
+- **Glossário canônico** (`docs/GLOSSARY.md`): reescrito como catálogo
+  termo → nome na UI → o que o usuário lê → onde aparece → regra de primeiro uso.
+  Inclui o mapa de enums, os nomes de sessão, as fases e um glossário de saída
+  rápida para tooltip/`contentDescription`.
+- **`COMMUNICATION.md` §6.15 e §7:** registro da varredura e da voz por contexto.
+- **Impacto de escopo mapeado:** os títulos dos goldens (`Rodagem`, `Longão`,
+  `Fartlek`, `Pace de prova 5K`) precisam ser regravados; `rationale`,
+  `plannedTitle`, `title`, `decisionDetail` e `unlockHint` são persistidos e
+  mantêm a redação antiga (ADR §2.7); o schema Room (`v23`) **não** muda.
+
+### Pendente (Ciclo 5, Roadmap)
+
+- F1 gate → F2 rationale do plano → F3 gate/catálogo → F4 títulos/briefing →
+  F5 prova/level/story → F6 Coach → F7 demais telas → F8 bugs literais →
+  F9 fechar o gate. Cada fatia toca `core:domain` e a UI juntos.
+
+### Achado técnico relevante
+
+- O gate de jargão **existia e não pegava**: `fixtures/golden/per-horizon/expected.json`
+  declara `forbiddenRationale: ["Fase PEAK", "Fase TAPER"]`, mas
+  `PlanHorizonGoldenTest.kt:154-155` só o aplica ao cenário `noRace`, cuja fase é
+  `BASE`/`BUILD` — “Fase BASE.” passava sem ser notado. A fatia F1 corrige a
+  cobertura **antes** de mexer no texto.
 
 ## Sessão 2026-11-27 — ADR 0070: janela de planejamento e lembretes ancorados no treino
 
@@ -11129,3 +11175,4 @@ disponibilidade como teto — sem migração, dependência nova nem saltos quand
 | 16/11/2026 | Ciclo 4/S7: gates estrutural × do dia, `planDecision` e golden `G-PER-03` (C4-02, C4-07); 975 testes de domínio |
 | 16/11/2026 | Ciclo 4/S8: gate do dia no diário, `LOW_READINESS` e motivo auditável (C4-04); 983 testes de domínio |
 | 17/11/2026 | Ciclo 4/S8.1: reavaliação antes do `DONE` restaura a qualidade em nova versão; hash cobre prontidão/carga (C4-05); 985 testes de domínio |
+| 27/11/2026 | ADR 0071: auditoria completa de UX Writing (39 linhas críticas, 80 de melhoria), glossário canônico, voz por contexto e gate de jargão especificado; Ciclo 5 (F1–F9) aberto no Roadmap |

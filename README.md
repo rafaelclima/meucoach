@@ -98,6 +98,8 @@ Com duas máquinas de desenvolvimento, use o **mesmo debug keystore** nas duas p
 - [Modelo de dados](docs/DATA_MODEL.md)
 - [Ciência do esporte](docs/SPORTS_SCIENCE.md)
 - [Design system](docs/DESIGN_SYSTEM.md)
+- [Glossário canônico](docs/GLOSSARY.md)
+- [Comunicação e histórico de copy](docs/COMMUNICATION.md)
 - [Testes](docs/TESTING.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Runbook](docs/RUNBOOK.md)

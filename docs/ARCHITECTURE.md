@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.14 · **Data:** 27/11/2026 · **Reconciliação:** janela de planejamento semanal (ADR 0070) — horário habitual de treino, lembretes antes do treino, prévia persistida da próxima semana, Room v23 e transparência de treino forte condicionado ao check-in; motores `weekly-plan-v9`/`daily-prescription-v7` inalterados.
+**Versão:** 1.15 · **Data:** 27/11/2026 · **Reconciliação:** vocabulário, voz e estados padronizados no texto de usuário (ADR 0071) — lista negra de jargão, mapa de enums → rótulos, três registros de voz e gate automatizado de conteúdo; docs-only, sem schema, migração ou motor: Room v23 e `weekly-plan-v9`/`daily-prescription-v7` inalterados. A reconciliação anterior (ADR 0070) — horário habitual de treino, lembretes antes do treino, prévia persistida da próxima semana e transparência de treino forte condicionado ao check-in — segue vigente.
 
 ## 1. Restrições e forças
 
@@ -413,6 +413,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 - [ADR 0068](adr/0068-quality-long-run-adjacency-across-weeks.md) — adjacência qualidade × longão entre semanas
 - [ADR 0069](adr/0069-beginner-taper-strides.md) — strides `EASY` no taper do iniciante
 - [ADR 0070](adr/0070-weekly-planning-window-and-reminders.md) — janela de planejamento semanal, prévia da próxima semana e lembretes ancorados no treino
+- [ADR 0071](adr/0071-content-vocabulary-and-voice.md) — vocabulário, voz e estados padronizados no texto de usuário (docs-only)
 
 > Não existe ADR-0017; a numeração 0016 → 0018 é intencional e preservada. O ADR 0027 (sessão guiada) segue proposto e fora do MVP; `GUIDED` não é contrato desta fase. O índice completo está em `DECISIONS.md`.
 
