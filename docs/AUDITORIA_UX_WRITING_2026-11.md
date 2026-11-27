@@ -260,15 +260,15 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `DataManagementScreen.kt:357` | `"Expira em ${item.daysRemaining} dia(s)."` | `"Expira em N dia."` / `"Expira em N dias."` | pendente |
-| [C] | `TodayViewModel.kt:1062` + `CheckInScreen.kt:338`, `:343` | `"${it.hooperSum}/20"` (sem rótulo no Hoje; sem sentido no check-in) | `"Recuperação 12/20 — menor é melhor"` | pendente |
-| [M] | `DataManagementScreen.kt:216-220` | 47 palavras | ~30 palavras + Health Connect em linha separada | pendente |
-| [M] | `DataManagementScreen.kt:147-149` | `"o blob comprimido não sai do app"` | `"os dados brutos de cada corrida não saem do app"` | pendente |
-| [M] | `DataManagementScreen.kt:260-261` | `"Sem nuvem, sem conta e sem analytics."` | `"... sem rastreamento de uso."` | pendente |
-| [M] | `HealthMetricsContent.kt:98-101` | 35 palavras + 2 siglas | quebrar em duas frases | pendente |
-| [M] | `TodayViewModel.kt:1067` | `"menor é melhor"` solto | `"Recuperação: 12/20 — menor é melhor"` | pendente |
-| [M] | `CheckInScreen.kt:311` | `"Dor ${entry.soreness}"` | `"Dor muscular ${entry.soreness}"` | pendente |
-| [M] | `HealthScreen.kt:286` | `"Linha ${error.line}: ${error.message}"` | garantir mensagem do parser em pt-BR | pendente |
+| [C] | `DataManagementScreen.kt:357` | `"Expira em ${item.daysRemaining} dia(s)."` | `"Expira em N dia."` / `"Expira em N dias."` | corrigido |
+| [C] | `TodayViewModel.kt:1062` + `CheckInScreen.kt:338`, `:343` | `"${it.hooperSum}/20"` (sem rótulo no Hoje; sem sentido no check-in) | `"Recuperação 12/20 — menor é melhor"` | corrigido |
+| [M] | `DataManagementScreen.kt:216-220` | 47 palavras | ~30 palavras + Health Connect em linha separada | corrigido |
+| [M] | `DataManagementScreen.kt:147-149` | `"o blob comprimido não sai do app"` | `"os dados brutos de cada corrida não saem do app"` | corrigido |
+| [M] | `DataManagementScreen.kt:260-261` | `"Sem nuvem, sem conta e sem analytics."` | `"... sem rastreamento de uso."` | corrigido |
+| [M] | `HealthMetricsContent.kt:98-101` | 35 palavras + 2 siglas | quebrar em duas frases | corrigido |
+| [M] | `TodayViewModel.kt:1067` | `"menor é melhor"` solto | `"Recuperação: 12/20 — menor é melhor"` | corrigido |
+| [M] | `CheckInScreen.kt:311` | `"Dor ${entry.soreness}"` | `"Dor muscular ${entry.soreness}"` | corrigido |
+| [M] | `HealthScreen.kt:286` | `"Linha ${error.line}: ${error.message}"` | garantir mensagem do parser em pt-BR | corrigido |
 
 ---
 

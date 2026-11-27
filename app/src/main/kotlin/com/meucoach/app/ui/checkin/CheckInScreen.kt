@@ -309,7 +309,7 @@ private fun CheckInHistoryCard(history: List<DailyCheckIn>, today: LocalDate) {
                     )
                     Text(
                         text = "Sono ${entry.sleepQuality} · Fadiga ${entry.fatigue} · " +
-                            "Dor ${entry.soreness} · Estresse ${entry.stress}",
+                            "Dor muscular ${entry.soreness} · Estresse ${entry.stress}",
                         style = McTextStyles.caption,
                         color = colors.textSecondary,
                     )
@@ -335,12 +335,12 @@ private fun CheckInHistoryCard(history: List<DailyCheckIn>, today: LocalDate) {
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "${entry.hooperSum}/20",
+                        text = "Recuperação ${entry.hooperSum}/20",
                         style = MaterialTheme.typography.titleSmall,
                         color = colors.textPrimary,
                     )
                     Text(
-                        text = "Recuperação",
+                        text = "menor é melhor",
                         style = McTextStyles.caption,
                         color = colors.textTertiary,
                     )

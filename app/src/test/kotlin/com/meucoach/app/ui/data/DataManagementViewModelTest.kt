@@ -142,8 +142,8 @@ class DataManagementViewModelTest {
         val state = viewModel.uiState.first { !it.isDeleting }
         assertThat(state.message)
             .isEqualTo(
-                "Dados apagados deste aparelho: 1 corrida(s), 0 check-in(s), " +
-                    "0 dia(s) de métricas e 0 plano(s). O app volta para a configuração inicial.",
+                "Dados apagados deste aparelho: 1 corrida, 0 check-ins, " +
+                    "0 dias de métricas e 0 planos. O app volta para a configuração inicial.",
             )
         assertThat(database.activityDao().getAllIncludingDeleted()).isEmpty()
         assertThat(database.profileDao().get()).isNull()

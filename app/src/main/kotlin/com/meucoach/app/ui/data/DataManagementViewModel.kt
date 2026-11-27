@@ -188,7 +188,10 @@ class DataManagementViewModel @Inject constructor(
     private fun UserDataDeletion.message(): String {
         if (!removedAnything) return "Não havia dados para apagar."
         val base = "Dados apagados deste aparelho: " +
-            "$activities corrida(s), $checkIns check-in(s), $metrics dia(s) de métricas e $plans plano(s)."
+            "$activities ${plural(activities, "corrida", "corridas")}, " +
+            "$checkIns ${plural(checkIns, "check-in", "check-ins")}, " +
+            "$metrics ${plural(metrics, "dia", "dias")} de métricas e " +
+            "$plans ${plural(plans, "plano", "planos")}."
         return "$base${coachMemoryNote()} O app volta para a configuração inicial."
     }
 
@@ -197,4 +200,6 @@ class DataManagementViewModel @Inject constructor(
         return " O histórico do Coach também foi apagado " +
             "($coachTurns ${if (coachTurns == 1) "turno" else "turnos"})."
     }
+
+    private fun plural(count: Int, singular: String, plural: String): String = if (count == 1) singular else plural
 }

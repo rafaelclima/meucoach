@@ -1059,7 +1059,7 @@ private fun buildSignals(
         add(
             ReadinessSignalUi(
                 label = "Check-in",
-                value = checkIn?.let { "${it.hooperSum}/20" } ?: "Pendente",
+                value = checkIn?.let { "Recuperação ${it.hooperSum}/20" } ?: "Pendente",
                 hint = when {
                     checkIn == null -> "15 s para medir o dia"
                     illness -> "sinal de alerta"

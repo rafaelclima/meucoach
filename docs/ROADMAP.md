@@ -876,7 +876,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
 **Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
-F2–F7 concluídas; F8–F9 pendentes.
+F2–F8 concluídas; F9 pendente (fechar o gate).
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -954,8 +954,15 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   Atividades (`Corridas`, `trechos por km`, `passos/min`), mapa/relevo sem
   marca, onboarding/tutorial em fala de corredor, `strings.xml` com siglas por
   extenso. 21 goldens Roborazzi regravados; baseline da UI zerada; `[OK]` mantidos.
-- [ ] **F8 · UI — bugs literais e muros de texto.** `dia(s)`, concordância de
-  “Volume”, range duplicado, `Recuperação X/20`, blocos acima de 30 palavras.
+- [x] **F8 · UI — bugs literais e muros de texto.** `DataManagementScreen`
+  (plural `1 dia`/`N dias`, `dados brutos de cada corrida`, parágrafo de
+  exclusão em ~30 palavras + `O Health Connect não é alterado.` separado,
+  `sem rastreamento de uso`), `DataManagementViewModel` (resumo de exclusão
+  com plural real — mesmo bug, mesma fatia), `TodayViewModel` + `CheckInScreen`
+  (`Recuperação N/20` com escala explicada), `HealthMetricsContent` (vazio em
+  2 blocos), `CheckInScreen` (`Dor muscular`), `DailyMetricsCsvParser`
+  (sempre pt-BR: `Valores inválidos.` em vez do `it.message` em inglês).
+  2 goldens regravados; `[OK]` e F9 intactos.
 - [ ] **F9 · Fechar o gate.** Remover o baseline; lista negra cheia ativa no
   `check`.
 

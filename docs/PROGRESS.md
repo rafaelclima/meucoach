@@ -1,6 +1,62 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F7: demais telas em fala de corredor, 21 goldens regravados, baseline zerada — domínio 0 + UI 0)
+**Atualizado:** 27/11/2026 (Ciclo 5, F8: bugs literais e muros de texto, 2 goldens regravados; só F9 pendente)
+
+## Sessão 2026-11-27 — Ciclo 5, F8: bugs literais e muros de texto
+
+**Objetivo:** corrigir literais quebrados e muros de texto conforme as linhas F8
+da auditoria (`docs/AUDITORIA_UX_WRITING_2026-11.md`). Nenhuma regra
+fisiológica, limiar, volume, alvo, critério de qualidade ou `ruleId`/`evidenceId`
+muda; schema Room v23 intacto; sem texto persistido novo (labels e mensagens
+transitórias, sem `engineVersion`).
+
+### Concluído
+
+- **Lixeira (`DataManagementScreen` + ViewModel, sem bump):** `Expira em N
+  dia(s).` → plural real (`1 dia`/`N dias`); resumo de exclusão do ViewModel
+  com o mesmo bug (`1 corrida(s)…`) → plural real (`1 corrida, 0 check-ins, 0
+  dias…, 0 planos`) — mesmo conceito, mesma fatia; `o blob comprimido…` →
+  `os dados brutos de cada corrida…`; parágrafo de exclusão de 47 para ~27
+  palavras + `O Health Connect não é alterado.` em linha separada; `sem
+  analytics` → `sem rastreamento de uso`.
+- **Hooper com rótulo (`TodayViewModel` + `CheckInScreen`, sem bump):** valor
+  `12/20` → `Recuperação 12/20` no sinal do Hoje (dica `menor é melhor`
+  mantida — o par valor+dica cobre as duas sugestões da auditoria sem
+  duplicar) e no histórico do check-in, onde o caption virou `menor é melhor`
+  (antes `Recuperação`, que duplicaria o valor).
+- **Saúde vazia (`HealthMetricsContent`, sem bump):** vazio em 2 blocos
+  (ação + consequência em 2 frases).
+- **Check-in (`CheckInScreen`, sem bump):** `Dor N` → `Dor muscular N`
+  (igual ao título do formulário).
+- **CSV (`DailyMetricsCsvParser`, sem bump — texto de erro transitório):**
+  `it.message ?: "Valores inválidos."` → sempre `"Valores inválidos."` (o
+  passthrough vazava inglês do `require`/`NumberFormatException`); `Data
+  inválida.` já era pt-BR. Testes do parser só checam linhas — verdes.
+- **Testes/goldens:** `DataManagementViewModelTest` (plural),
+  `TodayViewModelTest` (`Recuperação 7/20`), `CheckInScreenTest` (caption
+  `menor é melhor` ×2); 2 PNGs regravados (`data-management-dark/light`) e
+  `verifyRoborazziDebug` verde.
+- **Intactos (fora da fatia):** `quality-restored-note` (`a qualidade foi
+  liberada`, sem linha na auditoria), `Referência do motor`/`O motor decide
+  o treino` ([OK]), `ActivityMetricUi(spm)` do detalhe (outro componente).
+
+### Gates
+
+- `:core:domain:test` + `:app:testDebugUnitTest` verdes; `check` +
+  `spotlessCheck` + `verifyRoborazziDebug` verdes; nenhum dado real no diff;
+  sem dependência nova.
+
+### Por que nenhum bump (ADR 0071 §2.7)
+
+- Todas as strings F8 são labels/mensagens de leitura ou erros transitórios;
+  nenhum `rationale`/`title`/`decisionDetail` persistido muda.
+
+### Pendente (F9, fora desta fatia)
+
+- F9 fechar o gate: baselines já zerados (só restam os cabeçalhos); remover os
+  arquivos de baseline + o gate ou mantê-los vazios como trava, com `check`
+  verde e a lista negra cheia ativa. **Nota de coordenação:** commit local
+  desta sessão feito sem push (outro agente ativo no repo).
 
 ## Sessão 2026-11-27 — Ciclo 5, F7: Tendências, Perfil, Previsão, Atividades, Level
 
