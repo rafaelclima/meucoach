@@ -77,7 +77,7 @@ class RacePaceIntegrationTest {
         assertThat(quality.targets.rpe).isEqualTo(RacePaceResolver.RACE_PACE_RPE)
         assertThat(quality.structure!!.blocks.single { it.kind == BlockKind.RACE_PACE }.target)
             .isEqualTo("RPE ${RacePaceResolver.RACE_PACE_RPE}")
-        assertThat(quality.rationale).contains("Sem previsão recente", "não prescreve um pace")
+        assertThat(quality.rationale).contains("Sem previsão recente", "sem inventar ritmo")
     }
 
     private fun prediction(profile: AthleteProfile) =

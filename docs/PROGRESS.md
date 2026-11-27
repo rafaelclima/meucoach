@@ -1,6 +1,98 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F4: títulos, blurbs, briefing e estrutura em fala de corredor, `weekly-plan-v11` + `daily-prescription-v9` + `session-briefing-v2`, baseline de 29 + 39 violações)
+**Atualizado:** 27/11/2026 (Ciclo 5, F5: prova, level e story em fala de corredor, `weekly-plan-v12`, baseline de 0 + 39 violações)
+
+## Sessão 2026-11-27 — Ciclo 5, F5: prova, level e story
+
+**Objetivo:** corrigir nota do `RACE_PACE` (`RacePace`), razões do
+`LevelGraduationEngine`, sugestão do `InitialExperienceSuggester`, veredito do
+`StoryVerdictCalculator` e recomendação do `CalibrationCalculator` conforme as
+linhas F5 da auditoria (`docs/AUDITORIA_UX_WRITING_2026-11.md`), sem mudar
+nenhuma regra fisiológica, limiar, volume, alvo, critério de qualidade ou
+`ruleId`/`evidenceId`; schema Room v23 intacto. `Longão`, `Pace de prova` e
+trechos `[OK]` mantidos; `WeeklyPlanGenerator` (F2), `QualityGate`/
+`ExplanationCatalog` (F3), `SessionLibrary`/`SessionBriefingEngine`/
+`WorkoutStructure`/`WorkoutRecommender` (F4) e UI (F6–F8) intactos.
+
+### Concluído
+
+- **Prova (`RacePace`, coberto pelo `weekly-plan-v12`):** `O pace do PEAK usa a
+  previsão atual de …` → `O ritmo do treino forte usa a sua previsão atual
+  de …`; fallback `o PEAK usa o esforço …; o app não prescreve um pace não
+  demonstrado` → `o treino forte vai pelo esforço …, sem inventar ritmo`;
+  `sem VDOT calibrado` → `sem índice de aptidão calibrado`. `ambiciosa`/
+  `referência` e `Recalibre com prova, teste de 30 min ou esforço sustentado`
+  mantidos.
+- **Level (`LevelGraduationEngine`, sem bump — ver abaixo):** `CTL estável ou
+  crescente … com carga objetiva` → `Carga das últimas 4 semanas estável ou
+  subindo, com dados de FC ou ritmo` (razão e fragmento `missing`);
+  `Monotonia média …` → `Variedade média … (dias com esforço muito parecido)`
+  (idem); `Calibração válida: Tier A de …` → `Calibração por prova recente
+  de …`; `Tier B confirmada` → `Calibração por treinos recentes` (idem no
+  fragmento `calibração por prova recente ou por treinos recentes`); `prova ou
+  TT recente … ou TT de 30 min válido` → `prova ou teste de 30 min recente
+  (até N dias)`; `... concluídos com evidência forte` →
+  `... confirmados por uma corrida` (idem no fragmento de consistência).
+  `Longão real de pelo menos 60/90 minutos concluído` mantido.
+- **Sugestão inicial (`InitialExperienceSuggester`, sem bump):** `Com prova ou
+  estimativa recente com VDOT, considere Intermediário para liberar …` →
+  `Com prova ou estimativa recente, você já pode para intermediário e ganhar
+  1 treino forte curto por semana.` (texto da auditoria, sem sigla).
+- **Story (`StoryVerdictCalculator`, sem versão própria — ver abaixo):** fim
+  do julgamento: `Forte demais hoje` → `Ritmo acima do planejado` (EASY/REST),
+  `Longão forte demais` → `Longão mais forte que o planejado`, `Qualidade
+  acima do alvo` → `Treino forte acima do alvo`; `Leve demais hoje` →
+  `Ritmo abaixo do planejado`, `Longão leve demais` → `Longão mais leve que o
+  planejado`, `Qualidade abaixo do alvo` → `Treino forte abaixo do alvo`;
+  concordância: `Rodagem bem feita` → `Corrida leve bem feita`,
+  `Qualidade completa` → `Treino forte completo`; próximos passos:
+  `qualidade de X min` → `treino forte de X min` (idem sem duração),
+  `X min leve` → `corrida leve de X min`. Texto morto inalcançável pelo
+  `calculate` (`QUALITY` forte demais, `LONG` leve demais, `REST`) corrigido
+  na mesma passada. `Longão bem feito`, `longão de X min`, `Corrida feita` e
+  `Cada corrida conta.` mantidos.
+- **Calibração (`CalibrationCalculator`, sem bump):** `... e seu ritmo de
+  limiar.` → `... e o ritmo que você segura nesse esforço.` (linha F5 da
+  auditoria; `limiar` isolado nunca foi termo do gate).
+- **Testes:** `RacePaceTest`/`RacePaceIntegrationTest` (`sem inventar ritmo`),
+  `StoryVerdictCalculatorTest` (`Corrida leve bem feita`, `Ritmo acima/abaixo
+  do planejado`, `Treino forte completo/abaixo do alvo`, `corrida leve/treino
+  forte de X min`), `WeeklyPlanGeneratorTest` (versão `v12`),
+  `InitialExperienceSuggesterTest` (`intermediário`). `LevelGraduationEngineTest`
+  só checa códigos `missing`, sem copy — verde sem alteração.
+- **Baseline:** 29 linhas removidas no mesmo commit (só encolhe): 17 do
+  `RacePace` + 5 do `StoryVerdict` (fatia F5) + 7 residuais de
+  `session.rationale` vindas da nota do `RacePace` (`per-horizon` 4 +
+  `per-quality` 3, baselinadas como F2). Restam 0 no domínio + 39 na UI.
+
+### Gates
+
+- `./gradlew :core:domain:test --rerun-tasks` verde (incluindo goldens de plano
+  e gate de vocabulário, sem violações novas nem obsoletas).
+- `./gradlew spotlessApply` (2 estouros de 120 col. quebrados) + `./gradlew check`
+  verdes (detekt, Kover, `spotlessCheck`, lint, parser FIT 93,01%); nenhum dado
+  real no diff; sem dependência nova.
+
+### Por que só o `weekly-plan` bumpou (ADR 0071 §2.7)
+
+- A nota do `RacePace` entra no `session.rationale` do plano semanal
+  (`WeeklyPlanGenerator.qualityRationale` via `extraNote`) — texto novo no
+  plano persistido exige `weekly-plan-v11` → `v12`. O histórico mantém o texto
+  antigo, sem migração.
+- `StoryVerdict` não tem versão própria nem persiste em Room (veredito do
+  story/export) — texto novo sem bump.
+- `LevelGraduationEngine.ENGINE_VERSION` (`level-graduation-v1`) mantido: só
+  rótulo mudou, sem alterar decisão; o `inputsHash` canônico inclui a versão,
+  então bumpar invalidaria supressões (`decline`) sem motivo. Razões são
+  transitórias no card, não dado persistido.
+- `InitialExperienceSuggester` (hint transitório) e recomendação do
+  `CalibrationCalculator` (tela de calibração) não têm versão persistida —
+  nenhum bump por essas partes.
+
+### Pendente (F6–F9, fora desta fatia)
+
+- F6 Coach → F7 demais telas → F8 bugs literais → F9 fechar o gate (remover
+  baseline da UI). Cada linha do baseline aponta a fatia que a remove.
 
 ## Sessão 2026-11-27 — Ciclo 5, F4: títulos, blurbs, briefing e estrutura
 

@@ -147,7 +147,7 @@ class RacePaceTest {
         assertThat(plan.rpe).isEqualTo(RacePaceResolver.RACE_PACE_RPE)
         assertThat(plan.blockTarget).isEqualTo("RPE ${RacePaceResolver.RACE_PACE_RPE}")
         assertThat(plan.goalGap).isNull()
-        assertThat(plan.note).contains("Sem previsão recente", "não prescreve um pace")
+        assertThat(plan.note).contains("Sem previsão recente", "sem inventar ritmo")
     }
 
     @Test

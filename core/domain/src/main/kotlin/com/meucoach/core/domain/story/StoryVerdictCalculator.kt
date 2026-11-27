@@ -177,24 +177,24 @@ object StoryVerdictCalculator {
 
     private fun headlineFor(type: WorkoutType, tone: StoryVerdictTone): String = when (tone) {
         StoryVerdictTone.ON_TARGET -> when (type) {
-            WorkoutType.EASY -> "Rodagem bem feita"
+            WorkoutType.EASY -> "Corrida leve bem feita"
             WorkoutType.LONG -> "Longão bem feito"
-            WorkoutType.QUALITY -> "Qualidade completa"
+            WorkoutType.QUALITY -> "Treino forte completo"
             WorkoutType.REST -> "Treino feito"
         }
 
         StoryVerdictTone.TOO_HARD -> when (type) {
-            WorkoutType.EASY -> "Forte demais hoje"
-            WorkoutType.LONG -> "Longão forte demais"
-            WorkoutType.QUALITY -> "Qualidade acima do alvo"
-            WorkoutType.REST -> "Forte demais hoje"
+            WorkoutType.EASY -> "Ritmo acima do planejado"
+            WorkoutType.LONG -> "Longão mais forte que o planejado"
+            WorkoutType.QUALITY -> "Treino forte acima do alvo"
+            WorkoutType.REST -> "Ritmo acima do planejado"
         }
 
         StoryVerdictTone.TOO_EASY -> when (type) {
-            WorkoutType.EASY -> "Leve demais hoje"
-            WorkoutType.LONG -> "Longão leve demais"
-            WorkoutType.QUALITY -> "Qualidade abaixo do alvo"
-            WorkoutType.REST -> "Leve demais hoje"
+            WorkoutType.EASY -> "Ritmo abaixo do planejado"
+            WorkoutType.LONG -> "Longão mais leve que o planejado"
+            WorkoutType.QUALITY -> "Treino forte abaixo do alvo"
+            WorkoutType.REST -> "Ritmo abaixo do planejado"
         }
     }
 
@@ -207,9 +207,9 @@ object StoryVerdictCalculator {
         val prefix = if (next.date == current.date.plusDays(1)) "Amanhã" else "Próximo"
         val body = when (next.type) {
             WorkoutType.REST -> "descanso"
-            WorkoutType.EASY -> next.durationMin?.let { "$it min leve" } ?: "treino leve"
+            WorkoutType.EASY -> next.durationMin?.let { "corrida leve de $it min" } ?: "treino leve"
             WorkoutType.LONG -> next.durationMin?.let { "longão de $it min" } ?: "longão"
-            WorkoutType.QUALITY -> next.durationMin?.let { "qualidade de $it min" } ?: "qualidade"
+            WorkoutType.QUALITY -> next.durationMin?.let { "treino forte de $it min" } ?: "treino forte"
         }
         return "$prefix: $body."
     }

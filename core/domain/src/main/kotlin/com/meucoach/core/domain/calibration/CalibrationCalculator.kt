@@ -259,7 +259,8 @@ object CalibrationCalculator {
         ruleId = "R-CAL-02",
         evidenceIds = EVIDENCE,
         warnings = warnings,
-        recommendation = "Faça um teste de 30 min para estimar seu limite de esforço e seu ritmo de limiar. " +
+        recommendation =
+        "Faça um teste de 30 min para estimar seu limite de esforço e o ritmo que você segura nesse esforço. " +
             "Até lá, use a FC e o esforço percebido.",
     )
 

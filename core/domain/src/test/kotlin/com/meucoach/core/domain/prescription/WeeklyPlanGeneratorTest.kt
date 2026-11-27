@@ -36,10 +36,10 @@ class WeeklyPlanGeneratorTest {
     }
 
     @Test
-    fun `weekly engine version is weekly-plan-v11`() {
-        // ADR 0071 F4: session copy in runner talk (no rule change).
+    fun `weekly engine version is weekly-plan-v12`() {
+        // ADR 0071 F5: RacePace note in runner talk (no rule change).
         // Older rows are upgraded by PlanUpgrade on opening (ADR 0048).
-        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v11")
+        assertThat(WeeklyPlanGenerator.ENGINE_VERSION).isEqualTo("weekly-plan-v12")
     }
 
     @Test

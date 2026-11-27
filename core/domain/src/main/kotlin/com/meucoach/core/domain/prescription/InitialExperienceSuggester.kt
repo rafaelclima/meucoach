@@ -18,8 +18,8 @@ object InitialExperienceSuggester {
         if (!coldStartValid) return null
         return Suggestion(
             to = Experience.INTERMEDIATE,
-            reason = "Com prova ou estimativa recente com VDOT, " +
-                "considere Intermediário para liberar 1 treino forte curto por semana.",
+            reason = "Com prova ou estimativa recente, você já pode para intermediário " +
+                "e ganhar 1 treino forte curto por semana.",
         )
     }
 }

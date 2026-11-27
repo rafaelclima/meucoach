@@ -176,7 +176,7 @@ object LevelGraduationEngine {
             if (!longRun) add(MISSING_LONG_RUN)
         }
         val reasons = buildList {
-            add("$strongWeeks de 6 semanas com pelo menos 80% dos treinos concluídos com evidência forte")
+            add("$strongWeeks de 6 semanas com pelo menos 80% dos treinos confirmados por uma corrida")
             add("${efforts.size} esforços de 20 a 35 minutos com frequência cardíaca e ritmo")
             add(calibrationReason(input.calibration))
             add("Sem doença ou lesão nos últimos 14 dias e prontidão atual ${readinessLabel(input.readiness)}")
@@ -193,10 +193,10 @@ object LevelGraduationEngine {
     }
 
     private fun advancedReasons(input: LevelGraduationInput): List<String> = buildList {
-        add("CTL estável ou crescente nas últimas 4 semanas com carga objetiva")
+        add("Carga das últimas 4 semanas estável ou subindo, com dados de FC ou ritmo")
         add("Longão real de pelo menos 90 minutos concluído")
         add(raceReason(input))
-        add("Monotonia média das últimas 4 semanas abaixo de 2,0")
+        add("Variedade média das últimas 4 semanas abaixo de 2,0 (dias com esforço muito parecido)")
     }
 
     private fun stay(missing: List<String>, base: BaseEvaluation): LevelGraduationResult.Stay {
@@ -294,8 +294,8 @@ object LevelGraduationEngine {
     }
 
     private fun calibrationReason(calibration: LevelCalibration): String = when (calibration.tier) {
-        CalibrationTier.A -> "Calibração válida: Tier A de ${calibration.calibratedAt?.format(DATE_LABEL)}"
-        CalibrationTier.B -> "Calibração válida: Tier B confirmada"
+        CalibrationTier.A -> "Calibração por prova recente de ${calibration.calibratedAt?.format(DATE_LABEL)}"
+        CalibrationTier.B -> "Calibração por treinos recentes"
         else -> "Calibração válida"
     }
 
@@ -315,11 +315,11 @@ object LevelGraduationEngine {
 
     private fun missingFragment(missing: String, base: BaseEvaluation): String = when (missing) {
         MISSING_STRONG_WEEKS ->
-            "consistência (${base.strongWeeks} de $MIN_STRONG_WEEKS semanas com 80% concluído e evidência forte)"
+            "consistência (${base.strongWeeks} de $MIN_STRONG_WEEKS semanas com 80% confirmado por uma corrida)"
 
         MISSING_EFFORTS -> "esforços com FC e ritmo (${base.effortCount} de $MIN_EFFORTS de 20–35 min)"
 
-        MISSING_CALIBRATION -> "calibração válida (Tier A recente ou Tier B confirmada)"
+        MISSING_CALIBRATION -> "calibração por prova recente ou por treinos recentes"
 
         MISSING_ILLNESS -> "14 dias sem doença ou lesão"
 
@@ -327,13 +327,15 @@ object LevelGraduationEngine {
 
         MISSING_LONG_RUN -> "longão real de pelo menos $LONG_RUN_60_MIN min"
 
-        MISSING_CTL -> "CTL estável ou crescente em $CTL_WEEKS semanas com carga objetiva"
+        MISSING_CTL -> "carga das últimas $CTL_WEEKS semanas estável ou subindo, com dados de FC ou ritmo"
 
         MISSING_LONG_RUN_90 -> "longão real de pelo menos $LONG_RUN_90_MIN min"
 
-        MISSING_RACE -> "prova ou TT recente (até $RECENT_DAYS dias) ou TT de 30 min válido"
+        MISSING_RACE -> "prova ou teste de 30 min recente (até $RECENT_DAYS dias)"
 
-        MISSING_MONOTONY -> "monotonia média de $MONOTONY_WEEKS semanas abaixo de $MONOTONY_MAX"
+        MISSING_MONOTONY ->
+            "variedade média de $MONOTONY_WEEKS semanas abaixo de $MONOTONY_MAX " +
+                "(dias com esforço muito parecido)"
 
         else -> missing
     }

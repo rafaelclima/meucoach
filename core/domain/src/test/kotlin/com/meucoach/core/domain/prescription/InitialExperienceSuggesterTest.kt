@@ -11,7 +11,7 @@ class InitialExperienceSuggesterTest {
 
         assertThat(suggestion).isNotNull()
         assertThat(suggestion!!.to).isEqualTo(Experience.INTERMEDIATE)
-        assertThat(suggestion.reason).contains("Intermediário")
+        assertThat(suggestion.reason).contains("intermediário")
     }
 
     @Test

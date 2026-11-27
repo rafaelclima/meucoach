@@ -26,9 +26,9 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.ON_TARGET)
-        assertThat(verdict.headline).isEqualTo("Rodagem bem feita")
+        assertThat(verdict.headline).isEqualTo("Corrida leve bem feita")
         assertThat(verdict.proof).isEqualTo("90% no alvo")
-        assertThat(verdict.coachLine).isEqualTo("Rodagem bem feita. Amanhã: 40 min leve.")
+        assertThat(verdict.coachLine).isEqualTo("Corrida leve bem feita. Amanhã: corrida leve de 40 min.")
         assertThat(verdict.onTargetPercent).isEqualTo(90)
         assertThat(verdict.targetZones).containsExactly(HeartRateZone.Z2)
         assertThat(verdict.stamps.map { it.tone }).containsOnly(StoryVerdictTone.ON_TARGET)
@@ -46,9 +46,9 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.TOO_HARD)
-        assertThat(verdict.headline).isEqualTo("Forte demais hoje")
+        assertThat(verdict.headline).isEqualTo("Ritmo acima do planejado")
         assertThat(verdict.proof).isEqualTo("14% no alvo")
-        assertThat(verdict.coachLine).startsWith("Forte demais hoje.")
+        assertThat(verdict.coachLine).startsWith("Ritmo acima do planejado.")
         assertThat(verdict.coachLine.lowercase()).doesNotContain("errado", "culpa", "falhou")
     }
 
@@ -61,7 +61,7 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.TOO_EASY)
-        assertThat(verdict.headline).isEqualTo("Leve demais hoje")
+        assertThat(verdict.headline).isEqualTo("Ritmo abaixo do planejado")
         assertThat(verdict.proof).isEqualTo("20% no alvo")
     }
 
@@ -114,7 +114,7 @@ class StoryVerdictCalculatorTest {
 
         assertThat(verdict.targetZones).containsExactly(HeartRateZone.Z4, HeartRateZone.Z5)
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.ON_TARGET)
-        assertThat(verdict.headline).isEqualTo("Qualidade completa")
+        assertThat(verdict.headline).isEqualTo("Treino forte completo")
     }
 
     @Test
@@ -197,7 +197,7 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.TOO_HARD)
-        assertThat(verdict.headline).isEqualTo("Forte demais hoje")
+        assertThat(verdict.headline).isEqualTo("Ritmo acima do planejado")
         assertThat(verdict.onTargetPercent).isEqualTo(0)
     }
 
@@ -210,7 +210,7 @@ class StoryVerdictCalculatorTest {
         )
 
         assertThat(verdict.tone).isEqualTo(StoryVerdictTone.TOO_EASY)
-        assertThat(verdict.headline).isEqualTo("Qualidade abaixo do alvo")
+        assertThat(verdict.headline).isEqualTo("Treino forte abaixo do alvo")
         assertThat(verdict.proof).isEqualTo("0% no alvo")
     }
 
@@ -235,7 +235,7 @@ class StoryVerdictCalculatorTest {
             nextSession = session(WorkoutType.LONG, date = DATE.plusDays(3), durationMin = 60),
         )
 
-        assertThat(verdict.coachLine).isEqualTo("Rodagem bem feita. Próximo: longão de 60 min.")
+        assertThat(verdict.coachLine).isEqualTo("Corrida leve bem feita. Próximo: longão de 60 min.")
     }
 
     private fun session(type: WorkoutType, date: LocalDate = DATE, durationMin: Int? = 40) = PlannedSession(

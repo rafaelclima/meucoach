@@ -158,7 +158,7 @@ object RacePaceResolver {
     private fun predictionNote(distance: RaceDistance, prediction: RacePrediction, goalSec: Int?): String {
         val gap = goalGap(goalSec, prediction)
         val pace = pointPace(prediction).label()
-        val current = "O pace do PEAK usa a previsão atual de ${distance.label()} ($pace), nunca a meta."
+        val current = "O ritmo do treino forte usa a sua previsão atual de ${distance.label()} ($pace), nunca a meta."
         if (gap == null) return "Sem meta de tempo informada. $current"
         val goal = timeLabel(gap.goalSec)
         val predicted = timeLabel(gap.predictedSec)
@@ -188,12 +188,12 @@ object RacePaceResolver {
 
     private fun unavailableNote(distance: RaceDistance, reason: RacePredictionUnavailable): String {
         val why = when (reason) {
-            RacePredictionUnavailable.NO_VDOT -> "sem VDOT calibrado"
+            RacePredictionUnavailable.NO_VDOT -> "sem índice de aptidão calibrado"
             RacePredictionUnavailable.STALE_CALIBRATION -> "calibração vencida"
             RacePredictionUnavailable.LOW_CONFIDENCE -> "calibração sem origem confiável"
         }
-        return "Sem previsão recente de ${distance.label()} ($why): o PEAK usa o esforço " +
-            "$RACE_PACE_RPE de 10; o app não prescreve um pace não demonstrado. " +
+        return "Sem previsão recente de ${distance.label()} ($why): o treino forte vai pelo esforço " +
+            "$RACE_PACE_RPE de 10, sem inventar ritmo. " +
             "Recalibre com prova, teste de 30 min ou esforço sustentado."
     }
 

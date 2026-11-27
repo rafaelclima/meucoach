@@ -138,22 +138,22 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `StoryVerdictCalculator.kt:187-190` | `"Forte demais hoje"`, `"Longão forte demais"`, `"Qualidade acima do alvo"` | `"Ritmo acima do planejado"`, `"Longão mais forte que o planejado"`, `"Treino forte acima do alvo"` | pendente |
-| [C] | `StoryVerdictCalculator.kt:194-197` | `"Leve demais hoje"`, `"Longão leve demais"`, `"Qualidade abaixo do alvo"` | `"Ritmo abaixo do planejado"`, `"Longão mais leve que o planejado"` | pendente |
-| [C] | `RacePace.kt:161` | `"O pace do PEAK usa a previsão atual de ${distance.label()} ($pace), nunca a meta."` | `"O ritmo do treino forte usa a sua previsão atual de ${distance.label()} ($pace), nunca a meta."` | pendente |
-| [C] | `RacePace.kt:195-196` | `"Sem previsão recente de ...: o PEAK usa o esforço $R de 10; o app não prescreve um pace não demonstrado."` | `"... o treino forte vai pelo esforço $R de 10, sem inventar ritmo."` | pendente |
-| [C] | `RacePace.kt:191` | `"sem VDOT calibrado"` | `"sem índice de aptidão calibrado"` | pendente |
-| [C] | `LevelGraduationEngine.kt:196`, `:330` | `"CTL estável ou crescente nas últimas 4 semanas com carga objetiva"` | `"Carga das últimas 4 semanas estável ou subindo, com dados de FC ou ritmo"` | pendente |
-| [C] | `LevelGraduationEngine.kt:199`, `:336` | `"Monotonia média das últimas 4 semanas abaixo de 2,0"` | `"Variedade média das últimas 4 semanas abaixo de 2,0 (dias com esforço muito parecido)"` | pendente |
-| [C] | `LevelGraduationEngine.kt:297-298`, `:322` | `"Calibração válida: Tier A de ..."`, `"Tier B confirmada"` | `"Calibração por prova recente de ..."`, `"Calibração por treinos recentes"` | pendente |
-| [C] | `LevelGraduationEngine.kt:334` | `"prova ou TT recente (até N dias) ou TT de 30 min válido"` | `"prova ou teste de 30 min recente (até N dias)"` | pendente |
-| [C] | `InitialExperienceSuggester.kt:21-22` | `"Com prova ou estimativa recente com VDOT, considere Intermediário para liberar 1 treino forte curto por semana."` | `"Com prova ou estimativa recente, você já pode para intermediário e ganhar 1 treino forte curto por semana."` | pendente |
-| [M] | `StoryVerdictCalculator.kt:180`, `:182`, `:189`, `:196` | `"Rodagem bem feito"` (concordância), `"Qualidade completa"`, `"Qualidade acima do alvo"`, `"Qualidade abaixo do alvo"` | `"Corrida leve bem feita"`, `"Treino forte completo"`, `"Treino forte acima do alvo"`, `"Treino forte abaixo do alvo"` | pendente |
-| [M] | `StoryVerdictCalculator.kt:207-212` | `"longão de $it min"`, `"qualidade de $it min"`, `"$it min leve"` | `"longão de $it min"` (manter), `"treino forte de $it min"`, `"corrida leve de $it min"` | pendente |
-| [M] | `RacePace.kt:168-185` | `"ela é ambiciosa"` / `"ela é referência"` | ok; trocar "pace" por "ritmo" nos textos fixos | pendente |
-| [M] | `LevelGraduationEngine.kt:179-183` | `"...concluídos com evidência forte"` | `"...confirmados por uma corrida"` | pendente |
+| [C] | `StoryVerdictCalculator.kt:187-190` | `"Forte demais hoje"`, `"Longão forte demais"`, `"Qualidade acima do alvo"` | `"Ritmo acima do planejado"`, `"Longão mais forte que o planejado"`, `"Treino forte acima do alvo"` | corrigido |
+| [C] | `StoryVerdictCalculator.kt:194-197` | `"Leve demais hoje"`, `"Longão leve demais"`, `"Qualidade abaixo do alvo"` | `"Ritmo abaixo do planejado"`, `"Longão mais leve que o planejado"` | corrigido |
+| [C] | `RacePace.kt:161` | `"O pace do PEAK usa a previsão atual de ${distance.label()} ($pace), nunca a meta."` | `"O ritmo do treino forte usa a sua previsão atual de ${distance.label()} ($pace), nunca a meta."` | corrigido |
+| [C] | `RacePace.kt:195-196` | `"Sem previsão recente de ...: o PEAK usa o esforço $R de 10; o app não prescreve um pace não demonstrado."` | `"... o treino forte vai pelo esforço $R de 10, sem inventar ritmo."` | corrigido |
+| [C] | `RacePace.kt:191` | `"sem VDOT calibrado"` | `"sem índice de aptidão calibrado"` | corrigido |
+| [C] | `LevelGraduationEngine.kt:196`, `:330` | `"CTL estável ou crescente nas últimas 4 semanas com carga objetiva"` | `"Carga das últimas 4 semanas estável ou subindo, com dados de FC ou ritmo"` | corrigido |
+| [C] | `LevelGraduationEngine.kt:199`, `:336` | `"Monotonia média das últimas 4 semanas abaixo de 2,0"` | `"Variedade média das últimas 4 semanas abaixo de 2,0 (dias com esforço muito parecido)"` | corrigido |
+| [C] | `LevelGraduationEngine.kt:297-298`, `:322` | `"Calibração válida: Tier A de ..."`, `"Tier B confirmada"` | `"Calibração por prova recente de ..."`, `"Calibração por treinos recentes"` | corrigido |
+| [C] | `LevelGraduationEngine.kt:334` | `"prova ou TT recente (até N dias) ou TT de 30 min válido"` | `"prova ou teste de 30 min recente (até N dias)"` | corrigido |
+| [C] | `InitialExperienceSuggester.kt:21-22` | `"Com prova ou estimativa recente com VDOT, considere Intermediário para liberar 1 treino forte curto por semana."` | `"Com prova ou estimativa recente, você já pode para intermediário e ganhar 1 treino forte curto por semana."` | corrigido |
+| [M] | `StoryVerdictCalculator.kt:180`, `:182`, `:189`, `:196` | `"Rodagem bem feito"` (concordância), `"Qualidade completa"`, `"Qualidade acima do alvo"`, `"Qualidade abaixo do alvo"` | `"Corrida leve bem feita"`, `"Treino forte completo"`, `"Treino forte acima do alvo"`, `"Treino forte abaixo do alvo"` | corrigido |
+| [M] | `StoryVerdictCalculator.kt:207-212` | `"longão de $it min"`, `"qualidade de $it min"`, `"$it min leve"` | `"longão de $it min"` (manter), `"treino forte de $it min"`, `"corrida leve de $it min"` | corrigido |
+| [M] | `RacePace.kt:168-185` | `"ela é ambiciosa"` / `"ela é referência"` | ok; trocar "pace" por "ritmo" nos textos fixos | corrigido |
+| [M] | `LevelGraduationEngine.kt:179-183` | `"...concluídos com evidência forte"` | `"...confirmados por uma corrida"` | corrigido |
 | [OK] | `LevelGraduationEngine.kt:183`, `:328` | `"Longão real de pelo menos 60 minutos concluído"` | manter | — |
-| [M] | `CalibrationCalculator.kt:262` | `"...e seu ritmo de limiar."` | `"...e o ritmo que você segura nesse esforço."` | pendente |
+| [M] | `CalibrationCalculator.kt:262` | `"...e seu ritmo de limiar."` | `"...e o ritmo que você segura nesse esforço."` | corrigido |
 | [OK] | `StoryHighlightsCalculator.kt:31-70`, `StoryMetrics.kt:110-121` | headlines e rótulos de arte | manter | — |
 | [OK] | `ActivityInsightsCalculator.kt:72-105` | as três leituras pós-corrida | manter | — |
 | [OK] | `CalibrationCalculator.kt:131-132`, `:206-207`, `:248-249` | recomendações de calibração | manter | — |

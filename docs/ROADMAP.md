@@ -876,7 +876,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
 **Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
-F2–F3 concluídas; F4–F9 pendentes.
+F2–F5 concluídas; F6–F9 pendentes.
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -920,9 +920,14 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   (`treino forte de hoje`). `weekly-plan-v11` + `daily-prescription-v9`;
   fixture `plan-upgrade` regenerado (`Rodagem de …`); 18 linhas do baseline
   removidas; `Longão`/`dose pequena`/`Pace de prova` inalterados.
-- [ ] **F5 · Motor — prova, level e story.** `RacePace`, `LevelGraduationEngine`,
-  `InitialExperienceSuggester`, `StoryVerdictCalculator` (julgamento proibido por
-  §6.12).
+- [x] **F5 · Motor — prova, level e story.** `RacePace` (nota do `RACE_PACE`:
+  `ritmo`, `treino forte`, `índice de aptidão`, `teste de 30 min`), `LevelGraduationEngine`
+  (`Carga …`, `Variedade …`, `Calibração por prova/treinos recentes`, `... confirmado por
+  uma corrida`), `InitialExperienceSuggester` (sem sigla) e `StoryVerdictCalculator`
+  (`Ritmo acima/abaixo do planejado`, `Longão mais forte/leve que o planejado`,
+  `Treino forte ...`, `Corrida leve bem feita`, `corrida leve/treino forte de X min`).
+  `weekly-plan-v12`; domínio zera (29 linhas do baseline removidas, 0 + 39 na UI);
+  `Longão`/`Pace de prova` inalterados.
 - [ ] **F6 · UI — Coach.** “motor” na tela, frase sem sujeito
   (`CoachFallbackLabels`), saudações duplicadas (`CoachOpeningLabels`),
   `VDOT` em `CoachProgressLabels`. **A gíria fica.**
